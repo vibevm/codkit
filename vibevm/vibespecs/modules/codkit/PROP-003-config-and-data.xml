@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-003: Конфиг, конвенции-данные, карта владельцев, общие правила форматов</title>
+  <status stage="spec" state="done" comment="standalone settings, patch-set config, installed safety policy and artifact formats"/>
+  <format-rules title="1. Общие правила всех форматов codkit">
+    <facts ordered="false">
+      <SCHEMA-VERSION-FIELD fact="true" status="spec/done">Каждый формат несёт версию схемы — целое число в поле-самоназвании (например, `"codkitConfig": 1`, `"codkitOverlay": 2`).</SCHEMA-VERSION-FIELD>
+      <SCHEMA-MIGRATION-RULE fact="true" status="spec/done">Правило миграции после первого пользователя: читатель принимает версию `N`; на `N+1` и выше падает с кодом 2 и текстом «формат новее инструмента, обновите codkit»; версии ниже текущей читает по правилам той версии и при следующей записи пишет текущую. Одноразовое pre-user исключение владельца 2026-08-31: metadata-форматы D5 `patch/overlay/resource/rule/own/inventory` перешли с v1 на v2 через hard rename прежнего поля в `cause`; внешних пользователей и значимых значений прежнего поля не было, поэтому v2 намеренно отклоняет v1 и legacy-reader не поставляется.</SCHEMA-MIGRATION-RULE>
+      <FILE-BYTE-RULES fact="true" status="spec/done">Все файлы форматов: кодировка UTF-8 без BOM, переводы строк LF, завершающий LF обязателен.</FILE-BYTE-RULES>
+      <JSON-DETERMINISTIC-SERIALIZATION fact="true" status="spec/done">JSON сериализуется детерминированно: отступ два пробела; ключи объектов — в порядке, определённом схемой (НЕ алфавитном); массивы — в порядке, определённом схемой (обычно сортировка по `id` или пути).</JSON-DETERMINISTIC-SERIALIZATION>
+      <SCHEMAS-ARE-ZOD fact="true" status="spec/done">Схемы форматов описываются Zod-схемами как единый источник статического типа и runtime-валидации (`common/PROP-000` `##CODKIT-VALIDATOR-ZOD`); текст диагностики схемной ошибки формируется в терминах реестра кодов PROP-012 §2, а не сырым выводом валидатора.</SCHEMAS-ARE-ZOD>
+    </facts>
+  </format-rules>
+  <locations title="2. Пользовательские настройки расположения">
+    <p><SETTINGS-FILE fact="true" status="spec/done">`~/.codkit/settings.json` выбирает внешние корни независимо: строгая схема `{"codkitSettings":1,"patchesDir":"/absolute/path","forkDir":"/absolute/path"}`. Оба поля пути опциональны, только абсолютны; неизвестное поле, неверный тип или другая версия схемы дают `CK-E-CONFIG`.</SETTINGS-FILE></p>
+    <facts ordered="false">
+      <PATCHES-DIR-PRECEDENCE fact="true" status="spec/done">patchesDir: `--patches-dir` → `CODKIT_PATCHES_DIR` → settings `patchesDir`; отсутствие всех трёх — диагностированный отказ для команд, которым нужен patch-set.</PATCHES-DIR-PRECEDENCE>
+      <FORK-DIR-PRECEDENCE fact="true" status="spec/done">forkDir: `--fork-dir` → `CODKIT_FORK_DIR` → settings `forkDir`; отсутствие всех трёх допустимо только командам, не требующим дерева.</FORK-DIR-PRECEDENCE>
+      <PATH-BASE-RULE fact="true" status="spec/done">Относительный CLI/env путь разрешается от cwd процесса. Settings принимает только абсолютные пути. `codkit.json`, соседний каталог и местоположение toolRoot никогда не являются fallback источником корня.</PATH-BASE-RULE>
+      <DISJOINT-ROOT-GUARD fact="true" status="spec/done">После canonicalization toolRoot, patchesDir и forkDir обязаны быть попарно непересекающимися, включая вложенность. Нарушение останавливает команду до чтения patch-set и до любой мутации.</DISJOINT-ROOT-GUARD>
+    </facts>
+  </locations>
+  <config title="3. Конфиг patch-set — codkit.json (+ codkit.local.json)">
+    <table>
+      <tr><td>Поле</td><td>Тип</td><td>Обяз.</td><td>Дефолт</td><td>Ограничения / пример</td></tr>
+      <tr><td><CFG-SCHEMA fact="true" status="spec/done">`codkitConfig`</CFG-SCHEMA></td><td>int</td><td>да</td><td>—</td><td>ровно `1`</td></tr>
+      <tr><td><CFG-PIN-TAG fact="true" status="spec/done">`pin.tag`</CFG-PIN-TAG></td><td>string</td><td>да</td><td>—</td><td>имя тега апстрима, напр. `"1.135.0"`</td></tr>
+      <tr><td><CFG-PIN-SHA fact="true" status="spec/done">`pin.sha`</CFG-PIN-SHA></td><td>string</td><td>да</td><td>—</td><td>40 hex, полный SHA коммита тега</td></tr>
+      <tr><td><CFG-PIN-DATE fact="true" status="spec/done">`pin.date`</CFG-PIN-DATE></td><td>string</td><td>да</td><td>—</td><td>`YYYY-MM-DD`, дата коммита пина</td></tr>
+      <tr><td><CFG-ANCHOR fact="true" status="spec/done">`upstreamAnchorCommit`</CFG-ANCHOR></td><td>string</td><td>да</td><td>—</td><td>40 hex; корневой коммит истории апстрима (см. `##ANCHOR-COMMIT-RULE`)</td></tr>
+      <tr><td><CFG-OWN-DIR fact="true" status="spec/done">`ownDirName`</CFG-OWN-DIR></td><td>string</td><td>да</td><td>—</td><td>имя каталога own-кода под `src/vs/`, значение `"patchset"`</td></tr>
+      <tr><td><CFG-GEN-PREFIX fact="true" status="spec/done">`generatedBranchPrefix`</CFG-GEN-PREFIX></td><td>string</td><td>да</td><td>—</td><td>`"codkit/applied/"`</td></tr>
+      <tr><td><CFG-CYCLE-PREFIX fact="true" status="spec/done">`cycleBranchPrefix`</CFG-CYCLE-PREFIX></td><td>string</td><td>да</td><td>—</td><td>`"codkit/cycle/"`</td></tr>
+      <tr><td><CFG-RELEASE-PREFIX fact="true" status="spec/done">`releaseRefPrefix`</CFG-RELEASE-PREFIX></td><td>string</td><td>да</td><td>—</td><td>`"codkit/release/"`</td></tr>
+      <tr><td><CFG-PUBLISH-URL fact="true" status="spec/done">`publishRemoteUrl`</CFG-PUBLISH-URL></td><td>nullable string</td><td>нет</td><td>`null`</td><td>URL форка на хостинге (для `publish`)</td></tr>
+      <tr><td><CFG-BUILD-WATCH-FILE fact="true" status="spec/done">`buildWatchFile`</CFG-BUILD-WATCH-FILE></td><td>nullable string</td><td>нет</td><td>`null`</td><td>явный patch-set-relative путь к build-watch данным конкретного форка</td></tr>
+      <tr><td><CFG-CONVENTIONS-EXTENSION-FILE fact="true" status="spec/done">`conventionsExtensionFile`</CFG-CONVENTIONS-EXTENSION-FILE></td><td>nullable string</td><td>нет</td><td>`null`</td><td>явный patch-set-relative путь к additive-only расширению конвенций</td></tr>
+    </table>
+    <p><ANCHOR-COMMIT-RULE fact="true" status="spec/done">`upstreamAnchorCommit` — SHA, по достижимости которого дерево опознаётся как «история microsoft/vscode» (происхождение проверяется по достижимости известного коммита, а не по имени remote). Значение вычисляется один раз при заведении конфига: `git rev-list --max-parents=0 &lt;pin.sha&gt;` (корневой коммит истории; если корней несколько — берётся лексикографически наименьший SHA). Оно закоммичено в `codkit.json` и не меняется при подъёме пина.</ANCHOR-COMMIT-RULE></p>
+    <p><LOCAL-CONFIG-RULE fact="true" status="spec/done">`codkit.local.json` содержит только опциональные непиновые operational overrides (`ownDirName`, branch/ref prefixes, `publishRemoteUrl`). Он не принимает `pin`, `upstreamAnchorCommit`, schema field, корни расположения или ссылки на safety/build policy. Пути корней принадлежат только CLI/env/user settings.</LOCAL-CONFIG-RULE></p>
+    <p><PIN-CHANGES-ONLY-BY-CYCLE fact="true" status="spec/done">После первоначального bootstrap patch-set пин меняется только каноническим коммитом upgrade cycle.</PIN-CHANGES-ONLY-BY-CYCLE></p>
+    <p><config-valid-sample fact="true" status="spec/done">Валидный образец (значение `upstreamAnchorCommit` — заглушка примера; в реальном файле — вычисленный SHA):</config-valid-sample></p>
+    <fence lang="json">{
+  "codkitConfig": 1,
+  "pin": { "tag": "1.135.0", "sha": "08d4889f9ec4a1685d257b9b95de036c8e1ce1e5", "date": "2026-08-25" },
+  "upstreamAnchorCommit": "0000000000000000000000000000000000000000",
+  "ownDirName": "patchset",
+  "generatedBranchPrefix": "codkit/applied/",
+  "cycleBranchPrefix": "codkit/cycle/",
+  "releaseRefPrefix": "codkit/release/",
+  "publishRemoteUrl": null,
+  "buildWatchFile": null,
+  "conventionsExtensionFile": null
+}</fence>
+    <p><CONFIG-INVALID-SAMPLE fact="true" status="spec/done">Невалидный образец и ожидаемая диагностика: файл с `"pin": {"tag": "1.135.0"}` (нет `sha`) → выход 2, сообщение `CK-E-CONFIG: codkit.json: pin.sha is required (full 40-hex commit sha of the pin tag)`.</CONFIG-INVALID-SAMPLE></p>
+  </config>
+  <conventions-data title="4. Конвенции-данные и безопасное расширение">
+    <p><CONVENTIONS-SINGLE-DEFINITION fact="true" status="spec/done">Обязательная базовая policy находится только в `toolRoot/codkit/config/conventions.json`; её читают CLI, проверки, CI и агентские протоколы. Файл с тем же путём под patchesDir никогда не затеняет установленную policy.</CONVENTIONS-SINGLE-DEFINITION></p>
+    <table>
+      <tr><td>Поле</td><td>Тип</td><td>Содержание</td></tr>
+      <tr><td><CONV-SCHEMA fact="true" status="spec/done">`codkitConventions`</CONV-SCHEMA></td><td>int</td><td>версия схемы, `1`</td></tr>
+      <tr><td><CONV-SUBSYSTEMS fact="true" status="spec/done">`subsystems`</CONV-SUBSYSTEMS></td><td>string[]</td><td>допустимые подсистемы id вмешательств: `["workbench","editor","platform","extensions","build","product","base","server","test"]`</td></tr>
+      <tr><td><CONV-ID-PATTERN fact="true" status="spec/done">`idPattern`</CONV-ID-PATTERN></td><td>string</td><td>регулярное выражение id вмешательства: `"^CK-(workbench|editor|platform|extensions|build|product|base|server|test)-[0-9]{3}$"`</td></tr>
+      <tr><td><CONV-TYPES fact="true" status="spec/done">`interventionTypes`</CONV-TYPES></td><td>string[]</td><td>`["extend","modify","disable","hook"]`</td></tr>
+      <tr><td><CONV-CATEGORIES fact="true" status="spec/done">`categories`</CONV-CATEGORIES></td><td>string[]</td><td>`["own","follow","hide"]`</td></tr>
+      <tr><td><CONV-LAYERS fact="true" status="spec/done">`layers`</CONV-LAYERS></td><td>string[]</td><td>`["own","service-override","entry-module","config-overlay","resource-file","rewrite-rule","patch"]` — порядок = приоритет (PROP-005 §1)</td></tr>
+      <tr><td><CONV-MARKER-FORMS fact="true" status="impl/done">`markerComment`</CONV-MARKER-FORMS></td><td>object</td><td>формы маркеров по расширениям (PROP-004 §1); форма значения закреплена реализацией M0: ключ — расширение с точкой, значение — `{"open":"&lt;префикс до codkit:&gt;","close":"&lt;хвост или пустая строка&gt;"}`; ключи, начинающиеся с `_`, — документация, в матчинг не попадают</td></tr>
+      <tr><td><CONV-FORBIDDEN-TARGETS fact="true" status="spec/done">`forbiddenPatchTargets`</CONV-FORBIDDEN-TARGETS></td><td>string[]</td><td>глобы файлов, для которых патчи запрещены: `[".config/1espt/**"]` (файл со смешанными переводами строк) плюс цели overlay (`**/*.json`-исключения — PROP-005 §5)</td></tr>
+      <tr><td><CONV-FORBIDDEN-SERVICES fact="true" status="spec/done">`forbiddenServiceIds`</CONV-FORBIDDEN-SERVICES></td><td>string[]</td><td>id сервисов, запрещённых к перекрытию (bootstrap-сервисы, см. `##FORBIDDEN-SERVICES-SEED`)</td></tr>
+      <tr><td><CONV-CLEANUP-WHITELIST fact="true" status="spec/done">`cleanupWhitelist`</CONV-CLEANUP-WHITELIST></td><td>string[]</td><td>белый список чистки fresh-режима (PROP-011 §4)</td></tr>
+    </table>
+    <p><FORBIDDEN-SERVICES-SEED fact="true" status="spec/done">Базовый `forbiddenServiceIds` защищает bootstrap-сервисы, которые нельзя безопасно подменять поздней регистрацией. Список поддерживается в установленной policy и при upgrade проверяется по фактическим bootstrap-регистрациям обоих desktop/web entry текущего пина.</FORBIDDEN-SERVICES-SEED></p>
+    <p><CONVENTIONS-EXTENSION fact="true" status="spec/done">Если `conventionsExtensionFile` указан, путь обязан оставаться внутри patchesDir после разрешения симлинков. Строгая схема `codkitConventionsExtension:1` может добавить `subsystems` (effective idPattern выводится из объединения), дополнительные `forbiddenPatchTargets`, `forbiddenServiceIds` и `markerComment` только для новых расширений файлов. Она не может удалить, заменить или ослабить базовые запреты, поменять порядок слоёв, существующую marker form, intervention types/categories или cleanup policy.</CONVENTIONS-EXTENSION></p>
+    <p><NO-HIDDEN-POLICY-OVERRIDE fact="true" status="spec/done">Patch-set файл `codkit/config/conventions.json` без явного `conventionsExtensionFile` игнорируется. Даже при явной ссылке содержимое трактуется как additive extension, а не как замена shipped policy.</NO-HIDDEN-POLICY-OVERRIDE></p>
+    <p><BUILD-WATCH-SELECTION fact="true" status="spec/done">По умолчанию build wrapper читает `toolRoot/codkit/config/build-watch.json`. Только явный `buildWatchFile` выбирает строгий версионированный профиль конкретного форка; patch-set является выбранной пользователем project policy, но скрытая одноимённая копия не учитывается. Путь обязан быть относительным и contained внутри patchesDir. Каждый канал обязан иметь хотя бы один `errorLine` или `errorCountLine`; неизвестные поля запрещены. Автор custom profile хранит green/red log fixtures и подтверждает, что ошибка не становится exit 0.</BUILD-WATCH-SELECTION></p>
+  </conventions-data>
+  <owners title="5. Карта владельцев — delta/owners.json">
+    <p><OWNERS-FORMAT fact="true" status="spec/done">Формат: `{"codkitOwners":1,"owners":{"workbench-core":{"contact":"&lt;team-or-login&gt;","paths":["src/vs/workbench/**"]}, …}}`.</OWNERS-FORMAT></p>
+    <facts ordered="false">
+      <OWNER-MUST-EXIST fact="true" status="spec/done">Значение `owner` в любом артефакте обязано быть ключом `owners`; иначе `verify` — выход 1, `CK-E-OWNER-UNKNOWN`.</OWNER-MUST-EXIST>
+      <CODEOWNERS-GENERATED-LATER fact="true" status="spec/done">Из этой карты генерируется файл CODEOWNERS хостинга (команда — не в MVP; сама карта — уже в MVP: инвентарю нужна маршрутизация «подсистема → владелец»).</CODEOWNERS-GENERATED-LATER>
+    </facts>
+  </owners>
+  <artifact-metadata title="6. Метаданные артефакта — общий словарь">
+    <p><ARTIFACT-METADATA-DICTIONARY fact="true" status="spec/done">Все слои отдают одинаковый набор полей в инвентарь: `id`, `layer`, `type`, `category`, `owner`, `reason`, `link`, `cause`, `pin`, `contract-tests`, плюс вычисляемые `subsystem` (из id) и `files` (цели вмешательства). Носитель для патча — шапка `.ckpatch` (PROP-004 §3); для overlay/resource/rule — поля их JSON (PROP-005); для own и entry-module — записи в `delta/own/patchset.delta.json` (PROP-005 §3).</ARTIFACT-METADATA-DICTIONARY></p>
+  </artifact-metadata>
+</spec>

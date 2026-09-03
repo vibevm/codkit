@@ -1,0 +1,82 @@
+# Продуктовые идентификаторы референсов (Brave, GitLab Web IDE, Positron), которые НЕ должны
+# предлагаться как имена, префиксы или форматы для codkit. Скрипт cleanroom-check.mjs печатает
+# все их употребления в отчётах, чтобы человек убедился: это упоминание-факт («у них есть X,
+# который делает то-то»), а не заимствование («сделаем у себя X»).
+#
+# Формат: одна строка — один термин; поиск подстрочный, регистронезависимый; # — комментарий.
+# Список составлен ИЗ отчётов P1 (имена инструментов, префиксы маркеров и файлов, имена файлов
+# метаданных, имена скриптов и команд) и пополняется при появлении новых артефактов.
+
+# --- Brave: инструменты и подсистемы ---
+brockit
+plaster
+chromium_src
+lit_mangler
+lit-mangler
+rewriters.pyl
+override_utils
+brave_chromium_utils
+check_chromium_src
+prune_test_filters
+install_extra_deps
+updatePatches
+gitPatcher
+syncUtils
+follow-renames
+EXTRA_DEPS
+brave_build
+sources.gni
+chromium_presubmit_config
+
+# --- Brave: метаданные, префиксы правил, файлы состояния ---
+.patchinfo
+.version_upgrade
+PLSTR-
+CSRC-
+PATCH-
+BS-
+PINNED
+RECYCLABLE
+
+# --- GitLab Web IDE: скрипты и файлы ---
+dev-apply-patches
+dev-save-patches
+prepare-vscode-upstream
+patch-product-json
+save-web-ide-security-patch
+verify-patches
+vscode_version.json
+vscode-patches
+FULL_VERSION
+COMMIT.txt
+productConfiguration
+
+# --- GitLab Web IDE: префиксы и имена слоёв ---
+gl_mod
+gl_
+GL_
+web-ide
+workspaces
+
+# --- Positron: префиксы, маркеры, каталоги ---
+positron
+Begin Positron
+End Positron
+Start Positron
+PWB
+positronVersion
+positronBuildNumber
+POSITRON_ENFORCED_SETTINGS
+.removed-upstream-dependencies
+
+# --- Positron: скрипты, демоны, команды, skills ---
+deemon
+build-ps
+build-start
+build-check
+build-stop
+merge-upstream-vscode
+drive-positron
+pull-vscode-server
+positron-check-path-lengths
+positron-path-budget

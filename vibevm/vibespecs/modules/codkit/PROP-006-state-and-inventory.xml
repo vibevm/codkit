@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-006: Метаданные применения, блокировка, инвентарь</title>
+  <status stage="spec" state="done" comment="patch-set runtime metadata, locking, inventory and completeness"/>
+  <apply-metadata title="1. Метаданные применения: кэш + метка (истина — само дерево)">
+    <p><TREE-IS-TRUTH fact="true" status="spec/done">**Истина о применённом состоянии — само дерево**: сгенерированная ветка, её вершина и трейлеры коммитов (`Codkit-Patchset-Commit`, `Codkit-Upstream-Pin`). Метаданные — кэш, который всегда можно выбросить; их потеря означает «применяем с нуля», и никогда — интерактивный вопрос.</TREE-IS-TRUTH></p>
+    <facts ordered="false">
+      <DELTA-FINGERPRINT fact="true" status="spec/done">**Отпечаток дельты** (`deltaFingerprint`) — hex sha256 от канонической строки: для каждого файла под `delta/` рекурсивно (сортировка путей по байтам UTF-8) — строка `&lt;путь-от-корня-patchset&gt;\n&lt;sha256 содержимого hex&gt;\n`; плюс завершающие строки `pin &lt;pin.sha&gt;\nschema 1\n`. Own-код входит через свои файлы под `delta/own/`.</DELTA-FINGERPRINT>
+      <TREE-ID fact="true" status="spec/done">**Идентичность дерева** (`treeId`) — hex sha256 от realpath корня дерева (нормализованный абсолютный путь после разрешения симлинков), первые 16 hex-символов.</TREE-ID>
+      <CACHE-FILE fact="true" status="spec/done">**Кэш в patchset** — файл `.codkit/trees/&lt;treeId&gt;.json`: `codkitTreeCache: 1`; `treePath` (realpath, диагностика); `treeRepoAnchor` (подтверждённый `upstreamAnchorCommit`); `pinSha`; `deltaFingerprint`; `branchTip` (SHA вершины сгенерированной ветки); `updatedAt` (ISO).</CACHE-FILE>
+      <TREE-MARK fact="true" status="impl/done">**Метка в дереве** — файл `&lt;tree&gt;/.git/codkit/applied.json` (внутри `.git/`: переживает `clean -fdx`, не виден статусу): `{"codkitTreeMark":1,"pinSha":…,"deltaFingerprint":…,"branchTip":…,"ownFingerprint":…}`. Поля `ownFingerprint` (хэш own-поддерева на момент sync) и `ownFiles` (карта `путь → sha256` own-файлов на момент sync; добавлены реализацией M0) нужны стражу, чтобы пофайлово отличать «правили patchset» / «правили дерево» / «правили обе стороны» (`##PATCHSET-SIDE-EDIT-RULE` PROP-008 §4). На read-only смонтированном дереве метка не пишется (ошибка записи в `.git` не фатальна, предупреждение `CK-W-MARK-RO`).</TREE-MARK>
+    </facts>
+    <p><FAST-PATH-RULE fact="true" status="spec/done">**Правило сверки (быстрый no-op `sync`)** — разрешён только когда ВСЕ условия истинны: кэш существует ∧ `pinSha`/`deltaFingerprint` кэша равны текущим ∧ ветка `codkit/applied/&lt;pin.tag&gt;` существует в дереве ∧ её вершина == `branchTip` кэша ∧ HEAD дерева указывает на неё ∧ (метка отсутствует ∨ метка совпадает). Любое несовпадение → полное приведение с нуля. Устаревший кэш не может быть принят за истину по построению.</FAST-PATH-RULE></p>
+    <p><MULTI-TREE-SUPPORT fact="true" status="spec/done">Многодеревность поддерживается: записи кэша ключуются `treeId`; одновременный доступ защищён блокировкой (§2); подмена дерева под живым кэшем обязана приводить к полному переприменению (сценарий S15 FEAT-002).</MULTI-TREE-SUPPORT></p>
+  </apply-metadata>
+  <lock title="2. Блокировка">
+    <p><LOCK-MECHANISM fact="true" status="spec/done">Файл `.codkit/locks/&lt;treeId&gt;.lock` в patchset, создаётся `O_CREAT|O_EXCL`, содержит `{pid, startedAt, command}`. Захватывают все пишущие команды; `status`/`where`/`inventory` работают без блокировки (read-only путь). Устаревшая блокировка (процесс с pid не существует) снимается автоматически с предупреждением. Второй процесс — выход 2 `CK-E-LOCKED` с pid и hint. `EACCES`/`EPERM`/`EROFS` при создании lock — environment-отказ 2 `CK-E-TREE-READONLY` с требованием отдельного writable `.codkit` mount; source patchset при этом может оставаться read-only. Общее дерево в CI дополнительно защищено отпечатком (несовпадение метки → полное переприменение).</LOCK-MECHANISM></p>
+  </lock>
+  <inventory title="3. Инвентарь">
+    <p><INVENTORY-IS-GENERATED fact="true" status="spec/done">Инвентарь **генерируется** инструментом из артефактов `delta/**` и разметки маркеров; руками не ведётся; не коммитится как источник истины. Вывод — `.codkit/out/inventory.json` (+ `--md` для человека); в CI-артефакты и для ревью выкладывается сгенерированная версия и её дифф между двумя состояниями (ревьюим изменения инвентаря, а не патч-файлы).</INVENTORY-IS-GENERATED></p>
+    <p><inventory-schema-sample fact="true" status="spec/done">Схема (`codkitInventory: 2`):</inventory-schema-sample></p>
+    <fence lang="json">{
+  "codkitInventory": 2,
+  "patchSetCommit": "&lt;sha|dirty&gt;",
+  "pin": "1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5",
+  "entries": [ { "id": "CK-workbench-001", "layer": "patch", "type": "hook",
+    "category": "follow", "subsystem": "workbench",
+    "files": ["src/vs/workbench/browser/parts/titlebar/titlebarPart.ts"],
+    "owner": "workbench-core", "reason": "...", "link": "none", "cause": null,
+    "pin": "1.135.0", "contractTests": [],
+    "artifact": "delta/patches/src__vs__workbench__browser__parts__titlebar__titlebarPart.ts.ckpatch" } ],
+  "metrics": { "byLayer": {"patch": 1}, "bySubsystem": {"workbench": 1},
+    "patchAndRuleCount": 1, "hunks": 1, "patchLineTotal": 9,
+    "contractCoverage": {"covered": 0, "requiredCovered": 0, "requiredTotal": 0} }
+}</fence>
+    <facts ordered="false">
+      <INVENTORY-SORTED fact="true" status="spec/done">`entries` сортируются по `id`; метрики — производные; сериализация детерминированная.</INVENTORY-SORTED>
+      <INVENTORY-METRIC-TARGET fact="true" status="spec/done">Основная метрика — `patchAndRuleCount` по подсистемам (rewrite-rule + patch). Каждый завершённый cycle записывает снимок метрик в свой коммитимый журнал; агрегированный временной ряд является производным отчётом и не требует отдельного CSV в репозитории инструмента.</INVENTORY-METRIC-TARGET>
+      <INVENTORY-ROUTING fact="true" status="spec/done">Маршрутизация: подсистема вмешательства → набор тестов и владелец (карта owners) — из инвентаря; из него же генерируется чек-лист ревью цикла (не хардкод).</INVENTORY-ROUTING>
+    </facts>
+  </inventory>
+  <inventory-build title="4. Построение инвентаря">
+    <facts ordered="true">
+      <IB-READ-ARTIFACTS fact="true" status="spec/done">Прочитать и провалидировать по схемам: все `.ckpatch` (шапки), overlay, resource-map, rules, `patchset.delta.json`, `removed.json`, `owners.json`.</IB-READ-ARTIFACTS>
+      <IB-MAKE-ENTRIES fact="true" status="spec/done">Для каждого артефакта — запись инвентаря: `subsystem` = вторая компонента id; `files` = цель(и) артефакта; `artifact` = путь файла артефакта.</IB-MAKE-ENTRIES>
+      <IB-METRICS fact="true" status="spec/done">Метрики — агрегаты по записям; сериализация детерминированная (сортировка entries по id).</IB-METRICS>
+    </facts>
+    <p><IB-SPEED fact="true" status="spec/done">Требование скорости: построение по полному объёму — секунды; патчи парсятся без обращения к дереву; дерево нужно только перекрёстным проверкам (§5–6).</IB-SPEED></p>
+  </inventory-build>
+  <hunks-in-markers title="5. «Каждый ханк внутри маркера» — сопоставление">
+    <p><him-io fact="true" status="spec/done">Вход: патч P файла F; содержимое F в **целевом состоянии** (пин + P — вычисляется применением P к содержимому пина в памяти собственной реализацией `applyUnified` с точным совпадением контекста: сдвигов на своём пине нет — патч по построению регенерирован против пина).</him-io></p>
+    <fence>checkHunksInsideMarkers(P, pinBytes):
+  targetBytes = applyUnified(pinBytes, P)
+  blocks = parseMarkers(targetBytes, ext(F)).блоки
+  для каждого ханка h в P:
+    для каждой добавленной строки a (позиция в target-нумерации):
+      если a не покрыта ни одним блоком -> CK-E-HUNK-OUTSIDE-MARKER (файл, строка)
+    для каждой удалённой строки d:
+      -> CK-E-DELETES-UPSTREAM-LINE (файл, строка пин-нумерации)
+      # исключение: строка удалена И её закомментированная копия добавлена внутри блока тем же
+      # ханком («нейтрализация комментированием»). Проверка: среди добавленных строк ханка есть
+      # строка, чей текст = форма-комментарий(ext) + текст удалённой строки (с точностью до
+      # ведущего пробельного отступа). Тогда допустимо.
+  маркерные строки самих блоков обязаны быть добавленными строками этого же патча
+  (апстримных маркеров не бывает); блок без единой добавленной строки, кроме маркеров,
+  -> предупреждение CK-W-EMPTY-BLOCK</fence>
+    <p><MARKER-ARTIFACT-CONSISTENCY fact="true" status="spec/done">Согласованность «маркер ↔ артефакт»: id каждого блока в целевом состоянии файла = id патча этого файла (для entry-module — id из перечня патчей слоя); id патча обязан присутствовать среди блоков. Нарушение — `CK-E-MARKER-ARTIFACT-MISMATCH`.</MARKER-ARTIFACT-CONSISTENCY></p>
+    <p><ADD-FILE-EXEMPTION fact="true" status="impl/done">Add-file патч (весь файл — добавленные строки) проверке «каждый ханк внутри маркера» не подлежит — защищать апстримные строки не от чего; для него действуют только валидность маркеров файла и согласованность «блок ↔ id артефакта» (уточнение M0).</ADD-FILE-EXEMPTION></p>
+    <p><NEUTRALIZATION-DETAILS fact="true" status="impl/done">Уточнения «нейтрализации комментированием» (реализация M0): комментарийная обёртка — ОБЫЧНЫЙ комментарий языка (форма маркера минус слово `codkit:`: `// `, `/* … */`, `&lt;!-- … --&gt;`, `# `), закрывающая половина для CSS/HTML обязательна; сравнение текста — с обрезкой ведущих пробелов/табов у обеих сторон и хвостовых у обёртки; закомментированная копия обязана лежать в ТОМ ЖЕ ханке, что и удаление. Пара `-`/`+`, правящая апстримную строку на месте (не комментирующая), — это `CK-E-DELETES-UPSTREAM-LINE` по построению (правило `##MR-FUNCTIONAL-ONLY` PROP-004: апстримные строки комментируются, не редактируются) — самый частый ожидаемый сигнал этой проверки, не ложный.</NEUTRALIZATION-DETAILS></p>
+    <p><NO-NEWLINE-MARKER-SEMANTICS fact="true" status="impl/done">Семантика `\ No newline at end of file` в `applyUnified`: после `-`-строки маркер утверждает состояние пина (несовпадение — отказ `CK-E-ARTIFACT-BROKEN`), после `+`-строки — задаёт состояние результата, после контекстной — и то и другое.</NO-NEWLINE-MARKER-SEMANTICS></p>
+  </hunks-in-markers>
+  <completeness title="6. «Нет вмешательств вне инвентаря» (полнота)">
+    <p><COMPLETENESS-CHECK fact="true" status="spec/done">Вход: дерево в применённом состоянии (вершина сгенерированной ветки), пин. Алгоритм: `git diff --name-status &lt;pin.sha&gt; &lt;branchTip&gt;` → список изменённых путей. Каждый путь обязан объясняться ровно одним источником: own-каталог (`src/vs/&lt;ownDirName&gt;/**` — только в CI/publish-режиме, локально own не в коммитах), патч с этим целевым путём, overlay-цель, resource-map-цель. Необъяснённый путь → `CK-E-UNTRACKED-INTERVENTION`. Обратно: артефакт, чья цель не изменена в диффе → `CK-E-STALE-ARTIFACT` (например, пустой патч) — с оговоркой M1 для overlay: локальный sync материализует overlay только dev-каналом, поэтому overlay-цели ОБЪЯСНЯЮТ изменённый путь, но не ОБЯЗАНЫ присутствовать в диффе. Отсутствие сгенерированной ветки — не провал полноты, а пропуск проверки с предупреждением «run codkit sync first» (verify в остальном работает).</COMPLETENESS-CHECK></p>
+    <p><REMOVED-NOT-AN-ENTRY fact="true" status="impl/done">Записи removed-registry — НЕ записи инвентаря (kind не является слоем): они не входят в `entries`, но входят в требования guard-покрытия (`contractCoverage.requiredTotal` может превышать число guard-обязанных entries) и проверяются verify (уточнение M1).</REMOVED-NOT-AN-ENTRY></p>
+  </completeness>
+</spec>

@@ -1,0 +1,49 @@
+{
+	"permissions": {
+		"deny": [
+			"Bash(git commit)",
+			"Bash(git commit *)",
+			"Bash(git push)",
+			"Bash(git push *)",
+			"PowerShell(git commit)",
+			"PowerShell(git commit *)",
+			"PowerShell(git push)",
+			"PowerShell(git push *)",
+			"Bash(tsc *)",
+			"Bash(npx tsc *)",
+			"Bash(npm run compile *)",
+			"Bash(gulp compile *)",
+			"PowerShell(tsc *)",
+			"PowerShell(npx tsc *)",
+			"PowerShell(npm run compile *)",
+			"PowerShell(gulp compile *)",
+			"Bash(curl *)",
+			"Bash(wget *)",
+			"Bash(git fetch *)",
+			"Bash(git pull *)",
+			"Bash(npm install *)",
+			"Bash(npm ci *)",
+			"PowerShell(curl *)",
+			"PowerShell(wget *)",
+			"PowerShell(git fetch *)",
+			"PowerShell(git pull *)",
+			"PowerShell(npm install *)",
+			"PowerShell(npm ci *)"
+		]
+	},
+	"hooks": {
+		"PreToolUse": [
+			{
+				"matcher": "Bash|PowerShell|Edit|Write|NotebookEdit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "node",
+						"args": ["${CLAUDE_PROJECT_DIR}/codkit/hooks/pretool.mjs"],
+						"timeout": 15
+					}
+				]
+			}
+		]
+	}
+}

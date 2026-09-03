@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">PROP-003: Codkit conventions</title>
+  <status stage="spec" state="done"/>
+  <identifiers title="Identifiers">
+    <facts ordered="false">
+      <PRODUCT-AND-TOOL-NAMES fact="true" status="spec/done">The tool is Codkit; a consumer product and its fork-specific namespace are external inputs.</PRODUCT-AND-TOOL-NAMES>
+      <INTERVENTION-ID-FORMAT fact="true" status="spec/done">Intervention ids use `CK-&lt;area&gt;-&lt;number&gt;` and are unique within a patch set.</INTERVENTION-ID-FORMAT>
+      <OWN-DIRECTORY-CONFIGURED fact="true" status="spec/done">The downstream-owned source directory below `src/vs/` is configured per patch set and has no product-specific default.</OWN-DIRECTORY-CONFIGURED>
+    </facts>
+  </identifiers>
+  <terms title="Terms">
+    <facts ordered="false">
+      <TERM-UPSTREAM fact="true" status="spec/done">Upstream is the VS Code history consumed by a managed fork; a pin is an exact tag and commit.</TERM-UPSTREAM>
+      <TERM-PATCH-SET fact="true" status="spec/done">A patch set is the complete machine-readable downstream delta plus its configuration, state, and inventory.</TERM-PATCH-SET>
+      <TERM-FORK-TREE fact="true" status="spec/done">A managed fork tree is the reproducible checkout to which Codkit applies a patch set.</TERM-FORK-TREE>
+      <TERM-INTERVENTION fact="true" status="spec/done">An intervention is one attributable downstream change represented by a Codkit layer.</TERM-INTERVENTION>
+    </facts>
+  </terms>
+  <history title="History">
+    <p><PATCHSET-HISTORY-IMMUTABLE fact="true" status="spec/done">Published patch-set history is not rewritten; generated fork refs are derived and replaceable under their guarded workflow.</PATCHSET-HISTORY-IMMUTABLE></p>
+    <p><CURRENT-TREE-ZERO-RETIRED-NAME fact="true" status="spec/done">The current checked-out Codkit tree has zero occurrences of the retired consumer-product identifier in tracked paths or tracked content. Preserved Git object history is intentionally outside this current-tree gate.</CURRENT-TREE-ZERO-RETIRED-NAME></p>
+  </history>
+</spec>

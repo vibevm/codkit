@@ -1,0 +1,404 @@
+/** @scope spec://codkit/modules/codkit/PROP-009#phases */
+// Cryptographically bound finalization planning and retry-safe application.
+
+import { createHash, randomUUID } from 'node:crypto';
+import { lstatSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.ts';
+import { assertCycleJournalComplete, cycleJournalEntrySchema, parseCycleJournal, serializeCycleJournalEntry } from './cycleJournal.ts';
+import type { CycleJournalEntry } from './cycleJournal.ts';
+import {
+	canonicalFinalizationInventory,
+	CYCLE_METRICS_PATH,
+	cycleDurationSeconds,
+	updateCycleMetricsDocument
+} from './cycleFinalizeCsv.ts';
+import type { CycleFinalizationInventory } from './cycleFinalizeCsv.ts';
+import {
+	CYCLE_ARTIFACT_OUTCOMES,
+	CYCLE_BLOCKER_OUTCOMES,
+	CYCLE_STATE_PATH,
+	cycleStateSchema,
+	nodeCycleStateFileSystem,
+	serializeCycleState
+} from './cycleState.ts';
+import type { CycleState, CycleStateFileSystem } from './cycleState.ts';
+import { runGit } from './gitx.ts';
+import { ckError, isCkError } from './messages.ts';
+import { resolveContainedPath, safeBasenameProblem } from './pathSafety.ts';
+
+export { CYCLE_METRICS_HEADER, CYCLE_METRICS_PATH } from './cycleFinalizeCsv.ts';
+export type { CycleFinalizationInventory } from './cycleFinalizeCsv.ts';
+export const CYCLE_FINALIZATION_CHECKLIST = [
+	'recheck forbiddenServiceIds on the target pin',
+	'recheck build-daemon pass-boundary markers on the target pin',
+	'commit the human log, metrics row, and cycle/state.json deletion',
+	'merge the cycle branch without squashing'
+] as const;
+
+export type CycleFinalizationWrite = { readonly path: string; readonly previous: string | null; readonly contents: string };
+export type CycleFinalizationDeletion = { readonly path: typeof CYCLE_STATE_PATH; readonly expected: string };
+export type CycleFinalizationAuthority = {
+	readonly state: CycleState;
+	readonly entries: readonly CycleJournalEntry[];
+	readonly inventory: CycleFinalizationInventory;
+};
+export type CycleFinalizationBasis = {
+	readonly human: string | null;
+	readonly journal: string;
+	readonly metrics: string | null;
+	readonly state: string | null;
+};
+export type CycleFinalizationPlan = {
+	readonly codkitCycleFinalization: 1;
+	readonly digest: string;
+	readonly targetTag: string;
+	readonly authority: CycleFinalizationAuthority;
+	readonly basis: CycleFinalizationBasis;
+	readonly writes: readonly CycleFinalizationWrite[];
+	readonly deletions: readonly CycleFinalizationDeletion[];
+	readonly checklist: typeof CYCLE_FINALIZATION_CHECKLIST;
+};
+export type PlanCycleFinalizationOptions = Omit<CycleFinalizationAuthority, 'entries'> & {
+	readonly patchesDir: string;
+	readonly fileSystem?: CycleStateFileSystem;
+};
+export type CycleFinalizeGitResult = { readonly status: number; readonly stdout: string; readonly stderr: string };
+export type CycleFinalizeGitRunner = (cwd: string, args: readonly string[]) => CycleFinalizeGitResult;
+export type ApplyCycleFinalizationOptions = {
+	readonly fileSystem?: CycleStateFileSystem;
+	readonly git?: CycleFinalizeGitRunner;
+	readonly temporarySuffix?: (path: string) => string;
+	readonly checkpoint?: (operation: 'write' | 'delete', path: string) => void;
+};
+
+export function renderCycleHumanLog(state: CycleState, entries: readonly CycleJournalEntry[]): string {
+	const validState = validatedState(state);
+	const validEntries = validatedEntries(entries);
+	const latest = new Map<string, number>();
+	validEntries.forEach((entry, index) => latest.set(entry.artifact, index));
+	const lines = [
+		`# codkit cycle ${validState.targetPin.tag}`,
+		'',
+		`- Source: \`${validState.sourcePin.tag}@${validState.sourcePin.sha}\``,
+		`- Target: \`${validState.targetPin.tag}@${validState.targetPin.sha}\``,
+		`- Started: \`${validState.startedAt}\``,
+		`- Completed: \`${validState.updatedAt}\``,
+		`- Duration: \`${cycleDurationSeconds(validState)}\` seconds`,
+		'',
+		'## Outcomes',
+		'',
+		'| Outcome | Count |',
+		'| --- | ---: |',
+		...CYCLE_ARTIFACT_OUTCOMES.map((outcome) => `| ${outcome} | ${validState.artifacts[outcome].length} |`),
+		'',
+		`Resolved blockers: ${validState.resolved.length}; renames: ${validState.renames.length}.`,
+		'',
+		'## Journal',
+		'',
+		'| # | Timestamp | Artifact | Outcome | Resolution | Cause | By | Verification | Latest |',
+		'| ---: | --- | --- | --- | --- | --- | --- | --- | --- |'
+	];
+	validEntries.forEach((entry, index) => {
+		const verification = entry.verified.map((item) => `${JSON.stringify(item.command)} => ${item.exitCode}`).join('; ');
+		lines.push(
+			`| ${index + 1} | ${cell(entry.ts)} | ${cell(entry.artifact)} | ${entry.outcome} | ${cell(entry.resolution)} | ` +
+				`${entry.cause.sha} (${entry.cause.approx ? 'approx' : 'exact'}) | ${cell(entry.by)} | ${cell(verification)} | ` +
+				`${latest.get(entry.artifact) === index ? 'yes' : 'no'} |`
+		);
+	});
+	return `${lines.join('\n')}\n`;
+}
+
+export function planCycleFinalization(options: PlanCycleFinalizationOptions): CycleFinalizationPlan {
+	const fs = options.fileSystem ?? nodeCycleStateFileSystem;
+	const tag = validatedState(options.state).targetPin.tag;
+	const journalPath = journalRelativePath(tag);
+	const journal = readRequiredJournal(options.patchesDir, journalPath, fs);
+	const authority = canonicalAuthority(options.state, parseCycleJournal(journal, journalPath), options.inventory);
+	return deriveBoundPlan(authority, {
+		human: readText(options.patchesDir, humanLogRelativePath(tag), fs),
+		journal,
+		metrics: readText(options.patchesDir, CYCLE_METRICS_PATH, fs),
+		state: readText(options.patchesDir, CYCLE_STATE_PATH, fs)
+	});
+}
+
+/** Git-only preflight; caller holds the cycle lock. It never stages or mutates. */
+export function assertCycleFinalizationGitPreflight(patchesDir: string, targetTag: string, git: CycleFinalizeGitRunner = defaultGit): void {
+	const paths = finalizationPaths(targetTag);
+	const top = git(patchesDir, ['rev-parse', '--show-toplevel']);
+	if (top.status !== 0 || resolve(top.stdout.trim()) !== resolve(patchesDir))
+		throw finalizationError('finalization root is not the Git worktree root');
+	for (const path of paths) {
+		const exists = regularPathExists(patchesDir, path);
+		if (path === journalRelativePath(targetTag) && !exists) throw finalizationError(`cycle journal does not exist: ${path}`, path);
+		const tracked = git(patchesDir, ['ls-files', '--error-unmatch', '--', path]);
+		if (tracked.status !== 0 && tracked.status !== 1) throw gitError(`inspect tracked path ${path}`, tracked);
+		const ignored = git(patchesDir, ['check-ignore', '--quiet', '--no-index', '--', path]);
+		if (ignored.status !== 0 && ignored.status !== 1) throw gitError(`inspect ignore rules for ${path}`, ignored);
+		if (tracked.status !== 0 && ignored.status === 0) throw finalizationError(`finalization path is ignored and untracked: ${path}`, path);
+		if (tracked.status !== 0 && exists) {
+			const stageable = git(patchesDir, ['add', '--dry-run', '--', path]);
+			if (stageable.status !== 0) throw gitError(`prove ${path} is stageable`, stageable);
+		}
+	}
+}
+
+export function applyCycleFinalizationPlan(
+	patchesDir: string,
+	plan: CycleFinalizationPlan,
+	options: ApplyCycleFinalizationOptions = {}
+): void {
+	const expected = deriveBoundPlan(plan.authority, plan.basis);
+	if (JSON.stringify(plan) !== JSON.stringify(expected))
+		throw finalizationError('finalization plan binding, digest, or canonical outputs do not match');
+	assertCycleFinalizationGitPreflight(patchesDir, expected.targetTag, options.git ?? defaultGit);
+	const fs = options.fileSystem ?? nodeCycleStateFileSystem;
+	const journalPath = journalRelativePath(expected.targetTag);
+	const currentJournal = readBytes(patchesDir, journalPath, fs);
+	if (currentJournal === null || !bytesEqual(currentJournal, encodeUtf8(expected.basis.journal)))
+		throw finalizationError(`concurrent change at ${journalPath}`, journalPath);
+	const currentWrites = new Map<string, Uint8Array | null>();
+	for (const write of expected.writes) {
+		const bytes = readBytes(patchesDir, write.path, fs);
+		const before = write.previous === null ? null : encodeUtf8(write.previous);
+		const after = encodeUtf8(write.contents);
+		if (!sameNullable(bytes, before) && !sameNullable(bytes, after))
+			throw finalizationError(`concurrent change at ${write.path}`, write.path);
+		currentWrites.set(write.path, bytes);
+	}
+	const deletion = expected.deletions[0];
+	if (deletion === undefined) throw finalizationError('finalization plan has no state deletion');
+	const currentState = readBytes(patchesDir, deletion.path, fs);
+	if (currentState === null) {
+		if (expected.writes.some((write) => !sameNullable(currentWrites.get(write.path) ?? null, encodeUtf8(write.contents))))
+			throw finalizationError('cycle state is missing before every required output is exact', CYCLE_STATE_PATH);
+		return;
+	}
+	if (!bytesEqual(currentState, encodeUtf8(deletion.expected)))
+		throw finalizationError(`concurrent change at ${deletion.path}`, deletion.path);
+	for (const write of expected.writes) {
+		if (!sameNullable(currentWrites.get(write.path) ?? null, encodeUtf8(write.contents))) {
+			atomicWrite(patchesDir, write.path, write.contents, fs, options.temporarySuffix);
+			options.checkpoint?.('write', write.path);
+		}
+	}
+	fs.remove(containedPath(patchesDir, deletion.path));
+	options.checkpoint?.('delete', deletion.path);
+}
+
+function canonicalAuthority(
+	state: CycleState,
+	entries: readonly CycleJournalEntry[],
+	inventory: CycleFinalizationInventory
+): CycleFinalizationAuthority {
+	assertCycleJournalComplete(state, entries);
+	const validState = validatedState(state);
+	const validEntries = validatedEntries(entries);
+	assertTerminalState(validState);
+	return { state: validState, entries: validEntries, inventory: canonicalFinalizationInventory(inventory) };
+}
+
+function deriveBoundPlan(authorityInput: CycleFinalizationAuthority, basisInput: CycleFinalizationBasis): CycleFinalizationPlan {
+	const authority = canonicalAuthority(authorityInput.state, authorityInput.entries, authorityInput.inventory);
+	const tag = authority.state.targetPin.tag;
+	const humanPath = humanLogRelativePath(tag);
+	const human = renderCycleHumanLog(authority.state, authority.entries);
+	const stateDocument = serializeCycleState(authority.state);
+	const basis = canonicalBasis(basisInput, humanPath, human, stateDocument, authority.entries, tag);
+	const metrics = updateCycleMetricsDocument(basis.metrics, authority.state, authority.entries, authority.inventory);
+	if (basis.state === null && (basis.human !== human || basis.metrics !== metrics))
+		throw finalizationError('cycle state is missing before every required output is exact', CYCLE_STATE_PATH);
+	const deletion: CycleFinalizationDeletion = { path: CYCLE_STATE_PATH, expected: stateDocument };
+	const bound = {
+		codkitCycleFinalization: 1 as const,
+		targetTag: tag,
+		authority,
+		basis,
+		writes: [
+			{ path: humanPath, previous: basis.human, contents: human },
+			{ path: CYCLE_METRICS_PATH, previous: basis.metrics, contents: metrics }
+		],
+		deletions: [deletion],
+		checklist: CYCLE_FINALIZATION_CHECKLIST
+	};
+	return { ...bound, digest: digest(bound) };
+}
+
+function canonicalBasis(
+	input: CycleFinalizationBasis,
+	humanPath: string,
+	human: string,
+	state: string,
+	entries: readonly CycleJournalEntry[],
+	tag: string
+): CycleFinalizationBasis {
+	const journalPath = journalRelativePath(tag);
+	for (const [path, value] of [
+		[humanPath, input.human],
+		[journalPath, input.journal],
+		[CYCLE_METRICS_PATH, input.metrics],
+		[CYCLE_STATE_PATH, input.state]
+	] as const)
+		if (value !== null) strictText(value, path);
+	if (input.human !== null && input.human !== human)
+		throw finalizationError(`existing ${humanPath} conflicts with the deterministic terminal report`, humanPath);
+	if (input.state !== null && input.state !== state)
+		throw finalizationError('cycle state bytes differ from the authoritative finalization state', CYCLE_STATE_PATH);
+	const journalEntries = parseCycleJournal(input.journal, journalPath);
+	const canonicalJournal = journalEntries.map(serializeCycleJournalEntry).join('');
+	if (input.journal !== canonicalJournal || JSON.stringify(journalEntries) !== JSON.stringify(entries))
+		throw finalizationError('cycle journal bytes do not match the authoritative entries', journalPath);
+	return { human: input.human, journal: input.journal, metrics: input.metrics, state: input.state };
+}
+
+function assertTerminalState(state: CycleState): void {
+	if (state.phase !== 'done') throw finalizationError(`cycle phase is ${state.phase}, not done`, CYCLE_STATE_PATH);
+	if (state.transaction !== null) throw finalizationError('cycle still has an active transaction', CYCLE_STATE_PATH);
+	const resolved = new Set(state.resolved);
+	const missing = CYCLE_BLOCKER_OUTCOMES.flatMap((outcome) => state.artifacts[outcome]).filter((artifact) => !resolved.has(artifact));
+	if (missing.length > 0) throw finalizationError(`unresolved blockers: ${missing.join(', ')}`, CYCLE_STATE_PATH);
+}
+
+function validatedState(state: CycleState): CycleState {
+	const parsed = cycleStateSchema.safeParse(state);
+	if (!parsed.success)
+		throw finalizationError(`cycle state is invalid: ${parsed.error.issues[0]?.message ?? 'schema failure'}`, CYCLE_STATE_PATH);
+	return JSON.parse(serializeCycleState(parsed.data)) as CycleState;
+}
+
+function validatedEntries(entries: readonly CycleJournalEntry[]): readonly CycleJournalEntry[] {
+	return entries.map((entry, index) => {
+		const parsed = cycleJournalEntrySchema.safeParse(entry);
+		if (!parsed.success)
+			throw finalizationError(`journal entry ${index + 1} is invalid: ${parsed.error.issues[0]?.message ?? 'schema failure'}`);
+		return parsed.data;
+	});
+}
+
+function readText(patchesDir: string, relative: string, fs: CycleStateFileSystem): string | null {
+	const bytes = readBytes(patchesDir, relative, fs);
+	if (bytes === null) return null;
+	const text = decodeUtf8Strict(bytes);
+	if (text === null) throw finalizationError(`${relative} is not UTF-8`, relative);
+	strictText(text, relative);
+	return text;
+}
+
+function readRequiredJournal(patchesDir: string, relative: string, fs: CycleStateFileSystem): string {
+	const bytes = readBytes(patchesDir, relative, fs);
+	if (bytes === null) throw journalError(`required cycle journal does not exist: ${relative}`, relative);
+	const text = decodeUtf8Strict(bytes);
+	if (text === null) throw journalError('cycle journal is not valid UTF-8', relative);
+	return text;
+}
+
+function strictText(text: string, path: string): void {
+	if (text.startsWith('\ufeff') || text.includes('\r') || !text.endsWith('\n') || text.endsWith('\n\n'))
+		throw finalizationError(`${path} is not strict UTF-8/LF text`, path);
+}
+
+function readBytes(patchesDir: string, relative: string, fs: CycleStateFileSystem): Uint8Array | null {
+	try {
+		return fs.readBytes(containedPath(patchesDir, relative));
+	} catch (error) {
+		throw finalizationError(`cannot read ${relative}: ${messageOf(error)}`, relative);
+	}
+}
+
+function atomicWrite(
+	patchesDir: string,
+	relative: string,
+	contents: string,
+	fs: CycleStateFileSystem,
+	suffixFactory: ((path: string) => string) | undefined
+): void {
+	let path = containedPath(patchesDir, relative);
+	fs.makeDirectory(dirname(path));
+	path = containedPath(patchesDir, relative);
+	const suffix = (suffixFactory ?? (() => randomUUID()))(relative);
+	if (suffix === '' || suffix.includes('/') || suffix.includes('\\'))
+		throw finalizationError('temporary suffix is not one file-name segment');
+	const temporary = `${path}.${suffix}.tmp`;
+	let renamed = false;
+	try {
+		fs.writeBytes(temporary, encodeUtf8(contents));
+		fs.rename(temporary, path);
+		renamed = true;
+	} catch (error) {
+		if (isCkError(error)) throw error;
+		throw finalizationError(`cannot atomically write ${relative}: ${messageOf(error)}`, relative);
+	} finally {
+		if (!renamed)
+			try {
+				fs.remove(temporary);
+			} catch {
+				// Preserve the primary failure; the uniquely named complete temp is inert.
+			}
+	}
+}
+
+function containedPath(patchesDir: string, relative: string): string {
+	const resolved = resolveContainedPath(patchesDir, relative, { allowMissing: true });
+	if (!resolved.ok) throw finalizationError(`unsafe ${relative}: ${resolved.reason}`, relative);
+	return resolved.absolute;
+}
+
+function humanLogRelativePath(tag: string): string {
+	if (safeBasenameProblem(tag) !== null) throw finalizationError(`unsafe target tag ${JSON.stringify(tag)}`);
+	return `cycle/log/${tag}.md`;
+}
+
+function journalRelativePath(tag: string): string {
+	if (safeBasenameProblem(tag) !== null) throw finalizationError(`unsafe target tag ${JSON.stringify(tag)}`);
+	return `cycle/log/${tag}.jsonl`;
+}
+
+function regularPathExists(patchesDir: string, relative: string): boolean {
+	const path = containedPath(patchesDir, relative);
+	try {
+		if (!lstatSync(path).isFile()) throw finalizationError(`finalization path is not a regular file: ${relative}`, relative);
+		return true;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+		if (isCkError(error)) throw error;
+		throw finalizationError(`cannot inspect finalization path ${relative}: ${messageOf(error)}`, relative);
+	}
+}
+
+function finalizationPaths(tag: string): readonly string[] {
+	return [humanLogRelativePath(tag), journalRelativePath(tag), CYCLE_METRICS_PATH, CYCLE_STATE_PATH];
+}
+
+function digest(value: unknown): string {
+	return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+}
+
+function cell(value: string): string {
+	return JSON.stringify(value).replaceAll('|', '\\|');
+}
+
+function sameNullable(left: Uint8Array | null, right: Uint8Array | null): boolean {
+	return left === null || right === null ? left === right : bytesEqual(left, right);
+}
+
+function defaultGit(cwd: string, args: readonly string[]): CycleFinalizeGitResult {
+	return runGit({ cwd, args });
+}
+
+function gitError(action: string, result: CycleFinalizeGitResult): Error {
+	return finalizationError(`cannot ${action}: ${result.stderr.trim() || result.stdout.trim() || `git exit ${result.status}`}`);
+}
+
+function finalizationError(message: string, file?: string): Error {
+	return ckError('CONFIG', message, 'restore canonical cycle finalization inputs and retry', file);
+}
+
+function journalError(message: string, file: string): Error {
+	return ckError('LOG-INCOMPLETE', message, 'restore the canonical non-empty cycle JSONL journal and retry', file);
+}
+
+function messageOf(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">PROP-004: Clean-room development</title>
+  <status stage="spec" state="done"/>
+  <p><CODKIT-IS-CLEAN-ROOM fact="true" status="spec/done">Codkit implementation is derived from its specifications, tests, and public VS Code behavior; it does not copy implementations from unrelated fork-management tools.</CODKIT-IS-CLEAN-ROOM></p>
+  <rules title="Rules">
+    <facts ordered="false">
+      <FORBID-COPY fact="true" status="spec/done">Do not copy source text, tests, comments, or distinctive internal structure from reference products.</FORBID-COPY>
+      <ALLOW-UPSTREAM fact="true" status="spec/done">The selected VS Code upstream is implementation input, not a prohibited reference repository.</ALLOW-UPSTREAM>
+      <RESEARCH-SEPARATE fact="true" status="spec/done">Comparative research produces prose facts; implementation sessions consume ratified specifications.</RESEARCH-SEPARATE>
+      <CHECK-CLEAN-ROOM fact="true" status="spec/done">The clean-room checker and focused review verify the boundary before release.</CHECK-CLEAN-ROOM>
+    </facts>
+  </rules>
+</spec>

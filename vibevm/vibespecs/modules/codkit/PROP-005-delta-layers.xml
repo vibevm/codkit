@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-005: Слои дельты — форматы, материализация, запреты</title>
+  <status stage="spec" state="done" comment="standalone patch-set layer formats and materialization rules"/>
+  <priority title="1. Семь слоёв и правило выбора">
+    <p><LAYER-CHOICE-RULE fact="true" status="spec/done">При новом расхождении с апстримом выбирается **самый верхний применимый слой** из списка `layers` (PROP-003 §3): own → service-override → entry-module → config-overlay → resource-file → rewrite-rule → patch. Спуск на слой ниже требует обоснования в ревью («почему не own? почему не подмена сервиса?»).</LAYER-CHOICE-RULE></p>
+    <p><LAYER-METRIC fact="true" status="spec/done">Метрика — число артефактов слоёв rewrite-rule + patch по подсистемам; она должна падать, а не расти (`common/PROP-001` `##GOAL-SHRINK-COUPLING`).</LAYER-METRIC></p>
+    <p><EVERY-LAYER-IS-AN-ARTIFACT fact="true" status="spec/done">Каждый слой — отдельный вид артефакта в patchset с владельцем и причиной; каждый учитывается инвентарём; каждая конвенция слоя вводится вместе с машинной проверкой.</EVERY-LAYER-IS-AN-ARTIFACT></p>
+    <p><layer-calibration fact="true" status="spec/done">Калибровка продуктовыми примерами подтвердила несущую способность верхних слоёв: режимы интерфейса → слои 1–2 (0 патчей); контроль расширений → own + подмена + hide + overlay + точечные патчи; модули-подсистемы → own + entry-module; ребрендинг → overlay + resource-file + own. Ни один пример не потребовал массовых патчей.</layer-calibration></p>
+  </priority>
+  <summary-table title="2. Сводная таблица слоёв">
+    <table>
+      <tr><td>Слой</td><td>Артефакт в patchset</td><td>Материализация при sync</td><td>Инвентарь</td><td>Запрещено</td></tr>
+      <tr><td><LT-OWN fact="true" status="spec/done">own</LT-OWN></td><td>`delta/own/**` + `delta/own/patchset.delta.json`</td><td>копирование в `src/vs/&lt;ownDirName&gt;/` (локально untracked; в CI/publish — коммит)</td><td>одна запись на объявленный юнит (§3)</td><td>импорты апстримных node-слоёв из browser-кода (ловит апстримный layering)</td></tr>
+      <tr><td><LT-SERVICE-OVERRIDE fact="true" status="spec/done">service-override</LT-SERVICE-OVERRIDE></td><td>own-модуль + запись `serviceOverrides` в `patchset.delta.json`</td><td>как own (это own-код)</td><td>запись с `files=[модуль]`, layer=`service-override`</td><td>перекрытие id из `forbiddenServiceIds`</td></tr>
+      <tr><td><LT-ENTRY-MODULE fact="true" status="spec/done">entry-module</LT-ENTRY-MODULE></td><td>патч(и) прививки/форка entry + запись</td><td>как patch</td><td>layer=`entry-module`</td><td>немаркированные правки entry</td></tr>
+      <tr><td><LT-CONFIG-OVERLAY fact="true" status="spec/done">config-overlay</LT-CONFIG-OVERLAY></td><td>`delta/overlays/*.overlay.json`</td><td>материализация JSON (§5)</td><td>запись из полей overlay</td><td>текстовое редактирование целевого JSON</td></tr>
+      <tr><td><LT-RESOURCE-FILE fact="true" status="spec/done">resource-file</LT-RESOURCE-FILE></td><td>`delta/resources/map.json` + `files/**`</td><td>копирование по map</td><td>запись на entry</td><td>смена имён целевых файлов; отсутствие guard-теста</td></tr>
+      <tr><td><LT-REWRITE-RULE fact="true" status="spec/done">rewrite-rule</LT-REWRITE-RULE></td><td>`delta/rules/*.ckrule.json` (+ сгенерированный `.ckpatch`)</td><td>как patch</td><td>layer=`rewrite-rule`</td><td>ручное редактирование сгенерированного патча</td></tr>
+      <tr><td><LT-PATCH fact="true" status="spec/done">patch</LT-PATCH></td><td>`delta/patches/*.ckpatch`</td><td>коммит на сгенерированной ветке</td><td>запись из шапки</td><td>удаление апстримных строк; ханки вне маркеров</td></tr>
+    </table>
+    <p><CROSS-CUTTING-MECHANISMS fact="true" status="spec/done">Поперечные механизмы (не слои, а дисциплина над ними): **hide** — категория `hide` у записи любого слоя (предпочтительно own/overlay, не patch); **removed-registry** — `delta/removed.json` (§10); **contract/guard-test** — обязательное поле покрытия для слоёв config-overlay, resource-file и всех записей категории `hide` (проверяет `verify`).</CROSS-CUTTING-MECHANISMS></p>
+  </summary-table>
+  <own title="3. own — собственный код">
+    <facts ordered="false">
+      <OWN-SOURCE-OF-TRUTH fact="true" status="spec/done">Источник истины — `delta/own/**` в patchset; при `sync` содержимое копируется в `&lt;tree&gt;/src/vs/&lt;ownDirName&gt;/` (= `src/vs/patchset/`), при `save` — зеркалируется обратно. Копирование — rsync-семантика по содержимому: файл переписывается только если байты отличаются; отсутствующие в источнике — удаляются в приёмнике; mtime нетронутых файлов не меняется (PROP-008 §3).</OWN-SOURCE-OF-TRUTH>
+      <OWN-UNDER-SRC-VS fact="true" status="spec/done">Каталог размещается под `src/vs/&lt;ownDirName&gt;/`; при каждом новом пине цикл проверяет, что фактические tsconfig, layering, test и nls globs выбранного форка покрывают этот путь.</OWN-UNDER-SRC-VS>
+      <OWN-EXCLUDED-LOCALLY fact="true" status="spec/done">Локально каталог не отслеживается git'ом дерева: `sync` дописывает в `&lt;tree&gt;/.git/info/exclude` управляемый блок (`# codkit:begin managed` / путь `/src/vs/patchset/` / `# codkit:end managed`), восстанавливаемый при каждом `sync`. Случайный коммит невозможен — git каталога не видит. В CI/publish-режиме каталог, наоборот, коммитится на сгенерированную ветку; режимы в одном дереве не смешиваются: признак — режим определяется командой (`sync` — локальный; `ci`/`publish` — коммит own), перед переключением режима выполняется полное пересоздание ветки.</OWN-EXCLUDED-LOCALLY>
+      <OWN-GRAFT-POINT fact="true" status="spec/done">**Точка прививки** — минимальный side-effect import из существующего entry текущего пина в `./&lt;ownDirName&gt;/&lt;ownDirName&gt;.contribution.js`. Прививка — patch-артефакт слоя entry-module; число вмешательств ради подключения own-кода остаётся константным. Конкретный entry подтверждается по фактической desktop/web цепочке выбранного форка. `marker new --layer entry-module` переносит слой в шапку; `rewrite-rule` доступен только генератору правил.</OWN-GRAFT-POINT>
+      <OWN-HYGIENE-DEFAULT fact="true" status="spec/done">Own-файлы проходят фактическую hygiene/lint policy выбранного fork/pin. Предпочтение — соблюдать локальный формат без исключений; если исключение неизбежно, оно является отдельным минимальным intervention с contract evidence.</OWN-HYGIENE-DEFAULT>
+    </facts>
+    <p><OWN-MANIFEST fact="true" status="spec/done">**Декларация юнитов own** — `delta/own/patchset.delta.json` (`codkitOwnManifest: 2`): массив `units` — записи `{id, layer:"own", type, category, owner, reason, link, cause, pin, contractTests, roots}`, где `roots` — пути внутри `delta/own/`; массив `serviceOverrides` — записи `{id, serviceId, module, owner, reason, link, cause, pin, contractTests}`; их `type`/`category` в инвентаре — производные константы `modify`/`own` (полей в схеме нет; уточнение M1). Каждый файл own обязан попадать ровно в один юнит — включая модули из `serviceOverrides[].module` (запись override задаёт слой, файл модуля покрывается юнитом own; уточнение M1); `verify` проверяет покрытие и непересечение; файл вне юнитов — `CK-E-OWN-UNCOVERED`.</OWN-MANIFEST></p>
+    <p><OWN-MANIFEST-NOT-DELIVERED fact="true" status="impl/done">Манифест — артефакт patchset, НЕ часть доставляемого кода: зеркалирование own в дерево исключает `patchset.delta.json` так же, как `.gitkeep` (иначе он материализуется в `src/vs/&lt;ownDirName&gt;/` и уезжает транспайлером в `out/` — замечено полигоном M1, исправлено).</OWN-MANIFEST-NOT-DELIVERED></p>
+    <fence lang="json">{
+  "codkitOwnManifest": 2,
+  "units": [ { "id": "CK-workbench-002", "layer": "own", "type": "extend",
+    "category": "own", "owner": "workbench-core", "reason": "patchset workbench contribution root",
+    "link": "none", "cause": "none", "pin": "1.135.0",
+    "contractTests": [], "roots": ["patchset.contribution.ts", "modes/"] } ],
+  "serviceOverrides": [ { "id": "CK-workbench-003", "serviceId": "IUserActivityService",
+    "module": "services/userActivity.override.ts", "owner": "workbench-core",
+    "reason": "...", "link": "none", "cause": "none", "pin": "1.135.0",
+    "contractTests": ["patchset.contract.user-activity"] } ]
+}</fence>
+  </own>
+  <service-override title="4. service-override и entry-module">
+    <facts ordered="false">
+      <SO-MECHANISM fact="true" status="spec/done">Механизм service-override: own-модуль вызывает `registerSingleton` для того же decorator и совместимого InstantiationType после исходной регистрации. Поведение «последняя допустимая регистрация побеждает» обязано быть подтверждено contract-тестом на выбранном пине; bootstrap services из installed forbidden list перекрывать нельзя.</SO-MECHANISM>
+      <SO-FORBIDDEN-IDS fact="true" status="spec/done">Запрет: id из `forbiddenServiceIds` (bootstrap-сервисы ставятся явным `set` до создания Workbench — перекрытие молча ломает загрузку). Проверка — линтер в `verify`: грепом по own-коду ищутся вызовы `registerSingleton(&lt;Id&gt;` с запрещённым id.</SO-FORBIDDEN-IDS>
+      <SO-POLYGON-SAMPLE fact="true" status="spec/done">Минимальный integration sample выбирает non-bootstrap service из фактического пина и доказывает override own contract-тестом; имя сервиса не является частью Codkit.</SO-POLYGON-SAMPLE>
+      <SO-BUNDLE-CONFIRMATION fact="true" status="spec/plan">Late-registration behavior must be confirmed both in development loading and in the packaged bundle; dev-only evidence does not close packaging acceptance.</SO-BUNDLE-CONFIRMATION>
+    </facts>
+    <facts ordered="false">
+      <EM-PURPOSE fact="true" status="spec/done">entry-module — форк списка импортов апстримного entry: ненужные апстримные импорты **закомментированы** в маркерных блоках, свои добавлены. Апстримный прецедент — `src/vs/sessions/sessions.common.main.ts`.</EM-PURPOSE>
+      <EM-TWO-FORMS fact="true" status="spec/done">Слой имеет две формы: (а) **прививка** — минимальный маркерный import из существующего entry; (б) **собственный entry** нового top-level модуля — own-файлы плюс отдельные точечные артефакты для фактических build/i18n/style/test registries текущего форка. Ни один список файлов не считается вечным: он проверяется на пине и фиксируется инвентарём.</EM-TWO-FORMS>
+      <EM-RULE-CANDIDATE fact="true" status="spec/done">Кандидат на rewrite-rule: генерация форка entry операциями «закомментировать импорт X» / «добавить импорт Y» со счётчиком `expectedMatches` — дрейф списка импортов апстрима становится громкой ошибкой `CK-E-RULE-DRIFT`, а не молчаливой потерей контрибуции.</EM-RULE-CANDIDATE>
+    </facts>
+  </service-override>
+  <overlay title="5. config-overlay — формат и материализация">
+    <p><OVERLAY-MANY-TO-ONE fact="true" status="impl/done">Отношение файлов к цели — многие-к-одной (уточнение M1): каждый overlay-файл несёт одну цель, но одну цель могут нести НЕСКОЛЬКО файлов; оба канала материализации и проверка материализованной цели работают с КОМПОЗИЦИЕЙ всех overlay этой цели (в лексикографическом порядке имён файлов); сгенерированный коммит ветки — один на цель, с трейлером `Codkit-Artifact:` на каждый вошедший overlay; dev-канал при включённой материализации целей НЕ пишется (каналы — альтернативы).</OVERLAY-MANY-TO-ONE></p>
+    <p><OVERLAY-FILE-SHAPE fact="true" status="spec/done">Один файл overlay — одна цель: `delta/overlays/&lt;имя-цели&gt;.overlay.json` (например `product.json.overlay.json`). Поля: `codkitOverlay: 2`; `id`; `target` (путь целевого файла от корня дерева); словарь метаданных PROP-003 §5 (`type`/`category`/`owner`/`reason`/`link`/`cause`/`pin`/`contractTests` — guard-тест **обязателен**); `operations` — список операций, порядок значим. Наложение — разбором и сериализацией JSON, не текстом.</OVERLAY-FILE-SHAPE></p>
+    <facts ordered="false">
+      <OVERLAY-OP-SHAPE fact="true" status="spec/done">Операция: `op` — `"set"` (создать/заменить значение по пути) или `"remove"` (удалить ключ); `path` — массив ключей объектов от корня JSON, индексы массивов не поддерживаются (массив заменяется целиком через `set` родителя); `value` — для `set`: статическое значение **или** объект `{"$var": "&lt;имя&gt;"}`; `expectUpstream` — опционально: ожидаемое апстримное значение по этому пути на пине, либо `{"$absent": true}` («на пине ключа нет»).</OVERLAY-OP-SHAPE>
+      <OVERLAY-VARS fact="true" status="spec/done">Переменные `$var` (вычисляются в момент материализации): `pin.tag`, `pin.sha`, `pin.date`, `patchset.commit` (SHA HEAD patchset), `build.date` (ISO-дата UTC момента материализации; в детерминированных контекстах — дата коммита пина).</OVERLAY-VARS>
+      <OVERLAY-DRIFT-DETECTOR fact="true" status="spec/done">Семантика `expectUpstream`: при `overlay check` и при каждом `sync` значение по `path` в **чистом** файле пина (`git show &lt;pin.sha&gt;:&lt;target&gt;`) сравнивается с `expectUpstream` (глубокое равенство). Несовпадение — ошибка `CK-E-OVERLAY-DRIFT` (выход 1): апстрим изменил ключ, вмешательство требует пересмотра.</OVERLAY-DRIFT-DETECTOR>
+    </facts>
+    <p><overlay-valid-sample fact="true" status="spec/done">Валидный образец:</overlay-valid-sample></p>
+    <fence lang="json">{
+  "codkitOverlay": 2,
+  "id": "CK-product-001",
+  "target": "product.json",
+  "type": "modify",
+  "category": "own",
+  "owner": "product",
+  "reason": "patchset branding: product name fields",
+  "link": "none",
+  "cause": "none",
+  "pin": "1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5",
+  "contractTests": ["patchset.guard.product-name"],
+  "operations": [
+    { "op": "set", "path": ["nameShort"], "value": "Example Fork",
+      "expectUpstream": "Code - OSS" },
+    { "op": "set", "path": ["patchsetUpstreamPin"], "value": { "$var": "pin.tag" },
+      "expectUpstream": { "$absent": true } }
+  ]
+}</fence>
+    <p><OVERLAY-INVALID-SAMPLE fact="true" status="spec/done">Невалидный образец: операция `{"op": "insert", …}` → выход 2, `CK-E-OVERLAY-SCHEMA: delta/overlays/product.json.overlay.json: operations[0].op must be "set" or "remove", got "insert"`.</OVERLAY-INVALID-SAMPLE></p>
+    <p><OVERLAY-TWO-CHANNELS fact="true" status="spec/done">**Материализация двухканальная:** (1) dev-канал для `product.json` строит `product.overrides.json`, только если фактический bootstrap текущего пина поддерживает этот файл; `verify` проверяет поддержку и игнорирование цели Git'ом. Вложенная операция сначала засевает верхнеуровневый ключ из чистого пина, затем меняет нужный путь. (2) packaging/publish/`ci --profile build` материализует полный целевой файл от чистого blob пина, применяет операции по порядку и коммитит результат. Отсутствующий или изменившийся upstream seam — явный `OVERLAY-DRIFT`, не скрытая эвристика.</OVERLAY-TWO-CHANNELS></p>
+    <p><OVERLAY-NON-PRODUCT-TARGETS fact="true" status="spec/done">Для целей, отличных от `product.json` (например `package.json` дерева), dev-канала нет — материализация всегда по варианту 2. Разрешённое изменение апстримного `package.json` — **только добавление** ключей в `scripts`; `overlay check` для этой цели проверяет, что все операции — `set` по путям `["scripts", *]`.</OVERLAY-NON-PRODUCT-TARGETS></p>
+  </overlay>
+  <resource title="6. resource-file — замена бинарных/ресурсных файлов">
+    <p><RESOURCE-MAP-FORMAT fact="true" status="spec/done">`delta/resources/map.json`: `codkitResourceMap: 2`; `entries` (сортировка по `target`; несортированный файл читается с сортировкой и предупреждением — уточнение M0) — записи `{id, target, source, type, category, owner, reason, link, cause, pin, contractTests}`. `target` — путь апстримного файла от корня дерева; файл **обязан существовать на пине** (слой заменяет содержимое, не добавляет файлы). Узкое переходное исключение внутри активного upgrade-cycle: после ручного подтверждения переименования `target` может уже равняться точному `rename.to`, пока `pin` ещё указывает на source pin, но только если классификатор доказал regular blob `rename.from` на source pin и regular blob `rename.to` на target pin; просто новый файл на target pin исключением не считается, а regeneration в той же транзакции переводит metadata pin на target pin. `source` — путь нашего файла от корня patchset, под `delta/resources/files/`. Имена целевых файлов не меняются — заменяется содержимое при тех же именах (имена ресурсов бренда захардкожены в сборке).</RESOURCE-MAP-FORMAT></p>
+    <p><RESOURCE-GUARD-MANDATORY fact="true" status="spec/done">`contractTests` записи — **обязателен непустой**: guard-тест ловит «молчаливую потерю бинаря» при апгрейде (на этом классе референс-форк дважды молча терял брендированный файл). Пример записи: `{"id":"CK-product-002","target":"resources/linux/code.png","source":"delta/resources/files/linux/app-icon.png", …}`.</RESOURCE-GUARD-MANDATORY></p>
+  </resource>
+  <rewrite-rule title="7. rewrite-rule — формат (движок — позже)">
+    <p><RULE-SCOPE-IN-MVP fact="true" status="spec/done">Правило — декларативная операция над текстом файла на чистом пине; **выход правила — обычный `.ckpatch`** (слой не создаёт нового способа применения). MVP реализует: схему, валидацию, учёт в инвентаре и **счётчик ожидаемых совпадений** как проверку `verify`; генерацию патча движком — позже.</RULE-SCOPE-IN-MVP></p>
+    <p><RULE-FORMAT fact="true" status="spec/done">`delta/rules/*.ckrule.json`: `codkitRule: 2`; словарь метаданных PROP-003 §5; `target` — путь апстримного файла; `engine` — `"line-ops"` (единственный движок MVP: построчные операции); `expectedMatches` — ожидаемое число совпадений всех match-операций (фактическое ≠ ожидаемому → громкая ошибка `CK-E-RULE-DRIFT`, выход 1); `ops` — операции.</RULE-FORMAT></p>
+    <p><RULE-LINE-OPS fact="true" status="spec/done">Операции `line-ops`: `{"match": "&lt;точная строка&gt;", "action": "comment-out"|"append-after"|"insert-before", "text": "&lt;строка&gt;"?}`. `match` — точное байтовое совпадение всей строки (без регулярных выражений в MVP); `text` обязателен для `append-after`/`insert-before`; каждая вставляемая строка обязана лежать внутри маркерного блока, который правило добавляет само (первая операция вставляет `codkit:begin`, последняя — `codkit:end`). Кандидат первого применения — генерация entry-модуля (§4). Уточнения M1: правило без единой вставляемой строки нелегально (нечего обрамлять маркером — схемная ошибка); `comment-out` с полем `text` — отказ; `contractTests` правила может быть пуст (обязательность guard-тестов — только overlay/resource/hide/removed). Послабление M1 (полигон PG-09): при единственной операции требования конверта («первая вставка несёт `codkit:begin`, последняя — `codkit:end`») сходятся на одной вставке — `text` в этом случае многострочен (весь маркерный блок одним значением, строки через `\n`); «одна вставляемая строка на операцию» — норма для многооперационных правил, но не абсолют.</RULE-LINE-OPS></p>
+  </rewrite-rule>
+  <hide title="8. hide — выключить, не удаляя">
+    <p><HIDE-MECHANISMS fact="true" status="spec/done">Реализуется верхними слоями: настройка/`when`-контекст (любая настройка — context key `config.&lt;id&gt;`), невключение модуля в собственный entry, `deregisterViews`/`deregisterViewContainer` (публичные API реестров), переопределение дефолта конфигурации (`registerDefaultConfigurations`). Каждое hide-вмешательство — запись категории `hide` в соответствующем слое и **обязательный** guard-тест (вмешательство вне зоны компилятора). Патч ради hide — последнее средство с обоснованием.</HIDE-MECHANISMS></p>
+  </hide>
+  <new-files title="9. Новые файлы в апстримной зоне">
+    <p><NEW-FILES-LIVE-IN-OWN fact="true" status="spec/done">По иерархии новые файлы живут в own. Add-file патч (PROP-004 §4) допустим только когда файл обязан лежать в апстримной зоне (например, ресурс со специфичным путём); каждый — с обоснованием в `reason` и записью инвентаря. `save` создаёт add-file патч только по явному флагу `--allow-new-file &lt;path&gt;` (иначе `CK-E-NEW-FILE-IN-UPSTREAM-ZONE` с подсказкой перенести в own).</NEW-FILES-LIVE-IN-OWN></p>
+  </new-files>
+  <removed title="10. removed-registry — delta/removed.json">
+    <p><REMOVED-FORMAT fact="true" status="spec/done">Реестр намеренных удалений (зависимость, файл, регистрация, настройка), которые нельзя выразить патчем-удалением (удаление запрещено): `{"codkitRemoved":1,"entries":[{"id","kind":"file|dependency|registration|setting","target":"&lt;путь|имя пакета|id регистрации|ключ настройки&gt;","how":"&lt;каким слоем реализовано выключение&gt;","owner","reason","link","pin","contractTests":[…]}]}`.</REMOVED-FORMAT></p>
+    <p><REMOVED-GUARD-MANDATORY fact="true" status="spec/done">`verify` требует: каждая запись имеет guard-тест, и guard-тест проверяет, что «удалённое» не вернулось — иначе апстрим молча вернёт удалённое при апгрейде.</REMOVED-GUARD-MANDATORY></p>
+  </removed>
+  <linter title="11. Линтер и гигиена для own-каталога">
+    <p><OWN-LINT-TARGET fact="true" status="spec/done">Факт апстрима: файл без таргета в `local/code-import-patterns` получает warning «Missing definition…», а warnings = провал; новый каталог требует таргет в `eslint.config.js` (один блок) или запись в `.eslint-ignore`. Норма: **один патч `CK-build-003`** добавляет маркерный блок-таргет для `src/vs/patchset/**` в `eslint.config.js` (рядом с блоками entry-модулей, `eslint.config.js:1975+`).</OWN-LINT-TARGET></p>
+    <p><CONSTANT-GRAFT-SET fact="true" status="spec/done">Набор вмешательств ради подключения own-кода ограничен entry-прививкой и только теми build/hygiene registries, которые реально требует текущий fork/pin. Его размер не растёт с объёмом own-кода; пустые или устаревшие артефакты запрещены. Имена целей и число проверяются при upgrade, а не зашиваются из потребительского дерева.</CONSTANT-GRAFT-SET></p>
+  </linter>
+</spec>

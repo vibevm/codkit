@@ -1,0 +1,71 @@
+pipeline {
+	agent { label 'docker' }
+
+	environment {
+		CODKIT_CI_IMAGE = 'registry.internal.example/codkit-ci:node24'
+		CODKIT_TOOL_DIR = '/srv/codkit/approved-install'
+		FORK_REPOSITORY_URL = 'ssh://git.internal.example/vscode-fork.git'
+		FORK_REFERENCE_CACHE = '/srv/git-cache/vscode-fork.git'
+		PIN_GUARD_BASE = 'origin/main'
+	}
+
+	stages {
+		stage('Checkout patchset') {
+			steps {
+				checkout scm
+			}
+		}
+
+		stage('Check Codkit installation') {
+			steps {
+				// Provision this immutable installation and its node_modules out of
+				// band from an approved internal source.
+				sh 'test -x "$CODKIT_TOOL_DIR/bin/codkit" && test -d "$CODKIT_TOOL_DIR/node_modules"'
+			}
+		}
+
+		stage('Supply fork tree') {
+			steps {
+				script {
+					// Keep the fork checkout outside patchset so it cannot appear as
+					// an untracked subtree of the repository under test.
+					env.FORK_TREE_DIR = "${pwd()}@fork-tree-${env.BUILD_NUMBER}"
+					dir(env.FORK_TREE_DIR) {
+						// Jenkins owns the credential binding for this internal checkout.
+						sh '''
+							test ! -e .git
+							git clone --reference-if-able "$FORK_REFERENCE_CACHE" "$FORK_REPOSITORY_URL" .
+							pin_sha="$(node -e 'const fs=require("node:fs"); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).pin.sha)' "$WORKSPACE/codkit.json")"
+							git checkout --detach "$pin_sha"
+							git lfs pull origin "$pin_sha"
+						'''
+					}
+				}
+			}
+		}
+
+		stage('Codkit verify') {
+			steps {
+				sh '''
+					docker run --rm --network none --read-only \
+						--tmpfs /tmp:rw,nosuid,nodev \
+						--user "$(id -u):$(id -g)" \
+						--workdir /work/patchset \
+						--volume "$CODKIT_TOOL_DIR:/opt/codkit:ro" \
+						--volume "$WORKSPACE:/work/patchset" \
+						--volume "$FORK_TREE_DIR:/work/tree" \
+						--env CODKIT_PATCHES_DIR=/work/patchset \
+						--env CODKIT_FORK_DIR=/work/tree \
+						"$CODKIT_CI_IMAGE" \
+						/opt/codkit/bin/codkit --json ci --profile verify --pin-guard-base "$PIN_GUARD_BASE"
+				'''
+			}
+		}
+	}
+
+	post {
+		always {
+			archiveArtifacts artifacts: '.codkit/out/**', allowEmptyArchive: true
+		}
+	}
+}

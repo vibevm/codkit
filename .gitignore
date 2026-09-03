@@ -1,0 +1,16 @@
+# vibe per-project cache
+.vibe/
+
+# personal agent settings (clean-room deny-list lives here on each machine)
+.claude/settings.local.json
+
+# transient vibe boot-generation locks
+**/.vibe-boot-artifacts.lock
+
+codkit.local.json
+.codkit/
+node_modules/
+
+# AI-native TypeScript floor/build output
+target/
+vibevm/vibedeps/**/target/

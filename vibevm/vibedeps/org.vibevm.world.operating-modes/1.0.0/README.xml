@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">`flow:operating-modes` — codeword-triggered work postures</title>
+  <status stage="doc" state="done" audience="user"/>
+  <p><PACKAGE-INSTALLS-OPERATING-MODES fact="true" status="impl/done">A vibevm `flow` package that installs **operating modes**: a project
+keeps one safe default posture and lets the owner flip into an
+alternate posture for one work cycle by speaking a catalogued
+codeword.</PACKAGE-INSTALLS-OPERATING-MODES></p>
+  <p><A-MODE-CHANGES-CONFIRMATION-BEHAVIOUR-ONLY fact="true" status="impl/done">A mode changes *confirmation behaviour* — it never changes
+what is off-limits.</A-MODE-CHANGES-CONFIRMATION-BEHAVIOUR-ONLY></p>
+  <p><A-SMALL-SET-OF-RED-LINES-SURVIVES-EVERY-MODE fact="true" status="impl/done">A small set of red lines survives every mode.</A-SMALL-SET-OF-RED-LINES-SURVIVES-EVERY-MODE></p>
+  <p><THE-DEFAULT-POSTURE-PREFERS-A-QUESTION-TO-A-MISTAKE fact="true" status="impl/done">The default posture prefers a clarifying question to an irreversible
+mistake — right for most sessions, wrong for sustained heads-down
+work the owner has already thought through and approved.</THE-DEFAULT-POSTURE-PREFERS-A-QUESTION-TO-A-MISTAKE></p>
+  <p><the-handshake-is-overhead-already-paid-for fact="true" status="spec/done">There, every
+"shall I proceed?" is overhead already paid for.</the-handshake-is-overhead-already-paid-for></p>
+  <p><A-CODEWORD-REMOVES-THE-OVERHEAD-NOT-THE-GUARDRAILS fact="true" status="impl/done">A codeword removes
+that overhead without removing the guardrails that matter.</A-CODEWORD-REMOVES-THE-OVERHEAD-NOT-THE-GUARDRAILS></p>
+  <p><package-contents-lead fact="true" status="impl/done">This package ships three pieces of content plus a boot snippet:</package-contents-lead></p>
+  <facts ordered="false">
+    <CONTENT-THE-PROTOCOL fact="true" status="impl/done">`spec/flows/operating-modes/OPERATING-MODES-PROTOCOL.xml` — what a
+  mode is, the five-part codeword shape, and the red-lines law that
+  no codeword can erode.</CONTENT-THE-PROTOCOL>
+    <CONTENT-THE-MFBT-MODE fact="true" status="impl/done">`spec/flows/operating-modes/mfbt-mode.xml` — a worked reference
+  codeword, «move fast and break things»: pre-authorised heads-down
+  execution, fully specified in the five-part shape.</CONTENT-THE-MFBT-MODE>
+    <CONTENT-WRITING-A-CODEWORD fact="true" status="impl/done">`spec/flows/operating-modes/writing-a-codeword.xml` — the procedure
+  for adding a new mode to a project's catalogue, with anti-patterns.</CONTENT-WRITING-A-CODEWORD>
+    <CONTENT-THE-BOOT-SNIPPET fact="true" status="impl/done">`spec/boot/45-flow-operating-modes.xml` — boot snippet: the default
+  posture, how codewords fire, the red-lines law, and the never-do
+  list.</CONTENT-THE-BOOT-SNIPPET>
+  </facts>
+  <install title="Install">
+    <fence lang="bash">vibe install flow:operating-modes</fence>
+  </install>
+  <uninstall title="Uninstall">
+    <fence lang="bash">vibe uninstall flow:operating-modes</fence>
+    <p><UNINSTALL-REMOVES-EVERY-FILE-THE-PACKAGE-WROTE fact="true" status="impl/done">Uninstalling removes every file the package wrote, including the boot
+snippet.</UNINSTALL-REMOVES-EVERY-FILE-THE-PACKAGE-WROTE></p>
+    <p><USER-OWNED-FILES-ARE-NEVER-TOUCHED fact="true" status="impl/done">User-owned files are never touched.</USER-OWNED-FILES-ARE-NEVER-TOUCHED></p>
+  </uninstall>
+  <composition title="Composition">
+    <facts ordered="false">
+      <COMPOSES-CONFLICT-PROTOCOL fact="true" status="impl/done">`flow:conflict-protocol` — a mode never overrides the
+  uncertainty protocol; genuine ambiguity still takes the
+  conservative default and a REVIEW marker, even at full speed.</COMPOSES-CONFLICT-PROTOCOL>
+      <COMPOSES-ATOMIC-COMMITS fact="true" status="impl/done">`flow:git-atomic-commits` — an accelerated mode still commits one
+  logical unit at a time; its frozen-history rule is one of the red
+  lines every mode preserves.</COMPOSES-ATOMIC-COMMITS>
+      <COMPOSES-SECRETS-HYGIENE-AND-ATTRIBUTION-POLICY fact="true" status="impl/done">`flow:secrets-hygiene` and `flow:git-attribution-policy` — standing
+  invariants that are red lines for mode purposes: no posture relaxes
+  them.</COMPOSES-SECRETS-HYGIENE-AND-ATTRIBUTION-POLICY>
+      <COMPOSES-CAMPAIGN-PLANS fact="true" status="spec/done">`flow:campaign-plans` — a campaign is often run under an
+  accelerated mode; the plan's phase gates supply the "status, not
+  requests" cadence.</COMPOSES-CAMPAIGN-PLANS>
+    </facts>
+  </composition>
+  <background title="Philosophical background">
+    <p><extracted-from-the-origin-projects-law fact="true" status="spec/done">Extracted from the origin project's operating-modes law, which
+generalized its own session-end codeword into a family of postures.</extracted-from-the-origin-projects-law></p>
+    <p><collections-spirit-is-the-redbook fact="true" status="spec/done">The collection's spirit is the book *AI-native development*, shipped
+in Russian inside `flow:redbook` at `spec/book/ru/`.</collections-spirit-is-the-redbook></p>
+  </background>
+  <license title="License">
+    <p><license-line fact="true" status="impl/done">UPL-1.0. See `LICENSE.md`.</license-line></p>
+  </license>
+</spec>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-012: Вывод и сообщения, НФТ, документация, открытые развилки</title>
+  <status stage="spec" state="done" comment="standalone schema-2 output, errors, quality and documentation contract"/>
+  <json-envelope title="1. Конверт --json">
+    <p><JSON-ENVELOPE-RULE fact="true" status="spec/done">Каждая команда при `--json` печатает в stdout ровно один JSON-объект (человеческий вывод — в stderr). Схема конверта версионируется полем `codkit.schema`. Потребители — агенты и CI.</JSON-ENVELOPE-RULE></p>
+    <fence lang="json">{ "codkit": { "schema": 2, "command": "sync", "version": "&lt;toolRoot package version&gt;" },
+  "ok": true, "exitCode": 0,
+  "roots": {
+    "tool": { "path": "/opt/codkit", "source": "install", "exists": true },
+    "patches": { "path": "/work/patches", "source": "env", "exists": true },
+    "fork": { "path": "/work/fork", "source": "settings", "exists": true }
+  },
+  "data": { "...": "командо-специфично, описано в контракте каждой команды PROP-007" },
+  "messages": [ { "level": "info|warn", "code": "CK-W-...", "text": "..." } ],
+  "errors": [ { "code": "CK-E-...", "message": "...", "hint": "...", "file": "...", "line": 1 } ] }</fence>
+  </json-envelope>
+  <errors title="2. Человекочитаемые ошибки и реестр кодов">
+    <p><ERROR-FORMAT fact="true" status="spec/done">Формат: `error CK-E-&lt;KEBAB&gt;: &lt;текст с файлом:строкой&gt;` + следующая строка `hint: &lt;что сделать&gt;` (конкретная команда, где возможно).</ERROR-FORMAT></p>
+    <p><ERROR-REGISTRY fact="true" status="spec/done">Полный реестр кодов ведётся в `codkit/src/lib/messages.ts` (единственное определение). Обязательные коды из спеков: `CONFIG`, `NOT-A-REPO`, `NOT-UPSTREAM`, `PIN-UNREACHABLE`, `LFS`, `LOCKED`, `DIRTY-TREE`, `CRLF`, `EOF-NEWLINE`, `ENCODING`, `MARKER-MALFORMED`, `MARKER-NESTED`, `MARKER-UNBALANCED`, `MARKER-UNCLOSED`, `MARKER-DUP-ID`, `MARKER-BAD-ID`, `HUNK-OUTSIDE-MARKER`, `DELETES-UPSTREAM-LINE`, `DELETES-UPSTREAM-FILE`, `NEW-FILE-IN-UPSTREAM-ZONE`, `FORBIDDEN-TARGET`, `MARKER-ARTIFACT-MISMATCH`, `UNTRACKED-INTERVENTION`, `STALE-ARTIFACT`, `OWN-UNCOVERED`, `OWNER-UNKNOWN`, `OVERLAY-SCHEMA`, `OVERLAY-DRIFT`, `RULE-DRIFT`, `ARTIFACT-BROKEN`, `NET-FORBIDDEN`, `LOG-INCOMPLETE`, `BOTH-SIDES-EDITED`, `INTERNAL` (неперехваченная ошибка — баг, выход 2, hint приложить `--verbose`), `DEPS-MISSING` (нет runtime dependencies — восстановить установленный Codkit из утверждённого supply; source checkout может выполнить `npm ci`), `TREE-READONLY` (нет права записи в дерево/`.git/codkit` — проверка `##ID-CHECK-WRITE`), `HEADER-MISSING` (новый патч без заготовки шапки — PROP-007 §8 `##PENDING-HEADER-MECHANISM`), `GUARD-MISSING` (обязательный guard-тест отсутствует или его id не объявлен в own-тестах — verify), `FORBIDDEN-SERVICE` (own-код перекрывает bootstrap-сервис из forbiddenServiceIds — verify); предупреждения `CK-W-*` (минимум: `MARK-RO`, `PATCHSET-SIDE-EDIT`, `EMPTY-BLOCK`).</ERROR-REGISTRY></p>
+    <p><USAGE-ERRORS-ARE-CODELESS fact="true" status="impl/done">Ошибки использования CLI (неизвестная команда/флаг, лишние аргументы) кода `CK-E-*` не несут: печатается `error: …` + `hint: …` в stderr, выход 2, без JSON-конверта — это опечатка оператора, а не состояние системы. Отказ запуска git (бинарь не найден) — `CK-E-INTERNAL` с hint «install git ≥ 2.40». (Решение реализации M0; отдельные коды `USAGE`/`GIT-MISSING` сознательно не заводятся, пока в них нет машинного потребителя.) Пограничные привязки кодов, принятые в M0: «у расширения файла нет формы маркера» → `FORBIDDEN-TARGET` (симметрично бинарной цели); любые нарушения схемы/версии `.ckpatch` и некодируемое имя патч-файла → `ARTIFACT-BROKEN`; путь с `__`, не кодируемый в имя патча, → `INTERNAL` (на пине таких путей нет — защита на будущее); дубль id между артефактами любых слоёв → `MARKER-DUP-ID` (переиспользован — отдельного «артефактного» кода дубля не заводим); нарушение «только scripts» у overlay-цели `package.json` — ПРОВЕРКА (`OVERLAY-SCHEMA`, выход 1 в verify/check/apply), а не парс-отказ: документ синтаксически валиден, недопустимо его содержание. Привязки M1 (`ci`): несовпадение pin-guard → `CONFIG` c выходом 1 (натяжка смысла кода — сознательная; отдельный код заводится, когда появится машинный потребитель, например cycle-скилл M2); `DEPS-MISSING` переиспользован для `node_modules` ДЕРЕВА в `ci --profile build` (выход 2, текст про supply-kit) — hint зависит от контекста (лончер: «run npm ci»; ci: кэш/mount).</USAGE-ERRORS-ARE-CODELESS></p>
+    <p><LOGS-INVENTORY fact="true" status="spec/done">Журналы: журнал цикла — PROP-009 §3 (md + jsonl, коммитятся); логи демонов — `.codkit/build/*.log` (ротация: при `up` старый лог переименовывается в `.1`, хранится одно поколение); `--verbose` — диагностика в stderr (git-команды с аргументами, тайминги шагов).</LOGS-INVENTORY></p>
+  </errors>
+  <nfr title="3. Нефункциональные требования">
+    <table>
+      <tr><td>Требование</td><td>Норма</td><td>Проверка</td></tr>
+      <tr><td><NFR-LAYOUT-INDEPENDENCE fact="true" status="spec/done">Независимость от раскладки</NFR-LAYOUT-INDEPENDENCE></td><td>toolRoot, patchesDir и forkDir разрешаются независимо, попарно disjoint; ни один механизм не предполагает соседства</td><td>тесты на трёх несвязанных путях и negative nested-root cases</td></tr>
+      <tr><td><NFR-STATUS-SAVE-SPEED fact="true" status="spec/done">Скорость `status`/`save`</NFR-STATUS-SAVE-SPEED></td><td>секунды на полном дереве (17 948 файлов)</td><td>e2e-замер на полигоне</td></tr>
+      <tr><td><NFR-INVENTORY-SPEED fact="true" status="spec/done">Скорость инвентаря</NFR-INVENTORY-SPEED></td><td>секунды по всему `src/`</td><td>e2e-замер</td></tr>
+      <tr><td><NFR-PRECOMMIT-SPEED fact="true" status="spec/done">Проверка маркеров в pre-commit</NFR-PRECOMMIT-SPEED></td><td>доли секунды на файл</td><td>unit-бенчмарк</td></tr>
+      <tr><td><NFR-SYNC-NOOP fact="true" status="spec/done">`sync` no-op</NFR-SYNC-NOOP></td><td>быстрый (сравнение отпечатков; на полигоне &lt; 5 с)</td><td>e2e</td></tr>
+      <tr><td><NFR-DETERMINISM fact="true" status="spec/done">Детерминизм</NFR-DETERMINISM></td><td>двойная регенерация — пустой дифф; одинаковые SHA при одинаковом patch-set/pin</td><td>Linux floor сейчас; отдельные нативные macOS/Windows строки обязательны до cross-platform acceptance</td></tr>
+      <tr><td><NFR-NETWORK fact="true" status="spec/done">Сеть</NFR-NETWORK></td><td>ноль обращений в `--ci`; локально — только clone/`--clone-if-missing`/`publish`</td><td>тест с отключённой сетью</td></tr>
+      <tr><td><NFR-MTIME fact="true" status="spec/done">mtime</NFR-MTIME></td><td>пересоздание ветки не трогает неизменённые файлы</td><td>P3-S10 + unit на фейковом дереве</td></tr>
+      <tr><td><NFR-SECURITY fact="true" status="spec/done">Безопасность</NFR-SECURITY></td><td>codkit не читает референсные каталоги; нет выполнения кода из дерева кроме npm-скриптов сборки</td><td>ревью + guardrails протокола агентов</td></tr>
+      <tr><td><NFR-ROOT-SOURCE-PRINT fact="true" status="spec/done">Диагностика</NFR-ROOT-SOURCE-PRINT></td><td>команда печатает источники каждого используемого внешнего root; schema 2 всегда несёт `roots`</td><td>unit/e2e на flag/env/settings и `where`</td></tr>
+    </table>
+  </nfr>
+  <docs title="4. Документация, поставляемая с кодом">
+    <p><M3-OPERATIONAL-DOCS-IMPL fact="true" status="impl/done">Реализованы standalone README, генерируемые `commands.md`/`conventions.md`/`faq.md`, CI examples и air-gapped supply-kit contract. `docs:check` строится на live CLI/registries/configs. Документированный PowerShell/macOS путь не считается нативно доказанным до исполнения на соответствующем runner.</M3-OPERATIONAL-DOCS-IMPL></p>
+    <facts ordered="true">
+      <DOC-README fact="true" status="spec/done">`codkit/README.md` — что это, три команды разработчика (`sync`/`status`/`save`), ссылка на справочник.</DOC-README>
+      <DOC-COMMANDS-REF fact="true" status="spec/done">`docs/codkit/reference/commands.md` — справочник команд (генерируемый из определений CLI — единственное определение флагов в коде).</DOC-COMMANDS-REF>
+      <DOC-CONVENTIONS-REF fact="true" status="spec/done">`docs/codkit/reference/conventions.md` — конвенции: маркеры, id, слои, ветки (рендер `conventions.json` + текст PROP-003…005).</DOC-CONVENTIONS-REF>
+      <DOC-FAQ fact="true" status="spec/done">`docs/codkit/reference/faq.md` — типичные отказы (по реестру кодов §2) и ловушки, переписанные своими словами.</DOC-FAQ>
+      <DOC-CI-EXAMPLES fact="true" status="spec/done">`docs/codkit/ci-examples/` — Dockerfile, Jenkinsfile, GitHub job (PROP-011 §8) + документ поставочного комплекта air-gapped (PROP-011 §7).</DOC-CI-EXAMPLES>
+      <DOC-PROTOCOLS-POINTER fact="true" status="spec/done">Протоколы людей и агентов — отдельные слайсы FEAT-003/FEAT-004 (здесь только ссылки).</DOC-PROTOCOLS-POINTER>
+    </facts>
+  </docs>
+  <open-forks title="5. Открытые развилки (работа продолжается на дефолте)">
+    <facts ordered="true">
+      <FORK-TREE-PRECOMMIT-HOOK fact="true" status="spec/done">**Pre-commit-хук в дереве форка — НОРМА (решение владельца 2026-08-31: «согласен с обеими утверждениями»).** `sync` устанавливает в `&lt;tree&gt;/.git/hooks/pre-commit` скрипт, отклоняющий ручной коммит с текстом-подсказкой («сохраняй через codkit save; коммиты в дереве создаёт только codkit»), если не выставлена переменная `CODKIT_INTERNAL_COMMIT=1` (её выставляют только собственные git-вызовы codkit; впрочем, sync строит ветку через commit-tree/update-ref — хук им не мешает по построению). Хук восстанавливается каждым `sync` (файл локальный, им владеет codkit); апстрим хуков не ставит (`.git/hooks` пуст, кроме LFS) — место свободно. Реализация — шаг `sync` (PROP-008 §3), задача вехи M0.</FORK-TREE-PRECOMMIT-HOOK>
+      <RELEASE-REF-NAMING fact="true" status="spec/plan">**Схема имён публикуемых релизных ссылок.** Пространство `codkit/release/…` и трейлеры заданы; финальная схема версий продукта — нет. Дефолт: ветки `codkit/release/&lt;short-sha patchset&gt;+&lt;pin.tag&gt;`, релизные теги `patchset-v&lt;semver&gt;+&lt;pin.tag&gt;` (обе координаты в имени). **Требует решения владельца** при появлении реального релизного процесса продукта.</RELEASE-REF-NAMING>
+    </facts>
+  </open-forks>
+</spec>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">PROP-001: Codkit vision</title>
+  <status stage="spec" state="done"/>
+  <p><CODKIT-DEFINITION fact="true" status="spec/done">Codkit turns a VS Code fork upgrade into a repeatable operation: move the upstream pin, reapply a machine-readable patch set, resolve the explicit red list, verify, and regenerate.</CODKIT-DEFINITION></p>
+  <goals title="Goals">
+    <facts ordered="false">
+      <GOAL-ANY-FORK fact="true" status="spec/done">The same Codkit installation can operate on unrelated VS Code forks and unrelated patch sets.</GOAL-ANY-FORK>
+      <GOAL-VISIBLE-DELTA fact="true" status="spec/done">Every downstream difference has an owner, reason, intervention layer, and verification evidence.</GOAL-VISIBLE-DELTA>
+      <GOAL-CHEAP-UPGRADE fact="true" status="spec/done">Upgrade cost is proportional to the maintained intervention inventory, not to upstream repository history.</GOAL-CHEAP-UPGRADE>
+      <GOAL-PORTABLE fact="true" status="spec/done">Linux, macOS, and Windows are supported targets, and offline CI is a first-class target. A target is not accepted merely because platform-neutral code exists: native execution evidence is required.</GOAL-PORTABLE>
+      <PORTABILITY-PROOF-STATUS fact="true" status="spec/plan">Linux automation proves the currently executed host. Native macOS and Windows wrapper, filesystem, Git, and regeneration runs remain open acceptance evidence until those runners execute successfully.</PORTABILITY-PROOF-STATUS>
+    </facts>
+  </goals>
+  <principles title="Principles">
+    <facts ordered="false">
+      <PATCHES-ARE-TRUTH fact="true" status="spec/done">The patch set is source of truth; the managed fork tree is reproducible working state.</PATCHES-ARE-TRUTH>
+      <EDIT-IN-TREE-SAVE-TO-PATCHSET fact="true" status="spec/done">Developers edit and test in the managed tree, then use `codkit save` to extract validated changes into the patch set.</EDIT-IN-TREE-SAVE-TO-PATCHSET>
+      <PATCH-LAST-RESORT fact="true" status="spec/done">Codkit prefers owned modules and declarative layers; textual patches are the last intervention layer.</PATCH-LAST-RESORT>
+      <NO-UPSTREAM-DELETION fact="true" status="spec/done">Upstream lines are preserved; intentional changes remain attributable and reversible.</NO-UPSTREAM-DELETION>
+    </facts>
+  </principles>
+</spec>

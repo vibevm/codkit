@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S16 (Given/When/Then)</title>
+  <status stage="spec" state="plan" comment="standalone Given/When/Then acceptance on FEAT-001; e2e harness is PROP-013"/>
+  <conventions title="0. Обозначения">
+    <p><SCENARIO-CONVENTIONS fact="true" status="spec/done">`$TOOL`, `$PATCHES`, `$FORK` — три несвязанных disjoint roots; cwd находится в четвёртом месте. Чистый fork — checkout upstream pin без локальных правок. Then по выводу проверяется через schema-2 `roots.tool|patches|fork`; исключения — явные проверки human message. Коды — 0/1/2/3 из PROP-007.</SCENARIO-CONVENTIONS></p>
+    <p><SCENARIO-EXECUTION fact="true" status="spec/done">Сценарии являются постоянным acceptance contract и не зависят от удалённой кампании или потребительского продукта. Конкретный план исполнения может группировать их как угодно, но не отменяет ни один Then.</SCENARIO-EXECUTION></p>
+  </conventions>
+  <s01 title="S01 — sync с предоставленным деревом">
+    <p><S01 fact="true" status="spec/plan">**Given**: `$TOOL`, чистый fork на configured pin в `$FORK`, patch-set FEAT-001 в `$PATCHES`; оба внешних roots выбраны env. **When**: `$TOOL/bin/codkit --json sync`. **Then**: exit 0; `roots.tool.source=install`, `roots.patches={path:$PATCHES,source:env}`, `roots.fork={path:$FORK,source:env}`; generated branch is current and clean; ownDir is materialized/excluded; fork mark and `$PATCHES/.codkit/trees/&lt;id&gt;.json` agree.</S01></p>
+  </s01>
+  <s02 title="S02 — клонирование в пустой каталог (локально) и запрет в CI">
+    <p><S02 fact="true" status="spec/plan">**Given**: `$FORK` не существует; задан `--from &lt;локальный-bare-репозиторий-зеркала&gt;`. **When**: `codkit clone --from …`; затем повторно; затем `codkit clone --ci`. **Then**: первый запуск — выход 0, дерево на пине, `check-tree` пройден; повтор — выход 0, вывод содержит `already present`, изменений нет; с `--ci` — выход 2, ошибка `CK-E-NET-FORBIDDEN`.</S02></p>
+  </s02>
+  <s03 title="S03 — идемпотентный повтор sync">
+    <p><S03 fact="true" status="spec/plan">**Given**: состояние после S01. **When**: `codkit sync` повторно; замер времени и снимок mtime всех файлов `src/vs/workbench/**` до/после. **Then**: выход 0; вывод содержит `up to date`; ни один mtime не изменился; время — быстрый no-op (&lt; 5 с на полигоне).</S03></p>
+  </s03>
+  <s04 title="S04 — правка → save → патч с маркерами">
+    <p><S04 fact="true" status="spec/plan">**Given**: S01; в `$FORK/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts` руками добавлен маркерный блок `CK-workbench-905` через `marker new`, затем одна функциональная строка. **When**: `codkit save --commit`. **Then**: exit 0; `.ckpatch` появляется только под `$PATCHES/delta/patches/`; все additions marker-scoped; `$FORK` clean; patch-set commit touches only its delta; repeat save is byte/mtime no-op.</S04></p>
+  </s04>
+  <s05 title="S05 — страж ловит незаизвлечённое">
+    <p><S05 fact="true" status="spec/plan">**Given**: S01; немаркированная правка в любом апстримном файле дерева (одна строка). **When**: `codkit sync`. **Then**: выход 1; ошибка `CK-E-DIRTY-TREE` со списком из одного файла; hint содержит `codkit save`; дерево не изменено (правка на месте, ветка не пересоздана).</S05></p>
+  </s05>
+  <s06 title="S06 — правка вне маркеров отклоняется save и ловится verify/pre-commit">
+    <p><S06 fact="true" status="spec/plan">**Given**: S01; в апстримный файл добавлена строка **вне** маркерных блоков. **When**: (а) `codkit save`; (б) патч с такой строкой подделан вручную в `delta/patches/…` и запущен `codkit verify`; (в) тот же подделанный патч в staged-виде и git-хук `pre-commit` patchset. **Then**: (а) выход 1, `CK-E-HUNK-OUTSIDE-MARKER` с файлом и строкой, патч не записан; (б) выход 1 с тем же кодом; (в) коммит отклонён хуком с тем же кодом; время работы хука на одном файле — доли секунды.</S06></p>
+  </s06>
+  <s07 title="S07 — инвентарь и его дифф">
+    <p><S07 fact="true" status="spec/plan">**Given**: полигон уровня A целиком (PG-01…PG-09); ветка patchset `feature/x`, добавляющая ещё одно маркерное вмешательство. **When**: `codkit inventory` на `feature/x`; `codkit inventory --diff main`. **Then**: выход 0; `.codkit/out/inventory.json` валиден по схеме PROP-006 §3; entries содержат по ≥1 записи каждого слоя (`own`, `service-override`, `entry-module`, `config-overlay`, `resource-file`, `rewrite-rule`, `patch`); метрики заполнены; дифф показывает ровно одну added-запись с id нового вмешательства; время генерации — секунды.</S07></p>
+    <p><S07-EVIDENCE-REQUIRED fact="true" status="spec/plan">Standalone acceptance records a fresh inventory result from the external polygon. Historical results from a removed consumer tree do not satisfy this scenario.</S07-EVIDENCE-REQUIRED></p>
+  </s07>
+  <s08 title="S08 — апгрейд без конфликтов: канонические коммиты, зелёный чистый пин">
+    <p><S08 fact="true" status="spec/plan">**Given**: полигонная ветка `codkit/playground-134` (пин `1.134.0`) с вмешательством PG-01 (титлбар; файл не менялся апстримом в окне) — без PG-C1 и PG-R1. **When**: `codkit cycle start 1.135.0`; затем `codkit cycle continue` до `done`; затем `codkit ci --profile verify` на результате. **Then**: `start` — выход 0 или переход к advisory (выход 3 только на непустом advisory; для полигона дифф тулчейна непуст → допускается одна остановка advisory, после которой `continue`); итог: `cycle status` — `phase: done`; история ветки цикла содержит канонические коммиты `bump pin` и `regeneration`, каждый с трейлером `Codkit-Cycle: 1.135.0`; `codkit.json` несёт новый пин; `ci --profile verify` — выход 0 («дельта ложится на чистый пин»).</S08></p>
+  </s08>
+  <s09 title="S09 — апгрейд с переименованием: перенос артефакта">
+    <p><S09 fact="true" status="spec/plan">**Given**: `codkit/playground-134` с PG-R1 — маркерное вмешательство `CK-platform-902` в `remoteAgentHostProtocolClient.ts` (файл переименован апстримом в `agentHostProtocolClient.ts` между `1.134.0` и `1.135.0`, R096). **When**: `codkit cycle start 1.135.0` → `continue` до применения. **Then**: rename-шаг сообщает пару со similarity ≥ 90; патч-файл в patchset переименован по кодированию нового пути, заголовки `---`/`+++` указывают новый путь; перенесённый патч пробно применён (исход `clean|shifted|merged` в отчёте: rename — отдельный lifecycle-факт, а изменения остальных строк R096 честно дают 3-way `merged` даже при устойчивом нашем хуке); запись о переносе есть в `cycle/state.json.renames` и в журнале; отдельный канонический коммит `renames` существует.</S09></p>
+  </s09>
+  <s10 title="S10 — апгрейд с конфликтом: остановка, классификация, журнал, продолжение">
+    <p><S10 fact="true" status="spec/plan">**Given**: `codkit/playground-134` с PG-C1 (крючок в конструкторе `activitybarPart.ts` — апстрим добавил 7-й DI-параметр в окне `1.134→1.135`). **When**: `codkit cycle start 1.135.0`. **Then**: выход 3; отчёт классифицирует PG-C1 как `conflict`, группирует по причине (SHA апстримного коммита; поле `approx` допустимо), называет владельца из инвентаря; файл в дереве содержит стандартные конфликт-маркеры (`&lt;&lt;&lt;&lt;&lt;&lt;&lt;`/`|||||||`/`&gt;&gt;&gt;&gt;&gt;&gt;&gt;`). **When (продолжение)**: конфликт разрешён правкой в дереве; запись в `cycle/log/1.135.0.jsonl` добавлена; `codkit cycle continue`. **Then**: фаза уходит дальше `resolve`; коммит-фикс несёт трейлер `Cause: &lt;sha&gt;`; попытка `continue` в `done` **без** записи журнала — выход 1 `CK-E-LOG-INCOMPLETE`.</S10></p>
+  </s10>
+  <s11 title="S11 — апстрим переименовал CSS-класс: контрактный тест красный, сообщение понятное">
+    <p><S11 fact="true" status="spec/plan">**Given**: PG-04 (контрактный тест `patchset.contract.statusbar-class` на апстримный CSS-класс); имитация дрейфа: в дереве класс переименован (механика имитации — PROP-013 §4). **When**: прогон контрактных тестов (в составе `ci --profile build` или адресно раннером). **Then**: тест красный; текст падения содержит id `patchset.contract.statusbar-class`, имя ожидаемого класса и подсказку «upstream contract drifted; find cause and update intervention `CK-workbench-905`» (id связанного вмешательства из инвентаря).</S11></p>
+  </s11>
+  <s12 title="S12 — гонка R2b: pin-guard ловит PR со старым пином">
+    <p><S12 fact="true" status="spec/plan">**Given**: ветка patchset `feature/old-pin`, созданная до апгрейда (её `codkit.json` — пин `1.134.0`); main уже на `1.135.0`. **When**: `codkit ci --profile verify` на merge-результате PR (эмуляция джоба: base=main). **Then**: выход 1; ошибка pin-guard с текстом «branch pin 1.134.0 != target branch pin 1.135.0»; hint содержит `codkit rebase-onto-pin`. **When (лечение)**: на ветке выполнены merge main + `codkit rebase-onto-pin` (+ резолв, `codkit save`). **Then**: повторный `ci --profile verify` — выход 0.</S12></p>
+  </s12>
+  <s13 title="S13 — агент-резолв: журнал без коммитов">
+    <p><S13 fact="true" status="spec/plan">**Given**: S10 stopped at exit 3; an agent following FEAT-004 edits `$FORK` and appends its result under `$PATCHES`, without commits. **When**: inspect both Git histories, then `cycle continue`. **Then**: no agent-created commits exist; Codkit validates/extracts and creates the canonical fix commit; the agent journal attribution is preserved.</S13></p>
+  </s13>
+  <s14 title="S14 — air-gapped: полный прогон без сети">
+    <p><S14 fact="true" status="spec/plan">**Given**: контейнер по PROP-011 §8, запуск с `--network none`; дерево предоставлено bind-mount по нестандартному пути; преднаполненные `node_modules`/`.build` (для профиля build). **When**: `codkit ci --profile verify`; затем `codkit ci --profile build`. **Then**: оба — выход 0; в выводе нет ни одной попытки сетевого обращения (методика замера — PROP-013 §6); недостижимый пин (вариант: дерево с усечённой историей) — выход 2 `CK-E-PIN-UNREACHABLE` с точной командой fetch в hint, без попытки сети.</S14></p>
+  </s14>
+  <s15 title="S15 — подмена дерева под живым кэшем">
+    <p><S15 fact="true" status="spec/plan">**Given**: S01 cache/mark exist; a different clean checkout replaces `$FORK` at the same path. **When**: `codkit sync`. **Then**: exit 0 but not `up to date`; the actual fork cannot validate the stale cache, so the patch-set is reapplied and cache/mark are rewritten.</S15></p>
+  </s15>
+  <s16 title="S16 — двойная регенерация: пустой дифф (три ОС)">
+    <p><S16 fact="true" status="spec/plan">**Given**: одинаковая непустая fixture на native Linux, macOS and Windows runners. **When**: save → snapshot patch bytes/tip → restore → repeat identical edit → save. **Then**: each native run produces identical patch bytes and generated tip for the same patch-set/pin. Current Linux evidence closes only Linux; macOS/Windows remain open until actually executed.</S16></p>
+  </s16>
+</spec>

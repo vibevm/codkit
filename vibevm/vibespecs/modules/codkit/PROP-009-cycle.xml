@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-009: Оркестратор цикла апгрейда — состояние, журнал, фазы, кадэнс</title>
+  <status stage="spec" state="done" comment="resumable patch-set upgrade-cycle state machine"/>
+  <cadence title="1. Кадэнс и слежение за апстримом">
+    <facts ordered="false">
+      <WEEKLY-CADENCE fact="true" status="spec/done">**Отслеживаем релизные теги апстрима, шаг — еженедельный** (факт: теги `1.128`…`1.135` идут с шагом ~неделя; окно `1.134→1.135` — 267 коммитов). Пин двигается только на зелёный CI; застрявший цикл никого не блокирует — остаёмся на старом пине и релизимся с него.</WEEKLY-CADENCE>
+      <BATCHING-IS-EXCEPTION fact="true" status="spec/done">Батчинг нескольких тегов допустим как исключение (например, тулчейн-каскад), но не как норма: на больших диффах деградирует автоопределение переименований.</BATCHING-IS-EXCEPTION>
+      <DAILY-FORECAST fact="true" status="spec/done">**Ежедневный прогноз** (независимо от тегов): ночной dry-run наложения дельты на свежий апстримный `main`; отчёт по владельцам — «вмешательство X, апстримный коммит-причина Y скоро сломает». Ничего не меняет; реализуется тем же движком применения в dry-run.</DAILY-FORECAST>
+      <OUR-RELEASE-RHYTHM fact="true" status="spec/done">**Наш релиз — отдельный ритм**: релизим, когда продукт готов, с текущего зелёного пина; версия продукта своя, пин апстрима — машинное поле в артефакте публикации.</OUR-RELEASE-RHYTHM>
+    </facts>
+  </cadence>
+  <state title="2. Состояние цикла — cycle/state.json">
+    <p><cycle-state-role fact="true" status="spec/done">Коммитится в ветке цикла; наличие файла в рабочем дереве patchset = «идёт цикл»; state пишется атомарно (временный файл + rename) после каждого изменения.</cycle-state-role></p>
+    <table>
+      <tr><td>Поле</td><td>Тип</td><td>Описание</td></tr>
+      <tr><td><CS-SCHEMA fact="true" status="spec/done">`codkitCycleState`</CS-SCHEMA></td><td>int</td><td>`2`; pre-user v1 намеренно не читается после добавления durable transaction</td></tr>
+      <tr><td><CS-PINS fact="true" status="spec/done">`sourcePin` / `targetPin`</CS-PINS></td><td>`{tag,sha,date}`</td><td>исходный и целевой пины</td></tr>
+      <tr><td><CS-BRANCH fact="true" status="spec/done">`branch`</CS-BRANCH></td><td>string</td><td>имя ветки цикла в patchset: `&lt;cycleBranchPrefix&gt;&lt;targetTag&gt;` (по умолчанию `codkit/cycle/&lt;targetTag&gt;`); schema проверяет безопасность Git ref, точное равенство с конфигом — движок</td></tr>
+      <tr><td><CS-TIMES fact="true" status="spec/done">`startedAt` / `updatedAt`</CS-TIMES></td><td>string</td><td>ISO-время</td></tr>
+      <tr><td><CS-PHASE fact="true" status="spec/done">`phase`</CS-PHASE></td><td>string</td><td>одна из: `init`, `apply`, `resolve`, `renames`, `regen`, `deps-advisory`, `stabilize`, `done`</td></tr>
+      <tr><td><CS-NEXT-ACTION fact="true" status="spec/done">`nextAction`</CS-NEXT-ACTION></td><td>string</td><td>человекочитаемая подсказка «что дальше» (печатается `cycle status`)</td></tr>
+      <tr><td><CS-TRANSACTION fact="true" status="spec/done">`transaction`</CS-TRANSACTION></td><td>`null | init | restart`</td><td>durable recovery identity: init хранит base commit/branch до первой мутации; restart — bump/base commits до reset. Точный partial state либо детерминированно продолжается, либо громко отклоняется</td></tr>
+      <tr><td><CS-ARTIFACTS fact="true" status="spec/done">`artifacts`</CS-ARTIFACTS></td><td>object</td><td>классификация: ключ — исход (`clean`,`shifted`,`merged`,`conflict`,`target-deleted`,`target-renamed`,`rule-broken`,`contract-failed`), значение — массив путей артефактов</td></tr>
+      <tr><td><CS-RESOLVED fact="true" status="spec/done">`resolved`</CS-RESOLVED></td><td>string[]</td><td>артефакты, уже разрешённые после остановки</td></tr>
+      <tr><td><CS-RENAMES fact="true" status="spec/done">`renames`</CS-RENAMES></td><td>array</td><td>`{from,to,similarity}` — принятые переносы</td></tr>
+    </table>
+    <p><CYCLE-CONTROL-RECORD fact="true" status="impl/done">`restart` перед `reset --hard` атомарно дублирует recovery snapshot в локальный `.codkit/cycle-control.json` (`codkitCycleControl: 1`, `status: running|done`). Этот файл не коммитится и лежит вне reset scope: если tracked `cycle/state.json` исчез после reset, повторный `restart` и `status` завершают операцию по точным bump/base SHA. `done` сохраняется до следующего проверенного старта, чтобы crash после последней мутации имел идемпотентный ответ.</CYCLE-CONTROL-RECORD></p>
+  </state>
+  <journal title="3. Журнал цикла">
+    <facts ordered="false">
+      <JOURNAL-FILES fact="true" status="spec/done">`cycle/log/&lt;targetTag&gt;.md` (человекочитаемый, коммитится) и `cycle/log/&lt;targetTag&gt;.jsonl` (машинный, одна атомарно добавленная строка на событие: `{"codkitCycleJournal":1,"ts":…,"artifact":…,"outcome":…,"resolution":…,"cause":…,"by":"human|agent:&lt;имя&gt;","verified":…}`).</JOURNAL-FILES>
+      <JOURNAL-COMPLETENESS fact="true" status="spec/done">Проверка полноты: у каждого артефакта не-`clean` исхода есть запись в jsonl — иначе `cycle continue` в фазу `done` не пускает (выход 1, `CK-E-LOG-INCOMPLETE`).</JOURNAL-COMPLETENESS>
+      <JOURNAL-AGENT-ENTRIES fact="true" status="spec/done">Журнал решений агентов — тот же jsonl, поле `by: "agent:&lt;имя&gt;"`; агент пишет туда через обычный файл (контракт для протокола агентов FEAT-004).</JOURNAL-AGENT-ENTRIES>
+    </facts>
+  </journal>
+  <phases title="4. Машина состояний — фазы и переходы">
+    <p><PHASES-RESUMABLE fact="true" status="spec/done">Каждая фаза идемпотентна и возобновляема: `continue` перечитывает `state.json`, валидирует фактическое состояние дерева/patchset и продолжает с `phase`; прерывание в любой точке не теряет данных.</PHASES-RESUMABLE></p>
+    <facts ordered="true">
+      <PHASE-INIT fact="true" status="spec/done">**init** (`cycle start &lt;target&gt;`): проверки (PROP-007 §14) → ветка `codkit/cycle/&lt;targetTag&gt;` от текущего main → канонический коммит пина (правка `codkit.json`: pin.tag/sha/date; сообщение `codkit cycle: bump pin to &lt;tag&gt;`) → state → phase=apply.</PHASE-INIT>
+      <PHASE-APPLY fact="true" status="spec/done">**apply**: rename-шаг (PROP-008 §6) → перенос артефактов-переименований отдельным каноническим коммитом → цикл классификации (PROP-008 §5) по всем артефактам против нового пина → заполнение `state.artifacts` → артефакты `clean|shifted|merged` регенерируются автоматически (PROP-004 §5 против нового пина; поле `pin` шапок обновляется) и коммитятся одним машинным каноническим коммитом «regeneration» (категория «регенерируемый»: можно выбросить и создать заново) → если `conflict|target-deleted|rule-broken` пусты — phase=deps-advisory, иначе phase=resolve и **остановка** (выход 3): печать красного списка, сгруппированного по коммитам-причинам, с владельцами из инвентаря.</PHASE-APPLY>
+      <PHASE-RESOLVE fact="true" status="spec/done">**resolve** (люди/агенты работают в дереве; конфликты материализованы стандартными маркерами): после правок `cycle continue` выполняет `save` затронутых файлов; каждый резолв — отдельный коммит с трейлером `Cause: &lt;sha&gt;` (готовит хук PROP-007 §19); запись в журнал обязательна; все разрешены → phase=deps-advisory.</PHASE-RESOLVE>
+      <PHASE-DEPS-ADVISORY fact="true" status="spec/done">**deps-advisory**: дифф `oldPin..newPin` по файлам `.nvmrc`, `package.json`, `package-lock.json`, `build/npm/dirs.ts`, записям `builtInExtensions` в `product.json`, версии Electron (грепом по `build/lib/electron.ts`/`package.json`) → отчёт «что изменилось в тулчейне»; непустой отчёт в интерактивном режиме — **точка остановки** (выход 3; человек выполняет `npm install` в дереве по протоколу — демоны предварительно остановлены `build down --all`); в `--ci` — отчёт в лог и продолжение.</PHASE-DEPS-ADVISORY>
+      <PHASE-STABILIZE fact="true" status="spec/done">**stabilize**: `build up` → `build errors` (полный вывод) → свои тесты → контрактные тесты → (по профилю) апстримные тесты → пометка `contract-failed` артефактов → красный → phase=resolve (возврат); зелёный → phase=done.</PHASE-STABILIZE>
+      <PHASE-DONE fact="true" status="spec/done">**done** (`continue`): проверка полноты журнала → снимок метрик инвентаря в журнале цикла → коммит журнала и state (runtime state удаляется финальным коммитом) → инструкция слияния ветки цикла в main без squash. Чек-лист завершения включает проверку bootstrap forbidden services и выбранных build-watch boundaries на новом пине.</PHASE-DONE>
+    </facts>
+    <p><CYCLE-ROLLBACK fact="true" status="spec/done">**Откат**: `cycle restart` — `git reset --hard` ветки цикла к родителю коммита пина + удаление state (подтверждение `--yes`).</CYCLE-ROLLBACK></p>
+    <p><MANDATORY-STOP-POINTS fact="true" status="spec/done">Точки обязательной остановки: advisory по тулчейну; ручные конфликты; сломанные правила; патчи к удалённым файлам; крупное дизайн-решение (остановись, объясни, предложи варианты).</MANDATORY-STOP-POINTS></p>
+  </phases>
+  <canon title="5. Канонический набор коммитов цикла и трейлеры">
+    <p><CANONICAL-COMMIT-SET fact="true" status="spec/done">Канонический набор (не сплющивается при слиянии — иначе теряется метрика стоимости): «bump pin»; «renames» (перенесённые вслед за переименованиями); «regeneration» (машинный — можно выбросить и создать заново); «deps/toolchain»; отдельные фиксы, каждый со своей причиной; «удаление артефактов к исчезнувшим файлам» — всегда отдельным коммитом с объяснением.</CANONICAL-COMMIT-SET></p>
+    <p><CYCLE-TRAILERS fact="true" status="spec/done">Трейлеры: каждый коммит цикла несёт `Codkit-Cycle: &lt;targetTag&gt;`; фиксы — дополнительно `Cause: &lt;SHA апстрима&gt;`. Ставит хук codkit, проверяет CI (без машинной валидации трейлер не приживается — урок референсов). Канонические сообщения из-под хука единообразны, чтобы их было легко искать.</CYCLE-TRAILERS></p>
+  </canon>
+  <build-after title="6. Порядок строительства">
+    <p><ORCHESTRATOR-BUILT-LAST fact="true" status="spec/done">Оркестратор строится **после** стабильных применения и извлечения — в MVP минимальная версия (пин → применение → отчёт об отказах → продолжение), расширение позже. Тесты самого оркестратора — на фейковом дереве форка (PROP-013 §2, §5): git-операции настоящие, тяжёлое эмулируется.</ORCHESTRATOR-BUILT-LAST></p>
+  </build-after>
+</spec>

@@ -1,0 +1,47 @@
+{
+	"schema": 1,
+	"entries": [
+		{
+			"id": "DBT-0001",
+			"kind": "orphan-code",
+			"severity": "P2",
+			"evidence": [
+				"npm run trace:check: 109/109 production files with resolved first-line @scope",
+				"spec://codkit/common/PROP-000#AI-NATIVE-APPLIES-TO-CODKIT"
+			],
+			"disposition": "fixed",
+			"tripwires": ["touch:codkit/src/**"],
+			"sunset": "permanent project-local trace gate; replaced only by a non-vacuous installed specmap gate"
+		},
+		{
+			"id": "DBT-0002",
+			"kind": "unimplemented-req",
+			"severity": "P2",
+			"evidence": ["conform.toml:eslint floor_disable", "typescript-eslint 8.68 peer range excludes TypeScript 7"],
+			"disposition": "filed",
+			"tripwires": ["dependency:typescript-eslint", "release:typescript-eslint-with-ts7"],
+			"sunset": "re-evaluate on the first typescript-eslint release supporting TypeScript 7 and before external delivery"
+		},
+		{
+			"id": "DBT-0003",
+			"kind": "unimplemented-req",
+			"severity": "P3",
+			"evidence": ["conform.toml:tests and test-gate floor_disable", "npm run floor executes Vitest as the mandatory test step"],
+			"disposition": "accepted",
+			"tripwires": ["change:test-runner", "release:typescript-ai-native-vitest-gate"],
+			"sunset": "replace the adapter when the installed test-gate supports Vitest; re-disposition before external delivery"
+		},
+		{
+			"id": "DBT-0004",
+			"kind": "unimplemented-req",
+			"severity": "P2",
+			"evidence": [
+				"typescript-ai-native specmap: 0 tagged code items after 109 valid @scope markers",
+				"TypeScript 7 package removed the legacy createSourceFile/createScanner API expected by installed ts-extract"
+			],
+			"disposition": "filed",
+			"tripwires": ["dependency:typescript-ai-native", "release:external-delivery"],
+			"sunset": "upgrade the installed extractor to the TypeScript 7 unstable API and remove the specmap exemption before external delivery"
+		}
+	]
+}

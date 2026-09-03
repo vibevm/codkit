@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-008: Движки — резолвер, идентичность, sync, save, 3-way, переименования, причина</title>
+  <status stage="spec" state="done" comment="standalone root resolution and patch-set engines"/>
+  <p><PIN-FILE-READ-RULE fact="true" status="spec/done">«Файл на пине» всегда читается из git-объектов дерева: `git show &lt;pin.sha&gt;:&lt;путь&gt;` — без сети и без checkout. Все git-вызовы — через обёртку `gitx` с изолированным окружением (PROP-002 §2).</PIN-FILE-READ-RULE></p>
+  <resolver title="1. Резолвер трёх корней">
+    <p><resolver-io fact="true" status="spec/done">toolRoot вычисляется из URL установленного entrypoint и имеет source `install`. Внешние roots разрешаются независимо и возвращают `null` либо `{path, source:"flag"|"env"|"settings", exists, warning}`.</resolver-io></p>
+    <fence>toolRoot = realpath(resolve(dirname(import.meta.url), installation-relative-components))
+patchesDir = resolveOne(--patches-dir, CODKIT_PATCHES_DIR, settings.patchesDir, cwd)
+forkDir    = resolveOne(--fork-dir,    CODKIT_FORK_DIR,    settings.forkDir,    cwd)
+
+resolveOne(flag, env, setting, cwd):
+  choose first present source in flag -> env -> setting
+  no source -> null
+  empty chosen value -> CK-E-CONFIG (does not fall through)
+  settings value must be absolute
+  flag/env relative value -> resolve(cwd, value)
+  canonicalize every existing prefix; append missing suffix without I/O
+  return absolute normalized path and exists
+
+assertDisjoint(toolRoot, patchesDir, forkDir):
+  reject equality or containment for every configured pair before command work</fence>
+    <p><RESOLVER-EDGES fact="true" status="spec/done">Пробелы и Unicode в пути допустимы. Существующая цель обязана быть каталогом. Canonicalization существующего префикса закрывает обход nested-root guard через симлинк даже для ещё не созданной цели. На Windows путь длиннее 200 символов даёт предупреждение о long-path support. Никакого sibling/default/config fallback нет.</RESOLVER-EDGES></p>
+  </resolver>
+  <identity title="2. Проверка идентичности и пригодности дерева">
+    <p><identity-io fact="true" status="spec/done">Вход: path. Выход: список результатов проверок; первая фатальная останавливает.</identity-io></p>
+    <facts ordered="true">
+      <ID-CHECK-REPO fact="true" status="impl/done">`path` существует и `git -C path rev-parse --absolute-git-dir --show-toplevel` успешен и возвращает toplevel (bare-репозиторий без рабочего дерева непригоден) — иначе 2 (`CK-E-NOT-A-REPO`; hint: `codkit clone` или проверить путь). Уточнено при реализации M0: этот вызов заодно отдаёт оба пути, нужные последующим проверкам.</ID-CHECK-REPO>
+      <ID-CHECK-ORIGIN fact="true" status="spec/done">Происхождение: `git -C path cat-file -e &lt;upstreamAnchorCommit&gt;` — якорный коммит присутствует в объектах (по достижимости, не по имени remote: имена remote — только подсказка). Иначе 2 (`CK-E-NOT-UPSTREAM`).</ID-CHECK-ORIGIN>
+      <ID-CHECK-PIN fact="true" status="spec/done">Пин достижим: `git cat-file -e &lt;pin.sha&gt;` и `git merge-base --is-ancestor &lt;anchor&gt; &lt;pin.sha&gt;`. Иначе 2 (`CK-E-PIN-UNREACHABLE`; hint — точная команда fetch, которую должен выполнить человек/CI; сам codkit не фетчит в `--ci` никогда, локально — не фетчит без явной команды).</ID-CHECK-PIN>
+      <ID-CHECK-LFS fact="true" status="spec/done">git-lfs (обобщено при реализации M0 — без зашитых путей): если дерево содержит LFS-отслеживаемые пути (`git lfs ls-files -n` непуст; при отсутствии самого git-lfs это определяется грепом `filter=lfs` по `git show &lt;pin&gt;:.gitattributes`), то требуется `git lfs version` успешен И выборка до 3 первых путей из `git lfs ls-files -n` не начинается с `version https://git-lfs.github.com/spec/v1` (маркер pointer-файла); нарушение → 2 (`CK-E-LFS`; pointer-файлы нельзя принять за дельту). Дерево без LFS-путей (фикстуры) проходит проверку вакуумно, с info-строкой. На реальном пине LFS-пути есть (~98 файлов copilot-кэша) — контракт окружения сохраняется. Выборка читает файлы **рабочего дерева**, не git-объекты: для LFS-пути хранимый blob и есть pointer, `git show` всегда выглядит указателем.</ID-CHECK-LFS>
+      <ID-CHECK-WRITE fact="true" status="spec/done">Права: `fs.access(path, W_OK)` и пробная запись+удаление файла в `&lt;path&gt;/.git/codkit/` (кроме read-only режимов, где команда только читает). Ошибка — до начала работы, не в середине применения; код — `CK-E-TREE-READONLY` (PROP-012 §2).</ID-CHECK-WRITE>
+      <ID-CHECK-CLEAN fact="true" status="spec/done">Чистота (только если команда требует): `git status --porcelain` пуст с учётом исключённого own-каталога.</ID-CHECK-CLEAN>
+    </facts>
+  </identity>
+  <sync title="3. sync: приведение к пину и построение сгенерированной ветки">
+    <p><sync-notation fact="true" status="spec/done">Обозначения: `B` = имя ветки `codkit/applied/&lt;pin.tag&gt;`.</sync-notation></p>
+    <fence>sync(tree, cfg, opts):
+  lock(tree)                                     # PROP-006 §2; занято -> выход 2 CK-E-LOCKED
+  checkTree(tree)                                # §2
+  if driftGuard.dirty(tree) and not opts.dryRun: # §4.5
+      выход 1 CK-E-DIRTY-TREE (список файлов)
+  fp = deltaFingerprint(patchset)                   # PROP-006 §1
+  if fastPathOk(cache, mark, fp, B):             # правило сверки PROP-006 §1
+      syncOwnCode(); writeExclude(); выход 0 "up to date"
+      # own-код сверяется всегда: локально он не входит в коммиты ветки
+  if opts.fresh: cleanUntracked(tree, cleanupWhitelist)   # PROP-011 §4
+  # 1. построить целевые коммиты в индексе, не трогая рабочие файлы
+  tmpIndex = новый GIT_INDEX_FILE
+  git read-tree &lt;pin.sha&gt;                        # в tmpIndex
+  parent = pin.sha
+  env: GIT_AUTHOR_DATE=GIT_COMMITTER_DATE=&lt;дата коммита пина, ISO, UTC&gt;,
+       GIT_AUTHOR_NAME=GIT_COMMITTER_NAME="codkit", EMAIL="codkit@patchset.invalid"
+       # фиксированные автор и даты -> SHA коммитов детерминированы между машинами (кэши CI)
+  for art in патчи, лексикографически по UTF-8 пути .ckpatch:
+      applyAndCommit(art)                        # git apply --cached; один коммит на патч
+  if opts.commitOwn:                             # только сгенерированный режим CI/publish
+      применить снимок доставляемого delta/own/** к tmpIndex
+      commitGenerated("codkit: own code")         # один own-коммит, если снимок непуст
+  for target in выбранные режимом overlay-цели, лексикографически по target:
+      применить композицию overlay этой цели к tmpIndex
+      commitGenerated("codkit: overlay &lt;target&gt;") # один коммит на цель
+  for entry in resource-map, сортировка по target:
+      applyAndCommit(entry)                      # один коммит на resource entry
+  # applyAndCommit/commitGenerated: hash-object + update-index (кроме git apply у patch),
+  # сбой -> выход 1 CK-E-ARTIFACT-BROKEN; write-tree; commit-tree -p parent.
+  # Каждый коммит: Codkit-Patchset-Commit: &lt;HEAD patchset | dirty&gt; и
+  # Codkit-Upstream-Pin: &lt;tag&gt;@&lt;sha&gt;; artifact-коммиты дополнительно Codkit-Artifact: &lt;id&gt;.
+  # target-path — путь ЦЕЛИ в дереве; patchset с изменениями вне .codkit/ даёт "dirty"
+  # только локальным построениям. publish всегда подставляет полный SHA явного patchset-ref.
+  top = parent
+  # 2. перевести дерево на top, тронув только отличающиеся файлы
+  git update-ref refs/heads/B top
+  git symbolic-ref HEAD refs/heads/B             # HEAD -> ветка, рабочие файлы ещё старые
+  changed = git diff --name-status --no-renames HEAD  # рабочая копия vs новая вершина
+  for f in changed: checkout/rm по статусу       # переписываются ТОЛЬКО отличающиеся -> mtime целы;
+                                                 # файлы, отсутствующие на новой вершине, удаляются (rm)
+  привести ИНДЕКС к HEAD (diff-index --cached -> reset путей)  # НОРМА (урок M0): иначе индекс
+                                                 # описывает прежнюю вершину, status даёт ложную грязь
+  # git clean НЕ выполняется (неотслеживаемое чистит только --fresh по белому списку)
+  # 3. own-код и dev-overlay
+  syncOwnCode()                                  # §3.1
+  writeProductOverrides()                        # PROP-005 §5 вариант 1
+  writeExclude(); writeTreeHook(); writeMark(); writeCache(fp, top)
+  unlock(); выход 0</fence>
+    <p><TREE-HOOK-STEP fact="true" status="spec/done">`writeTreeHook()` — установка pre-commit-хука дерева против ручных коммитов (норма PROP-012 §5 `##FORK-TREE-PRECOMMIT-HOOK`): переписывает `&lt;tree&gt;/.git/hooks/pre-commit` нашим скриптом (shebang `sh`, переносимый), отклоняющим коммит с подсказкой при отсутствии `CODKIT_INTERNAL_COMMIT=1`; на read-only mount ошибка записи не фатальна (как у метки, `CK-W-MARK-RO`).</TREE-HOOK-STEP></p>
+    <p><GENERATED-BRANCH-LAYER-ORDER fact="true" status="spec/done">Канонический порядок слоёв сгенерированной истории CI/publish — `patch → own → overlay → resource`; пустой слой пропускается, порядок оставшихся не меняется. Обычный локальный `sync` сохраняет прежнюю семантику: `opts.commitOwn=false`, own не попадает в индекс/коммиты ветки, а копируется шагом `syncOwnCode()` после перевода HEAD и исключается через `.git/info/exclude`; выбор dev-канала overlay также не меняется. Тем самым выравнивание истории publish не превращает локальный own-код в tracked-файлы.</GENERATED-BRANCH-LAYER-ORDER></p>
+    <facts ordered="false">
+      <OWN-COPY-ALGORITHM fact="true" status="spec/done">**Копирование own-кода** (`syncOwnCode` / `mirrorOwnBack`): обход `delta/own/**` и `&lt;tree&gt;/src/vs/&lt;ownDirName&gt;/**`; для каждого файла сравнение байтов (быстрый фильтр — размер; при равенстве размеров — полное сравнение содержимого; mtime как критерий НЕ используется — ложные срабатывания при checkout); отличие → копирование (источник→приёмник для `sync`, приёмник→источник для `save`); отсутствие в источнике → удаление в приёмнике; пустые каталоги удаляются. Симлинки внутри own запрещены (ошибка).</OWN-COPY-ALGORITHM>
+      <MTIME-DISCIPLINE fact="true" status="spec/done">**Требование mtime**: пересоздание ветки не меняет содержимое и mtime файлов, чьё итоговое состояние не изменилось (шаг 2 переписывает только `changed`) — иначе watch-демоны устраивают шторм перекомпиляции. Контрольный эксперимент — P3-S10 (FEAT-001 §6).</MTIME-DISCIPLINE>
+    </facts>
+  </sync>
+  <save title="4. save/extract и страж дрейфа">
+    <fence>save(tree, cfg, paths?, opts):
+  lock(tree); checkTree(tree)
+  # 1. own: дерево -> patchset
+  mirrorOwnBack()                                 # §3.1 в обратную сторону
+  # 2. апстримные правки
+  dirty = git status --porcelain (кроме own-каталога), отфильтровано по paths если заданы
+  for f in dirty:
+      если f удалён -> выход 1 CK-E-DELETES-UPSTREAM-FILE (hint: hide + removed-registry)
+      если f новый:
+          если не opts.allowNewFile(f) -> выход 1 CK-E-NEW-FILE-IN-UPSTREAM-ZONE (hint: own)
+          иначе патч add-file (PROP-004 §4)
+      если f in forbiddenPatchTargets -> выход 1 CK-E-FORBIDDEN-TARGET
+      markers = parseMarkers(рабочий файл); ошибки -> выход 1
+      patch = regenerate(f)                       # PROP-004 §5: пин -> текущее состояние
+      checkHunksInsideMarkers(patch, pin(f))      # PROP-006 §5; нарушение -> выход 1, патч не записан
+      записать/обновить delta/patches/&lt;enc(f)&gt;.ckpatch (байтовое сравнение PROP-004 §5)
+      если патч стал пуст (файл вернулся к пину) -> удалить .ckpatch, сообщить
+  # 3. инвентарь и ветка
+  inventory build (в .codkit/out)
+  перестроить ветку как sync шаги 1–2; итоговое дерево ветки байт-в-байт равно рабочему
+  состоянию -> changed после update-ref пуст -> ни один файл не тронут, HEAD сдвинут
+  writeMark(); writeCache()
+  if opts.commit: git -C patchset add delta/… ; git commit
+  unlock(); выход 0</fence>
+    <p><SAVE-INTERRUPT-SAFE fact="true" status="spec/done">Прерывание между записью патча и перестроением ветки безопасно: следующий `sync`/`save` увидит несовпадение отпечатка и перестроит ветку; артефакты уже корректны.</SAVE-INTERRUPT-SAFE></p>
+    <facts ordered="false">
+      <DRIFT-GUARD-PREDICATE fact="true" status="impl/done">**Страж дрейфа**: `dirty(tree)` = (`git status --porcelain` непуст вне own-каталога) ∨ (own-расхождение классов `both` — байты различаются — или `tree-only` — файл есть только в дереве). Файл, существующий ТОЛЬКО в `delta/own/` patchset (`patchset-only`), — НЕ грязь: иначе первый sync любого дерева был бы невозможен (уточнение реализации M0). Разрушительные операции (`sync`, `cycle start`, `ci`, `publish`, `clone` поверх, `restart`) при dirty — выход 1 `CK-E-DIRTY-TREE` со списком и hint («codkit save» или «codkit status»). `--fresh` подавляет fast-path и не считает untracked-пути грязью (иначе fresh никогда ничего не чистил бы).</DRIFT-GUARD-PREDICATE>
+      <PATCHSET-SIDE-EDIT-RULE fact="true" status="impl/done">Обратное направление: если рабочие файлы `delta/own/` в patchset изменены при чистом дереве, `sync` предупреждает `CK-W-PATCHSET-SIDE-EDIT` и применяет patchset-версию (направление истины в момент sync — patchset). Различение сторон — пофайлово, по карте `ownFiles` метки (PROP-006 §1): файл дерева == метке → менялся patchset (применить patchset); файл patchset == метке → менялось дерево (грязь стража, извлекается save); обе стороны != метке и друг другу — выход 1 `CK-E-BOTH-SIDES-EDITED` с именем файла.</PATCHSET-SIDE-EDIT-RULE>
+    </facts>
+  </save>
+  <classify title="5. 3-way применение при чужом пине и классификация исходов">
+    <p><classify-usage fact="true" status="spec/done">Используется `cycle`, `forecast`, `rebase-onto-pin` (на своём пине конфликтов не бывает по построению — инвариант самосогласованности). Вход: артефакт A с целью F, старый пин `oldPin`, целевой ref `newRef`. Выход: исход из классов ниже + материалы.</classify-usage></p>
+    <fence>classifyAndApply(A, oldPin, newRef):
+  # (5) переименована? — решается ДО, отдельным шагом §6 (rename-карта); здесь F — уже актуальное имя
+  if F отсутствует в newRef:            return TARGET_DELETED         # (4) cause §7, человек решает
+  base = git show oldPin:F;  theirs = applyUnified(base, A)           # наше состояние на старом пине
+  ours = git show newRef:F
+  if ours == base:                      return CLEAN(theirs)          # (1) апстрим не менял файл
+  r = git merge-file -p --diff3 &lt;ours&gt; &lt;base&gt; &lt;theirs&gt;               # файловое 3-way
+  if r без конфликтов:
+      if applyUnified(ours, A) успешен: return SHIFTED(r)             # (2) лёг со сдвигом -> регенерировать
+      else:                             return MERGED(r)              # (3) только 3-way -> регенерировать
+  else:                                 return CONFLICT(r с маркерами)# (3*) содержательный конфликт -> человек/агент
+  # (6) RULE_BROKEN: для rewrite-rule фактические совпадения != expectedMatches на newRef
+  # (7) CONTRACT_FAILED: артефакт лёг, но его contract-тест красный (ставит фаза stabilize, не движок)
+  # (8) OVERLAY_DRIFT: expectUpstream на newRef разошёлся (отчитывается как конфликт слоя config-overlay)</fence>
+    <facts ordered="false">
+      <OUTCOME-CLASS-NAMES fact="true" status="spec/done">Имена классов исходов в состоянии цикла: `clean`, `shifted`, `merged`, `conflict`, `target-deleted`, `target-renamed` (из §6), `rule-broken`, `contract-failed`.</OUTCOME-CLASS-NAMES>
+      <ENGINE-NEVER-STOPS-AT-FIRST fact="true" status="spec/done">Движок не останавливается на первом конфликте: он проходит все независимые артефакты и отдаёт полный классифицированный список; exit 3 относится к итоговой обязательной человеческой остановке.</ENGINE-NEVER-STOPS-AT-FIRST>
+      <CONFLICT-MATERIALIZATION fact="true" status="spec/done">Материализация для резолва: для `conflict` оркестратор записывает в рабочий файл дерева результат `merge-file --diff3` со стандартными конфликт-маркерами — человек и агент правят в IDE обычным способом.</CONFLICT-MATERIALIZATION>
+    </facts>
+  </classify>
+  <renames title="6. Следование за переименованиями между пинами">
+    <p><renames-when fact="true" status="spec/done">Отдельный явный шаг до применения (не автоопределение внутри — на больших диффах git отключает rename-детекцию молча).</renames-when></p>
+    <fence>renames(oldPin, newPin, threshold=50):
+  out = git diff --name-status -M&lt;threshold&gt;% oldPin newPin
+  карта = { from -> {to, similarity} для строк R&lt;NNN&gt; }
+  для каждого артефакта с целью from из карты:
+      предложение переноса:
+        артефакт (патч переименовывается по кодированию имени PROP-004 §4,
+                  заголовки --- +++ переписываются на новый путь),
+        его contract-тесты (файлы тестов в own, содержащие путь from, получают путь to),
+        import-пути в own-коде (грепом точной строки старого relative-пути)
+      перенесённый артефакт немедленно пробно применяется (§5) к newPin — исход в отчёт
+  порог управляем флагом --similarity; список переносов пишется в state.renames и журнал</fence>
+    <p><RENAME-BELOW-100-FLAGGED fact="true" status="spec/done">Пары с `similarity &lt; 100` помечаются «требует взгляда человека» в отчёте (перенос сделан, но попадает в красный список ревью). Проверочный кейс полигона: переименование `src/vs/platform/agentHost/browser/remoteAgentHostProtocolClient.ts → agentHostProtocolClient.ts` (R096, окно `1.134.0→1.135.0`).</RENAME-BELOW-100-FLAGGED></p>
+  </renames>
+  <cause title="7. Поиск коммита-причины">
+    <facts ordered="true">
+      <CAUSE-STEP-LOG fact="true" status="spec/done">`git log --format=%H --follow oldPin..newPin -- F` — коммиты, тронувшие файл.</CAUSE-STEP-LOG>
+      <CAUSE-STEP-NARROW fact="true" status="spec/done">Один коммит → он и есть причина. Несколько → сузить по строкам: для каждого ханка артефакта взять диапазон затронутых строк на `oldPin` и выполнить `git log -L&lt;start&gt;,&lt;end&gt;:F oldPin..newPin --format=%H`; коммит-причина — самый ранний коммит, пересёкший диапазон; если `-L` неприменим (файл удалён/переименован) — коммитом-причиной объявляется последний коммит из первого шага, с пометкой `approx`.</CAUSE-STEP-NARROW>
+      <CAUSE-STEP-DELETED fact="true" status="spec/done">Для `target-deleted`/`target-renamed` — коммит, удаливший/переименовавший (`git log --diff-filter=D|R --follow`).</CAUSE-STEP-DELETED>
+      <CAUSE-OUTPUT fact="true" status="spec/done">Выход: `{sha, approx: bool}`; пишется в `cause` шапки патча (шагом регенерации), в журнал и в трейлер `Cause:` коммита-фикса. Отчёт цикла группируется по коммитам-причинам (десятки отказов → единицы причин).</CAUSE-OUTPUT>
+    </facts>
+  </cause>
+</spec>

@@ -1,0 +1,42 @@
+{
+  "codkitBuildWatch": 1,
+  "_doc": "Pass boundaries of the watch daemons, as data (PROP-010 section 2). Nothing here is code: the wrapper only reads these patterns, so a change in the upstream output is a change to this file and never to a module. Every entry of channels is one daemon: script is the npm script of the fork tree that starts it; passStart / passEnd / errorLine / errorCountLine / falseEndGuards are JavaScript regular-expression sources, matched (unanchored .test) against a single log line after ANSI escapes have been stripped. passStart opens a pass and passEnd closes it; a line that matches falseEndGuards never closes a pass, even when it also matches passEnd. errorLine parses one diagnostic: capture group 1 is the file, numeric groups 2 and 3 are line and column when present, a group of the form TSnnnn is the diagnostic code and the last group is the message. errorCountLine carries the authoritative number of errors of the pass in group 1 and wins over the number of parsed errorLine matches - the typecheck channel needs it because the counter in its own passEnd line is a flag (0 or 1), not a count.",
+  "channels": {
+    "transpile": {
+      "_doc": "The only writer of out/, and it empties out/ when it starts: never restart a living transpile daemon (PROP-010 section 2).",
+      "script": "watch-client-transpile",
+      "passStart": ["^Starting transpilation\\.\\.\\.$"],
+      "passEnd": ["^Finished transpilation with (0|1) errors after \\d+ ms$"],
+      "errorLine": ["^(.+?):(\\d+):(\\d+): ERROR: (.+)$"],
+      "errorCountLine": [],
+      "falseEndGuards": []
+    },
+    "typecheck": {
+      "_doc": "noEmit type check plus code generation into src/. Real watch-client lines carry a [HH:mm:ss] prefix while the generated fixtures stay bare, so every pattern accepts exactly that optional prefix. The generators print their own 'Finished compilation <id> with N errors after M ms' markers on every change; those look like the end of a pass and are not, so they are guarded. The guard tells them apart by what follows the word compilation: a non-empty id, never the literal 'with'.",
+      "script": "watch-client",
+      "passStart": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Starting compilation\\.\\.\\.$"],
+      "passEnd": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compilation with \\d+ errors after \\d+ ms$"],
+      "errorLine": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
+      "errorCountLine": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished watch-client-noEmit .* with (\\d+) errors\\.$"],
+      "falseEndGuards": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compilation (?!with )[^ ]+ with \\d+ errors after \\d+ ms$"]
+    },
+    "extensions": {
+      "_doc": "Forty extension projects; the per-pass total arrives on its own line, so errorCountLine is the source of the number and the tsc lines, when the daemon prints them, give the detail.",
+      "script": "watch-extensions",
+      "passStart": ["^Starting compilation$"],
+      "passEnd": ["^Finished compilation$"],
+      "errorLine": ["^(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
+      "errorCountLine": ["^Finished extensions .* with (\\d+) errors\\.$"],
+      "falseEndGuards": []
+    },
+    "copilot": {
+      "_doc": "esbuild plus a tsc noEmit pass; either of the two lines ends a pass, and the tsc summary also carries the count.",
+      "script": "watch-copilot",
+      "passStart": ["\\[watch\\] build started"],
+      "passEnd": ["\\[watch\\] build finished", "Found (\\d+) errors?\\. Watching for file changes"],
+      "errorLine": ["^(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
+      "errorCountLine": ["Found (\\d+) errors?\\. Watching for file changes"],
+      "falseEndGuards": []
+    }
+  }
+}

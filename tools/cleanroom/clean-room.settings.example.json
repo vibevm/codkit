@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(//absolute/path/to/reference-repository-one/**)",
+      "Read(//absolute/path/to/reference-repository-two/**)",
+      "Read(//absolute/path/to/reference-repository-three/**)",
+      "Read(//absolute/path/to/reference-repository-four/**)"
+    ]
+  }
+}

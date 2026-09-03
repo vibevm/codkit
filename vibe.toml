@@ -1,0 +1,43 @@
+[project]
+name = "codkit"
+version = "0.1.0"
+spec_format = "xml"
+authors = ["Oleg Chirukhin"]
+
+
+[requires.packages]
+"flow:org.vibevm.world/omnichannel" = "^1.0.0"
+"stack:org.vibevm.ai-native/typescript-ai-native" = "^1.0.0"
+
+[requires.packages."flow:org.vibevm.world/multi-user-planning"]
+version = "^0.2.0"
+link = "static-transitive"
+
+[requires.packages."org.vibevm.world/redbook"]
+version = "^1.0.0"
+link = "static-transitive"
+exclude = [
+  "org.vibevm.world/wal",
+  "org.vibevm.world/wal-specspaces",
+]
+
+# redbook@1 is immutable and its dormant wal-specspaces member fragment names
+# the WAL concept. This consumer deliberately excludes that whole continuity
+# family in favour of multi-user-planning, so silence only that known legacy
+# concept warning at the root; no package bytes or edition roster are rewritten.
+[visibility]
+ignore-concept-warnings = ["WAL"]
+
+# The `[[registry]]` blocks below are the standard defaults `vibe init`
+# writes for every new project: `vibespecs` on GitHub is the canonical
+# source of the installed packages; `vibespecs-gitverse` is queried on
+# resolve fall-through. Codkit consumes published packages only — it
+# authors none of its own.
+[[registry]]
+name = "vibespecs"
+url = "https://github.com/vibespecs"
+
+[[registry]]
+name = "vibespecs-gitverse"
+url = "https://gitverse.ru/vibespecs"
+naming = "name"

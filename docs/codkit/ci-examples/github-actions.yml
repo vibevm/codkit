@@ -1,0 +1,72 @@
+name: codkit example
+
+"on":
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    env:
+      CODKIT_CI_IMAGE: registry.internal.example/codkit-ci:node24
+    steps:
+      - name: Check out patchset
+        uses: actions/checkout@v4
+        with:
+          path: patchset
+          fetch-depth: 0
+
+      - name: Check out the approved Codkit installation
+        uses: actions/checkout@v4
+        with:
+          repository: example-org/codkit
+          ref: approved-codkit-ref
+          path: codkit-tool
+          fetch-depth: 1
+
+      - name: Check out the supplied fork repository
+        uses: actions/checkout@v4
+        with:
+          repository: example-org/vscode-fork
+          path: fork-tree
+          fetch-depth: 0
+          # Configure access as an organization/repository secret in CI.
+          token: ${{ secrets.FORK_REPOSITORY_READ_TOKEN }}
+
+      - name: Materialize the configured pin and its LFS objects
+        shell: bash
+        run: |
+          pin_sha="$(node -e 'const fs=require("node:fs"); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).pin.sha)' "$GITHUB_WORKSPACE/patchset/codkit.json")"
+          git -C "$GITHUB_WORKSPACE/fork-tree" checkout --detach "$pin_sha"
+          git -C "$GITHUB_WORKSPACE/fork-tree" lfs pull origin "$pin_sha"
+
+      - name: Supply Codkit dependencies
+        working-directory: codkit-tool
+        # The runner's npm configuration selects the approved/internal registry.
+        run: npm ci
+
+      - name: Run the no-network Codkit threshold
+        shell: bash
+        run: |
+          docker run --rm --network none --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev \
+            --user "$(id -u):$(id -g)" \
+            --workdir /work/patchset \
+            --volume "$GITHUB_WORKSPACE/codkit-tool:/opt/codkit:ro" \
+            --volume "$GITHUB_WORKSPACE/patchset:/work/patchset" \
+            --volume "$GITHUB_WORKSPACE/fork-tree:/work/tree" \
+            --env CODKIT_PATCHES_DIR=/work/patchset \
+            --env CODKIT_FORK_DIR=/work/tree \
+            "$CODKIT_CI_IMAGE" \
+            /opt/codkit/bin/codkit --json ci --profile verify \
+              --pin-guard-base "${{ github.event.pull_request.base.sha }}"
+
+      - name: Upload generated review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codkit-output
+          path: patchset/.codkit/out/
+          if-no-files-found: ignore

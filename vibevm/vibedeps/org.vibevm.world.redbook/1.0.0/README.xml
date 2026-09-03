@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">`flow:redbook` — the AI-native development practices, as a collection</title>
+  <status stage="doc" state="done" audience="user"/>
+  <p><REDBOOK-IS-A-CURATED-COLLECTION-OF-PRACTICES fact="true" status="impl/done">The **redbook** is a curated collection of AI-native development
+practices distilled from the book *AI-native development* and from
+the practices proven in the vibevm project's own history.</REDBOOK-IS-A-CURATED-COLLECTION-OF-PRACTICES></p>
+  <p><EACH-PRACTICE-IS-A-STANDALONE-FLOW-PACKAGE fact="true" status="impl/done">Each
+practice is a standalone `flow` package — a boot snippet plus
+protocol documents, product-agnostic, language-agnostic, and
+agnostic of any particular coding agent.</EACH-PRACTICE-IS-A-STANDALONE-FLOW-PACKAGE></p>
+  <p><THE-UMBRELLA-NAMES-A-TESTED-SET-AND-CARRIES-THE-BOOK fact="true" status="impl/done">This umbrella package names
+a **tested set** of them and carries the book itself.</THE-UMBRELLA-NAMES-A-TESTED-SET-AND-CARRIES-THE-BOOK></p>
+  <p><REQUIRING-THE-UMBRELLA-INSTALLS-THE-WHOLE-COLLECTION fact="true" status="impl/done">Requiring `flow:redbook` installs the whole collection: the members
+arrive through the dependency closure, each contributing its own
+boot snippet and its own `spec/flows/&lt;name&gt;/` documents.</REQUIRING-THE-UMBRELLA-INSTALLS-THE-WHOLE-COLLECTION></p>
+  <editions title="The edition model">
+    <p><THE-UMBRELLAS-VERSION-IS-THE-EDITION-NUMBER fact="true" status="impl/done">The umbrella's version is the **edition number**.</THE-UMBRELLAS-VERSION-IS-THE-EDITION-NUMBER></p>
+    <p><AN-EDITION-IS-A-TESTED-SET-OF-EXACT-PINS fact="true" status="impl/done">An edition is a
+tested set: every member is pinned exactly (`=X.Y.Z`), so no member's
+version can skew inside an edition. The *roster* is a second question —
+while a wave settles, members are accumulated in place and the edition
+number moves once at the end (see the manifest's own note above the
+cultural-extraction wave), so two projects on the same edition run
+byte-identical text of every member they share.</AN-EDITION-IS-A-TESTED-SET-OF-EXACT-PINS></p>
+    <p><MEMBERS-EVOLVE-BETWEEN-EDITIONS fact="true" status="impl/done">Members evolve on their own version lines between editions; a new
+edition is a new umbrella version with refreshed pins.</MEMBERS-EVOLVE-BETWEEN-EDITIONS></p>
+    <facts ordered="false">
+      <EDITION-0-1-0 fact="true" status="impl/done">**Edition 0.1.0** — the book's core: the ten flows for the
+  two-process model, the file IPC, and the memory model.</EDITION-0-1-0>
+      <EDITION-0-2-0 fact="true" status="impl/done">**Edition 0.2.0** (the second edition) — added eleven project-practice
+  flows for running a project over the long haul.</EDITION-0-2-0>
+      <EDITION-1-0-0 fact="true" status="impl/done">**Edition 1.0.0** (this edition) — remints the tested
+  collection as the stable 1.0 world.</EDITION-1-0-0>
+    </facts>
+  </editions>
+  <members title="Members (edition 1.0.0)">
+    <p><books-core-table-lead fact="true" status="impl/done">The book's core:</books-core-table-lead></p>
+    <table>
+      <tr>
+        <td>Flow</td>
+        <td>One line</td>
+      </tr>
+      <tr>
+        <td><ROW-TWO-PROCESS-MODEL fact="true" status="impl/done">`two-process-model` @1.0.0</ROW-TWO-PROCESS-MODEL></td>
+        <td><ROW-TWO-PROCESS-MODEL-ONE-LINE fact="true" status="impl/done">Human and AI as coprocessors; the human owns coherence; files are the only shared memory.</ROW-TWO-PROCESS-MODEL-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-WAL fact="true" status="impl/done">`wal` @1.0.0</ROW-WAL></td>
+        <td><ROW-WAL-ONE-LINE fact="true" status="impl/done">The checkpoint file (WAL) and cold-resume snapshot; session wind-down and resume rituals; the `wal-status` skill.</ROW-WAL-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-SYNC-FROM-CODE fact="true" status="impl/done">`sync-from-code` @1.0.0</ROW-SYNC-FROM-CODE></td>
+        <td><ROW-SYNC-FROM-CODE-ONE-LINE fact="true" status="impl/done">The sanctioned reverse path: reconcile the spec when code changed first, with human approval.</ROW-SYNC-FROM-CODE-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-ATOMIC-COMMITS fact="true" status="impl/done">`git-atomic-commits` @1.0.0</ROW-ATOMIC-COMMITS></td>
+        <td><ROW-ATOMIC-COMMITS-ONE-LINE fact="true" status="impl/done">One commit, one idea; Conventional Commits; pushed history is frozen.</ROW-ATOMIC-COMMITS-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-ADDRESSABLE-SPECS fact="true" status="impl/done">`addressable-specs` @1.0.0</ROW-ADDRESSABLE-SPECS></td>
+        <td><ROW-ADDRESSABLE-SPECS-ONE-LINE fact="true" status="impl/done">`spec://` URIs, stable anchors, size budgets, and the spec tree layout.</ROW-ADDRESSABLE-SPECS-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-DECISION-RECORDS fact="true" status="impl/done">`decision-records` @1.0.0</ROW-DECISION-RECORDS></td>
+        <td><ROW-DECISION-RECORDS-ONE-LINE fact="true" status="impl/done">Decisions, not facts: reason + rejected alternatives + revisit trigger, at the governing anchor.</ROW-DECISION-RECORDS-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-CONFLICT-PROTOCOL fact="true" status="impl/done">`conflict-protocol` @1.0.0</ROW-CONFLICT-PROTOCOL></td>
+        <td><ROW-CONFLICT-PROTOCOL-ONE-LINE fact="true" status="impl/done">Human &gt; Spec &gt; Tests &gt; Code; REVIEW markers; the conservative-default path when the spec is silent.</ROW-CONFLICT-PROTOCOL-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-CAMPAIGN-PLANS fact="true" status="impl/done">`campaign-plans` @1.0.0</ROW-CAMPAIGN-PLANS></td>
+        <td><ROW-CAMPAIGN-PLANS-ONE-LINE fact="true" status="impl/done">Cold-executable campaign plans: phase gates, falsifiable predictions, execution and deferral ledgers.</ROW-CAMPAIGN-PLANS-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-DISCOVERY-PROMPT fact="true" status="impl/done">`discovery-prompt` @1.0.0</ROW-DISCOVERY-PROMPT></td>
+        <td><ROW-DISCOVERY-PROMPT-ONE-LINE fact="true" status="impl/done">The DISCOVERY collaborative-research prompt, packaged verbatim with a usage guide.</ROW-DISCOVERY-PROMPT-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-ATTRIBUTION-POLICY fact="true" status="impl/done">`git-attribution-policy` @1.0.0</ROW-ATTRIBUTION-POLICY></td>
+        <td><ROW-ATTRIBUTION-POLICY-ONE-LINE fact="true" status="impl/done">A deliberate authorship posture: human-authored surface by default, disclosure documented as the alternative.</ROW-ATTRIBUTION-POLICY-ONE-LINE></td>
+      </tr>
+    </table>
+    <p><project-practice-table-lead fact="true" status="impl/done">The project-practice wave:</project-practice-table-lead></p>
+    <table>
+      <tr>
+        <td>Flow</td>
+        <td>One line</td>
+      </tr>
+      <tr>
+        <td><ROW-OPERATING-MODES fact="true" status="impl/done">`operating-modes` @1.0.0</ROW-OPERATING-MODES></td>
+        <td><ROW-OPERATING-MODES-ONE-LINE fact="true" status="impl/done">Codeword-triggered work postures; red lines that survive every mode.</ROW-OPERATING-MODES-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-HEALTH-AUDIT fact="true" status="impl/done">`health-audit` @1.0.0</ROW-HEALTH-AUDIT></td>
+        <td><ROW-HEALTH-AUDIT-ONE-LINE fact="true" status="impl/done">The periodic judgment sweep over what the per-commit gate is blind to; a skill and an append-only trend.</ROW-HEALTH-AUDIT-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-MANUAL-TESTS fact="true" status="impl/done">`manual-tests` @1.0.0</ROW-MANUAL-TESTS></td>
+        <td><ROW-MANUAL-TESTS-ONE-LINE fact="true" status="impl/done">Human-runnable walkthroughs for the integration surfaces automation cannot prove.</ROW-MANUAL-TESTS-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-SECRETS-HYGIENE fact="true" status="impl/done">`secrets-hygiene` @1.0.0</ROW-SECRETS-HYGIENE></td>
+        <td><ROW-SECRETS-HYGIENE-ONE-LINE fact="true" status="impl/done">Surface-secrets never printed or persisted; scope discipline; third-party-code consent.</ROW-SECRETS-HYGIENE-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-LICENSING fact="true" status="impl/done">`licensing` @1.0.0</ROW-LICENSING></td>
+        <td><ROW-LICENSING-ONE-LINE fact="true" status="impl/done">A deliberate licence posture; permissive-only dependencies; the EULA-to-open path; a drafting skill.</ROW-LICENSING-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-SOURCE-MIRRORS fact="true" status="impl/done">`source-mirrors` @1.0.0</ROW-SOURCE-MIRRORS></td>
+        <td><ROW-SOURCE-MIRRORS-ONE-LINE fact="true" status="impl/done">Single-writer multi-homing; manifest-driven fail-loud fast-forward-only fan-out.</ROW-SOURCE-MIRRORS-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-SPEC-GENRES fact="true" status="impl/done">`spec-genres` @1.0.0</ROW-SPEC-GENRES></td>
+        <td><ROW-SPEC-GENRES-ONE-LINE fact="true" status="impl/done">Contract vs lore vs research vs plans — what goes where, who wins, two-way links.</ROW-SPEC-GENRES-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-COMPARATIVE-RESEARCH fact="true" status="impl/done">`comparative-research` @1.0.0</ROW-COMPARATIVE-RESEARCH></td>
+        <td><ROW-COMPARATIVE-RESEARCH-ONE-LINE fact="true" status="impl/done">Evergreen competitor studies with two-way gap analysis and numbered roadmap deltas.</ROW-COMPARATIVE-RESEARCH-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-MANAGED-BLOCKS fact="true" status="impl/done">`managed-blocks` @1.0.0</ROW-MANAGED-BLOCKS></td>
+        <td><ROW-MANAGED-BLOCKS-ONE-LINE fact="true" status="impl/done">How a tool writes into files it does not own — one delimited block, deterministic scanning (for tool authors).</ROW-MANAGED-BLOCKS-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-QUALIFIED-NAMING fact="true" status="impl/done">`qualified-naming` @1.0.0</ROW-QUALIFIED-NAMING></td>
+        <td><ROW-QUALIFIED-NAMING-ONE-LINE fact="true" status="impl/done">Namespaces for package ecosystems: groups, identity tuples, collision vs conflict (for ecosystem designers).</ROW-QUALIFIED-NAMING-ONE-LINE></td>
+      </tr>
+      <tr>
+        <td><ROW-TOOL-DESIGN-LESSONS fact="true" status="impl/done">`tool-design-lessons` @1.0.0</ROW-TOOL-DESIGN-LESSONS></td>
+        <td><ROW-TOOL-DESIGN-LESSONS-ONE-LINE fact="true" status="impl/done">Paid-for lessons for self-updating tools and package systems.</ROW-TOOL-DESIGN-LESSONS-ONE-LINE></td>
+      </tr>
+    </table>
+  </members>
+  <book title="The book">
+    <p><the-collection-takes-its-spirit-from-the-book fact="true" status="spec/done">The collection takes the general spirit of the process from the
+book.</the-collection-takes-its-spirit-from-the-book></p>
+    <p><THE-FULL-TEXT-SHIPS-UNDER-SPEC-BOOK-RU fact="true" status="impl/done">The full text ships in this package under `spec/book/ru/` —
+currently the Russian manuscript, included as-is.</THE-FULL-TEXT-SHIPS-UNDER-SPEC-BOOK-RU></p>
+    <p><AN-ENGLISH-EDITION-WILL-TAKE-PRIORITY-ONCE-IT-EXISTS fact="true" status="spec/done">An English edition
+will sit alongside it and take priority once it exists; until then
+the Russian text is the reference.</AN-ENGLISH-EDITION-WILL-TAKE-PRIORITY-ONCE-IT-EXISTS></p>
+    <p><book-readme-pointer fact="true" status="impl/done">See `spec/book/README.md`.</book-readme-pointer></p>
+    <p><THE-BOOK-IS-REFERENCE-DEPTH fact="true" status="spec/done">The book is reference depth: the member flows carry the operational
+rules, the book carries the *why* behind all of them.</THE-BOOK-IS-REFERENCE-DEPTH></p>
+  </book>
+  <discipline title="Relation to the AI-Native Discipline">
+    <p><complementary-layers-lead fact="true" status="spec/done">The redbook and the AI-Native Code Discipline
+(`flow:org.vibevm.ai-native/core-ai-native` and its language families) are
+complementary layers:</complementary-layers-lead></p>
+    <facts ordered="false">
+      <LAYER-REDBOOK-IS-PURE-METHOD fact="true" status="spec/done">**redbook** is pure method — its value survives with only a git
+  repository and a markdown editor. Any product, any language, any
+  agent.</LAYER-REDBOOK-IS-PURE-METHOD>
+      <LAYER-DISCIPLINE-IS-CODE-ENFORCED-RIGOR fact="true" status="impl/done">**The Discipline** is code-enforced rigor — pattern cards, gates,
+  and runnable checkers shipped per language.</LAYER-DISCIPLINE-IS-CODE-ENFORCED-RIGOR>
+    </facts>
+    <p><THE-REDBOOK-PACKAGE-IS-CANONICAL-WHERE-THE-TWO-OVERLAP fact="true" status="spec/done">Where the two describe the same practice, **the redbook package is
+canonical**: `flow:wal` is the canonical home of the WAL convention
+and `flow:campaign-plans` of the campaign-plan format. That is this
+package's position, and the Discipline has not recorded it: as of
+core-ai-native 0.8.0 its `05-CAMPAIGN-FORM.xml` and
+`06-WAL-CONVENTION.xml` carry no deferral, so the two remain parallel
+copies until one lands.</THE-REDBOOK-PACKAGE-IS-CANONICAL-WHERE-THE-TWO-OVERLAP></p>
+  </discipline>
+  <install title="Install">
+    <fence lang="bash">vibe install flow:redbook</fence>
+  </install>
+  <uninstall title="Uninstall">
+    <fence lang="bash">vibe uninstall flow:redbook</fence>
+    <p><UNINSTALLING-THE-UMBRELLA-REMOVES-ONLY-ITS-OWN-FILES fact="true" status="impl/done">Uninstalling the umbrella removes its own files; member packages are
+removed by uninstalling them individually.</UNINSTALLING-THE-UMBRELLA-REMOVES-ONLY-ITS-OWN-FILES></p>
+  </uninstall>
+  <license title="License">
+    <p><license-line fact="true" status="impl/done">UPL-1.0. See `LICENSE.md`.</license-line></p>
+    <p><THE-BOOK-TEXT-SHIPS-UNDER-THE-SAME-TERMS fact="true" status="impl/done">The book text under `spec/book/` is the
+author's manuscript and ships under the same terms.</THE-BOOK-TEXT-SHIPS-UNDER-THE-SAME-TERMS></p>
+  </license>
+</spec>

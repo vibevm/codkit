@@ -1,0 +1,54 @@
+{
+	"name": "codkit",
+	"version": "0.1.0",
+	"private": true,
+	"license": "UNLICENSED",
+	"type": "module",
+	"engines": {
+		"node": ">=22.6.0"
+	},
+	"bin": {
+		"codkit": "codkit/bin/codkit.mjs"
+	},
+	"files": [
+		".claude",
+		"AGENTS.md",
+		"AUDIT.md",
+		"CLAUDE.md",
+		"bin/codkit",
+		"bin/codkit.ps1",
+		"codkit/bin",
+		"codkit/config",
+		"codkit/dist",
+		"codkit/hooks",
+		"codkit/src",
+		"codkit/README.md",
+		"docs/codkit",
+		"npm-shrinkwrap.json",
+		"README.md",
+		"vibe.toml",
+		"vibevm/vibespecs/common",
+		"vibevm/vibespecs/modules/codkit"
+	],
+	"scripts": {
+		"codkit": "node codkit/bin/codkit.mjs",
+		"runtime:build": "tsc -p codkit/tsconfig.runtime.json",
+		"runtime:check": "node tools/check-codkit-runtime.mjs",
+		"format:check": "prettier --check codkit/src codkit/test",
+		"typecheck": "tsc -p codkit/tsconfig.json",
+		"trace:check": "node tools/check-ts-scopes.mjs",
+		"docs:check": "node tools/generate-codkit-docs.mjs --check && node tools/sync-codkit-agents.mjs --check && node docs/codkit/protocol/human/check.mjs && node docs/codkit/protocol/agent/check.mjs",
+		"test": "vitest run --root codkit --maxWorkers=4",
+		"ai-native:structural": "vibe bin exec typescript-ai-native -- floor --keep-going",
+		"floor": "npm run format:check && npm run typecheck && npm run runtime:check && npm run trace:check && npm run docs:check && npm test && npm run ai-native:structural"
+	},
+	"dependencies": {
+		"typescript": "^7.0.2",
+		"zod": "^4.5.4"
+	},
+	"devDependencies": {
+		"@types/node": "^26.4.0",
+		"prettier": "^3.9.6",
+		"vitest": "^4.1.11"
+	}
+}

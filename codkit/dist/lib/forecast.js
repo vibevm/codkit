@@ -1,0 +1,59 @@
+/** @scope spec://codkit/modules/codkit/PROP-008#classify */
+// Deterministic forecast projection over the generic read-only upgrade analysis.
+import { runGit } from './gitx.js';
+import { ckError } from './messages.js';
+import { analyzeUpgrade } from './upgradeAnalysis.js';
+export const DEFAULT_FORECAST_REF = 'refs/remotes/upstream/main';
+/** Resolve, freeze, analyze, and project one forecast without changing either repository. */
+export function forecastUpgrade(options) {
+    const input = options.ref ?? DEFAULT_FORECAST_REF;
+    const sha = resolveForecastRef(options.treeDir, input);
+    const analysis = analyzeUpgrade({
+        patchesDir: options.patchesDir,
+        treeDir: options.treeDir,
+        config: options.config,
+        newRef: sha,
+        ...(options.similarity === undefined ? {} : { similarity: options.similarity }),
+        ...(options.layerRuntime === undefined ? {} : { layerRuntime: options.layerRuntime }),
+        ...(options.mergeFile === undefined ? {} : { mergeFile: options.mergeFile })
+    });
+    const owners = analysis.owners.flatMap((group) => {
+        const artifacts = analysis.artifacts
+            .filter((artifact) => artifact.owner === group.owner && artifact.outcome !== 'clean')
+            .map((artifact) => {
+            if (artifact.cause === null || artifact.outcome === 'clean') {
+                throw ckError('INTERNAL', `forecast lost the cause of ${artifact.artifactPath}`);
+            }
+            return {
+                id: artifact.artifactId,
+                artifact: artifact.artifactPath,
+                layer: artifact.layer,
+                target: artifact.targetPath,
+                outcome: artifact.outcome,
+                cause: artifact.cause
+            };
+        });
+        return artifacts.length === 0 ? [] : [{ owner: group.owner, artifacts }];
+    });
+    return {
+        exitCode: analysis.counts.nonClean === 0 ? 0 : 1,
+        report: {
+            sourcePin: { ...analysis.sourcePin },
+            ref: { input, sha, usedDefault: options.ref === null || options.ref === undefined },
+            counts: analysis.counts,
+            owners
+        }
+    };
+}
+/** Freeze a user/default revision to one full commit SHA without fetching. */
+export function resolveForecastRef(treeDir, ref) {
+    if (ref.trim() === '') {
+        throw ckError('CONFIG', 'forecast --ref must not be empty', 'pass one local commit, tag, or branch name after --ref');
+    }
+    const resolved = runGit({ args: ['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`], cwd: treeDir });
+    const sha = resolved.stdout.trim();
+    if (resolved.status !== 0 || !/^[0-9a-f]{40}$/.test(sha)) {
+        throw ckError('PIN-UNREACHABLE', `forecast ref ${ref} does not resolve to one local commit`, 'fetch the ref outside codkit, then retry; forecast never reaches the network');
+    }
+    return sha;
+}

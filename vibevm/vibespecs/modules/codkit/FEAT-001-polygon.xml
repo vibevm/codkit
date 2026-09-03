@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit FEAT-001: Standalone integration polygon</title>
+  <status stage="spec" state="plan" comment="consumer-neutral proof surface for any VS Code fork"/>
+  <purpose title="1. Boundary and purpose">
+    <p><POLYGON-PURPOSE fact="true" status="spec/done">The polygon is an external patch-set repository plus an external managed VS Code checkout operated by the installed Codkit tool. It is test data, not a consumer product and not content owned by toolRoot.</POLYGON-PURPOSE></p>
+    <facts ordered="false">
+      <POLYGON-THREE-ROOTS fact="true" status="spec/done">toolRoot, polygon patchesDir, and polygon forkDir use unrelated, pairwise-disjoint paths; the run starts from a cwd outside all three.</POLYGON-THREE-ROOTS>
+      <POLYGON-SETTINGS-PROOF fact="true" status="spec/done">At least one full run selects both external roots only through a temporary HOME containing strict `~/.codkit/settings.json`; separate runs prove each CLI and environment override independently.</POLYGON-SETTINGS-PROOF>
+      <POLYGON-PORTABLE-INPUT fact="true" status="spec/done">The patch-set describes only its selected fork/pin. No path, identifier, service, feature, or branding from another consumer is required.</POLYGON-PORTABLE-INPUT>
+    </facts>
+  </purpose>
+  <samples title="2. Minimal layer samples">
+    <p><SAMPLE-PROCEDURE fact="true" status="spec/done">Each sample is authored in forkDir, extracted or declared in patchesDir, verified, synchronized again from the pin, and inspected through schema-2 inventory/effective diff. Sample ids use a reserved test range in that patch-set.</SAMPLE-PROCEDURE></p>
+    <table>
+      <tr><td>Layer</td><td>Consumer-neutral sample and proof</td></tr>
+      <tr><td><PG-PATCH fact="true" status="spec/plan">patch</PG-PATCH></td><td>one marker-scoped hook in a stable method; save, byte-stable regeneration, and hunks-inside-markers</td></tr>
+      <tr><td><PG-OWN fact="true" status="spec/plan">own</PG-OWN></td><td>one module below `src/vs/&lt;ownDirName&gt;/`, copied both directions without symlinks</td></tr>
+      <tr><td><PG-SERVICE fact="true" status="spec/plan">service-override</PG-SERVICE></td><td>one non-bootstrap service with a contract test; installed forbidden list remains effective</td></tr>
+      <tr><td><PG-ENTRY fact="true" status="spec/plan">entry-module</PG-ENTRY></td><td>one minimal graft or top-level entry, with every fork-specific registry represented by its own attributable artifact</td></tr>
+      <tr><td><PG-OVERLAY fact="true" status="spec/plan">config-overlay</PG-OVERLAY></td><td>one non-branding configuration key with `expectUpstream`, dev materialization where supported, and build materialization</td></tr>
+      <tr><td><PG-RESOURCE fact="true" status="spec/plan">resource-file</PG-RESOURCE></td><td>one small deterministic resource replacement and equality guard</td></tr>
+      <tr><td><PG-RULE fact="true" status="spec/plan">rewrite-rule</PG-RULE></td><td>one expected-match rule whose drift is observable</td></tr>
+      <tr><td><PG-HIDE fact="true" status="spec/plan">hide/removed</PG-HIDE></td><td>one reversible hide plus removed-registry entry and mandatory guards</td></tr>
+    </table>
+    <p><SAMPLE-COMPLETENESS fact="true" status="spec/plan">Inventory has at least one entry for every intervention layer, all ids and owners are unique/known, every required guard is declared, and completeness explains every generated fork path exactly once.</SAMPLE-COMPLETENESS></p>
+  </samples>
+  <upgrade title="3. Upgrade-cycle proof">
+    <facts ordered="true">
+      <POLYGON-OLD-PIN fact="true" status="spec/plan">Prepare a branch on an older reachable VS Code pin with a clean, a renamed, and a deliberately conflicting intervention.</POLYGON-OLD-PIN>
+      <POLYGON-CYCLE fact="true" status="spec/plan">Run forecast, cycle start/continue/status, rename handling, classified full red list, required resolution stop, journal completeness, regeneration and final verify on the target pin.</POLYGON-CYCLE>
+      <POLYGON-RESUME fact="true" status="spec/plan">Inject interruption at each durable phase boundary and prove a fresh process continues without lost work or duplicate canonical commits.</POLYGON-RESUME>
+      <POLYGON-METRICS fact="true" status="spec/plan">Record the final inventory metrics snapshot in the committed cycle journal; no tool-repository metrics file is required.</POLYGON-METRICS>
+    </facts>
+  </upgrade>
+  <ci title="4. Environment matrix">
+    <facts ordered="false">
+      <POLYGON-AIRGAP fact="true" status="spec/plan">Run verify and, with supplied dependencies, build in a container with physical `--network none`; any attempted network operation is a failure.</POLYGON-AIRGAP>
+      <POLYGON-UID-READONLY fact="true" status="spec/plan">Exercise foreign UID/safe.directory and read-only mounts: read-only commands work, writes fail before partial mutation, and writable runtime mounts are explicit.</POLYGON-UID-READONLY>
+      <POLYGON-UPSTREAM-BASELINE fact="true" status="spec/plan">Run the selected full upstream/Electron runner baseline, not only focused own tests, and preserve its complete red list as evidence.</POLYGON-UPSTREAM-BASELINE>
+      <POLYGON-PACKAGING fact="true" status="spec/plan">Build/package a distributable bundle and inspect that own, overlay, resource and generated metadata are present in final artifacts, not merely in the development checkout.</POLYGON-PACKAGING>
+      <POLYGON-NATIVE fact="true" status="spec/plan">Execute the same fixture natively on macOS and Windows, including launchers, Git/path semantics, double regeneration and daemon lifecycle. Linux evidence does not close these rows.</POLYGON-NATIVE>
+    </facts>
+  </ci>
+  <readiness title="5. Acceptance">
+    <p><POLYGON-READY fact="true" status="spec/plan">The polygon is accepted only when every sample, upgrade/resume proof, air-gap/UID/read-only proof, upstream baseline, packaging proof and native OS row has recorded executable evidence. A missing runner is an explicit open risk, never an implied pass.</POLYGON-READY></p>
+  </readiness>
+</spec>

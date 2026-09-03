@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">PROP-000: Codkit foundations</title>
+  <status stage="spec" state="done"/>
+  <p><CODKIT-IS-STANDALONE fact="true" status="spec/done">Codkit is a standalone product for maintaining a structured patch set over any fork of Visual Studio Code.</CODKIT-IS-STANDALONE></p>
+  <boundaries title="Independent locations">
+    <facts ordered="false">
+      <TOOL-ROOT fact="true" status="spec/done">The Codkit installation contains only tool code, specifications, documentation, and tests.</TOOL-ROOT>
+      <FORK-DIR fact="true" status="spec/done">The managed fork tree is an external VS Code checkout selected by the operator.</FORK-DIR>
+      <PATCHES-DIR fact="true" status="spec/done">The patch-set directory is external and owns the pin, intervention artifacts, inventory, history, and runtime state.</PATCHES-DIR>
+      <NO-LAYOUT-INFERENCE fact="true" status="spec/done">No location is inferred from the current directory or from a neighbouring path.</NO-LAYOUT-INFERENCE>
+      <ROOTS-ARE-DISJOINT fact="true" status="spec/done">`toolRoot`, `patchesDir`, and `forkDir` must be pairwise disjoint: no two may be equal and none may contain another. Resolution canonicalizes existing path prefixes before enforcing this invariant.</ROOTS-ARE-DISJOINT>
+    </facts>
+  </boundaries>
+  <configuration title="Path configuration">
+    <p><PATH-PRECEDENCE fact="true" status="spec/done">For both external directories the precedence is command-line flag, environment variable, then `~/.codkit/settings.json`.</PATH-PRECEDENCE></p>
+    <facts ordered="false">
+      <FORK-PATH-SOURCES fact="true" status="spec/done">The fork path sources are `--fork-dir`, `CODKIT_FORK_DIR`, and `forkDir`.</FORK-PATH-SOURCES>
+      <PATCHES-PATH-SOURCES fact="true" status="spec/done">The patch-set path sources are `--patches-dir`, `CODKIT_PATCHES_DIR`, and `patchesDir`.</PATCHES-PATH-SOURCES>
+      <SETTINGS-SCHEMA fact="true" status="spec/done">The user settings file is `~/.codkit/settings.json` with strict schema `{"codkitSettings":1,"patchesDir":"/absolute/path","forkDir":"/absolute/path"}`; either path may be omitted, but unknown fields, relative paths, and unsupported schema versions are errors.</SETTINGS-SCHEMA>
+    </facts>
+  </configuration>
+  <engineering title="Engineering posture">
+    <facts ordered="false">
+      <AI-NATIVE-APPLIES-TO-CODKIT fact="true" status="spec/done">The AI-native TypeScript discipline applies to Codkit production code and tests.</AI-NATIVE-APPLIES-TO-CODKIT>
+      <DEPENDENCIES-PERMISSIVE fact="true" status="spec/done">Dependencies are permissive-only unless the owner explicitly approves an exception.</DEPENDENCIES-PERMISSIVE>
+      <LICENSE-PROPRIETARY fact="true" status="spec/done">Codkit is proprietary; the root `LICENSE.md` is the governing notice.</LICENSE-PROPRIETARY>
+    </facts>
+  </engineering>
+</spec>

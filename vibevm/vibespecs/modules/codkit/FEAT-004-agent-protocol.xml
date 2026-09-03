@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit FEAT-004: ТЗ на протокол работы для ИИ-агентов</title>
+  <status stage="spec" state="plan" comment="generic fail-closed agent protocol for standalone Codkit"/>
+  <p><AP-SCOPE fact="true" status="spec/done">Задание на протокол агентов: инструкции, правила, skills, определения субагентов, хуки, журналы и оценки, с которыми агенты (Claude Code и совместимые инструменты, читающие `AGENTS.md`) безопасно и эффективно работают с patchset и codkit. Протокол излагает процедуры и guardrails **поверх принятых решений**, ссылаясь на спеки и команды codkit, не пересказывая их. Пометка «(J1)» у факта о механизмах агент-инструмента означает: перепроверить экспериментом на текущей версии до реализации.</AP-SCOPE></p>
+  <p><M3-AGENT-PROTOCOL-IMPL fact="true" status="impl/done">Реализованы общий генерируемый core `CLAUDE.md`/`AGENTS.md`, четыре scoped rules, deny-only settings, fail-closed PreToolUse Node/Bash/PowerShell guard, пять профилей с file outputs, protocol/checker и explicit-only `ck-resolve`. S13 fixture доказал: resolver не коммитит и не вызывает `save/continue`, пишет task result и journal candidate, helper связывает task/result/entry, а fix-коммит создаёт только orchestrator. Остальные skills таблицы остаются будущими planned slices.</M3-AGENT-PROTOCOL-IMPL></p>
+  <quality title="1. Планка качества (сверх FEAT-003 §1)">
+    <facts ordered="false">
+      <APQ-JSON-CONTRACTS fact="true" status="spec/done">Инструкции — короткие и проверяемые; вместо пересказа поведения инструмента — команда codkit с `--json` (конверт PROP-012 §1) и ожидаемый `exitCode`/код ошибки.</APQ-JSON-CONTRACTS>
+      <APQ-TWO-ECHELONS fact="true" status="spec/done">Каждая норма для агента существует в двух эшелонах: текст (инструкция) **и** машинное принуждение (hook/permissions/архитектура); норма только текстом допустима лишь там, где механизма нет физически, и тогда она явно помечена «текстовая».</APQ-TWO-ECHELONS>
+      <APQ-FILES-NOT-CONTEXT fact="true" status="spec/done">Результаты агентов передаются **файлами, не контекстом**: каждая процедура называет точные пути выходных файлов.</APQ-FILES-NOT-CONTEXT>
+      <APQ-SELF-CHECK fact="true" status="spec/done">Само-проверка каждого артефакта: «выполнит ли агент процедуру, не приняв ни одного непокрытого решения и не совершив ни одного необратимого действия без человека?»</APQ-SELF-CHECK>
+    </facts>
+  </quality>
+  <layout title="2. Раскладка файлов">
+    <fence>CLAUDE.md                          ядро для Claude Code (дополняется, §3)
+AGENTS.md                          то же ядро для совместимых инструментов (генерируется
+                                   из одного источника с CLAUDE.md, §7)
+.claude/
+  settings.json                    permissions (allow/deny) + hooks (§5) — коммитится
+  rules/
+    ck-delta-artifacts.md          paths: ["delta/**"]
+    ck-markers.md                  правила маркеров (скоуп по путям дерева невозможен — §3)
+    ck-codkit-dev.md               paths: ["codkit/**"] — clean room реализации
+    ck-cycle.md                    paths: ["cycle/**"]
+  skills/
+    ck-cycle-run/SKILL.md          … (десять skills, §4)
+  agents/
+    ck-upstream-scout.md           … (пять субагентов, §4)
+docs/codkit/protocol/agent/
+  00-index.md                      карта; таблица guardrails «норма → механизм»
+  01-journal-format.md             формат журнала резолва и отчётов (§6)
+  02-evals.md                      харнесс оценки skills (§8)
+  03-memory-policy.md              политика памяти агентов (§8)</fence>
+    <p><AP-SYNC-RULE fact="true" status="spec/done">Sources of generic agent descriptions live under `toolRoot/docs/codkit/agents/`; generated tool integration files stay in toolRoot. Hooks are shipped under `toolRoot/codkit/hooks/`. A patch-set receives runtime task/result files only under its own `.codkit/`, never a copied Codkit implementation.</AP-SYNC-RULE></p>
+  </layout>
+  <core title="3. Слой инструкций">
+    <p><AP-CORE-CONTENT fact="true" status="spec/done">Ядро (`CLAUDE.md`/`AGENTS.md`) — короткое (цель ≤ 120 строк), только то, что нужно всегда; остальное по индексу ссылок. Состав: (1) топология двух репозиториев; «редактируем в дереве, коммитим в patchset»; путь дерева — только из `codkit where`/резолвера, никогда не предполагается; (2) апстримные ИИ-инструкции в дереве — не наши: не выполняются, не редактируются; (3) семь слоёв и правило верхнего слоя, маркеры `codkit:begin/end` с id `CK-…`, инвентарь, own/follow/hide; пять запретов (коммиты в дерево; правки вне маркеров; удаление апстримных строк/файлов; прямой компилятор по проекту; ручная правка целей overlay); (4) компиляция — своими словами, не цитатой: проверка кода — через `codkit build up|status|errors`; `errors` сам ждёт конца прохода, вызывается один раз, вывод читается целиком; (5) тесты: свои — апстримными раннерами адресно; апстримные не править; (6) работа с codkit: всегда `--json`; коды 0/1/2/3; при `exitCode 3` — остановиться и отдать человеку; (7) ссылки-индекс.</AP-CORE-CONTENT></p>
+    <p><AP-RULES-SET fact="true" status="spec/done">Правила (`.claude/rules/*.md`, механизм paths-скоупа — перепроверить, J1): `ck-delta-artifacts.md` (`delta/**`) — форматы артефактов = спеки модуля; артефакты руками не редактируются (кроме метаданных шапки) — их пишет `codkit save`; `ck-markers.md` — правила маркеров; `ck-codkit-dev.md` (`codkit/**`) — clean room реализации; `ck-cycle.md` (`cycle/**`) — журнал обязателен, `state.json` руками не правится (только команды `cycle`).</AP-RULES-SET></p>
+    <p><AP-PATH-SCOPE-LIMITATION fact="true" status="spec/done">**Ограничение механизма и его закрытие:** path-скоуп правил работает по путям внутри репозитория patchset; дерево форка — внешний каталог с нефиксированным путём, glob на него в коммитимом файле невозможен (никакой механизм не зашивает путь). Поэтому нормы про правку файлов дерева живут в ядре и принуждаются хуками (§5), которые получают путь дерева динамически через `codkit where --json` — единственный резолвер. Это решение фиксируется в протоколе явно.</AP-PATH-SCOPE-LIMITATION></p>
+  </core>
+  <skills title="4. Skills и субагенты">
+    <p><AP-SKILL-COMMON fact="true" status="spec/done">Общие требования к каждому SKILL.md: frontmatter `name`, `description`, `allowed-tools` (белый список); тело — цель, входы (команды codkit `--json`), нумерованная процедура, выходы (файлы), запреты, критерии завершения, поведение при неопределённости (правило по умолчанию: **неопределённость = остановка с записью состояния в журнал**, не догадка). Запрет самостоятельного вызова дорогих skills — двойная защита: (а) `description` формулируется «только по явному запросу»; (б) дорогие действия внутри skill упираются в permissions/hooks (J1).</AP-SKILL-COMMON></p>
+    <table>
+      <tr><td>Skill</td><td>Цель (одной строкой)</td><td>Ключевые команды / выходы</td></tr>
+      <tr><td><SK-CYCLE-RUN fact="true" status="spec/plan">`ck-cycle-run`</SK-CYCLE-RUN></td><td>провести/продолжить цикл апгрейда до ближайшей точки остановки</td><td>`cycle start|continue|status --json`; обновлённый state (командой), отчёт в журнал</td></tr>
+      <tr><td><SK-RESOLVE fact="true" status="impl/done">`ck-resolve`</SK-RESOLVE></td><td>разрешить артефакты красного списка по классам исходов</td><td>`cycle status --json`, exact task perimeter, правка в дереве, result + journal candidate; `save`/`cycle continue` не вызывает</td></tr>
+      <tr><td><SK-PORT-MARKER fact="true" status="spec/plan">`ck-port-marker`</SK-PORT-MARKER></td><td>перевести один маркерный блок на новый апстрим по причине и `cause commit`</td><td>`git show` пинов, дифф `cause commit`, правка блока; правка + запись журнала</td></tr>
+      <tr><td><SK-FIND-CAUSE fact="true" status="spec/plan">`ck-find-cause`</SK-FIND-CAUSE></td><td>найти апстримный коммит-причину отказа</td><td>`git log/-L` по эталону/дереву; `{sha, approx}` в журнал/отчёт</td></tr>
+      <tr><td><SK-VERIFY-REPORT fact="true" status="spec/plan">`ck-verify-report`</SK-VERIFY-REPORT></td><td>проверить состояние после наложения и отчитаться</td><td>`verify --json`, `inventory --json`, `build errors --json`, тесты; единый отчёт-файл (§6)</td></tr>
+      <tr><td><SK-TO-REWRITE-RULE fact="true" status="spec/plan">`ck-to-rewrite-rule`</SK-TO-REWRITE-RULE></td><td>конвертировать повторяющееся вмешательство в rewrite-rule</td><td>чтение патчей, запись `.ckrule.json`, `verify`; артефакт правила + обоснование</td></tr>
+      <tr><td><SK-REVIEW-UPGRADE fact="true" status="spec/plan">`ck-review-upgrade`</SK-REVIEW-UPGRADE></td><td>ревью цикла по чек-листу из инвентаря (read-only)</td><td>`inventory --diff --json`, журнал цикла; файл замечаний (§6)</td></tr>
+      <tr><td><SK-QA-PLAN fact="true" status="spec/plan">`ck-qa-plan`</SK-QA-PLAN></td><td>построить QA-план по затронутым подсистемам</td><td>`inventory --diff --json` (подсистемы → тесты); QA-план-файл</td></tr>
+      <tr><td><SK-COMMIT-CONVENTIONS fact="true" status="spec/plan">`ck-commit-conventions`</SK-COMMIT-CONVENTIONS></td><td>оформить коммиты/PR цикла по конвенциям</td><td>`hooks check`, шаблоны протокола людей; сообщения текстом в файл (коммитит человек/оркестратор, не skill)</td></tr>
+      <tr><td><SK-DEPS-UPGRADE fact="true" status="spec/plan">`ck-deps-upgrade`</SK-DEPS-UPGRADE></td><td>провести deps-advisory шаг</td><td>отчёт advisory из `cycle`, правки overlay/`package.json`-целей, `build down` перед `npm install`; правки + журнал</td></tr>
+    </table>
+    <facts ordered="false">
+      <SK-RESOLVE-DETAIL fact="true" status="spec/done">**`ck-resolve`** — процедура по классам исходов: clean/shifted — ничего (машина); conflict — резолв в файле дерева со стандартными маркерами, **сохраняя наши маркерные блоки и их id**; target-deleted — остановка (решение владельца); target-renamed — проверка автопереноса; rule-broken — починка `ops`/`expectedMatches` с обоснованием; contract-failed — анализ через `ck-find-cause` и остановка, если требуется переработка вмешательства. Запреты: не коммитить; не расширять правку за пределы конфликтных файлов; дизайн-решение — остановка с шаблонной записью. Критерий завершения: на каждый не-clean артефакт — запись журнала; `cycle continue` запускает человек/оркестратор.</SK-RESOLVE-DETAIL>
+      <SK-VERIFY-REPORT-DETAIL fact="true" status="spec/done">**`ck-verify-report`** — фиксированный порядок проверок и «правило одного вызова» `build errors`; отчёт обязан содержать полный список красного, не «есть ошибки».</SK-VERIFY-REPORT-DETAIL>
+      <SK-COMMIT-DETAIL fact="true" status="spec/done">**`ck-commit-conventions`** — трейлеры не пишет руками: проверяет, что хук установлен (`hooks check`), и формирует сообщения по канону цикла.</SK-COMMIT-DETAIL>
+      <SK-ORDER fact="true" status="spec/done">Порядок написания: `ck-resolve` и `ck-cycle-run` — **только после первого ручного цикла** (иначе описывают воображаемый процесс). Для каждого skill — тестовый сценарий на fixture (§8): пара «вход → ожидаемые файлы-выходы».</SK-ORDER>
+    </facts>
+    <table>
+      <tr><td>Субагент</td><td>Инструменты (белый список)</td><td>Ограничения / модель</td></tr>
+      <tr><td><AG-SCOUT fact="true" status="impl/done">`ck-upstream-scout`</AG-SCOUT></td><td>Read, Grep, Glob, Write(task output), Bash(static read-only allowlist)</td><td>дерево read-only; exact report output; medium</td></tr>
+      <tr><td><AG-RESOLVER fact="true" status="impl/done">`ck-conflict-resolver`</AG-RESOLVER></td><td>Read, Grep, Glob, Edit/Write(exact task files), Bash(static allowlist)</td><td>не коммитит/не продолжает cycle; design stop; high</td></tr>
+      <tr><td><AG-VERIFIER fact="true" status="impl/done">`ck-verifier`</AG-VERIFIER></td><td>Read, Write(task report), Bash(codkit JSON allowlist)</td><td>дерево read-only; полный красный список; medium</td></tr>
+      <tr><td><AG-REVIEWER fact="true" status="impl/done">`ck-upgrade-reviewer`</AG-REVIEWER></td><td>Read, Grep, Glob, Write(task report), Bash(codkit inventory JSON)</td><td>read-only review; high</td></tr>
+      <tr><td><AG-CAUSE fact="true" status="impl/done">`ck-cause-finder`</AG-CAUSE></td><td>Read, Write(task JSON), Bash(static Git read-only allowlist)</td><td>точный/approx cause file; low-medium</td></tr>
+    </table>
+    <p><AG-PARALLELISM fact="true" status="spec/done">Параллелить разрешено: verifier одновременно с reviewer; несколько cause-finder по независимым отказам; resolver — по одному на подсистему, никогда два на один файл (блокировка codkit всё равно одна). Контекст между агентами не передаётся — только файлы задания и журнала (пути фиксированы в §6).</AG-PARALLELISM></p>
+  </skills>
+  <guardrails title="5. Guardrails — двухэшелонные + архитектурный">
+    <table>
+      <tr><td>Норма</td><td>Механизм</td></tr>
+      <tr><td><GR-NO-COMMITS fact="true" status="spec/done">Агент не коммитит и не пушит (в дереве — никогда; в patchset — только явные `--commit`-пути codkit)</GR-NO-COMMITS></td><td>permissions deny: `Bash(git commit*)`, `Bash(git push*)`; PreToolUse-хук на Bash: git-команды записи в каталоге дерева → блок</td></tr>
+      <tr><td><GR-TREE-EDITS fact="true" status="spec/done">Не редактирует файлы дерева вне процедуры «правка → save»</GR-TREE-EDITS></td><td>PreToolUse-хук на Edit/Write: путь файла разрешается против `codkit where --json`; файл в дереве разрешён только при активном задании резолва/правки (маркер-файл задания `.codkit/agent-task.json`, кладёт оркестратор/человек); иначе блок</td></tr>
+      <tr><td><GR-NO-DIRECT-COMPILE fact="true" status="spec/done">Не запускает прямую компиляцию/полную сборку</GR-NO-DIRECT-COMPILE></td><td>permissions deny: `Bash(*tsc*)`, `Bash(npm run compile*)`, `Bash(*gulp compile*)`; текстовый дубль в ядре</td></tr>
+      <tr><td><GR-NO-REFERENCES fact="true" status="spec/done">При работе над codkit не читает референсы</GR-NO-REFERENCES></td><td>deny-строки `Read(&lt;пути референсов&gt;/**)` — в `settings.local.json` по образцу `tools/cleanroom/` (пути машинные, в коммитимый settings.json не зашиваются); плюс правило `ck-codkit-dev.md`; взаимодействие deny с `--add-dir` — J1</td></tr>
+      <tr><td><GR-TASK-PERIMETER fact="true" status="spec/done">Правки в пределах задачи</GR-TASK-PERIMETER></td><td>хук Edit сверяет путь со списком файлов задания (`agent-task.json`)</td></tr>
+      <tr><td><GR-DESIGN-STOP fact="true" status="spec/done">Остановка на дизайн-решении</GR-DESIGN-STOP></td><td>текст + процедурно: `exitCode 3` codkit = стоп; у резолвера нет инструментов «продавить» (нет коммитов/пуша)</td></tr>
+      <tr><td><GR-NO-NET fact="true" status="spec/done">Нет сети без явной команды</GR-NO-NET></td><td>permissions deny: `Bash(curl*)`, `Bash(wget*)`, `Bash(git fetch*)`, `Bash(git pull*)`, `Bash(npm install*)` для агентских профилей; `npm install` — только человек по advisory</td></tr>
+    </table>
+    <facts ordered="false">
+      <GR-HOOK-MECHANICS fact="true" status="spec/done">PreToolUse blocks forbidden writes. A hook resolves active boundaries by invoking the installed `codkit --json where` and reading schema-2 `roots.patches.path` and `roots.fork.path`; it does not treat toolRoot or cwd as patch-set. Global root-changing flags are denied inside an active agent perimeter.</GR-HOOK-MECHANICS>
+      <GR-TEXT-ECHELON fact="true" status="spec/done">Текстовый эшелон — прицельные формулировки против типовых обходов (второй, не единственный): «не переписывай патч-файл руками, чтобы обойти отказ save», «не выключай красный тест фильтром — это решение человека с доказательством», «не удаляй маркер, чтобы verify замолчал», «не подменяй state.json — только команды cycle». Список пополняется из инцидентов.</GR-TEXT-ECHELON>
+      <GR-ARCH-ECHELON fact="true" status="spec/done">Архитектурный эшелон (агент в CI без человека): исполняемые инструкции и настройки берутся **только из доверенной базовой ветки**; содержимое PR читается как данные; триггер — только от людей с write-доступом, боты — по явному списку; fail-closed: нет прав/нет конфигурации → нет запуска.</GR-ARCH-ECHELON>
+    </facts>
+  </guardrails>
+  <journals title="6. Журналы и отчёты">
+    <facts ordered="false">
+      <JR-RESOLVE fact="true" status="spec/done">Журнал резолва — jsonl цикла (PROP-009 §3), `by: "agent:&lt;имя&gt;"`; поля записи: файл, артефакт-id, класс исхода, решение, обоснование (1–3 предложения), `cause`, что проверено (список команд с exitCode). Полнота — машинная проверка `cycle`.</JR-RESOLVE>
+      <JR-VERIFY-REPORT fact="true" status="spec/done">Отчёт верификации — файл `cycle/reports/&lt;targetTag&gt;-verify-&lt;n&gt;.md`: таблица проверок → статус → полный красный список; секция «что не проверялось и почему».</JR-VERIFY-REPORT>
+      <JR-REVIEW-NOTES fact="true" status="spec/done">Замечания ревью — файл `cycle/reports/&lt;targetTag&gt;-review.md`: замечание = {id вмешательства, суть, ссылка на правило, предлагаемое действие}; человек читает отчёты из PR цикла.</JR-REVIEW-NOTES>
+    </facts>
+  </journals>
+  <sources title="7. Один источник истины с протоколом людей">
+    <facts ordered="false">
+      <SRC-CONVENTIONS fact="true" status="spec/done">Agent rules consume the effective conventions assembled from immutable shipped policy plus an explicitly configured additive-only patch-set extension. They never load a same-path patch-set file as a replacement or duplicate safety lists in prompts.</SRC-CONVENTIONS>
+      <SRC-SHARED-TEMPLATES fact="true" status="spec/done">Рубрики/чек-листы (ревью вмешательства, чек-лист PR, классы исходов) — единые файлы в `docs/codkit/protocol/human/templates/`, которые читает и человек, и агент.</SRC-SHARED-TEMPLATES>
+      <SRC-SAME-PR fact="true" status="spec/done">Изменение протокола людей → правка агентских правил в том же PR; линтер документации дополняется проверкой перекрёстных ссылок agent↔human. `CLAUDE.md`/`AGENTS.md` — генерируются из одного шаблона, расхождение ловится CI-сравнением.</SRC-SAME-PR>
+    </facts>
+  </sources>
+  <evals title="8. Evals и память">
+    <facts ordered="false">
+      <EV-PRACTICE-FIRST fact="true" status="spec/done">Двухступенчато: (1) практика с первого цикла — ретроспектива включает пункт «уроки агентов»: каждая ошибка/откат резолва агентом → правка соответствующего skill тем же PR; (2) регрессионный харнесс (после стабилизации skills) — фикстуры на фейковом дереве (PROP-013 §2) + подменённый клиент хостинга (локальный bare-репозиторий); прогон skill в headless-режиме; **структурные проверки поведения**, не текста: файлы-выходы существуют и валидны по схемам, журнал полон, запрещённых действий нет (git-история дерева/patchset не изменилась), коды выхода правильные; порог «прошло k из N» (старт: 4 из 5) против флейка модели. Запуск: при изменении `.claude/skills/**` и по расписанию.</EV-PRACTICE-FIRST>
+      <EV-METRICS fact="true" status="spec/done">Метрики (в ретроспективу и ряды): доля конфликтов, разрешённых без человека; доля агентских резолвов, отклонённых ревьюером; время резолва.</EV-METRICS>
+      <MEM-POLICY fact="true" status="spec/done">Память агентов (project-scope, коммитимые каталоги памяти) используется как **память команды**: паттерны резолва по подсистемам, ловушки апстрима. Политика: агент **предлагает** запись (файл в ветке PR), человек ревьюит как код; запрещено сохранять: пути конкретной машины, секреты, содержимое референсов, выводы, противоречащие спекам (память — не канал обхода конвенций). Устаревшие записи чистятся на ретроспективе; каждая запись — с датой и пином.</MEM-POLICY>
+      <AP-CLEANROOM fact="true" status="spec/done">Clean room для работы над codkit: агент-реализатор не имеет доступа к референсам (permissions-профиль §5 + сессия без `--add-dir` на референсы); имена свои; финальный шаг любой задачи по `codkit/**` — clean-room чек (`common/PROP-004`).</AP-CLEANROOM>
+    </facts>
+  </evals>
+  <open title="9. Открытые вопросы (рекомендация + статус)">
+    <facts ordered="true">
+      <APOQ-AUTONOMY fact="true" status="spec/plan">**Границы автономии агентов** — что доводить до конца без человека. Рекомендация (дефолт): shifted / 3-way чисто — автономно (машинная регенерация + verify); содержательный конфликт — резолв агентом, слияние после ревью человека; target-deleted / семантический дрейф — только человек. **Требует решения владельца** (двигает границу человек/машина).</APOQ-AUTONOMY>
+      <APOQ-DESIGN-DECISION-LIST fact="true" status="spec/plan">**Что считать дизайн-решением** (критерий остановки). Рекомендация — формальный список: изменение целевого слоя вмешательства; правка own-кода сверх импортов/сигнатур при резолве; любой новый артефакт дельты; отказ от вмешательства; правка contract-теста. Фиксируется в `ck-resolve`; утверждает команда апгрейда.</APOQ-DESIGN-DECISION-LIST>
+      <APOQ-MEMORY-POLICY fact="true" status="spec/plan">**Политика памяти**: объём и срок жизни записей, обязательность ревью каждой — дефолт «каждая запись через PR-ревью»; пересмотр после трёх циклов.</APOQ-MEMORY-POLICY>
+      <APOQ-LLM-AIRGAP fact="true" status="spec/plan">**LLM-доступ в закрытом контуре**: агентский контур в air-gapped среде требует внутреннего API-эндпоинта (гейтвей/прокси во внутренней сети; переменные эндпоинта — территория CI, как креденшелы). Рекомендация: агентские джобы CI — опциональный профиль, включаемый только при наличии внутреннего эндпоинта; без него весь агентский контур — локальные сессии разработчиков. **Требует решения владельца** (инфраструктура поставки). Связан с J2.</APOQ-LLM-AIRGAP>
+      <APOQ-J1 fact="true" status="spec/plan">**J1 (эксперимент до реализации)**: на текущей версии агент-инструмента проверить — формат и семантику paths-скоупа rules; способ запрета автовызова skill; поведение `permissions.deny` внутри `--add-dir`; Windows-хуки (PowerShell); механизм генерации `CLAUDE.md`/`AGENTS.md` из одного источника; актуальность поведения подгрузки инструкций из добавленных каталогов.</APOQ-J1>
+      <APOQ-J2 fact="true" status="spec/plan">**J2 (эксперимент)**: запуск агентского контура в CI — аутентификация, headless-режим, границы запуска по PR (архитектурный эшелон §5) на нашей CI-системе.</APOQ-J2>
+    </facts>
+  </open>
+</spec>

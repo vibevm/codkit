@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-010: Интеграция со сборкой VS Code — доставка кода, демоны, тесты</title>
+  <status stage="spec" state="done" comment="generic VS Code build integration; fork-specific seams are revalidated per pin"/>
+  <delivery title="1. Доставка own-кода и точка прививки">
+    <p><DELIVERY-IS-COPY fact="true" status="spec/done">Own-код доставляется из patchesDir в forkDir копированием, не симлинком/junction: результат должен одинаково видеть обычный checkout, globber, watcher, linter и packaging. На каждом пине контрактные тесты подтверждают, что build/test globs охватывают `src/vs/&lt;ownDirName&gt;/**`.</DELIVERY-IS-COPY></p>
+  </delivery>
+  <daemons title="2. Обёртка watch-демонов">
+    <p><DAEMON-PROCESS-MODEL fact="true" status="spec/done">Codkit запускает выбранные npm scripts forkDir как detached processes; stdout/stderr, pid и ожидаемая command identity хранятся в `patchesDir/.codkit/build/`. Истина — живой процесс с совпавшей identity, запись — подсказка и несёт treeId. Linux использует `/proc/&lt;pid&gt;/cmdline` и process group; macOS/Windows обязаны использовать нативно проверенный process probe/termination path, а не предполагать POSIX-семантику.</DAEMON-PROCESS-MODEL></p>
+    <p><DAEMON-NATIVE-PROOF fact="true" status="spec/plan">Живой daemon/process-group проход подтверждён на Linux. Нативные macOS и Windows `up/status/errors/down`, command identity и завершение дерева процессов остаются обязательной незакрытой матрицей.</DAEMON-NATIVE-PROOF></p>
+    <p><daemon-channels-lead fact="true" status="spec/done">Каналы (npm-скрипты дерева):</daemon-channels-lead></p>
+    <table>
+      <tr><td>Канал</td><td>npm-скрипт дерева</td><td>Что делает</td></tr>
+      <tr><td><CH-TRANSPILE fact="true" status="spec/done">`transpile`</CH-TRANSPILE></td><td>`watch-client-transpile`</td><td>единственный, кто пишет JS в `out/`; при СТАРТЕ стирает `out/` (рестартовать редко и осознанно)</td></tr>
+      <tr><td><CH-TYPECHECK fact="true" status="spec/done">`typecheck`</CH-TYPECHECK></td><td>`watch-client`</td><td>tsgo noEmit + кодогенерация в `src/`</td></tr>
+      <tr><td><CH-EXTENSIONS fact="true" status="spec/done">`extensions`</CH-EXTENSIONS></td><td>`watch-extensions`</td><td>40 проектов; на старте стирает их `out/`</td></tr>
+      <tr><td><CH-COPILOT fact="true" status="spec/done">`copilot`</CH-COPILOT></td><td>`watch-copilot`</td><td>esbuild + tsc noEmit расширения copilot</td></tr>
+    </table>
+    <facts ordered="false">
+      <DAEMON-TRAPS fact="true" status="spec/done">Ловушки, реализуемые обёрткой: `npm run compile` и рестарт transpile-демона стирают `out/` — `build up` не перезапускает живой канал; перед `npm install` в дереве демоны обязаны быть остановлены — `build down --all` вызывается протоколом deps-advisory; апстримные `watchd`-скрипты и наши каналы взаимоисключающи — `up` отказывается стартовать при обнаруженном чужом watch-процессе над тем же деревом (зондирование по подстроке командной строки `build/next/index.ts transpile --watch` и `gulp watch-`).</DAEMON-TRAPS>
+      <DAEMON-LAUNCH fact="true" status="spec/done">Запуск — `npm run &lt;script&gt;` с cwd = дерево, Node — тот же бинарь (`process.execPath`).</DAEMON-LAUNCH>
+      <INOTIFY-ENV-REQUIREMENT fact="true" status="impl/done">Контракт окружения демонов на Linux (замер M1 на живом дереве): watch по 17 948 файлам требует `fs.inotify.max_user_watches` ≥ 524288; при дефолтных 65536 транспайл-демон завершает первый проход (границы печатаются штатно), но падает `ENOSPC` при установке наблюдателей. `build up` перед стартом читает `/proc/sys/fs/inotify/max_user_watches` и при значении &lt; 262144 предупреждает с командой лечения (`sudo sysctl fs.inotify.max_user_watches=524288` + запись в /etc/sysctl.d) — это машинная настройка владельца, codkit её не меняет. Для одиночного прохода CI результат прохода до падения наблюдателей пригоден.</INOTIFY-ENV-REQUIREMENT>
+    </facts>
+    <p><PASS-BOUNDARIES-ARE-DATA fact="true" status="spec/done">Детектор границ прохода — строгие версионированные данные. Default находится в `toolRoot/codkit/config/build-watch.json`; выбранный пользователем patch-set может предоставить полный fork-specific профиль только через явный contained `codkit.json.buildWatchFile`. Неявный файл с тем же путём не затеняет shipped default. Каналы задают `passStart`, `passEnd`, `errorLine`, `errorCountLine`, `falseEndGuards`; неизвестные поля запрещены, а канал без `errorLine` и `errorCountLine` невалиден. Custom profile обязан иметь сохранённые green/red log fixtures; cycle перепроверяет выражения на новом пине.</PASS-BOUNDARIES-ARE-DATA></p>
+    <table>
+      <tr><td>Канал</td><td>passStart</td><td>passEnd</td><td>errorLine</td></tr>
+      <tr><td><BW-TRANSPILE fact="true" status="spec/done">`transpile`</BW-TRANSPILE></td><td>`^Starting transpilation\.\.\.$`</td><td>`^Finished transpilation with (0|1) errors after \d+ ms$`</td><td>`^(.+?):(\d+):(\d+): ERROR: (.+)$`</td></tr>
+      <tr><td><BW-TYPECHECK fact="true" status="spec/done">`typecheck`</BW-TYPECHECK></td><td>`^Starting compilation\.\.\.$`</td><td>`^Finished compilation with \d+ errors after \d+ ms$` (счётчик — флаг 0/1, не число!)</td><td>`^(.+?)\((\d+),(\d+)\): error (TS\d+): (.+)$`; реальное число ошибок — из `^Finished watch-client-noEmit .* with (\d+) errors\.$`</td></tr>
+      <tr><td><BW-EXTENSIONS fact="true" status="spec/done">`extensions`</BW-EXTENSIONS></td><td>`^Starting compilation$`</td><td>`^Finished compilation$`</td><td>`^Finished extensions .* with (\d+) errors\.$` + TS-строки</td></tr>
+      <tr><td><BW-COPILOT fact="true" status="spec/done">`copilot`</BW-COPILOT></td><td>`\[watch\] build started`</td><td>`\[watch\] build finished` / `Found (\d+) errors?\. Watching for file changes`</td><td>tsc-строки</td></tr>
+    </table>
+    <facts ordered="false">
+      <FALSE-END-GUARDS fact="true" status="impl/done">`falseEndGuards`: строки `Finished compilation &lt;id&gt; with … errors` с непустым `&lt;id&gt;` — каналы кодогенерации (`api-proposal-names`, `extension-point-names`) печатают свои маркеры на каждое изменение; наивный матч даёт ложные концы прохода. Уточнение M1: при строгих `passEnd`-регулярках гварды — глубинная защита, несущими они становятся только при ослаблении `passEnd`; счётные строки выделены в отдельное поле данных `errorCountLine` (у typecheck/extensions/copilot строка-счётчик — не диагностика).</FALSE-END-GUARDS>
+      <ANSI-STRIPPING fact="true" status="spec/done">Логи содержат ANSI безусловно (пакет цветов пишет без проверки TTY) — обёртка стрипает ANSI регуляркой до матчинга. Апстримные `.build/log*` в watch-режиме бесполезны — единственный источник — stdout+stderr демона (наши лог-файлы).</ANSI-STRIPPING>
+      <BUILD-ERRORS-ALGORITHM fact="true" status="spec/done">**`build errors`**: находит в логе последнюю строку `passStart`; если после неё нет `passEnd` — ждёт появления `passEnd` (poll файла, интервал 500 мс, таймаут `--timeout`, дефолт 600 с — выход 2 по таймауту); затем печатает все строки между парой целиком + разобранные ошибки; `--mine` фильтрует по путям own-каталога и файлам инвентаря. Первому проходу после `up` даётся то же ожидание (обычно полминуты-минута; команда сама дожидается — отдельно спать не нужно).</BUILD-ERRORS-ALGORITHM>
+    </facts>
+  </daemons>
+  <product-overlay title="3. Overlay для product.json — порядок с гигиеной">
+    <p><PRODUCT-OVERLAY-FACTS fact="true" status="spec/done">Факты: dev-канал `product.overrides.json` работает только при `VSCODE_DEV` (`src/bootstrap-meta.ts:21-27`); при упаковке апстрим штампует `commit`, `date`, `checksums`, `version` (`gulpfile.vscode.ts:335-361`) — операции overlay не трогают штампуемые ключи (`overlay check`: операция по ключам `commit|date|checksums|version` — предупреждение; перечень выровнен со штамповкой, M1). Гигиена запрещает ключ `extensionsGallery` в корневом `product.json` (`build/hygiene.ts:92-101`) и НЕ учитывает `product.overrides.json` — dev-канал легален; в CI профиль build запускает hygiene апстрима ДО материализации overlay (порядок фиксирован в PROP-011 §6).</PRODUCT-OVERLAY-FACTS></p>
+  </product-overlay>
+  <tests title="4. Тесты продукта">
+    <facts ordered="false">
+      <TESTS-TWO-RUNNERS fact="true" status="spec/done">**Свой быстрый раннер**: тесты codkit — vitest в patchset (PROP-013). **Тесты продукта** (contract/guard) — файлы `*.test.ts` в own-каталоге под `src/vs/patchset/test/**`, исполняются апстримными раннерами из `out/vs/patchset/test/**` автоматически (юнит-раннеры собирают `**/test/**/*.test.js` из `out/`). Запуск адресно: `--run src/vs/patchset/test/...` (раннер сам маппит src→out).</TESTS-TWO-RUNNERS>
+      <CONTRACT-TESTS-MANDATE fact="true" status="spec/done">Контрактные тесты обязательны для вмешательств вне зоны маркеров и компилятора: resource, overlay, изменённый default, hide, service seam. Id теста берётся из `contractTests` артефакта; verify подтверждает его объявление в own tests.</CONTRACT-TESTS-MANDATE>
+      <UPSTREAM-TESTS-POLICY fact="true" status="spec/done">Апстримные тесты запускаются без правок. Любой фильтр требует отдельного доказательства на чистом пине и адресуемого решения; зелёный узкий раннер не заменяет полный baseline выбранного upstream/Electron runner.</UPSTREAM-TESTS-POLICY>
+    </facts>
+  </tests>
+  <package-json title="5. Что меняется в package.json дерева">
+    <p><TREE-PACKAGE-JSON-RULE fact="true" status="spec/done">Только **добавление** npm-скриптов при необходимости (overlay-цель `package.json`, PROP-005 §5); MVP не добавляет ничего (обёртка вызывает существующие скрипты). Любое будущее добавление — overlay-артефакт с записью инвентаря.</TREE-PACKAGE-JSON-RULE></p>
+  </package-json>
+</spec>

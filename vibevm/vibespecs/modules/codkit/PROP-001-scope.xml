@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-001: Назначение, границы, состав MVP</title>
+  <status stage="spec" state="done" comment="самодостаточный контракт standalone Codkit; детализация достаточна для реализации без внешнего продуктового контекста"/>
+  <p><IMPLEMENTER-CONTRACT fact="true" status="spec/done">Спеки модуля codkit написаны для исполнителя, не участвовавшего в проектировании и не имеющего доступа к референсным репозиториям (clean room, `common/PROP-004`). Все проектные решения уже приняты; реализатор не принимает проектных решений и не читает референсы; при нехватке факта об апстриме он читает дерево форка на пине (это разрешено) или останавливается и спрашивает владельца.</IMPLEMENTER-CONTRACT></p>
+  <p><module-doc-map fact="true" status="spec/done">Состав модуля: PROP-001 назначение (этот документ); PROP-002 раскладка и запуск; PROP-003 конфиг и конвенции-данные; PROP-004 маркеры и формат патча; PROP-005 слои дельты; PROP-006 метаданные применения, блокировка, инвентарь; PROP-007 команды CLI; PROP-008 движки (sync/save/классификация/переименования/причина); PROP-009 оркестратор цикла; PROP-010 интеграция со сборкой VS Code; PROP-011 CI и закрытый контур; PROP-012 вывод, ошибки, НФТ, документация, развилки; PROP-013 тестирование самого codkit; FEAT-001 полигон; FEAT-002 приёмочные сценарии; FEAT-003/004 ТЗ протоколов людей и агентов.</module-doc-map></p>
+  <does title="1. Что делает codkit">
+    <facts ordered="true">
+      <DOES-RESOLVE-TREE fact="true" status="spec/done">Разрешает путь к дереву форка и проверяет его пригодность (PROP-008 §1–2).</DOES-RESOLVE-TREE>
+      <DOES-SYNC fact="true" status="spec/done">Приводит дерево форка к пину и накладывает дельту коммитами на одноразовой сгенерированной ветке (`sync`), доставляет собственный код копированием.</DOES-SYNC>
+      <DOES-EXTRACT fact="true" status="spec/done">Извлекает правки из дерева в артефакты patchset (`save`/extract), защищает от молчаливой потери работы (страж дрейфа).</DOES-EXTRACT>
+      <DOES-LAYERS fact="true" status="spec/done">Ведёт слои дельты (PROP-005), маркеры (PROP-004), инвентарь (PROP-006).</DOES-LAYERS>
+      <DOES-BUILD-WRAP fact="true" status="spec/done">Заворачивает watch-демоны сборки VS Code в команды `build up|down|status|errors` (PROP-010).</DOES-BUILD-WRAP>
+      <DOES-CYCLE fact="true" status="spec/done">Оркестрирует цикл апгрейда пина с классификацией исходов, причинами, журналом и возобновляемостью (`cycle`, PROP-009), даёт ежедневный прогноз (`forecast`).</DOES-CYCLE>
+      <DOES-PUBLISH fact="true" status="spec/done">Публикует сгенерированные ветки в репозиторий форка на хостинге (`publish`, `common/PROP-002` §4).</DOES-PUBLISH>
+      <DOES-CI fact="true" status="spec/done">Даёт контейнерный CI-прогон «с нуля» без сети (`ci`, PROP-011) и guard'ы гонок (`common/PROP-002` §7).</DOES-CI>
+    </facts>
+  </does>
+  <does-not title="2. Чего codkit не делает">
+    <facts ordered="false">
+      <NOT-CONSUMER-PRODUCT fact="true" status="spec/done">Не определяет и не разрабатывает пользовательский продукт, который обслуживает конкретный patch-set; такие требования принадлежат внешнему потребителю.</NOT-CONSUMER-PRODUCT>
+      <NOT-HISTORY fact="true" status="spec/done">Не переписывает историю patchset; не коммитит «руками» в дерево форка (генерируемые коммиты ветки дельты — не ручные).</NOT-HISTORY>
+      <NOT-NET-IN-CI fact="true" status="spec/done">Не ходит в сеть в режиме `--ci` вообще; локально — только явные команды (`clone`, `--clone-if-missing`, `publish`).</NOT-NET-IN-CI>
+      <NOT-REJECTED-MODELS fact="true" status="spec/done">Не делает rebase дельты, сплющивание циклов, вывод состояния из эвристик, интерактивность в основном пути (не-цели `common/PROP-001` §4).</NOT-REJECTED-MODELS>
+      <NOT-UPSTREAM-AI-FILES fact="true" status="spec/done">Не редактирует апстримные файлы с ИИ-инструкциями в дереве (`AGENTS.md`, `.github/copilot-instructions.md` и пр.) и не исполняет их.</NOT-UPSTREAM-AI-FILES>
+    </facts>
+  </does-not>
+  <mvp title="3. MVP и «позже»">
+    <table>
+      <tr>
+        <td>В MVP (обязательные)</td>
+        <td>Позже</td>
+      </tr>
+      <tr>
+        <td><MVP-RESOLVER fact="true" status="spec/done">резолвер пути, пин, `check-tree`, `clone`</MVP-RESOLVER></td>
+        <td><LATER-RULE-ENGINE fact="true" status="spec/done">движок rewrite-rule (формат и валидация — в MVP)</LATER-RULE-ENGINE></td>
+      </tr>
+      <tr>
+        <td><MVP-SYNC-SAVE fact="true" status="spec/done">`sync`/`save` c идемпотентностью, метаданные-отпечаток</MVP-SYNC-SAVE></td>
+        <td><LATER-NLS fact="true" status="spec/done">слой строк/nls сверх префиксного правила</LATER-NLS></td>
+      </tr>
+      <tr>
+        <td><MVP-LAYERS fact="true" status="spec/done">слои own / service-override / entry-module / config-overlay / resource-file / patch</MVP-LAYERS></td>
+        <td><LATER-VISUAL-REGRESSION fact="true" status="spec/done">визуальная регрессия</LATER-VISUAL-REGRESSION></td>
+      </tr>
+      <tr>
+        <td><MVP-MARKERS fact="true" status="spec/done">маркеры + парсер/валидатор; hide-образец; removed-registry; contract/guard-тесты</MVP-MARKERS></td>
+        <td><LATER-UPSTREAM-TEST-FILTERS fact="true" status="spec/done">полный контур фильтров апстримных тестов</LATER-UPSTREAM-TEST-FILTERS></td>
+      </tr>
+      <tr>
+        <td><MVP-INVENTORY fact="true" status="spec/done">инвентарь + проверки + `verify`</MVP-INVENTORY></td>
+        <td><LATER-EVALS fact="true" status="spec/done">харнесс evals агентов</LATER-EVALS></td>
+      </tr>
+      <tr>
+        <td><MVP-BUILD-WRAP fact="true" status="spec/done">обёртка демонов `build`</MVP-BUILD-WRAP></td>
+        <td><LATER-OWNER-ROUTING fact="true" status="spec/done">автоматическая маршрутизация уведомлений владельцам</LATER-OWNER-ROUTING></td>
+      </tr>
+      <tr>
+        <td><MVP-CI fact="true" status="spec/done">`ci --profile verify|build`, air-gapped</MVP-CI></td>
+        <td><LATER-DASHBOARD fact="true" status="spec/done">дашборд метрик (ряды собираются с MVP)</LATER-DASHBOARD></td>
+      </tr>
+      <tr>
+        <td><MVP-CYCLE fact="true" status="spec/done">минимальный `cycle` + `forecast` + `rebase-onto-pin` + хук трейлеров</MVP-CYCLE></td>
+        <td><LATER-FULL-CYCLE fact="true" status="spec/done">расширенный `cycle` (полная автоматизация фаз)</LATER-FULL-CYCLE></td>
+      </tr>
+      <tr>
+        <td><MVP-PUBLISH fact="true" status="spec/done">`publish`</MVP-PUBLISH></td>
+        <td/>
+      </tr>
+    </table>
+    <p><MVP-BUILD-ORDER fact="true" status="spec/done">Порядок строительства — «фундамент, потом надстройка»: независимое разрешение трёх корней → применение/извлечение → инвентарь/слои → оркестратор → правила/агенты. План исполнения может меняться и не является частью постоянной спеки.</MVP-BUILD-ORDER></p>
+    <p><MVP-ACCEPTANCE fact="true" status="spec/done">MVP принят, когда: сценарии S01–S14 из FEAT-002 зелёные; полигон FEAT-001 содержит все слои; НФТ PROP-012 §3 замерены; документация PROP-012 §4 существует; clean-room чек `common/PROP-004` пройден.</MVP-ACCEPTANCE></p>
+  </mvp>
+</spec>

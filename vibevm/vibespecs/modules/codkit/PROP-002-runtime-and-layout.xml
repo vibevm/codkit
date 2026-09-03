@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-002: Раскладка кода, запуск, тулчейн, компоненты</title>
+  <status stage="spec" state="done" comment="раскладка standalone Codkit с независимыми toolRoot, patchesDir и forkDir"/>
+  <layout title="1. Где живёт код">
+    <p><layout-lead fact="true" status="spec/done">Раскладка разделена на три корня, которые могут находиться на разных дисках и не могут совпадать, вкладываться или выводиться друг из друга:</layout-lead></p>
+    <fence>toolRoot/                       неизменяемая установка Codkit
+  package.json, npm-shrinkwrap.json зависимости и версия инструмента
+  bin/codkit, bin/codkit.ps1       пользовательские Bash/PowerShell launchers
+  codkit/bin/codkit.mjs            внутренний Node launcher
+  codkit/src/**                    production TypeScript
+  codkit/dist/**                   детерминированный runtime JavaScript
+  codkit/config/**                 обязательная safety policy и default build-watch data
+  codkit/test/**                   unit/e2e
+  vibevm/vibespecs/**              нормативные спеки инструмента
+
+patchesDir/                      внешний Git work tree потребителя
+  codkit.json                    pin и параметры данного patch-set
+  codkit.local.json              локальные непиновые overrides
+  delta/**                       own/patches/overlays/resources/rules/removed/owners
+  cycle/**                       коммитимые состояние и журнал upgrade cycle
+  .codkit/**                     локальные locks/cache/logs/generated output
+
+forkDir/                         внешний managed VS Code checkout
+  .git/**                        upstream objects, generated refs и local marks/hooks
+  src/**, product.json, ...      материализованное рабочее состояние</fence>
+    <facts ordered="false">
+      <ROOT-OWNERSHIP fact="true" status="spec/done">Только toolRoot владеет исходниками, launchers, базовыми safety-конфигами, тестами и npm-зависимостями Codkit. Только patchesDir владеет `codkit.json`, `delta/**`, `cycle/**`, runtime `.codkit/**` и Git-историей patch-set. Только forkDir владеет VS Code checkout и generated refs.</ROOT-OWNERSHIP>
+      <PATCHSET-GITIGNORE fact="true" status="spec/done">Patch-set игнорирует как минимум `codkit.local.json` и `.codkit/`. Он не обязан иметь `package.json` или `node_modules` ради Codkit.</PATCHSET-GITIGNORE>
+      <TOOL-PACKAGE fact="true" status="spec/done">`package.json` и publishable `npm-shrinkwrap.json` принадлежат toolRoot и одинаково фиксируют runtime dependency graph в source checkout и npm-артефакте. Runtime-зависимости устанавливаются рядом с инструментом. Отсутствие зависимостей даёт диагностированный отказ с требованием восстановить установку из утверждённого supply; для source checkout допустим `npm ci`.</TOOL-PACKAGE>
+      <ROOT-DERIVATION fact="true" status="spec/done">toolRoot вычисляется только от `import.meta.url` запускаемого инструмента. patchesDir и forkDir независимо разрешаются по источникам PROP-003; cwd не становится корнем автоматически.</ROOT-DERIVATION>
+    </facts>
+  </layout>
+  <toolchain title="2. Запуск и тулчейн">
+    <facts ordered="false">
+      <COMPILED-RUNTIME-LAUNCHER fact="true" status="spec/done">Source of truth — TypeScript в `codkit/src`. `npm run runtime:build` создаёт обычный ESM JavaScript в `codkit/dist` с переписанными relative extensions; `runtime:check` byte-for-byte сравнивает fresh temp emit с tracked dist. Launcher вызывает `node toolRoot/codkit/dist/main.js &lt;args&gt;` тем же `process.execPath`, поэтому установленный npm package не пытается strip-ить `.ts` под `node_modules`.</COMPILED-RUNTIME-LAUNCHER>
+      <USER-LAUNCHERS fact="true" status="impl/done">Пользовательские точки входа — `bin/codkit` для Bash и `bin/codkit.ps1` для PowerShell. Обе разрешают корень относительно собственного файла (не cwd), проверяют доступность Node, передают argv и код выхода внутреннему `codkit/bin/codkit.mjs`; логики команд и форматов в wrapper-скриптах нет.</USER-LAUNCHERS>
+      <ERASABLE-SYNTAX-ONLY fact="true" status="spec/done">Ограничение для кода codkit: только стираемый синтаксис TS — без `enum`, `namespace`, параметров-свойств конструктора; вместо enum — union-типы и объекты `as const`. (Совпадает с флагом `erasableSyntaxOnly` конверта AI-native TypeScript — `common/PROP-000` §5.)</ERASABLE-SYNTAX-ONLY>
+      <NODE-VERSION-RULE fact="true" status="spec/done">Сам Codkit требует Node ≥ 22.6 как установленный runtime floor. Версия сборки конкретного fork задаётся его `.nvmrc`; если разрешённое дерево требует другой major, Codkit предупреждает, а не подменяет окружение и не делает consumer-specific version частью tool policy.</NODE-VERSION-RULE>
+      <GIT-VERSION-RULE fact="true" status="spec/done">git ≥ 2.40 (нужны стабильные `git apply`, `merge-file`, `commit-tree`, `--force-with-lease`); git-lfs ≥ 3.0 — контракт окружения: без него в дереве pointer-файлы.</GIT-VERSION-RULE>
+      <CROSS-PLATFORM-PATHS fact="true" status="spec/done">ОС: Linux, macOS, Windows. Все пути — через `node:path`/`node:fs` (`realpath`), никакой конкатенации строк с разделителями; на Windows codkit проверяет `core.longpaths=true` в конфиге дерева и предупреждает при отсутствии.</CROSS-PLATFORM-PATHS>
+    </facts>
+    <p><PUBLIC-ROOT-SOURCES fact="true" status="impl/done">`CODKIT_PATCHES_DIR` и `CODKIT_FORK_DIR` — публичные пользовательские источники, не тестовые override. Для каждого корня действует независимый приоритет CLI flag → env → `~/.codkit/settings.json`; относительные CLI/env пути разрешаются от cwd, settings принимает только абсолютные.</PUBLIC-ROOT-SOURCES></p>
+    <p><GIT-ENV-ISOLATION fact="true" status="spec/done">**Изоляция git-окружения — фундамент детерминизма:** каждый запуск git из codkit выполняется с окружением `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, `LC_ALL=C`, `TZ=UTC` и с явными `-c core.autocrlf=false -c core.quotepath=false`; нужные настройки репозитория передаются флагами `-c`. Исключение — операции, обязанные видеть конфиг репозитория/контейнера (чтение `safe.directory` в CI, PROP-011 §5); их перечень фиксирован там.</GIT-ENV-ISOLATION></p>
+  </toolchain>
+  <components title="3. Компоненты (модули codkit/src/lib/)">
+    <p><components-lead fact="true" status="spec/done">Имена файлов — рекомендация, ответственность — норматив:</components-lead></p>
+    <table>
+      <tr>
+        <td>Модуль</td>
+        <td>Ответственность</td>
+        <td>Спека</td>
+      </tr>
+      <tr><td><COMP-PATHS fact="true" status="spec/done">`paths.ts`</COMP-PATHS></td><td><COMP-PATHS-RESP fact="true" status="spec/done">независимый resolver patchesDir/forkDir, canonicalization, disjoint-root guard, печать источников</COMP-PATHS-RESP></td><td>PROP-008 §1</td></tr>
+      <tr><td><COMP-TREE-IDENTITY fact="true" status="spec/done">`treeIdentity.ts`</COMP-TREE-IDENTITY></td><td><COMP-TREE-IDENTITY-RESP fact="true" status="spec/done">проверки идентичности и пригодности дерева</COMP-TREE-IDENTITY-RESP></td><td>PROP-008 §2</td></tr>
+      <tr><td><COMP-GITX fact="true" status="spec/done">`gitx.ts`</COMP-GITX></td><td><COMP-GITX-RESP fact="true" status="spec/done">обёртка запуска git с изоляцией окружения (§2), парс вывода, флаг `netAllowed`</COMP-GITX-RESP></td><td>—</td></tr>
+      <tr><td><COMP-CONFIG fact="true" status="spec/done">`configFile.ts`</COMP-CONFIG></td><td><COMP-CONFIG-RESP fact="true" status="spec/done">чтение/валидация `codkit.json` + `codkit.local.json`</COMP-CONFIG-RESP></td><td>PROP-003 §1</td></tr>
+      <tr><td><COMP-LAYERS fact="true" status="spec/done">`layers/*.ts`</COMP-LAYERS></td><td><COMP-LAYERS-RESP fact="true" status="spec/done">по модулю на слой дельты: own, patch, overlay, resource, entry, rule</COMP-LAYERS-RESP></td><td>PROP-005</td></tr>
+      <tr><td><COMP-MARKERS fact="true" status="spec/done">`markers.ts`</COMP-MARKERS></td><td><COMP-MARKERS-RESP fact="true" status="spec/done">парсер/валидатор маркеров по языкам</COMP-MARKERS-RESP></td><td>PROP-004 §2</td></tr>
+      <tr><td><COMP-PATCH-FORMAT fact="true" status="spec/done">`patchFormat.ts`</COMP-PATCH-FORMAT></td><td><COMP-PATCH-FORMAT-RESP fact="true" status="spec/done">чтение/запись `.ckpatch`, нормализация диффа</COMP-PATCH-FORMAT-RESP></td><td>PROP-004 §3–4</td></tr>
+      <tr><td><COMP-APPLY-ENGINE fact="true" status="spec/done">`applyEngine.ts`</COMP-APPLY-ENGINE></td><td><COMP-APPLY-ENGINE-RESP fact="true" status="spec/done">цикл применения по артефактам, классификация исходов; dry-run</COMP-APPLY-ENGINE-RESP></td><td>PROP-008 §5</td></tr>
+      <tr><td><COMP-SYNC fact="true" status="spec/done">`syncCmd.ts`</COMP-SYNC></td><td><COMP-SYNC-RESP fact="true" status="spec/done">`sync`: приведение к пину, построение ветки, mtime-дисциплина</COMP-SYNC-RESP></td><td>PROP-008 §3</td></tr>
+      <tr><td><COMP-SAVE fact="true" status="spec/done">`saveCmd.ts`</COMP-SAVE></td><td><COMP-SAVE-RESP fact="true" status="spec/done">`save`/extract: зеркалирование own, регенерация патчей</COMP-SAVE-RESP></td><td>PROP-008 §4</td></tr>
+      <tr><td><COMP-DRIFT-GUARD fact="true" status="spec/done">`driftGuard.ts`</COMP-DRIFT-GUARD></td><td><COMP-DRIFT-GUARD-RESP fact="true" status="spec/done">страж дрейфа</COMP-DRIFT-GUARD-RESP></td><td>PROP-008 §4</td></tr>
+      <tr><td><COMP-INVENTORY fact="true" status="spec/done">`inventory.ts`</COMP-INVENTORY></td><td><COMP-INVENTORY-RESP fact="true" status="spec/done">генерация инвентаря, проверки, дифф, метрики</COMP-INVENTORY-RESP></td><td>PROP-006 §3</td></tr>
+      <tr><td><COMP-FINGERPRINT fact="true" status="spec/done">`fingerprint.ts`</COMP-FINGERPRINT></td><td><COMP-FINGERPRINT-RESP fact="true" status="spec/done">отпечатки дельты и дерева, кэш применения</COMP-FINGERPRINT-RESP></td><td>PROP-006 §1</td></tr>
+      <tr><td><COMP-LOCK fact="true" status="spec/done">`lock.ts`</COMP-LOCK></td><td><COMP-LOCK-RESP fact="true" status="spec/done">файл-блокировка на дерево</COMP-LOCK-RESP></td><td>PROP-006 §2</td></tr>
+      <tr><td><COMP-BUILD-WRAP fact="true" status="spec/done">`buildWrap.ts`</COMP-BUILD-WRAP></td><td><COMP-BUILD-WRAP-RESP fact="true" status="spec/done">обёртка watch-демонов</COMP-BUILD-WRAP-RESP></td><td>PROP-010 §2</td></tr>
+      <tr><td><COMP-CYCLE fact="true" status="spec/done">`cycle/*.ts`</COMP-CYCLE></td><td><COMP-CYCLE-RESP fact="true" status="spec/done">оркестратор: состояние, фазы, классификация, журнал</COMP-CYCLE-RESP></td><td>PROP-009</td></tr>
+      <tr><td><COMP-RENAMES fact="true" status="spec/done">`renames.ts`</COMP-RENAMES></td><td><COMP-RENAMES-RESP fact="true" status="spec/done">следование за переименованиями между пинами</COMP-RENAMES-RESP></td><td>PROP-008 §6</td></tr>
+      <tr><td><COMP-CAUSE fact="true" status="spec/done">`cause.ts`</COMP-CAUSE></td><td><COMP-CAUSE-RESP fact="true" status="spec/done">поиск апстримного коммита-причины</COMP-CAUSE-RESP></td><td>PROP-008 §7</td></tr>
+      <tr><td><COMP-OVERLAY-ENGINE fact="true" status="spec/done">`overlayEngine.ts`</COMP-OVERLAY-ENGINE></td><td><COMP-OVERLAY-ENGINE-RESP fact="true" status="spec/done">применение/проверка config-overlay</COMP-OVERLAY-ENGINE-RESP></td><td>PROP-005 §5</td></tr>
+      <tr><td><COMP-PUBLISH fact="true" status="spec/done">`publishCmd.ts`</COMP-PUBLISH></td><td><COMP-PUBLISH-RESP fact="true" status="spec/done">сборка и push сгенерированных ссылок</COMP-PUBLISH-RESP></td><td>PROP-007 §17</td></tr>
+      <tr><td><COMP-CI fact="true" status="spec/done">`ciCmd.ts`</COMP-CI></td><td><COMP-CI-RESP fact="true" status="spec/done">контейнерный прогон `--ci`</COMP-CI-RESP></td><td>PROP-011</td></tr>
+      <tr><td><COMP-HOOKS fact="true" status="spec/done">`hooks.ts`</COMP-HOOKS></td><td><COMP-HOOKS-RESP fact="true" status="spec/done">установка/проверка git-хуков patchset и дерева</COMP-HOOKS-RESP></td><td>PROP-007 §18</td></tr>
+      <tr><td><COMP-JSON-OUT fact="true" status="spec/done">`jsonOut.ts`</COMP-JSON-OUT></td><td><COMP-JSON-OUT-RESP fact="true" status="spec/done">конверт `--json`, реестр кодов сообщений</COMP-JSON-OUT-RESP></td><td>PROP-012 §1–2</td></tr>
+      <tr><td><COMP-FAKE-TREE fact="true" status="spec/done">`fakeTree.ts` (в test/)</COMP-FAKE-TREE></td><td><COMP-FAKE-TREE-RESP fact="true" status="spec/done">фейковое дерево форка для тестов</COMP-FAKE-TREE-RESP></td><td>PROP-013 §2</td></tr>
+    </table>
+    <p><DEPENDENCY-RULE-BETWEEN-MODULES fact="true" status="spec/done">`layers/*`, `applyEngine` и `inventory` не знают про CLI; команды получают явные toolRoot, patchesDir, forkDir и объект patch-set config, а не переоткрывают корни через cwd. Это же — правило ячеек AI-native TypeScript: один модуль = одна ячейка с единственным публичным входом.</DEPENDENCY-RULE-BETWEEN-MODULES></p>
+  </components>
+  <cross-platform title="4. Кроссплатформенность — условия приёмки">
+    <facts ordered="false">
+      <XPLAT-DOUBLE-REGEN fact="true" status="spec/plan">Приёмка требует нативный тест «двойная регенерация даёт пустой дифф» отдельно на Linux, macOS и Windows (S16). Текущий Linux-прогон не является доказательством двух остальных ОС.</XPLAT-DOUBLE-REGEN>
+      <XPLAT-NO-NEIGHBOR-ASSUMPTION fact="true" status="spec/done">Никакой механизм не предполагает соседство трёх корней; тесты используют три несвязанных случайных пути (PROP-013 §1).</XPLAT-NO-NEIGHBOR-ASSUMPTION>
+      <XPLAT-NO-SYMLINKS fact="true" status="spec/done">Симлинки не используются как механизм (доставка кода — копированием); на Windows линковка заменяется копией всюду.</XPLAT-NO-SYMLINKS>
+    </facts>
+  </cross-platform>
+</spec>
