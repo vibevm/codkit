@@ -9,7 +9,7 @@
 2. При `exists: no` выполни `codkit clone --from <approved-url>`.
    Ожидается checkout пина и exit `0`; `--ci` для clone запрещён и даёт `CK-E-NET-FORBIDDEN`, exit `2`.
 3. `codkit check-tree --require-clean` → таблица из `ok`, exit `0`.
-   Exit `1` с hint `sync` ведёт к `codkit sync`; exit `2` требует исправить путь/LFS/доступность пина по `hint`.
+   Exit `1` с hint `load` ведёт к `codkit load`; exit `2` требует исправить путь/LFS/доступность пина по `hint`.
 
 Каждый внешний путь выбирается отдельно: соответствующий flag,
 `CODKIT_PATCHES_DIR`/`CODKIT_FORK_DIR`, затем поле
@@ -20,7 +20,7 @@ fork roots должны быть попарно непересекающимис
 ## Цикл дня
 
 1. `git status --short` в patchset должен быть пуст, либо показывать только осознанную незавершённую работу текущей ветки.
-2. `codkit sync` → `applied ...`/`up to date`, exit `0`; переходи к шагу 3.
+2. `codkit load` → `applied ...`/`up to date`, exit `0`; переходи к шагу 3.
    Exit `1` + `CK-E-DIRTY-TREE` → `codkit status`, затем `codkit save`, затем повтор шага 2.
    Exit `1` + `CK-E-ARTIFACT-BROKEN` → не редактируй артефакт вслепую; владелец исправляет названный артефакт в patchset.
    Exit `2` → исполни точный `hint` и повтори шаг 2.
@@ -52,18 +52,18 @@ fork roots должны быть попарно непересекающимис
 
 ## Что в дереве запрещено
 
-- `git commit`: в обычном checkout effective owned hook, проверяемый каждым `sync`, отклоняет его. Linked worktree, custom/global/system `core.hooksPath`, `/dev/null`, foreign hook или неразрешимый effective path дают явное предупреждение: guard неактивен, Codkit не пишет shared/custom location, а запрет остаётся процедурным.
+- `git commit`: в обычном checkout effective owned hook, проверяемый каждым `load`, отклоняет его. Linked worktree, custom/global/system `core.hooksPath`, `/dev/null`, foreign hook или неразрешимый effective path дают явное предупреждение: guard неактивен, Codkit не пишет shared/custom location, а запрет остаётся процедурным.
 - Правка generated/managed результата вместо источника в patchset: `save` извлекает только own и patch.
 - Ручная правка `product.json`: authoring идёт через `delta/overlays/`, проверка — `overlay check`/`verify`.
 - Удаление апстримного файла/строки: `save` возвращает `CK-E-DELETES-UPSTREAM-*`.
 - Новый апстримный файл без явного `--allow-new-file`: `save` возвращает `CK-E-NEW-FILE-IN-UPSTREAM-ZONE`.
-- `overlay apply` в живом dev-дереве: это упаковочная операция; обычный `sync` после неё честно красный, возврат в dev-режим — `codkit sync --fresh` (заменяет только точную композицию overlay).
+- `overlay apply` в живом dev-дереве: это упаковочная операция; обычный `load` после неё честно красный, возврат в dev-режим — `codkit load --fresh` (заменяет только точную композицию overlay).
 
 ## Переключение ветки
 
 1. Полный `codkit save` → exit `0`; затем `codkit status` → exit `0`.
 2. `git switch <branch>` в patchset → exit `0`.
-3. `codkit sync` → exit `0`; это обязательная материализация дельты выбранной ветки.
+3. `codkit load` → exit `0`; это обязательная материализация дельты выбранной ветки.
 4. Если шаг 3 дал `CK-E-DIRTY-TREE`, ветка не материализована: вернись к прежней ветке, извлеки грязь, повтори процедуру.
 
 В multi-root IDE открой корень patchset и корень дерева. Git-панель patchset используется для commit/PR;

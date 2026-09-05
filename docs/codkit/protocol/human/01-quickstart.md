@@ -7,7 +7,7 @@
 идёт в дереве, истина после `save` — снова в patch set.
 
 ```text
-patchset/delta ── sync ──> дерево форка ── edit ──> save ──> patchset/delta
+patchset/delta ── load ──> дерево форка ── edit ──> save ──> patchset/delta
 ```
 
 Установи launcher Codkit в `PATH` либо используй абсолютный
@@ -23,7 +23,7 @@ patchset/delta ── sync ──> дерево форка ── edit ──> s
 
 ## Три команды
 
-1. Выполни `codkit sync`.
+1. Выполни `codkit load`.
    Ожидается выбранный fork root, затем `applied ...` или `up to date`, exit `0`.
    Если exit `1` и `CK-E-DIRTY-TREE`, переходи к команде 3; если exit `2`, исполни `hint` и повтори шаг 1.
 2. Выполни `codkit status`.
@@ -35,7 +35,7 @@ patchset/delta ── sync ──> дерево форка ── edit ──> s
 
 ## Пять запретов и их защита
 
-1. Не коммить в дереве: в обычном checkout `sync` ставит effective owned hook, отклоняющий `git commit`; linked/custom/foreign конфигурация явно сообщает, что guard неактивен, и запрет остаётся процедурным.
+1. Не коммить в дереве: в обычном checkout `load` ставит effective owned hook, отклоняющий `git commit`; linked/custom/foreign конфигурация явно сообщает, что guard неактивен, и запрет остаётся процедурным.
 2. Не правь апстрим вне маркера: `save`, `verify` и pre-commit отклонят hunk.
 3. Не удаляй апстримные строки: комментируй их внутри маркера; `save` проверяет удаление.
 4. Не запускай прямой `tsc`/`npm run compile`: компиляцией владеют `build up/errors`.
@@ -48,7 +48,7 @@ patchset/delta ── sync ──> дерево форка ── edit ──> s
 
 ### A. Применить и запустить
 
-1. `codkit sync` → exit `0`, `applied`/`up to date`.
+1. `codkit load` → exit `0`, `applied`/`up to date`.
 2. Проверь `CODKIT_ACTIVE_FORK`, ранее полученный из `codkit --json where`.
 3. `"$CODKIT_ACTIVE_FORK/scripts/code.sh"` → появляется dev-сборка форка;
    завершение процесса пользователем допустимо.
@@ -76,8 +76,8 @@ patchset/delta ── sync ──> дерево форка ── edit ──> s
 ### E. Увидеть drift guard
 
 1. Оставь разрешённую, но ещё не извлечённую правку в дереве.
-2. `codkit sync` → exit `1`, `CK-E-DIRTY-TREE`, список файлов и `hint` про `save/status`.
-3. `codkit save` → exit `0`; затем `codkit sync` → exit `0`.
+2. `codkit load` → exit `1`, `CK-E-DIRTY-TREE`, список файлов и `hint` про `save/status`.
+3. `codkit save` → exit `0`; затем `codkit load` → exit `0`.
 
 ## Самопроверка
 

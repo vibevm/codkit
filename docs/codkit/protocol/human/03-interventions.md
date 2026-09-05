@@ -33,14 +33,14 @@
 1. Создай/измени файл в own-пути, объявленном patch-set manifest.
 2. `codkit save <path>` → exit `0`, зеркало изменено под `delta/own/**`.
 3. Обнови `delta/own/patchset.delta.json` в patchset, если это новая unit/service запись.
-4. `codkit sync` → exit `0`; затем `codkit verify` → exit `0`.
+4. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.
 
 ## Терминальный лист service-override
 
 1. Взглядом сверь service id с `forbiddenServiceIds` в `codkit/config/conventions.json`; совпадение → терминальный исход «дизайн-эскалация».
 2. Реализацию и регистрацию положи в own; DI получай через accessor, не новым параметром апстримного конструктора.
 3. Добавь `serviceOverrides` metadata и contract-test в `delta/own/patchset.delta.json`.
-4. `codkit sync` → exit `0`; затем `codkit verify` → exit `0`.
+4. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.
    `FORBIDDEN-SERVICE`/`GUARD-MISSING` возвращает к шагам 1–3.
 
 ## Терминальный лист entry-module
@@ -54,29 +54,29 @@
 
 1. Вырази переворот/регистрацию в own, `category: hide` и укажи `contractTests`.
 2. Guard-test проверяет наблюдаемое отсутствие/дефолт, а не внутреннюю реализацию.
-3. `codkit sync` → exit `0`; затем `codkit verify` → exit `0`.
+3. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.
    `CK-E-GUARD-MISSING` возвращает к шагу 2.
 
 ## Терминальный лист config-overlay
 
 1. Авторуй `delta/overlays/<name>.overlay.json` в patchset: точный target, `expectUpstream`, операции и общий metadata-словарь.
 2. `codkit overlay check <target>` → exit `0`; `CK-E-OVERLAY-DRIFT`, exit `1` требует обновить ожидание по пину и смысл операции.
-3. `codkit sync` → exit `0`; затем `codkit verify` → exit `0`.
+3. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.
 
-`overlay apply` предназначен для CI/publish. В dev-дереве он создаёт ожиданный drift; возврат target — `codkit sync --fresh` (не прямой `git checkout`).
+`overlay apply` предназначен для CI/publish. В dev-дереве он создаёт ожиданный drift; возврат target — `codkit load --fresh` (не прямой `git checkout`).
 
 ## Терминальный лист resource-file
 
 1. Положи байты под `delta/resources/files/**`; добавь запись в `delta/resources/map.json` и guard-test.
 2. Не пытайся извлечь такую цель через `save`: `save` работает только с own/patch и вернёт `CK-E-HEADER-MISSING`.
-3. `codkit sync` → exit `0`, ресурс материализован.
+3. `codkit load` → exit `0`, ресурс материализован.
 4. `codkit verify` → exit `0`; `CK-E-GUARD-MISSING` возвращает к шагу 1.
 
 ## Терминальный лист rewrite-rule
 
 1. Получи явное согласование DRI в PR/issue; массовость должна быть проверяема `expectedMatches`.
 2. Авторуй `delta/rules/*.ckrule.json` в patchset и contract/guard-test, если поведение не ловит компилятор.
-3. `codkit sync` → exit `0`; затем `codkit verify` → exit `0`.
+3. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.
 4. `CK-E-RULE-DRIFT`, exit `1` → правило не расширяется вслепую: владелец сравнивает все матчи и решает «сузить / новый rule / patch».
 
 ## Терминальный лист patch

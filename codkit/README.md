@@ -9,17 +9,17 @@ Install `codkit` on `PATH`, or use the supplied launchers from any current
 directory:
 
 ```bash
-codkit sync
-/path/to/codkit/bin/codkit sync
+codkit load
+/path/to/codkit/bin/codkit load
 ```
 
 ```powershell
-& C:\path\to\codkit\bin\codkit.ps1 sync
+& C:\path\to\codkit\bin\codkit.ps1 load
 ```
 
 The everyday loop is:
 
-1. `sync` brings the managed fork tree to the configured pin and applies the
+1. `load` brings the managed fork tree to the configured pin and applies the
    patch set.
 2. Edit and run code in the fork tree.
 3. `status` shows work not represented by the patch set.

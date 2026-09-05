@@ -47,14 +47,14 @@ Runbook требует no-ff merge, поэтому revert merge сохраняе
 2. Создай incident branch от текущего main: `git switch -c incident/revert-<targetTag>` → exit `0`.
 3. `git revert -m 1 <cycle-merge-sha>` → exit `0`; конфликт разрешается обычным Git merge с фиксацией каждого файла.
 4. `git show HEAD^:codkit.json` и `git show HEAD:codkit.json` подтверждают возврат exact source pin в каноническом JSON.
-5. `codkit sync` → exit `0`; `codkit ci --profile build --pin-guard-base <main-before-cycle-ref>` → exit `0`.
+5. `codkit load` → exit `0`; `codkit ci --profile build --pin-guard-base <main-before-cycle-ref>` → exit `0`.
 6. Merge revert PR без squash. Завершение: main и generated branch снова проверены на старом pin, исходный цикл остаётся в истории.
 
 ## Hotfix поверх старого пина
 
 1. Выбери immutable `<last-release-patchset-commit>` и проверь `git show <commit>:codkit.json` → ожидаемый старый pin.
 2. `git switch -c hotfix/<incident-id> <last-release-patchset-commit>` → exit `0`.
-3. `codkit sync` → exit `0`; внеси изменение по [02](02-daily.md) и [03](03-interventions.md).
+3. `codkit load` → exit `0`; внеси изменение по [02](02-daily.md) и [03](03-interventions.md).
 4. `codkit save` → exit `0`; затем `codkit verify` → exit `0`; commit/PR остаётся на этой release line.
 5. `codkit ci --profile build` → exit `0` на self-consistent old pin.
 6. Publish-бот выполняет [публикацию](08-release-ci.md#публикация) с новым product semver → exit `0`.

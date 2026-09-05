@@ -15,7 +15,7 @@ DRI проводит один tag за цикл. Батчинг — исключ
 | Regeneration обновляет metadata всех слоёв и требует canonical UTF-8/LF JSON | Не переформатировать metadata вручную; исправлять только названный source artifact |
 | Resolve извлекает patch, проверяет журнал и создаёт отдельный commit с `Cause`/`Codkit-Cycle` | Разрешить один blocker и добавить одну terminal journal record |
 | Build понимает timestamped typecheck, проверяет deps, завершает два compiler pass и останавливает демоны | Обновить зависимости вне codkit при advisory; прочитать полный red list |
-| Durable records позволяют обычные `status/continue/sync` после прерывания | Не удалять `.codkit/*receipt*` и recovery-файлы; повторять штатную команду |
+| Durable records позволяют обычные `status/continue/load` после прерывания | Не удалять `.codkit/*receipt*` и recovery-файлы; повторять штатную команду |
 | Terminal receipt связывает commit, JSONL, Markdown, CSV и отсутствие `cycle/state.json` | Проверить `cycle status`, CI и merge без squash |
 
 ## Подготовка issue и ветки
@@ -141,8 +141,8 @@ patch set и его upstream runner; установка Codkit не объявл
 
 1. После SIGINT/crash выполни `codkit cycle status` → exit `0`, durable phase/checkpoint и `next`.
 2. `next` = `run codkit cycle continue` → выполни её; exact durable atom продолжится либо громко отвергнет изменённые bytes.
-3. Чистое, но неактуальное дерево в resolve восстанавливает сам `cycle continue` через forced sync.
-4. Completed rebase receipt потребляется обычным `codkit sync` после commit дельты; см. [S12](04-team.md#s12-feature-на-старом-пине).
+3. Чистое, но неактуальное дерево в resolve восстанавливает сам `cycle continue` через forced load.
+4. Completed rebase receipt потребляется обычным `codkit load` после commit дельты; см. [S12](04-team.md#s12-feature-на-старом-пине).
 5. `ARTIFACT-BROKEN` на `.codkit/cycle-*.json`/receipt → приложи `--verbose` и exact файл DRI;
    schema/digest/exact-byte checks отвергают ручную правку, продолжение выполняет только codkit.
 
