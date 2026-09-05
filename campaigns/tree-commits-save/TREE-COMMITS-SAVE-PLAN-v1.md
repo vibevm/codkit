@@ -76,7 +76,8 @@ downstream-репозиторий продукта по имени, а этот 
 
 ## 4. Арифметика цели
 
-Baseline (2026-09-05, проверено командами из §11):
+Baseline (2026-09-05, проверено командами из §11; перемерено 2026-09-06
+на закоммиченной базе `c598581`+`e44e395` — спайк S0.11):
 
 | Величина | Baseline | Exit |
 | --- | --- | --- |
@@ -88,11 +89,11 @@ Baseline (2026-09-05, проверено командами из §11):
 | `WARNING_CODES` | 3 | 3 |
 | Флаги CLI (`argv.ts`): `save --squash`; `load --discard`; `sync --squash/--commit/--message/--discard/--fresh/--dry-run/--abort/--continue`; `gc --dry-run/--keep-consumed/--older-than` | 0 | 12 |
 | Команды, отказывающие над коммитами дерева (`load`, `ci`, `publish`, `cycle start`, `clone` поверх, `cycle restart`) | 0 | 6 |
-| Vitest: файлы / тесты | 105 / 1452 | ≥ 112 / ≥ 1515 |
+| Vitest: файлы / тесты | 109 / 1547 | ≥ 112 / ≥ 1515 (целевые значения ниже новой базы — пересчитывает владелец, S0.11) |
 | E2e-файлы `codkit/test/e2e` | 23 | 26 (`treeCommits`, `syncTwoWay`, `gc`; `sync.test.ts` → `load.test.ts`) |
-| `@scope`-маркеры (`npm run trace:check`) | 116/116 | 124/124 (6 lib + 2 command модулей) |
+| `@scope`-маркеры (`npm run trace:check`) | 118/118 | 124/124 (6 lib + 2 command модулей) |
 | Structural floor: file-length findings | 8 frozen, 0 new | 8 frozen, 0 new |
-| Specmap units | 644 | 644 + новые анкеры (точное число фиксирует ledger) |
+| Specmap units | 646 | 646 + новые анкеры (точное число фиксирует ledger) |
 
 Все числа — по worktree на 2026-09-05 (снимок post-audit); REPAIR-011 может
 их сдвинуть, поэтому quick-start (§11) перемеряет их на закоммиченной базе и
@@ -126,14 +127,14 @@ Phase 1 она называется `load`.
   (`syncEngine.ts:330`),
   `cycle start`, `ci`, `publish`, `clone` поверх, `cycle restart`
   (PROP-008 `##DRIFT-GUARD-PREDICATE`).
-- **F5** Fast-path `sync` замечает расхождение tip (`treeCache.ts:241-282`,
+- **F5** Fast-path `sync` замечает расхождение tip (`treeCache.ts:241-283`,
   условие `tip`), но это повод для полной пересборки, не отказ. `status`
   печатает `resync needed (6/7 conditions): branch … is at X, the cache
   recorded Y` (`codkit/src/commands/status.ts:67-82`), то есть подсказывает
   разрушительное действие.
 - **F6** Хук дерева: `sync` переписывает `<tree>/.git/hooks/pre-commit`
   (`syncEngine.ts:1657-1700` `TREE_PRE_COMMIT_HOOK`, `writeTreeHook`
-  `:1704-1790`: contained-запись, чужой хук не перезаписывается, effective
+  `:1704-1788`: contained-запись, чужой хук не перезаписывается, effective
   hook path проверяется строго — REPAIR-006, PROP-008
   `##TREE-HOOK-LAYOUT-CANONICAL`), отклоняющий `git commit` без
   `CODKIT_INTERNAL_COMMIT=1`. **В linked worktree хук не ставится вовсе**
@@ -209,13 +210,17 @@ Phase 1 она называется `load`.
   в изоляции 3/3 зелёный — флейк зоны REPAIR-011, не этой кампании;
   structural отдельно: 8 frozen, 0 new; specmap `--check` clean (645). AUDIT.md worktree в шапке ещё называет `96/96`/`1409` —
   рассинхрон, который закрывает REPAIR-011, не эта кампания.
+  Перемерено 2026-09-06 на закоммиченной базе `e44e395`: format, typecheck,
+  runtime build/check (118 файлов), trace 118/118, `docs:check` зелёные;
+  vitest 109/109 файлов, 1547/1547 теста; полный `npm run floor` exit 0
+  (S0.11).
 - **F19** Пустой patchset: `buildBranch` начинает с `parent = pin.sha`
   (`syncEngine.ts:756`) и при пустом плане возвращает `top = pin.sha`
   (`:814`): ветка указывает на пин, трейлеров нет вовсе. До первого `sync`
   ветки нет, HEAD после `clone` detached на пине (`cliFixture.ts:77`,
-  `publish.ts:253`). Sha пина известен из `codkit.json` всегда.
+  `clone.ts:164`). Sha пина известен из `codkit.json` всегда.
 - **F20** `CK-E-BOTH-SIDES-EDITED` существует (`messages.ts`,
-  `syncEngine.ts:1904-1909`), но только для own-кода; hint «resolve
+  `syncEngine.ts:1904-1911`), но только для own-кода; hint «resolve
   manually: keep one side, then codkit sync/save».
 - **F21** Прецеденты транзакций с crash-тестами: `renameTransaction.ts`
   (595 строк, `applyBoundRenameBatch`/`resumeBoundRenameBatch`),
@@ -231,10 +236,10 @@ Phase 1 она называется `load`.
   `runCycleResolve`); `applyUnified.ts` применяет патч к байтам пина в
   памяти.
 - **F23** Слово `sync` (как отдельное слово): `codkit/src` 85 вхождений,
-  `codkit/test` 198, `docs/codkit` 50, спеки модуля 85, `tools` 7,
+  `codkit/test` 219, `docs/codkit` 50, спеки модуля 85, `tools` 8,
   `codkit/README.md` 4. Пользовательские подсказки со словом:
   `verifyEngine.ts` (6 мест: `grep -n 'codkit sync' codkit/src/lib/verifyEngine.ts`),
-  `status.ts:82,109`, `syncEngine.ts:1907`, hint `CK-E-DIRTY-TREE` «run
+  `status.ts:82,109`, `syncEngine.ts:1908`, hint `CK-E-DIRTY-TREE` «run
   codkit save, or codkit status», новые тексты цепочки REPAIR про `sync
   --fresh` и linked worktree (`syncEngine.ts` §exclude/hook). Анкеры спек: `CMD-SYNC`, `COMP-SYNC`, `COMP-SYNC-RESP`,
   `DOES-SYNC`, `FLOW-SYNC`, `MVP-SYNC-SAVE`, `NFR-SYNC-NOOP`, `AP-SYNC-RULE`
@@ -429,6 +434,22 @@ Phase 1 она называется `load`.
 - `load --fresh` не снимает отказ; `load --dry-run` страж не запускает (как
   сегодня); `skipDriftGuard` — единственный обход, только для `save`/`sync`.
 - Отвергнуто: отдельный код `CK-E-TREE-COMMITS`.
+- **Правка от 2026-09-06 по красному спайку S0.12 (владелец решения —
+  центральная сессия).** Спайк показал, что при разделённой сгенерированной
+  ветке коммит в соседнем worktree сдвигает общий ref и тем самым делает индекс
+  ЭТОГО дерева staged-dirty, хотя здесь никто ничего не менял. Сегодня `sync`
+  отказывает `CK-E-DIRTY-TREE` раньше, чем срабатывает преflight
+  `CK-E-WORKTREE-REF-SHARED`, и его подсказка «run codkit save» здесь **вредна**:
+  она предлагает втянуть чужую работу в этот patch set как собственную правку.
+  **Решение: преflight разделённого ref идёт ПЕРЕД проверкой грязного дерева,
+  безусловно.** Причина диагностируется раньше симптома, а подсказка про `save`
+  остаётся только для настоящей локальной грязи. Отказ по разделённому ref
+  обязан называть соседний worktree и не советовать `save`.
+  Отвергнуто: определять «фантомную» грязь эвристикой внутри `CK-E-DIRTY-TREE` —
+  это оставляет верный диагноз зависящим от угадывания, а порядок проверок
+  задаёт его прямо. Отвергнуто: разрешать `save` при разделённом ref — сосед
+  может сдвинуть ref под извлечением. Пересмотр: если появится режим, где
+  разделённый ref штатен и безопасен, порядок пересматривается вместе с ним.
 
 ### D8 — HEAD не на сгенерированной ветке
 
@@ -441,6 +462,10 @@ Phase 1 она называется `load`.
   not in patchset; switch to codkit/applied/<tag> (git switch) or merge them
   there, then run codkit save». Аномалия D2 п.4 — тот же код.
 - Отвергнуто: молча извлекать с detached HEAD при существующей ветке.
+- **Правка от 2026-09-06 (S0.12).** `CK-E-TREE-HEAD` и `CK-E-DIRTY-TREE`
+  подчиняются тому же порядку, что и D7: если ref сгенерированной ветки разделён
+  с другим worktree, первым говорит `CK-E-WORKTREE-REF-SHARED`. Ни один из этих
+  отказов не советует `save`, пока разделение не снято.
 
 ### D9 — хук дерева (RP-1: «вместо запрета сделать напоминание»)
 
@@ -766,6 +791,85 @@ worktree протокол замка не допускает, а Phase 1 (пер
 *Exit:* findings S0.1–S0.10 записаны под этой фазой; красный спайк
 переписывает D в месте. Коммитов нет (допустим один
 `docs(campaign): record phase 0 findings` с переводом в `EXECUTING`).
+
+#### Phase 0 findings (2026-09-06, база `e44e395`+`c598581`; исполнитель — кампания)
+
+Спайки S0.1–S0.12 исполнены; решения D1–D22 не переписывались — уточнения,
+меняющие решение, помечены «владельцу». Полные команды и выводы — отчёт
+`codkit-jobs/linked-worktree-paths/WORKER-REPORT-CAMPAIGN-P0.md`.
+
+- **S0.1** F7–F12 подтверждены временным e2e `zzCommitLossRepro.test.ts`
+  (13 тестов, exit 0; файл удалён той же сессией). Уточнения к фактам:
+  потерянный коммит НЕ предок нового HEAD (reflog — единственный след);
+  F10 «changedFiles = 2» воспроизводится, когда два коммита лежат в двух
+  файлах (в одном файле — changedFiles = 1).
+- **S0.2** Формат D2 работает, но запись НЕ NUL-чистая: перед каждой
+  записью печатается строка `commit <sha>`, а `%(trailers:…,valueonly)`
+  добавляет свой `\n`, поэтому запись с трейлером занимает две физические
+  строки, без трейлера — одну. Парсер D2: резать по `/^commit [0-9a-f]{40}\n/m`,
+  затем по `\0`, снимая хвостовой `\n`. Git машины 2.53.0; минимум для
+  трейлер-формата 2.22 (R1 в силе).
+- **S0.3** Подтверждено: `git diff --name-status -z --no-renames <base>`
+  видит и закоммиченное, и незакоммиченное (`M examplePart.ts`); untracked
+  добавляет только `status --porcelain` (`?? …`).
+- **S0.4** P5 подтверждён: +52 строки в `saveEngine.ts` (инструмент увидел
+  942 строки) → conform «8 finding(s) … 8 frozen, 0 new», exit 0; откат —
+  байт-в-байт, снова 8/8/0. Заморозка file-length терпит рост файла;
+  решётка D13 не принуждает (дисциплина 600 строк остаётся нормой).
+- **S0.5** Основание P3: `cycle continue` → `runCycleResolve`
+  (cycleEngine.ts:318) → адаптер `extract: runSave` (cycleResolve.ts:477,
+  paths + patchHeaderOverrides), rebase-путь — `saveAutomatic` с
+  paths/allowNewFile/patchHeaderOverrides/forcedPaths/deferSync
+  (rebaseOntoPin.ts:392-405); в e2e-фикстурах цикла ручных коммитов в
+  дереве нет. D4 обязан сохранить merge `forcedPaths` (saveEngine.ts:150-152),
+  иначе сломает цикл.
+- **S0.6** Подтверждено (F27): `badCause(message: string): string | null` —
+  чистая функция сообщения; `runCommitMsg(patchesDir: string, message:
+  string): CommitMsgOutcome` вызывается без файла и без цикла (tag=null →
+  exitCode 0, rewritten=null). Проверено прямым вызовом в фикстуре.
+- **S0.7** H1 подтверждён дословно (P10): сдвиг тела `.ckpatch` файла F на
+  стороне patchset + незакоммиченная правка G в дереве → `codkit --json save`
+  exit 2 `CK-E-INTERNAL` «…examplePart.ts…» ПОСЛЕ сообщений
+  `util.ts.ckpatch: created`, `applied …`, `updated …`; ref сдвинут, F в
+  дереве переписан под сдвинутый артефакт, G извлечён.
+- **S0.8** Phase 8b существует. Прямой вызов для трёх произвольных версий
+  байтов — `runMergeFile` (classifyEngine.ts:276, экспортирован):
+  `{ treeDir, targetPath, ours, base, theirs }` → `{ bytes, hasConflicts }`,
+  внутри `git merge-file -p --diff3 -L ours -L base -L theirs` по личным
+  файлам в `tmpdir()/codkit-classify-*` (удаляются в finally), в дерево не
+  пишет; метки конфликтов `<<<<<<< ours` / `>>>>>>> theirs`. `replayPatch`
+  (replayPatch.ts:58) — чистая композиция base+patch→theirs; для sync-случая
+  напрямую НЕ подходит (там theirs = пин+текущий артефакт, а не base+patch) —
+  обёртке 8b звать `runMergeFile`. Прецеденты durable-записи одного файла:
+  `runReresolve`/`atomicReplace` (reresolve.ts:79, :240 — wx-temp+rename с
+  сохранением mode) и `writeCycleConflicts`
+  (cycleMaterializeMoveWorktree.ts:109 — идемпотентная wx-temp+rename).
+  Сигнатуры менять не нужно; P11 подтверждён с уточнением про replayPatch.
+- **S0.9** Подтверждено: `treeMarkSchema` — обычный `z.object` (strip), метка
+  с новыми полями `artifacts`/`patchSetCommit` читается текущим кодом
+  (поля отбрасываются), схема с `.optional()`-полями принимает старую метку.
+  Проверено на живой метке фикстуры.
+- **S0.10** Подтверждено в дереве фикстуры: `hash-object -w` + `cat-file
+  blob` восстанавливают файл байт-в-байт; `update-ref <ref> <new> <old>`
+  принимает верный guard и отказывает «cannot lock ref» на неверном.
+- **S0.11** Указатели §5/§4 перемерены, правки внесены (F5, F6, F18, F19,
+  F20, F23; таблица §4). Существенное: F19 «publish.ts:253» устарел —
+  detached-checkout теперь в `clone.ts:164`; счётчики F23 сдвинулись
+  (`codkit/test` 198→219, `tools` 7→8); §4 baseline: vitest 109/1547,
+  trace 118/118, specmap 646 (целевые значения §4 ниже новой базы —
+  пересчитывает владелец). Тест `syncLinkedWorktree.test.ts` лежит в
+  `codkit/test/unit/`, не в `e2e`.
+- **S0.12** Порядок отказов НЕ тот, что предполагало D7/D8 (владельцу;
+  R17). Коммит соседа по общей ветке немедленно делает индекс ЭТОГО
+  worktree «staged M» (HEAD символьный, ref общий): `codkit status` —
+  exit 1 (tip красный, upstream.changed = 1), сегодняшний `codkit sync`
+  отказывает `CK-E-DIRTY-TREE` («not in patchset yet», exit 1) ДО
+  предусловия `CK-E-WORKTREE-REF-SHARED`. `CK-E-WORKTREE-REF-SHARED`
+  (exit 2) достигается только когда сосед держит ветку БЕЗ коммитов
+  (unit/worktreeRefGuard). Третья половина D7 увидит те же коммиты (refs
+  общие) и тоже будет первой; D7/D8 нуждаются в рулинге о «фантомной» грязи
+  от сдвига общего ref — сегодняшний hint «run codkit save» в этом сценарии
+  неверен.
 
 ### Phase 1 — переименование `sync` → `load`
 
@@ -1214,8 +1318,22 @@ node docs/codkit/protocol/human/check.mjs                                  # ok
 
 ## 14. Execution ledger
 
-_(заполняется на границах фаз: `### Phase N — EXECUTED (<date>); commit map`
-— hash, subject, что подтвердил/опроверг; «no target moved», где это так)_
+### Phase 0 — EXECUTED (2026-09-06); findings recorded, no commits
+
+База: `c598581`+`e44e395` на `fix/linked-worktree-git-path`, `git status`
+чист до старта. Quick-start §11 выполнен, таблица §4 и указатели §5
+поправлены (S0.11) — правки лежат в worktree незакоммиченными: пакет
+кампании (2026-09-06) запретил коммиты, включая допустимый планом один
+`docs(campaign): …`, поэтому перехода в `EXECUTING` в шапке не делал
+исполнитель — статус меняет владелец. S0.1–S0.12 закрыты находками (блок
+«Phase 0 findings» в §8). Подтверждены P5 (заморозка file-length терпит
+рост), P10 (H1 дословно), P11 (ядро вызова — `runMergeFile`, не
+`replayPatch`); P3 — основание кодом и фиксстурами, финальное доказательство
+за Phase 3. Красных (опровергающих решение) спайков нет; уточнение порядка
+отказов S0.12 передано владельцу D7/D8/R17. Продуктовый код не менялся;
+временный тест S0.1 удалён той же сессией; `npm run floor` exit 0 до и после
+фазы (109/109 файлов, 1547/1547 теста, structural 8 frozen / 0 new, specmap
+646), `vibe check --quiet` — 0 errors, 1 warning.
 
 ## 15. Deferrals ledger
 
