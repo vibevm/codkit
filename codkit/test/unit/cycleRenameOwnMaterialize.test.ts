@@ -45,7 +45,7 @@ function preparedFixture(): CliFixture {
 	writeFileSync(join(fixture.patchesDir, '.git', 'info', 'exclude'), '.codkit/\ncodkit.local.json\n', 'utf8');
 	provideTreeDependencies(fixture);
 	addRenamePatch(fixture);
-	const synced = fixture.json(['sync']);
+	const synced = fixture.json(['load']);
 	if (synced.run.status !== 0) throw new Error(synced.run.stderr);
 	startCycle({
 		patchesDir: fixture.patchesDir,

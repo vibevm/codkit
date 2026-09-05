@@ -340,7 +340,7 @@ function checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, fin
         }
         const pinBytes = bytesAtPin(treeDir, config.pin.sha, patch.targetPath);
         if (pinBytes === null) {
-            findings.push(finding('STALE-ARTIFACT', `${patch.header.id}: the target ${patch.targetPath} does not exist at pin ${config.pin.tag}`, 'regenerate the patch against the current pin (codkit sync, then codkit save), or move the change to the own layer', artifact));
+            findings.push(finding('STALE-ARTIFACT', `${patch.header.id}: the target ${patch.targetPath} does not exist at pin ${config.pin.tag}`, 'regenerate the patch against the current pin (codkit load, then codkit save), or move the change to the own layer', artifact));
             return;
         }
         const outcome = checkHunksInsideMarkers(patch, pinBytes, ext, conventions, { patchFile: artifact, allowIds });
@@ -589,7 +589,7 @@ function checkCompleteness(patchesDir, treeDir, config, patches, overlays, resou
     const tip = revParse(treeDir, `refs/heads/${branch}`);
     if (tip === null) {
         warnings.push(`the generated branch ${branch} does not exist in the fork tree, so "no intervention outside the inventory" was not checked; ` +
-            'run codkit sync first');
+            'run codkit load first');
         return;
     }
     const changed = changedPaths(treeDir, config.pin.sha, tip);
@@ -606,13 +606,13 @@ function checkCompleteness(patchesDir, treeDir, config, patches, overlays, resou
             // ##OWN-EXCLUDED-LOCALLY: own code is committed on the generated branch
             // only in the ci/publish mode; locally it is copied in untracked, so a
             // committed own file means the two modes were mixed in one tree.
-            findings.push(finding('UNTRACKED-INTERVENTION', `${path} is committed on ${branch}, but own code is only committed on a branch built by ci or publish`, 'rebuild the branch for this mode: codkit sync --fresh', path));
+            findings.push(finding('UNTRACKED-INTERVENTION', `${path} is committed on ${branch}, but own code is only committed on a branch built by ci or publish`, 'rebuild the branch for this mode: codkit load --fresh', path));
             continue;
         }
         if (patchTargets.has(path) || overlayTargets.has(path) || resourceTargets.has(path)) {
             continue;
         }
-        findings.push(finding('UNTRACKED-INTERVENTION', `${path} differs from pin ${config.pin.tag} on ${branch}, and no artifact of the delta explains it`, 'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit sync --fresh', path));
+        findings.push(finding('UNTRACKED-INTERVENTION', `${path} differs from pin ${config.pin.tag} on ${branch}, and no artifact of the delta explains it`, 'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit load --fresh', path));
     }
     // The other direction: an artifact whose target the branch does not carry is
     // an artifact that no longer does anything.
@@ -633,7 +633,7 @@ function checkCompleteness(patchesDir, treeDir, config, patches, overlays, resou
 function checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, findings) {
     const target = toPosix(entry.target);
     if (!changed.has(target)) {
-        findings.push(finding('STALE-ARTIFACT', `${entry.id}: ${target} is identical to the pin on ${branch}, so the resource is not replaced`, 'rebuild the branch (codkit sync), or drop the entry if the replacement is no longer wanted', RESOURCE_MAP_PATH));
+        findings.push(finding('STALE-ARTIFACT', `${entry.id}: ${target} is identical to the pin on ${branch}, so the resource is not replaced`, 'rebuild the branch (codkit load), or drop the entry if the replacement is no longer wanted', RESOURCE_MAP_PATH));
         return;
     }
     // Byte equality through git's own object ids: the content is binary by
@@ -643,7 +643,7 @@ function checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, fi
     if (onBranch === null || ours === null || onBranch === ours) {
         return;
     }
-    findings.push(finding('STALE-ARTIFACT', `${entry.id}: ${target} on ${branch} is not the bytes of ${entry.source} - the branch and the map have drifted apart`, 'rebuild the branch: codkit sync', RESOURCE_MAP_PATH));
+    findings.push(finding('STALE-ARTIFACT', `${entry.id}: ${target} on ${branch} is not the bytes of ${entry.source} - the branch and the map have drifted apart`, 'rebuild the branch: codkit load', RESOURCE_MAP_PATH));
 }
 /** Paths that differ between two commits, renames resolved to plain changes. */
 function changedPaths(treeDir, from, to) {

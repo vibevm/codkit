@@ -15,6 +15,7 @@ import { cycleCommand } from './commands/cycle.ts';
 import { forecastCommand } from './commands/forecast.ts';
 import { hooksCommand } from './commands/hooks.ts';
 import { inventoryCommand } from './commands/inventory.ts';
+import { loadCommand } from './commands/load.ts';
 import { markerNewCommand } from './commands/markerNew.ts';
 import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.ts';
 import { publishCommand } from './commands/publish.ts';
@@ -22,7 +23,6 @@ import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.ts';
 import { reresolveCommand } from './commands/reresolve.ts';
 import { saveCommand } from './commands/save.ts';
 import { statusCommand } from './commands/status.ts';
-import { syncCommand } from './commands/sync.ts';
 import { verifyCommand } from './commands/verify.ts';
 import { whereCommand } from './commands/where.ts';
 import { parseArgv, GLOBAL_FLAG_HELP } from './lib/argv.ts';
@@ -46,7 +46,7 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		whereCommand,
 		checkTreeCommand,
 		cloneCommand,
-		syncCommand,
+		loadCommand,
 		statusCommand,
 		saveCommand,
 		markerNewCommand,
@@ -83,6 +83,17 @@ async function main(argv: readonly string[]): Promise<number> {
 	if (positional.length === 0) {
 		printHelp();
 		return EXIT_OK;
+	}
+
+	// `sync` was renamed to `load`; the old name is refused before any command
+	// context exists, the way an unknown command is (no envelope), so scripts
+	// fail loudly instead of silently keeping the old one-way meaning. The name
+	// stays reserved: a real two-way save+load `sync` takes it later.
+	if (positional[0] === 'sync') {
+		return usageFail({
+			error: 'codkit sync was renamed to codkit load',
+			hint: 'the name sync is reserved for the two-way save+load command'
+		});
 	}
 
 	const matched = matchCommand(positional);

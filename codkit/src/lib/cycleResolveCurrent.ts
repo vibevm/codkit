@@ -38,5 +38,5 @@ export function recoverCycleResolveTree(patchesDir: string, resolution: ForkDirR
 		verbose: false,
 		forceApply: true
 	});
-	if (result.exitCode !== 0) throw ckError('ARTIFACT-BROKEN', `forced resolve sync failed with ${result.status}`);
+	if (result.exitCode !== 0) throw ckError('ARTIFACT-BROKEN', `forced resolve load failed with ${result.status}`);
 }

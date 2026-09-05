@@ -54,7 +54,7 @@ export function makeSyncFixture(label: string): SyncFixture {
 	const resolution: ForkDirResolution = { path: treeDir, source: 'flag', exists: true, warning: null };
 	const messages: string[] = [];
 	const out = new Output({
-		command: 'sync',
+		command: 'load',
 		version: '0.0.0',
 		jsonMode: false,
 		streams: {

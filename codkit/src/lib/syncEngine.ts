@@ -94,11 +94,11 @@ export const EXCLUDE_END = '# codkit:end managed';
  * enables; a foreign value of either key is preserved and refused, never
  * overwritten).
  *
- * Lifecycle: rewritten by every sync of that worktree; the per-worktree key and
+ * Lifecycle: rewritten by every load of that worktree; the per-worktree key and
  * file are codkit's own namespace and are never removed automatically - a
  * worktree that stops being managed keeps a harmless one-line exclude file
  * (drop it with `git config --worktree --unset core.excludesFile` if you ever
- * need to). The first worktree-local sync also removes codkit's own stale
+ * need to). The first worktree-local load also removes codkit's own stale
  * managed block from the shared `info/exclude`, leaving foreign lines intact.
  */
 export const OWN_EXCLUDE_RELATIVE_PATH = 'codkit/exclude';
@@ -149,7 +149,7 @@ export type SyncEngineOptions = {
 	 * overlay targets are materialized into commits of the generated branch,
 	 * between the patches and the resource map (PROP-008 sec. 3).
 	 *
-	 * Off by default, and deliberately so: a local `sync` uses the dev channel and
+	 * Off by default, and deliberately so: a local `load` uses the dev channel and
 	 * leaves the upstream files alone, so the tree of a developer never carries a
 	 * rewritten product.json that `git status` would call dirt. `ci` and `publish`
 	 * turn it on, on a tree they own.
@@ -157,7 +157,7 @@ export type SyncEngineOptions = {
 	readonly materializeOverlays?: boolean;
 	/**
 	 * Complete reproducible history for CI/publish: patches, one aggregate own
-	 * commit, overlay targets, then resources. Local sync leaves this off.
+	 * commit, overlay targets, then resources. A local load leaves this off.
 	 */
 	readonly generatedBranch?: boolean;
 	/** Exact immutable patchset commit represented by this materialization. */
@@ -239,7 +239,7 @@ type Artifact = PatchArtifact | ResourceArtifact | OverlayArtifact;
 const NO_OWN: OwnSyncReport = { copied: 0, removed: 0, total: 0 };
 
 /**
- * One `sync`. The caller holds the lock and owns the output envelope; this
+ * One `load`. The caller holds the lock and owns the output envelope; this
  * function does the work and reports what happened.
  */
 export function runSync(options: SyncEngineOptions): SyncResult {
@@ -262,7 +262,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		return result('unfit', 2, { branch });
 	}
 	if (options.forceApply === true && driftDirty(tree, config.ownDirName, patchesDir).dirty) {
-		throw ckError('DIRTY-TREE', 'forced sync recovery requires a completely clean fork tree');
+		throw ckError('DIRTY-TREE', 'forced load recovery requires a completely clean fork tree');
 	}
 	if (!dryRun && !hasRebasePendingRecords(patchesDir)) {
 		completedRebase = completedRebaseMoveForSync(patchesDir, tree);
@@ -273,7 +273,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	}
 
 	// A shared file is classified before any mutation. A malformed managed
-	// block is a human decision: sync must not repair it after moving refs or
+	// block is a human decision: load must not repair it after moving refs or
 	// rewriting work-tree files.
 	let excludePlan: ExcludePlan;
 	try {
@@ -282,7 +282,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		return reportBroken(out, error, branch);
 	}
 	// 2. The config-overlay layer states what it expects the pin to look like,
-	// and that expectation is checked on every sync (##OVERLAY-DRIFT-DETECTOR):
+	// and that expectation is checked on every load (##OVERLAY-DRIFT-DETECTOR):
 	// upstream moving a key an intervention is written against must be loud here,
 	// not at packaging time. Every mismatch is reported, not only the first.
 	let overlays: readonly Overlay[];
@@ -335,7 +335,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// `overlay apply` writes those bytes for packaging, and refusing them
 		// would lock the tree out of dev mode with no codkit command able to
 		// return it. Every other byte of the target stays dirt, and an ordinary
-		// `sync` gets no exemption at all - it may answer the fast path "up to
+		// `load` gets no exemption at all - it may answer the fast path "up to
 		// date" and leave the materialization standing as if it were dev state.
 		const materialized: string[] = [];
 		const drift = driftDirty(tree, config.ownDirName, patchesDir, {
@@ -603,7 +603,7 @@ function overlayArtifacts(overlays: readonly Overlay[]): readonly OverlayArtifac
 }
 
 /**
- * The known-state classifier `sync --fresh` hands the drift guard
+ * The known-state classifier `load --fresh` hands the drift guard
  * (##OVERLAY-KNOWN-MATERIALIZATION). A tracked path passes only when its bytes
  * are exactly the strict composition of every configured overlay that names it,
  * over the clean pin file, at the context this run materializes with - the bytes
@@ -1278,7 +1278,7 @@ function planWorktreeExclude(treeDir: string, body: string): ExcludePlanWorktree
 		throw malformedExclude(
 			path,
 			'this codkit-owned file carries foreign content',
-			`remove the file (it is regenerated on every sync) or move the patterns into the repository's own exclude configuration, then retry`
+			`remove the file (it is regenerated on every load) or move the patterns into the repository's own exclude configuration, then retry`
 		);
 	}
 	const block = planManagedBlock(path, existing, body);
@@ -1650,7 +1650,7 @@ function malformedExclude(path: string, detail: string, hint?: string): CkError 
 }
 
 /**
- * The hook body; regenerated by every sync, so it cannot drift (PROP-012 sec. 5).
+ * The hook body; regenerated by every load, so it cannot drift (PROP-012 sec. 5).
  * The marker line under the shebang claims the file the same way the patch-set
  * hooks do (PROP-007 sec. 19): a hook without it belongs to somebody else.
  */
@@ -1762,7 +1762,7 @@ export function writeTreeHook(treeDir: string, out: Output, afterOpen?: () => vo
 	// fails outright (core.hooksPath=/dev/null) - means git will not run this
 	// copy, and saying otherwise would advertise a guard that is not there. The
 	// copy is still kept: it is the repository's own location, regenerated by
-	// every sync, and it becomes the live guard the moment the config is gone.
+	// every load, and it becomes the live guard the moment the config is gone.
 	const isolated = effectiveHooksPath(treeDir, false);
 	const machine = effectiveHooksPath(treeDir, true);
 	if (isolated === null || machine === null) {
@@ -1843,7 +1843,7 @@ type OwnSideVerdict =
 
 /**
  * ##PATCHSET-SIDE-EDIT-RULE: own code edited in patchset while the tree is otherwise
- * clean is not "unextracted work" - at sync time patchset is the direction of
+ * clean is not "unextracted work" - at load time patchset is the direction of
  * truth, so the difference is announced and then applied.
  *
  * The sides are told apart file by file, against the own map of the mark
@@ -1900,12 +1900,12 @@ function patchsetSideText(relatives: readonly string[]): string {
 	return `own code was edited in patchset since this tree was last synced (${names}); the patchset version is being applied over the tree`;
 }
 
-/** The one diagnostic both `sync` and `save` raise for a two-sided own edit. */
+/** The one diagnostic both `load` and `save` raise for a two-sided own edit. */
 export function bothSidesError(relative: string): CkError {
 	return ckError(
 		'BOTH-SIDES-EDITED',
 		'own code was edited in patchset and in the fork tree, in different ways',
-		'resolve manually: keep one side, then codkit sync/save',
+		'resolve manually: keep one side, then codkit load/save',
 		`${OWN_SOURCE_DIR}/${relative}`
 	);
 }
@@ -1917,7 +1917,7 @@ function reportOwn(out: Output, own: OwnSyncReport): void {
 /**
  * The variable context of the config-overlay layer (PROP-005 ##OVERLAY-VARS).
  * Exported because `overlay apply|check` materializes the same values outside a
- * sync, and two definitions of `build.date` would be one too many.
+ * load, and two definitions of `build.date` would be one too many.
  */
 export function overlayVarContext(config: CodkitConfig, pinDateIso: string, patchSetCommit: string): OverlayVarContext {
 	return {
@@ -1926,7 +1926,7 @@ export function overlayVarContext(config: CodkitConfig, pinDateIso: string, patc
 		pinDate: config.pin.date,
 		patchSetCommit,
 		// Deterministic by construction: the wall clock would make the dev
-		// channel differ between two runs of the same sync.
+		// channel differ between two runs of the same load.
 		buildDate: pinDateIso
 	};
 }

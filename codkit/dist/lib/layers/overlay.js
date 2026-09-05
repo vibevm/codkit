@@ -8,7 +8,7 @@
 // reformatting of the same file.
 //
 // Materialization has two channels (##OVERLAY-TWO-CHANNELS), and both live here.
-// Channel 1 is the one `sync` uses: `<tree>/product.overrides.json`, which
+// Channel 1 is the one `load` uses: `<tree>/product.overrides.json`, which
 // upstream reads only under VSCODE_DEV and which is in the upstream .gitignore,
 // so the tree stays clean. Channel 2 rewrites the target file itself, for
 // packaging and publishing; its base is always the *clean file at the pin*
@@ -265,7 +265,7 @@ export function writeProductOverridesDev(_patchesDir, treeDir, overlays, context
     return { path, written: true, keys: Object.keys(document), overlayIds: ids };
 }
 /**
- * The dev-channel file is written into the tree on every sync, so upstream has
+ * The dev-channel file is written into the tree on every load, so upstream has
  * to ignore it - otherwise every tree would carry permanent dirt and the drift
  * guard would refuse to work (##OVERLAY-TWO-CHANNELS). Returns the warning text,
  * or null when the file is ignored or the question cannot be answered (the tree
@@ -304,7 +304,7 @@ function valueAtPinPath(treeDir, pinSha, target, key) {
     const value = parsed[key];
     return value === undefined ? undefined : value;
 }
-/** True when the tree carries a dev-channel file written by an earlier sync. */
+/** True when the tree carries a dev-channel file written by an earlier load. */
 export function productOverridesExists(treeDir) {
     return existsSync(join(treeDir, PRODUCT_OVERRIDES_FILE));
 }
@@ -386,14 +386,14 @@ export function applyOverlaysToTree(overlays, treeDir, pinSha, context) {
  * Does the tree carry exactly the strict composition of these overlays over the
  * clean pin file (##OVERLAY-KNOWN-MATERIALIZATION)? This is the state
  * `applyOverlaysToTree` writes, asked of bytes that already exist: the drift
- * guard of `sync --fresh` uses it to tell codkit's own packaging materialization
+ * guard of `load --fresh` uses it to tell codkit's own packaging materialization
  * from a manual edit, and unlike `checkOverlayTarget` it is a plain byte answer,
- * because the caller already knows the target differs from what its sync would
+ * because the caller already knows the target differs from what its load would
  * leave in place.
  *
  * False when the file is absent or unreadable - that is not a materialization
  * and stays dirt. A render failure propagates to the caller (it cannot happen
- * after the sync-time drift check has read the same pin base; the one caller
+ * after the load-time drift check has read the same pin base; the one caller
  * converts any surprise into a false answer rather than into a weaker guard).
  */
 export function isExactOverlayMaterialization(overlays, treeDir, pinSha, context) {
@@ -510,7 +510,7 @@ export function nonProductTargetViolations(overlay) {
     return errors;
 }
 /**
- * One error per mismatch, all of them: `sync` and `overlay check` list every
+ * One error per mismatch, all of them: `load` and `overlay check` list every
  * drifted key at once, because an upgrade that moved one key usually moved
  * several and fixing them one run at a time is what makes upgrades expensive.
  */

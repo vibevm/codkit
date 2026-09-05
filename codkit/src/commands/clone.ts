@@ -137,7 +137,7 @@ function report(ctx: CommandContext, result: TreeIdentityResult, outcome: 'clone
 }
 
 /**
- * Clone, check out the pin, fetch LFS content. Shared with `sync
+ * Clone, check out the pin, fetch LFS content. Shared with `load
  * --clone-if-missing` so that there is one implementation of "materialize the
  * fork tree", not two. Returns the diagnosis when it fails, null on success.
  */

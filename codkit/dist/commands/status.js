@@ -58,7 +58,7 @@ async function run(ctx) {
     ctx.out.info(`branch ${branch}: ${tip === null ? 'not created yet' : tip.slice(0, 8)}`);
     ctx.out.info(upToDate
         ? `branch up to date (${met}/${conditions.length} conditions)`
-        : `resync needed (${met}/${conditions.length} conditions): ${firstUnmet(conditions)}`);
+        : `reload needed (${met}/${conditions.length} conditions): ${firstUnmet(conditions)}`);
     // 2. Own code, per file and per side (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
     const mark = readTreeMark(tree);
     const own = classifyOwn(ctx.patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
@@ -80,7 +80,7 @@ async function run(ctx) {
     const treeClean = upstream.length === 0 && own.length === 0;
     if (uncommitted.length > 0 && treeClean) {
         ctx.out.warn(`${uncommitted.length} path(s) under delta/ are modified in patchset and not committed while the fork tree is clean; ` +
-            'the direction of truth is patchset: run codkit sync to put them into the tree');
+            'the direction of truth is patchset: run codkit load to put them into the tree');
     }
     // 5. Drafts left by `marker new` that no save has turned into a patch yet.
     const pending = listPendingHeaders(ctx.patchesDir);

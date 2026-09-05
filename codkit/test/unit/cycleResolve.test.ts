@@ -379,7 +379,7 @@ describe('cycle resolve production adapter', () => {
 		const util = 'src/vs/base/common/util.ts';
 		const utilPatch = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
 		const utilId = 'CK-base-977';
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		expect(
 			fixture.run(['marker', 'new', util, '--id', utilId, '--type', 'hook', '--owner', 'workbench-core', '--reason', 'resolve test']).status
 		).toBe(0);
@@ -467,9 +467,9 @@ describe('cycle resolve production adapter', () => {
 		}
 	});
 
-	it.each(['worktree-moved', 'mark-written'] as const)('recovers the real sync crash window after %s', (checkpoint) => {
+	it.each(['worktree-moved', 'mark-written'] as const)('recovers the real load crash window after %s', (checkpoint) => {
 		const fixture = makeCliFixture(`cycle-resolve-crash-${checkpoint}`);
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const config = loadConfig(fixture.patchesDir);
 		if (config === null) throw new Error('missing fixture config');
 		writeFileSync(fixture.patchesPath('.git/info/exclude'), '\n.codkit/\n', { flag: 'a' });

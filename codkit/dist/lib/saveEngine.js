@@ -2,9 +2,9 @@
 // The save engine: take the work out of the fork tree and put it into patchset.
 // The pseudocode of PROP-008 sec. 4 is normative and this file follows its order.
 //
-// `save` is the inverse of `sync`, and the asymmetry between them is the point:
+// `save` is the inverse of `load`, and the asymmetry between them is the point:
 //
-//   * `sync` writes the tree from patchset, so it refuses to run over work that is
+//   * `load` writes the tree from patchset, so it refuses to run over work that is
 //     not in patchset yet (the drift guard);
 //   * `save` reads the tree into patchset, so it must never lose what only patchset
 //     has. Own code is mirrored back file by file, and only for the files the

@@ -1,6 +1,8 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
-// codkit sync - bring the fork tree to the pin and put the delta on it.
-// Contract: PROP-007 sec. 5 (##CMD-SYNC); algorithm: PROP-008 sec. 3.
+// codkit load - bring the fork tree to the pin and put the delta on it.
+// Contract: PROP-007 sec. 5 (##CMD-LOAD); algorithm: PROP-008 sec. 3. The name
+// `sync` is reserved for the future two-way save+load command; until then it is
+// a plain usage error in main.ts.
 //
 // This command is the one a developer runs every day, so its two guarantees
 // matter more than its features: it never destroys work that was not extracted
@@ -41,7 +43,7 @@ async function run(ctx) {
     }
     // The lock is keyed by the tree, so two patchset checkouts driving the same
     // tree exclude each other, and one patchset driving two trees does not.
-    return withLock(ctx.patchesDir, treeId(resolution.path), 'sync', () => {
+    return withLock(ctx.patchesDir, treeId(resolution.path), 'load', () => {
         const result = runSync({
             patchesDir: ctx.patchesDir,
             resolution,
@@ -59,7 +61,7 @@ async function run(ctx) {
 }
 function requireConfig(config) {
     if (config === null) {
-        throw ckError('CONFIG', 'codkit.json was not found in the patchset root: sync needs the pin and the delta of this repository', 'run sync from a patchset checkout that carries codkit.json');
+        throw ckError('CONFIG', 'codkit.json was not found in the patchset root: load needs the pin and the delta of this repository', 'run load from a patchset checkout that carries codkit.json');
     }
     return config;
 }
@@ -78,7 +80,7 @@ function cloneMissingTree(ctx, resolution, config) {
     }
     const source = config.publishRemoteUrl;
     if (source === null || source === '') {
-        throw ckError('CONFIG', `the fork tree ${resolution.path} does not exist and codkit.json has no publishRemoteUrl to clone from`, 'run: codkit clone --from <url>   (sync itself takes no source, so the clone is an explicit step)');
+        throw ckError('CONFIG', `the fork tree ${resolution.path} does not exist and codkit.json has no publishRemoteUrl to clone from`, 'run: codkit clone --from <url>   (load itself takes no source, so the clone is an explicit step)');
     }
     ctx.out.info(`fork tree is missing; cloning ${source}`);
     const failure = cloneForkTree({ path: resolution.path, source, config, out: ctx.out });
@@ -115,8 +117,8 @@ function buildData(result, flags) {
     }
     return data;
 }
-export const syncCommand = {
-    name: 'sync',
+export const loadCommand = {
+    name: 'load',
     summary: 'bring the fork tree to the pin and apply the delta',
     configMode: 'load',
     maxArgs: 0,

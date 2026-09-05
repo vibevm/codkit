@@ -81,7 +81,7 @@ Own code must not re-register these bootstrap services (34 current entries):
 
 ## Fresh cleanup whitelist
 
-`codkit sync --fresh` preserves untracked paths matched by this configured whitelist; other untracked content is disposable. Patterns use Codkit's documented gitignore-style subset.
+`codkit load --fresh` preserves untracked paths matched by this configured whitelist; other untracked content is disposable. Patterns use Codkit's documented gitignore-style subset.
 
 - `node_modules/`
 - `.build/`

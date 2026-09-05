@@ -2,7 +2,7 @@
 // codkit overlay apply|check - the second channel of the config-overlay layer.
 // Contract: PROP-007 sec. 12 (##CMD-OVERLAY); format and channels: PROP-005 sec. 5.
 //
-// An everyday developer never needs these: `sync` writes the dev channel and
+// An everyday developer never needs these: `load` writes the dev channel and
 // leaves the upstream file alone. Packaging does need them, because a packaged
 // build reads product.json itself, and that is what `apply` rewrites - from the
 // clean file at the pin, so running it twice writes the same bytes.

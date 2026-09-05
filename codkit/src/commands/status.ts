@@ -79,7 +79,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	ctx.out.info(
 		upToDate
 			? `branch up to date (${met}/${conditions.length} conditions)`
-			: `resync needed (${met}/${conditions.length} conditions): ${firstUnmet(conditions)}`
+			: `reload needed (${met}/${conditions.length} conditions): ${firstUnmet(conditions)}`
 	);
 
 	// 2. Own code, per file and per side (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
@@ -106,7 +106,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	if (uncommitted.length > 0 && treeClean) {
 		ctx.out.warn(
 			`${uncommitted.length} path(s) under delta/ are modified in patchset and not committed while the fork tree is clean; ` +
-				'the direction of truth is patchset: run codkit sync to put them into the tree'
+				'the direction of truth is patchset: run codkit load to put them into the tree'
 		);
 	}
 

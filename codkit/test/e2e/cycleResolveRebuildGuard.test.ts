@@ -110,7 +110,7 @@ describe('cycle resolve save rebuild guard', () => {
 
 	it('still returns CK-E-INTERNAL for a rewrite no normative channel explains', () => {
 		const fixture = makeCliFixture('save-unexplained-rewrite');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const artifact = fixture.patchesPath(`delta/patches/${PATCH_FILE_NAME}`);
 		const patch = readFileSync(artifact, 'utf8');
 		const changedPatch = patch.replace(

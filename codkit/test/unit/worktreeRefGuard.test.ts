@@ -97,8 +97,8 @@ describe('the generated-ref worktree preflight', () => {
 
 	it('moves the ref when the worktree holding it is the tree being synced', () => {
 		const { first, second } = makeSharedRefWorktrees('ref-self');
-		// The normal post-sync state: this worktree itself sits on the generated
-		// branch, and no sibling does. A re-sync must be able to move it.
+		// The normal post-load state: this worktree itself sits on the generated
+		// branch, and no sibling does. A re-load must be able to move it.
 		runGit({ args: ['symbolic-ref', 'HEAD', 'refs/heads/ck-own'], cwd: first });
 		runGit({ args: ['branch', 'ck-own'], cwd: first });
 		runGit({ args: ['symbolic-ref', 'HEAD', 'refs/heads/ck-own'], cwd: first });
@@ -240,7 +240,7 @@ describe('a full runSync over a tree whose sibling worktree holds the generated 
 		runGit({ args: ['symbolic-ref', 'HEAD', ref], cwd: sibling });
 		writeFileSync(join(sibling, 'sibling-file.txt'), 'sibling state\n', 'utf8');
 		const removable = join(fixture.treeDir, 'remove-on-fresh.txt');
-		writeFileSync(removable, 'must survive refused fresh sync\n', 'utf8');
+		writeFileSync(removable, 'must survive refused fresh load\n', 'utf8');
 
 		const refBefore = runGit({ args: ['rev-parse', ref], cwd: fixture.treeDir }).stdout.trim();
 		const indexBefore = runGit({ args: ['write-tree'], cwd: fixture.treeDir }).stdout.trim();
@@ -260,6 +260,6 @@ describe('a full runSync over a tree whose sibling worktree holds the generated 
 		expect(runGit({ args: ['status', '--porcelain'], cwd: fixture.treeDir }).stdout).toBe(treeStatus);
 		expect(runGit({ args: ['status', '--porcelain'], cwd: sibling }).stdout).toBe(siblingStatus);
 		expect(existsSync(removable)).toBe(true);
-		expect(readFileSync(removable, 'utf8')).toBe('must survive refused fresh sync\n');
+		expect(readFileSync(removable, 'utf8')).toBe('must survive refused fresh load\n');
 	});
 });

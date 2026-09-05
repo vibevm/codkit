@@ -55,7 +55,7 @@ export type OwnSyncReport = {
 	readonly copied: number;
 	/** Files removed from the tree because patchset no longer has them. */
 	readonly removed: number;
-	/** Files own code consists of after the sync. */
+	/** Files own code consists of after the load. */
 	readonly total: number;
 };
 
@@ -112,7 +112,7 @@ export type OwnDivergenceKind =
 	| 'both'
 	/** In the tree only: an own file that was never extracted into patchset. */
 	| 'tree-only'
-	/** In patchset only: nothing to lose, this is what a sync is for. */
+	/** In patchset only: nothing to lose, this is what a load is for. */
 	| 'patchset-only';
 
 export type OwnDivergence = {
@@ -151,10 +151,10 @@ export function compareOwn(patchesDir: string, treeDir: string, ownDirName: stri
 }
 
 /**
- * patchset -> tree, the direction `sync` uses.
+ * patchset -> tree, the direction `load` uses.
  *
  * The target side is listed raw, so that a file the tree carries and patchset does
- * not is removed. That is also how a manifest an older sync materialized leaves
+ * not is removed. That is also how a manifest an older load materialized leaves
  * the tree: it is no longer copied, so the next run finds it in the mirror
  * without a source and deletes it like any other leftover.
  */
@@ -163,7 +163,7 @@ export function syncOwnCode(patchesDir: string, treeDir: string, ownDirName: str
 	const target = ownTargetRoot(treeDir, ownDirName);
 	// Validate both complete trees before the first copy/delete. In particular, a
 	// symlink on the materialized side must not redirect a later write outside the
-	// fork tree, and a symlink found after one copy must not leave a partial sync.
+	// fork tree, and a symlink found after one copy must not leave a partial load.
 	assertOwnRootsSafe(patchesDir, treeDir, ownDirName);
 	const sourceFiles = listOwnFiles(source, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
 	const targetFiles = listOwnFiles(target, { refuseSymlinks: true });
@@ -213,7 +213,7 @@ export type OwnState = {
 const OWN_FINGERPRINT_SCHEMA_VERSION = 1;
 
 /**
- * The own state as patchset holds it. Recorded in the tree mark by every sync and
+ * The own state as patchset holds it. Recorded in the tree mark by every load and
  * save (PROP-006 ##TREE-MARK) so that the next run can tell, file by file, which
  * side moved: a file equal to the mark did not change on that side.
  *
@@ -285,7 +285,7 @@ export type OwnSideClass = {
 
 /**
  * Classify every own file by which side moved. `markFiles` is the map the tree
- * mark recorded at the last sync; null means "the map is unknown" - migration
+ * mark recorded at the last load; null means "the map is unknown" - migration
  * from a mark written before the map existed - and every difference then falls
  * into `unknown` rather than being guessed at.
  */

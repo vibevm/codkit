@@ -11,7 +11,7 @@ const COMMANDS = [
 	'where',
 	'check-tree',
 	'clone',
-	'sync',
+	'load',
 	'status',
 	'save',
 	'marker new',

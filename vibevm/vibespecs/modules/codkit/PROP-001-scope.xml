@@ -7,7 +7,8 @@
   <does title="1. Что делает codkit">
     <facts ordered="true">
       <DOES-RESOLVE-TREE fact="true" status="spec/done">Разрешает путь к дереву форка и проверяет его пригодность (PROP-008 §1–2).</DOES-RESOLVE-TREE>
-      <DOES-SYNC fact="true" status="spec/done">Приводит дерево форка к пину и накладывает дельту коммитами на одноразовой сгенерированной ветке (`sync`), доставляет собственный код копированием.</DOES-SYNC>
+      <DOES-SYNC fact="true" status="spec/done">Надгробие (Phase 1 кампании TREE-COMMITS-SAVE, 2026-09-06): анкер заменён на `DOES-LOAD` ниже; адрес этого якоря неизменен (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR), имя `sync` зарезервировано для двусторонней команды будущей фазы 8.</DOES-SYNC>
+      <DOES-LOAD fact="true" status="spec/done">Приводит дерево форка к пину и накладывает дельту коммитами на одноразовой сгенерированной ветке (`load`), доставляет собственный код копированием.</DOES-LOAD>
       <DOES-EXTRACT fact="true" status="spec/done">Извлекает правки из дерева в артефакты patchset (`save`/extract), защищает от молчаливой потери работы (страж дрейфа).</DOES-EXTRACT>
       <DOES-LAYERS fact="true" status="spec/done">Ведёт слои дельты (PROP-005), маркеры (PROP-004), инвентарь (PROP-006).</DOES-LAYERS>
       <DOES-BUILD-WRAP fact="true" status="spec/done">Заворачивает watch-демоны сборки VS Code в команды `build up|down|status|errors` (PROP-010).</DOES-BUILD-WRAP>
@@ -36,7 +37,7 @@
         <td><LATER-RULE-ENGINE fact="true" status="spec/done">движок rewrite-rule (формат и валидация — в MVP)</LATER-RULE-ENGINE></td>
       </tr>
       <tr>
-        <td><MVP-SYNC-SAVE fact="true" status="spec/done">`sync`/`save` c идемпотентностью, метаданные-отпечаток</MVP-SYNC-SAVE></td>
+        <td><MVP-SYNC-SAVE fact="true" status="spec/done">Надгробие (Phase 1 кампании TREE-COMMITS-SAVE, 2026-09-06): анкер заменён на `MVP-LOAD-SAVE` (см. ниже, вне таблицы); адрес неизменен (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR).</MVP-SYNC-SAVE></td>
         <td><LATER-NLS fact="true" status="spec/done">слой строк/nls сверх префиксного правила</LATER-NLS></td>
       </tr>
       <tr>
@@ -68,6 +69,7 @@
         <td/>
       </tr>
     </table>
+    <p><MVP-LOAD-SAVE fact="true" status="spec/done">`load`/`save` c идемпотентностью, метаданные-отпечаток — преемник надгробия `MVP-SYNC-SAVE` в таблице выше (Phase 1 кампании TREE-COMMITS-SAVE).</MVP-LOAD-SAVE></p>
     <p><MVP-BUILD-ORDER fact="true" status="spec/done">Порядок строительства — «фундамент, потом надстройка»: независимое разрешение трёх корней → применение/извлечение → инвентарь/слои → оркестратор → правила/агенты. План исполнения может меняться и не является частью постоянной спеки.</MVP-BUILD-ORDER></p>
     <p><MVP-ACCEPTANCE fact="true" status="spec/done">MVP принят, когда: сценарии S01–S14 из FEAT-002 зелёные; полигон FEAT-001 содержит все слои; НФТ PROP-012 §3 замерены; документация PROP-012 §4 существует; clean-room чек `common/PROP-004` пройден.</MVP-ACCEPTANCE></p>
   </mvp>

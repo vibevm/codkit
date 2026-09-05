@@ -514,7 +514,7 @@ function checkOnePatchMarkers(
 				finding(
 					'STALE-ARTIFACT',
 					`${patch.header.id}: the target ${patch.targetPath} does not exist at pin ${config.pin.tag}`,
-					'regenerate the patch against the current pin (codkit sync, then codkit save), or move the change to the own layer',
+					'regenerate the patch against the current pin (codkit load, then codkit save), or move the change to the own layer',
 					artifact
 				)
 			);
@@ -903,7 +903,7 @@ function checkCompleteness(
 	if (tip === null) {
 		warnings.push(
 			`the generated branch ${branch} does not exist in the fork tree, so "no intervention outside the inventory" was not checked; ` +
-				'run codkit sync first'
+				'run codkit load first'
 		);
 		return;
 	}
@@ -928,7 +928,7 @@ function checkCompleteness(
 				finding(
 					'UNTRACKED-INTERVENTION',
 					`${path} is committed on ${branch}, but own code is only committed on a branch built by ci or publish`,
-					'rebuild the branch for this mode: codkit sync --fresh',
+					'rebuild the branch for this mode: codkit load --fresh',
 					path
 				)
 			);
@@ -941,7 +941,7 @@ function checkCompleteness(
 			finding(
 				'UNTRACKED-INTERVENTION',
 				`${path} differs from pin ${config.pin.tag} on ${branch}, and no artifact of the delta explains it`,
-				'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit sync --fresh',
+				'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit load --fresh',
 				path
 			)
 		);
@@ -986,7 +986,7 @@ function checkResourceEntry(
 			finding(
 				'STALE-ARTIFACT',
 				`${entry.id}: ${target} is identical to the pin on ${branch}, so the resource is not replaced`,
-				'rebuild the branch (codkit sync), or drop the entry if the replacement is no longer wanted',
+				'rebuild the branch (codkit load), or drop the entry if the replacement is no longer wanted',
 				RESOURCE_MAP_PATH
 			)
 		);
@@ -1003,7 +1003,7 @@ function checkResourceEntry(
 		finding(
 			'STALE-ARTIFACT',
 			`${entry.id}: ${target} on ${branch} is not the bytes of ${entry.source} - the branch and the map have drifted apart`,
-			'rebuild the branch: codkit sync',
+			'rebuild the branch: codkit load',
 			RESOURCE_MAP_PATH
 		)
 	);

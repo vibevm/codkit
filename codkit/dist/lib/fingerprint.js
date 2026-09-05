@@ -6,7 +6,7 @@
 //   * deltaFingerprint - what patchset currently asks the tree to look like. It is
 //     a hash over every file under delta/ plus the pin, so any edit to any
 //     artifact (own code included, since own lives under delta/own/) changes it.
-//     It is the value the fast path of `sync` compares against (##FAST-PATH-RULE):
+//     It is the value the fast path of `load` compares against (##FAST-PATH-RULE):
 //     when it moved, the applied state is stale by definition.
 //   * treeId - which tree we are talking about. It keys the per-tree cache and
 //     the lock file, so several fork trees can be driven from one patchset
@@ -73,7 +73,7 @@ function walk(absoluteDir, relativeDir, into) {
     }
     catch {
         // No delta/ at all, or a directory that vanished mid-walk: both mean
-        // "nothing to hash here", never a crash in the middle of a sync.
+        // "nothing to hash here", never a crash in the middle of a load.
         return;
     }
     for (const entry of entries) {

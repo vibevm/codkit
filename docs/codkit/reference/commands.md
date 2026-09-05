@@ -29,7 +29,7 @@ The synopsis lists public command flags only. Global flags may be added to every
 | `codkit where` | print the resolved fork tree path and the source of that path | Resolve the external roots without loading patch-set configuration and report schema-2 `roots.tool`, `roots.patches`, and `roots.fork` with their winning sources. |
 | `codkit check-tree [--require-clean]` | check that the fork tree is the upstream tree this patchset tracks | Read-only identity and pin/LFS checks. `--require-clean` also returns 1 when paths outside the own directory are dirty. |
 | `codkit clone [--from <url\|path>]` | clone the upstream fork tree into the resolved path and check out the pin | Clone from `--from` or `publishRemoteUrl`, check out the pin, and fetch LFS content. Rejected by `--ci`. |
-| `codkit sync [--fresh] [--dry-run] [--clone-if-missing]` | bring the fork tree to the pin and apply the delta | Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`. |
+| `codkit load [--fresh] [--dry-run] [--clone-if-missing]` | bring the fork tree to the pin and apply the delta | Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`. |
 | `codkit status` | show the pin, the branch, and what is not extracted into patchset yet | Show the pin/generated branch and work in the fork tree that has not been extracted. |
 | `codkit save [path ...] [--commit] [--message <text>] [--allow-new-file <path> ...]` | extract the changes of the fork tree back into the patchset delta | Extract all changed paths, or only the named paths, back into patchset. `--allow-new-file` is repeatable. `--commit` optionally commits the patchset result; `--message` supplies its message. |
 | `codkit marker new <tree-file> --id <id> --type <type> --owner <owner> --reason <text> [--category <category>] [--layer <patch\|entry-module>] [--line <n>]` | scaffold a codkit marker block in an upstream file of the tree | Create an empty marker block and pending patch header. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. |
@@ -63,7 +63,7 @@ With `--json`, an invoked command writes one versioned envelope to stdout. Human
 ## Network boundary
 
 - Global `--ci` is non-interactive and forbids Codkit network operations. The `ci` command implies the same restriction even when `--ci` is not typed.
-- `clone` and `sync --clone-if-missing` are the local, explicit ways to obtain a missing tree; both are rejected in `--ci` mode.
+- `clone` and `load --clone-if-missing` are the local, explicit ways to obtain a missing tree; both are rejected in `--ci` mode.
 - `forecast`, `check-tree`, and `ci` use only objects/refs already present locally. The CI wrapper must provide missing refs, LFS objects, and dependencies.
 - `publish` is intentionally not a CI-mode command. It is the only release push path, requires the bot confirmation flag, and refuses the combination with `--ci`.
 

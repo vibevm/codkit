@@ -1,9 +1,9 @@
 // Which side of an own file moved (PROP-008 ##PATCHSET-SIDE-EDIT-RULE), and what
 // `save` mirrors back because of it (##OWN-COPY-ALGORITHM, reversed).
 //
-// The classifier is what makes the two directions of truth co-exist: `sync`
+// The classifier is what makes the two directions of truth co-exist: `load`
 // applies patchset over the tree, `save` extracts the tree into patchset, and the map
-// the mark recorded at the last sync is the only evidence of which side of a
+// the mark recorded at the last load is the only evidence of which side of a
 // difference actually moved.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -54,7 +54,7 @@ describe('classifyOwn', () => {
 			{ 'same.ts': 'a\n', 'patchset.ts': 'edited in patchset\n', 'tree.ts': 'as of the mark\n', 'both.ts': 'the patchset version\n' },
 			{ 'same.ts': 'a\n', 'patchset.ts': 'as of the mark\n', 'tree.ts': 'edited in the tree\n', 'both.ts': 'the tree version\n' }
 		);
-		// The mark records the state both sides had after the last sync.
+		// The mark records the state both sides had after the last load.
 		const mark = ownStateOfTree(sides.treeDir, OWN_DIR).files;
 		const asOfMark: OwnFileMap = {
 			'same.ts': mark['same.ts'] ?? '',

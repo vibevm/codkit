@@ -32,7 +32,7 @@ type InventoryData = {
 
 beforeAll(() => {
 	fixture = makeCliFixture('inventory');
-	expect(fixture.run(['sync']).status).toBe(0);
+	expect(fixture.run(['load']).status).toBe(0);
 });
 
 afterAll(cleanupTempRoots);

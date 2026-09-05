@@ -40,7 +40,7 @@ export function executeProvisionalMove(options, preflight) {
         if (preflight.prior === null)
             notify(options, 'prepared');
     }
-    // The same generated-ref guard as sync (PROP-008
+    // The same generated-ref guard as load (PROP-008
     // ##GENERATED-REF-WORKTREE-PREFLIGHT): both moving the shared ref and
     // selecting it as this worktree's HEAD happen under one common-repository
     // lock and one fresh preflight. Guarding only update-ref would leave the

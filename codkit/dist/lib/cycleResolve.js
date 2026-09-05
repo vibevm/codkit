@@ -100,7 +100,7 @@ function reconcileOrFinish(options, facts, plans) {
             facts = recoverCleanTree(options, facts);
             plans = makePlans(options, facts);
             if (facts.patchsetDirt.length > 0)
-                throw broken('forced final sync introduced patchset dirt');
+                throw broken('forced final load introduced patchset dirt');
         }
         return finish(options, plans, facts.state, null);
     }
@@ -130,7 +130,7 @@ function reconcileOrFinish(options, facts, plans) {
         patchHeaderOverrides: artifacts.map((artifact) => headerOverride(artifact, options.config))
     });
     if (result.exitCode !== 0)
-        throw broken('final exact-path save/sync did not complete');
+        throw broken('final exact-path save/load did not complete');
     const after = collectFacts(options);
     if (after.treeDirt.length > 0 || after.patchsetDirt.length > 0 || !treeIsCurrent(options)) {
         throw broken('final reconciliation did not produce zero dirt with current mark/cache/fingerprint');
@@ -147,7 +147,7 @@ function recoverCleanTree(options, facts, artifact) {
     (options.runtime?.recoverTree ?? ((input) => recoverCycleResolveTree(input.patchesDir, input.resolution, input.config, input.out)))(options);
     const after = collectFacts(options);
     if (after.treeDirt.length > 0 || !treeIsCurrent(options))
-        throw broken('forced sync did not restore a clean current fork proof');
+        throw broken('forced load did not restore a clean current fork proof');
     return after;
 }
 function assertAllExact(options, facts) {

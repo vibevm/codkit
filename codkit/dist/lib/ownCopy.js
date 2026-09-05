@@ -112,10 +112,10 @@ export function compareOwn(patchesDir, treeDir, ownDirName) {
     return diverged;
 }
 /**
- * patchset -> tree, the direction `sync` uses.
+ * patchset -> tree, the direction `load` uses.
  *
  * The target side is listed raw, so that a file the tree carries and patchset does
- * not is removed. That is also how a manifest an older sync materialized leaves
+ * not is removed. That is also how a manifest an older load materialized leaves
  * the tree: it is no longer copied, so the next run finds it in the mirror
  * without a source and deletes it like any other leftover.
  */
@@ -124,7 +124,7 @@ export function syncOwnCode(patchesDir, treeDir, ownDirName) {
     const target = ownTargetRoot(treeDir, ownDirName);
     // Validate both complete trees before the first copy/delete. In particular, a
     // symlink on the materialized side must not redirect a later write outside the
-    // fork tree, and a symlink found after one copy must not leave a partial sync.
+    // fork tree, and a symlink found after one copy must not leave a partial load.
     assertOwnRootsSafe(patchesDir, treeDir, ownDirName);
     const sourceFiles = listOwnFiles(source, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
     const targetFiles = listOwnFiles(target, { refuseSymlinks: true });
@@ -156,7 +156,7 @@ export function syncOwnCode(patchesDir, treeDir, ownDirName) {
 /** Version of the canonical string of ownFingerprint; part of the hashed input. */
 const OWN_FINGERPRINT_SCHEMA_VERSION = 1;
 /**
- * The own state as patchset holds it. Recorded in the tree mark by every sync and
+ * The own state as patchset holds it. Recorded in the tree mark by every load and
  * save (PROP-006 ##TREE-MARK) so that the next run can tell, file by file, which
  * side moved: a file equal to the mark did not change on that side.
  *
@@ -195,7 +195,7 @@ function sha256File(absolute) {
 }
 /**
  * Classify every own file by which side moved. `markFiles` is the map the tree
- * mark recorded at the last sync; null means "the map is unknown" - migration
+ * mark recorded at the last load; null means "the map is unknown" - migration
  * from a mark written before the map existed - and every difference then falls
  * into `unknown` rather than being guessed at.
  */

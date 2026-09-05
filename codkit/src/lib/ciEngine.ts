@@ -246,7 +246,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	// never produce the state the classifier exists for. The only way those bytes
 	// reach a ci tree is an out-of-band `overlay apply` - a developer tree reused
 	// by a job, which is exactly what this guard exists to name loudly - and its
-	// way out is codkit's own (`sync --fresh` on that tree) or the disposable-tree
+	// way out is codkit's own (`load --fresh` on that tree) or the disposable-tree
 	// contract itself (mount a fresh tree), not a direct git restore.
 	const drift = driftDirty(tree, config.ownDirName, patchesDir, { untrackedIsDirt: false });
 	if (drift.dirty) {
@@ -280,7 +280,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	branchTip = applied.branchTip;
 	generatedOwnPaths = applied.generatedOwnPaths;
 	if (applied.exitCode !== EXIT_OK) {
-		steps.record('fresh apply', 'failed', `sync: ${applied.status}`);
+		steps.record('fresh apply', 'failed', `load: ${applied.status}`);
 		return done(applied.exitCode);
 	}
 	steps.record(
@@ -340,7 +340,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		branchTip = applied.branchTip;
 		generatedOwnPaths = applied.generatedOwnPaths;
 		if (applied.exitCode !== EXIT_OK) {
-			steps.record('overlay apply', 'failed', `sync: ${applied.status}`);
+			steps.record('overlay apply', 'failed', `load: ${applied.status}`);
 			return done(applied.exitCode);
 		}
 		steps.record('overlay apply', 'ok', `${applied.artifacts} artifact(s) on ${applied.branch}, overlay targets materialized`);

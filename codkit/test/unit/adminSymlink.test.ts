@@ -33,7 +33,7 @@ function makeNormalRepo(label: string): string {
 function collectingOutput(): { readonly out: Output; readonly lines: readonly string[] } {
 	const lines: string[] = [];
 	const out = new Output({
-		command: 'sync',
+		command: 'load',
 		version: 'test',
 		jsonMode: false,
 		streams: {

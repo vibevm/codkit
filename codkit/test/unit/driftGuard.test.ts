@@ -53,7 +53,7 @@ function whileChanged<T>(relative: string, content: string, look: () => T): T {
 }
 
 describe('driftDirty', () => {
-	it('is clean right after a sync', () => {
+	it('is clean right after a load', () => {
 		const result = guard();
 		expect(result.dirty).toBe(false);
 		expect(result.files).toEqual([]);

@@ -1,7 +1,7 @@
-// The fast-path rule (PROP-006 sec. 1, ##FAST-PATH-RULE): the no-op sync is
+// The fast-path rule (PROP-006 sec. 1, ##FAST-PATH-RULE): the no-op load is
 // allowed only when every one of its conditions holds.
 //
-// The test starts from a state that is consistent by construction - a real sync
+// The test starts from a state that is consistent by construction - a real load
 // on the fixture tree - and then breaks the conditions one at a time. Each of
 // them alone must forbid the fast path, because each of them alone means the
 // tree is no longer what the cache claims.
@@ -60,7 +60,7 @@ function whileBroken(breakIt: () => void, restore: () => void): { ok: boolean; r
 }
 
 describe('fastPathOk', () => {
-	it('allows the no-op right after a sync', () => {
+	it('allows the no-op right after a load', () => {
 		expect(fastPathOk(currentInput()).ok).toBe(true);
 	});
 
@@ -146,7 +146,7 @@ describe('fastPathOk', () => {
 		expect(verdict.ok).toBe(true);
 	});
 
-	it('drives the second sync to "up to date" and the broken state to a full apply', () => {
+	it('drives the second load to "up to date" and the broken state to a full apply', () => {
 		const second = fixture.sync();
 		expect(second.status).toBe('up-to-date');
 		expect(second.exitCode).toBe(0);

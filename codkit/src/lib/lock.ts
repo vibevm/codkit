@@ -6,7 +6,7 @@
 // hard link, so the race is decided by the filesystem, not a check-then-write
 // window.
 //
-// A lock whose owner is gone is not an obstacle: a killed sync must not require
+// A lock whose owner is gone is not an obstacle: a killed load must not require
 // a human to delete a file before the next one can run. The pid in the file is
 // probed, and a dead one is cleared with a warning.
 

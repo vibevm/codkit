@@ -205,7 +205,7 @@ function secondCommitFiles(): FileMap {
 
 // product.overrides.json is ignored upstream too: it is the dev channel of the
 // config-overlay layer (PROP-005 ##OVERLAY-TWO-CHANNELS), written into the tree by
-// `sync`, and the tree has to stay clean with it in place.
+// `load`, and the tree has to stay clean with it in place.
 const GITIGNORE = `.build/
 node_modules/
 out/

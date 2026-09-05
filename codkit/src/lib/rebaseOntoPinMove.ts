@@ -182,18 +182,18 @@ export function completedRebaseMoveForSync(patchesDir: string, treeDir: string):
 export function assertCompletedRebaseMoveSyncTree(patchesDir: string, treeDir: string, expectedTree: string, actualTree: string): void {
 	const record = readRebaseMoveRecord(patchesDir);
 	if (record === null || record.state !== 'complete' || record.desiredTree !== expectedTree) {
-		throw moveError('sync completion lost its exact completed receipt');
+		throw moveError('load completion lost its exact completed receipt');
 	}
 	for (const entry of record.entries) {
 		const actual = rebaseTreeObject(treeDir, actualTree, entry.path);
 		if (!sameObject(actual, entry.afterObject))
 			throw moveError(
-				`${entry.path}: sync tree differs from completed receipt object (${JSON.stringify(actual)} != ${JSON.stringify(entry.afterObject)})`
+				`${entry.path}: load tree differs from completed receipt object (${JSON.stringify(actual)} != ${JSON.stringify(entry.afterObject)})`
 			);
 	}
 	const diff = runGit({ args: ['diff', '--name-only', '-z', record.head, actualTree], cwd: treeDir });
 	if (diff.status !== 0 || (diff.stdout !== '' && !diff.stdout.endsWith('\0')))
-		throw moveError('cannot compare sync tree with receipt base');
+		throw moveError('cannot compare load tree with receipt base');
 	const actualChanged = diff.stdout.split('\0').filter(Boolean).sort(compareText);
 	const expectedChanged = record.entries
 		.filter((entry) => !sameObject(rebaseTreeObject(treeDir, record.head, entry.path), entry.afterObject))
@@ -201,14 +201,14 @@ export function assertCompletedRebaseMoveSyncTree(patchesDir: string, treeDir: s
 		.sort(compareText);
 	if (JSON.stringify(actualChanged) !== JSON.stringify(expectedChanged))
 		throw moveError(
-			`sync tree changed paths differ from completed receipt (${JSON.stringify(actualChanged)} != ${JSON.stringify(expectedChanged)})`
+			`load tree changed paths differ from completed receipt (${JSON.stringify(actualChanged)} != ${JSON.stringify(expectedChanged)})`
 		);
 }
 
 export function finishCompletedRebaseMoveSync(patchesDir: string, treeDir: string, expectedTree: string, actualTree: string): void {
 	assertCompletedRebaseMoveSyncTree(patchesDir, treeDir, expectedTree, actualTree);
 	const status = runGit({ args: ['status', '--porcelain=v1', '-z', '--untracked-files=all'], cwd: treeDir });
-	if (status.status !== 0 || status.stdout !== '') throw moveError('sync did not leave the fork clean while consuming completed receipt');
+	if (status.status !== 0 || status.stdout !== '') throw moveError('load did not leave the fork clean while consuming completed receipt');
 	removeRequired(patchesDir, REBASE_MOVE_PATH);
 }
 

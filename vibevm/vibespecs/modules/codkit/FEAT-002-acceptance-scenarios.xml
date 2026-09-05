@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec xmlns="https://vibevm.org/spec/1">
-  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S16 (Given/When/Then)</title>
+  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S16, S21 (Given/When/Then)</title>
   <status stage="spec" state="plan" comment="standalone Given/When/Then acceptance on FEAT-001; e2e harness is PROP-013"/>
   <conventions title="0. Обозначения">
     <p><SCENARIO-CONVENTIONS fact="true" status="spec/done">`$TOOL`, `$PATCHES`, `$FORK` — три несвязанных disjoint roots; cwd находится в четвёртом месте. Чистый fork — checkout upstream pin без локальных правок. Then по выводу проверяется через schema-2 `roots.tool|patches|fork`; исключения — явные проверки human message. Коды — 0/1/2/3 из PROP-007.</SCENARIO-CONVENTIONS></p>
     <p><SCENARIO-EXECUTION fact="true" status="spec/done">Сценарии являются постоянным acceptance contract и не зависят от удалённой кампании или потребительского продукта. Конкретный план исполнения может группировать их как угодно, но не отменяет ни один Then.</SCENARIO-EXECUTION></p>
   </conventions>
-  <s01 title="S01 — sync с предоставленным деревом">
-    <p><S01 fact="true" status="spec/plan">**Given**: `$TOOL`, чистый fork на configured pin в `$FORK`, patch-set FEAT-001 в `$PATCHES`; оба внешних roots выбраны env. **When**: `$TOOL/bin/codkit --json sync`. **Then**: exit 0; `roots.tool.source=install`, `roots.patches={path:$PATCHES,source:env}`, `roots.fork={path:$FORK,source:env}`; generated branch is current and clean; ownDir is materialized/excluded; fork mark and `$PATCHES/.codkit/trees/&lt;id&gt;.json` agree.</S01></p>
+  <s01 title="S01 — load с предоставленным деревом">
+    <p><S01 fact="true" status="spec/plan">**Given**: `$TOOL`, чистый fork на configured pin в `$FORK`, patch-set FEAT-001 в `$PATCHES`; оба внешних roots выбраны env. **When**: `$TOOL/bin/codkit --json load`. **Then**: exit 0; `roots.tool.source=install`, `roots.patches={path:$PATCHES,source:env}`, `roots.fork={path:$FORK,source:env}`; generated branch is current and clean; ownDir is materialized/excluded; fork mark and `$PATCHES/.codkit/trees/&lt;id&gt;.json` agree.</S01></p>
   </s01>
   <s02 title="S02 — клонирование в пустой каталог (локально) и запрет в CI">
     <p><S02 fact="true" status="spec/plan">**Given**: `$FORK` не существует; задан `--from &lt;локальный-bare-репозиторий-зеркала&gt;`. **When**: `codkit clone --from …`; затем повторно; затем `codkit clone --ci`. **Then**: первый запуск — выход 0, дерево на пине, `check-tree` пройден; повтор — выход 0, вывод содержит `already present`, изменений нет; с `--ci` — выход 2, ошибка `CK-E-NET-FORBIDDEN`.</S02></p>
   </s02>
-  <s03 title="S03 — идемпотентный повтор sync">
-    <p><S03 fact="true" status="spec/plan">**Given**: состояние после S01. **When**: `codkit sync` повторно; замер времени и снимок mtime всех файлов `src/vs/workbench/**` до/после. **Then**: выход 0; вывод содержит `up to date`; ни один mtime не изменился; время — быстрый no-op (&lt; 5 с на полигоне).</S03></p>
+  <s03 title="S03 — идемпотентный повтор load">
+    <p><S03 fact="true" status="spec/plan">**Given**: состояние после S01. **When**: `codkit load` повторно; замер времени и снимок mtime всех файлов `src/vs/workbench/**` до/после. **Then**: выход 0; вывод содержит `up to date`; ни один mtime не изменился; время — быстрый no-op (&lt; 5 с на полигоне).</S03></p>
   </s03>
   <s04 title="S04 — правка → save → патч с маркерами">
     <p><S04 fact="true" status="spec/plan">**Given**: S01; в `$FORK/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts` руками добавлен маркерный блок `CK-workbench-905` через `marker new`, затем одна функциональная строка. **When**: `codkit save --commit`. **Then**: exit 0; `.ckpatch` появляется только под `$PATCHES/delta/patches/`; все additions marker-scoped; `$FORK` clean; patch-set commit touches only its delta; repeat save is byte/mtime no-op.</S04></p>
   </s04>
   <s05 title="S05 — страж ловит незаизвлечённое">
-    <p><S05 fact="true" status="spec/plan">**Given**: S01; немаркированная правка в любом апстримном файле дерева (одна строка). **When**: `codkit sync`. **Then**: выход 1; ошибка `CK-E-DIRTY-TREE` со списком из одного файла; hint содержит `codkit save`; дерево не изменено (правка на месте, ветка не пересоздана).</S05></p>
+    <p><S05 fact="true" status="spec/plan">**Given**: S01; немаркированная правка в любом апстримном файле дерева (одна строка). **When**: `codkit load`. **Then**: выход 1; ошибка `CK-E-DIRTY-TREE` со списком из одного файла; hint содержит `codkit save`; дерево не изменено (правка на месте, ветка не пересоздана).</S05></p>
   </s05>
   <s06 title="S06 — правка вне маркеров отклоняется save и ловится verify/pre-commit">
     <p><S06 fact="true" status="spec/plan">**Given**: S01; в апстримный файл добавлена строка **вне** маркерных блоков. **When**: (а) `codkit save`; (б) патч с такой строкой подделан вручную в `delta/patches/…` и запущен `codkit verify`; (в) тот же подделанный патч в staged-виде и git-хук `pre-commit` patchset. **Then**: (а) выход 1, `CK-E-HUNK-OUTSIDE-MARKER` с файлом и строкой, патч не записан; (б) выход 1 с тем же кодом; (в) коммит отклонён хуком с тем же кодом; время работы хука на одном файле — доли секунды.</S06></p>
@@ -50,9 +50,12 @@
     <p><S14 fact="true" status="spec/plan">**Given**: контейнер по PROP-011 §8, запуск с `--network none`; дерево предоставлено bind-mount по нестандартному пути; преднаполненные `node_modules`/`.build` (для профиля build). **When**: `codkit ci --profile verify`; затем `codkit ci --profile build`. **Then**: оба — выход 0; в выводе нет ни одной попытки сетевого обращения (методика замера — PROP-013 §6); недостижимый пин (вариант: дерево с усечённой историей) — выход 2 `CK-E-PIN-UNREACHABLE` с точной командой fetch в hint, без попытки сети.</S14></p>
   </s14>
   <s15 title="S15 — подмена дерева под живым кэшем">
-    <p><S15 fact="true" status="spec/plan">**Given**: S01 cache/mark exist; a different clean checkout replaces `$FORK` at the same path. **When**: `codkit sync`. **Then**: exit 0 but not `up to date`; the actual fork cannot validate the stale cache, so the patch-set is reapplied and cache/mark are rewritten.</S15></p>
+    <p><S15 fact="true" status="spec/plan">**Given**: S01 cache/mark exist; a different clean checkout replaces `$FORK` at the same path. **When**: `codkit load`. **Then**: exit 0 but not `up to date`; the actual fork cannot validate the stale cache, so the patch-set is reapplied and cache/mark are rewritten.</S15></p>
   </s15>
   <s16 title="S16 — двойная регенерация: пустой дифф (три ОС)">
     <p><S16 fact="true" status="spec/plan">**Given**: одинаковая непустая fixture на native Linux, macOS and Windows runners. **When**: save → snapshot patch bytes/tip → restore → repeat identical edit → save. **Then**: each native run produces identical patch bytes and generated tip for the same patch-set/pin. Current Linux evidence closes only Linux; macOS/Windows remain open until actually executed.</S16></p>
   </s16>
+  <s21 title="S21 — прежнее имя sync: заглушка с выходом 2">
+    <p><S21 fact="true" status="spec/plan">**Given**: любое состояние корней (заглушка срабатывает до резолва путей); односторонняя команда переименована в `load` (Phase 1 кампании TREE-COMMITS-SAVE, решение D14). **When**: `codkit sync`; отдельно `codkit --json sync`. **Then**: оба запуска — выход 2; stderr содержит `codkit sync was renamed to codkit load` и `the name sync is reserved for the two-way save+load command`; конверт не печатается (usage error, как у неизвестной команды), stdout пуст и без `--json`, и под ним; алиаса нет — скрипты со старым именем обязаны ломаться громко.</S21></p>
+  </s21>
 </spec>

@@ -143,7 +143,7 @@ const commandGuidance = {
 		positional: '',
 		detail: 'Clone from `--from` or `publishRemoteUrl`, check out the pin, and fetch LFS content. Rejected by `--ci`.'
 	},
-	sync: {
+	load: {
 		positional: '',
 		detail:
 			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`.'
@@ -288,7 +288,7 @@ With \`--json\`, an invoked command writes one versioned envelope to stdout. Hum
 ## Network boundary
 
 - Global \`--ci\` is non-interactive and forbids Codkit network operations. The \`ci\` command implies the same restriction even when \`--ci\` is not typed.
-- \`clone\` and \`sync --clone-if-missing\` are the local, explicit ways to obtain a missing tree; both are rejected in \`--ci\` mode.
+- \`clone\` and \`load --clone-if-missing\` are the local, explicit ways to obtain a missing tree; both are rejected in \`--ci\` mode.
 - \`forecast\`, \`check-tree\`, and \`ci\` use only objects/refs already present locally. The CI wrapper must provide missing refs, LFS objects, and dependencies.
 - \`publish\` is intentionally not a CI-mode command. It is the only release push path, requires the bot confirmation flag, and refuses the combination with \`--ci\`.
 
@@ -350,7 +350,7 @@ ${bulletCodeList(conventions.forbiddenServiceIds)}
 
 ## Fresh cleanup whitelist
 
-\`codkit sync --fresh\` preserves untracked paths matched by this configured whitelist; other untracked content is disposable. Patterns use Codkit's documented gitignore-style subset.
+\`codkit load --fresh\` preserves untracked paths matched by this configured whitelist; other untracked content is disposable. Patterns use Codkit's documented gitignore-style subset.
 
 ${bulletCodeList(conventions.cleanupWhitelist)}
 
@@ -394,7 +394,7 @@ const faqEntries = {
 	],
 	'DIRTY-TREE': [
 		'Unextracted or otherwise disallowed work makes the requested transition unsafe.',
-		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. A tree left by `overlay apply` returns to dev mode with `codkit sync --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
+		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
 	],
 	'TREE-READONLY': [
 		'Codkit cannot write the fork tree or its required runtime state.',

@@ -43,7 +43,7 @@ beforeAll(() => {
 		)}\n`,
 		'utf8'
 	);
-	expect(fixture.run(['sync']).status).toBe(0);
+	expect(fixture.run(['load']).status).toBe(0);
 });
 
 afterAll(() => {
@@ -70,7 +70,7 @@ describe('product.overrides.json', () => {
 	});
 
 	it('says nothing about a nested key, because it is the normal way to write one', () => {
-		const outcome = fixture.json(['sync', '--fresh']);
+		const outcome = fixture.json(['load', '--fresh']);
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.messages.filter((message) => message.level === 'warn' && message.text.includes('nested'))).toEqual([]);
 	});

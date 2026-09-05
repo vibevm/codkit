@@ -32,7 +32,7 @@ describe('codkit status: a tree that is up to date', () => {
 
 	beforeAll(() => {
 		fixture = makeCliFixture('status-clean');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 	});
 
 	it('exits 0 and reports the branch as up to date', () => {
@@ -73,7 +73,7 @@ describe('codkit status: a tree with work in it', () => {
 
 	beforeAll(() => {
 		fixture = makeCliFixture('status-dirty');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		// One upstream file changed inside its block, one own file changed in the
 		// tree: the two halves of the drift guard, seen from the other side.
 		const target = fixture.treePath(EXAMPLE_PART_PATH);
@@ -118,7 +118,7 @@ describe('codkit status: a tree with work in it', () => {
 		}
 	});
 
-	it('says a resync is needed when the tree is not where the cache says', () => {
+	it('says a reload is needed when the tree is not where the cache says', () => {
 		// The branch is still at the applied tip here; what moved is the delta:
 		// a new pending draft does not, but an edited artifact does.
 		const own = fixture.patchesPath('delta/own/hello.ts');
@@ -130,7 +130,7 @@ describe('codkit status: a tree with work in it', () => {
 			const branch = section(outcome.envelope.data, 'branch');
 			expect(branch['upToDate']).toBe(false);
 			expect(Number(branch['conditionsMet'])).toBeLessThan(Number(branch['conditionsTotal']));
-			expect(outcome.envelope.messages.some((message) => message.text.startsWith('resync needed'))).toBe(true);
+			expect(outcome.envelope.messages.some((message) => message.text.startsWith('reload needed'))).toBe(true);
 		} finally {
 			writeFileSync(own, saved);
 		}
@@ -140,7 +140,7 @@ describe('codkit status: a tree with work in it', () => {
 describe('codkit status: the other direction of truth', () => {
 	it('warns when delta/ is edited in patchset while the tree is clean', () => {
 		const fixture = makeCliFixture('status-patchset-side');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const patch = fixture.patchesPath('delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch');
 		writeFileSync(patch, `${readFileSync(patch, 'utf8').replace('# reason: ', '# reason: edited in patchset - ')}`, 'utf8');
 

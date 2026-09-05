@@ -17,7 +17,7 @@ afterAll(() => cleanupTempRoots());
 describe('save entry-module marker ownership', () => {
 	it('allows the exact entry-module id set to share marker layout', () => {
 		const fixture = makeCliFixture('save-entry-module-shared');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		scaffold(fixture, FIRST, 'entry-module');
 		writeFileSync(fixture.treePath(TARGET), fillFirst(readFileSync(fixture.treePath(TARGET), 'utf8'), FIRST), 'utf8');
 		expect(fixture.run(['save', TARGET]).status).toBe(0);
@@ -37,7 +37,7 @@ describe('save entry-module marker ownership', () => {
 
 	it('keeps a plain patch strict against a foreign marker id', () => {
 		const fixture = makeCliFixture('save-plain-foreign-marker');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		scaffold(fixture, FIRST, 'patch');
 		writeFileSync(fixture.treePath(TARGET), fillFirst(readFileSync(fixture.treePath(TARGET), 'utf8'), FIRST), 'utf8');
 		expect(fixture.run(['save', TARGET]).status).toBe(0);

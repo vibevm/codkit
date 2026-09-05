@@ -1,7 +1,7 @@
 // The normative "double regeneration yields an empty diff" test
 // (PROP-013 sec. 7 ##DOUBLE-REGEN-STEPS, invariant PROP-004 ##DOUBLE-REGEN-INVARIANT).
 //
-// The steps of the spec: fixture -> sync -> a deterministic edit in the tree ->
+// The steps of the spec: fixture -> load -> a deterministic edit in the tree ->
 // save -> record the bytes of delta/patches/* -> put the file back -> make the
 // same edit again -> save -> `git diff --exit-code -- delta/` is empty and the
 // mtime of the patches that did not change has not moved.
@@ -36,10 +36,10 @@ afterAll(() => {
 	cleanupTempRoots();
 });
 
-/** sync, scaffold the block, and return the file content without the probe. */
+/** load, scaffold the block, and return the file content without the probe. */
 function prepare(label: string): { fixture: CliFixture; withoutProbe: string } {
 	const fixture = makeCliFixture(label);
-	expect(fixture.run(['sync']).status).toBe(0);
+	expect(fixture.run(['load']).status).toBe(0);
 	const scaffold = fixture.run([
 		'marker',
 		'new',

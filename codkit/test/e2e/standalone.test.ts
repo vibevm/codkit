@@ -32,7 +32,7 @@ describe('standalone Codkit roots', () => {
 		delete env['CODKIT_FORK_DIR'];
 		env['HOME'] = home;
 
-		const run = spawnSync(process.execPath, [launcher, '--json', 'sync'], {
+		const run = spawnSync(process.execPath, [launcher, '--json', 'load'], {
 			cwd: makeTempRoot('standalone-caller'),
 			env,
 			encoding: 'utf8'

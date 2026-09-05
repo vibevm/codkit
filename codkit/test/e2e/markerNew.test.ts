@@ -19,7 +19,7 @@ let fixture: CliFixture;
 
 beforeAll(() => {
 	fixture = makeCliFixture('marker-new');
-	expect(fixture.run(['sync']).status).toBe(0);
+	expect(fixture.run(['load']).status).toBe(0);
 });
 
 afterAll(() => {
@@ -192,7 +192,7 @@ describe('codkit marker new: what it refuses', () => {
 
 	it('refuses a second intervention for the same pending target without changing either file', () => {
 		const current = makeCliFixture('marker-new-pending-target');
-		expect(current.run(['sync']).status).toBe(0);
+		expect(current.run(['load']).status).toBe(0);
 		const firstArgs = [
 			'marker',
 			'new',
@@ -274,10 +274,10 @@ describe('--verbose diagnostics', () => {
 		const outcome = fixture.run(['status', '--verbose']);
 		expect(outcome.status === 0 || outcome.status === 1).toBe(true);
 
-		const noisy = fixture.run(['sync', '--verbose']);
+		const noisy = fixture.run(['load', '--verbose']);
 		expect(noisy.stderr).toContain('git repository');
 		expect(noisy.stdout).not.toContain('git repository');
-		// A pending draft with no patch keeps this tree dirty, so the sync above
+		// A pending draft with no patch keeps this tree dirty, so the load above
 		// may refuse; either way its diagnostics never landed on stdout.
 		expect(noisy.stdout).not.toContain('full apply');
 	});
@@ -297,7 +297,7 @@ describe('codkit marker new: the pending draft', () => {
 
 	it('records entry-module and rejects the generated-only rewrite-rule layer', () => {
 		const current = makeCliFixture('marker-new-layer');
-		expect(current.run(['sync']).status).toBe(0);
+		expect(current.run(['load']).status).toBe(0);
 		const entry = current.json([
 			'marker',
 			'new',
@@ -342,7 +342,7 @@ describe('codkit marker new: the pending draft', () => {
 
 	it('finishes an exact pending intent left before the tree marker write', () => {
 		const current = makeCliFixture('marker-new-resume-intent');
-		expect(current.run(['sync']).status).toBe(0);
+		expect(current.run(['load']).status).toBe(0);
 		writePendingHeader(current.patchesDir, UTIL_PATH, {
 			id: 'CK-base-945',
 			layer: 'patch',
@@ -373,7 +373,7 @@ describe('codkit marker new: the pending draft', () => {
 
 	it('resumes an exact atomic tree temp left after the pending intent', () => {
 		const current = makeCliFixture('marker-new-resume-temp');
-		expect(current.run(['sync']).status).toBe(0);
+		expect(current.run(['load']).status).toBe(0);
 		const target = current.treePath(UTIL_PATH);
 		const before = readFileSync(target, 'utf8');
 		const after = `${before}// codkit:begin CK-base-946\n// codkit:end CK-base-946\n`;

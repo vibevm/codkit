@@ -85,7 +85,7 @@ describe('a healthy delta', () => {
 			resolution: fixture.resolution,
 			config: { ...fixture.config, pin: { ...fixture.config.pin, tag: 'never-synced' } }
 		});
-		expect(result.warnings.join('\n')).toContain('run codkit sync first');
+		expect(result.warnings.join('\n')).toContain('run codkit load first');
 	});
 });
 

@@ -414,7 +414,7 @@ describe('rebaseOntoPin', () => {
 		expect(existsSync(join(fixture.root, REBASE_MOVE_PATH))).toBe(false);
 		expect(runGit({ args: ['status', '--porcelain=v1'], cwd: fixture.tree }).stdout).toBe('');
 	});
-	it('sanctioned sync rejects changed committed delta or unrelated fork dirt and retains authority', () => {
+	it('sanctioned load rejects changed committed delta or unrelated fork dirt and retains authority', () => {
 		const changed = makeFixture('rebase-sync-changed-delta', { blockers: false });
 		run(changed);
 		write(changed.root, 'delta/own/unexpected.ts', 'export const unexpected = true;\n');
@@ -430,7 +430,7 @@ describe('rebaseOntoPin', () => {
 				dryRun: false,
 				verbose: false
 			})
-		).toThrow(/completed receipt|sync tree/);
+		).toThrow(/completed receipt|load tree/);
 		expect(worktreeSnapshot(changed.tree)).toEqual(treeBefore);
 		expect(existsSync(join(changed.root, REBASE_MOVE_PATH))).toBe(true);
 		const dirty = makeFixture('rebase-sync-dirty-fork', { blockers: false });

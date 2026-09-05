@@ -1,6 +1,6 @@
-// e2e: `codkit sync` through the real launcher, on the fixture pair.
+// e2e: `codkit load` through the real launcher, on the fixture pair.
 //
-// Contracts under test: PROP-007 sec. 5 (##CMD-SYNC), PROP-008 sec. 3 (the
+// Contracts under test: PROP-007 sec. 5 (##CMD-LOAD), PROP-008 sec. 3 (the
 // pseudocode), PROP-006 sec. 1 (fast path, mark, cache), PROP-011 sec. 4
 // (--fresh whitelist), PROP-012 sec. 5 (##FORK-TREE-PRECOMMIT-HOOK).
 //
@@ -94,8 +94,8 @@ function runCli(args: readonly string[], extraEnv: Record<string, string> = {}):
 	return { status: result.status ?? -1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 }
 
-function sync(tree: string, extra: readonly string[] = []): { run: Run; envelope: Envelope } {
-	const run = runCli(['sync', '--json', '--fork-dir', tree, ...extra]);
+function load(tree: string, extra: readonly string[] = []): { run: Run; envelope: Envelope } {
+	const run = runCli(['load', '--json', '--fork-dir', tree, ...extra]);
 	return { run, envelope: JSON.parse(run.stdout) as Envelope };
 }
 
@@ -131,13 +131,13 @@ function mtimes(root: string, relative = ''): Map<string, number> {
 	return out;
 }
 
-describe('codkit sync: applying the delta (S01)', () => {
+describe('codkit load: applying the delta (S01)', () => {
 	let tree: string;
 	let envelope: Envelope;
 
 	beforeAll(() => {
 		tree = freshTree(treePath('sync-s01'));
-		const outcome = sync(tree);
+		const outcome = load(tree);
 		expect(outcome.run.status).toBe(0);
 		envelope = outcome.envelope;
 	});
@@ -222,7 +222,7 @@ describe('codkit sync: applying the delta (S01)', () => {
 
 	it('is a no-op on the second run and does not touch mtimes (S03)', () => {
 		const before = mtimes(join(tree, 'src', 'vs', 'workbench'));
-		const outcome = sync(tree);
+		const outcome = load(tree);
 
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.data.status).toBe('up-to-date');
@@ -239,7 +239,7 @@ describe('codkit sync: applying the delta (S01)', () => {
 		freshTree(tree);
 		expect(git(tree, ['rev-parse', '--verify', `refs/heads/${BRANCH}`]).status).not.toBe(0);
 
-		const outcome = sync(tree);
+		const outcome = load(tree);
 
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.data.status).toBe('applied');
@@ -251,10 +251,10 @@ describe('codkit sync: applying the delta (S01)', () => {
 	});
 });
 
-describe('codkit sync: determinism (S16)', () => {
+describe('codkit load: determinism (S16)', () => {
 	it('produces the same tip in two unrelated trees', () => {
-		const first = sync(freshTree(treePath('sync-det-a')));
-		const second = sync(freshTree(treePath('sync-det-b')));
+		const first = load(freshTree(treePath('sync-det-a')));
+		const second = load(freshTree(treePath('sync-det-b')));
 
 		expect(first.run.status).toBe(0);
 		expect(second.run.status).toBe(0);
@@ -263,10 +263,10 @@ describe('codkit sync: determinism (S16)', () => {
 	});
 });
 
-describe('codkit sync: the drift guard', () => {
+describe('codkit load: the drift guard', () => {
 	it('refuses to run over an unextracted edit and leaves the tree alone', () => {
 		const tree = freshTree(treePath('sync-guard'));
-		const first = sync(tree);
+		const first = load(tree);
 		expect(first.run.status).toBe(0);
 		const tipBefore = gitOut(tree, ['rev-parse', 'HEAD']);
 
@@ -274,7 +274,7 @@ describe('codkit sync: the drift guard', () => {
 		const before = readFileSync(target, 'utf8');
 		writeFileSync(target, `${before}\n// an unmarked local edit\n`, 'utf8');
 
-		const outcome = sync(tree);
+		const outcome = load(tree);
 
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
@@ -287,10 +287,10 @@ describe('codkit sync: the drift guard', () => {
 
 	it('sees own code that git cannot see', () => {
 		const tree = freshTree(treePath('sync-guard-own'));
-		expect(sync(tree).run.status).toBe(0);
+		expect(load(tree).run.status).toBe(0);
 
 		writeFileSync(join(tree, OWN_FILE), '// edited in the tree, not in patchset\n', 'utf8');
-		const outcome = sync(tree);
+		const outcome = load(tree);
 
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
@@ -298,13 +298,13 @@ describe('codkit sync: the drift guard', () => {
 	});
 });
 
-describe('codkit sync: the unit manifest of own code', () => {
+describe('codkit load: the unit manifest of own code', () => {
 	const MANIFEST_IN_PATCHSET = 'patchset.delta.json';
 	const MANIFEST_IN_TREE = 'src/vs/patchset/patchset.delta.json';
 
 	it('delivers own code without the manifest that declares it', () => {
 		const tree = freshTree(treePath('sync-manifest'));
-		expect(sync(tree).run.status).toBe(0);
+		expect(load(tree).run.status).toBe(0);
 
 		expect(existsSync(join(tree, OWN_FILE))).toBe(true);
 		// The manifest is a statement of patchset about own code, not a module of it:
@@ -315,11 +315,11 @@ describe('codkit sync: the unit manifest of own code', () => {
 
 	it('takes back one an earlier run materialized, and calls the tree clean afterwards', () => {
 		const tree = freshTree(treePath('sync-manifest-stale'));
-		expect(sync(tree).run.status).toBe(0);
+		expect(load(tree).run.status).toBe(0);
 		// The state a tree left by an older codkit is in.
 		writeFileSync(join(tree, MANIFEST_IN_TREE), readFileSync(join(patchsetFixture, 'delta', 'own', MANIFEST_IN_PATCHSET), 'utf8'), 'utf8');
 
-		const outcome = sync(tree);
+		const outcome = load(tree);
 
 		expect(outcome.run.status).toBe(0);
 		expect(existsSync(join(tree, MANIFEST_IN_TREE))).toBe(false);
@@ -331,10 +331,10 @@ describe('codkit sync: the unit manifest of own code', () => {
 	});
 });
 
-describe('codkit sync --fresh', () => {
+describe('codkit load --fresh', () => {
 	it('removes untracked litter and keeps what the whitelist protects', () => {
 		const tree = freshTree(treePath('sync-fresh'));
-		expect(sync(tree).run.status).toBe(0);
+		expect(load(tree).run.status).toBe(0);
 
 		writeFileSync(join(tree, 'litter.txt'), 'left behind\n', 'utf8');
 		mkdirSync(join(tree, 'scratch', 'deep'), { recursive: true });
@@ -346,7 +346,7 @@ describe('codkit sync --fresh', () => {
 		mkdirSync(join(tree, '.build'), { recursive: true });
 		writeFileSync(join(tree, '.build', 'stamp'), 'cache\n', 'utf8');
 
-		const outcome = sync(tree, ['--fresh']);
+		const outcome = load(tree, ['--fresh']);
 
 		expect(outcome.run.status).toBe(0);
 		expect(existsSync(join(tree, 'litter.txt'))).toBe(false);
@@ -359,10 +359,10 @@ describe('codkit sync --fresh', () => {
 	});
 });
 
-describe('codkit sync: the fork-tree hook', () => {
+describe('codkit load: the fork-tree hook', () => {
 	it('refuses a manual commit and lets codkit through', () => {
 		const tree = freshTree(treePath('sync-hook'));
-		expect(sync(tree).run.status).toBe(0);
+		expect(load(tree).run.status).toBe(0);
 		const identity: GitEnv = {
 			GIT_AUTHOR_NAME: 'human',
 			GIT_AUTHOR_EMAIL: 'human@example.invalid',
@@ -381,16 +381,16 @@ describe('codkit sync: the fork-tree hook', () => {
 		});
 		expect(allowed.status).toBe(0);
 
-		// Put the branch back where sync left it, so nothing leaks into later runs.
+		// Put the branch back where load left it, so nothing leaks into later runs.
 		git(tree, ['reset', '--hard', 'HEAD~1']);
 	});
 });
 
-describe('codkit sync --dry-run', () => {
+describe('codkit load --dry-run', () => {
 	it('reports the plan without creating the branch', () => {
 		const tree = freshTree(treePath('sync-dry'));
 
-		const outcome = sync(tree, ['--dry-run']);
+		const outcome = load(tree, ['--dry-run']);
 
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.data.status).toBe('dry-run');
@@ -403,13 +403,13 @@ describe('codkit sync --dry-run', () => {
 
 	it('does not run the guard and changes nothing on a dirty tree', () => {
 		const tree = freshTree(treePath('sync-dry-dirty'));
-		expect(sync(tree).run.status).toBe(0);
+		expect(load(tree).run.status).toBe(0);
 		const tipBefore = gitOut(tree, ['rev-parse', 'HEAD']);
 		const target = join(tree, EXAMPLE_PART_PATH);
 		writeFileSync(target, `${readFileSync(target, 'utf8')}\n// unextracted\n`, 'utf8');
 		const before = mtimes(join(tree, 'src', 'vs', 'workbench'));
 
-		const outcome = sync(tree, ['--dry-run']);
+		const outcome = load(tree, ['--dry-run']);
 
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.errors).toEqual([]);
@@ -419,7 +419,7 @@ describe('codkit sync --dry-run', () => {
 	});
 });
 
-describe('codkit sync: broken artifacts', () => {
+describe('codkit load: broken artifacts', () => {
 	it('exits 1 and names the artifact when a patch does not apply at the pin', () => {
 		const brokenPatchSet = makeTempRoot('sync-broken-patchset');
 		makePatchSet(brokenPatchSet, upstream);
@@ -434,7 +434,7 @@ describe('codkit sync: broken artifacts', () => {
 		writeFileSync(patchPath, lines.join('\n'), 'utf8');
 
 		const tree = freshTree(treePath('sync-broken'));
-		const run = runCli(['sync', '--json', '--fork-dir', tree], { CODKIT_PATCHES_DIR: brokenPatchSet });
+		const run = runCli(['load', '--json', '--fork-dir', tree], { CODKIT_PATCHES_DIR: brokenPatchSet });
 		const envelope = JSON.parse(run.stdout) as Envelope;
 
 		expect(run.status).toBe(1);
@@ -444,10 +444,10 @@ describe('codkit sync: broken artifacts', () => {
 	});
 });
 
-describe('codkit sync --clone-if-missing', () => {
+describe('codkit load --clone-if-missing', () => {
 	it('is an environment failure when the tree is missing and the flag is absent', () => {
 		const missing = treePath('sync-absent');
-		const outcome = sync(missing);
+		const outcome = load(missing);
 
 		expect(outcome.run.status).toBe(2);
 		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-NOT-A-REPO']);
@@ -456,7 +456,7 @@ describe('codkit sync --clone-if-missing', () => {
 
 	it('refuses in --ci before reaching the network', () => {
 		const missing = treePath('sync-clone-ci');
-		const run = runCli(['sync', '--json', '--ci', '--clone-if-missing', '--fork-dir', missing]);
+		const run = runCli(['load', '--json', '--ci', '--clone-if-missing', '--fork-dir', missing]);
 		const envelope = JSON.parse(run.stdout) as Envelope;
 
 		expect(run.status).toBe(2);
@@ -466,7 +466,7 @@ describe('codkit sync --clone-if-missing', () => {
 
 	it('asks for an explicit clone when there is no configured source', () => {
 		const missing = treePath('sync-clone-nosource');
-		const outcome = sync(missing, ['--clone-if-missing']);
+		const outcome = load(missing, ['--clone-if-missing']);
 
 		expect(outcome.run.status).toBe(2);
 		const [error] = outcome.envelope.errors;
@@ -480,7 +480,7 @@ describe('codkit sync --clone-if-missing', () => {
 		const localConfig = join(patchsetFixture, 'codkit.local.json');
 		writeFileSync(localConfig, `${JSON.stringify({ publishRemoteUrl: bareMirror }, null, 2)}\n`, 'utf8');
 		try {
-			const outcome = sync(missing, ['--clone-if-missing']);
+			const outcome = load(missing, ['--clone-if-missing']);
 
 			expect(outcome.run.status).toBe(0);
 			expect(outcome.envelope.data.status).toBe('applied');
@@ -492,21 +492,40 @@ describe('codkit sync --clone-if-missing', () => {
 	});
 });
 
-describe('codkit sync: the lock', () => {
+describe('codkit load: the lock', () => {
 	it('refuses to start while another process holds the tree', () => {
 		const tree = freshTree(treePath('sync-locked'));
-		expect(sync(tree).run.status).toBe(0);
+		expect(load(tree).run.status).toBe(0);
 
 		const held = join(patchsetFixture, '.codkit', 'locks', `${treeId(tree)}.lock`);
 		mkdirSync(dirname(held), { recursive: true });
 		writeFileSync(held, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), command: 'save' }), 'utf8');
 		try {
-			const outcome = sync(tree);
+			const outcome = load(tree);
 			expect(outcome.run.status).toBe(2);
 			expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-LOCKED']);
 			expect(outcome.envelope.errors[0]?.hint).toContain(String(process.pid));
 		} finally {
 			rmSync(held, { force: true });
 		}
+	});
+});
+
+describe('codkit sync: the reserved name (S21)', () => {
+	it('exits 2 with the rename message and no envelope', () => {
+		const run = runCli(['sync']);
+
+		expect(run.status).toBe(2);
+		expect(run.stderr).toContain('error: codkit sync was renamed to codkit load');
+		expect(run.stderr).toContain('the name sync is reserved for the two-way save+load command');
+		expect(run.stdout).toBe('');
+	});
+
+	it('stays a plain usage error under --json, like an unknown command', () => {
+		const run = runCli(['--json', 'sync']);
+
+		expect(run.status).toBe(2);
+		expect(run.stderr).toContain('renamed to codkit load');
+		expect(run.stdout).toBe('');
 	});
 });

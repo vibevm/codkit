@@ -25,7 +25,7 @@ type VerifyData = {
 
 beforeAll(() => {
 	fixture = makeCliFixture('verify');
-	expect(fixture.run(['sync']).status).toBe(0);
+	expect(fixture.run(['load']).status).toBe(0);
 });
 
 afterAll(cleanupTempRoots);
@@ -123,7 +123,7 @@ describe('codkit verify', () => {
 		const outcome = other.run(['verify']);
 
 		expect(outcome.status).toBe(0);
-		expect(outcome.stderr).toContain('run codkit sync first');
+		expect(outcome.stderr).toContain('run codkit load first');
 	});
 
 	it('refuses to run without a fork tree it can use', () => {

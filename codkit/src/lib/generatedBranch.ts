@@ -1,5 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
-// The generated-branch-only own-code atom. Local sync deliberately keeps own
+// The generated-branch-only own-code atom. A local load deliberately keeps own
 // code outside Git; CI and publish need the complete reproducible tree instead.
 
 import { createHash } from 'node:crypto';

@@ -278,7 +278,7 @@ function textResult(result: RawGitResult): GitResult {
  * Start with the useful parent environment (PATH, HOME, credential helpers,
  * locale support) but never inherit a variable that can redirect Git away
  * from options.cwd or inject configuration. A caller has to name the three
- * supported repository overrides itself; this is how sync's temporary index
+ * supported repository overrides itself; this is how load's temporary index
  * remains possible without trusting a stale GIT_INDEX_FILE in the shell.
  */
 function childEnv(explicit: GitEnv | undefined, isolate: boolean): Record<string, string> {

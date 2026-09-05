@@ -1,4 +1,4 @@
-// The complete generated history used by CI and future publish. Local sync has
+// The complete generated history used by CI and future publish. A local load has
 // a deliberately different contract and is checked here against regressions.
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -181,7 +181,7 @@ describe('complete generated branch objects', () => {
 	});
 });
 
-describe('full and local sync modes', () => {
+describe('full and local load modes', () => {
 	it('is the branch capability selected by CI verify', async () => {
 		const fixture = makeSyncFixture('generated-ci');
 		const result = await runCi({

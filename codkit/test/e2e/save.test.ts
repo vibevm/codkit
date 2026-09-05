@@ -58,7 +58,7 @@ describe('codkit save: the round trip of one change (S04)', () => {
 
 	beforeAll(() => {
 		fixture = makeCliFixture('save-cycle');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 	});
 
 	it('scaffolds a marker block and leaves a pending header', () => {
@@ -147,7 +147,7 @@ describe('codkit save: the round trip of one change (S04)', () => {
 	it('leaves the tree clean and on the generated branch', () => {
 		expect(fixture.git(['status', '--porcelain']).stdout.trim()).toBe('');
 		expect(fixture.git(['symbolic-ref', 'HEAD']).stdout.trim()).toBe(`refs/heads/${fixture.branch}`);
-		// The branch carries the block, so a later sync reproduces the tree.
+		// The branch carries the block, so a later load reproduces the tree.
 		expect(fixture.git(['show', `HEAD:${UTIL_PATH}`]).stdout).toContain(HOOK_LINE);
 	});
 
@@ -195,7 +195,7 @@ describe('codkit save: the round trip of one change (S04)', () => {
 describe('codkit save: entry-module attribution', () => {
 	it('carries the pending layer into the new patch header', () => {
 		const fixture = makeCliFixture('save-entry-module');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const id = 'CK-base-940';
 		const scaffold = fixture.run([
 			'marker',
@@ -222,7 +222,7 @@ describe('codkit save: entry-module attribution', () => {
 
 	it('accepts marker ids declared by other entry-module artifacts', () => {
 		const fixture = makeCliFixture('save-entry-module-shared-markers');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const first = 'CK-base-942';
 		const second = 'CK-workbench-942';
 		for (const [target, id] of [
@@ -266,7 +266,7 @@ describe('codkit save: entry-module attribution', () => {
 describe('codkit save: a change outside a marker block (S06)', () => {
 	it('exits 1, names the file and leaves the patch byte for byte as it was', () => {
 		const fixture = makeCliFixture('save-outside');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const patchPath = fixture.patchesPath(EXAMPLE_PATCH);
 		const before = readFileSync(patchPath);
 		const mtimeBefore = statSync(patchPath).mtimeMs;
@@ -291,7 +291,7 @@ describe('codkit save: things that are not a patch', () => {
 
 	beforeAll(() => {
 		fixture = makeCliFixture('save-refusals');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 	});
 
 	it('refuses to record the deletion of an upstream file', () => {
@@ -360,7 +360,7 @@ describe('codkit save: things that are not a patch', () => {
 describe('codkit save <paths>', () => {
 	it('extracts only the given paths and leaves the branch alone until the rest follows', () => {
 		const fixture = makeCliFixture('save-addressed');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 
 		// Two independent changes: one in a file with a patch, one in a file that
 		// is about to get its first patch.
@@ -400,7 +400,7 @@ describe('codkit save <paths>', () => {
 describe('codkit save --allow-new-file', () => {
 	it('writes an add-file patch for a file that has to live in the upstream zone', () => {
 		const fixture = makeCliFixture('save-add-file');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 
 		const newFile = 'src/vs/workbench/browser/parts/example/exampleExtra.ts';
 		const artifact = `delta/patches/${newFile.split('/').join('__')}.ckpatch`;
@@ -440,7 +440,7 @@ describe('codkit save --allow-new-file', () => {
 describe('codkit save: own code', () => {
 	it('keeps the patchset version of a file only patchset changed', () => {
 		const fixture = makeCliFixture('save-own-patchset');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const inPatchSet = fixture.patchesPath(OWN_IN_PATCHSET);
 		const edited = '// edited in patchset, not in the tree\nexport function hello(name: string): string {\n\treturn name;\n}\n';
 		writeFileSync(inPatchSet, edited, 'utf8');
@@ -450,17 +450,17 @@ describe('codkit save: own code', () => {
 		expect(outcome.run.status).toBe(0);
 		// save must never let an out-of-date tree overwrite work that is only in
 		// patchset: there is nothing to extract here, and the file stays as patchset
-		// has it. The next sync is what materializes it in the tree.
+		// has it. The next load is what materializes it in the tree.
 		expect(readFileSync(inPatchSet, 'utf8')).toBe(edited);
 		expect((outcome.envelope.data['own'] as Record<string, number>)['kept']).toBe(1);
 
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		expect(readFileSync(fixture.treePath(OWN_IN_TREE), 'utf8')).toBe(edited);
 	});
 
 	it('extracts a file the tree changed', () => {
 		const fixture = makeCliFixture('save-own-tree');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const edited = '// edited in the tree\nexport function hello(name: string): string {\n\treturn name;\n}\n';
 		writeFileSync(fixture.treePath(OWN_IN_TREE), edited, 'utf8');
 
@@ -473,7 +473,7 @@ describe('codkit save: own code', () => {
 
 	it('refuses to choose when both sides edited the same file', () => {
 		const fixture = makeCliFixture('save-own-both');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		writeFileSync(fixture.patchesPath(OWN_IN_PATCHSET), '// the patchset version\n', 'utf8');
 		writeFileSync(fixture.treePath(OWN_IN_TREE), '// the tree version\n', 'utf8');
 
@@ -498,7 +498,7 @@ describe('codkit save: an artifact of a layer save does not extract', () => {
 
 	it('materializes a hand-written resource instead of stopping at its own assertion', () => {
 		const fixture = makeCliFixture('save-resource');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 
 		// The procedure for a resource: write the artifact into delta/resources/ by
 		// hand, and let a run put it into the tree. Here that run is `save`, which
@@ -555,14 +555,14 @@ describe('codkit save: an artifact of a layer save does not extract', () => {
 	});
 });
 
-describe('codkit sync: own code edited in patchset', () => {
+describe('codkit load: own code edited in patchset', () => {
 	it('warns and applies the patchset version (##PATCHSET-SIDE-EDIT-RULE)', () => {
 		const fixture = makeCliFixture('sync-patchset-side');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		const edited = '// the patchset side moved\nexport function hello(name: string): string {\n\treturn name;\n}\n';
 		writeFileSync(fixture.patchesPath(OWN_IN_PATCHSET), edited, 'utf8');
 
-		const outcome = fixture.json(['sync']);
+		const outcome = fixture.json(['load']);
 
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.messages.some((message) => message.code === 'CK-W-PATCHSET-SIDE-EDIT')).toBe(true);
@@ -571,11 +571,11 @@ describe('codkit sync: own code edited in patchset', () => {
 
 	it('refuses when both sides moved', () => {
 		const fixture = makeCliFixture('sync-both-sides');
-		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['load']).status).toBe(0);
 		writeFileSync(fixture.patchesPath(OWN_IN_PATCHSET), '// the patchset version\n', 'utf8');
 		writeFileSync(fixture.treePath(OWN_IN_TREE), '// the tree version\n', 'utf8');
 
-		const outcome = fixture.json(['sync']);
+		const outcome = fixture.json(['load']);
 
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-BOTH-SIDES-EDITED');

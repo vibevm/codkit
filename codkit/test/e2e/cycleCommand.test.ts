@@ -135,7 +135,7 @@ describe('codkit cycle continue', () => {
 		addRenamePatch(fixture);
 		const referencePath = 'delta/own/test/rename-path.test.ts';
 		const materializedReference = fixture.treePath('src/vs/patchset/test/rename-path.test.ts');
-		const synced = fixture.json(['sync']);
+		const synced = fixture.json(['load']);
 		expect(synced.run.status, synced.run.stderr).toBe(0);
 		expect(readFileSync(materializedReference, 'utf8')).toContain(STATUS_PART_PATH);
 		const first = fixture.json(['cycle', 'start', fixture.upstream.t2.tag, '--ci']);
@@ -170,7 +170,7 @@ describe('codkit cycle continue', () => {
 			excludeRuntimeState(fixture.patchesDir);
 			provideTreeDependencies(fixture);
 			addRenamePatch(fixture);
-			const synced = fixture.json(['sync']);
+			const synced = fixture.json(['load']);
 			expect(synced.run.status, synced.run.stderr).toBe(0);
 			const target = fixture.treePath(treePath);
 			const before = readFileSync(target, 'utf8');

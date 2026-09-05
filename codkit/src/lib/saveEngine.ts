@@ -2,9 +2,9 @@
 // The save engine: take the work out of the fork tree and put it into patchset.
 // The pseudocode of PROP-008 sec. 4 is normative and this file follows its order.
 //
-// `save` is the inverse of `sync`, and the asymmetry between them is the point:
+// `save` is the inverse of `load`, and the asymmetry between them is the point:
 //
-//   * `sync` writes the tree from patchset, so it refuses to run over work that is
+//   * `load` writes the tree from patchset, so it refuses to run over work that is
 //     not in patchset yet (the drift guard);
 //   * `save` reads the tree into patchset, so it must never lose what only patchset
 //     has. Own code is mirrored back file by file, and only for the files the
@@ -60,14 +60,14 @@ export type SaveEngineOptions = {
 	readonly commit: boolean;
 	readonly message: string | null;
 	readonly verbose: boolean;
-	/** Cycle-only metadata, validated and incorporated before artifact writes and sync. */
+	/** Cycle-only metadata, validated and incorporated before artifact writes and the load. */
 	readonly patchHeaderOverrides?: readonly SavePatchHeaderOverride[];
 	/** Internal addressed files that must be regenerated even when tree HEAD already has their bytes. */
 	readonly forcedPaths?: readonly string[];
 	/** Internal extraction-only mode: leave refs, index, and work tree where the caller put them. */
 	readonly deferSync?: boolean;
 	readonly rebasePendingCheckpoint?: (stage: 'artifact-written' | 'receipt-updated' | 'before-pending-remove', target: string) => void;
-	/** Test-only propagation of the two post-checkout sync crash windows. */
+	/** Test-only propagation of the two post-checkout load crash windows. */
 	readonly syncCheckpoint?: SyncEngineOptions['checkpoint'];
 };
 

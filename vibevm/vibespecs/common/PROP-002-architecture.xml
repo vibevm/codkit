@@ -11,7 +11,8 @@
   </topology>
   <workflow title="Workflow">
     <facts ordered="true">
-      <FLOW-SYNC fact="true" status="spec/done">`sync` materializes one patch-set revision over its configured upstream pin.</FLOW-SYNC>
+      <FLOW-SYNC fact="true" status="spec/done">Tombstone (campaign TREE-COMMITS-SAVE Phase 1, 2026-09-06): superseded by `FLOW-LOAD`; this anchor's address is immutable (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR), the name `sync` is reserved for the future two-way command.</FLOW-SYNC>
+      <FLOW-LOAD fact="true" status="spec/done">`load` materializes one patch-set revision over its configured upstream pin.</FLOW-LOAD>
       <FLOW-EDIT fact="true" status="spec/done">Implementation work and upstream-run tests happen in the managed fork tree.</FLOW-EDIT>
       <FLOW-SAVE fact="true" status="spec/done">`save` validates and serializes tree changes back into the patch set.</FLOW-SAVE>
       <FLOW-UPGRADE fact="true" status="spec/done">An upgrade cycle advances the pin and records every resolution as patch-set history.</FLOW-UPGRADE>

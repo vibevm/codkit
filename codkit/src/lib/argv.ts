@@ -51,7 +51,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--require-clean', 'boolean'],
 	// clone (PROP-007 sec. 4)
 	['--from', 'value'],
-	// sync (PROP-007 sec. 5)
+	// load (PROP-007 sec. 5)
 	['--fresh', 'boolean'],
 	['--dry-run', 'boolean'],
 	['--clone-if-missing', 'boolean'],

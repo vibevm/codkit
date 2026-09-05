@@ -4,7 +4,7 @@
 //
 // ##TREE-IS-TRUTH: neither file is authoritative. The truth about what is
 // applied is the generated branch, its tip and the trailers of its commits;
-// these two files only let `sync` decide quickly that nothing changed. Losing
+// these two files only let `load` decide quickly that nothing changed. Losing
 // them means "apply from scratch", never a question to the user - which is why
 // every read here degrades to null instead of failing.
 //

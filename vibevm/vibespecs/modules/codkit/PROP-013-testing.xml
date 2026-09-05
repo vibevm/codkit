@@ -34,7 +34,7 @@
       <tr><td><UT-RERESOLVE-SOURCE fact="true" status="spec/done">reresolve source</UT-RERESOLVE-SOURCE></td><td>приоритет `--patch → .orig → HEAD` незавершённого merge → `HEAD^1` готового merge; каждый более ранний источник затеняет последующие; `MERGE_HEAD` никогда не берётся как feature-патч; полный отказ перечисляет проверенные источники</td></tr>
       <tr><td><UT-FORECAST-REF fact="true" status="spec/done">forecast ref</UT-FORECAST-REF></td><td>явный ref и фиксированный дефолт `refs/remotes/upstream/main` разрешаются один раз в полный SHA; более свежий `origin/main` не влияет; `--ci` без `--ref` отклоняется до доступа к дереву; недостижимый ref даёт детерминированный hint без fetch</td></tr>
       <tr><td><UT-REBASE-MERGE-SHAPE fact="true" status="spec/done">rebase-onto-pin</UT-REBASE-MERGE-SHAPE></td><td>ровно два родителя (`HEAD^1` feature, `HEAD^2` target); отказы для non-merge/octopus/переставленных ролей; множество патчей из `merge-base..HEAD^1`, target-only патч не переносится; scratch-база равна применённому `HEAD^2`; `pin` обновляется на target, `cause` сохраняется для clean и обновляется для shifted/merged/conflict; конфликтный pending не пишет новую шапку со старым телом</td></tr>
-      <tr><td><UT-GENERATED-LAYER-ORDER fact="true" status="spec/done">generated plan</UT-GENERATED-LAYER-ORDER></td><td>для CI/publish порядок коммитов `patch → own → overlay → resource`, с детерминированной внутрислойной сортировкой и пропуском пустых слоёв; локальный sync пропускает own-слот, копирует own после checkout и не делает его tracked</td></tr>
+      <tr><td><UT-GENERATED-LAYER-ORDER fact="true" status="spec/done">generated plan</UT-GENERATED-LAYER-ORDER></td><td>для CI/publish порядок коммитов `patch → own → overlay → resource`, с детерминированной внутрислойной сортировкой и пропуском пустых слоёв; локальный load пропускает own-слот, копирует own после checkout и не делает его tracked</td></tr>
       <tr><td><UT-LOCK fact="true" status="spec/done">lock</UT-LOCK></td><td>конкуренция двух процессов; устаревший lock от мёртвого pid</td></tr>
       <tr><td><UT-BUILD-WRAP fact="true" status="spec/done">buildWrap</UT-BUILD-WRAP></td><td>парсинг логов с ANSI; ложные концы (`falseEndGuards`); счётчик-флаг vs реальное число ошибок; таймаут</td></tr>
       <tr><td><UT-JSON-OUT fact="true" status="spec/done">jsonOut</UT-JSON-OUT></td><td>конверт PROP-012 §1; человеческий вывод в stderr при `--json`</td></tr>
@@ -57,7 +57,7 @@
     </facts>
   </determinism>
   <double-regen title="7. Тест «двойная регенерация даёт пустой дифф» (норматив)">
-    <p><DOUBLE-REGEN-STEPS fact="true" status="spec/done">Шаги: fixture → `sync` → детерминированная правка → `save` → снимок patch bytes → возврат → та же правка → `save` → пустой `git diff -- delta/` и неизменный mtime нетронутых артефактов. Linux запускает это в текущем PR floor; macOS/Windows запускают тот же тест нативно до объявления cross-platform acceptance.</DOUBLE-REGEN-STEPS></p>
+    <p><DOUBLE-REGEN-STEPS fact="true" status="spec/done">Шаги: fixture → `load` → детерминированная правка → `save` → снимок patch bytes → возврат → та же правка → `save` → пустой `git diff -- delta/` и неизменный mtime нетронутых артефактов. Linux запускает это в текущем PR floor; macOS/Windows запускают тот же тест нативно до объявления cross-platform acceptance.</DOUBLE-REGEN-STEPS></p>
   </double-regen>
   <discipline title="8. Покрытие и дисциплина">
     <facts ordered="false">

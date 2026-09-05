@@ -14,6 +14,7 @@ import { cycleCommand } from './commands/cycle.js';
 import { forecastCommand } from './commands/forecast.js';
 import { hooksCommand } from './commands/hooks.js';
 import { inventoryCommand } from './commands/inventory.js';
+import { loadCommand } from './commands/load.js';
 import { markerNewCommand } from './commands/markerNew.js';
 import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.js';
 import { publishCommand } from './commands/publish.js';
@@ -21,7 +22,6 @@ import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.js';
 import { reresolveCommand } from './commands/reresolve.js';
 import { saveCommand } from './commands/save.js';
 import { statusCommand } from './commands/status.js';
-import { syncCommand } from './commands/sync.js';
 import { verifyCommand } from './commands/verify.js';
 import { whereCommand } from './commands/where.js';
 import { parseArgv, GLOBAL_FLAG_HELP } from './lib/argv.js';
@@ -39,7 +39,7 @@ const COMMANDS = new Map([
     whereCommand,
     checkTreeCommand,
     cloneCommand,
-    syncCommand,
+    loadCommand,
     statusCommand,
     saveCommand,
     markerNewCommand,
@@ -71,6 +71,16 @@ async function main(argv) {
     if (positional.length === 0) {
         printHelp();
         return EXIT_OK;
+    }
+    // `sync` was renamed to `load`; the old name is refused before any command
+    // context exists, the way an unknown command is (no envelope), so scripts
+    // fail loudly instead of silently keeping the old one-way meaning. The name
+    // stays reserved: a real two-way save+load `sync` takes it later.
+    if (positional[0] === 'sync') {
+        return usageFail({
+            error: 'codkit sync was renamed to codkit load',
+            hint: 'the name sync is reserved for the two-way save+load command'
+        });
     }
     const matched = matchCommand(positional);
     if (matched === null) {

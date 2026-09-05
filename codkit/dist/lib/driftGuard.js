@@ -1,7 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
 // The drift guard (PROP-008 ##DRIFT-GUARD-PREDICATE).
 //
-// Destructive commands (`sync`, `cycle start`, `ci`, `publish`, `clone` over an
+// Destructive commands (`load`, `cycle start`, `ci`, `publish`, `clone` over an
 // existing tree, `restart`) refuse to run over work that was never extracted
 // back into patchset. The predicate has two halves, and it needs both:
 //
@@ -14,11 +14,11 @@
 //       exclude file in a multi-worktree one).
 //
 // Half (b) is not an optimization: without it every change to own code in the
-// tree would be silently overwritten by the next sync.
+// tree would be silently overwritten by the next load.
 //
 // One refinement of the literal predicate: an own file that exists in patchset and
 // not in the tree is *not* dirt. It is own code that has not been materialized
-// yet - the state of every tree before its first sync - and nothing in the tree
+// yet - the state of every tree before its first load - and nothing in the tree
 // can be lost by writing it. Only the two classes that carry work (a file the
 // tree has and patchset does not, and a file both sides have with different bytes)
 // stop a destructive command.
@@ -28,8 +28,8 @@
 // composition of `overlay apply` - is not unextracted work either, provided the
 // calling run is the one that replaces it. The guard itself stays generic: it
 // accepts a predicate and asks it about tracked paths only, so the classification
-// lives with the layer that can actually prove it. `sync --fresh` is the only
-// caller (an ordinary `sync` may answer the fast path "up to date" and leave the
+// lives with the layer that can actually prove it. `load --fresh` is the only
+// caller (an ordinary `load` may answer the fast path "up to date" and leave the
 // bytes in place, which is exactly what a silent exemption must not do); `ci`
 // deliberately passes none (see the sync engine).
 import { runGit } from './gitx.js';

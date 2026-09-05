@@ -1,6 +1,8 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
-// codkit sync - bring the fork tree to the pin and put the delta on it.
-// Contract: PROP-007 sec. 5 (##CMD-SYNC); algorithm: PROP-008 sec. 3.
+// codkit load - bring the fork tree to the pin and put the delta on it.
+// Contract: PROP-007 sec. 5 (##CMD-LOAD); algorithm: PROP-008 sec. 3. The name
+// `sync` is reserved for the future two-way save+load command; until then it is
+// a plain usage error in main.ts.
 //
 // This command is the one a developer runs every day, so its two guarantees
 // matter more than its features: it never destroys work that was not extracted
@@ -55,7 +57,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	return withLock(
 		ctx.patchesDir,
 		treeId(resolution.path),
-		'sync',
+		'load',
 		() => {
 			const result = runSync({
 				patchesDir: ctx.patchesDir,
@@ -79,8 +81,8 @@ function requireConfig(config: CodkitConfig | null): CodkitConfig {
 	if (config === null) {
 		throw ckError(
 			'CONFIG',
-			'codkit.json was not found in the patchset root: sync needs the pin and the delta of this repository',
-			'run sync from a patchset checkout that carries codkit.json'
+			'codkit.json was not found in the patchset root: load needs the pin and the delta of this repository',
+			'run load from a patchset checkout that carries codkit.json'
 		);
 	}
 	return config;
@@ -104,7 +106,7 @@ function cloneMissingTree(ctx: CommandContext, resolution: ForkDirResolution, co
 		throw ckError(
 			'CONFIG',
 			`the fork tree ${resolution.path} does not exist and codkit.json has no publishRemoteUrl to clone from`,
-			'run: codkit clone --from <url>   (sync itself takes no source, so the clone is an explicit step)'
+			'run: codkit clone --from <url>   (load itself takes no source, so the clone is an explicit step)'
 		);
 	}
 	ctx.out.info(`fork tree is missing; cloning ${source}`);
@@ -145,8 +147,8 @@ function buildData(result: SyncResult, flags: { fresh: boolean; dryRun: boolean 
 	return data;
 }
 
-export const syncCommand: CommandDefinition = {
-	name: 'sync',
+export const loadCommand: CommandDefinition = {
+	name: 'load',
 	summary: 'bring the fork tree to the pin and apply the delta',
 	configMode: 'load',
 	maxArgs: 0,

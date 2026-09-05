@@ -182,7 +182,7 @@ describe('the dev channel', () => {
 		const warnings: string[] = [];
 		// No pin to seed nested keys from here: the temporary tree is not a git
 		// repository, which is exactly the "cannot be answered" case the seeding
-		// and the ignore check both step around. The e2e sync test covers the
+		// and the ignore check both step around. The e2e load test covers the
 		// seeding against a real tree.
 		const result = writeProductOverridesDev(makeTempRoot('overlay-patchset'), tree, [overlay], CONTEXT, '', (text) => {
 			warnings.push(text);
@@ -292,7 +292,7 @@ describe('devChannelIgnoreWarning', () => {
 	});
 
 	it('says nothing when git cannot answer at all', () => {
-		// Not a repository: the sync would have failed long before this point,
+		// Not a repository: the load would have failed long before this point,
 		// and a warning here would only be noise.
 		expect(devChannelIgnoreWarning(makeTempRoot('overlay-ignore-norepo'))).toBeNull();
 	});
