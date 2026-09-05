@@ -5,7 +5,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const blockerOutcomes = new Set(['conflict', 'target-deleted', 'rule-broken', 'contract-failed']);
 const args = values(process.argv.slice(2));
 const entryArg = args.get('--entry');

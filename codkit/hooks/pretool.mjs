@@ -324,7 +324,7 @@ function allowedNodeHelper(tokens, trustedToolRoot, commandCwd) {
 	const scriptIndex = tokens.findIndex((token) => token.endsWith('append-journal.mjs'));
 	if (scriptIndex === -1) return false;
 	const normalized = (tokens[scriptIndex] ?? '').replaceAll('\\', '/');
-	const expected = canonicalCommandPath(join(trustedToolRoot, '.claude/skills/ck-resolve/scripts/append-journal.mjs'), commandCwd);
+	const expected = canonicalCommandPath(join(trustedToolRoot, 'codkit/claude/skills/ck-resolve/scripts/append-journal.mjs'), commandCwd);
 	const actual = canonicalCommandPath(tokens[scriptIndex] ?? '', commandCwd);
 	if (actual !== expected || normalized.includes('/../')) return false;
 	const allowedFlags = new Set(['--experimental-strip-types', '--disable-warning=ExperimentalWarning']);

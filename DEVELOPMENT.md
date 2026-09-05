@@ -29,6 +29,19 @@ vibe check --quiet
 Для короткой итерации доступны `npm run format:check`, `npm run typecheck`,
 `npm run trace:check`, `npm test` и `npm run ai-native:structural`.
 
+## Агентские сессии в этом репозитории
+
+Codkit не применяется для разработки Codkit, поэтому агентского периметра
+здесь нет: в `.claude/` лежит только clean-room правило
+`rules/ck-codkit-dev.md`, без hook, deny-профиля, subagents и skills. Сессия
+над этим репозиторием работает свободно по обычному permission flow.
+
+Профиль для сессий над репозиторием продукта (patch set) и его форком
+поставляется под `codkit/claude/` и устанавливается туда вручную; порядок и
+проверки — в `docs/codkit/protocol/agent/00-index.md`. Проверка, что
+периметр не просочился в этот репозиторий:
+`node docs/codkit/protocol/agent/check.mjs`.
+
 ## Запуск
 
 Из Bash:

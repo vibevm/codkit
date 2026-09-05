@@ -1,52 +1,49 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..', '..', '..');
+const profileRoot = join(root, 'codkit', 'claude');
 const failures = [];
 const docs = ['00-index.md', '01-journal-format.md', '02-evals.md', '03-memory-policy.md'];
 const agents = ['ck-upstream-scout.md', 'ck-conflict-resolver.md', 'ck-verifier.md', 'ck-upgrade-reviewer.md', 'ck-cause-finder.md'];
-const rules = new Map([
+const profileRules = new Map([
 	['ck-delta-artifacts.md', 'delta/**'],
 	['ck-markers.md', null],
-	['ck-codkit-dev.md', 'codkit/**'],
 	['ck-cycle.md', 'cycle/**']
 ]);
+const toolRules = new Map([['ck-codkit-dev.md', 'codkit/**']]);
 
 for (const name of docs) checkText(join(here, name), true);
 for (const name of agents) {
 	const source = join(root, 'docs', 'codkit', 'agents', name);
-	const target = join(root, '.claude', 'agents', name);
+	const target = join(profileRoot, 'agents', name);
 	const text = checkText(source, false);
 	if (text !== null) checkAgentFrontmatter(name, text);
 	if (!existsSync(target) || readFileSync(target, 'utf8') !== text) failures.push(`agent copy differs: ${name}`);
 }
 
-for (const [name, expectedPath] of rules) {
-	const text = checkText(join(root, '.claude', 'rules', name), false);
-	if (text === null) continue;
-	const frontmatter = frontmatterOf(text);
-	if (expectedPath === null && frontmatter !== null) failures.push(`markers rule must be unscoped: ${name}`);
-	if (expectedPath !== null && !frontmatter?.includes(`- "${expectedPath}"`)) failures.push(`wrong paths scope: ${name}`);
-}
+checkRules(join(profileRoot, 'rules'), profileRules, 'profile');
+checkRules(join(root, '.claude', 'rules'), toolRules, 'tool');
 
 const core = checkText(join(root, 'docs', 'codkit', 'agents', 'shared-core.md'), false);
 if (core !== null && lineCount(core) > 120) failures.push(`shared core exceeds 120 lines: ${lineCount(core)}`);
 for (const name of ['CLAUDE.md', 'AGENTS.md']) {
-	const text = checkText(join(root, name), false);
+	const text = checkText(join(profileRoot, name), false);
 	if (text === null || core === null) continue;
 	if (occurrences(text, '<!-- codkit-agent-core:begin -->') !== 1 || occurrences(text, '<!-- codkit-agent-core:end -->') !== 1) {
-		failures.push(`managed core markers invalid: ${name}`);
+		failures.push(`managed core markers invalid: codkit/claude/${name}`);
 	} else if (!text.includes(core.trimEnd())) {
-		failures.push(`managed core differs from source: ${name}`);
+		failures.push(`managed core differs from source: codkit/claude/${name}`);
 	}
 }
 
 checkSettings();
+checkToolRepositoryIsFree();
 for (const path of ['codkit/hooks/pretool.mjs', 'codkit/hooks/pretool.sh', 'codkit/hooks/pretool.ps1']) checkText(join(root, path), false);
 checkResolverSkill();
 
@@ -93,6 +90,23 @@ function checkLinks(path, text) {
 	}
 }
 
+function checkRules(directory, expected, label) {
+	if (!existsSync(directory)) {
+		failures.push(`missing ${label} rules directory: ${directory.slice(root.length + 1)}`);
+		return;
+	}
+	const present = readdirSync(directory).filter((name) => name.endsWith('.md')).sort();
+	const wanted = [...expected.keys()].sort();
+	if (present.join(',') !== wanted.join(',')) failures.push(`${label} rules must be exactly ${wanted.join(', ')}: found ${present.join(', ')}`);
+	for (const [name, expectedPath] of expected) {
+		const text = checkText(join(directory, name), false);
+		if (text === null) continue;
+		const frontmatter = frontmatterOf(text);
+		if (expectedPath === null && frontmatter !== null) failures.push(`markers rule must be unscoped: ${name}`);
+		if (expectedPath !== null && !frontmatter?.includes(`- "${expectedPath}"`)) failures.push(`wrong paths scope: ${name}`);
+	}
+}
+
 function checkAgentFrontmatter(name, text) {
 	const frontmatter = frontmatterOf(text);
 	if (frontmatter === null) {
@@ -108,7 +122,7 @@ function checkAgentFrontmatter(name, text) {
 }
 
 function checkSettings() {
-	const path = join(root, '.claude', 'settings.json');
+	const path = join(profileRoot, 'settings.json');
 	const text = checkText(path, false);
 	if (text === null) return;
 	let settings;
@@ -118,7 +132,7 @@ function checkSettings() {
 		failures.push(`settings JSON: ${error.message}`);
 		return;
 	}
-	if (settings.permissions?.allow !== undefined) failures.push('project settings must not grant permissions');
+	if (settings.permissions?.allow !== undefined) failures.push('profile settings must not grant permissions');
 	if (!Array.isArray(settings.permissions?.deny) || settings.permissions.deny.length === 0) failures.push('settings deny list missing');
 	const groups = settings.hooks?.PreToolUse;
 	if (!Array.isArray(groups) || groups.length !== 1 || groups[0]?.matcher !== 'Bash|PowerShell|Edit|Write|NotebookEdit') {
@@ -131,22 +145,44 @@ function checkSettings() {
 		hook.command !== 'node' ||
 		!Array.isArray(hook.args) ||
 		hook.args.length !== 1 ||
-		hook.args[0] !== '${CLAUDE_PROJECT_DIR}/codkit/hooks/pretool.mjs'
+		hook.args[0] !== '<codkit-tool-root>/codkit/hooks/pretool.mjs'
 	) {
-		failures.push('PreToolUse hook must use portable Node exec form');
+		failures.push('PreToolUse hook must use the Node exec form with the <codkit-tool-root> placeholder');
+	}
+}
+
+// The Codkit tool repository is worked freely: no agent hook, deny profile,
+// agents, or skills may live under its own .claude/ (FEAT-004 GR-TREE-EDITS).
+function checkToolRepositoryIsFree() {
+	const settingsPath = join(root, '.claude', 'settings.json');
+	if (existsSync(settingsPath)) {
+		let settings = null;
+		try {
+			settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+		} catch {
+			failures.push('tool repository .claude/settings.json is not JSON');
+		}
+		if (settings?.hooks !== undefined) failures.push('tool repository .claude/settings.json must not install hooks');
+	}
+	for (const name of ['agents', 'skills']) {
+		if (existsSync(join(root, '.claude', name))) failures.push(`tool repository must not carry .claude/${name}; the profile lives under codkit/claude/`);
 	}
 }
 
 function checkResolverSkill() {
-	const skill = checkText(join(root, '.claude', 'skills', 'ck-resolve', 'SKILL.md'), false);
-	const helper = checkText(join(root, '.claude', 'skills', 'ck-resolve', 'scripts', 'append-journal.mjs'), false);
-	const openai = checkText(join(root, '.claude', 'skills', 'ck-resolve', 'agents', 'openai.yaml'), false);
+	const skillRoot = join(profileRoot, 'skills', 'ck-resolve');
+	const skill = checkText(join(skillRoot, 'SKILL.md'), false);
+	const helper = checkText(join(skillRoot, 'scripts', 'append-journal.mjs'), false);
+	const openai = checkText(join(skillRoot, 'agents', 'openai.yaml'), false);
 	if (skill !== null) {
 		const frontmatter = frontmatterOf(skill);
 		for (const field of ['name: ck-resolve', 'description:', 'allowed-tools:']) {
 			if (!frontmatter?.includes(field)) failures.push(`resolver skill frontmatter missing ${field}`);
 		}
 		if (skill.includes('TODO') || !skill.includes('.codkit/agent-task-result.json')) failures.push('resolver skill is unfinished or lacks result binding');
+		if (!skill.includes('<codkit-tool-root>/codkit/claude/skills/ck-resolve/scripts/append-journal.mjs')) {
+			failures.push('resolver skill must call the tool-root journal helper, never an installed copy');
+		}
 	}
 	if (helper !== null && (!helper.includes('agent-task-result.json') || !helper.includes('withLock'))) {
 		failures.push('resolver journal helper lacks result/lock binding');

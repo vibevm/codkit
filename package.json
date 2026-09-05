@@ -11,7 +11,7 @@
 		"codkit": "codkit/bin/codkit.mjs"
 	},
 	"files": [
-		".claude",
+		"codkit/claude",
 		"AGENTS.md",
 		"AUDIT.md",
 		"CLAUDE.md",

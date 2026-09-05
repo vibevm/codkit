@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -36,8 +36,8 @@ describe('agent protocol structural sources', () => {
 		expect(run.stdout).toContain('agent protocol check: ok');
 	});
 
-	it('parses current deny-only settings and the portable exec-form hook', () => {
-		const settings = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+	it('ships the deny-only agent settings template with the tool-root hook and keeps the tool repository free of it', () => {
+		const settings = JSON.parse(readFileSync(join(repoRoot, 'codkit', 'claude', 'settings.json'), 'utf8')) as {
 			permissions: { allow?: unknown; deny: string[] };
 			hooks: { PreToolUse: { matcher: string; hooks: { command: string; args: string[] }[] }[] };
 		};
@@ -46,8 +46,12 @@ describe('agent protocol structural sources', () => {
 		expect(settings.hooks.PreToolUse[0]?.matcher).toBe('Bash|PowerShell|Edit|Write|NotebookEdit');
 		expect(settings.hooks.PreToolUse[0]?.hooks[0]).toMatchObject({
 			command: 'node',
-			args: ['${CLAUDE_PROJECT_DIR}/codkit/hooks/pretool.mjs']
+			args: ['<codkit-tool-root>/codkit/hooks/pretool.mjs']
 		});
+		expect(existsSync(join(repoRoot, '.claude', 'settings.json'))).toBe(false);
+		expect(existsSync(join(repoRoot, '.claude', 'agents'))).toBe(false);
+		expect(existsSync(join(repoRoot, '.claude', 'skills'))).toBe(false);
+		expect(readdirSync(join(repoRoot, '.claude', 'rules'))).toEqual(['ck-codkit-dev.md']);
 	});
 });
 
@@ -132,7 +136,7 @@ describe('PreToolUse policy', () => {
 		['$(printf git) commit -m x', 'variables'],
 		['echo `git status`', 'operators'],
 		[
-			'node -e "process.exit()" .claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json',
+			'node -e "process.exit()" codkit/claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json',
 			'installed ck-resolve'
 		]
 	] as const)('denies shell policy: %s', (command, expected) => {
@@ -140,7 +144,7 @@ describe('PreToolUse policy', () => {
 		expect(reason(decision(shell(command), roots))).toContain(expected);
 	});
 
-	it('rejects patch-set-local launcher and helper lookalikes', () => {
+	it('rejects patch-set-local launcher and installed-copy helper lookalikes', () => {
 		const roots = fixtureRoots('shell-spoof');
 		const launcher = join(roots.project, 'bin', 'codkit');
 		const helper = join(roots.project, '.claude', 'skills', 'ck-resolve', 'scripts', 'append-journal.mjs');
@@ -174,7 +178,7 @@ describe('PreToolUse policy', () => {
 		expect(
 			decision(
 				shell(
-					'node --experimental-strip-types --disable-warning=ExperimentalWarning .claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json'
+					'node --experimental-strip-types --disable-warning=ExperimentalWarning codkit/claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json'
 				),
 				roots
 			)

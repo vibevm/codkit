@@ -13,7 +13,7 @@ import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const helper = join(repoRoot, '.claude/skills/ck-resolve/scripts/append-journal.mjs');
+const helper = join(repoRoot, 'codkit/claude/skills/ck-resolve/scripts/append-journal.mjs');
 const artifact = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
 
 afterAll(cleanupTempRoots);

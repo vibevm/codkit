@@ -49,7 +49,7 @@ Changing the intervention layer, adding/removing an artifact, changing own behav
 7. Prepare one canonical journal entry per handled blocker in `.codkit/agent-journal-entry.json`. Include the exact artifact, outcome, concrete resolution, recorded `{sha, approx}` cause, `by: "agent:<name>"`, and the same verification list as the result.
 8. Append it only through:
 
-   `node --experimental-strip-types --disable-warning=ExperimentalWarning <codkit-tool-root>/.claude/skills/ck-resolve/scripts/append-journal.mjs --entry <patchesDir>/.codkit/agent-journal-entry.json`
+   `node --experimental-strip-types --disable-warning=ExperimentalWarning <codkit-tool-root>/codkit/claude/skills/ck-resolve/scripts/append-journal.mjs --entry <patchesDir>/.codkit/agent-journal-entry.json`
 
    The helper resolves the active schema-2 roots through the installed
    launcher; it does not default the patch-set root to its own tool checkout.

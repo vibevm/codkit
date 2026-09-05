@@ -65,7 +65,7 @@ describe('npm distribution', () => {
 			'codkit/hooks/pretool.mjs',
 			'bin/codkit',
 			'bin/codkit.ps1',
-			'.claude/skills/ck-resolve/scripts/append-journal.mjs',
+			'codkit/claude/skills/ck-resolve/scripts/append-journal.mjs',
 			'vibevm/vibespecs/common/PROP-000-foundations.xml',
 			'vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml'
 		]) {

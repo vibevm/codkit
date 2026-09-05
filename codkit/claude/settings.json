@@ -39,7 +39,7 @@
 					{
 						"type": "command",
 						"command": "node",
-						"args": ["${CLAUDE_PROJECT_DIR}/codkit/hooks/pretool.mjs"],
+						"args": ["<codkit-tool-root>/codkit/hooks/pretool.mjs"],
 						"timeout": 15
 					}
 				]

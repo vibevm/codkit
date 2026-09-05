@@ -35,6 +35,10 @@ the three resolved roots must be pairwise disjoint.
 
 See [Codkit usage](codkit/README.md), the
 [human protocol](docs/codkit/protocol/human/00-index.md), and the
-[command reference](docs/codkit/reference/commands.md). Current accepted
+[command reference](docs/codkit/reference/commands.md). The agent-session
+profile for a product repository (Claude Code settings, rules, agents, skills)
+ships under `codkit/claude/`; see the
+[agent protocol](docs/codkit/protocol/agent/00-index.md). The Codkit tool
+repository itself carries no agent perimeter. Current accepted
 evidence and open external risks are tracked in the
 [risk register](docs/codkit/proofs/RISK-REGISTER.md).

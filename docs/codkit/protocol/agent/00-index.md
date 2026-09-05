@@ -15,9 +15,37 @@
 | Изменение agent protocol | [evals](02-evals.md), [memory policy](03-memory-policy.md), [maintenance](../human/12-maintenance.md) |
 
 Исходники пяти профилей находятся в [`docs/codkit/agents`](../../agents/).
-`.claude/agents` и управляемое ядро корневых инструкций — синхронизированные
-копии. Обновление: `node tools/sync-codkit-agents.mjs`; проверка:
+Поставляемый профиль [`codkit/claude/`](../../../../codkit/claude/) —
+`settings.json`, `rules/`, `agents/`, `skills/` и `CLAUDE.md`/`AGENTS.md` с
+управляемым ядром — синхронизированная копия. Обновление:
+`node tools/sync-codkit-agents.mjs`; проверка:
 `node tools/sync-codkit-agents.mjs --check`.
+
+## Где действует периметр
+
+Три репозитория: инструмент Codkit, продукт (patch set) и форк VS Code.
+Агентский периметр — hook, deny-профиль, rules, subagents, skills — действует
+только в сессии над репозиторием продукта и его форком. Codkit не применяется
+для разработки Codkit, поэтому в репозитории инструмента «сессия codkit» не
+имеет смысла: там нет `.claude/settings.json` с hook, нет `.claude/agents` и
+`.claude/skills`; единственное локальное правило — clean-room
+`.claude/rules/ck-codkit-dev.md`. Нарушение ловят
+[`check.mjs`](check.mjs) и `agentProtocol.test.ts`.
+
+Установка профиля в репозиторий продукта (пока ручная, mechanism gap: команды
+установки нет):
+
+1. Скопируй `codkit/claude/{settings.json,rules,agents,skills}` в `.claude/`
+   репозитория продукта.
+2. В `settings.json` замени `<codkit-tool-root>` на абсолютный путь установки
+   Codkit; hook `codkit/hooks/pretool.mjs` остаётся в установке и сам находит
+   tool root по своему расположению.
+3. Управляемый блок из `codkit/claude/CLAUDE.md` и `codkit/claude/AGENTS.md`
+   добавь в корневые `CLAUDE.md`/`AGENTS.md` продукта между маркерами
+   `codkit-agent-core:begin/end`.
+4. Skill `ck-resolve` вызывает journal helper только по tool-root пути
+   `<codkit-tool-root>/codkit/claude/skills/ck-resolve/scripts/append-journal.mjs`;
+   hook отклоняет установленную копию helper'а как lookalike.
 
 Во всех командах `codkit` означает установленный launcher из `PATH`; эквивалент
 для явной установки — `<codkit-tool-root>/bin/codkit` (PowerShell:
@@ -40,6 +68,7 @@
 | Design stop | JSON `exitCode:3`, ограниченные tools, result file | `status: stopped`, решение человека |
 | Маркеры/дельта/state | scoped rules + `save`/`verify`/`cycle` | соответствующий `CK-E-*` |
 | Clean room `codkit/**` | path-rule + локальный deny-профиль | доступ к reference не выдаётся |
+| Периметр не действует в репозитории инструмента | `codkit/claude/` вместо `.claude/` инструмента; `check.mjs` и `agentProtocol.test.ts` красные при hook/agents/skills в `.claude/` инструмента | check/test red |
 
 Hook выводит актуальный `hookSpecificOutput.permissionDecision:"deny"`. Пустой
 успешный вывод означает только «hook не возражает»; обычные permissions всё ещё
@@ -52,8 +81,8 @@ Task schema поддерживает `resolve`, `scout`, `verify`, `review`, `ca
 
 ## Ограничение path rules
 
-`paths` в `.claude/rules` сопоставляется с путями репозитория `patchset` при чтении
-файла. Внешнее дерево имеет динамический путь, поэтому glob для него не
+`paths` в `codkit/claude/rules` (после установки — `.claude/rules` продукта)
+сопоставляется с путями репозитория `patchset` при чтении файла. Внешнее дерево имеет динамический путь, поэтому glob для него не
 коммитится. `ck-markers.md` загружается без path scope, а реальный периметр
 принуждает hook через единственный resolver `codkit where --json`.
 
