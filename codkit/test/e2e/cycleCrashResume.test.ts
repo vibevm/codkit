@@ -80,7 +80,7 @@ describe('cycle hard-crash resume matrix', () => {
 			expect(interrupted.envelope.data['status']).toBe('active');
 
 			const resumed = fixture.json(['cycle', 'continue', '--ci'], testEnv(fixture));
-			expect(resumed.run.status, `${checkpoint}\n${resumed.run.stderr}`).toBe(0);
+			expect(resumed.run.status, `${checkpoint}\n${resumed.run.stderr}\n${resumed.run.stdout}`).toBe(0);
 			expect(resumed.envelope.data).toMatchObject({ status: 'completed', phase: 'done' });
 			assertCompleted(fixture);
 		},
@@ -110,7 +110,7 @@ describe('cycle hard-crash resume matrix', () => {
 		expect(fixture.json(['cycle', 'status'], testEnv(fixture)).envelope.data['phase']).toBe('deps-advisory');
 
 		const resumed = fixture.json(['cycle', 'continue', '--ci'], testEnv(fixture));
-		expect(resumed.run.status, resumed.run.stderr).toBe(0);
+		expect(resumed.run.status, `${resumed.run.stderr}\n${resumed.run.stdout}`).toBe(0);
 		assertCompleted(fixture);
 	}, 45_000);
 

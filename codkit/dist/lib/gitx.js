@@ -101,6 +101,21 @@ export function runGitBytes(options) {
     };
 }
 /**
+ * Resolve one administrative path the way the user's own git resolves it -
+ * global and system configuration visible, execution-isolation flags dropped
+ * (a `-c core.hooksPath=/dev/null` would break `--git-path hooks/*` for real
+ * machines too). The narrow machine-config exception to ##GIT-ENV-ISOLATION:
+ * read-only path resolution, nothing else (see RunGitOptions.machineConfig).
+ */
+export function runGitUserPathResolution(relative) {
+    return runGit({
+        args: ['rev-parse', '--path-format=absolute', '--git-path', relative.relative],
+        cwd: relative.cwd,
+        pathResolution: true,
+        machineConfig: true
+    });
+}
+/**
  * git WITHOUT the configuration isolation - the machine's global and system
  * configuration are visible. **Only for patchset-side commits**: the isolation
  * exists so that what codkit computes about the fork *tree* is the same on
@@ -120,15 +135,20 @@ function spawnGit(options, isolate) {
             throw ckError('NET-FORBIDDEN', `network git command is not allowed here: git ${refusal.join(' ')}`, `codkit never reaches the network in this mode; run it yourself and re-try: git -C ${options.cwd} ${refusal.join(' ')}`);
         }
     }
-    const env = childEnv(options.env, isolate);
-    if (isolate) {
+    if (options.machineConfig === true && options.pathResolution !== true) {
+        throw ckError('INTERNAL', 'machineConfig is legal only for read-only path resolution', 'pass pathResolution with it or drop it');
+    }
+    const isolateForRun = options.machineConfig === true ? false : isolate;
+    const env = childEnv(options.env, isolateForRun);
+    if (isolateForRun) {
         Object.assign(env, ISOLATION_ENV);
         const configGlobal = options.gitConfigGlobal ?? runConfigGlobal;
         if (configGlobal !== null && configGlobal !== undefined) {
             env['GIT_CONFIG_GLOBAL'] = configGlobal;
         }
     }
-    const result = spawnSync('git', [...(isolate ? ISOLATED_CONFIG : BASE_CONFIG), ...hardenDiffArgs(options.args)], {
+    const isolatedConfig = isolateForRun && options.pathResolution !== true ? ISOLATED_CONFIG : BASE_CONFIG;
+    const result = spawnSync('git', [...isolatedConfig, ...hardenDiffArgs(options.args)], {
         cwd: options.cwd,
         env,
         maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,

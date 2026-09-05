@@ -2,13 +2,16 @@
 // the config-overlay layer inside `sync`.
 //
 // Contracts under test: PROP-007 sec. 12 (##CMD-OVERLAY), PROP-005 sec. 5
-// (##OVERLAY-TWO-CHANNELS, ##OVERLAY-DRIFT-DETECTOR), PROP-008 sec. 3 (the order
-// of the generated commits: patches, then overlay targets, then the resource map).
+// (##OVERLAY-TWO-CHANNELS, ##OVERLAY-DRIFT-DETECTOR, ##OVERLAY-KNOWN-MATERIALIZATION),
+// PROP-008 sec. 3 (the order of the generated commits: patches, then overlay
+// targets, then the resource map) and sec. 4 (the drift guard).
 //
 // One outcome here looks like a failure and is not: a target materialized into
-// the work tree is, for the drift guard, an upstream file that changed without
-// being extracted, so the next `sync` refuses to run. That is the model working -
-// `apply` belongs to a one-shot packaging tree, not to the tree a developer syncs.
+// the work tree is, for an ordinary `sync`, an upstream file that changed without
+// being extracted, so that sync refuses to run. `sync --fresh` is the way back:
+// it classifies the bytes first and replaces the target only when they are
+// exactly the strict composition of the configured overlays (##OVERLAY-KNOWN-
+// MATERIALIZATION); any manual byte still stops the run.
 
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -214,20 +217,112 @@ describe('codkit overlay apply', () => {
 		}
 	});
 
-	it('is unextracted work for the next sync, and git restores the tree', () => {
-		// This is the model, not a bug: a materialized upstream file is a changed
-		// upstream file, and `sync` never overwrites a change it has not seen in
-		// patchset. `apply` is for the one-shot trees of ci and publish.
+	it('is dirt for an ordinary sync, which refuses it and preserves the bytes', () => {
+		// The model for a local `sync`: a materialized upstream file is a changed
+		// upstream file, and an ordinary sync never overwrites a change it has not
+		// seen in patchset - and must not silently exempt it either, because the
+		// fast path could then answer "up to date" and leave the packaging bytes
+		// standing as if they were dev state.
+		const before = readFileSync(fixture.treePath('product.json'), 'utf8');
 		const { run, envelope } = fixture.json(['sync']);
 
 		expect(run.status).toBe(1);
 		expect(envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
 		expect(envelope.data['dirtyFiles']).toContain('product.json');
+		expect(readFileSync(fixture.treePath('product.json'), 'utf8')).toBe(before);
+	});
 
-		expect(fixture.git(['checkout', '--', 'product.json']).status).toBe(0);
-		const after = fixture.json(['sync']);
-		expect(after.run.status).toBe(0);
-		expect(after.envelope.data['status']).toBe('up-to-date');
+	it('is returned to dev mode by sync --fresh, with no direct git restore', () => {
+		const { run, envelope } = fixture.json(['sync', '--fresh']);
+
+		expect(run.status).toBe(0);
+		expect(envelope.data['status']).toBe('applied');
+		const document = JSON.parse(readFileSync(fixture.treePath('product.json'), 'utf8')) as Record<string, unknown>;
+		// The raw tracked target carries the dev/generated state again...
+		expect(document['nameShort']).toBe('Fixture - OSS');
+		expect(document['patchsetUpstreamPin']).toBeUndefined();
+		// ...and the dev channel is back.
+		const overrides = JSON.parse(readFileSync(fixture.treePath('product.overrides.json'), 'utf8')) as Record<string, unknown>;
+		expect(overrides['nameShort']).toBe('Fixture PatchSet');
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+	});
+});
+
+describe('sync --fresh over an exact packaging materialization', () => {
+	let fixture: CliFixture;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('overlay-fresh');
+		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['overlay', 'apply', 'product.json']).status).toBe(0);
+	});
+
+	it('succeeds, announces the replacement, and restores the dev state', () => {
+		const { run, envelope } = fixture.json(['sync', '--fresh']);
+
+		expect(run.status).toBe(0);
+		expect(
+			envelope.messages.some(
+				(message) => message.text.includes('product.json') && message.text.includes('carries the exact overlay materialization')
+			)
+		).toBe(true);
+		const document = JSON.parse(readFileSync(fixture.treePath('product.json'), 'utf8')) as Record<string, unknown>;
+		expect(document['nameShort']).toBe('Fixture - OSS');
+		expect(document['patchsetUpstreamPin']).toBeUndefined();
+		expect(JSON.parse(readFileSync(fixture.treePath('product.overrides.json'), 'utf8'))['nameShort']).toBe('Fixture PatchSet');
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+	});
+
+	it('still refuses a hand edit of the materialized target, and preserves it', () => {
+		// One byte of manual work on top of the composition is unextracted work
+		// again: --fresh replaces a known state, it is not a blanket reset.
+		expect(fixture.run(['overlay', 'apply', 'product.json']).status).toBe(0);
+		const path = fixture.treePath('product.json');
+		const mutated = readFileSync(path, 'utf8').replace('"applicationName": "fixture-code"', '"applicationName": "by-hand"');
+		writeFileSync(path, mutated, 'utf8');
+
+		const { run, envelope } = fixture.json(['sync', '--fresh']);
+
+		expect(run.status).toBe(1);
+		expect(envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
+		expect(envelope.data['dirtyFiles']).toContain('product.json');
+		expect(readFileSync(path, 'utf8')).toBe(mutated);
+	});
+});
+
+describe('sync --fresh over a target several overlays compose', () => {
+	let fixture: CliFixture;
+	const SECOND_ARTIFACT = 'delta/overlays/product.json.brand.overlay.json';
+
+	beforeAll(() => {
+		fixture = makeCliFixture('overlay-fresh-compose');
+		writeFileSync(fixture.patchesPath(SECOND_ARTIFACT), brandOverlay(), 'utf8');
+		expect(fixture.run(['sync']).status).toBe(0);
+		expect(fixture.run(['overlay', 'apply', 'product.json']).status).toBe(0);
+	});
+
+	afterAll(() => {
+		rmSync(fixture.patchesPath(SECOND_ARTIFACT), { force: true });
+	});
+
+	it('recognizes the composed bytes and returns the tree to dev mode', () => {
+		const composed = JSON.parse(readFileSync(fixture.treePath('product.json'), 'utf8')) as Record<string, Record<string, unknown>>;
+		expect(composed['nameShort']).toBe('Fixture PatchSet');
+		expect(composed['extensionsGallery']?.['serviceUrl']).toBe('https://gallery.patchset.invalid');
+
+		const { run } = fixture.json(['sync', '--fresh']);
+
+		expect(run.status).toBe(0);
+		const restored = JSON.parse(readFileSync(fixture.treePath('product.json'), 'utf8')) as Record<string, Record<string, unknown>>;
+		expect(restored['nameShort']).toBe('Fixture - OSS');
+		expect(restored['extensionsGallery']?.['serviceUrl']).toBe('https://gallery.fixture.invalid/api');
+		// The dev channel composes both overlays too.
+		const overrides = JSON.parse(readFileSync(fixture.treePath('product.overrides.json'), 'utf8')) as Record<
+			string,
+			Record<string, unknown>
+		>;
+		expect(overrides['nameShort']).toBe('Fixture PatchSet');
+		expect(overrides['extensionsGallery']?.['serviceUrl']).toBe('https://gallery.patchset.invalid');
 	});
 });
 
@@ -295,6 +390,32 @@ function packageOverlay(path: readonly string[], value: string): string {
 			pin: 't1@0000000000000000000000000000000000000000',
 			contractTests: ['fixture.guard.product'],
 			operations: [{ op: 'set', path: [...path], value }]
+		},
+		null,
+		2
+	)}\n`;
+}
+
+/**
+ * A second overlay on product.json, so one target is composed from two files:
+ * the state `overlay apply` writes, and the drift guard of `sync --fresh`
+ * classifies, is the composition of every overlay that names the target.
+ */
+function brandOverlay(): string {
+	return `${JSON.stringify(
+		{
+			codkitOverlay: 2,
+			id: 'CK-product-905',
+			target: 'product.json',
+			type: 'modify',
+			category: 'own',
+			owner: 'product',
+			reason: 'fixture: the second overlay of one target, composed with the first',
+			link: 'none',
+			cause: 'none',
+			pin: 't1@0000000000000000000000000000000000000000',
+			contractTests: ['fixture.guard.product'],
+			operations: [{ op: 'set', path: ['extensionsGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }]
 		},
 		null,
 		2

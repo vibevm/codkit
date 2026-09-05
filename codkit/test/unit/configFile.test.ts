@@ -2,7 +2,7 @@
 // (PROP-003 sec. 1-2). The pin.sha text is fixed by ##CONFIG-INVALID-SAMPLE and
 // is asserted verbatim.
 
-import { existsSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -10,12 +10,15 @@ import {
 	LOCAL_CONFIG_FILE_NAME,
 	loadConfig,
 	mergeLocal,
-	nodeConfigFileSystem,
 	parseBaseConfig,
 	parseLocalConfig,
-	serializeBaseConfig,
-	writeConfigPin
+	serializeBaseConfig
 } from '../../src/lib/configFile.ts';
+import type { PinConfig } from '../../src/lib/configFile.ts';
+import { nodeConfigFileSystem, writeConfigPin } from '../../src/lib/configPin.ts';
+import type { WriteConfigPinOptions } from '../../src/lib/configPin.ts';
+import { acquireLock } from '../../src/lib/lock.ts';
+import type { LockHandle } from '../../src/lib/lock.ts';
 import { CkError, isCkError } from '../../src/lib/messages.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
@@ -30,6 +33,15 @@ const VALID_SAMPLE = {
 	releaseRefPrefix: 'codkit/release/',
 	publishRemoteUrl: null
 };
+
+function writePin(root: string, pin: PinConfig, options: Omit<WriteConfigPinOptions, 'lock'> = {}): boolean {
+	const lock = acquireLock(root, 'cycle-global', 'config test');
+	try {
+		return writeConfigPin(root, pin, { ...options, lock });
+	} finally {
+		lock.release();
+	}
+}
 
 function catchCkError(run: () => unknown): CkError {
 	try {
@@ -226,6 +238,16 @@ describe('loadConfig', () => {
 		expect(error.message).toContain('not valid JSON');
 	});
 
+	it('rejects an exact UTF-8 BOM and invalid UTF-8 through the contained reader', () => {
+		const bomRoot = makeTempRoot('config-read-bom');
+		writeFileSync(join(bomRoot, CONFIG_FILE_NAME), new Uint8Array([0xef, 0xbb, 0xbf, 0x7b, 0x7d]));
+		expect(() => loadConfig(bomRoot)).toThrow(/without BOM/);
+
+		const invalidRoot = makeTempRoot('config-read-invalid-utf8');
+		writeFileSync(join(invalidRoot, CONFIG_FILE_NAME), new Uint8Array([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d]));
+		expect(() => loadConfig(invalidRoot)).toThrow(/valid UTF-8/);
+	});
+
 	it('refuses symlinked base and local config reads', () => {
 		const outside = makeTempRoot('config-read-outside');
 		writeJson(outside, CONFIG_FILE_NAME, VALID_SAMPLE);
@@ -243,13 +265,87 @@ describe('loadConfig', () => {
 });
 
 describe('canonical pin updates', () => {
+	it('requires a live cycle lock bound to this patch set', () => {
+		const root = makeTempRoot('config-lock-capability');
+		writeJson(root, CONFIG_FILE_NAME, VALID_SAMPLE);
+		const pin = { tag: '1.136.0', sha: 'e'.repeat(40), date: '2026-09-01' };
+		const forged = {
+			path: 'forged',
+			info: { pid: process.pid, startedAt: new Date().toISOString(), command: 'forged' },
+			release() {}
+		} as LockHandle;
+		expect(() => writeConfigPin(root, pin, { lock: forged })).toThrow(/live lock handle/);
+
+		const released = acquireLock(root, 'cycle-global', 'released config lock');
+		released.release();
+		expect(() => writeConfigPin(root, pin, { lock: released })).toThrow(/live lock handle/);
+
+		const otherRoot = makeTempRoot('config-lock-foreign');
+		const foreign = acquireLock(otherRoot, 'cycle-global', 'foreign config lock');
+		try {
+			expect(() => writeConfigPin(root, pin, { lock: foreign })).toThrow(/requires the live cycle-global lock/);
+		} finally {
+			foreign.release();
+		}
+	});
+
+	it('preserves a newer external edit injected after compare and before replace', () => {
+		const root = makeTempRoot('config-before-replace');
+		writeJson(root, CONFIG_FILE_NAME, VALID_SAMPLE);
+		const newer = { ...VALID_SAMPLE, ownDirName: 'newer-external-edit' };
+		const lock = acquireLock(root, 'cycle-global', 'config compare barrier');
+		try {
+			expect(() =>
+				writeConfigPin(
+					root,
+					{ tag: '1.136.0', sha: 'f'.repeat(40), date: '2026-09-01' },
+					{
+						lock,
+						beforeReplace: () => writeJson(root, CONFIG_FILE_NAME, newer)
+					}
+				)
+			).toThrow(/changed after compare/);
+			expect(JSON.parse(readFileSync(join(root, CONFIG_FILE_NAME), 'utf8'))).toEqual(newer);
+		} finally {
+			lock.release();
+		}
+	});
+
+	it('refuses a patch-set root swapped to an outside symlink after config open', () => {
+		const root = makeTempRoot('config-write-parent-swap');
+		writeJson(root, CONFIG_FILE_NAME, VALID_SAMPLE);
+		const held = `${root}-held`;
+		const outside = makeTempRoot('config-write-parent-swap-outside');
+		writeJson(outside, CONFIG_FILE_NAME, VALID_SAMPLE);
+		const outsideBefore = readFileSync(join(outside, CONFIG_FILE_NAME));
+
+		try {
+			expect(() =>
+				writePin(
+					root,
+					{ tag: '1.136.0', sha: 'b'.repeat(40), date: '2026-09-01' },
+					{
+						afterOpen: () => {
+							renameSync(root, held);
+							symlinkSync(outside, root);
+						}
+					}
+				)
+			).toThrow(/outside|changed|prove/);
+			expect(readFileSync(join(outside, CONFIG_FILE_NAME))).toEqual(outsideBefore);
+		} finally {
+			rmSync(root, { force: true });
+			renameSync(held, root);
+		}
+	});
+
 	it('serializes canonical key order and atomically updates only the shared base pin', () => {
 		const root = makeTempRoot('config-write');
 		writeJson(root, CONFIG_FILE_NAME, VALID_SAMPLE);
 		writeJson(root, LOCAL_CONFIG_FILE_NAME, { ownDirName: 'custom' });
 		const targetPin = { tag: '1.136.0', sha: 'b'.repeat(40), date: '2026-09-01' };
 
-		expect(writeConfigPin(root, targetPin, { temporarySuffix: () => 'first' })).toBe(true);
+		expect(writePin(root, targetPin, { temporarySuffix: () => 'first' })).toBe(true);
 		const base = JSON.parse(readFileSync(join(root, CONFIG_FILE_NAME), 'utf8')) as Record<string, unknown>;
 		expect(Object.keys(base)).toEqual([
 			'codkitConfig',
@@ -265,7 +361,7 @@ describe('canonical pin updates', () => {
 		]);
 		expect(base['pin']).toEqual(targetPin);
 		expect(loadConfig(root)?.ownDirName).toBe('custom');
-		expect(writeConfigPin(root, targetPin, { temporarySuffix: () => 'unused' })).toBe(false);
+		expect(writePin(root, targetPin, { temporarySuffix: () => 'unused' })).toBe(false);
 		expect(serializeBaseConfig(parseBaseConfig(base, CONFIG_FILE_NAME))).toBe(readFileSync(join(root, CONFIG_FILE_NAME), 'utf8'));
 	});
 
@@ -282,7 +378,7 @@ describe('canonical pin updates', () => {
 		};
 		const pin = { tag: '1.136.0', sha: 'c'.repeat(40), date: '2026-09-01' };
 
-		expect(() => writeConfigPin(root, pin, { fileSystem, temporarySuffix: () => 'interrupted' })).toThrow(CkError);
+		expect(() => writePin(root, pin, { fileSystem, temporarySuffix: () => 'interrupted' })).toThrow(CkError);
 		expect(readFileSync(path)).toEqual(before);
 		expect(existsSync(`${path}.interrupted.tmp`)).toBe(false);
 	});
@@ -294,7 +390,7 @@ describe('canonical pin updates', () => {
 		writeJson(outside, CONFIG_FILE_NAME, VALID_SAMPLE);
 		symlinkSync(outsideConfig, join(root, CONFIG_FILE_NAME));
 
-		expect(() => writeConfigPin(root, { tag: '1.136.0', sha: 'd'.repeat(40), date: '2026-09-01' })).toThrow(CkError);
+		expect(() => writePin(root, { tag: '1.136.0', sha: 'd'.repeat(40), date: '2026-09-01' })).toThrow(CkError);
 		expect((JSON.parse(readFileSync(outsideConfig, 'utf8')) as { pin: { tag: string } }).pin.tag).toBe('1.135.0');
 	});
 });

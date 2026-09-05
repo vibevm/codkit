@@ -106,6 +106,29 @@ describe('codkit hooks install|check', () => {
 			expect.stringContaining('commit-msg hook is not installed')
 		]);
 	});
+
+	it('reports install and check inactive when Git executes a custom hooksPath', () => {
+		const other = makeCliFixture('hooks-custom-effective');
+		const external = other.patchesPath('.external-hooks');
+		mkdirSync(external, { recursive: true });
+		const sentinel = join(external, 'pre-commit');
+		writeFileSync(sentinel, '#!/bin/sh\necho custom-effective >&2\nexit 7\n', 'utf8');
+		chmodSync(sentinel, 0o755);
+		other.patchGit(['config', 'core.hooksPath', external]);
+
+		for (const mode of ['install', 'check']) {
+			const outcome = other.json(['hooks', mode]);
+			expect(outcome.run.status).toBe(1);
+			expect(outcome.envelope.errors.every((error) => error.message.includes('inactive'))).toBe(true);
+		}
+		expect(existsSync(join(other.patchesDir, '.git', 'hooks', 'pre-commit'))).toBe(false);
+		const attempted = gitLocal({
+			args: ['-c', 'user.name=fixture', '-c', 'user.email=fixture@invalid', 'commit', '--allow-empty', '-m', 'probe'],
+			cwd: other.patchesDir
+		});
+		expect(attempted.status).not.toBe(0);
+		expect(attempted.stderr).toContain('custom-effective');
+	});
 });
 
 describe('the installed pre-commit hook', () => {

@@ -41,9 +41,11 @@ import {
 	upChannel
 } from './buildWrap.ts';
 import type { ChannelConfig } from './buildWrap.ts';
+import { encodeUtf8 } from './bytes.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import { CONFIG_FILE_NAME, loadConfig } from './configFile.ts';
 import type { CodkitConfig } from './configFile.ts';
+import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts';
 import { driftDirty } from './driftGuard.ts';
 import { treeId } from './fingerprint.ts';
 import { runGit, useGitConfigGlobal } from './gitx.ts';
@@ -237,6 +239,15 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	// ci tree that carries unextracted work is a job that reused a developer's
 	// tree. Build deliberately applies the non-overlay state first; upstream
 	// hygiene must see that state before strict overlay targets are materialized.
+	//
+	// No known-materialization classifier is passed here (REPAIR-005 decision):
+	// ci materializes overlay targets only through commits of the generated
+	// branch, so its own runs leave the tree clean against its own HEAD and can
+	// never produce the state the classifier exists for. The only way those bytes
+	// reach a ci tree is an out-of-band `overlay apply` - a developer tree reused
+	// by a job, which is exactly what this guard exists to name loudly - and its
+	// way out is codkit's own (`sync --fresh` on that tree) or the disposable-tree
+	// contract itself (mount a fresh tree), not a direct git restore.
 	const drift = driftDirty(tree, config.ownDirName, patchesDir, { untrackedIsDirt: false });
 	if (drift.dirty) {
 		for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
@@ -799,7 +810,9 @@ export function depsHash(treeDir: string): string {
 export function readDepsRecord(patchesDir: string, id: string): { readonly hash: string } | null {
 	let raw: unknown;
 	try {
-		raw = JSON.parse(readFileSync(join(patchesDir, ...DEPS_HASH_PATH.split('/')), 'utf8'));
+		const read = readContainedFile(patchesDir, DEPS_HASH_PATH, { what: DEPS_HASH_PATH });
+		if (read.state === 'absent') return null;
+		raw = JSON.parse(Buffer.from(read.bytes).toString('utf8'));
 	} catch {
 		return null;
 	}
@@ -812,8 +825,6 @@ export function readDepsRecord(patchesDir: string, id: string): { readonly hash:
 }
 
 function writeDepsRecord(patchesDir: string, id: string, treeDir: string, hash: string): void {
-	const path = join(patchesDir, ...DEPS_HASH_PATH.split('/'));
-	mkdirSync(dirname(path), { recursive: true });
 	const record = {
 		codkitDepsHash: DEPS_HASH_SCHEMA_VERSION,
 		treeId: id,
@@ -821,7 +832,7 @@ function writeDepsRecord(patchesDir: string, id: string, treeDir: string, hash: 
 		hash,
 		updatedAt: new Date().toISOString()
 	};
-	writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
+	writeContainedFileAtomic(patchesDir, DEPS_HASH_PATH, { bytes: encodeUtf8(`${JSON.stringify(record, null, 2)}\n`), what: DEPS_HASH_PATH });
 }
 
 // ---------------------------------------------------------------------------
@@ -848,7 +859,7 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 
 	const ourGroups = new Set<number>();
 	for (const known of watch.channels) {
-		const state = statusOf(patchesDir, known.name);
+		const state = statusOf(patchesDir, known.name, { expectedTreeId: treeId(tree), expectedTreePath: tree });
 		if (state.state === 'living' && state.record !== null) {
 			ourGroups.add(state.record.pid);
 		}
@@ -873,7 +884,7 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 	const started: ChannelConfig[] = [];
 	try {
 		for (const channel of channels) {
-			const result = upChannel({ patchesDir, treeDir: tree, treeId: id }, channel);
+			const result = upChannel({ patchesDir, treeDir: tree, treeId: id, onWarn: (text) => out.warn(text) }, channel);
 			if (!result.ok) {
 				out.warn(
 					`cannot start the ${channel.name} daemon: ${result.reason}. ` +
@@ -888,7 +899,10 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 
 		let errors = 0;
 		for (const channel of started) {
-			const outcome = await readPass(patchesDir, channel, { timeoutMs });
+			const outcome = await readPass(patchesDir, channel, {
+				timeoutMs,
+				probe: { expectedTreeId: id, expectedTreePath: tree }
+			});
 			if (outcome.state !== 'ok') {
 				const why =
 					outcome.state === 'timeout'
@@ -919,11 +933,23 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 		return EXIT_OK;
 	} finally {
 		// Every channel of the configuration, not only the ones this run started:
-		// a container that leaves a daemon behind leaks a process group.
+		// a container that leaves a daemon behind leaks a process group. The
+		// teardown is bound to this tree - an unbound stop would signal and delete
+		// a daemon belonging to another fork tree sharing this patch set - and one
+		// unstoppable channel must not abort the sweep or replace the verdict this
+		// block exists to protect.
 		for (const channel of watch.channels) {
-			const result = await downChannel(patchesDir, channel.name);
-			if (result.action !== 'not-running') {
-				out.info(`${channel.name}: ${result.action} (pid ${result.pid} and its process group)`);
+			try {
+				const result = await downChannel(patchesDir, channel.name, {
+					expectedTreeId: id,
+					expectedTreePath: tree,
+					onWarn: (text) => out.warn(text)
+				});
+				if (result.action !== 'not-running') {
+					out.info(`${channel.name}: ${result.action} (pid ${result.pid} and its process group)`);
+				}
+			} catch (error) {
+				out.warn(`${channel.name}: could not be stopped: ${error instanceof Error ? error.message : String(error)}`);
 			}
 		}
 	}

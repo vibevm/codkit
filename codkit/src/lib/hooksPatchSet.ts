@@ -19,11 +19,14 @@
 // under the shebang the kernel needs first). A hook file without that line
 // belongs to somebody else and is never overwritten.
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { encodeUtf8 } from './bytes.ts';
+import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts';
+import { sameEffectivePath } from './containedPath.ts';
 import { readCycleState } from './cycleState.ts';
-import { gitDirOf } from './treeCache.ts';
+import { runGitUserPathResolution } from './gitx.ts';
+import { gitCommonDirOf, gitDirOf } from './treeCache.ts';
 
 /** The line that marks a hook file as codkit's. */
 export const HOOK_MARKER = '# codkit-hook v1';
@@ -39,13 +42,14 @@ export type HookName = (typeof HOOK_NAMES)[number];
  *   `stale`   - ours, but written by another version or another checkout;
  *   `foreign` - somebody else's hook, which install refuses to touch.
  */
-export type HookState = 'ok' | 'missing' | 'stale' | 'foreign';
+export type HookState = 'ok' | 'missing' | 'stale' | 'foreign' | 'inactive';
 
 export type HookReport = {
 	readonly name: HookName;
 	/** Absolute path of the hook file. */
 	readonly path: string;
 	readonly state: HookState;
+	readonly detail?: string;
 };
 
 export type InstallAction = 'written' | 'unchanged' | 'refused';
@@ -62,6 +66,8 @@ export type HookParameters = {
 	readonly forkDir: string;
 	/** The launcher the hooks call; defaults to the one shipped with this codkit. */
 	readonly launcher?: string;
+	/** Fires after an inspected hook is opened and before containment proof (test seam). */
+	readonly afterOpen?: () => void;
 };
 
 /** `<git dir>/hooks`, which is where git looks unless core.hooksPath says otherwise. */
@@ -140,12 +146,22 @@ export function inspectHooks(parameters: HookParameters): readonly HookReport[] 
 
 export function inspectHook(name: HookName, parameters: HookParameters): HookReport {
 	const path = hookPath(parameters.patchesDir, name);
-	if (!existsSync(path)) {
-		return { name, path, state: 'missing' };
+	const activation = hookActivation(parameters.patchesDir, name, path);
+	if (!activation.active) {
+		return { name, path, state: 'inactive', detail: activation.detail };
 	}
+	// The contained read: a symlinked hook leaf is unreadable and therefore
+	// foreign - codkit never touches what it cannot prove is its own file.
 	let current: string;
 	try {
-		current = readFileSync(path, 'utf8');
+		const read = readContainedFile(gitDirOf(parameters.patchesDir), `hooks/${name}`, {
+			what: path,
+			...(parameters.afterOpen === undefined ? {} : { afterOpen: parameters.afterOpen })
+		});
+		if (read.state === 'absent') {
+			return { name, path, state: 'missing' };
+		}
+		current = Buffer.from(read.bytes).toString('utf8');
 	} catch {
 		return { name, path, state: 'foreign' };
 	}
@@ -174,19 +190,43 @@ export function isOurs(content: string): boolean {
  * anybody agreed to.
  */
 export function installHooks(parameters: HookParameters): readonly InstallReport[] {
-	mkdirSync(hooksDir(parameters.patchesDir), { recursive: true });
-	return HOOK_NAMES.map((name) => {
-		const report = inspectHook(name, parameters);
+	const reports = inspectHooks(parameters);
+	return reports.map((report) => {
+		const name = report.name;
+		if (report.state === 'inactive') {
+			return { ...report, action: 'refused' as const };
+		}
 		if (report.state === 'foreign') {
 			return { ...report, action: 'refused' as const };
 		}
 		if (report.state === 'ok') {
 			return { ...report, action: 'unchanged' as const };
 		}
-		writeFileSync(report.path, hookScript(name, parameters), 'utf8');
-		chmodSync(report.path, 0o755);
+		writeContainedFileAtomic(gitDirOf(parameters.patchesDir), `hooks/${name}`, {
+			bytes: encodeUtf8(hookScript(name, parameters)),
+			mode: 0o755,
+			what: report.path
+		});
 		return { name, path: report.path, state: 'ok' as const, action: 'written' as const };
 	});
+}
+
+type HookActivation = { readonly active: true } | { readonly active: false; readonly detail: string };
+
+/** A patch-set hook is valid only when the user's Git demonstrably executes it. */
+function hookActivation(patchesDir: string, name: HookName, ownedPath: string): HookActivation {
+	if (!sameEffectivePath(gitDirOf(patchesDir), gitCommonDirOf(patchesDir))) {
+		return { active: false, detail: 'linked worktree hooks are shared by sibling worktrees' };
+	}
+	const effective = runGitUserPathResolution({ cwd: patchesDir, relative: `hooks/${name}` });
+	const path = effective.stdout.trim();
+	if (effective.status !== 0 || path === '') {
+		return { active: false, detail: 'Git could not resolve the effective hooks path' };
+	}
+	if (!sameEffectivePath(path, ownedPath)) {
+		return { active: false, detail: `Git executes ${path} because core.hooksPath is configured` };
+	}
+	return { active: true };
 }
 
 // ---------------------------------------------------------------------------

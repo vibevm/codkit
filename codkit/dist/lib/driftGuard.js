@@ -9,7 +9,9 @@
 //       files, which git can see because those files are tracked;
 //   (b) a byte comparison of the tree's own directory against `delta/own/` -
 //       edits to own code, which git cannot see, because locally the own
-//       directory is excluded through .git/info/exclude (##OWN-EXCLUDED-LOCALLY).
+//       directory is excluded (##OWN-EXCLUDED-LOCALLY: the managed block of
+//       info/exclude in a single-worktree repository, the worktree-local
+//       exclude file in a multi-worktree one).
 //
 // Half (b) is not an optimization: without it every change to own code in the
 // tree would be silently overwritten by the next sync.
@@ -20,6 +22,16 @@
 // can be lost by writing it. Only the two classes that carry work (a file the
 // tree has and patchset does not, and a file both sides have with different bytes)
 // stop a destructive command.
+//
+// A second refinement (##OVERLAY-KNOWN-MATERIALIZATION): a *tracked* path the
+// caller can certify as a state codkit itself wrote - today the strict overlay
+// composition of `overlay apply` - is not unextracted work either, provided the
+// calling run is the one that replaces it. The guard itself stays generic: it
+// accepts a predicate and asks it about tracked paths only, so the classification
+// lives with the layer that can actually prove it. `sync --fresh` is the only
+// caller (an ordinary `sync` may answer the fast path "up to date" and leave the
+// bytes in place, which is exactly what a silent exemption must not do); `ci`
+// deliberately passes none (see the sync engine).
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { OWN_SOURCE_DIR, compareOwn, ownTargetRelativeDir } from './ownCopy.js';
@@ -41,18 +53,26 @@ export function driftDirty(treeDir, ownDirName, patchesDir, options = {}) {
     }
     return { dirty: files.length > 0, files, upstream, own };
 }
-/** Half (a): what git sees, minus the own directory it is not allowed to judge. */
+/**
+ * Half (a): what git sees, minus the own directory it is not allowed to judge,
+ * minus the tracked paths the caller certified as its own known materialization.
+ */
 export function upstreamDirt(treeDir, ownDirName, options = {}) {
     const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
     if (status.status !== 0) {
         throw ckError('NOT-A-REPO', `git status failed in ${treeDir}: ${firstLine(status.stderr)}`, 'check that the fork tree is a healthy git work tree');
     }
     const untrackedIsDirt = options.untrackedIsDirt ?? true;
+    const classify = options.isKnownMaterialization;
     const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
-    return porcelainEntries(status.stdout)
+    return (porcelainEntries(status.stdout)
         .filter((entry) => untrackedIsDirt || entry.status !== '??')
+        // The known-state question is about tracked bytes only: an untracked
+        // path carries no HEAD to differ from (and with `--fresh` it is the
+        // whitelist, not an overlay, that speaks for it).
+        .filter((entry) => classify === undefined || entry.status === '??' || !classify(entry.path))
         .map((entry) => entry.path)
-        .filter((path) => !path.startsWith(ownPrefix));
+        .filter((path) => !path.startsWith(ownPrefix)));
 }
 /**
  * `git status --porcelain` v1. For a rename the new path is the one that

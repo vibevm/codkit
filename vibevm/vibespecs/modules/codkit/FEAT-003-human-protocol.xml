@@ -44,7 +44,7 @@
       <tr><td><EVT-CLEAN-PIN fact="true" status="spec/done">«дельта ложится на чистый пин»</EVT-CLEAN-PIN></td><td>`ci --profile verify` на каждом PR</td><td>02: почему PR красный</td></tr>
       <tr><td><EVT-LOG-COMPLETE fact="true" status="spec/done">полнота журнала цикла</EVT-LOG-COMPLETE></td><td>`cycle continue` не пускает в done (PROP-009 §3)</td><td>05: как заполнять журнал</td></tr>
       <tr><td><EVT-DAEMONS-ONLY fact="true" status="spec/done">компиляция — только демонами</EVT-DAEMONS-ONLY></td><td>`build up/errors`; прямой tsc запрещён (PROP-010 §2)</td><td>02: две команды сборки</td></tr>
-      <tr><td><EVT-TREE-COMMITS fact="true" status="spec/done">ручные коммиты в дереве</EVT-TREE-COMMITS></td><td>pre-commit-хук дерева — **открытая развилка PROP-012 §5**</td><td>02: запрет текстом + ссылка на статус развилки</td></tr>
+      <tr><td><EVT-TREE-COMMITS fact="true" status="spec/done">ручные коммиты в дереве</EVT-TREE-COMMITS></td><td>effective owned pre-commit-хук обычного дерева; linked/custom/foreign — явное предупреждение о неактивности (PROP-012 §5)</td><td>02: запрет + проверка фактической доступности guard</td></tr>
     </table>
     <p><EVT-CRITERION fact="true" status="spec/done">Критерий: в протоколе нет ни одного «не забудь», не подкреплённого строкой из этой таблицы.</EVT-CRITERION></p>
   </exec-vs-text>
@@ -79,7 +79,7 @@
       <HPOQ-DEINTRUSION-PERIOD fact="true" status="spec/plan">**Периодичность де-интрузионных итераций**: рекомендация — каждый четвёртый цикл; решается вместе с бюджетами.</HPOQ-DEINTRUSION-PERIOD>
       <HPOQ-BATCHING fact="true" status="spec/done">**Кадэнс** решён (еженедельный) — в протоколе не обсуждается, только исполняется; параметр батчинга — «не более двух тегов, только по решению DRI», фиксируется в 05.</HPOQ-BATCHING>
       <HPOQ-AGENT-BOUNDARIES fact="true" status="spec/done">**Границы прав агентов** — предмет FEAT-004; протокол людей лишь ссылается на журнал решений агентов и роль ревьюера агентских резолвов.</HPOQ-AGENT-BOUNDARIES>
-      <HPOQ-TREE-HOOK fact="true" status="impl/done">**Pre-commit-хук в дереве форка** — развилка закрыта решением владельца 2026-08-31 и реализована: каждый `sync` восстанавливает hook, ручной commit отклоняется, внутренний путь codkit отделён механизмом `CODKIT_INTERNAL_COMMIT=1` (PROP-012 §5).</HPOQ-TREE-HOOK>
+      <HPOQ-TREE-HOOK fact="true" status="impl/done">**Pre-commit-хук в дереве форка** — развилка закрыта решением владельца 2026-08-31: каждый `sync` пытается восстановить owned hook, но guard считается активным только когда Git demonstrably выполняет его exact current bytes. В обычном checkout ручной commit отклоняется, внутренний путь отделён `CODKIT_INTERNAL_COMMIT=1`; linked worktree, custom/global/system `core.hooksPath`, `/dev/null`, foreign hook или неразрешимый effective path дают явное предупреждение/false, без обещания блокировки (PROP-012 §5).</HPOQ-TREE-HOOK>
     </facts>
   </open>
 </spec>

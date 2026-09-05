@@ -111,6 +111,57 @@ describe('driftDirty', () => {
 	});
 });
 
+describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATERIALIZATION)', () => {
+	// The guard stays generic: what a "known state" is belongs to the layer that
+	// can prove it, so these tests only pin the contract of the predicate.
+
+	it('drops a tracked path the caller certifies, and only that path', () => {
+		const result = whileChanged(EXAMPLE_PART_PATH, '// replaced by hand\n', () =>
+			whileChanged('product.json', '// materialized for packaging\n', () =>
+				driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+					isKnownMaterialization: (path) => path === 'product.json'
+				})
+			)
+		);
+
+		// The certified path is gone from half (a); the ordinary edit is not.
+		expect(result.upstream).toEqual([EXAMPLE_PART_PATH]);
+		expect(result.dirty).toBe(true);
+	});
+
+	it('keeps the path dirt when the predicate answers no', () => {
+		const result = whileChanged('product.json', '// materialized for packaging\n', () =>
+			driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, { isKnownMaterialization: () => false })
+		);
+
+		expect(result.upstream).toEqual(['product.json']);
+	});
+
+	it('never asks the predicate about untracked paths', () => {
+		// Untracked litter has no HEAD to differ from; it stays the business of
+		// `untrackedIsDirt`, so a classifier cannot make it disappear.
+		const asked: string[] = [];
+		const litter = join(fixture.treeDir, 'left-behind.txt');
+		writeFileSync(litter, 'junk\n', 'utf8');
+		try {
+			const result = whileChanged('product.json', '// materialized for packaging\n', () =>
+				driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+					isKnownMaterialization: (path) => {
+						asked.push(path);
+						return true;
+					}
+				})
+			);
+
+			expect(asked).toEqual(['product.json']);
+			expect(result.dirty).toBe(true);
+			expect(result.files).toContain('left-behind.txt');
+		} finally {
+			rmSync(litter, { force: true });
+		}
+	});
+});
+
 describe('.gitkeep in own code', () => {
 	it('is not materialized in the tree and is not a divergence', () => {
 		const keep = join(fixture.patchesDir, 'delta', 'own', 'modes', '.gitkeep');

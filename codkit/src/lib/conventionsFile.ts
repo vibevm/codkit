@@ -8,11 +8,11 @@
 // The file ships with the tool and is looked up only next to the Codkit
 // sources. A patch set is untrusted input and cannot weaken safety policy.
 
-import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.ts';
+import { readContainedFile } from './containedFile.ts';
 import { ckError } from './messages.ts';
 import { resolveContainedPath } from './pathSafety.ts';
 
@@ -90,7 +90,14 @@ export function loadConventions(patchesDir?: string): Conventions {
 	if (cached !== undefined) return cached;
 	let raw: unknown;
 	try {
-		raw = JSON.parse(readFileSync(resolved.absolute, 'utf8'));
+		// The contained reader: parents proven real directories, leaf opened
+		// without following a symlink, descriptor proven inside the patch set
+		// (PROP-002 ##CONTAINED-FILE-IO).
+		const read = readContainedFile(patchesDir, configured, { what: configured });
+		if (read.state === 'absent') {
+			throw new Error('the file does not exist');
+		}
+		raw = JSON.parse(Buffer.from(read.bytes).toString('utf8'));
 	} catch (error) {
 		throw ckError(
 			'CONFIG',
@@ -134,10 +141,13 @@ export function loadConventions(patchesDir?: string): Conventions {
 
 function loadShippedConventions(): Conventions {
 	if (cachedShippedConventions !== null) return cachedShippedConventions;
-	const path = join(codkitRoot, 'config', 'conventions.json');
 	let raw: unknown;
 	try {
-		raw = JSON.parse(readFileSync(path, 'utf8'));
+		const read = readContainedFile(codkitRoot, 'config/conventions.json', { what: CONVENTIONS_RELATIVE_PATH });
+		if (read.state === 'absent') {
+			throw new Error('the file does not exist');
+		}
+		raw = JSON.parse(Buffer.from(read.bytes).toString('utf8'));
 	} catch (error) {
 		throw ckError(
 			'CONFIG',

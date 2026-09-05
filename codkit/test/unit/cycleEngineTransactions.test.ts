@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { loadBuildWatch, readRecord } from '../../src/lib/buildWrap.ts';
+import { loadBuildWatch } from '../../src/lib/buildWrap.ts';
+import { readRecordState } from '../../src/lib/buildRuntime.ts';
 import { loadConfig } from '../../src/lib/configFile.ts';
 import { restartCycle, startCycle } from '../../src/lib/cycleControl.ts';
 import { commitCycleAtom } from '../../src/lib/cycleCommit.ts';
@@ -232,7 +233,8 @@ describe('cycle engine crash transactions', () => {
 					cmdline: 'watch-client-transpile',
 					startedAt: '2026-09-01T00:00:00.000Z',
 					treeId: 'fixture-tree',
-					treePath: '/fixture/tree'
+					treePath: '/fixture/tree',
+					nonce: '44444444-4444-4444-8444-444444444444'
 				},
 				null,
 				2
@@ -411,8 +413,8 @@ type FixtureDaemonTarget = Pick<CliFixture, 'patchesDir' | 'run'>;
 function stopFixtureDaemons(targets: readonly FixtureDaemonTarget[]): void {
 	for (const fixture of targets) {
 		const records = loadBuildWatch(fixture.patchesDir)
-			.channels.map((channel) => readRecord(fixture.patchesDir, channel.name))
-			.filter((record): record is NonNullable<typeof record> => record !== null && record.pid > 0);
+			.channels.map((channel) => readRecordState(fixture.patchesDir, channel.name))
+			.flatMap((observed) => (observed.state === 'valid' && observed.record.pid > 0 ? [observed.record] : []));
 		fixture.run(['build', 'down', '--channel', 'all']);
 		for (const record of records) {
 			try {

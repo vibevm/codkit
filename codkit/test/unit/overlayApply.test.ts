@@ -11,8 +11,10 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
 	applyOverlayToTree,
+	applyOverlaysToTree,
 	checkOverlay,
 	checkOverlayTarget,
+	isExactOverlayMaterialization,
 	overlayDriftErrors,
 	parseOverlay,
 	renderOverlayTarget,
@@ -328,6 +330,54 @@ describe('checkOverlay: the file in the tree', () => {
 		const report = checkOverlay(overlay(OPERATIONS), { treeDir: fixture.dir, pinSha: fixture.t1.sha, pinOnly: true });
 
 		expect(report.materialization).toBeNull();
+	});
+});
+
+describe('isExactOverlayMaterialization: the bytes the drift guard certifies', () => {
+	const OPERATIONS = [{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }];
+
+	it('recognizes exactly the bytes applyOverlaysToTree wrote', () => {
+		const fixture = upstreamAt('overlay-exact-applied');
+		const sample = overlay(OPERATIONS);
+		// The pin state is not the composition, so it is not certified.
+		expect(isExactOverlayMaterialization([sample], fixture.dir, fixture.t1.sha, CONTEXT)).toBe(false);
+
+		applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
+
+		expect(isExactOverlayMaterialization([sample], fixture.dir, fixture.t1.sha, CONTEXT)).toBe(true);
+	});
+
+	it('does not recognize a manual edit of those bytes', () => {
+		const fixture = upstreamAt('overlay-exact-edited');
+		const sample = overlay(OPERATIONS);
+		applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
+		const path = join(fixture.dir, 'product.json');
+		writeFileSync(path, readFileSync(path, 'utf8').replace('"applicationName": "fixture-code"', '"applicationName": "by-hand"'), 'utf8');
+
+		expect(isExactOverlayMaterialization([sample], fixture.dir, fixture.t1.sha, CONTEXT)).toBe(false);
+	});
+
+	it('does not recognize an absent target', () => {
+		const fixture = upstreamAt('overlay-exact-absent');
+		rmSync(join(fixture.dir, 'product.json'));
+
+		expect(isExactOverlayMaterialization([overlay(OPERATIONS)], fixture.dir, fixture.t1.sha, CONTEXT)).toBe(false);
+	});
+
+	it('judges the composed target, not one overlay of it', () => {
+		const fixture = upstreamAt('overlay-exact-compose');
+		const group = [
+			overlay([{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }]),
+			overlay([{ op: 'set', path: ['extensionsGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }], {
+				id: 'CK-product-903'
+			})
+		];
+		applyOverlaysToTree(group, fixture.dir, fixture.t1.sha, CONTEXT);
+
+		// What the tree carries is the composition of both overlays; checking it
+		// against the composition is true and against either overlay alone false.
+		expect(isExactOverlayMaterialization(group, fixture.dir, fixture.t1.sha, CONTEXT)).toBe(true);
+		expect(isExactOverlayMaterialization([group[0] as Overlay], fixture.dir, fixture.t1.sha, CONTEXT)).toBe(false);
 	});
 });
 

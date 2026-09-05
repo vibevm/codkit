@@ -18,7 +18,7 @@ Use `--json` and branch on `exitCode` plus `errors[].code`. Exit 1 is a red chec
 | `CK-E-PIN-UNREACHABLE` | The configured pin/ref is absent or outside the expected upstream history. | Fetch/provide that object outside Codkit CI, then rerun `codkit check-tree`; Codkit does not fetch it implicitly. |
 | `CK-E-LFS` | Git LFS support or required LFS content is missing. | Install Git LFS and populate LFS objects outside `--ci`, or include them in the offline fork-tree supply. |
 | `CK-E-LOCKED` | Another Codkit operation owns the per-tree lock. | Wait for the named process; if it is gone, follow the stale-lock hint instead of deleting active state blindly. |
-| `CK-E-DIRTY-TREE` | Unextracted or otherwise disallowed work makes the requested transition unsafe. | Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. CI should receive a disposable clean tree. |
+| `CK-E-DIRTY-TREE` | Unextracted or otherwise disallowed work makes the requested transition unsafe. | Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. A tree left by `overlay apply` returns to dev mode with `codkit sync --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree. |
 | `CK-E-TREE-READONLY` | Codkit cannot write the fork tree or its required runtime state. | Fix ownership/permissions and rerun. The patchset source may be read-only only when `.codkit` is supplied as a separate writable mount; the fork tree itself must be writable for `ci`. |
 | `CK-E-CRLF` | A patchable text target contains carriage returns. | Normalize the intended file to LF without changing unrelated bytes, then save again. |
 | `CK-E-EOF-NEWLINE` | A file that had a final newline at the pin lost it. | Restore the final LF and rerun the command. |
@@ -49,6 +49,7 @@ Use `--json` and branch on `exitCode` plus `errors[].code`. Exit 1 is a red chec
 | `CK-E-NET-FORBIDDEN` | The requested action would cross the active no-network boundary. | Provide the clone/ref/LFS object through the CI or supply kit, or run the explicitly networked command outside `--ci`. |
 | `CK-E-LOG-INCOMPLETE` | An upgrade-cycle journal/history record is incomplete or inconsistent. | Complete the required record through `codkit cycle` before continuing. |
 | `CK-E-BOTH-SIDES-EDITED` | The same intervention changed on both relevant sides and needs a decision. | Stop, compare the named states, resolve in the fork tree, and record the decision in the cycle procedure. |
+| `CK-E-WORKTREE-REF-SHARED` | The generated branch is checked out in another worktree of the same repository, and moving it here would leave that worktree dirty. | Let the named worktree use its own branch (git -C <path> switch --detach) or remove it (git worktree remove <path>), then re-run; nothing was changed. |
 | `CK-E-INTERNAL` | An unexpected Codkit failure escaped domain diagnosis. | Rerun with `--verbose` and attach the complete output to a bug report. |
 | `CK-E-DEPS-MISSING` | Required runtime dependencies or their npm cache receipts are absent. | Install/restore Codkit dependencies in the tool root; for `ci --profile build`, also supply tree `node_modules` and `build/node_modules` through the air-gapped cache/mount. The patch set is not the tool installation, and empty bind-mount directories do not count as restored caches. |
 

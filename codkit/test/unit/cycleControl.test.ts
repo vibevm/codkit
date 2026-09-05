@@ -10,6 +10,7 @@ import type { CycleControlCheckpoint, CycleControlDependencies } from '../../src
 import { nodeCycleStateFileSystem, readCycleState, writeCycleState } from '../../src/lib/cycleState.ts';
 import type { CycleState } from '../../src/lib/cycleState.ts';
 import { runGit } from '../../src/lib/gitx.ts';
+import { acquireLock as realAcquireLock } from '../../src/lib/lock.ts';
 import { CkError, ckError } from '../../src/lib/messages.ts';
 import { makeUpstream, fixtureCommit, fixtureGit, pinDate } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
@@ -538,15 +539,18 @@ describe('cycle control', () => {
 	it('acquires global then tree lock and releases them in reverse order', () => {
 		const current = fixture('cycle-lock-order');
 		const events: string[] = [];
-		const acquireLock: NonNullable<CycleControlDependencies['acquireLock']> = (_root, id, command) => {
+		// Real handles: the config pin write requires the live cycle-global
+		// capability, and a structurally identical stand-in is not one. Only the
+		// release order is observed here.
+		const acquireLock: NonNullable<CycleControlDependencies['acquireLock']> = (root, id, command) => {
 			events.push(`acquire:${id}`);
-			return {
-				path: `fake:${id}`,
-				info: { pid: 1, startedAt: NOW.toISOString(), command },
-				release() {
-					events.push(`release:${id}`);
-				}
+			const handle = realAcquireLock(root, id, command);
+			const release = handle.release;
+			handle.release = () => {
+				events.push(`release:${id}`);
+				release();
 			};
+			return handle;
 		};
 
 		startWith(current, { acquireLock });

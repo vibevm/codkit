@@ -270,7 +270,18 @@ describe('cycle dependency advisory and stabilization adapter', () => {
 		expect(source).toContain('verify = runVerify(options)');
 		expect(source).toContain('build = await runCi({');
 		expect(source).toContain("profile: 'build'");
-		expect(source).toContain('await downChannel(options.patchesDir, channel)');
+		// The anchored teardown call carries its tree binding: the probe argument is
+		// part of the asserted shape, so an unbound `downChannel(patchesDir,
+		// channel)` cannot satisfy the assertion. It also carries the warning
+		// channel: a teardown whose lock could not retire its own generation is
+		// reported, not silent.
+		expect(source).toContain(
+			'await downChannel(options.patchesDir, channel, {\n' +
+				'\t\t\t\t\texpectedTreeId: treeId(options.resolution.path),\n' +
+				'\t\t\t\t\texpectedTreePath: options.resolution.path,\n' +
+				'\t\t\t\t\tonWarn: (text) => out.warn(text)\n' +
+				'\t\t\t\t});'
+		);
 
 		await locked(current, async (locks) => {
 			await expect(

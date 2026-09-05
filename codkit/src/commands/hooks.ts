@@ -51,8 +51,14 @@ function install(ctx: CommandContext): number {
 	for (const report of refused) {
 		ctx.out.addError({
 			code: 'CONFIG',
-			message: `${report.name} already exists and was not written by codkit, so it was left untouched`,
-			hint: `read ${report.path}, merge what it does into the codkit hook or move it aside, then run codkit hooks install again`,
+			message:
+				report.state === 'inactive'
+					? `the ${report.name} hook is inactive: ${report.detail ?? 'Git does not execute the owned path'}`
+					: `${report.name} already exists and was not written by codkit, so it was left untouched`,
+			hint:
+				report.state === 'inactive'
+					? 'remove or correct core.hooksPath, or use a normal patch-set checkout; Codkit never writes a shared/custom hook location implicitly'
+					: `read ${report.path}, merge what it does into the codkit hook or move it aside, then run codkit hooks install again`,
 			file: report.path
 		});
 	}
@@ -76,7 +82,11 @@ function check(ctx: CommandContext): number {
 			code: 'CONFIG',
 			message: `the ${report.name} hook is ${describeState(report)}`,
 			hint:
-				report.state === 'foreign' ? `read ${report.path} and move it aside if you want codkit's hook instead` : 'run codkit hooks install',
+				report.state === 'foreign'
+					? `read ${report.path} and move it aside if you want codkit's hook instead`
+					: report.state === 'inactive'
+						? 'remove or correct core.hooksPath, or use a normal patch-set checkout'
+						: 'run codkit hooks install',
 			file: report.path
 		});
 	}
@@ -126,7 +136,9 @@ function describeInstall(report: InstallReport): string {
 		case 'unchanged':
 			return 'already up to date';
 		default:
-			return 'left untouched: not a codkit hook';
+			return report.state === 'inactive'
+				? `inactive: ${report.detail ?? 'Git does not execute the owned path'}`
+				: 'left untouched: not a codkit hook';
 	}
 }
 
@@ -138,6 +150,8 @@ function describeState(report: HookReport): string {
 			return "out of date: it is codkit's, but not what this codkit would write";
 		case 'foreign':
 			return "not codkit's";
+		case 'inactive':
+			return `inactive: ${report.detail ?? 'Git does not execute the owned path'}`;
 		default:
 			return 'up to date';
 	}
@@ -150,6 +164,7 @@ function dataOf(mode: Mode, reports: readonly HookReport[]): JsonValue {
 			name: report.name,
 			path: report.path,
 			state: report.state,
+			detail: report.detail ?? null,
 			action: 'action' in report ? String((report as InstallReport).action) : null
 		}))
 	};

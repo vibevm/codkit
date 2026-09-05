@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { porcelainZEntries } from './driftGuard.ts';
 import { gitOk, runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
+import { mutateGeneratedRef } from './worktrees.ts';
 import {
 	cycleMoveCheckpointSchema,
 	cycleMoveRecordSchema,
@@ -91,17 +92,25 @@ export function executeProvisionalMove(options: ProvisionalMoveOptions, prefligh
 		writeCycleMoveRecord(options.patchesDir, record);
 		if (preflight.prior === null) notify(options, 'prepared');
 	}
-	if (refTip(options.tree, options.branch) !== options.tip) {
-		mustGit(
-			options.tree,
-			['update-ref', `refs/heads/${options.branch}`, options.tip, record.originalRef ?? ZERO_SHA],
-			`claim ${options.branch}`
-		);
-	}
+	// The same generated-ref guard as sync (PROP-008
+	// ##GENERATED-REF-WORKTREE-PREFLIGHT): both moving the shared ref and
+	// selecting it as this worktree's HEAD happen under one common-repository
+	// lock and one fresh preflight. Guarding only update-ref would leave the
+	// resume case (ref already at tip, HEAD not selected yet) able to race a
+	// sibling worktree onto the same generated branch.
+	mutateGeneratedRef(options.tree, `refs/heads/${options.branch}`, () => {
+		if (refTip(options.tree, options.branch) !== options.tip) {
+			mustGit(
+				options.tree,
+				['update-ref', `refs/heads/${options.branch}`, options.tip, record.originalRef ?? ZERO_SHA],
+				`claim ${options.branch}`
+			);
+		}
+		if (branchName(options.tree) !== options.branch || mustHead(options.tree) !== options.tip) {
+			mustGit(options.tree, ['symbolic-ref', 'HEAD', `refs/heads/${options.branch}`], `select ${options.branch}`);
+		}
+	});
 	record = advance(options, record, 'ref-updated');
-	if (branchName(options.tree) !== options.branch || mustHead(options.tree) !== options.tip) {
-		mustGit(options.tree, ['symbolic-ref', 'HEAD', `refs/heads/${options.branch}`], `select ${options.branch}`);
-	}
 	record = advance(options, record, 'head-selected');
 
 	// After this durable point the live index can be changed by external tools.

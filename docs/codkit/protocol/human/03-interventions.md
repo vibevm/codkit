@@ -63,7 +63,7 @@
 2. `codkit overlay check <target>` → exit `0`; `CK-E-OVERLAY-DRIFT`, exit `1` требует обновить ожидание по пину и смысл операции.
 3. `codkit sync` → exit `0`; затем `codkit verify` → exit `0`.
 
-`overlay apply` предназначен для CI/publish. В dev-дереве он создаёт ожидаемый drift до восстановления target.
+`overlay apply` предназначен для CI/publish. В dev-дереве он создаёт ожиданный drift; возврат target — `codkit sync --fresh` (не прямой `git checkout`).
 
 ## Терминальный лист resource-file
 

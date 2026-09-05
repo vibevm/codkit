@@ -268,7 +268,13 @@ export async function runConcreteStabilization(options: StabilizeHeavyRunnerOpti
 	} finally {
 		for (const channel of channels) {
 			try {
-				await downChannel(options.patchesDir, channel);
+				// Bound to the tree this run stabilised: an unbound stop would signal
+				// and delete a daemon owned by another fork tree sharing this patch set.
+				await downChannel(options.patchesDir, channel, {
+					expectedTreeId: treeId(options.resolution.path),
+					expectedTreePath: options.resolution.path,
+					onWarn: (text) => out.warn(text)
+				});
 			} catch (error) {
 				cleanupFailures.push(error);
 			}

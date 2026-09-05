@@ -9,13 +9,11 @@
 //
 // Diagnostics are written here, in the vocabulary of PROP-012 sec. 2 - never the
 // raw validator output (##SCHEMAS-ARE-ZOD).
-import { randomUUID } from 'node:crypto';
-import { lstatSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { bytesEqual, CR_BYTE, decodeUtf8Strict, encodeUtf8, LF_BYTE } from './bytes.js';
+import { CR_BYTE, decodeUtf8Strict, LF_BYTE } from './bytes.js';
+import { readContainedFile } from './containedFile.js';
 import { ckError } from './messages.js';
-import { repoRelativePathProblem, resolveContainedPath, safeBasenameProblem } from './pathSafety.js';
+import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.js';
 export const CONFIG_FILE_NAME = 'codkit.json';
 export const LOCAL_CONFIG_FILE_NAME = 'codkit.local.json';
 /** Schema version this tool reads and writes. */
@@ -172,20 +170,49 @@ export function loadConfig(patchesDir) {
     if (base === null) {
         return null;
     }
-    const localPath = containedReadableConfigPath(patchesDir, LOCAL_CONFIG_FILE_NAME);
-    if (localPath === null) {
+    const localBytes = readConfigBytes(patchesDir, LOCAL_CONFIG_FILE_NAME);
+    if (localBytes === null) {
         return base;
     }
-    const local = parseLocalConfig(readJsonFile(localPath, LOCAL_CONFIG_FILE_NAME), LOCAL_CONFIG_FILE_NAME);
+    const local = parseLocalConfig(parseJsonText(localBytes, LOCAL_CONFIG_FILE_NAME), LOCAL_CONFIG_FILE_NAME);
     return mergeLocal(base, local);
 }
 /** Read only the shared base config, before any personal local overrides. */
 export function loadBaseConfig(patchesDir) {
-    const basePath = containedReadableConfigPath(patchesDir, CONFIG_FILE_NAME);
-    if (basePath === null) {
+    const bytes = readConfigBytes(patchesDir, CONFIG_FILE_NAME);
+    if (bytes === null) {
         return null;
     }
-    return parseBaseConfig(readJsonFile(basePath, CONFIG_FILE_NAME), CONFIG_FILE_NAME);
+    return parseBaseConfig(parseJsonText(bytes, CONFIG_FILE_NAME), CONFIG_FILE_NAME);
+}
+/**
+ * The one contained reader for the config files (PROP-002
+ * ##CONTAINED-FILE-IO): parents proven real directories, the leaf opened
+ * without following a symlink, the descriptor proven inside the patch-set
+ * root. No check-then-open window on the leaf.
+ */
+function readConfigBytes(patchesDir, name) {
+    return configReadResult(patchesDir, name);
+}
+function configReadResult(patchesDir, name) {
+    const read = readContainedFile(patchesDir, name, { what: name });
+    return read.state === 'ok' ? read.bytes : null;
+}
+/** Decode config bytes with the config family's BOM discipline (PROP-003 sec. 1). */
+function parseJsonText(bytes, fileLabel) {
+    if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+        throw ckError('CONFIG', 'must be UTF-8 without BOM', 're-save the file as UTF-8 without a byte order mark', fileLabel);
+    }
+    const text = decodeUtf8Strict(bytes);
+    if (text === null) {
+        throw ckError('CONFIG', 'must contain valid UTF-8', 're-save the file as UTF-8 without replacement bytes', fileLabel);
+    }
+    try {
+        return JSON.parse(text);
+    }
+    catch (error) {
+        throw ckError('CONFIG', `is not valid JSON: ${error instanceof Error ? error.message : String(error)}`, 'fix the JSON syntax; codkit config files are plain JSON without comments', fileLabel);
+    }
 }
 /** Validate an already-decoded codkit.json body. Exposed for tests. */
 export function parseBaseConfig(raw, fileLabel) {
@@ -250,118 +277,7 @@ export function serializeBaseConfig(config) {
     };
     return `${JSON.stringify(canonical, null, 2)}\n`;
 }
-export const nodeConfigFileSystem = {
-    readBytes(path) {
-        try {
-            return readFileSync(path);
-        }
-        catch (error) {
-            if (error.code === 'ENOENT') {
-                return null;
-            }
-            throw error;
-        }
-    },
-    makeDirectory(path) {
-        mkdirSync(path, { recursive: true });
-    },
-    writeBytes(path, bytes) {
-        writeFileSync(path, bytes, { flag: 'wx' });
-    },
-    rename(from, to) {
-        renameSync(from, to);
-    },
-    remove(path) {
-        try {
-            unlinkSync(path);
-        }
-        catch (error) {
-            if (error.code !== 'ENOENT') {
-                throw error;
-            }
-        }
-    }
-};
-/** Atomically change only the shared base pin; local overrides remain local. */
-export function writeConfigPin(patchesDir, pin, options = {}) {
-    const fileSystem = options.fileSystem ?? nodeConfigFileSystem;
-    let path = containedConfigPath(patchesDir);
-    let existing;
-    try {
-        existing = fileSystem.readBytes(path);
-    }
-    catch (error) {
-        throw ckError('CONFIG', `cannot read ${CONFIG_FILE_NAME} before updating its pin: ${messageOf(error)}`, 'make the file readable', CONFIG_FILE_NAME);
-    }
-    if (existing === null) {
-        throw ckError('CONFIG', `${CONFIG_FILE_NAME} does not exist`, 'start a cycle only from a configured patchset checkout', CONFIG_FILE_NAME);
-    }
-    const base = parseBaseConfig(parseConfigBytes(existing), CONFIG_FILE_NAME);
-    const next = encodeUtf8(serializeBaseConfig({ ...base, pin }));
-    if (bytesEqual(existing, next)) {
-        return false;
-    }
-    try {
-        fileSystem.makeDirectory(dirname(path));
-        path = containedConfigPath(patchesDir);
-    }
-    catch (error) {
-        throw ckError('CONFIG', `cannot prepare ${CONFIG_FILE_NAME}: ${messageOf(error)}`, 'make the patchset root writable', CONFIG_FILE_NAME);
-    }
-    const suffix = (options.temporarySuffix ?? randomUUID)();
-    if (safeBasenameProblem(suffix) !== null) {
-        throw ckError('INTERNAL', 'config temporary suffix must be one portable non-empty basename');
-    }
-    const temporary = `${path}.${suffix}.tmp`;
-    let renamed = false;
-    try {
-        fileSystem.writeBytes(temporary, next);
-        fileSystem.rename(temporary, path);
-        renamed = true;
-        return true;
-    }
-    catch (error) {
-        throw ckError('CONFIG', `cannot atomically update ${CONFIG_FILE_NAME}: ${messageOf(error)}`, 'make the patchset root writable and retry', CONFIG_FILE_NAME);
-    }
-    finally {
-        if (!renamed) {
-            try {
-                fileSystem.remove(temporary);
-            }
-            catch {
-                // Preserve the primary error; complete unique temp files are ignored.
-            }
-        }
-    }
-}
-function containedConfigPath(patchesDir) {
-    const resolved = resolveContainedPath(patchesDir, CONFIG_FILE_NAME, { allowMissing: true });
-    if (!resolved.ok) {
-        throw ckError('CONFIG', `unsafe ${CONFIG_FILE_NAME} path: ${resolved.reason}`, 'replace symlinks with a real file inside patchset', CONFIG_FILE_NAME);
-    }
-    return resolved.absolute;
-}
-function containedReadableConfigPath(patchesDir, name) {
-    const candidate = join(patchesDir, name);
-    let stat;
-    try {
-        stat = lstatSync(candidate);
-    }
-    catch (error) {
-        if (error.code === 'ENOENT')
-            return null;
-        throw ckError('CONFIG', `cannot inspect ${name}: ${messageOf(error)}`, 'make the file readable', name);
-    }
-    if (!stat.isFile() || stat.isSymbolicLink()) {
-        throw ckError('CONFIG', `${name} must be a regular non-symlink file`, 'replace it with a real file inside the patch-set root', name);
-    }
-    const resolved = resolveContainedPath(patchesDir, name);
-    if (!resolved.ok) {
-        throw ckError('CONFIG', `unsafe ${name} path: ${resolved.reason}`, 'replace symlinks with a real file inside the patch-set root', name);
-    }
-    return resolved.absolute;
-}
-function parseConfigBytes(bytes) {
+export function parseConfigBytes(bytes) {
     if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
         throw ckError('ENCODING', `${CONFIG_FILE_NAME} must not have a UTF-8 BOM`, 'write UTF-8 without BOM', CONFIG_FILE_NAME);
     }
@@ -382,7 +298,7 @@ function parseConfigBytes(bytes) {
         throw ckError('CONFIG', `${CONFIG_FILE_NAME} is not valid JSON: ${messageOf(error)}`, 'fix the JSON syntax', CONFIG_FILE_NAME);
     }
 }
-function messageOf(error) {
+export function messageOf(error) {
     return error instanceof Error ? error.message : String(error);
 }
 /**
@@ -438,24 +354,6 @@ function valueAtPath(raw, path) {
         current = current[String(segment)];
     }
     return current;
-}
-function readJsonFile(absolutePath, fileLabel) {
-    let text;
-    try {
-        text = readFileSync(absolutePath, 'utf8');
-    }
-    catch (error) {
-        throw ckError('CONFIG', `cannot be read: ${error instanceof Error ? error.message : String(error)}`, 'check file permissions', fileLabel);
-    }
-    if (text.charCodeAt(0) === 0xfeff) {
-        throw ckError('CONFIG', 'must be UTF-8 without BOM', 're-save the file as UTF-8 without a byte order mark', fileLabel);
-    }
-    try {
-        return JSON.parse(text);
-    }
-    catch (error) {
-        throw ckError('CONFIG', `is not valid JSON: ${error instanceof Error ? error.message : String(error)}`, 'fix the JSON syntax; codkit config files are plain JSON without comments', fileLabel);
-    }
 }
 function expectObject(raw, fileLabel) {
     if (!isPlainObject(raw)) {

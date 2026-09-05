@@ -43,16 +43,34 @@ export function lockPath(patchesDir, treeId) {
  * process holds it.
  */
 export function acquireLock(patchesDir, treeId, command, onWarn) {
-    let path = lockPath(patchesDir, treeId);
+    let path;
     try {
+        path = lockPath(patchesDir, treeId);
         mkdirSync(dirname(path), { recursive: true });
+        path = lockPath(patchesDir, treeId);
     }
     catch (error) {
         throw lockWriteFailure(error, patchesDir);
     }
-    path = lockPath(patchesDir, treeId);
+    try {
+        return acquirePathLock(path, command, onWarn);
+    }
+    catch (error) {
+        // The per-tree lock lives under the patchset root: a mount failure
+        // there is the public TREE-READONLY condition, not an internal error.
+        throw lockWriteFailure(error, patchesDir);
+    }
+}
+/**
+ * The same hard-link lock protocol on an explicit path: the per-tree lock of
+ * PROP-006 ##LOCK-MECHANISM is one instance of it, and the common-repository
+ * lock (PROP-008 ##GENERATED-REF-WORKTREE-PREFLIGHT) is another - same
+ * acquisition race, different coordination scope.
+ */
+export function acquirePathLock(path, command, onWarn) {
+    mkdirSync(dirname(path), { recursive: true });
     const info = { pid: process.pid, startedAt: new Date().toISOString(), command, nonce: randomUUID() };
-    if (tryCreateForRoot(path, info, patchesDir)) {
+    if (tryCreate(path, info)) {
         return makeHandle(path, info);
     }
     const holder = readLock(path);
@@ -66,7 +84,7 @@ export function acquireLock(patchesDir, treeId, command, onWarn) {
         onWarn(`removing a stale lock left by ${owner}: ${path}`);
     }
     removeGeneration(path, holder);
-    if (!tryCreateForRoot(path, info, patchesDir)) {
+    if (!tryCreate(path, info)) {
         // Somebody won the race between the removal and the retry.
         const winner = readLock(path);
         throw ckError('LOCKED', winner === null
@@ -74,14 +92,6 @@ export function acquireLock(patchesDir, treeId, command, onWarn) {
             : `another codkit command took the lock on this fork tree: pid ${winner.pid} running "${winner.command}"`, `re-run once it finishes; the lock file is ${path}`);
     }
     return makeHandle(path, info);
-}
-function tryCreateForRoot(path, info, patchesDir) {
-    try {
-        return tryCreate(path, info);
-    }
-    catch (error) {
-        throw lockWriteFailure(error, patchesDir);
-    }
 }
 /** Map a known mount/ownership failure to the public environment diagnostic. */
 export function lockWriteFailure(error, patchesDir) {

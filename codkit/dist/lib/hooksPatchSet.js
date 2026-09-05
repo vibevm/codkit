@@ -18,11 +18,14 @@
 // Ownership is declared on the second line of the file (`# codkit-hook v1`,
 // under the shebang the kernel needs first). A hook file without that line
 // belongs to somebody else and is never overwritten.
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { encodeUtf8 } from './bytes.js';
+import { readContainedFile, writeContainedFileAtomic } from './containedFile.js';
+import { sameEffectivePath } from './containedPath.js';
 import { readCycleState } from './cycleState.js';
-import { gitDirOf } from './treeCache.js';
+import { runGitUserPathResolution } from './gitx.js';
+import { gitCommonDirOf, gitDirOf } from './treeCache.js';
 /** The line that marks a hook file as codkit's. */
 export const HOOK_MARKER = '# codkit-hook v1';
 export const HOOK_NAMES = ['pre-commit', 'commit-msg'];
@@ -98,12 +101,22 @@ export function inspectHooks(parameters) {
 }
 export function inspectHook(name, parameters) {
     const path = hookPath(parameters.patchesDir, name);
-    if (!existsSync(path)) {
-        return { name, path, state: 'missing' };
+    const activation = hookActivation(parameters.patchesDir, name, path);
+    if (!activation.active) {
+        return { name, path, state: 'inactive', detail: activation.detail };
     }
+    // The contained read: a symlinked hook leaf is unreadable and therefore
+    // foreign - codkit never touches what it cannot prove is its own file.
     let current;
     try {
-        current = readFileSync(path, 'utf8');
+        const read = readContainedFile(gitDirOf(parameters.patchesDir), `hooks/${name}`, {
+            what: path,
+            ...(parameters.afterOpen === undefined ? {} : { afterOpen: parameters.afterOpen })
+        });
+        if (read.state === 'absent') {
+            return { name, path, state: 'missing' };
+        }
+        current = Buffer.from(read.bytes).toString('utf8');
     }
     catch {
         return { name, path, state: 'foreign' };
@@ -131,19 +144,40 @@ export function isOurs(content) {
  * anybody agreed to.
  */
 export function installHooks(parameters) {
-    mkdirSync(hooksDir(parameters.patchesDir), { recursive: true });
-    return HOOK_NAMES.map((name) => {
-        const report = inspectHook(name, parameters);
+    const reports = inspectHooks(parameters);
+    return reports.map((report) => {
+        const name = report.name;
+        if (report.state === 'inactive') {
+            return { ...report, action: 'refused' };
+        }
         if (report.state === 'foreign') {
             return { ...report, action: 'refused' };
         }
         if (report.state === 'ok') {
             return { ...report, action: 'unchanged' };
         }
-        writeFileSync(report.path, hookScript(name, parameters), 'utf8');
-        chmodSync(report.path, 0o755);
+        writeContainedFileAtomic(gitDirOf(parameters.patchesDir), `hooks/${name}`, {
+            bytes: encodeUtf8(hookScript(name, parameters)),
+            mode: 0o755,
+            what: report.path
+        });
         return { name, path: report.path, state: 'ok', action: 'written' };
     });
+}
+/** A patch-set hook is valid only when the user's Git demonstrably executes it. */
+function hookActivation(patchesDir, name, ownedPath) {
+    if (!sameEffectivePath(gitDirOf(patchesDir), gitCommonDirOf(patchesDir))) {
+        return { active: false, detail: 'linked worktree hooks are shared by sibling worktrees' };
+    }
+    const effective = runGitUserPathResolution({ cwd: patchesDir, relative: `hooks/${name}` });
+    const path = effective.stdout.trim();
+    if (effective.status !== 0 || path === '') {
+        return { active: false, detail: 'Git could not resolve the effective hooks path' };
+    }
+    if (!sameEffectivePath(path, ownedPath)) {
+        return { active: false, detail: `Git executes ${path} because core.hooksPath is configured` };
+    }
+    return { active: true };
 }
 // ---------------------------------------------------------------------------
 // commit-msg (PROP-007 ##CMD-HOOKS)

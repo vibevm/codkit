@@ -321,6 +321,9 @@ const STUB_WATCH = `#!/usr/bin/env node
 //   ansi       like ok, with the colour and title sequences around every line
 //   live-green exact sanitized timestamped watch-client green pass
 //   live-ts7027 exact sanitized timestamped watch-client TS7027 pass
+//   live-ext-green exact sanitized timestamped watch-extensions green pass
+//   live-ext-red   timestamped watch-extensions pass: two diagnostics and
+//                  per-project summaries, the last of which reports zero
 
 import { appendFileSync } from 'node:fs';
 
@@ -373,6 +376,26 @@ const LIVE_TS7027 = {
 	end: '[05:43:37] Finished compilation with 1 errors after 12353 ms'
 };
 
+// Sanitized shapes of the live watch-extensions daemon: every line carries the
+// [HH:mm:ss] prefix, and the per-project summaries are not a pass total - the
+// red pass ends with a zero from a later project on purpose, so a
+// last-count-wins reading of it cannot pass as green.
+const LIVE_EXT_GREEN = {
+	start: '[05:55:35] Starting compilation',
+	projects: ['[05:55:36] Finished extensions types with 0 errors.', '[05:55:36] Finished extensions markdown-basics with 0 errors.'],
+	end: '[05:55:37] Finished compilation'
+};
+
+const LIVE_EXT_RED = {
+	start: LIVE_EXT_GREEN.start,
+	errors: [
+		'[05:55:36] src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
+		'[05:55:36] src/vs/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.'
+	],
+	projects: ['[05:55:36] Finished extensions markdown-basics with 2 errors.', '[05:55:37] Finished extensions types with 0 errors.'],
+	end: LIVE_EXT_GREEN.end
+};
+
 const channel = CHANNELS[process.argv[2]] ?? CHANNELS.transpile;
 const mode = process.env.STUB_MODE || 'ok';
 const pidLog = process.env.CODKIT_TEST_DAEMON_PID_LOG;
@@ -390,7 +413,15 @@ function stayAlive() {
 	setInterval(() => {}, 60000);
 }
 
-say(mode === 'live-green' ? LIVE_GREEN.start : mode === 'live-ts7027' ? LIVE_TS7027.start : channel.start);
+say(
+	mode === 'live-green'
+		? LIVE_GREEN.start
+		: mode === 'live-ts7027'
+			? LIVE_TS7027.start
+			: mode === 'live-ext-green' || mode === 'live-ext-red'
+				? LIVE_EXT_GREEN.start
+				: channel.start
+);
 
 if (mode === 'never-end') {
 	stayAlive();
@@ -405,6 +436,25 @@ if (mode === 'never-end') {
 		say(LIVE_TS7027.error);
 		say(LIVE_TS7027.count);
 		say(LIVE_TS7027.end);
+		stayAlive();
+	}, 100);
+} else if (mode === 'live-ext-green') {
+	setTimeout(() => {
+		for (const line of LIVE_EXT_GREEN.projects) {
+			say(line);
+		}
+		say(LIVE_EXT_GREEN.end);
+		stayAlive();
+	}, 100);
+} else if (mode === 'live-ext-red') {
+	setTimeout(() => {
+		for (const line of LIVE_EXT_RED.errors) {
+			say(line);
+		}
+		for (const line of LIVE_EXT_RED.projects) {
+			say(line);
+		}
+		say(LIVE_EXT_RED.end);
 		stayAlive();
 	}, 100);
 } else if (mode === 'errors') {

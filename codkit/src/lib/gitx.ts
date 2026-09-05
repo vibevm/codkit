@@ -34,6 +34,26 @@ export type RunGitOptions = {
 	readonly gitConfigGlobal?: string;
 	/** Bytes of stdout/stderr to buffer. */
 	readonly maxBuffer?: number;
+	/**
+	 * A pure path-resolution call (`rev-parse --git-path`): skip the two extra
+	 * `-c` flags of the isolated config. `core.hooksPath=/dev/null` makes
+	 * `--git-path hooks/<name>` fatal (`Invalid path`), and an administrative
+	 * path must resolve to where the tree's own git consults it, not to where
+	 * codkit pushes its isolated calls. The environment isolation still applies
+	 * in full; only the execution-isolation flags are dropped.
+	 */
+	readonly pathResolution?: boolean;
+	/**
+	 * Run with the machine's global and system git configuration visible
+	 * instead of isolated. The one sanctioned hole in ##GIT-ENV-ISOLATION
+	 * besides `gitConfigGlobal`, and narrower: only legal together with
+	 * `pathResolution` (a read-only path query that computes nothing). It
+	 * exists because the effective location of a configured hook is a property
+	 * of the user's own git, which the isolated view cannot see - reporting a
+	 * guard as active without asking the user's git would be a lie
+	 * (PROP-008 ##TREE-HOOK-STEP).
+	 */
+	readonly machineConfig?: boolean;
 };
 
 export type GitResult = {
@@ -162,6 +182,22 @@ export function runGitBytes(options: RunGitOptions): GitBytesResult {
 }
 
 /**
+ * Resolve one administrative path the way the user's own git resolves it -
+ * global and system configuration visible, execution-isolation flags dropped
+ * (a `-c core.hooksPath=/dev/null` would break `--git-path hooks/*` for real
+ * machines too). The narrow machine-config exception to ##GIT-ENV-ISOLATION:
+ * read-only path resolution, nothing else (see RunGitOptions.machineConfig).
+ */
+export function runGitUserPathResolution(relative: { readonly cwd: string; readonly relative: string }): GitResult {
+	return runGit({
+		args: ['rev-parse', '--path-format=absolute', '--git-path', relative.relative],
+		cwd: relative.cwd,
+		pathResolution: true,
+		machineConfig: true
+	});
+}
+
+/**
  * git WITHOUT the configuration isolation - the machine's global and system
  * configuration are visible. **Only for patchset-side commits**: the isolation
  * exists so that what codkit computes about the fork *tree* is the same on
@@ -192,9 +228,13 @@ function spawnGit(options: RunGitOptions, isolate: boolean): RawGitResult {
 			);
 		}
 	}
+	if (options.machineConfig === true && options.pathResolution !== true) {
+		throw ckError('INTERNAL', 'machineConfig is legal only for read-only path resolution', 'pass pathResolution with it or drop it');
+	}
+	const isolateForRun = options.machineConfig === true ? false : isolate;
 
-	const env = childEnv(options.env, isolate);
-	if (isolate) {
+	const env = childEnv(options.env, isolateForRun);
+	if (isolateForRun) {
 		Object.assign(env, ISOLATION_ENV);
 		const configGlobal = options.gitConfigGlobal ?? runConfigGlobal;
 		if (configGlobal !== null && configGlobal !== undefined) {
@@ -202,7 +242,8 @@ function spawnGit(options: RunGitOptions, isolate: boolean): RawGitResult {
 		}
 	}
 
-	const result = spawnSync('git', [...(isolate ? ISOLATED_CONFIG : BASE_CONFIG), ...hardenDiffArgs(options.args)], {
+	const isolatedConfig = isolateForRun && options.pathResolution !== true ? ISOLATED_CONFIG : BASE_CONFIG;
+	const result = spawnSync('git', [...isolatedConfig, ...hardenDiffArgs(options.args)], {
 		cwd: options.cwd,
 		env,
 		maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,

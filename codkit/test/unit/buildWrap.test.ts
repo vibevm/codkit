@@ -5,7 +5,7 @@
 // nothing sleeps. The daemons themselves are exercised by the e2e suite against
 // the stub watcher of the fixture tree.
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
@@ -29,8 +29,9 @@ import {
 	logLines,
 	parseErrorLines,
 	processArgs,
+	processGroupAlive,
 	processTable,
-	readRecord,
+	readPass,
 	recordPath,
 	selectChannels,
 	statusOf,
@@ -38,6 +39,7 @@ import {
 	treeRelativePath
 } from '../../src/lib/buildWrap.ts';
 import type { ChannelConfig, ProcessRunner } from '../../src/lib/buildWrap.ts';
+import { readRecordState } from '../../src/lib/buildRuntime.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
@@ -58,6 +60,25 @@ const LIVE_TS7027_PASS = [
 	'[05:43:37] src/vs/patchset/test/node/patchset.resources.test.ts(80,4): error TS7027: Unreachable code detected.',
 	'[05:43:37] Finished watch-client-noEmit /workspace/fork/src/tsconfig.json with 1 errors.',
 	'[05:43:37] Finished compilation with 1 errors after 12353 ms'
+] as const;
+
+// Sanitized shapes of the live watch-extensions daemon (REPAIR-002/003): every
+// line carries the [HH:mm:ss] prefix, and the per-project summaries are not a
+// pass total - the red pass deliberately ends with a zero from a later project.
+const LIVE_EXT_GREEN_PASS = [
+	'[05:55:35] Starting compilation',
+	'[05:55:36] Finished extensions types with 0 errors.',
+	'[05:55:36] Finished extensions markdown-basics with 0 errors.',
+	'[05:55:37] Finished compilation'
+] as const;
+
+const LIVE_EXT_RED_PASS = [
+	'[05:55:35] Starting compilation',
+	'[05:55:36] src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
+	'[05:55:36] src/vs/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.',
+	'[05:55:36] Finished extensions markdown-basics with 2 errors.',
+	'[05:55:37] Finished extensions types with 0 errors.',
+	'[05:55:37] Finished compilation'
 ] as const;
 
 function channel(name: string): ChannelConfig {
@@ -140,6 +161,96 @@ describe('build-watch.json', () => {
 			declareBuildWatch(root);
 			expect(() => loadBuildWatch(root)).toThrow();
 		}
+	});
+
+	it.each([
+		'',
+		'.',
+		'..',
+		'../x',
+		'a/b',
+		'a\\b',
+		'/abs',
+		'C:\\drive',
+		'\\\\server\\share',
+		'CON',
+		'nul.txt',
+		'aux',
+		'name.',
+		'name ',
+		'a\u0001b',
+		'all',
+		'ALL',
+		'deps-hash',
+		'DEPS-HASH'
+	])('rejects configured hostile channel key %j before runtime path derivation', (name) => {
+		const root = rootWith(
+			`build-watch-hostile-${Buffer.from(name).toString('hex') || 'empty'}`,
+			JSON.stringify({
+				codkitBuildWatch: 1,
+				channels: { [name]: { script: 'watch-custom', passStart: ['^start$'], passEnd: ['^end$'], errorLine: ['^error$'] } }
+			})
+		);
+		declareBuildWatch(root);
+		expect(() => loadBuildWatch(root)).toThrow(/unsafe build channel name/);
+	});
+
+	it('rejects case-fold duplicates and names whose candidate files exceed the portable limit', () => {
+		const channel = { script: 'watch-custom', passStart: ['^start$'], passEnd: ['^end$'], errorLine: ['^error$'] };
+		for (const [label, channels] of [
+			['fold-duplicate', { Foo: channel, foo: channel }],
+			['overlong', { ['a'.repeat(203)]: channel }]
+		] as const) {
+			const root = rootWith(`build-watch-${label}`, JSON.stringify({ codkitBuildWatch: 1, channels }));
+			declareBuildWatch(root);
+			expect(() => loadBuildWatch(root)).toThrow(/collide after ASCII|portable component limit/);
+		}
+	});
+
+	it('reads a declared profile through the contained reader, refusing symlinked paths', () => {
+		const declareProfile = (root: string): void => {
+			writeFileSync(
+				join(root, 'codkit.json'),
+				`${JSON.stringify({
+					codkitConfig: 1,
+					pin: { tag: '1.0.0', sha: '1'.repeat(40), date: '2026-01-01' },
+					upstreamAnchorCommit: '0'.repeat(40),
+					ownDirName: 'patchset',
+					generatedBranchPrefix: 'codkit/applied/',
+					cycleBranchPrefix: 'codkit/cycle/',
+					releaseRefPrefix: 'codkit/release/',
+					publishRemoteUrl: null,
+					buildWatchFile: 'profile/watch.json',
+					conventionsExtensionFile: null
+				})}\n`,
+				'utf8'
+			);
+		};
+		// A leaf symlink at the declared profile: the outside file is never
+		// read and never modified, and the refusal names the reason
+		// (PROP-002 ##CONTAINED-FILE-IO).
+		const outside = makeTempRoot('build-watch-symlink-out');
+		writeFileSync(join(outside, 'watch.json'), JSON.stringify({ codkitBuildWatch: 1, channels: {} }), 'utf8');
+		const leafRoot = rootWith(
+			'build-watch-symlink-leaf',
+			JSON.stringify({ codkitBuildWatch: 1, channels: { evil: { script: 'x', passStart: ['^a$'], passEnd: ['^b$'], errorLine: ['^c$'] } } })
+		);
+		declareProfile(leafRoot);
+		mkdirSync(join(leafRoot, 'profile'), { recursive: true });
+		symlinkSync(join(outside, 'watch.json'), join(leafRoot, 'profile', 'watch.json'));
+		expect(() => loadBuildWatch(leafRoot)).toThrow(/unsafe or unreadable|cannot be read/);
+		expect(readFileSync(join(outside, 'watch.json'), 'utf8')).not.toContain('evil');
+
+		// A symlinked parent directory of the declared profile refuses too.
+		const parentRoot = rootWith(
+			'build-watch-symlink-parent',
+			JSON.stringify({ codkitBuildWatch: 1, channels: { evil: { script: 'x', passStart: ['^a$'], passEnd: ['^b$'], errorLine: ['^c$'] } } })
+		);
+		declareProfile(parentRoot);
+		mkdirSync(join(parentRoot, 'elsewhere'), { recursive: true });
+		writeFileSync(join(parentRoot, 'elsewhere', 'watch.json'), JSON.stringify({ codkitBuildWatch: 1, channels: {} }), 'utf8');
+		symlinkSync(join(parentRoot, 'elsewhere'), join(parentRoot, 'profile'));
+		expect(() => loadBuildWatch(parentRoot)).toThrow(/unsafe or unreadable|cannot be read/);
 	});
 
 	it('resolves --channel: a name, all, the default, and an unknown one', () => {
@@ -234,6 +345,19 @@ describe('pass boundaries', () => {
 		// The optional prefix has one exact shape and the line anchors stay strict.
 		expect(findLastPass(['[05:56:09]Starting compilation...', LIVE_GREEN_PASS[2]], typecheck)).toBeNull();
 		expect(findLastPass([LIVE_GREEN_PASS[0], `${LIVE_GREEN_PASS[2]} trailing`], typecheck)).toBeNull();
+	});
+
+	it('recognizes the exact timestamped extensions boundaries while retaining the bare legacy form', () => {
+		const extensions = channel('extensions');
+		expect(findLastPass(LIVE_EXT_GREEN_PASS, extensions)?.lines).toEqual(LIVE_EXT_GREEN_PASS);
+		expect(findLastPass(['Starting compilation', 'Finished compilation'], extensions)?.lines).toEqual([
+			'Starting compilation',
+			'Finished compilation'
+		]);
+
+		// The optional prefix has one exact shape and the line anchors stay strict.
+		expect(findLastPass(['[05:55:35]Starting compilation', LIVE_EXT_GREEN_PASS[3]], extensions)).toBeNull();
+		expect(findLastPass([LIVE_EXT_GREEN_PASS[0], '[05:55:37] Finished compilation trailing'], extensions)).toBeNull();
 	});
 });
 
@@ -356,8 +480,104 @@ describe('diagnostics of a pass', () => {
 		expect(errorCountFrom(['Finished transpilation with 0 errors after 10 ms'], channel('transpile'))).toBeNull();
 	});
 
-	it('reads the per-pass total of the extensions channel', () => {
-		expect(errorCountFrom(['Finished extensions compilation with 3 errors.'], channel('extensions'))).toBe(3);
+	it('treats extensions project summaries as prose, never a pass count', () => {
+		// Per-project lines are not an aggregate: a red project followed by a
+		// zero-reporting one must not be readable as green by any count line,
+		// so the channel declares none (REPAIR-003).
+		const extensions = channel('extensions');
+		expect(extensions.errorCountLine).toEqual([]);
+		expect(errorCountFrom(['Finished extensions compilation with 3 errors.'], extensions)).toBeNull();
+		expect(errorCountFrom(['[05:55:37] Finished extensions types with 0 errors.'], extensions)).toBeNull();
+		expect(errorCountFrom(LIVE_EXT_RED_PASS, extensions)).toBeNull();
+	});
+
+	it('rejects a count detector with no capturing group at load time', () => {
+		// A detector that matches the count line but captures nothing would
+		// report `stated: null` and let the parsed diagnostics decide - which
+		// is zero when the channel parses none. That is a configuration error,
+		// never an absent summary (REPAIR-006).
+		const root = rootWith(
+			'build-watch-count-nogroup',
+			JSON.stringify({
+				codkitBuildWatch: 1,
+				channels: {
+					custom: {
+						script: 'watch-custom',
+						passStart: ['^start$'],
+						passEnd: ['^end$'],
+						errorLine: [],
+						errorCountLine: ['^Found \\d+ errors$']
+					}
+				}
+			})
+		);
+		declareBuildWatch(root);
+		expect(() => loadBuildWatch(root)).toThrow(/group 1/);
+	});
+
+	it('rejects a count detector that captures only prose at load time is caught at match time', () => {
+		// Load-time cannot know what a group matches; the runtime check below
+		// is the second half of the rule. Load still accepts the shape.
+		const root = rootWith(
+			'build-watch-count-word',
+			JSON.stringify({
+				codkitBuildWatch: 1,
+				channels: {
+					custom: {
+						script: 'watch-custom',
+						passStart: ['^start$'],
+						passEnd: ['^end$'],
+						errorLine: [],
+						errorCountLine: ['^Found (\\w+) errors$']
+					}
+				}
+			})
+		);
+		declareBuildWatch(root);
+		const watch = loadBuildWatch(root);
+		const custom = watch.channels[0];
+		expect(custom?.name).toBe('custom');
+		// A matched count line whose group 1 is not the number: configuration
+		// error, never an absent summary that silently reports zero.
+		expect(() => errorCountFrom(['Found many errors'], custom ?? channel('typecheck'))).toThrow(/group 1/);
+		expect(() => errorCountFrom(['Found 3 errors'], custom ?? channel('typecheck'))).not.toThrow();
+		expect(errorCountFrom(['Found 3 errors'], custom ?? channel('typecheck'))).toBe(3);
+	});
+
+	it('reports a matched count line without group 1 as a configuration error, not zero', () => {
+		const shape: import('../../src/lib/buildWrap.ts').ChannelConfig = {
+			name: 'custom',
+			script: 'watch-custom',
+			passStart: [/^start$/],
+			passEnd: [/^end$/],
+			errorLine: [],
+			errorCountLine: [/^Found \d+ errors$/],
+			falseEndGuards: []
+		};
+		expect(() => errorCountFrom(['Found 3 errors'], shape)).toThrow(/group 1/);
+		// A completed count-only channel cannot silently call drifted summary
+		// wording zero: without an errorLine detector there is no fallback proof.
+		expect(() => errorCountFrom(['Found errors: 3'], shape)).toThrow(/did not match.*no diagnostic detector/);
+	});
+
+	it('counts a timestamped extensions pass by its parsed diagnostics alone', () => {
+		const extensions = channel('extensions');
+		const pass = findLastPass(LIVE_EXT_RED_PASS, extensions);
+		expect(pass?.lines).toEqual(LIVE_EXT_RED_PASS);
+		const parsed = parseErrorLines(pass?.lines ?? [], extensions);
+		expect(parsed.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts', 'src/vs/base/common/util.ts']);
+		expect(parsed[0]).toMatchObject({ line: 12, column: 7, code: 'TS2322', message: 'Type number is not assignable to type string.' });
+		expect(parsed[1]).toMatchObject({ line: 4, column: 2, code: 'TS2345' });
+		expect(parsed).toHaveLength(2);
+
+		// The bare legacy diagnostic form still parses, and a malformed prefix
+		// (no space after the closing bracket) is not a diagnostic at all.
+		const bare = parseErrorLines(
+			['src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.'],
+			extensions
+		);
+		expect(bare).toHaveLength(1);
+		expect(parseErrorLines(['[05:55:36]src/vs/patchset/hello.ts(12,7): error TS2322: no space'], extensions)).toEqual([]);
 	});
 });
 
@@ -418,6 +638,182 @@ describe('probing a command line', () => {
 		expect(argsMatch(title, 'watch-client-transpile')).toBe(true);
 		expect(argsMatch(title, 'watch-client')).toBe(false);
 		expect(argsMatch(['npm run watch-client'], 'watch-client')).toBe(true);
+	});
+
+	it('keeps a channel living while descendants survive its exited POSIX group leader', () => {
+		const root = makeTempRoot('posix-daemon-descendant');
+		const path = recordPath(root, 'transpile');
+		mkdirSync(join(path, '..'), { recursive: true });
+		writeFileSync(
+			path,
+			`${JSON.stringify({
+				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
+				channel: 'transpile',
+				script: 'watch-client-transpile',
+				pid: 4242,
+				cmdline: 'watch-client-transpile',
+				startedAt: '2026-08-31T00:00:00.000Z',
+				treeId: 'fixture-tree',
+				treePath: '/fixture/tree',
+				nonce: '11111111-1111-4111-8111-111111111111'
+			})}\n`,
+			'utf8'
+		);
+		const run: ProcessRunner = (command, args) => {
+			expect(command).toBe('ps');
+			if (args.includes('-p')) {
+				// The recorded npm leader has exited.
+				return { status: 1, stdout: '', stderr: '' };
+			}
+			// Its shell/compiler descendant is still in the original group. The
+			// group id is the durable kill handle even without /proc/<leader>.
+			return { status: 0, stdout: '4343 4242 node build/watch.js\n', stderr: '' };
+		};
+		const probe = { platform: 'darwin' as const, run };
+
+		expect(processGroupAlive(4242, probe)).toBe(true);
+		expect(statusOf(root, 'transpile', probe)).toMatchObject({
+			state: 'living',
+			detail: 'process group 4242 still has living members; ownership rests on the group id alone'
+		});
+	});
+
+	it('separates a group working in the recorded tree from one working elsewhere', () => {
+		// Group membership alone is not ownership: a reused pid that calls
+		// `setsid` leads a group with the same id. The corroboration that tells
+		// them apart is the members' working directory - live production
+		// behaviour on this platform, and until this test the `/proc` branch it
+		// runs on had no seam at all, so both answers were unreachable and the
+		// downgrade was deletable with the whole suite green.
+		const root = makeTempRoot('posix-group-corroboration');
+		const tree = join(root, 'tree');
+		const elsewhere = join(root, 'elsewhere');
+		mkdirSync(tree, { recursive: true });
+		mkdirSync(elsewhere, { recursive: true });
+		const path = recordPath(root, 'transpile');
+		mkdirSync(join(path, '..'), { recursive: true });
+		writeFileSync(
+			path,
+			`${JSON.stringify({
+				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
+				channel: 'transpile',
+				script: 'watch-client-transpile',
+				pid: 4242,
+				cmdline: 'watch-client-transpile',
+				startedAt: '2026-08-31T00:00:00.000Z',
+				treeId: 'fixture-tree',
+				treePath: tree,
+				nonce: '11111111-1111-4111-8111-111111111111'
+			})}\n`,
+			'utf8'
+		);
+
+		/** A `/proc` the readers really parse: cmdline, stat and a cwd symlink. */
+		function procRootWith(memberCwd: string): string {
+			const procRoot = join(root, `proc-${memberCwd === tree ? 'ours' : 'foreign'}`);
+			// The recorded leader has exited; a member of its group survives.
+			const member = join(procRoot, '4343');
+			mkdirSync(member, { recursive: true });
+			writeFileSync(join(member, 'cmdline'), 'node\0build/watch.js\0', 'utf8');
+			writeFileSync(join(member, 'stat'), '4343 (node) S 1 4242 4242 0 -1 4194304 0 0\n', 'utf8');
+			symlinkSync(memberCwd, join(member, 'cwd'));
+			return procRoot;
+		}
+
+		// A member working inside the recorded tree corroborates ownership.
+		const ours = { platform: 'linux' as const, procRoot: procRootWith(tree) };
+		expect(processTable(ours)).toMatchObject([{ pid: 4343, pgid: 4242, cwd: tree }]);
+		expect(statusOf(root, 'transpile', ours)).toMatchObject({ state: 'living' });
+
+		// Every readable member working outside it is positive evidence against
+		// us: the honest answer is `unknown`, which refuses both the signal and a
+		// duplicate start, rather than `living`, which would signal a stranger.
+		const foreign = { platform: 'linux' as const, procRoot: procRootWith(elsewhere) };
+		expect(statusOf(root, 'transpile', foreign)).toMatchObject({
+			state: 'unknown',
+			detail: `process group 4242 is alive but every member with a readable working directory is outside ${tree}; ownership is not proven`
+		});
+	});
+
+	it('waits for the whole POSIX group before retiring the daemon record', async () => {
+		const root = makeTempRoot('posix-daemon-down-group');
+		const path = recordPath(root, 'transpile');
+		mkdirSync(join(path, '..'), { recursive: true });
+		writeFileSync(
+			path,
+			`${JSON.stringify({
+				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
+				channel: 'transpile',
+				script: 'watch-client-transpile',
+				pid: 4242,
+				cmdline: 'watch-client-transpile',
+				startedAt: '2026-08-31T00:00:00.000Z',
+				treeId: 'fixture-tree',
+				treePath: '/fixture/tree',
+				nonce: '11111111-1111-4111-8111-111111111111'
+			})}\n`,
+			'utf8'
+		);
+		let killed = false;
+		const signals: Array<readonly [number, string]> = [];
+		const run: ProcessRunner = (_command, args) => {
+			if (args.includes('-p')) {
+				return { status: 1, stdout: '', stderr: '' };
+			}
+			return killed ? { status: 0, stdout: '', stderr: '' } : { status: 0, stdout: '4343 4242 node build/watch.js\n', stderr: '' };
+		};
+
+		await expect(
+			downChannel(root, 'transpile', {
+				expectedTreeId: 'fixture-tree',
+				expectedTreePath: '/fixture/tree',
+				platform: 'darwin',
+				run,
+				termGraceMs: 0,
+				signal: (target, signal) => {
+					signals.push([target, signal]);
+					if (signal === 'SIGKILL') killed = true;
+				}
+			})
+		).resolves.toMatchObject({ action: 'killed' });
+		expect(signals).toEqual([
+			[-4242, 'SIGTERM'],
+			[-4242, 'SIGKILL']
+		]);
+		expect(readRecordState(root, 'transpile').state).toBe('absent');
+	});
+
+	it('keeps an exited-leader Windows record as unknown orphan risk', async () => {
+		const root = makeTempRoot('windows-exited-leader');
+		const path = recordPath(root, 'transpile');
+		mkdirSync(join(path, '..'), { recursive: true });
+		writeFileSync(
+			path,
+			`${JSON.stringify({
+				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
+				channel: 'transpile',
+				script: 'watch-client-transpile',
+				pid: 4242,
+				cmdline: 'watch-client-transpile',
+				startedAt: '2026-08-31T00:00:00.000Z',
+				treeId: 'fixture-tree',
+				treePath: 'C:\\fork tree',
+				nonce: '11111111-1111-4111-8111-111111111111'
+			})}\n`,
+			'utf8'
+		);
+		const run: ProcessRunner = () => ({ status: 0, stdout: '', stderr: '' });
+		const probe = { platform: 'win32' as const, run, expectedTreeId: 'fixture-tree', expectedTreePath: 'C:\\fork tree' };
+		writeFileSync(
+			join(root, '.codkit', 'build', 'transpile.log'),
+			'Starting transpilation...\nFinished transpilation with 0 errors after 1 ms\n',
+			'utf8'
+		);
+
+		expect(statusOf(root, 'transpile', probe)).toMatchObject({ state: 'unknown', record: { pid: 4242 } });
+		await expect(readPass(root, channel('transpile'), { timeoutMs: 0, probe })).rejects.toThrow(/refusing to read or certify/);
+		await expect(downChannel(root, 'transpile', probe)).rejects.toThrow(/cannot prove.*descendant process tree|refusing to discard/);
+		expect(readRecordState(root, 'transpile')).toMatchObject({ state: 'valid', record: { pid: 4242 } });
 	});
 
 	it('reads one native Windows command line through Get-CimInstance', () => {
@@ -485,7 +881,8 @@ describe('probing a command line', () => {
 					cmdline: 'watch-client-transpile',
 					startedAt: '2026-08-31T00:00:00.000Z',
 					treeId: 'fixture-tree',
-					treePath: 'C:\\fork tree'
+					treePath: 'C:\\fork tree',
+					nonce: '11111111-1111-4111-8111-111111111111'
 				},
 				null,
 				2
@@ -498,12 +895,12 @@ describe('probing a command line', () => {
 			stderr: '',
 			error: new Error('spawn powershell.exe ENOENT')
 		});
-		const probe = { platform: 'win32' as const, run };
+		const probe = { platform: 'win32' as const, run, expectedTreeId: 'fixture-tree', expectedTreePath: 'C:\\fork tree' };
 
 		expect(() => statusOf(root, 'transpile', probe)).toThrow(/cannot inspect process 4242/);
 		expect(() => processTable(probe)).toThrow(/cannot inspect process table/);
 		await expect(downChannel(root, 'transpile', probe)).rejects.toThrow(/cannot inspect process 4242/);
-		expect(readRecord(root, 'transpile')?.pid).toBe(4242);
+		expect(readRecordState(root, 'transpile')).toMatchObject({ state: 'valid', record: { pid: 4242 } });
 	});
 
 	it('does not call an existing Windows process dead when CIM hides its command line', () => {

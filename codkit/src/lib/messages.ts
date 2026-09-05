@@ -52,6 +52,10 @@ export const ERROR_CODES = [
 	'NET-FORBIDDEN',
 	'LOG-INCOMPLETE',
 	'BOTH-SIDES-EDITED',
+	// A generated branch is shared by every worktree of its repository; codkit
+	// refuses to move it while a sibling worktree has it checked out
+	// (PROP-008 ##GENERATED-REF-WORKTREE-PREFLIGHT).
+	'WORKTREE-REF-SHARED',
 	// Not carried by a domain spec section, but required by the runtime:
 	'INTERNAL',
 	// Dependencies that are not there: the launcher (codkit/bin/codkit.mjs) says

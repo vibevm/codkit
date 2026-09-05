@@ -146,7 +146,7 @@ const commandGuidance = {
 	sync: {
 		positional: '',
 		detail:
-			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist; `--clone-if-missing` is networked and therefore rejected by `--ci`.'
+			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`.'
 	},
 	status: { positional: '', detail: 'Show the pin/generated branch and work in the fork tree that has not been extracted.' },
 	save: {
@@ -180,12 +180,25 @@ const commandGuidance = {
 		positional: '<target|overlay-file>',
 		detail: 'Check overlay expectations and any materialized tree target without applying it.'
 	},
-	'build up': { positional: '', detail: 'Start configured watch channels; `--channel` selects one channel.' },
-	'build down': { positional: '', detail: 'Stop configured watch channels; `--channel` selects one channel.' },
-	'build status': { positional: '', detail: 'Probe configured watcher processes; `--channel` selects one channel.' },
+	'build up': {
+		positional: '',
+		detail:
+			'Start configured watch channels under a short-lived per-channel operation lock, with an exclusive complete reservation; starting/unknown records refuse and a busy channel refuses without touching its record. `--channel` selects one channel.'
+	},
+	'build down': {
+		positional: '',
+		detail:
+			'Stop each proven watcher process group under the same per-channel operation lock and retire only its exact record after every member exits; starting/unknown records, and records owned by another fork tree, refuse without a signal. `--channel` selects one channel.'
+	},
+	'build status': {
+		positional: '',
+		detail:
+			'Report starting/living/dead/unknown watcher truth, including descendants left after an npm leader exits; `--channel` selects one channel. It is read-only and point-in-time: exit 0 means the observation succeeded, not that every daemon is healthy, and a record owned by another fork tree is reported as `unknown` with that tree named.'
+	},
 	'build errors': {
 		positional: '',
-		detail: 'Wait for the current pass and print its errors. `--mine` narrows channels and `--timeout` is a positive number of seconds.'
+		detail:
+			'Wait for the current proven daemon pass and print its errors. Starting/unknown state never certifies an old log, and neither does a record whose generation rotated while the log was read or whose tree is not this one; `--mine` narrows channels and `--timeout` is positive seconds.'
 	},
 	cycle: {
 		positional: '<start <tag-or-sha> | continue | status | restart>',
@@ -212,7 +225,7 @@ const commandGuidance = {
 	},
 	hooks: {
 		positional: '<install | check>',
-		detail: 'Install or inspect Codkit-owned patchset hooks. Internal hook callbacks are not part of the public CLI.'
+		detail: 'Install or inspect effective Codkit-owned patchset hooks. Check is green only when Git demonstrably executes the current owned bytes; linked/custom/foreign hook paths are inactive refusals.'
 	}
 };
 
@@ -381,7 +394,7 @@ const faqEntries = {
 	],
 	'DIRTY-TREE': [
 		'Unextracted or otherwise disallowed work makes the requested transition unsafe.',
-		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. CI should receive a disposable clean tree.'
+		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. A tree left by `overlay apply` returns to dev mode with `codkit sync --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
 	],
 	'TREE-READONLY': [
 		'Codkit cannot write the fork tree or its required runtime state.',
@@ -484,6 +497,10 @@ const faqEntries = {
 	'BOTH-SIDES-EDITED': [
 		'The same intervention changed on both relevant sides and needs a decision.',
 		'Stop, compare the named states, resolve in the fork tree, and record the decision in the cycle procedure.'
+	],
+	'WORKTREE-REF-SHARED': [
+		'The generated branch is checked out in another worktree of the same repository, and moving it here would leave that worktree dirty.',
+		'Let the named worktree use its own branch (git -C <path> switch --detach) or remove it (git worktree remove <path>), then re-run; nothing was changed.'
 	],
 	INTERNAL: [
 		'An unexpected Codkit failure escaped domain diagnosis.',

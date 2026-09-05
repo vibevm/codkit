@@ -38,10 +38,10 @@ fork roots должны быть попарно непересекающимис
 ## Сборка и запуск
 
 1. `codkit build up` → `transpile` и `typecheck` started/already living, exit `0`.
-   Exit `1` означает чужой watcher/конкурентный старт/чужое дерево; `codkit build status` показывает состояние.
+   Exit `1` означает чужой watcher/конкурентный `starting`/`unknown` record/чужое дерево; `codkit build status` различает `starting`, `living`, `dead`, `unknown`. Invalid/starting/unknown record не удаляй: сначала докажи владельца или teardown.
    Exit `2` означает непригодное дерево. На Linux предупреждение про inotify передаётся владельцу машины: порог запуска предупреждения `<262144`, рекомендуемое значение `524288`.
 2. Один раз выполни `codkit build errors` и прочитай весь напечатанный проход.
-   Exit `0` — ошибок нет; exit `1` — исправь все строки; exit `2` без завершённого прохода → `build up` и повтор.
+   Exit `0` — ошибок нет; exit `1` — исправь все строки; exit `2` без завершённого прохода → `build up` и повтор. Для `starting`/`unknown` exit `2` намеренно не читает старый зелёный log.
 3. Для локальной фильтрации допустим `codkit build errors --mine`; зелёный `--mine` не заменяет полный проход в CI.
 4. Задай `CODKIT_ACTIVE_FORK=/abs/path` из `roots.fork.path`;
    `"$CODKIT_ACTIVE_FORK/scripts/code.sh"` запускает dev-сборку форка.
@@ -52,12 +52,12 @@ fork roots должны быть попарно непересекающимис
 
 ## Что в дереве запрещено
 
-- `git commit`: hook дерева, устанавливаемый каждым `sync`, отклоняет его.
+- `git commit`: в обычном checkout effective owned hook, проверяемый каждым `sync`, отклоняет его. Linked worktree, custom/global/system `core.hooksPath`, `/dev/null`, foreign hook или неразрешимый effective path дают явное предупреждение: guard неактивен, Codkit не пишет shared/custom location, а запрет остаётся процедурным.
 - Правка generated/managed результата вместо источника в patchset: `save` извлекает только own и patch.
 - Ручная правка `product.json`: authoring идёт через `delta/overlays/`, проверка — `overlay check`/`verify`.
 - Удаление апстримного файла/строки: `save` возвращает `CK-E-DELETES-UPSTREAM-*`.
 - Новый апстримный файл без явного `--allow-new-file`: `save` возвращает `CK-E-NEW-FILE-IN-UPSTREAM-ZONE`.
-- `overlay apply` в живом dev-дереве: это упаковочная операция; последующий `sync` честно увидит drift.
+- `overlay apply` в живом dev-дереве: это упаковочная операция; обычный `sync` после неё честно красный, возврат в dev-режим — `codkit sync --fresh` (заменяет только точную композицию overlay).
 
 ## Переключение ветки
 

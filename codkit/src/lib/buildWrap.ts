@@ -5,8 +5,8 @@
 // Contract: PROP-010 section 2. codkit starts the tree's own npm scripts as
 // detached processes and captures their stdout and stderr into
 // `.codkit/build/<channel>.log`; the record in `.codkit/build/<channel>.json`
-// is a hint, never the truth - a channel is living only when a process with the
-// recorded pid exists AND its command line is still the one we started. The
+// is a claim, never sufficient truth: exclusive `starting`, proven `living`,
+// proven `dead`, and fail-closed `unknown` are distinct states. The
 // transpile channel empties `out/` when it starts, so a living channel is never
 // restarted, and a watcher started by somebody else over the same tree makes
 // `up` refuse rather than compete with it.
@@ -19,26 +19,48 @@
 // must stay clean for git and survive `--fresh` cleanup. Which tree a daemon
 // serves is therefore part of the record instead of the path.
 
+import { randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import {
-	closeSync,
-	existsSync,
-	mkdirSync,
-	openSync,
-	readFileSync,
-	readdirSync,
-	readlinkSync,
-	renameSync,
-	rmSync,
-	writeFileSync
-} from 'node:fs';
+import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { delimiter, dirname, isAbsolute, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.ts';
-import { ckError } from './messages.ts';
+import { validateChannelSet } from './buildChannel.ts';
+import { readContainedFile } from './containedFile.ts';
+import { errnoOf, sameEffectivePath } from './containedPath.ts';
+import {
+	DAEMON_RECORD_SCHEMA_VERSION,
+	closeLog,
+	createReservation,
+	daemonRecordBytes,
+	finalizeReservation,
+	logPath,
+	openLogAppend,
+	readLog as readRuntimeLog,
+	readRecordState,
+	recordPath,
+	removeRecord,
+	rotateLog
+} from './buildRuntime.ts';
+import type { DaemonRecord } from './buildRuntime.ts';
+import { acquireDaemonChannelLock, assertDaemonChannelLock } from './daemonChannelLock.ts';
+import type { DaemonChannelLock } from './daemonChannelLock.ts';
+import { ckError, isCkError } from './messages.ts';
 import { ownTargetRelativeDir } from './ownCopy.ts';
 import { resolveContainedPath } from './pathSafety.ts';
+
+export {
+	BUILD_DIR,
+	DAEMON_RECORD_SCHEMA_VERSION,
+	buildDir,
+	logPath,
+	recordPath,
+	removeRecord,
+	rotateLog,
+	rotatedLogPath
+} from './buildRuntime.ts';
+export type { DaemonRecord } from './buildRuntime.ts';
 
 // ---------------------------------------------------------------------------
 // Channel configuration
@@ -92,7 +114,7 @@ const buildWatchSchema = z
 	.object({
 		codkitBuildWatch: z.literal(1),
 		_doc: z.string().optional(),
-		channels: z.record(z.string().min(1), channelSchema)
+		channels: z.record(z.string(), channelSchema)
 	})
 	.strict();
 
@@ -104,14 +126,22 @@ const watchCache = new Map<string, BuildWatch>();
 /**
  * Read the shipped pass-boundary profile, or a strict profile explicitly
  * declared by the selected patch set. A same-named undeclared file never wins.
+ * Both locations are read through the contained regular-file reader (PROP-002
+ * ##CONTAINED-FILE-IO): a symlinked leaf or parent refuses instead of being
+ * followed, with no check-then-open window.
  */
 export function loadBuildWatch(patchesDir?: string): BuildWatch {
-	const path = buildWatchPath(patchesDir);
+	const location = buildWatchLocation(patchesDir);
+	const path = join(location.root, ...location.relative.split('/'));
 	const cached = watchCache.get(path);
 	if (cached !== undefined) return cached;
 	let raw: unknown;
 	try {
-		raw = JSON.parse(readFileSync(path, 'utf8'));
+		const read = readContainedFile(location.root, location.relative, { what: BUILD_WATCH_RELATIVE_PATH });
+		if (read.state === 'absent') {
+			throw new Error('the file does not exist');
+		}
+		raw = JSON.parse(Buffer.from(read.bytes).toString('utf8'));
 	} catch (error) {
 		throw ckError(
 			'CONFIG',
@@ -130,6 +160,25 @@ export function loadBuildWatch(patchesDir?: string): BuildWatch {
 			'see PROP-010 section 2 for the pass-boundary data',
 			BUILD_WATCH_RELATIVE_PATH
 		);
+	}
+	validateChannelSet(Object.keys(parsed.data.channels));
+	// A count detector is validated before any log is read: a pattern that
+	// cannot capture the count in group 1 would match a count line and still
+	// report no summary, silently falling back to the parsed diagnostics -
+	// zero, for a channel that parses none. That is a configuration error
+	// (PROP-010 ##PASS-BOUNDARIES-ARE-DATA).
+	for (const [name, channel] of Object.entries(parsed.data.channels)) {
+		for (const pattern of channel.errorCountLine) {
+			const problem = countPatternProblem(pattern);
+			if (problem !== null) {
+				throw ckError(
+					'CONFIG',
+					`channels.${name}.errorCountLine: ${JSON.stringify(pattern)} ${problem}`,
+					'capture the error count in group 1, e.g. "Found (\\\\d+) errors"',
+					BUILD_WATCH_RELATIVE_PATH
+				);
+			}
+		}
 	}
 
 	const channels: ChannelConfig[] = [];
@@ -152,10 +201,11 @@ export function loadBuildWatch(patchesDir?: string): BuildWatch {
 	return watch;
 }
 
-function buildWatchPath(patchesDir: string | undefined): string {
-	if (patchesDir === undefined) return join(codkitRoot, 'config', 'build-watch.json');
+/** Where the profile is read from, as root plus contained relative path. */
+function buildWatchLocation(patchesDir: string | undefined): { readonly root: string; readonly relative: string } {
+	if (patchesDir === undefined) return { root: codkitRoot, relative: 'config/build-watch.json' };
 	const configured = loadBaseConfig(patchesDir)?.buildWatchFile ?? null;
-	if (configured === null) return join(codkitRoot, 'config', 'build-watch.json');
+	if (configured === null) return { root: codkitRoot, relative: 'config/build-watch.json' };
 	const resolved = resolveContainedPath(patchesDir, configured);
 	if (!resolved.ok) {
 		throw ckError(
@@ -165,7 +215,7 @@ function buildWatchPath(patchesDir: string | undefined): string {
 			'codkit.json'
 		);
 	}
-	return resolved.absolute;
+	return { root: patchesDir, relative: configured };
 }
 
 function compileAll(channel: string, field: string, patterns: readonly string[]): readonly RegExp[] {
@@ -212,74 +262,6 @@ export function selectChannels(watch: BuildWatch, requested: string | null, fall
 // Locations and records
 // ---------------------------------------------------------------------------
 
-/** Directory of daemon logs and records, relative to the patchset root. */
-export const BUILD_DIR = '.codkit/build';
-
-export function buildDir(patchesDir: string): string {
-	return join(patchesDir, ...BUILD_DIR.split('/'));
-}
-
-export function logPath(patchesDir: string, channel: string): string {
-	return join(buildDir(patchesDir), `${channel}.log`);
-}
-
-/** The single rotated generation kept beside the current log (PROP-012 section 2). */
-export function rotatedLogPath(patchesDir: string, channel: string): string {
-	return `${logPath(patchesDir, channel)}.1`;
-}
-
-export function recordPath(patchesDir: string, channel: string): string {
-	return join(buildDir(patchesDir), `${channel}.json`);
-}
-
-export const DAEMON_RECORD_SCHEMA_VERSION = 1;
-
-export type DaemonRecord = {
-	readonly codkitBuildDaemon: number;
-	readonly channel: string;
-	readonly script: string;
-	/** Process id, which is also the process-group id: 0 while a start is reserved. */
-	readonly pid: number;
-	/** The argv token the daemon's command line must carry to still be ours. */
-	readonly cmdline: string;
-	readonly startedAt: string;
-	/** Which fork tree this daemon serves; the record path does not say. */
-	readonly treeId: string;
-	readonly treePath: string;
-};
-
-const recordSchema = z.object({
-	codkitBuildDaemon: z.literal(DAEMON_RECORD_SCHEMA_VERSION),
-	channel: z.string().min(1),
-	script: z.string().min(1),
-	pid: z.number().int().min(0),
-	cmdline: z.string().min(1),
-	startedAt: z.string().min(1),
-	treeId: z.string().min(1),
-	treePath: z.string().min(1)
-});
-
-/** The record of a channel, or null when it is absent or unreadable. */
-export function readRecord(patchesDir: string, channel: string): DaemonRecord | null {
-	const path = recordPath(patchesDir, channel);
-	let raw: unknown;
-	try {
-		raw = JSON.parse(readFileSync(path, 'utf8'));
-	} catch {
-		return null;
-	}
-	const parsed = recordSchema.safeParse(raw);
-	return parsed.success ? parsed.data : null;
-}
-
-function writeRecord(patchesDir: string, record: DaemonRecord): void {
-	writeFileSync(recordPath(patchesDir, record.channel), `${JSON.stringify(record, null, 2)}\n`, 'utf8');
-}
-
-export function removeRecord(patchesDir: string, channel: string): void {
-	rmSync(recordPath(patchesDir, channel), { force: true });
-}
-
 // ---------------------------------------------------------------------------
 // Probing the process table
 // ---------------------------------------------------------------------------
@@ -303,16 +285,62 @@ export type ProcessRunResult = {
 /** Injectable seam for native process probes; production uses spawnSync. */
 export type ProcessRunner = (command: string, args: readonly string[]) => ProcessRunResult;
 
+/**
+ * The fork tree a mutating or certifying build command acts on.
+ *
+ * It is a separate required type, not two optional probe fields, because the
+ * one call site that forgot to pass them signalled and deleted another tree's
+ * daemon: `statusOf` cannot distinguish "no expectation" from "matches", so an
+ * unbound `down` read a foreign record as its own. Requiring the binding makes
+ * that call impossible to write rather than something review has to catch.
+ */
+export type TreeBinding = {
+	readonly expectedTreeId: string;
+	readonly expectedTreePath: string;
+};
+
+export type BoundProbe = ProcessProbeOptions & TreeBinding;
+
 export type ProcessProbeOptions = {
 	readonly platform?: NodeJS.Platform;
 	readonly run?: ProcessRunner;
+	/**
+	 * Observe/replace the native signal target in tests. Returning `false`
+	 * expresses a native teardown that did not succeed - the Windows
+	 * `taskkill /t` shape - which nothing else could express, leaving the
+	 * refusal that depends on it unpinnable on every platform.
+	 */
+	readonly signal?: (target: number, signal: 'SIGTERM' | 'SIGKILL') => void | boolean;
+	readonly termGraceMs?: number;
+	/** Observe/replace the bounded settle wait of a teardown over a `starting` record in tests. */
+	readonly settleWait?: (ms: number) => Promise<void>;
+	readonly afterLock?: () => void;
+	readonly afterRecordRead?: () => void;
+	readonly beforeTerm?: () => void;
+	readonly beforeKill?: () => void;
+	readonly beforeRemove?: () => void;
+	readonly afterTermCompare?: () => void;
+	readonly afterKillCompare?: () => void;
+	readonly afterRemoveCompare?: () => void;
+	readonly expectedTreeId?: string;
+	readonly expectedTreePath?: string;
+	/**
+	 * Where the Linux process table is read from (test seam). The `/proc`
+	 * branch is the primary one on this platform and had no seam at all, so
+	 * every classification it feeds - group ownership above all - was
+	 * unreachable from a test and deletable with the suite green. A fake root
+	 * exercises the real readers, not a stand-in for them.
+	 */
+	readonly procRoot?: string;
+	/** Where an operational warning goes; see `UpContext.onWarn`. */
+	readonly onWarn?: (text: string) => void;
 };
 
 const PROC = '/proc';
 const POWERSHELL = 'powershell.exe';
 
-function procAvailable(platform: NodeJS.Platform): boolean {
-	return platform === 'linux' && existsSync(PROC);
+function procAvailable(platform: NodeJS.Platform, root: string): boolean {
+	return platform === 'linux' && existsSync(root);
 }
 
 function defaultProcessRunner(command: string, args: readonly string[]): ProcessRunResult {
@@ -355,8 +383,9 @@ export function processArgs(pid: number, options: ProcessProbeOptions = {}): rea
 		return null;
 	}
 	const probe = probeOptions(options);
-	if (procAvailable(probe.platform)) {
-		return readProcArgs(pid);
+	const root = options.procRoot ?? PROC;
+	if (procAvailable(probe.platform, root)) {
+		return readProcArgs(pid, root);
 	}
 	if (probe.platform === 'win32') {
 		return windowsProcessArgs(pid, probe.run);
@@ -372,14 +401,24 @@ export function processArgs(pid: number, options: ProcessProbeOptions = {}): rea
 	return line === '' ? null : splitArgs(line);
 }
 
-function readProcArgs(pid: number): readonly string[] | null {
+function readProcArgs(pid: number, root: string): readonly string[] | null {
 	try {
-		const raw = readFileSync(join(PROC, String(pid), 'cmdline'), 'utf8');
+		const raw = readFileSync(join(root, String(pid), 'cmdline'), 'utf8');
 		const args = raw.split('\0').filter((part) => part !== '');
 		// A kernel thread has an empty cmdline; it exists, and it is not ours.
 		return args;
-	} catch {
-		return null;
+	} catch (error) {
+		// ENOENT is the only errno that means "no such process". EACCES/EPERM -
+		// `hidepid`, a different uid - mean the process exists and is not visible
+		// to us, which must never be read as gone: that would retire a live
+		// daemon's record and let the next `up` start a second watcher over the
+		// tree. The `ps` and Windows probes already fail closed here.
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+		throw ckError(
+			'INTERNAL',
+			`cannot inspect process ${pid}: ${messageOf(error)}`,
+			'the process exists but its command line is not readable by this user; run as the owner of the daemon or repair /proc visibility. Daemon records were left untouched'
+		);
 	}
 }
 
@@ -399,16 +438,17 @@ export function argsMatch(args: readonly string[], expected: string): boolean {
 /** Every process the platform lets us see, for the foreign-watcher scan. */
 export function processTable(options: ProcessProbeOptions = {}): readonly ProcessInfo[] {
 	const probe = probeOptions(options);
-	if (procAvailable(probe.platform)) {
-		return procTable();
+	const root = options.procRoot ?? PROC;
+	if (procAvailable(probe.platform, root)) {
+		return procTable(root);
 	}
 	return probe.platform === 'win32' ? windowsProcessTable(probe.run) : psTable(probe.run);
 }
 
-function procTable(): readonly ProcessInfo[] {
+function procTable(root: string): readonly ProcessInfo[] {
 	let names: string[];
 	try {
-		names = readdirSync(PROC);
+		names = readdirSync(root);
 	} catch {
 		return [];
 	}
@@ -418,11 +458,11 @@ function procTable(): readonly ProcessInfo[] {
 			continue;
 		}
 		const pid = Number.parseInt(name, 10);
-		const args = readProcArgs(pid);
+		const args = readProcArgs(pid, root);
 		if (args === null || args.length === 0) {
 			continue;
 		}
-		table.push({ pid, pgid: readProcPgid(pid) ?? pid, args, cwd: readProcCwd(pid) });
+		table.push({ pid, pgid: readProcPgid(pid, root) ?? pid, args, cwd: readProcCwd(pid, root) });
 	}
 	return table;
 }
@@ -432,10 +472,10 @@ function procTable(): readonly ProcessInfo[] {
  * field 2 may itself contain spaces and parentheses, so the fields are counted
  * from after its closing parenthesis.
  */
-function readProcPgid(pid: number): number | null {
+function readProcPgid(pid: number, root: string): number | null {
 	let text: string;
 	try {
-		text = readFileSync(join(PROC, String(pid), 'stat'), 'utf8');
+		text = readFileSync(join(root, String(pid), 'stat'), 'utf8');
 	} catch {
 		return null;
 	}
@@ -456,9 +496,9 @@ function readProcPgid(pid: number): number | null {
 	return Number.isNaN(value) ? null : value;
 }
 
-function readProcCwd(pid: number): string | null {
+function readProcCwd(pid: number, root: string): string | null {
 	try {
-		return readlinkSync(join(PROC, String(pid), 'cwd'));
+		return readlinkSync(join(root, String(pid), 'cwd'));
 	} catch {
 		// Another user's process: it is visible, its cwd is not.
 		return null;
@@ -589,36 +629,153 @@ function splitArgs(line: string): readonly string[] {
 // status
 // ---------------------------------------------------------------------------
 
-export type ChannelState = 'living' | 'dead';
+export type ChannelState = 'starting' | 'living' | 'dead' | 'unknown';
 
 export type ChannelStatus = {
 	readonly channel: string;
 	readonly state: ChannelState;
 	readonly record: DaemonRecord | null;
-	/** Why it is dead, or what it is: printed after the verdict. */
+	readonly recordBytes?: Uint8Array;
+	readonly treeMatches: boolean | null;
+	/** Evidence behind the state; printed after the verdict. */
 	readonly detail: string;
 };
 
 /**
- * Probe one channel. The truth is the process: a record naming a pid that is
- * gone, or a pid that is now something else entirely, describes a dead channel.
+ * Probe one channel. Mismatching identity is unknown/starting, never dead:
+ * Codkit must not signal a reused pid whose ownership it cannot prove.
  */
 export function statusOf(patchesDir: string, channel: string, probe: ProcessProbeOptions = {}): ChannelStatus {
-	const record = readRecord(patchesDir, channel);
-	if (record === null) {
-		return { channel, state: 'dead', record: null, detail: 'no daemon record' };
+	const observed = readRecordState(patchesDir, channel);
+	if (observed.state === 'absent') {
+		return { channel, state: 'dead', record: null, treeMatches: null, detail: 'no daemon record' };
+	}
+	if (observed.state === 'invalid') {
+		return {
+			channel,
+			state: 'unknown',
+			record: null,
+			treeMatches: null,
+			detail: `daemon record is unreadable or invalid: ${observed.detail}`
+		};
+	}
+	const { record, bytes: recordBytes } = observed;
+	// null is "nobody asked", never "it matches": a caller that did not bind a
+	// tree must not be handed a verdict that reads like proof of ownership.
+	const treeMatches =
+		probe.expectedTreeId === undefined && probe.expectedTreePath === undefined
+			? null
+			: probe.expectedTreeId === record.treeId &&
+				probe.expectedTreePath !== undefined &&
+				sameEffectivePath(probe.expectedTreePath, record.treePath, probe.platform);
+	if (treeMatches === false) {
+		return {
+			channel,
+			state: 'unknown',
+			record,
+			recordBytes,
+			treeMatches,
+			detail: `daemon record belongs to another tree (${record.treePath}, id ${record.treeId})`
+		};
 	}
 	if (record.pid === 0) {
-		return { channel, state: 'dead', record, detail: 'a start is in progress' };
+		return {
+			channel,
+			state: 'starting',
+			record,
+			recordBytes,
+			treeMatches,
+			detail: 'an exclusively owned daemon start reservation is in progress'
+		};
 	}
 	const args = processArgs(record.pid, probe);
 	if (args === null) {
-		return { channel, state: 'dead', record, detail: `pid ${record.pid} is gone` };
+		// On POSIX npm is only the detached process-group leader. It may exit
+		// before the shell/compiler children it started (and, during shutdown,
+		// commonly does). The group id cannot be reused while any old member is
+		// alive, so a surviving member still belongs to this recorded daemon even
+		// though /proc/<leader> is already gone. Calling the channel dead here used
+		// to discard its only kill handle and leaked watchers across test/CI runs.
+		if ((probe.platform ?? process.platform) === 'win32') {
+			return {
+				channel,
+				state: 'unknown',
+				record,
+				recordBytes,
+				treeMatches,
+				detail: `pid ${record.pid} is absent; Windows cannot prove that its descendant process tree is gone`
+			};
+		}
+		if (processGroupAlive(record.pid, probe)) {
+			// A pid is reusable once our group has emptied, and a reused pid that
+			// calls setsid leads a group with the same id. Group membership alone
+			// is therefore not proof of ownership: something in the group must
+			// still be working in the tree this record names. Where that
+			// corroboration is positively against us the honest answer is
+			// `unknown`, which refuses both the signal and a duplicate start.
+			// Where it is merely absent - `unproven`, the cross-uid case where no
+			// member has a readable working directory - the group stays
+			// `living` on the group id alone: calling it dead would discard the
+			// only kill handle of a real daemon and leak the watcher across runs.
+			// The residual - signalling a group that belongs to another uid - is
+			// closed further down: the signal is refused, the group survives it,
+			// and teardown fails closed with the record preserved.
+			const corroboration = groupOwnership(record.pid, record.treePath, probe);
+			if (corroboration === 'foreign') {
+				return {
+					channel,
+					state: 'unknown',
+					record,
+					recordBytes,
+					treeMatches,
+					detail: `process group ${record.pid} is alive but every member with a readable working directory is outside ${record.treePath}; ownership is not proven`
+				};
+			}
+			return {
+				channel,
+				state: 'living',
+				record,
+				recordBytes,
+				treeMatches,
+				detail:
+					corroboration === 'ours'
+						? `process group ${record.pid} still has living members working in ${record.treePath}`
+						: `process group ${record.pid} still has living members; ownership rests on the group id alone`
+			};
+		}
+		if (!olderThan(record.startedAt, PROCESS_START_SETTLE_MS)) {
+			return {
+				channel,
+				state: 'starting',
+				record,
+				recordBytes,
+				treeMatches,
+				detail: `pid ${record.pid} has not published a process identity yet${futureNote(record.startedAt)}`
+			};
+		}
+		return { channel, state: 'dead', record, recordBytes, treeMatches, detail: `pid ${record.pid} is gone` };
 	}
 	if (!argsMatch(args, record.cmdline)) {
-		return { channel, state: 'dead', record, detail: `pid ${record.pid} is another process now` };
+		if (!olderThan(record.startedAt, PROCESS_START_SETTLE_MS)) {
+			return {
+				channel,
+				state: 'starting',
+				record,
+				recordBytes,
+				treeMatches,
+				detail: `pid ${record.pid} has not published the expected argv identity yet${futureNote(record.startedAt)}`
+			};
+		}
+		return {
+			channel,
+			state: 'unknown',
+			record,
+			recordBytes,
+			treeMatches,
+			detail: `pid ${record.pid} belongs to another process; identity is not proven`
+		};
 	}
-	return { channel, state: 'living', record, detail: `pid ${record.pid}` };
+	return { channel, state: 'living', record, recordBytes, treeMatches, detail: `pid ${record.pid}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -743,7 +900,25 @@ export type UpContext = {
 	readonly patchesDir: string;
 	readonly treeDir: string;
 	readonly treeId: string;
+	/**
+	 * Where an operational warning goes. A lock that could not retire its own
+	 * generation is the one this path produces: harmless on its own - the next
+	 * command recovers it - but silent, and a lock file nobody was told about is
+	 * a lock file nobody inspects.
+	 */
+	readonly onWarn?: (text: string) => void;
+	readonly runtime?: {
+		readonly spawn?: (treeDir: string, channel: ChannelConfig) => SpawnedDaemon;
+		readonly afterReservation?: () => void;
+		readonly beforeFinalize?: () => void;
+		readonly afterFinalizeCompare?: () => void;
+		readonly afterLock?: () => void;
+		/** Fires after the stale record is read and before it is retired (test seam). */
+		readonly afterStaleRead?: () => void;
+	};
 };
+
+export type SpawnedDaemon = { readonly pid: number; readonly terminate: () => void };
 
 export type UpResult =
 	| {
@@ -755,8 +930,73 @@ export type UpResult =
 	  }
 	| { readonly ok: false; readonly channel: string; readonly reason: string };
 
-/** How long a reserved but unfinished start stays an obstacle. */
-const RESERVATION_STALE_MS = 60_000;
+export const PROCESS_START_SETTLE_MS = 2_000;
+/**
+ * How far ahead of this machine's clock a record may be dated before it is a
+ * refused skew instead of a waited-out one. Two hosts sharing a patch set
+ * routinely disagree by a fraction of a second; refusing on that turns every
+ * teardown on the trailing host into a hard failure where the correct answer
+ * was to wait the window out. Beyond the band the skew is unbounded and the
+ * refusal stands: it is fail-closed, and it names the one thing a human can
+ * fix.
+ */
+export const CLOCK_SKEW_TOLERANCE_MS = 1_000;
+
+function olderThan(iso: string, ms: number): boolean {
+	const started = Date.parse(iso);
+	return Number.isNaN(started) || Date.now() - started > ms;
+}
+
+/** How far `iso` is dated into the future right now; 0 when it is not. */
+function futureSkewMs(iso: string): number {
+	return Math.max(0, Date.parse(iso) - Date.now());
+}
+
+/**
+ * The clock clause of a `starting` verdict. A future-dated record stays
+ * `starting` for the whole duration of the skew, and `up` - which never waits -
+ * would otherwise report a "not yet" that never becomes yet, in words that
+ * sound transient while the state is a clock disagreement.
+ */
+function futureNote(iso: string): string {
+	const skew = futureSkewMs(iso);
+	return skew > 0 ? `; the record is dated ${skew} ms into the future, so this machine's clock is behind the one that wrote it` : '';
+}
+
+/**
+ * The bounded wait of a teardown over a `starting` record: how much of the
+ * settle window the record still owes. It is derived from the record's own
+ * `startedAt` and PROCESS_START_SETTLE_MS - there is no separate timeout to
+ * configure - and it is one delay, never a poll: the caller re-probes once
+ * when it returns. A daemon that vanished mid-start needs no wait to be
+ * resolved; the re-probe reads its absence as the answer.
+ */
+async function waitStartSettle(startedAt: string, probe: ProcessProbeOptions): Promise<void> {
+	const remaining = PROCESS_START_SETTLE_MS - (Date.now() - Date.parse(startedAt));
+	if (remaining <= 0) {
+		return;
+	}
+	if (remaining > PROCESS_START_SETTLE_MS + CLOCK_SKEW_TOLERANCE_MS) {
+		// The record was written ahead of this machine's clock - a backward NTP
+		// step, or a tree shared with a host whose clock disagrees - by more
+		// than the tolerance band. The arithmetic above measures distance from
+		// `startedAt`, so the skew is added to the wait: this teardown would
+		// hold the channel operation lock for the whole skew - potentially an
+		// hour - refusing every other operation on the channel while it slept.
+		// Refuse instead of waiting: it is bounded, it is fail-closed (no
+		// unproven signal is sent, the record is preserved), and it names the
+		// one thing a human can fix.
+		const skew = remaining - PROCESS_START_SETTLE_MS;
+		throw ckError(
+			'INTERNAL',
+			`the daemon record is dated ${skew} ms into the future (startedAt ${startedAt}); refusing to hold the channel lock for a skewed clock`,
+			'fix the clock of the machine that wrote the record, or remove the record by hand once its process is known to be gone'
+		);
+	}
+	// `olderThan` is strict, so one extra millisecond guarantees the re-probe
+	// sees an aged record instead of landing exactly on the boundary.
+	await (probe.settleWait ?? delay)(remaining + 1);
+}
 
 /**
  * Start one channel unless it is already living.
@@ -765,8 +1005,34 @@ const RESERVATION_STALE_MS = 60_000;
  * runs racing over the same channel are decided by the filesystem: the loser
  * refuses instead of starting a second daemon.
  */
-export function upChannel(ctx: UpContext, channel: ChannelConfig): UpResult {
-	const status = statusOf(ctx.patchesDir, channel.name);
+export function upChannel(ctx: UpContext, channel: ChannelConfig, runtime = ctx.runtime): UpResult {
+	let lock: DaemonChannelLock;
+	try {
+		lock = acquireDaemonChannelLock(ctx.patchesDir, channel.name, `build up ${channel.name}`, {
+			...(ctx.onWarn === undefined ? {} : { onWarn: ctx.onWarn })
+		});
+	} catch (error) {
+		if (isCkError(error) && error.code === 'LOCKED') return { ok: false, channel: channel.name, reason: error.message };
+		throw error;
+	}
+	try {
+		runtime?.afterLock?.();
+		return upChannelLocked(ctx, channel, lock, runtime);
+	} finally {
+		lock.release();
+	}
+}
+
+function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonChannelLock, runtime = ctx.runtime): UpResult {
+	assertDaemonChannelLock(lock, ctx.patchesDir, channel.name);
+	const status = statusOf(ctx.patchesDir, channel.name, { expectedTreeId: ctx.treeId, expectedTreePath: ctx.treeDir });
+	if (status.state === 'unknown' || status.state === 'starting') {
+		return {
+			ok: false,
+			channel: channel.name,
+			reason: `${status.detail}; the existing daemon record is retained and this start is refused`
+		};
+	}
 	if (status.state === 'living') {
 		const record = status.record;
 		if (record !== null && record.treeId !== ctx.treeId) {
@@ -793,7 +1059,6 @@ export function upChannel(ctx: UpContext, channel: ChannelConfig): UpResult {
 		return { ok: false, channel: channel.name, reason: missing };
 	}
 
-	mkdirSync(buildDir(ctx.patchesDir), { recursive: true });
 	const reservation: DaemonRecord = {
 		codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 		channel: channel.name,
@@ -802,76 +1067,68 @@ export function upChannel(ctx: UpContext, channel: ChannelConfig): UpResult {
 		cmdline: channel.script,
 		startedAt: new Date().toISOString(),
 		treeId: ctx.treeId,
-		treePath: ctx.treeDir
+		treePath: ctx.treeDir,
+		nonce: randomUUID()
 	};
-	if (!reserve(ctx.patchesDir, reservation, status.record)) {
+	runtime?.afterStaleRead?.();
+	if (status.recordBytes !== undefined && !removeRecord(ctx.patchesDir, channel.name, lock, status.recordBytes)) {
+		return { ok: false, channel: channel.name, reason: 'the prior daemon record changed before stale-record retirement' };
+	}
+	if (!createReservation(ctx.patchesDir, reservation, lock)) {
 		return {
 			ok: false,
 			channel: channel.name,
 			reason: `another codkit process is starting the ${channel.name} daemon right now (${recordPath(ctx.patchesDir, channel.name)})`
 		};
 	}
-
-	// Rotation happens here and nowhere else: on a channel that is really about
-	// to start. An `up` that changed nothing must not cost the log of the daemon
-	// that is already running.
-	rotateLog(ctx.patchesDir, channel.name);
-
-	let pid: number;
+	const reserved = readRecordState(ctx.patchesDir, channel.name);
+	if (reserved.state !== 'valid' || reserved.record.nonce !== reservation.nonce || reserved.record.pid !== 0) {
+		return { ok: false, channel: channel.name, reason: 'the exclusive daemon reservation could not be verified' };
+	}
+	let spawned: SpawnedDaemon | null = null;
 	try {
-		pid = spawnDaemon(ctx.treeDir, channel, logPath(ctx.patchesDir, channel.name));
+		runtime?.afterReservation?.();
+		// Rotation happens only after the exclusive reservation, and a failure
+		// removes that exact reservation instead of leaving a phantom start.
+		rotateLog(ctx.patchesDir, channel.name, lock);
+		spawned = (runtime?.spawn ?? ((tree, selected) => spawnDaemon(ctx.patchesDir, tree, selected, lock)))(ctx.treeDir, channel);
+		runtime?.beforeFinalize?.();
+		if (!finalizeReservation(ctx.patchesDir, reservation, spawned.pid, lock, runtime?.afterFinalizeCompare)) {
+			// The catch below is the single place that stops the child, so a
+			// displaced transition cannot terminate it twice and a newly added
+			// failure path cannot forget to terminate it at all.
+			throw ckError(
+				'LOCKED',
+				`the ${channel.name} reservation was displaced before its pid transition`,
+				'the spawned daemon was terminated; inspect the preserved record before retrying'
+			);
+		}
 	} catch (error) {
-		removeRecord(ctx.patchesDir, channel.name);
-		throw error;
-	}
-	writeRecord(ctx.patchesDir, { ...reservation, pid });
-	return { ok: true, channel: channel.name, action: 'started', pid, log: logPath(ctx.patchesDir, channel.name) };
-}
-
-/** Create the record exclusively; an abandoned reservation is taken over. */
-function reserve(patchesDir: string, record: DaemonRecord, previous: DaemonRecord | null): boolean {
-	if (tryCreateRecord(patchesDir, record)) {
-		return true;
-	}
-	// The file is there and the channel is not living: either a dead daemon's
-	// record, which is stale by definition, or a reservation whose owner never
-	// got to spawn.
-	if (previous !== null && previous.pid === 0 && !olderThan(previous.startedAt, RESERVATION_STALE_MS)) {
-		return false;
-	}
-	removeRecord(patchesDir, record.channel);
-	return tryCreateRecord(patchesDir, record);
-}
-
-function tryCreateRecord(patchesDir: string, record: DaemonRecord): boolean {
-	let handle: number;
-	try {
-		handle = openSync(recordPath(patchesDir, record.channel), 'wx');
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-			return false;
+		// Anything that throws after the spawn leaves a detached watcher over the
+		// tree. Retiring the reservation without killing it would leave a process
+		// no record names: `status` would report nothing, `down` would report
+		// not-running, and the next `up` would start a second watcher over the
+		// same tree. The child dies first, and only then is the reservation
+		// retired - and a termination that itself fails is reported, not
+		// swallowed under the original error.
+		if (spawned !== null) {
+			try {
+				spawned.terminate();
+			} catch (terminationError) {
+				throw ckError(
+					'INTERNAL',
+					`the ${channel.name} daemon was started but could not be stopped after ${messageOf(error)}: ${messageOf(terminationError)}`,
+					`find and stop the process group of pid ${spawned.pid} manually; its reservation was preserved`
+				);
+			}
+		}
+		const current = readRecordState(ctx.patchesDir, channel.name);
+		if (current.state === 'valid' && Buffer.from(current.bytes).equals(Buffer.from(daemonRecordBytes(reservation)))) {
+			removeRecord(ctx.patchesDir, channel.name, lock, current.bytes);
 		}
 		throw error;
 	}
-	closeSync(handle);
-	writeRecord(patchesDir, record);
-	return true;
-}
-
-function olderThan(iso: string, ms: number): boolean {
-	const started = Date.parse(iso);
-	return Number.isNaN(started) || Date.now() - started > ms;
-}
-
-/** Rename the current log to its single kept generation (PROP-012 section 2). */
-export function rotateLog(patchesDir: string, channel: string): void {
-	const current = logPath(patchesDir, channel);
-	if (!existsSync(current)) {
-		return;
-	}
-	const rotated = rotatedLogPath(patchesDir, channel);
-	rmSync(rotated, { force: true });
-	renameSync(current, rotated);
+	return { ok: true, channel: channel.name, action: 'started', pid: spawned.pid, log: logPath(ctx.patchesDir, channel.name) };
 }
 
 /**
@@ -880,8 +1137,8 @@ export function rotateLog(patchesDir: string, channel: string): void {
  * first on PATH, which is the whole of what the tree's launcher needs to agree
  * with us about the runtime.
  */
-function spawnDaemon(treeDir: string, channel: ChannelConfig, log: string): number {
-	const fd = openSync(log, 'a');
+function spawnDaemon(patchesDir: string, treeDir: string, channel: ChannelConfig, lock: DaemonChannelLock): SpawnedDaemon {
+	const fd = openLogAppend(patchesDir, channel.name, lock);
 	try {
 		const child = spawn(npmCommand(), ['run', channel.script], {
 			cwd: treeDir,
@@ -899,9 +1156,60 @@ function spawnDaemon(treeDir: string, channel: ChannelConfig, log: string): numb
 			throw ckError('INTERNAL', `cannot start the ${channel.name} daemon: npm did not start`, 'install npm and make sure it is on PATH');
 		}
 		child.unref();
-		return pid;
+		return { pid, terminate: () => terminateSpawnedDaemon(pid, channel.script) };
 	} finally {
-		closeSync(fd);
+		closeLog(fd);
+	}
+}
+
+/**
+ * Stop the child this command just spawned, after proving it is still that
+ * child.
+ *
+ * "We spawned this pid milliseconds ago" is not proof. Once the child exits and
+ * is reaped its pid is reusable, and a reused pid that calls `setsid` leads a
+ * process group with the same id - so a cleanup that kills `-pid` on the
+ * strength of the spawn alone can kill a stranger's whole group. Every other
+ * signal site in this module proves identity first; this one now does too,
+ * using the same argv comparison.
+ *
+ * The three answers are distinct on purpose. Gone is silence: there is nothing
+ * to stop. Proven is the group kill the leak prevention needs. Unproven is a
+ * loud refusal naming the pid - never a silent skip, because skipping is how
+ * the watcher leak this path exists to prevent comes back, and never a kill,
+ * because killing is how a stranger's group dies.
+ *
+ * Residual, stated rather than hidden: between `fork` and `exec` the child's
+ * argv is not yet the daemon's, so a cleanup that raced that window would
+ * report unproven for a process that is genuinely ours. It cannot reach that
+ * window in practice - every caller has already completed a record comparison
+ * and an atomic write - and the failure it produces is a report, not a stray
+ * kill.
+ */
+export function terminateSpawnedDaemon(pid: number, script: string, probe: ProcessProbeOptions = {}): void {
+	const args = processArgs(pid, probe);
+	if (args === null) {
+		return;
+	}
+	if (!argsMatch(args, script)) {
+		throw ckError(
+			'INTERNAL',
+			`pid ${pid} no longer runs ${script}; refusing to signal a process group codkit cannot prove is its own`,
+			`inspect pid ${pid} and stop the ${script} daemon manually if it is still running; nothing was signalled`
+		);
+	}
+	if ((probe.platform ?? process.platform) === 'win32') {
+		spawnSync('taskkill', ['/pid', String(pid), '/t', '/f'], { encoding: 'utf8', shell: false, windowsHide: true });
+		return;
+	}
+	if (probe.signal !== undefined) {
+		probe.signal(-pid, 'SIGKILL');
+		return;
+	}
+	try {
+		process.kill(-pid, 'SIGKILL');
+	} catch {
+		// The owned child exited between the proof and the signal.
 	}
 }
 
@@ -966,47 +1274,191 @@ const KILL_POLL_MS = 50;
  * so the group is the daemon plus everything the npm script started - which is
  * where the compiler actually lives.
  */
-export async function downChannel(patchesDir: string, channel: string, probe: ProcessProbeOptions = {}): Promise<DownResult> {
-	const status = statusOf(patchesDir, channel, probe);
+export async function downChannel(patchesDir: string, channel: string, probe: BoundProbe): Promise<DownResult> {
+	const lock = acquireDaemonChannelLock(patchesDir, channel, `build down ${channel}`, {
+		...(probe.onWarn === undefined ? {} : { onWarn: probe.onWarn })
+	});
+	try {
+		probe.afterLock?.();
+		return await downChannelLocked(patchesDir, channel, lock, probe);
+	} finally {
+		lock.release();
+	}
+}
+
+async function downChannelLocked(patchesDir: string, channel: string, lock: DaemonChannelLock, probe: BoundProbe): Promise<DownResult> {
+	assertDaemonChannelLock(lock, patchesDir, channel);
+	let status = statusOf(patchesDir, channel, probe);
+	probe.afterRecordRead?.();
+	if (status.state === 'starting' && status.record !== null) {
+		// `starting` is transient: within the settle window the record resolves
+		// into living, dead or unknown, so a teardown that races a fresh spawn
+		// waits the window out and re-probes once instead of refusing a daemon
+		// it merely caught mid-start. What the resolved state says then happens
+		// below unchanged - including the refusal, when it resolved to unknown
+		// or the reservation nobody finished. No pid is signalled while its
+		// identity is unproven: the wait is for proof, not a discarded check.
+		await waitStartSettle(status.record.startedAt, probe);
+		status = statusOf(patchesDir, channel, probe);
+	}
+	if (status.state === 'unknown' || status.state === 'starting') {
+		throw ckError(
+			'INTERNAL',
+			`${channel}: ${status.detail}; refusing to discard daemon record ${recordPath(patchesDir, channel)}`,
+			status.record === null
+				? 'repair or remove the invalid record manually only after proving no daemon owns it'
+				: `inspect recorded pid ${status.record.pid}; retry only after startup or native teardown is proven`
+		);
+	}
 	if (status.state !== 'living' || status.record === null) {
-		removeRecord(patchesDir, channel);
+		// No daemon record at all is not a conflict: there is no daemon and
+		// nothing to retire, so the channel is simply not running. Refusing here
+		// turned "absent" into "changed under the operation" - a conflict that
+		// never happened - and made every `down` over a never-started channel
+		// fail. The refusal below stays reserved for a record that exists and
+		// either changed under this operation or could not be retired.
+		if (status.recordBytes === undefined) {
+			return { channel, action: 'not-running', pid: 0 };
+		}
+		probe.beforeRemove?.();
+		if (!removeRecord(patchesDir, channel, lock, status.recordBytes, probe.afterRemoveCompare)) {
+			throw ckError(
+				'LOCKED',
+				`${channel}: daemon record changed before dead-record retirement`,
+				'retry after inspecting the current record'
+			);
+		}
 		return { channel, action: 'not-running', pid: status.record?.pid ?? 0 };
 	}
 
 	const pid = status.record.pid;
-	signalGroup(pid, 'SIGTERM');
+	probe.beforeTerm?.();
+	assertRecordGeneration(patchesDir, channel, status.recordBytes, probe.afterTermCompare);
+	let teardownProven = signalGroup(pid, 'SIGTERM', probe);
 	let action: 'stopped' | 'killed' = 'stopped';
-	if (!(await waitGone(pid, TERM_GRACE_MS, probe))) {
-		signalGroup(pid, 'SIGKILL');
-		await waitGone(pid, TERM_GRACE_MS, probe);
+	const grace = probe.termGraceMs ?? TERM_GRACE_MS;
+	if (!(await waitGroupGone(pid, grace, probe))) {
+		probe.beforeKill?.();
+		assertRecordGeneration(patchesDir, channel, status.recordBytes, probe.afterKillCompare);
+		teardownProven = signalGroup(pid, 'SIGKILL', probe);
+		if (!(await waitGroupGone(pid, grace, probe))) {
+			// Keep the record: losing it would make the still-live group
+			// unmanageable on the next `build down`, exactly the cross-run leak this
+			// path exists to prevent.
+			throw ckError(
+				'INTERNAL',
+				`process group ${pid} for ${channel} is still alive after SIGKILL`,
+				`inspect process group ${pid}; the daemon record was preserved for a retry`
+			);
+		}
 		action = 'killed';
 	}
-	removeRecord(patchesDir, channel);
+	if ((probe.platform ?? process.platform) === 'win32' && !teardownProven) {
+		throw ckError(
+			'INTERNAL',
+			`${channel}: the recorded Windows root disappeared without a successful native tree teardown`,
+			`inspect descendants of recorded pid ${pid}; the daemon record was preserved`
+		);
+	}
+	probe.beforeRemove?.();
+	assertRecordGeneration(patchesDir, channel, status.recordBytes);
+	if (status.recordBytes === undefined || !removeRecord(patchesDir, channel, lock, status.recordBytes, probe.afterRemoveCompare)) {
+		throw ckError('LOCKED', `${channel}: daemon record changed before completed teardown`, 'inspect the current record; it was preserved');
+	}
 	return { channel, action, pid };
 }
 
-function signalGroup(pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
-	if (process.platform === 'win32') {
+function assertRecordGeneration(patchesDir: string, channel: string, expected: Uint8Array | undefined, afterCompare?: () => void): void {
+	const current = readRecordState(patchesDir, channel);
+	if (expected === undefined || current.state !== 'valid' || !Buffer.from(current.bytes).equals(Buffer.from(expected))) {
+		throw ckError(
+			'LOCKED',
+			`${channel}: daemon record generation changed during the locked operation`,
+			'no later signal or removal was attempted'
+		);
+	}
+	afterCompare?.();
+	const confirmed = readRecordState(patchesDir, channel);
+	if (confirmed.state !== 'valid' || !Buffer.from(confirmed.bytes).equals(Buffer.from(current.bytes))) {
+		throw ckError('LOCKED', `${channel}: daemon record generation changed after comparison`, 'no later signal or removal was attempted');
+	}
+}
+
+function signalGroup(pid: number, signal: 'SIGTERM' | 'SIGKILL', probe: ProcessProbeOptions): boolean {
+	const platform = probe.platform ?? process.platform;
+	const target = platform === 'win32' ? pid : -pid;
+	if (probe.signal !== undefined) {
+		return probe.signal(target, signal) !== false;
+	}
+	if (platform === 'win32') {
 		// Windows has no process groups to signal; the tree of the pid is what
 		// taskkill takes.
-		spawnSync('taskkill', ['/pid', String(pid), '/t', ...(signal === 'SIGKILL' ? ['/f'] : [])], {
+		const result = spawnSync('taskkill', ['/pid', String(pid), '/t', ...(signal === 'SIGKILL' ? ['/f'] : [])], {
 			encoding: 'utf8',
 			shell: false,
 			windowsHide: true
 		});
-		return;
+		return result.status === 0;
 	}
 	try {
-		process.kill(-pid, signal);
-	} catch {
+		process.kill(target, signal);
+		return true;
+	} catch (error) {
 		// ESRCH: the group is already gone, which is the outcome we wanted.
+		// Anything else - EPERM for a group that belongs to another uid, EINVAL
+		// for a target this platform refuses - is a refused signal, not a
+		// delivered one. Reporting it as success would let a teardown believe
+		// it had proven a kill it never sent; `teardownProven` is load-bearing
+		// on exactly that belief.
+		if (errnoOf(error) === 'ESRCH') return true;
+		throw ckError(
+			'INTERNAL',
+			`cannot signal process group ${pid} with ${signal}: ${messageOf(error)}`,
+			'inspect the process group; the daemon record was preserved for a retry'
+		);
 	}
 }
 
-async function waitGone(pid: number, timeoutMs: number, probe: ProcessProbeOptions): Promise<boolean> {
+/**
+ * What a surviving process group says about its own ownership.
+ *
+ * Once our group empties, its id is reusable, and a reused pid that calls
+ * `setsid` leads a group with the same id - so membership alone is not proof.
+ * The daemon and everything its npm script starts inherit the tree as their
+ * working directory, which is the cheapest corroboration available.
+ *
+ * The three answers are deliberately distinct. `foreign` is positive evidence
+ * against us and downgrades the channel to `unknown`, which refuses both the
+ * signal and a duplicate start. `unproven` is the absence of evidence - the
+ * platform probe carries no working directory at all (macOS `ps`, Windows), or
+ * every member belongs to another user - and keeps the group living, because
+ * calling it dead would discard the only kill handle of a real daemon and leak
+ * the watcher across runs. That residual is stated, not hidden.
+ */
+function groupOwnership(pid: number, treePath: string, probe: ProcessProbeOptions): 'ours' | 'foreign' | 'unproven' {
+	const platform = probe.platform ?? process.platform;
+	const members = processTable(probe).filter((process) => process.pgid === pid);
+	const readable = members.filter((process) => process.cwd !== null);
+	if (readable.length === 0) return 'unproven';
+	return readable.some((process) => sameEffectivePath(process.cwd ?? '', treePath, platform)) ? 'ours' : 'foreign';
+}
+
+/**
+ * Whether any member of a POSIX daemon process group is still alive. Exported
+ * for the process-probe contract tests; Windows uses taskkill /t and has no
+ * process-group identity to query.
+ */
+export function processGroupAlive(pid: number, probe: ProcessProbeOptions = {}): boolean {
+	if ((probe.platform ?? process.platform) === 'win32') {
+		return processArgs(pid, probe) !== null;
+	}
+	return processTable(probe).some((process) => process.pgid === pid);
+}
+
+async function waitGroupGone(pid: number, timeoutMs: number, probe: ProcessProbeOptions): Promise<boolean> {
 	const deadline = Date.now() + timeoutMs;
 	for (;;) {
-		if (processArgs(pid, probe) === null) {
+		if (!processGroupAlive(pid, probe)) {
 			return true;
 		}
 		if (Date.now() >= deadline) {
@@ -1178,20 +1630,90 @@ function errorOf(match: RegExpExecArray, raw: string): ParsedError {
 }
 
 /**
+ * Why an errorCountLine pattern cannot be a count detector: group 1 must be
+ * able to capture the number, because that is the only group `errorCountFrom`
+ * reads. A pattern with no capturing group matches the count line and yields
+ * nothing - the false-green shape REPAIR-006 closed.
+ */
+export function countPatternProblem(pattern: string): string | null {
+	let escaped = false;
+	let inClass = false;
+	let capturing = false;
+	for (let index = 0; index < pattern.length; index += 1) {
+		const character = pattern[index];
+		if (escaped) {
+			escaped = false;
+			continue;
+		}
+		if (character === '\\') {
+			escaped = true;
+			continue;
+		}
+		if (inClass) {
+			if (character === ']') {
+				inClass = false;
+			}
+			continue;
+		}
+		if (character === '[') {
+			inClass = true;
+			continue;
+		}
+		if (character !== '(') {
+			continue;
+		}
+		const next = pattern[index + 1];
+		if (next === undefined || next === ':' || next === '=' || next === '!') {
+			continue;
+		}
+		if (next === '<') {
+			const after = pattern[index + 2];
+			if (after === '=' || after === '!') {
+				continue;
+			}
+		}
+		capturing = true;
+	}
+	return capturing ? null : 'has no capturing group for the error count (group 1)';
+}
+
+/**
  * The error count a pass states about itself, or null when it states none. The
  * typecheck channel needs it: the counter in its end line is a flag (0 or 1),
  * so the only real number is the one on its own line.
+ *
+ * A pattern that MATCHES a line but cannot state the number (group 1 absent or
+ * not numeric) is a malformed detector, and that is a configuration error -
+ * never an absent summary that silently falls back to the parsed diagnostics.
  */
 export function errorCountFrom(lines: readonly string[], channel: ChannelConfig): number | null {
 	let count: number | null = null;
 	for (const line of lines) {
 		for (const pattern of channel.errorCountLine) {
 			const match = pattern.exec(line);
-			const captured = match?.[1];
-			if (captured !== undefined && /^\d+$/.test(captured)) {
-				count = Number.parseInt(captured, 10);
+			if (match === null) {
+				continue;
 			}
+			const captured = match[1];
+			if (captured === undefined || !/^\d+$/.test(captured)) {
+				throw ckError(
+					'CONFIG',
+					`channels.${channel.name}.errorCountLine: ${pattern.source} matched a count line but group 1 ` +
+						(captured === undefined ? 'captured nothing' : `captured ${JSON.stringify(captured)} instead of the number`),
+					'fix the pattern so group 1 captures the error count; a matched count line without the number is a configuration error, not an absent summary',
+					BUILD_WATCH_RELATIVE_PATH
+				);
+			}
+			count = Number.parseInt(captured, 10);
 		}
+	}
+	if (count === null && channel.errorCountLine.length > 0 && channel.errorLine.length === 0) {
+		throw ckError(
+			'CONFIG',
+			`channels.${channel.name}.errorCountLine did not match the completed pass, and the channel has no diagnostic detector to fall back to`,
+			'update the count pattern for the current log wording; missing required count evidence is not zero',
+			BUILD_WATCH_RELATIVE_PATH
+		);
 	}
 	return count;
 }
@@ -1277,6 +1799,9 @@ export type PassOutcome =
 export type WaitOptions = {
 	readonly timeoutMs: number;
 	readonly pollMs?: number;
+	readonly probe: BoundProbe;
+	readonly afterSnapshot?: () => void;
+	readonly beforeCertify?: () => void;
 };
 
 /**
@@ -1284,17 +1809,37 @@ export type WaitOptions = {
  * the pass, the diagnostics parsed out of them, and the count the pass states.
  */
 export async function readPass(patchesDir: string, channel: ChannelConfig, options: WaitOptions): Promise<PassOutcome> {
-	const path = logPath(patchesDir, channel.name);
 	const pollMs = options.pollMs ?? POLL_INTERVAL_MS;
 	const deadline = Date.now() + options.timeoutMs;
+	const snapshot = readRecordState(patchesDir, channel.name);
+	if (snapshot.state === 'invalid') throw invalidRecordRefusal(patchesDir, channel.name, snapshot.detail);
+	if (snapshot.state === 'absent') return { state: 'gone' };
+	assertSnapshotTree(snapshot.record, options.probe);
+	options.afterSnapshot?.();
 	for (;;) {
+		assertSameRecordSnapshot(patchesDir, channel.name, snapshot.bytes);
+		const status = statusOf(patchesDir, channel.name, options.probe);
+		if (status.state === 'unknown') {
+			throw ckError(
+				'INTERNAL',
+				`${channel.name}: ${status.detail}; refusing to read or certify the existing log`,
+				'finish or repair daemon ownership first'
+			);
+		}
+		if (status.state === 'starting') {
+			if (Date.now() >= deadline) return { state: 'timeout' };
+			await delay(Math.min(pollMs, Math.max(0, deadline - Date.now())));
+			continue;
+		}
 		// The log first: a daemon that finished a pass and then died still has an
 		// answer to give.
-		const pass = findLastPass(logLines(readLog(path)), channel);
+		const pass = findLastPass(logLines(readRuntimeLog(patchesDir, channel.name)), channel);
 		if (pass !== null) {
+			options.beforeCertify?.();
+			assertSameRecordSnapshot(patchesDir, channel.name, snapshot.bytes);
 			return { state: 'ok', report: reportOf(channel, pass) };
 		}
-		if (statusOf(patchesDir, channel.name).state !== 'living') {
+		if (status.state !== 'living') {
 			return { state: 'gone' };
 		}
 		if (Date.now() >= deadline) {
@@ -1311,9 +1856,59 @@ export async function readPass(patchesDir: string, channel: ChannelConfig, optio
  * still has that result to give (PROP-007 sec. 13), and only a log without a
  * finished pass leaves the command with nothing to say.
  */
-export function readFinishedPass(patchesDir: string, channel: ChannelConfig): PassReport | null {
-	const pass = findLastFinishedPass(logLines(readLog(logPath(patchesDir, channel.name))), channel);
-	return pass === null ? null : reportOf(channel, pass);
+export function readFinishedPass(
+	patchesDir: string,
+	channel: ChannelConfig,
+	options: { readonly probe: BoundProbe; readonly afterSnapshot?: () => void; readonly beforeCertify?: () => void }
+): PassReport | null {
+	const snapshot = readRecordState(patchesDir, channel.name);
+	if (snapshot.state === 'invalid') throw invalidRecordRefusal(patchesDir, channel.name, snapshot.detail);
+	if (snapshot.state === 'absent') return null;
+	assertSnapshotTree(snapshot.record, options.probe);
+	options.afterSnapshot?.();
+	assertSameRecordSnapshot(patchesDir, channel.name, snapshot.bytes);
+	const pass = findLastFinishedPass(logLines(readRuntimeLog(patchesDir, channel.name)), channel);
+	if (pass === null) return null;
+	options.beforeCertify?.();
+	assertSameRecordSnapshot(patchesDir, channel.name, snapshot.bytes);
+	return reportOf(channel, pass);
+}
+
+/**
+ * An unreadable or schema-invalid record is an environment failure for every
+ * log reader. Collapsing it into `gone`/`null` would let a stale finished pass
+ * certify a channel whose ownership codkit cannot prove (PROP-010).
+ */
+function invalidRecordRefusal(patchesDir: string, channel: string, detail: string): Error {
+	return ckError(
+		'INTERNAL',
+		`${channel}: daemon record is unreadable or invalid: ${detail}; refusing to read or certify the existing log`,
+		`repair or remove ${recordPath(patchesDir, channel)} manually only after proving no daemon owns it`
+	);
+}
+
+function assertSameRecordSnapshot(patchesDir: string, channel: string, expected: Uint8Array): void {
+	const current = readRecordState(patchesDir, channel);
+	if (current.state !== 'valid' || !Buffer.from(current.bytes).equals(Buffer.from(expected))) {
+		throw ckError(
+			'LOCKED',
+			`${channel}: daemon record/log generation changed while errors was reading it`,
+			'retry against one stable daemon generation'
+		);
+	}
+}
+
+function assertSnapshotTree(record: DaemonRecord, probe: ProcessProbeOptions): void {
+	if (
+		(probe.expectedTreeId !== undefined && record.treeId !== probe.expectedTreeId) ||
+		(probe.expectedTreePath !== undefined && !sameEffectivePath(record.treePath, probe.expectedTreePath, probe.platform))
+	) {
+		throw ckError(
+			'CONFIG',
+			`daemon record belongs to another tree (${record.treePath}, id ${record.treeId})`,
+			'run build commands against the recorded tree'
+		);
+	}
 }
 
 function reportOf(channel: ChannelConfig, pass: Pass): PassReport {
@@ -1326,15 +1921,6 @@ function reportOf(channel: ChannelConfig, pass: Pass): PassReport {
 		errorCount: stated ?? errors.length,
 		countFromSummary: stated !== null
 	};
-}
-
-function readLog(path: string): string {
-	try {
-		return readFileSync(path, 'utf8');
-	} catch {
-		// The daemon has not written anything yet, or was started elsewhere.
-		return '';
-	}
 }
 
 function messageOf(error: unknown): string {

@@ -11,8 +11,10 @@
 
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { treeId } from '../../src/lib/fingerprint.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
@@ -185,6 +187,40 @@ describe('codkit build errors', () => {
 		}
 	});
 
+	it('finishes the exact timestamped extensions green pass instead of timing out', () => {
+		expect(fixture.run(['build', 'up', '--channel', 'extensions'], { STUB_MODE: 'live-ext-green' }).status).toBe(0);
+		try {
+			const outcome = fixture.json(['build', 'errors', '--channel', 'extensions', '--timeout', '2']);
+			const row = rowOf(outcome.envelope, 'extensions');
+
+			expect(outcome.run.status).toBe(0);
+			expect(row.lines?.[row.lines.length - 1]).toBe('[05:55:37] Finished compilation');
+			expect(row.errorCount).toBe(0);
+			expect(row.countFromSummary).toBe(false);
+			expect(row.errors).toEqual([]);
+		} finally {
+			fixture.run(['build', 'down', '--channel', 'extensions']);
+		}
+	});
+
+	it('keeps every diagnostic of the timestamped red extensions pass and stays red after a zero project', () => {
+		expect(fixture.run(['build', 'up', '--channel', 'extensions'], { STUB_MODE: 'live-ext-red' }).status).toBe(0);
+		try {
+			const outcome = fixture.json(['build', 'errors', '--channel', 'extensions', '--timeout', '2']);
+			const row = rowOf(outcome.envelope, 'extensions');
+
+			// The pass reports a red project and then a zero-reporting one; the
+			// count comes from the parsed diagnostics, so it cannot turn green.
+			expect(outcome.run.status).toBe(1);
+			expect(row.errorCount).toBe(2);
+			expect(row.countFromSummary).toBe(false);
+			expect(row.errors?.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts', 'src/vs/base/common/util.ts']);
+			expect(row.errors?.[0]).toMatchObject({ line: 12, column: 7, code: 'TS2322' });
+		} finally {
+			fixture.run(['build', 'down', '--channel', 'extensions']);
+		}
+	});
+
 	it('parses the diagnostics of a pass and takes the count from the summary line', () => {
 		expect(fixture.run(['build', 'up', '--channel', 'typecheck'], { STUB_MODE: 'errors' }).status).toBe(0);
 
@@ -288,6 +324,61 @@ describe('codkit build down', () => {
 		expect(outcome.run.stderr).toContain('codkit build up');
 		expect(channels(outcome.envelope)).toEqual([]);
 	});
+});
+
+describe('codkit build fail-closed runtime records', () => {
+	function exerciseRecord(bytes: string, expectedState: 'starting' | 'unknown'): void {
+		const path = fixture.patchesPath('.codkit/build/transpile.json');
+		mkdirSync(join(path, '..'), { recursive: true });
+		writeFileSync(path, bytes, 'utf8');
+		writeFileSync(
+			fixture.patchesPath('.codkit/build/transpile.log'),
+			'Starting transpilation...\nFinished transpilation with 0 errors after 1 ms\n',
+			'utf8'
+		);
+		try {
+			const status = fixture.json(['build', 'status', '--channel', 'transpile']);
+			expect(status.run.status).toBe(0);
+			expect(rowOf(status.envelope, 'transpile').state).toBe(expectedState);
+			expect(fixture.run(['build', 'up', '--channel', 'transpile']).status).not.toBe(0);
+			expect(fixture.run(['build', 'down', '--channel', 'transpile']).status).not.toBe(0);
+			const errors = fixture.json(['build', 'errors', '--channel', 'transpile', '--timeout', '1']);
+			expect(errors.run.status).toBe(2);
+			expect(errors.run.stderr).toContain('refusing to read or certify');
+			expect(readFileSync(path, 'utf8')).toBe(bytes);
+		} finally {
+			rmSync(path, { force: true });
+			rmSync(fixture.patchesPath('.codkit/build/transpile.log'), { force: true });
+		}
+	}
+
+	it('preserves malformed runtime state across status/up/down/errors', () => {
+		exerciseRecord('{"codkitBuildDaemon":', 'unknown');
+	});
+
+	it('preserves a pid-zero reservation across status/up/down/errors and ignores an old green log', () => {
+		exerciseRecord(`${JSON.stringify(reservationRecord(treeId(fixture.treeDir)))}\n`, 'starting');
+	});
+
+	it('reports a reservation owned by another fork tree as unknown and touches nothing', () => {
+		// Same shape, foreign owner: `status` must say so instead of adopting it,
+		// and no mutating or certifying command may act on it.
+		exerciseRecord(`${JSON.stringify(reservationRecord('some-other-fork-tree'))}\n`, 'unknown');
+	});
+
+	function reservationRecord(owner: string) {
+		return {
+			codkitBuildDaemon: 1,
+			channel: 'transpile',
+			script: 'watch-client-transpile',
+			pid: 0,
+			cmdline: 'watch-client-transpile',
+			startedAt: new Date().toISOString(),
+			treeId: owner,
+			treePath: fixture.treeDir,
+			nonce: '44444444-4444-4444-8444-444444444444'
+		};
+	}
 });
 
 describe('codkit build up: a watcher somebody else started', () => {

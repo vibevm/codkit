@@ -13,6 +13,8 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
+import { encodeUtf8 } from './bytes.js';
+import { readContainedFile, writeContainedFileAtomic } from './containedFile.js';
 import { runGit } from './gitx.js';
 export const TREE_CACHE_SCHEMA_VERSION = 1;
 export const TREE_MARK_SCHEMA_VERSION = 1;
@@ -55,6 +57,46 @@ export function gitDirOf(treeDir) {
     const line = result.stdout.trim();
     return line === '' ? join(treeDir, '.git') : line;
 }
+/**
+ * The common admin directory of the repository. Equal to gitDirOf() in a
+ * normal repository and different from it exactly in a linked worktree, which
+ * is how the caller tells the two apart. Fail-soft like gitDirOf: an
+ * unresolvable tree reports the assumed `.git` of the tree.
+ */
+export function gitCommonDirOf(treeDir) {
+    const result = runGit({ args: ['rev-parse', '--path-format=absolute', '--git-common-dir'], cwd: treeDir });
+    if (result.status !== 0) {
+        return join(treeDir, '.git');
+    }
+    const line = result.stdout.trim();
+    return line === '' ? join(treeDir, '.git') : line;
+}
+/**
+ * The path Git itself consults for an administrative file whose effective
+ * location it resolves inside its own directories - `info/exclude` resolves to
+ * the common dir, which is why appending to gitDirOf() is wrong in a linked
+ * worktree (PROP-005 ##OWN-EXCLUDED-LOCALLY).
+ *
+ * Deliberately not the rule for hooks: `--git-path hooks/<name>` follows
+ * `core.hooksPath`. A caller that must know whether a hook it owns is the one
+ * Git will run resolves the effective hook path STRICTLY - a failed resolution
+ * (e.g. `core.hooksPath=/dev/null`) is "cannot prove", never a fallback to the
+ * admin path - and across both config scopes; see writeTreeHook in syncEngine
+ * and RunGitOptions.machineConfig in gitx (REPAIR-006).
+ *
+ * Returns { ok: false } when git cannot answer; callers decide what that
+ * means for them instead of the old silent fallback, which turned "resolution
+ * failed" into "the admin path is effective" and reported a guard that was
+ * not there.
+ */
+export function effectiveGitPath(treeDir, relative) {
+    const result = runGit({ args: ['rev-parse', '--path-format=absolute', '--git-path', relative], cwd: treeDir, pathResolution: true });
+    if (result.status !== 0) {
+        return { ok: false };
+    }
+    const line = result.stdout.trim();
+    return line === '' ? { ok: false } : { ok: true, path: line };
+}
 /** Read the cache. A broken file is reported and treated as an absent one. */
 export function readTreeCache(patchesDir, treeId, onWarn) {
     const path = treeCachePath(patchesDir, treeId);
@@ -70,9 +112,21 @@ export function writeTreeCache(patchesDir, treeId, cache) {
     writeFileSync(path, `${JSON.stringify(cache, null, 2)}\n`, 'utf8');
 }
 /** Read the mark. A broken file is reported and treated as an absent one. */
-export function readTreeMark(treeDir, onWarn) {
+export function readTreeMark(treeDir, onWarn, afterOpen) {
     const path = treeMarkPath(treeDir);
-    const parsed = readJson(path, treeMarkSchema);
+    let parsed;
+    try {
+        const read = readContainedFile(gitDirOf(treeDir), MARK_RELATIVE_PATH, {
+            what: path,
+            ...(afterOpen === undefined ? {} : { afterOpen })
+        });
+        parsed = read.state === 'absent' ? { state: 'absent' } : parseJsonBytes(read.bytes, path, treeMarkSchema);
+    }
+    catch (error) {
+        // A symlinked or non-regular mark is an unusable mark, reported like a
+        // broken one: the mark is a hint, the branch is the truth.
+        parsed = { state: 'broken', detail: messageOf(error) };
+    }
     if (parsed.state === 'broken' && onWarn !== undefined) {
         onWarn(`ignoring the unreadable apply mark ${path} (${parsed.detail}); the delta will be applied from scratch`);
     }
@@ -82,12 +136,17 @@ export function readTreeMark(treeDir, onWarn) {
  * Write the mark. Returns false when the tree does not take the write: a
  * read-only mount is a legal way to run codkit, so the caller only warns
  * (CK-W-MARK-RO) and carries on - the branch it just built is the real record.
+ * The write goes through the contained administrative writer, so a symlinked
+ * mark path refuses instead of landing outside git administration.
  */
 export function writeTreeMark(treeDir, mark, onWarn) {
+    const gitDir = gitDirOf(treeDir);
     const path = treeMarkPath(treeDir);
     try {
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, `${JSON.stringify(mark, null, 2)}\n`, 'utf8');
+        writeContainedFileAtomic(gitDir, MARK_RELATIVE_PATH, {
+            bytes: encodeUtf8(`${JSON.stringify(mark, null, 2)}\n`),
+            what: path
+        });
         return true;
     }
     catch (error) {
@@ -164,9 +223,13 @@ function readJson(path, schema) {
     if (!existsSync(path)) {
         return { state: 'absent' };
     }
+    return parseJsonBytes(readFileSync(path), path, schema);
+}
+/** Validate already-read bytes; shared by the contained and legacy readers. */
+function parseJsonBytes(bytes, _path, schema) {
     let raw;
     try {
-        raw = JSON.parse(readFileSync(path, 'utf8'));
+        raw = JSON.parse(Buffer.from(bytes).toString('utf8'));
     }
     catch (error) {
         return { state: 'broken', detail: messageOf(error) };

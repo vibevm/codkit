@@ -17,10 +17,12 @@
 // The tree is the truth about what is applied (##TREE-IS-TRUTH); the cache in
 // patchset and the mark inside .git are hints that let the next run skip the work.
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
+import { basename, join, relative, sep } from 'node:path';
 import { applyUnified } from './applyUnified.ts';
 import { encodeUtf8 } from './bytes.ts';
+import { readContainedFile, removeContainedFile, writeContainedFileAtomic } from './containedFile.ts';
+import { ensureAdminDirectory, sameEffectivePath } from './containedPath.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
@@ -28,12 +30,14 @@ import { driftDirty, porcelainPaths } from './driftGuard.ts';
 import { deltaFingerprint, treeId } from './fingerprint.ts';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.ts';
 import type { GeneratedLayerTarget, GeneratedOwnEvidence } from './generatedBranch.ts';
-import { gitOk, runGit } from './gitx.ts';
+import { gitOk, runGit, runGitUserPathResolution } from './gitx.ts';
 import type { GitEnv } from './gitx.ts';
+import { HOOK_MARKER, isOurs } from './hooksPatchSet.ts';
 import type { Output } from './jsonOut.ts';
 import {
 	OVERLAYS_DIR,
 	checkOverlay,
+	isExactOverlayMaterialization,
 	loadOverlays,
 	overlayDriftErrors,
 	renderOverlayTarget,
@@ -53,7 +57,9 @@ import { checkTree, formatCheckLine } from './treeIdentity.ts';
 import {
 	TREE_CACHE_SCHEMA_VERSION,
 	TREE_MARK_SCHEMA_VERSION,
+	effectiveGitPath,
 	fastPathOk,
+	gitCommonDirOf,
 	gitDirOf,
 	readTreeCache,
 	readTreeMark,
@@ -63,6 +69,7 @@ import {
 import type { TreeMark } from './treeCache.ts';
 import { assertCompletedRebaseMoveSyncTree, completedRebaseMoveForSync, finishCompletedRebaseMoveSync } from './rebaseOntoPinMove.ts';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.ts';
+import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.ts';
 
 /** Patch artifacts live here, relative to the patchset root. */
 export const PATCHES_DIR = 'delta/patches';
@@ -71,15 +78,54 @@ export const PATCHES_DIR = 'delta/patches';
 export const COMMIT_AUTHOR_NAME = 'codkit';
 export const COMMIT_AUTHOR_EMAIL = 'codkit@patchset.invalid';
 
-/** Managed block of .git/info/exclude (PROP-005 ##OWN-EXCLUDED-LOCALLY). */
+/** Managed block of the tree's effective info/exclude (PROP-005 ##OWN-EXCLUDED-LOCALLY). */
 export const EXCLUDE_BEGIN = '# codkit:begin managed';
 export const EXCLUDE_END = '# codkit:end managed';
 
-type ExcludePlan = {
+/**
+ * The per-worktree exclude file codkit owns, relative to the per-worktree
+ * administrative directory (PROP-005 ##OWN-EXCLUDED-LOCALLY). `info/exclude`
+ * of the common directory is one file shared by every sibling worktree: a
+ * managed block there hides one tree's own paths in all of them, and a second
+ * patch set with another own directory would replace the first block. In a
+ * repository with more than one worktree the exclusion is therefore
+ * worktree-local - this file, plus the per-worktree `core.excludesFile` config
+ * key that points Git at it (requires `extensions.worktreeConfig`, which codkit
+ * enables; a foreign value of either key is preserved and refused, never
+ * overwritten).
+ *
+ * Lifecycle: rewritten by every sync of that worktree; the per-worktree key and
+ * file are codkit's own namespace and are never removed automatically - a
+ * worktree that stops being managed keeps a harmless one-line exclude file
+ * (drop it with `git config --worktree --unset core.excludesFile` if you ever
+ * need to). The first worktree-local sync also removes codkit's own stale
+ * managed block from the shared `info/exclude`, leaving foreign lines intact.
+ */
+export const OWN_EXCLUDE_RELATIVE_PATH = 'codkit/exclude';
+
+type ManagedBlockPlan = {
 	readonly path: string;
 	readonly existing: string;
 	readonly next: string;
 };
+
+type ExcludePlanCommon = ManagedBlockPlan & {
+	readonly kind: 'common-block';
+	readonly treeDir: string;
+	readonly adminRoot: string;
+	readonly adminSegments: readonly string[];
+};
+
+type ExcludePlanWorktree = ManagedBlockPlan & {
+	readonly kind: 'worktree-local';
+	readonly treeDir: string;
+	readonly adminRoot: string;
+	readonly adminSegments: readonly string[];
+	/** Our stale managed block in the shared info/exclude to retire, foreign lines untouched. */
+	readonly legacyCommon: ManagedBlockPlan | null;
+};
+
+type ExcludePlan = ExcludePlanCommon | ExcludePlanWorktree;
 
 /** Environment variable the tree's pre-commit hook lets through. */
 export const INTERNAL_COMMIT_ENV = 'CODKIT_INTERNAL_COMMIT';
@@ -275,11 +321,29 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	const cache = readTreeCache(patchesDir, id, warn);
 	const mark = readTreeMark(tree, warn);
 
+	// The variable context every materialization of this run uses, guard
+	// included: the classified bytes and the bytes of the eventual apply must be
+	// the same bytes, or the classification would certify something else.
+	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), options.patchSetCommit ?? patchSetCommitId(patchesDir));
+
 	// 4. Drift guard: never overwrite work that was not extracted back to patchset.
 	if (!dryRun && options.skipDriftGuard !== true && completedRebase === null) {
 		// --fresh is about to remove untracked paths by the whitelist, so they
-		// are not counted as unextracted work in that run.
-		const drift = driftDirty(tree, config.ownDirName, patchesDir, { untrackedIsDirt: !options.fresh });
+		// are not counted as unextracted work in that run. The same run may also
+		// replace a tracked overlay target that carries exactly the strict
+		// composition of the configured overlays (##OVERLAY-KNOWN-MATERIALIZATION):
+		// `overlay apply` writes those bytes for packaging, and refusing them
+		// would lock the tree out of dev mode with no codkit command able to
+		// return it. Every other byte of the target stays dirt, and an ordinary
+		// `sync` gets no exemption at all - it may answer the fast path "up to
+		// date" and leave the materialization standing as if it were dev state.
+		const materialized: string[] = [];
+		const drift = driftDirty(tree, config.ownDirName, patchesDir, {
+			untrackedIsDirt: !options.fresh,
+			...(options.fresh
+				? { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, materialized) }
+				: {})
+		});
 		if (drift.dirty) {
 			const verdict = judgeOwnSides(drift, patchesDir, tree, config.ownDirName, mark, fingerprint);
 			if (verdict.kind === 'both-sides') {
@@ -301,6 +365,12 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 				return result('dirty', 1, { branch, dirtyFiles: drift.files });
 			}
 			out.warn(verdict.text, 'PATCHSET-SIDE-EDIT');
+		}
+		// Said out loud because the tree did look dirty a moment ago: these bytes
+		// were certified as codkit's own packaging state, and this run replaces
+		// them (a --fresh run never takes the fast path, so it always does).
+		if (materialized.length > 0) {
+			out.info(`fresh: ${materialized.join(', ')} carries the exact overlay materialization; this run replaces it`);
 		}
 	}
 
@@ -344,18 +414,12 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 
 	const conventions = prebuiltConventions;
 
-	// 6. --fresh: untracked content that the whitelist does not protect.
 	let cleaned = 0;
-	if (options.fresh && !dryRun) {
-		cleaned = cleanUntracked(tree, config, conventions);
-		out.info(`fresh: removed ${cleaned} untracked path(s), kept everything the cleanup whitelist protects`);
-	}
 
 	// 7. The artifacts, in the order PROP-008 sec. 3 fixes: patches by file name,
 	// then the overlay targets (CI and publish only), then the resource map by
 	// target. Full generated history inserts its one aggregate own-code atom at
 	// the patch/overlay boundary. The order is part of the resulting commit ids.
-	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), options.patchSetCommit ?? patchSetCommitId(patchesDir));
 	let plan: readonly Artifact[];
 	try {
 		plan = materializeOverlays ? prebuiltPlan : prebuiltPlan.filter((artifact) => artifact.kind !== 'overlay');
@@ -388,9 +452,33 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		assertCompletedRebaseMoveSyncTree(patchesDir, tree, completedRebase.desiredTree, treeSha);
 	}
 
-	// 9. Move the tree to the new tip, rewriting only what differs.
-	updateRef(tree, branch, built.top);
-	const changedPaths = moveWorkTree(tree, branch);
+	// 9. Move the tree to the new tip, rewriting only what differs. The ref
+	// mutation is guarded (##GENERATED-REF-WORKTREE-PREFLIGHT): under the
+	// common-repository lock, a fresh worktree listing must show no sibling on
+	// the generated branch, or the run refuses with every ref, index and work
+	// tree unchanged.
+	let changedPaths: readonly string[];
+	const coordination = acquireCommonRepositoryLock(tree, `generated ref refs/heads/${branch}`);
+	try {
+		assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
+		// No worktree byte changes before the exclusivity proof. In particular,
+		// --fresh cleanup used to delete user untracked files and only then learn
+		// that a sibling held the generated branch.
+		if (options.fresh) {
+			cleaned = cleanUntracked(tree, config, conventions);
+			out.info(`fresh: removed ${cleaned} untracked path(s), kept everything the cleanup whitelist protects`);
+		}
+		updateRef(tree, branch, built.top);
+		changedPaths = moveWorkTree(tree, branch);
+	} catch (error) {
+		if (isCkError(error) && error.code === 'WORKTREE-REF-SHARED') {
+			out.addError(error.toPayload());
+			return result('unfit', 2, { branch });
+		}
+		throw error;
+	} finally {
+		coordination.release();
+	}
 	options.checkpoint?.('worktree-moved');
 
 	// 10. Own code, dev overlay, exclude, hook, mark, cache.
@@ -512,6 +600,47 @@ function overlayArtifacts(overlays: readonly Overlay[]): readonly OverlayArtifac
 			overlays: group
 		};
 	});
+}
+
+/**
+ * The known-state classifier `sync --fresh` hands the drift guard
+ * (##OVERLAY-KNOWN-MATERIALIZATION). A tracked path passes only when its bytes
+ * are exactly the strict composition of every configured overlay that names it,
+ * over the clean pin file, at the context this run materializes with - the bytes
+ * `overlay apply` writes for packaging. Recognized paths are collected, so the
+ * run can say which bytes it is about to replace.
+ *
+ * Any surprise while answering (unreadable base, unsafe target path) becomes a
+ * false answer: the classifier may only narrow dirt, never weaken the guard, and
+ * the drift check of step 2 has already read the same pin base for every overlay
+ * that could reach here.
+ */
+function overlayMaterializationClassifier(
+	overlays: readonly Overlay[],
+	treeDir: string,
+	pinSha: string,
+	context: OverlayVarContext,
+	recognized: string[]
+): (path: string) => boolean {
+	const byTarget = new Map<string, readonly Overlay[]>();
+	for (const artifact of overlayArtifacts(overlays)) {
+		byTarget.set(artifact.target, artifact.overlays);
+	}
+	return (path) => {
+		const group = byTarget.get(path);
+		if (group === undefined) {
+			return false;
+		}
+		try {
+			if (!isExactOverlayMaterialization(group, treeDir, pinSha, context)) {
+				return false;
+			}
+		} catch {
+			return false;
+		}
+		recognized.push(path);
+		return true;
+	};
 }
 
 /**
@@ -1070,21 +1199,160 @@ function pruneEmptyDirectories(root: string, candidates: ReadonlySet<string>): v
 // ---------------------------------------------------------------------------
 
 /**
- * The managed block of .git/info/exclude. Rewritten on every sync and never
- * larger than these three lines; other people's lines in the file are left
- * exactly where they are.
+ * Where this tree's own-directory exclusion lives. The managed block of the
+ * shared `info/exclude` (the effective path, which is the common dir in a
+ * linked worktree) is written only in a single-worktree repository; with
+ * sibling worktrees the exclusion moves to the per-worktree file, so no
+ * worktree's own paths are ever hidden in another
+ * (PROP-005 ##OWN-EXCLUDED-LOCALLY).
  */
-export function writeExclude(treeDir: string, ownDirName: string): void {
-	writeExcludePlan(planExclude(treeDir, ownDirName));
+export type ExcludeCheckpoints = {
+	readonly afterPlan?: () => void;
+	readonly afterOpen?: () => void;
+	readonly afterOwnedWrite?: () => void;
+	readonly afterExtensionEnable?: () => void;
+	readonly afterCoreSet?: () => void;
+};
+
+export function writeExclude(treeDir: string, ownDirName: string, checkpoints?: ExcludeCheckpoints): void {
+	const plan = planExclude(treeDir, ownDirName, checkpoints?.afterOpen);
+	checkpoints?.afterPlan?.();
+	writeExcludePlan(plan, checkpoints);
 }
 
-function planExclude(treeDir: string, ownDirName: string): ExcludePlan {
-	const path = join(gitDirOf(treeDir), 'info', 'exclude');
-	const existing = existsSync(path) ? readFileSync(path, 'utf8') : '';
+function planExclude(treeDir: string, ownDirName: string, afterOpen?: () => void): ExcludePlan {
+	const listings = listWorktrees(treeDir);
+	if (listings === null) {
+		// Keep the historical lower-level fallback for a path that is not a git
+		// worktree at all (unit callers use it to exercise managed-block bytes).
+		// A real repository whose worktree listing failed is different: choosing
+		// the shared file there would be an unsafe fail-open.
+		const repository = runGit({ args: ['rev-parse', '--is-inside-work-tree'], cwd: treeDir });
+		if (repository.status === 0) {
+			throw ckError(
+				'ARTIFACT-BROKEN',
+				'cannot inspect linked worktrees before choosing the own-code exclusion scope',
+				'run git worktree list --porcelain in the fork repository, repair the reported error, and retry'
+			);
+		}
+		const adminRoot = gitCommonDirOf(treeDir);
+		const segments = ['info'];
+		const parent = ensureAdminDirectory(adminRoot, segments, { what: 'info/exclude', create: false });
+		const path = join(parent, 'exclude');
+		const existing = readExcludeFile(adminRoot, path, afterOpen);
+		return {
+			kind: 'common-block',
+			treeDir,
+			adminRoot,
+			adminSegments: segments,
+			...planManagedBlock(path, existing, `/${ownTargetRelativeDir(ownDirName)}/`)
+		};
+	}
+	const body = `/${ownTargetRelativeDir(ownDirName)}/`;
+	if (listings.length > 1) {
+		return planWorktreeExclude(treeDir, body);
+	}
+	const adminRoot = gitCommonDirOf(treeDir);
+	const segments = ['info'];
+	// Planning reads only: a missing directory is an absent exclude, a symlinked
+	// one is a refusal, and nothing is created before the run is committed.
+	const parent = ensureAdminDirectory(adminRoot, segments, { what: 'info/exclude', create: false });
+	const path = join(parent, 'exclude');
+	const existing = readExcludeFile(adminRoot, path, afterOpen);
+	return { kind: 'common-block', treeDir, adminRoot, adminSegments: segments, ...planManagedBlock(path, existing, body) };
+}
+
+/**
+ * The per-worktree plan: our own exclude file under the per-worktree admin
+ * directory, the two config keys that make Git consult it, and the retirement
+ * of our stale block from the shared info/exclude. Foreign config values and
+ * foreign files are named and refused here, before any mutation of the run.
+ */
+function planWorktreeExclude(treeDir: string, body: string): ExcludePlanWorktree {
+	const adminRoot = gitDirOf(treeDir);
+	const segments = OWN_EXCLUDE_RELATIVE_PATH.split('/').slice(0, -1);
+	const parent = ensureAdminDirectory(adminRoot, segments, { what: OWN_EXCLUDE_RELATIVE_PATH, create: false });
+	const path = join(parent, OWN_EXCLUDE_RELATIVE_PATH.split('/').pop() ?? 'exclude');
+	const existing = readExcludeFile(adminRoot, path);
+	if (existing !== '' && markerLines(existing, EXCLUDE_BEGIN).length === 0 && markerLines(existing, EXCLUDE_END).length === 0) {
+		throw malformedExclude(
+			path,
+			'this codkit-owned file carries foreign content',
+			`remove the file (it is regenerated on every sync) or move the patterns into the repository's own exclude configuration, then retry`
+		);
+	}
+	const block = planManagedBlock(path, existing, body);
+
+	const extension = worktreeConfigExtension(treeDir);
+	if (extension.state === 'set' && extension.value !== 'true') {
+		throw malformedExclude(
+			path,
+			`extensions.worktreeConfig is ${JSON.stringify(extension.value)}, not "true"`,
+			'a foreign value of a shared git extension is never overwritten; resolve it manually, then retry'
+		);
+	}
+	if (extension.state === 'set') {
+		// Only readable once the extension is on; otherwise the key is unset.
+		refuseForeignExcludesFile(treeDir, path);
+	} else {
+		// The extension is off, so a config.worktree that already exists is
+		// inert - but enabling the extension would make it live, and a foreign
+		// excludesFile in it must be refused HERE, at the preflight, not after
+		// the run has moved refs. Read the file directly, the way git -f does.
+		const worktreeConfig = join(gitDirOf(treeDir), 'config.worktree');
+		refuseDormantForeignExcludesFile(treeDir, worktreeConfig, path);
+	}
+	// A repository-level (shared local) excludesFile is a deliberate foreign
+	// decision too: the per-worktree key would shadow it for this worktree,
+	// and shadowing somebody's configuration is not codkit's call. Personal
+	// global/system values are deliberately NOT refused - the worktree key is
+	// exactly the mechanism that scopes this worktree's exclusion away from
+	// the machine's personal files.
+	const shared = localConfigValue(treeDir, 'core.excludesFile');
+	if (shared.state === 'set' && shared.value !== path) {
+		throw malformedExclude(
+			path,
+			`the repository config already sets core.excludesFile=${shared.value}`,
+			'a foreign repository-level exclude configuration is never shadowed; unset it (git config --unset core.excludesFile) or point it at the file above, then retry'
+		);
+	}
+
+	// Retire our own stale managed block from the shared file, if an older
+	// codkit left one there; foreign lines stay byte for byte.
+	let legacyCommon: ManagedBlockPlan | null = null;
+	const commonRoot = gitCommonDirOf(treeDir);
+	const commonParent = ensureAdminDirectory(commonRoot, ['info'], { what: 'info/exclude', create: false });
+	const commonPath = join(commonParent, 'exclude');
+	const commonExisting = readExcludeFile(commonRoot, commonPath);
+	const openers = markerLines(commonExisting, EXCLUDE_BEGIN);
+	const closers = markerLines(commonExisting, EXCLUDE_END);
+	if (openers.length > 0 || closers.length > 0) {
+		if (openers.length !== 1 || closers.length !== 1) {
+			throw malformedExclude(
+				commonPath,
+				`expected zero markers or one ordered pair, found ${openers.length} opening and ${closers.length} closing marker(s)`
+			);
+		}
+		const opener = openers[0];
+		const closer = closers[0];
+		if (opener === undefined || closer === undefined || opener.end > closer.start) {
+			throw malformedExclude(commonPath, 'the closing marker appears before the opening marker');
+		}
+		let without = `${commonExisting.slice(0, opener.start)}${commonExisting.slice(closer.end)}`;
+		if (without !== '' && !endsWithEol(without)) {
+			without = `${without}${preferredEol(commonExisting)}`;
+		}
+		legacyCommon = { path: commonPath, existing: commonExisting, next: without };
+	}
+
+	return { kind: 'worktree-local', treeDir, adminRoot, adminSegments: segments, ...block, legacyCommon };
+}
+
+/** The managed-block merge: zero markers appends, one ordered pair replaces. */
+function planManagedBlock(path: string, existing: string, body: string): ManagedBlockPlan {
 	const openers = markerLines(existing, EXCLUDE_BEGIN);
 	const closers = markerLines(existing, EXCLUDE_END);
 	const eol = preferredEol(existing);
-	const body = `/${ownTargetRelativeDir(ownDirName)}/`;
 
 	let next: string;
 	if (openers.length === 0 && closers.length === 0) {
@@ -1107,16 +1375,222 @@ function planExclude(treeDir: string, ownDirName: string): ExcludePlan {
 	return { path, existing, next };
 }
 
-function writeExcludePlan(plan: ExcludePlan): void {
-	const current = existsSync(plan.path) ? readFileSync(plan.path, 'utf8') : '';
-	if (current !== plan.existing) {
+/** One exclude file, read the contained way: absent is empty, a symlink refuses. */
+function readExcludeFile(root: string, path: string, afterOpen?: () => void): string {
+	const repositoryPath = relative(root, path).split(sep).join('/');
+	const read = readContainedFile(root, repositoryPath, { what: path, ...(afterOpen === undefined ? {} : { afterOpen }) });
+	return read.state === 'ok' ? Buffer.from(read.bytes).toString('utf8') : '';
+}
+
+type GitConfigValue = { readonly state: 'unset' } | { readonly state: 'set'; readonly value: string };
+
+function localConfigValue(treeDir: string, key: string): GitConfigValue {
+	const result = runGit({ args: ['config', '--local', '--get', key], cwd: treeDir });
+	if (result.status !== 0) {
+		return { state: 'unset' };
+	}
+	const value = result.stdout.trim();
+	return value === '' ? { state: 'unset' } : { state: 'set', value };
+}
+
+function worktreeConfigExtension(treeDir: string): GitConfigValue {
+	return localConfigValue(treeDir, 'extensions.worktreeConfig');
+}
+
+/** The per-worktree core.excludesFile; only meaningful with the extension on. */
+function worktreeExcludesFile(treeDir: string): GitConfigValue {
+	const result = runGit({ args: ['config', '--worktree', '--get', 'core.excludesFile'], cwd: treeDir });
+	if (result.status !== 0) {
+		return { state: 'unset' };
+	}
+	const value = result.stdout.trim();
+	return value === '' ? { state: 'unset' } : { state: 'set', value };
+}
+
+/**
+ * Inspect an inert `config.worktree` before enabling the shared extension. The
+ * file is read no-follow before and after git parses it; different bytes are a
+ * race and refuse. This check is run both at planning and, under the common
+ * lock, immediately before the extension mutation.
+ */
+function refuseDormantForeignExcludesFile(treeDir: string, worktreeConfig: string, ownedPath: string): void {
+	const adminRoot = gitDirOf(treeDir);
+	const before = readContainedFile(adminRoot, 'config.worktree', { what: worktreeConfig });
+	if (before.state === 'absent') {
+		return;
+	}
+	const latent = runGit({ args: ['config', '--includes', '-f', worktreeConfig, '--get', 'core.excludesFile'], cwd: treeDir });
+	const after = readContainedFile(adminRoot, 'config.worktree', { what: worktreeConfig });
+	if (after.state !== 'ok' || !Buffer.from(before.bytes).equals(Buffer.from(after.bytes))) {
+		throw malformedExclude(worktreeConfig, 'changed while its dormant worktree configuration was being inspected', 'retry the command');
+	}
+	if (latent.status !== 0 && latent.status !== 1) {
+		throw malformedExclude(
+			worktreeConfig,
+			`cannot parse dormant worktree configuration: ${latent.stderr.trim() || `git config exited ${latent.status}`}`,
+			'repair config.worktree before enabling extensions.worktreeConfig'
+		);
+	}
+	const value = latent.stdout.trim();
+	if (latent.status === 0 && value !== '' && value !== ownedPath) {
+		throw malformedExclude(
+			ownedPath,
+			`this worktree carries a dormant config.worktree with core.excludesFile=${value}`,
+			'enabling extensions.worktreeConfig would make that foreign value live; resolve it manually (git config -f <git-dir>/config.worktree --unset core.excludesFile), then retry'
+		);
+	}
+}
+
+/**
+ * Refuse a per-worktree excludesFile that is not ours, wherever it came from -
+ * including a config.worktree that only became readable after codkit enabled
+ * the extension. Never overwritten, never chained.
+ */
+function refuseForeignExcludesFile(treeDir: string, path: string): void {
+	const excludesFile = worktreeExcludesFile(treeDir);
+	if (excludesFile.state === 'set' && excludesFile.value !== path) {
+		throw malformedExclude(
+			path,
+			`this worktree already has core.excludesFile=${excludesFile.value}`,
+			'a foreign exclude configuration is never overwritten; unset it (git config --worktree --unset core.excludesFile) or point it at the file above, then retry'
+		);
+	}
+}
+
+function setWorktreeExcludesFile(treeDir: string, path: string): void {
+	gitOk(
+		{ args: ['config', '--worktree', 'core.excludesFile', path], cwd: treeDir },
+		{
+			code: 'CONFIG',
+			message: `cannot set the per-worktree core.excludesFile to ${path}`,
+			hint: 'check that the git configuration of the worktree is writable'
+		}
+	);
+}
+
+function enableWorktreeConfig(treeDir: string): void {
+	gitOk(
+		{ args: ['config', '--local', 'extensions.worktreeConfig', 'true'], cwd: treeDir },
+		{
+			code: 'CONFIG',
+			message: 'cannot enable extensions.worktreeConfig (required for per-worktree exclude configuration)',
+			hint: 'check that the repository configuration is writable'
+		}
+	);
+}
+
+function writeExcludePlan(plan: ExcludePlan, checkpoints?: ExcludeCheckpoints): void {
+	if (plan.kind === 'common-block') {
+		writeCommonExcludePlan(plan);
+		return;
+	}
+	// The shared config file and the shared info/exclude are involved even
+	// though the exclusion itself is per-worktree: serialize with everything
+	// else that touches this repository's shared state.
+	const handle = acquireCommonRepositoryLock(plan.treeDir, 'worktree-local exclude');
+	try {
+		writeWorktreeExcludePlan(plan, checkpoints);
+	} finally {
+		handle.release();
+	}
+}
+
+function writeCommonExcludePlan(plan: ExcludePlanCommon): void {
+	if (readExcludeFile(plan.adminRoot, plan.path) !== plan.existing) {
 		throw malformedExclude(plan.path, 'the file changed after the preflight scan');
 	}
 	if (plan.next === plan.existing) {
 		return;
 	}
-	mkdirSync(dirname(plan.path), { recursive: true });
-	writeFileSync(plan.path, plan.next, 'utf8');
+	writeContainedFileAtomic(plan.adminRoot, `${plan.adminSegments.join('/')}/${basename(plan.path)}`, {
+		bytes: encodeUtf8(plan.next),
+		what: plan.path
+	});
+}
+
+function writeWorktreeExcludePlan(plan: ExcludePlanWorktree, checkpoints?: ExcludeCheckpoints): void {
+	const commonRoot = gitCommonDirOf(plan.treeDir);
+	const worktreeRoot = gitDirOf(plan.treeDir);
+	const snapshots = [
+		containedSnapshot(plan.adminRoot, plan.path),
+		containedSnapshot(commonRoot, join(commonRoot, 'config')),
+		containedSnapshot(worktreeRoot, join(worktreeRoot, 'config.worktree')),
+		...(plan.legacyCommon === null ? [] : [containedSnapshot(commonRoot, plan.legacyCommon.path)])
+	];
+	try {
+		if (readExcludeFile(plan.adminRoot, plan.path) !== plan.existing) {
+			throw malformedExclude(plan.path, 'the file changed after the preflight scan');
+		}
+		const extension = worktreeConfigExtension(plan.treeDir);
+		if (extension.state === 'set' && extension.value !== 'true') {
+			throw malformedExclude(plan.path, `extensions.worktreeConfig is ${JSON.stringify(extension.value)}, not "true"`);
+		}
+		if (extension.state === 'unset') {
+			refuseDormantForeignExcludesFile(plan.treeDir, join(worktreeRoot, 'config.worktree'), plan.path);
+		} else {
+			refuseForeignExcludesFile(plan.treeDir, plan.path);
+		}
+
+		// Materialize and verify the owned file before any config can point at it.
+		if (plan.next !== plan.existing) {
+			writeContainedFileAtomic(plan.adminRoot, OWN_EXCLUDE_RELATIVE_PATH, {
+				bytes: encodeUtf8(plan.next),
+				what: plan.path
+			});
+		}
+		if (readExcludeFile(plan.adminRoot, plan.path) !== plan.next) {
+			throw malformedExclude(plan.path, 'owned exclude verification failed after write');
+		}
+		checkpoints?.afterOwnedWrite?.();
+
+		if (plan.legacyCommon !== null && plan.legacyCommon.next !== plan.legacyCommon.existing) {
+			if (readExcludeFile(commonRoot, plan.legacyCommon.path) !== plan.legacyCommon.existing) {
+				throw malformedExclude(plan.legacyCommon.path, 'the file changed after the preflight scan');
+			}
+			writeContainedFileAtomic(commonRoot, 'info/exclude', {
+				bytes: encodeUtf8(plan.legacyCommon.next),
+				what: plan.legacyCommon.path
+			});
+		}
+
+		if (extension.state === 'unset') {
+			enableWorktreeConfig(plan.treeDir);
+			checkpoints?.afterExtensionEnable?.();
+			refuseForeignExcludesFile(plan.treeDir, plan.path);
+		}
+		const excludesFileNow = worktreeExcludesFile(plan.treeDir);
+		if (excludesFileNow.state === 'unset') {
+			setWorktreeExcludesFile(plan.treeDir, plan.path);
+		}
+		checkpoints?.afterCoreSet?.();
+	} catch (error) {
+		try {
+			for (const snapshot of [...snapshots].reverse()) restoreContainedSnapshot(snapshot);
+		} catch (rollbackError) {
+			throw ckError(
+				'INTERNAL',
+				`worktree-local exclude failed (${error instanceof Error ? error.message : String(error)}) and exact rollback also failed (${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)})`,
+				'inspect the repository config and per-worktree exclude before retrying'
+			);
+		}
+		throw error;
+	}
+}
+
+type ContainedSnapshot = { readonly root: string; readonly relative: string; readonly path: string; readonly bytes: Uint8Array | null };
+
+function containedSnapshot(root: string, path: string): ContainedSnapshot {
+	const repositoryPath = relative(root, path).split(sep).join('/');
+	const read = readContainedFile(root, repositoryPath, { what: path });
+	return { root, relative: repositoryPath, path, bytes: read.state === 'ok' ? read.bytes : null };
+}
+
+function restoreContainedSnapshot(snapshot: ContainedSnapshot): void {
+	if (snapshot.bytes === null) {
+		removeContainedFile(snapshot.root, snapshot.relative, { what: snapshot.path });
+		return;
+	}
+	writeContainedFileAtomic(snapshot.root, snapshot.relative, { bytes: snapshot.bytes, what: snapshot.path });
 }
 
 type MarkerLine = { readonly start: number; readonly end: number; readonly eol: string };
@@ -1166,17 +1640,36 @@ function endsWithEol(text: string): boolean {
 	return text.endsWith('\n') || text.endsWith('\r');
 }
 
-function malformedExclude(path: string, detail: string): CkError {
+function malformedExclude(path: string, detail: string, hint?: string): CkError {
 	return ckError(
 		'CONFIG',
-		`${path}: malformed codkit managed block: ${detail}`,
-		`restore exactly one ${EXCLUDE_BEGIN} / ${EXCLUDE_END} pair or remove both markers, then retry`,
+		`${path}: ${detail}`,
+		hint ?? `restore exactly one ${EXCLUDE_BEGIN} / ${EXCLUDE_END} pair or remove both markers, then retry`,
 		path
 	);
 }
 
-/** The hook body; regenerated by every sync, so it cannot drift (PROP-012 sec. 5). */
+/**
+ * The hook body; regenerated by every sync, so it cannot drift (PROP-012 sec. 5).
+ * The marker line under the shebang claims the file the same way the patch-set
+ * hooks do (PROP-007 sec. 19): a hook without it belongs to somebody else.
+ */
 export const TREE_PRE_COMMIT_HOOK = [
+	'#!/bin/sh',
+	HOOK_MARKER,
+	'# Installed by codkit. Commits in this fork tree are made by codkit only.',
+	`if [ "$${INTERNAL_COMMIT_ENV}" != "1" ]; then`,
+	'\techo "codkit: manual commits in the fork tree are forbidden;" >&2',
+	'\techo "codkit: save your work with: codkit save (from the patchset repo)." >&2',
+	'\techo "codkit: This tree is managed by codkit." >&2',
+	'\texit 1',
+	'fi',
+	'exit 0',
+	''
+].join('\n');
+
+/** What codkit wrote before the ownership marker existed: still ours to renew. */
+const LEGACY_TREE_PRE_COMMIT_HOOK = [
 	'#!/bin/sh',
 	'# Installed by codkit. Commits in this fork tree are made by codkit only.',
 	`if [ "$${INTERNAL_COMMIT_ENV}" != "1" ]; then`,
@@ -1189,13 +1682,70 @@ export const TREE_PRE_COMMIT_HOOK = [
 	''
 ].join('\n');
 
-export function writeTreeHook(treeDir: string, out: Output): boolean {
-	const path = join(gitDirOf(treeDir), 'hooks', 'pre-commit');
+/**
+ * The effective hooks path for one config scope, or null when that scope's
+ * resolution fails (`core.hooksPath=/dev/null` makes `--git-path hooks/*`
+ * fatal, for instance). A failure is never proof of anything: the caller
+ * reports the guard as unprovable, not as active.
+ */
+function effectiveHooksPath(treeDir: string, machineConfig: boolean): string | null {
+	if (!machineConfig) {
+		const resolved = effectiveGitPath(treeDir, 'hooks/pre-commit');
+		return resolved.ok ? resolved.path : null;
+	}
+	const result = runGitUserPathResolution({ cwd: treeDir, relative: 'hooks/pre-commit' });
+	if (result.status !== 0) {
+		return null;
+	}
+	const line = result.stdout.trim();
+	return line === '' ? null : line;
+}
+
+export function writeTreeHook(treeDir: string, out: Output, afterOpen?: () => void): boolean {
+	// A linked worktree shares the hooks directory with every sibling worktree
+	// of its repository, so a blocking hook here would refuse manual commits in
+	// trees codkit does not manage. Nothing is written there, nor at the old
+	// unused per-worktree appended location; the guard is simply off.
+	if (isLinkedGitLayout(gitDirOf(treeDir), gitCommonDirOf(treeDir))) {
+		out.warn(
+			`linked worktree ${treeDir}: not installing the pre-commit hook; hooks are shared by every worktree of a repository, ` +
+				'so a codkit hook here would refuse manual commits in sibling worktrees too (the manual-commit guard is unavailable in this tree)',
+			'MARK-RO'
+		);
+		return false;
+	}
+	// The repository's own administrative hooks directory, and nothing else:
+	// `--git-path hooks/<name>` follows core.hooksPath, which may name a
+	// directory outside the repository (a user's or a site-wide hooks
+	// collection). Codkit has no authority over such a location, so the guard
+	// is written under the tree's own git dir, never at the configured path.
+	const gitDir = gitDirOf(treeDir);
+	const hooksDirPath = join(gitDir, 'hooks');
+	const path = join(hooksDirPath, 'pre-commit');
 	try {
-		mkdirSync(dirname(path), { recursive: true });
-		writeFileSync(path, TREE_PRE_COMMIT_HOOK, 'utf8');
-		chmodSync(path, 0o755);
-		return true;
+		// Contained administrative write: a symlinked hooks directory or a
+		// symlinked hook file refuses instead of landing outside git admin.
+		const hookPath = join(gitDir, 'hooks', 'pre-commit');
+		const existing = readContainedFile(gitDir, 'hooks/pre-commit', {
+			what: hookPath,
+			...(afterOpen === undefined ? {} : { afterOpen })
+		});
+		if (existing.state === 'ok') {
+			const current = Buffer.from(existing.bytes).toString('utf8');
+			if (!isOurs(current) && current !== LEGACY_TREE_PRE_COMMIT_HOOK) {
+				out.warn(
+					`${hookPath} is a foreign pre-commit hook; codkit never overwrites or chains somebody else's hook. ` +
+						'The manual-commit guard is not installed in this tree; remove the foreign hook if you want codkit to govern it',
+					'MARK-RO'
+				);
+				return false;
+			}
+		}
+		writeContainedFileAtomic(gitDir, 'hooks/pre-commit', {
+			bytes: encodeUtf8(TREE_PRE_COMMIT_HOOK),
+			mode: 0o755,
+			what: hookPath
+		});
 	} catch (error) {
 		out.warn(
 			`cannot install the fork-tree pre-commit hook ${path}: ${error instanceof Error ? error.message : String(error)}; ` +
@@ -1204,6 +1754,42 @@ export function writeTreeHook(treeDir: string, out: Output): boolean {
 		);
 		return false;
 	}
+	// Honesty about the effect, not just the write, and across every config
+	// scope: the isolated resolution sees the repository's own config, the
+	// machine resolution sees the global and system config the user's git
+	// actually runs with. The guard is only "on" when both name our copy;
+	// anything else - a custom core.hooksPath anywhere, or a resolution that
+	// fails outright (core.hooksPath=/dev/null) - means git will not run this
+	// copy, and saying otherwise would advertise a guard that is not there. The
+	// copy is still kept: it is the repository's own location, regenerated by
+	// every sync, and it becomes the live guard the moment the config is gone.
+	const isolated = effectiveHooksPath(treeDir, false);
+	const machine = effectiveHooksPath(treeDir, true);
+	if (isolated === null || machine === null) {
+		out.warn(
+			`${treeDir}: cannot prove which pre-commit hook git runs (effective path resolution failed; a configured ` +
+				`core.hooksPath such as /dev/null breaks it); the codkit hook at ${path} may not run, so the manual-commit guard is ` +
+				'not proven active. Fix or remove core.hooksPath (git config --unset core.hooksPath) to make the guard provable',
+			'MARK-RO'
+		);
+		return false;
+	}
+	if (!sameEffectivePath(isolated, path) || !sameEffectivePath(machine, path)) {
+		const effective = !sameEffectivePath(machine, path) ? machine : isolated;
+		out.warn(
+			`${treeDir}: git runs pre-commit hooks from ${effective} because of a configured core.hooksPath (repository, global ` +
+				`or system scope); the codkit hook at ${path} will not run, so the manual-commit guard is unavailable while that ` +
+				'config remains (git keeps executing the configured hook)',
+			'MARK-RO'
+		);
+		return false;
+	}
+	return true;
+}
+
+/** Platform-aware normal-vs-linked Git layout predicate. */
+export function isLinkedGitLayout(gitDir: string, commonDir: string, platform: NodeJS.Platform = process.platform): boolean {
+	return !sameEffectivePath(gitDir, commonDir, platform);
 }
 
 // ---------------------------------------------------------------------------

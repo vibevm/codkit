@@ -21,12 +21,12 @@
       "falseEndGuards": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compilation (?!with )[^ ]+ with \\d+ errors after \\d+ ms$"]
     },
     "extensions": {
-      "_doc": "Forty extension projects; the per-pass total arrives on its own line, so errorCountLine is the source of the number and the tsc lines, when the daemon prints them, give the detail.",
+      "_doc": "Forty extension projects. Real watch-extensions lines carry a [HH:mm:ss] prefix while the generated fixtures stay bare, so every pattern accepts exactly that optional prefix (the typecheck idiom); errorLine additionally refuses a line whose remainder starts with '[', so a malformed prefix (missing space) is not parsed as a diagnostic with a polluted file path. There is no aggregate count line: 'Finished extensions <project> with N errors.' lines are per-project summaries, not a pass total, and are intentionally ignored - errorCountLine is empty and the authoritative pass error count is the number of parsed diagnostics (countFromSummary false).",
       "script": "watch-extensions",
-      "passStart": ["^Starting compilation$"],
-      "passEnd": ["^Finished compilation$"],
-      "errorLine": ["^(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
-      "errorCountLine": ["^Finished extensions .* with (\\d+) errors\\.$"],
+      "passStart": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Starting compilation$"],
+      "passEnd": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compilation$"],
+      "errorLine": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?(?!\\[)(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
+      "errorCountLine": [],
       "falseEndGuards": []
     },
     "copilot": {

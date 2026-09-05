@@ -278,7 +278,7 @@ export function devChannelIgnoreWarning(treeDir) {
         return null;
     }
     return (`${PRODUCT_OVERRIDES_FILE} is not ignored by the fork tree, so the dev channel of the config-overlay layer ` +
-        `leaves the tree permanently dirty; add it to .gitignore upstream or to .git/info/exclude of the tree`);
+        "leaves the tree permanently dirty; add it to .gitignore upstream or to the repository's own git exclusion (info/exclude)");
 }
 /** The value of one top-level key of a JSON target at the pin, or undefined. */
 function valueAtPinPath(treeDir, pinSha, target, key) {
@@ -381,6 +381,34 @@ export function applyOverlaysToTree(overlays, treeDir, pinSha, context) {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, rendered.bytes);
     return { ...rendered, path, changed: true };
+}
+/**
+ * Does the tree carry exactly the strict composition of these overlays over the
+ * clean pin file (##OVERLAY-KNOWN-MATERIALIZATION)? This is the state
+ * `applyOverlaysToTree` writes, asked of bytes that already exist: the drift
+ * guard of `sync --fresh` uses it to tell codkit's own packaging materialization
+ * from a manual edit, and unlike `checkOverlayTarget` it is a plain byte answer,
+ * because the caller already knows the target differs from what its sync would
+ * leave in place.
+ *
+ * False when the file is absent or unreadable - that is not a materialization
+ * and stays dirt. A render failure propagates to the caller (it cannot happen
+ * after the sync-time drift check has read the same pin base; the one caller
+ * converts any surprise into a false answer rather than into a weaker guard).
+ */
+export function isExactOverlayMaterialization(overlays, treeDir, pinSha, context) {
+    const target = overlays[0]?.target;
+    if (target === undefined) {
+        throw ckError('INTERNAL', 'cannot classify an overlay materialization without an overlay');
+    }
+    let current;
+    try {
+        current = readFileSync(overlayTreePath(treeDir, target, 'the overlay target'));
+    }
+    catch {
+        return false;
+    }
+    return bytesEqual(current, renderOverlayTarget(overlays, treeDir, pinSha, context).bytes);
 }
 /**
  * `overlay check` for one overlay (##OVERLAY-DRIFT-DETECTOR).

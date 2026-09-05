@@ -9,7 +9,9 @@
 //       files, which git can see because those files are tracked;
 //   (b) a byte comparison of the tree's own directory against `delta/own/` -
 //       edits to own code, which git cannot see, because locally the own
-//       directory is excluded through .git/info/exclude (##OWN-EXCLUDED-LOCALLY).
+//       directory is excluded (##OWN-EXCLUDED-LOCALLY: the managed block of
+//       info/exclude in a single-worktree repository, the worktree-local
+//       exclude file in a multi-worktree one).
 //
 // Half (b) is not an optimization: without it every change to own code in the
 // tree would be silently overwritten by the next sync.
@@ -20,6 +22,16 @@
 // can be lost by writing it. Only the two classes that carry work (a file the
 // tree has and patchset does not, and a file both sides have with different bytes)
 // stop a destructive command.
+//
+// A second refinement (##OVERLAY-KNOWN-MATERIALIZATION): a *tracked* path the
+// caller can certify as a state codkit itself wrote - today the strict overlay
+// composition of `overlay apply` - is not unextracted work either, provided the
+// calling run is the one that replaces it. The guard itself stays generic: it
+// accepts a predicate and asks it about tracked paths only, so the classification
+// lives with the layer that can actually prove it. `sync --fresh` is the only
+// caller (an ordinary `sync` may answer the fast path "up to date" and leave the
+// bytes in place, which is exactly what a silent exemption must not do); `ci`
+// deliberately passes none (see the sync engine).
 
 import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
@@ -50,6 +62,17 @@ export type DriftOptions = {
 	 * those paths, by the cleanup whitelist, in the same run.
 	 */
 	readonly untrackedIsDirt?: boolean;
+	/**
+	 * ##OVERLAY-KNOWN-MATERIALIZATION: a tracked path this predicate accepts is
+	 * a state codkit itself wrote and the calling run is about to replace, so it
+	 * is not unextracted work. Asked only about paths git reports as tracked and
+	 * changed - never about untracked litter, which stays the business of
+	 * `untrackedIsDirt` - and only about paths outside the own directory. A
+	 * false answer leaves the path dirt, so an exemption can narrow the guard
+	 * but never disable it; a throwing predicate is the caller's problem, and
+	 * the one caller catches everything into a false answer.
+	 */
+	readonly isKnownMaterialization?: (path: string) => boolean;
 };
 
 export function driftDirty(treeDir: string, ownDirName: string, patchesDir: string, options: DriftOptions = {}): DriftResult {
@@ -71,7 +94,10 @@ export function driftDirty(treeDir: string, ownDirName: string, patchesDir: stri
 	return { dirty: files.length > 0, files, upstream, own };
 }
 
-/** Half (a): what git sees, minus the own directory it is not allowed to judge. */
+/**
+ * Half (a): what git sees, minus the own directory it is not allowed to judge,
+ * minus the tracked paths the caller certified as its own known materialization.
+ */
 export function upstreamDirt(treeDir: string, ownDirName: string, options: DriftOptions = {}): readonly string[] {
 	const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
 	if (status.status !== 0) {
@@ -82,11 +108,18 @@ export function upstreamDirt(treeDir: string, ownDirName: string, options: Drift
 		);
 	}
 	const untrackedIsDirt = options.untrackedIsDirt ?? true;
+	const classify = options.isKnownMaterialization;
 	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
-	return porcelainEntries(status.stdout)
-		.filter((entry) => untrackedIsDirt || entry.status !== '??')
-		.map((entry) => entry.path)
-		.filter((path) => !path.startsWith(ownPrefix));
+	return (
+		porcelainEntries(status.stdout)
+			.filter((entry) => untrackedIsDirt || entry.status !== '??')
+			// The known-state question is about tracked bytes only: an untracked
+			// path carries no HEAD to differ from (and with `--fresh` it is the
+			// whitelist, not an overlay, that speaks for it).
+			.filter((entry) => classify === undefined || entry.status === '??' || !classify(entry.path))
+			.map((entry) => entry.path)
+			.filter((path) => !path.startsWith(ownPrefix))
+	);
 }
 
 export type PorcelainEntry = {

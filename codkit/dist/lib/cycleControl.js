@@ -3,7 +3,8 @@
 // visible mutation is preceded by canonical state, and every retry reconciles
 // exact Git/config facts before advancing one idempotent step.
 import { randomUUID } from 'node:crypto';
-import { CONFIG_FILE_NAME, writeConfigPin } from './configFile.js';
+import { CONFIG_FILE_NAME } from './configFile.js';
+import { writeConfigPin } from './configPin.js';
 import { readCycleControlRecord, removeCycleControlRecord, writeCycleControlRecord } from './cycleControlRecord.js';
 import { assertOnlyCycleStatus, assertSourceToTargetAncestry, assertValidBranch, assertPatchSetRepositoryClean, branchTip, bumpSubject, bumpTrailer, configAt, currentBranchName, findCycleBump, headCommit, mustGit, readPatchSetStatus, recognizeBump, resolveTargetPin, samePin } from './cycleControlGit.js';
 import { assertCurrentCycleBranch, completedRestartResult, restartAction, resumeRestart } from './cycleRestart.js';
@@ -17,7 +18,7 @@ const PATCHSET_CYCLE_LOCK_ID = 'cycle-global';
 export { resolveTargetPin } from './cycleControlGit.js';
 export function startCycle(options) {
     const dependencies = resolvedDependencies(options.dependencies);
-    return withCycleLocks(options.patchesDir, options.forkDir, 'cycle start', dependencies, () => {
+    return withCycleLocks(options.patchesDir, options.forkDir, 'cycle start', dependencies, (cycleLock) => {
         const control = readCycleControlRecord(options.patchesDir, dependencies.controlFileSystem);
         if (control !== null) {
             if (control.status === 'running') {
@@ -33,7 +34,7 @@ export function startCycle(options) {
                 if (control?.status === 'done') {
                     removeCycleControlRecord(options.patchesDir, dependencies.controlFileSystem);
                 }
-                return resumeInit(existing, options, dependencies, options.config.pin, true);
+                return resumeInit(existing, options, dependencies, options.config.pin, true, cycleLock);
             }
             if (isPristineApplyState(existing)) {
                 return recognizeCompletedInit(existing, options, targetPin, dependencies.git);
@@ -65,7 +66,7 @@ export function startCycle(options) {
             removeCycleControlRecord(options.patchesDir, dependencies.controlFileSystem);
         }
         dependencies.checkpoint('init-state-written');
-        return resumeInit(state, options, dependencies, options.config.pin, false);
+        return resumeInit(state, options, dependencies, options.config.pin, false, cycleLock);
     });
 }
 function recognizeCompletedInit(state, options, targetPin, git) {
@@ -178,7 +179,7 @@ export function restartCycle(options) {
         return resumeRestart(options.patchesDir, record, dependencies);
     });
 }
-function resumeInit(state, options, dependencies, initialWorkingPin, resumed) {
+function resumeInit(state, options, dependencies, initialWorkingPin, resumed, cycleLock) {
     let workingPin = initialWorkingPin;
     for (;;) {
         const step = inspectInitStep(options.patchesDir, state, workingPin, dependencies.git);
@@ -188,7 +189,7 @@ function resumeInit(state, options, dependencies, initialWorkingPin, resumed) {
                 dependencies.checkpoint('init-branch-created');
                 break;
             case 'write-config':
-                writeConfigPin(options.patchesDir, state.targetPin, configWriteOptions(dependencies));
+                writeConfigPin(options.patchesDir, state.targetPin, configWriteOptions(dependencies, cycleLock));
                 workingPin = state.targetPin;
                 dependencies.checkpoint('init-config-written');
                 break;
@@ -373,7 +374,7 @@ function withCycleLocks(patchesDir, forkDir, command, dependencies, body) {
     try {
         const treeLock = dependencies.acquireLock(patchesDir, treeId(forkDir), command);
         try {
-            return body();
+            return body(patchsetLock);
         }
         finally {
             treeLock.release();
@@ -383,8 +384,9 @@ function withCycleLocks(patchesDir, forkDir, command, dependencies, body) {
         patchsetLock.release();
     }
 }
-function configWriteOptions(dependencies) {
+function configWriteOptions(dependencies, lock) {
     return {
+        lock,
         ...(dependencies.configFileSystem === undefined ? {} : { fileSystem: dependencies.configFileSystem }),
         temporarySuffix: dependencies.temporarySuffix
     };

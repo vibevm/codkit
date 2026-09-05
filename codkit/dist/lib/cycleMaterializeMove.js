@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { porcelainZEntries } from './driftGuard.js';
 import { gitOk, runGit } from './gitx.js';
 import { ckError } from './messages.js';
+import { mutateGeneratedRef } from './worktrees.js';
 import { cycleMoveCheckpointSchema, cycleMoveRecordSchema, cycleRecordError, readCycleMoveRecord, removeCycleMoveRecord, writeCycleMoveRecord } from './cycleMaterializeMoveReceipt.js';
 import { assertCycleEntryKnown, assertCycleFinalState, assertCyclePathsSafe, cycleOwnedConflictTemps, deriveCycleMoveEntries, materializeCycleEntries, writeCycleConflicts } from './cycleMaterializeMoveWorktree.js';
 export { CYCLE_MATERIALIZE_RECORD_PATH } from './cycleMaterializeMoveReceipt.js';
@@ -39,13 +40,21 @@ export function executeProvisionalMove(options, preflight) {
         if (preflight.prior === null)
             notify(options, 'prepared');
     }
-    if (refTip(options.tree, options.branch) !== options.tip) {
-        mustGit(options.tree, ['update-ref', `refs/heads/${options.branch}`, options.tip, record.originalRef ?? ZERO_SHA], `claim ${options.branch}`);
-    }
+    // The same generated-ref guard as sync (PROP-008
+    // ##GENERATED-REF-WORKTREE-PREFLIGHT): both moving the shared ref and
+    // selecting it as this worktree's HEAD happen under one common-repository
+    // lock and one fresh preflight. Guarding only update-ref would leave the
+    // resume case (ref already at tip, HEAD not selected yet) able to race a
+    // sibling worktree onto the same generated branch.
+    mutateGeneratedRef(options.tree, `refs/heads/${options.branch}`, () => {
+        if (refTip(options.tree, options.branch) !== options.tip) {
+            mustGit(options.tree, ['update-ref', `refs/heads/${options.branch}`, options.tip, record.originalRef ?? ZERO_SHA], `claim ${options.branch}`);
+        }
+        if (branchName(options.tree) !== options.branch || mustHead(options.tree) !== options.tip) {
+            mustGit(options.tree, ['symbolic-ref', 'HEAD', `refs/heads/${options.branch}`], `select ${options.branch}`);
+        }
+    });
     record = advance(options, record, 'ref-updated');
-    if (branchName(options.tree) !== options.branch || mustHead(options.tree) !== options.tip) {
-        mustGit(options.tree, ['symbolic-ref', 'HEAD', `refs/heads/${options.branch}`], `select ${options.branch}`);
-    }
     record = advance(options, record, 'head-selected');
     // After this durable point the live index can be changed by external tools.
     // Worktree bytes always come from the exact-tip isolated index instead.
