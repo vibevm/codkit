@@ -56,6 +56,11 @@ export const ERROR_CODES = [
 	// refuses to move it while a sibling worktree has it checked out
 	// (PROP-008 ##GENERATED-REF-WORKTREE-PREFLIGHT).
 	'WORKTREE-REF-SHARED',
+	// HEAD of the fork tree is not on the generated branch while commits above
+	// the pin exist, or history below the generated tip was rewritten: the
+	// destructive commands refuse rather than extract from the wrong place
+	// (PROP-008 ##TREE-COMMITS-ARE-WORK, campaign decision D8).
+	'TREE-HEAD',
 	// Not carried by a domain spec section, but required by the runtime:
 	'INTERNAL',
 	// Dependencies that are not there: the launcher (codkit/bin/codkit.mjs) says

@@ -57,8 +57,10 @@ import type { CkErrorPayload } from './messages.ts';
 import { listOwnFiles, ownSourceRoot } from './ownCopy.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { buildGeneratedTip, runSync } from './syncEngine.ts';
+import { treeHeadError } from './treeCommits.ts';
 import { checkTree, formatCheckLine } from './treeIdentity.ts';
 import { runVerify } from './verifyEngine.ts';
+import { assertGeneratedRefExclusive } from './worktrees.ts';
 
 export type CiProfile = 'verify' | 'build';
 
@@ -240,6 +242,11 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	// tree. Build deliberately applies the non-overlay state first; upstream
 	// hygiene must see that state before strict overlay targets are materialized.
 	//
+	// The shared-ref preflight speaks before the guard (the D7 ruling of
+	// 2026-09-06; PROP-008 §4): a sibling's commit on the shared branch turns
+	// this tree's index staged-dirty, and that state must be refused by its
+	// cause, not read as a reused developer tree.
+	//
 	// No known-materialization classifier is passed here (REPAIR-005 decision):
 	// ci materializes overlay targets only through commits of the generated
 	// branch, so its own runs leave the tree clean against its own HEAD and can
@@ -248,7 +255,27 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	// by a job, which is exactly what this guard exists to name loudly - and its
 	// way out is codkit's own (`load --fresh` on that tree) or the disposable-tree
 	// contract itself (mount a fresh tree), not a direct git restore.
-	const drift = driftDirty(tree, config.ownDirName, patchesDir, { untrackedIsDirt: false });
+	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+	try {
+		assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
+	} catch (error) {
+		if (isCkError(error) && error.code === 'WORKTREE-REF-SHARED') {
+			steps.record('fresh apply', 'failed', 'the generated branch is checked out in another worktree of this repository');
+			out.addError(error.toPayload());
+			return done(EXIT_ENVIRONMENT);
+		}
+		throw error;
+	}
+	const drift = driftDirty(tree, config.ownDirName, patchesDir, {
+		untrackedIsDirt: false,
+		generated: { pinSha: config.pin.sha, branch }
+	});
+	const head = treeHeadError(drift.treeCommits, branch);
+	if (head !== null) {
+		steps.record('fresh apply', 'failed', 'HEAD of the tree is not on the generated branch while it carries commits');
+		out.addError(head.toPayload());
+		return done(EXIT_CHECK_FAILED);
+	}
 	if (drift.dirty) {
 		for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
 			out.info(`  dirty: ${path}`);
@@ -256,10 +283,19 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		if (drift.files.length > DIRTY_LIST_LIMIT) {
 			out.info(`  ... and ${drift.files.length - DIRTY_LIST_LIMIT} more`);
 		}
-		steps.record('fresh apply', 'failed', `${drift.files.length} path(s) differ from what patchset carries`);
+		steps.record(
+			'fresh apply',
+			'failed',
+			drift.commits.length > 0
+				? `${drift.commits.length} commit(s) in the fork tree are not in patchset`
+				: `${drift.files.length} path(s) differ from what patchset carries`
+		);
 		out.addError({
 			code: 'DIRTY-TREE',
-			message: `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset`,
+			message:
+				drift.commits.length > 0
+					? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset`
+					: `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset`,
 			hint:
 				'ci trees must be disposable: mount or check out a fresh tree for the job, or reset this one ' +
 				`(git -C ${tree} checkout -- .), then re-run`

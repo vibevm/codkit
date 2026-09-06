@@ -36,11 +36,15 @@ import { sha256 } from './renameFileState.js';
 import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './rebaseOntoPinMove.js';
 import { PATCHES_DIR, bothSidesError, runSync, toPosix } from './syncEngine.js';
 import { readTreeMark } from './treeCache.js';
+import { foreignCommits, treeHeadError } from './treeCommits.js';
 import { checkTree, formatCheckLine } from './treeIdentity.js';
+import { assertGeneratedRefExclusive } from './worktrees.js';
 const NO_OWN = { copied: 0, removed: 0, kept: 0, total: 0 };
 /** Identity used for a patchset commit when git has no configured user. */
 const FALLBACK_COMMIT_NAME = 'codkit';
 const FALLBACK_COMMIT_EMAIL = 'codkit@patchset.invalid';
+/** How many tree commits the Phase-2 refusal lists before summarizing the rest. */
+const DIRTY_LIST_LIMIT = 20;
 /**
  * One `save`. The caller holds the lock and owns the output envelope.
  */
@@ -58,6 +62,46 @@ export function runSave(options) {
     if (identity.fatal !== null) {
         out.addError(identity.fatal.toPayload());
         return result('unfit', 2, { branch });
+    }
+    // 1b. The shared-ref preflight precedes everything below (the D7 ruling of
+    // 2026-09-06; PROP-008 §4): while a sibling worktree holds the generated
+    // branch, nothing here may extract - the neighbour can move the shared ref
+    // under the extraction.
+    try {
+        assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
+    }
+    catch (error) {
+        if (isCkError(error) && error.code === 'WORKTREE-REF-SHARED') {
+            out.addError(error.toPayload());
+            return result('unfit', 2, { branch });
+        }
+        throw error;
+    }
+    // 1c. Commits made in the fork tree are work (##TREE-COMMITS-ARE-WORK), and
+    // this build of the campaign does not extract them yet - Phase 3 teaches
+    // `save` to, and doing it half-way here would make both phases unreviewable.
+    // The refusal therefore comes before the own mirror and before every
+    // artifact write. A HEAD outside the generated branch while carrying work
+    // refuses first (D8).
+    const treeState = foreignCommits(tree, config.pin.sha, branch);
+    const head = treeHeadError(treeState, branch);
+    if (head !== null) {
+        out.addError(head.toPayload());
+        return result('blocked', 1, { branch });
+    }
+    if (treeState.commits.length > 0) {
+        for (const commit of treeState.commits.slice(0, DIRTY_LIST_LIMIT)) {
+            out.info(`  commit: ${commit.sha.slice(0, 8)} "${commit.subject}" (not in patchset)`);
+        }
+        if (treeState.commits.length > DIRTY_LIST_LIMIT) {
+            out.info(`  ... and ${treeState.commits.length - DIRTY_LIST_LIMIT} more`);
+        }
+        out.addError({
+            code: 'DIRTY-TREE',
+            message: 'save does not extract tree commits yet; see campaign TREE-COMMITS-SAVE',
+            hint: `${treeState.commits.length} commit(s) in the fork tree are not in patchset; nothing was written, and the commits stay in the tree`
+        });
+        return result('blocked', 1, { branch });
     }
     const conventions = loadConventions(patchesDir);
     const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);

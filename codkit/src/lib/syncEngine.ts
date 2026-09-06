@@ -67,6 +67,7 @@ import {
 	writeTreeMark
 } from './treeCache.ts';
 import type { TreeMark } from './treeCache.ts';
+import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, treeHeadError } from './treeCommits.ts';
 import { assertCompletedRebaseMoveSyncTree, completedRebaseMoveForSync, finishCompletedRebaseMoveSync } from './rebaseOntoPinMove.ts';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.ts';
 import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.ts';
@@ -74,9 +75,13 @@ import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees
 /** Patch artifacts live here, relative to the patchset root. */
 export const PATCHES_DIR = 'delta/patches';
 
-/** Identity of every generated commit; fixed, so the shas are reproducible. */
-export const COMMIT_AUTHOR_NAME = 'codkit';
-export const COMMIT_AUTHOR_EMAIL = 'codkit@patchset.invalid';
+/**
+ * Identity of every generated commit; fixed, so the shas are reproducible.
+ * Defined next to its detector (the trailer-plus-author check of
+ * `treeCommits.ts`, PROP-008 ##TREE-COMMITS-ARE-WORK) and re-exported here,
+ * where the commits are built, so the two can never drift apart.
+ */
+export { COMMIT_AUTHOR_NAME, COMMIT_AUTHOR_EMAIL };
 
 /** Managed block of the tree's effective info/exclude (PROP-005 ##OWN-EXCLUDED-LOCALLY). */
 export const EXCLUDE_BEGIN = '# codkit:begin managed';
@@ -261,8 +266,34 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		out.addError(identity.fatal.toPayload());
 		return result('unfit', 2, { branch });
 	}
-	if (options.forceApply === true && driftDirty(tree, config.ownDirName, patchesDir).dirty) {
-		throw ckError('DIRTY-TREE', 'forced load recovery requires a completely clean fork tree');
+	// 1b. The shared-ref preflight runs before any dirt verdict, unconditionally
+	// (the D7 ruling of 2026-09-06, spike S0.12; PROP-008 §4): a sibling's
+	// commit on the shared branch leaves THIS tree's index staged against a HEAD
+	// nobody here moved - phantom dirt whose cause is the sharing, so the
+	// sharing is what the refusal names, advising no command. The locked
+	// preflight of step 9 stays: this one orders the diagnosis, that one guards
+	// the mutation. `--dry-run` mutates nothing and keeps skipping both.
+	if (!dryRun) {
+		try {
+			assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
+		} catch (error) {
+			if (isCkError(error) && error.code === 'WORKTREE-REF-SHARED') {
+				out.addError(error.toPayload());
+				return result('unfit', 2, { branch });
+			}
+			throw error;
+		}
+	}
+	if (options.forceApply === true) {
+		const drift = driftDirty(tree, config.ownDirName, patchesDir, { generated: { pinSha: config.pin.sha, branch } });
+		const head = treeHeadError(drift.treeCommits, branch);
+		if (head !== null) {
+			out.addError(head.toPayload());
+			return result('dirty', 1, { branch, dirtyFiles: drift.files });
+		}
+		if (drift.dirty) {
+			throw ckError('DIRTY-TREE', 'forced load recovery requires a completely clean fork tree');
+		}
 	}
 	if (!dryRun && !hasRebasePendingRecords(patchesDir)) {
 		completedRebase = completedRebaseMoveForSync(patchesDir, tree);
@@ -340,10 +371,19 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		const materialized: string[] = [];
 		const drift = driftDirty(tree, config.ownDirName, patchesDir, {
 			untrackedIsDirt: !options.fresh,
+			generated: { pinSha: config.pin.sha, branch },
 			...(options.fresh
 				? { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, materialized) }
 				: {})
 		});
+		// The D8 refusals come before the dirt verdict: a rewritten line below
+		// the generated tip, or a HEAD carrying work outside the generated
+		// branch, is not "dirt" to be extracted but a position to be corrected.
+		const head = treeHeadError(drift.treeCommits, branch);
+		if (head !== null) {
+			out.addError(head.toPayload());
+			return result('dirty', 1, { branch, dirtyFiles: drift.files });
+		}
 		if (drift.dirty) {
 			const verdict = judgeOwnSides(drift, patchesDir, tree, config.ownDirName, mark, fingerprint);
 			if (verdict.kind === 'both-sides') {
@@ -359,7 +399,10 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 				}
 				out.addError({
 					code: 'DIRTY-TREE',
-					message: `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`,
+					message:
+						drift.commits.length > 0
+							? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
+							: `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`,
 					hint: 'run codkit save, or codkit status'
 				});
 				return result('dirty', 1, { branch, dirtyFiles: drift.files });

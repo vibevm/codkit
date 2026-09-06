@@ -1,13 +1,16 @@
 // The drift guard (PROP-008 ##DRIFT-GUARD-PREDICATE).
 //
-// The two halves are tested separately, because they see different things: git
-// sees the upstream files, and only a byte comparison sees own code, which is
-// excluded from git locally.
+// The first two halves are tested separately, because they see different
+// things: git sees the upstream files, and only a byte comparison sees own
+// code, which is excluded from git locally. The third half - tree commits -
+// has its own suite in treeCommits.test.ts; here it only has to stay silent
+// over a tree whose line carries generated commits alone.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { driftDirty, porcelainEntries, upstreamDirt } from '../../src/lib/driftGuard.ts';
+import type { DriftOptions } from '../../src/lib/driftGuard.ts';
 import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
@@ -27,8 +30,13 @@ afterAll(() => {
 	cleanupTempRoots();
 });
 
+/** The third half's walk context: the fixture pin and its generated branch. */
+function generated(): DriftOptions['generated'] {
+	return { pinSha: fixture.config.pin.sha, branch: `${fixture.config.generatedBranchPrefix}${fixture.config.pin.tag}` };
+}
+
 function guard(): ReturnType<typeof driftDirty> {
-	return driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir);
+	return driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, { generated: generated() });
 }
 
 /** Change something in the tree, look, put it back. */
@@ -103,7 +111,10 @@ describe('driftDirty', () => {
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
 			expect(guard().files).toContain('left-behind.txt');
-			const fresh = driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, { untrackedIsDirt: false });
+			const fresh = driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+				untrackedIsDirt: false,
+				generated: generated()
+			});
 			expect(fresh.dirty).toBe(false);
 		} finally {
 			rmSync(litter, { force: true });
@@ -119,6 +130,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 		const result = whileChanged(EXAMPLE_PART_PATH, '// replaced by hand\n', () =>
 			whileChanged('product.json', '// materialized for packaging\n', () =>
 				driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+					generated: generated(),
 					isKnownMaterialization: (path) => path === 'product.json'
 				})
 			)
@@ -131,7 +143,10 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 
 	it('keeps the path dirt when the predicate answers no', () => {
 		const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-			driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, { isKnownMaterialization: () => false })
+			driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+				generated: generated(),
+				isKnownMaterialization: () => false
+			})
 		);
 
 		expect(result.upstream).toEqual(['product.json']);
@@ -146,6 +161,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 		try {
 			const result = whileChanged('product.json', '// materialized for packaging\n', () =>
 				driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+					generated: generated(),
 					isKnownMaterialization: (path) => {
 						asked.push(path);
 						return true;

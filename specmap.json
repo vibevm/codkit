@@ -3425,7 +3425,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:93c47370aba1324394fe0a5af7767baabf75a3a03fafaf4ea0d4ebab3a6ecafd",
+      "content_hash": "sha256:51339ed54bfa76280b5c265aeaf7174ccac8ed354912816d9b8964108b059a8a",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "codkit PROP-006: Метаданные применения, блокировка, инвентарь",
@@ -3434,7 +3434,7 @@
     },
     {
       "anchor": "apply-metadata",
-      "content_hash": "sha256:96e9caa6ecf6710340812cf1568c6f7522e383fdda4de1ff25990205f65c2a45",
+      "content_hash": "sha256:f5b19e1b0c11cc1bf82c450f08607cf2cb7c887e6d5838d4d047b8baed299690",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "1. Метаданные применения: кэш + метка (истина — само дерево)",
@@ -3487,12 +3487,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-006#TREE-MARK"
     },
     {
+      "anchor": "CONSUMED-REFS",
+      "content_hash": "sha256:8e6256425a591e874b9e0fdf408b119e9f7386919a9da2d6dbf5574466bfaac9",
+      "doc_path": "modules/codkit/PROP-006",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
+      "heading": "**Потреблённые коммиты дерева** — `refs/codkit/consumed/<UTC yyyymmddThhmmssZ>-<short7>` → бывший HEAD дерева: запись `recordConsumedRef` (модуль `lib/treeCommits.ts`, кампания TREE-COMMITS-SAVE, решение D6) выполняется под замком общего репозитория — refs общие для всех worktree репозитория (PROP-008 `##GENERATED-REF-WORKTREE-PREFLIGHT`). Создаются, когда коммиты дерева потреблены извлечением (`save` следующих фаз) или отброшены явно (`load --discard`). Refs — диагностика, не истина (`##TREE-IS-TRUTH`): чистит только `gc` (решение D22), вручную не трогаются; достижимы из любого worktree репозитория. @status:impl/done",
+      "line": 12,
+      "uri": "spec://codkit/modules/codkit/PROP-006#CONSUMED-REFS"
+    },
+    {
       "anchor": "FAST-PATH-RULE",
       "content_hash": "sha256:1bce64844ac2f6e65c928dca9b1f342e626aceaac2fbbf469184dbfab6cc0dfc",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "**Правило сверки (быстрый no-op `load`)** — разрешён только когда ВСЕ условия истинны: кэш существует ∧ `pinSha`/`deltaFingerprint` кэша равны текущим ∧ ветка `codkit/applied/<pin.tag>` существует в дереве ∧ её вершина == `branchTip` кэша ∧ HEAD дерева указывает на неё ∧ (метка отсутствует ∨ метка совпадает). Любое несовпадение → полное приведение с нуля. Устаревший кэш не может быть принят за истину по построению. @status:spec/done",
-      "line": 13,
+      "line": 14,
       "uri": "spec://codkit/modules/codkit/PROP-006#FAST-PATH-RULE"
     },
     {
@@ -3501,7 +3510,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Многодеревность поддерживается: записи кэша ключуются `treeId`; одновременный доступ защищён блокировкой (§2); подмена дерева под живым кэшем обязана приводить к полному переприменению (сценарий S15 FEAT-002). @status:spec/done",
-      "line": 14,
+      "line": 15,
       "uri": "spec://codkit/modules/codkit/PROP-006#MULTI-TREE-SUPPORT"
     },
     {
@@ -3510,7 +3519,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "2. Блокировка",
-      "line": 16,
+      "line": 17,
       "uri": "spec://codkit/modules/codkit/PROP-006#lock"
     },
     {
@@ -3519,7 +3528,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Файл `.codkit/locks/<treeId>.lock` в patchset, создаётся `O_CREAT|O_EXCL`, содержит `{pid, startedAt, command}`. Захватывают все пишущие команды; `status`/`where`/`inventory` работают без блокировки (read-only путь). Устаревшая блокировка (процесс с pid не существует) снимается автоматически с предупреждением. Второй процесс — выход 2 `CK-E-LOCKED` с pid и hint. `EACCES`/`EPERM`/`EROFS` при создании lock — environment-отказ 2 `CK-E-TREE-READONLY` с требованием отдельного writable `.codkit` mount; source patchset при этом может оставаться read-only. Общее дерево в CI дополнительно защищено отпечатком (несовпадение метки → полное переприменение). @status:spec/done",
-      "line": 17,
+      "line": 18,
       "uri": "spec://codkit/modules/codkit/PROP-006#LOCK-MECHANISM"
     },
     {
@@ -3528,7 +3537,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "3. Инвентарь",
-      "line": 19,
+      "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-006#inventory"
     },
     {
@@ -3537,7 +3546,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Инвентарь **генерируется** инструментом из артефактов `delta/**` и разметки маркеров; руками не ведётся; не коммитится как источник истины. Вывод — `.codkit/out/inventory.json` (+ `--md` для человека); в CI-артефакты и для ревью выкладывается сгенерированная версия и её дифф между двумя состояниями (ревьюим изменения инвентаря, а не патч-файлы). @status:spec/done",
-      "line": 20,
+      "line": 21,
       "uri": "spec://codkit/modules/codkit/PROP-006#INVENTORY-IS-GENERATED"
     },
     {
@@ -3546,7 +3555,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Схема (`codkitInventory: 2`): @status:spec/done",
-      "line": 21,
+      "line": 22,
       "uri": "spec://codkit/modules/codkit/PROP-006#inventory-schema-sample"
     },
     {
@@ -3555,7 +3564,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "`entries` сортируются по `id`; метрики — производные; сериализация детерминированная. @status:spec/done",
-      "line": 37,
+      "line": 38,
       "uri": "spec://codkit/modules/codkit/PROP-006#INVENTORY-SORTED"
     },
     {
@@ -3564,7 +3573,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Основная метрика — `patchAndRuleCount` по подсистемам (rewrite-rule + patch). Каждый завершённый cycle записывает снимок метрик в свой коммитимый журнал; агрегированный временной ряд является производным отчётом и не требует отдельного CSV в репозитории инструмента. @status:spec/done",
-      "line": 38,
+      "line": 39,
       "uri": "spec://codkit/modules/codkit/PROP-006#INVENTORY-METRIC-TARGET"
     },
     {
@@ -3573,7 +3582,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Маршрутизация: подсистема вмешательства → набор тестов и владелец (карта owners) — из инвентаря; из него же генерируется чек-лист ревью цикла (не хардкод). @status:spec/done",
-      "line": 39,
+      "line": 40,
       "uri": "spec://codkit/modules/codkit/PROP-006#INVENTORY-ROUTING"
     },
     {
@@ -3582,7 +3591,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "4. Построение инвентаря",
-      "line": 42,
+      "line": 43,
       "uri": "spec://codkit/modules/codkit/PROP-006#inventory-build"
     },
     {
@@ -3591,7 +3600,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Прочитать и провалидировать по схемам: все `.ckpatch` (шапки), overlay, resource-map, rules, `patchset.delta.json`, `removed.json`, `owners.json`. @status:spec/done",
-      "line": 44,
+      "line": 45,
       "uri": "spec://codkit/modules/codkit/PROP-006#IB-READ-ARTIFACTS"
     },
     {
@@ -3600,7 +3609,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Для каждого артефакта — запись инвентаря: `subsystem` = вторая компонента id; `files` = цель(и) артефакта; `artifact` = путь файла артефакта. @status:spec/done",
-      "line": 45,
+      "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-006#IB-MAKE-ENTRIES"
     },
     {
@@ -3609,7 +3618,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Метрики — агрегаты по записям; сериализация детерминированная (сортировка entries по id). @status:spec/done",
-      "line": 46,
+      "line": 47,
       "uri": "spec://codkit/modules/codkit/PROP-006#IB-METRICS"
     },
     {
@@ -3618,7 +3627,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Требование скорости: построение по полному объёму — секунды; патчи парсятся без обращения к дереву; дерево нужно только перекрёстным проверкам (§5–6). @status:spec/done",
-      "line": 48,
+      "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-006#IB-SPEED"
     },
     {
@@ -3627,7 +3636,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "5. «Каждый ханк внутри маркера» — сопоставление",
-      "line": 50,
+      "line": 51,
       "uri": "spec://codkit/modules/codkit/PROP-006#hunks-in-markers"
     },
     {
@@ -3636,7 +3645,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Вход: патч P файла F; содержимое F в **целевом состоянии** (пин + P — вычисляется применением P к содержимому пина в памяти собственной реализацией `applyUnified` с точным совпадением контекста: сдвигов на своём пине нет — патч по построению регенерирован против пина). @status:spec/done",
-      "line": 51,
+      "line": 52,
       "uri": "spec://codkit/modules/codkit/PROP-006#him-io"
     },
     {
@@ -3645,7 +3654,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Согласованность «маркер ↔ артефакт»: id каждого блока в целевом состоянии файла = id патча этого файла (для entry-module — id из перечня патчей слоя); id патча обязан присутствовать среди блоков. Нарушение — `CK-E-MARKER-ARTIFACT-MISMATCH`. @status:spec/done",
-      "line": 67,
+      "line": 68,
       "uri": "spec://codkit/modules/codkit/PROP-006#MARKER-ARTIFACT-CONSISTENCY"
     },
     {
@@ -3654,7 +3663,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Add-file патч (весь файл — добавленные строки) проверке «каждый ханк внутри маркера» не подлежит — защищать апстримные строки не от чего; для него действуют только валидность маркеров файла и согласованность «блок ↔ id артефакта» (уточнение M0). @status:impl/done",
-      "line": 68,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/PROP-006#ADD-FILE-EXEMPTION"
     },
     {
@@ -3663,7 +3672,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Уточнения «нейтрализации комментированием» (реализация M0): комментарийная обёртка — ОБЫЧНЫЙ комментарий языка (форма маркера минус слово `codkit:`: `// `, `/* … */`, `<!-- … -->`, `# `), закрывающая половина для CSS/HTML обязательна; сравнение текста — с обрезкой ведущих пробелов/табов у обеих сторон и хвостовых у обёртки; закомментированная копия обязана лежать в ТОМ ЖЕ ханке, что и удаление. Пара `-`/`+`, правящая апстримную строку на месте (не комментирующая), — это `CK-E-DELETES-UPSTREAM-LINE` по построению (правило `##MR-FUNCTIONAL-ONLY` PROP-004: апстримные строки комментируются, не редактируются) — самый частый ожидаемый сигнал этой проверки, не ложный. @status:impl/done",
-      "line": 69,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/PROP-006#NEUTRALIZATION-DETAILS"
     },
     {
@@ -3672,7 +3681,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Семантика `\\ No newline at end of file` в `applyUnified`: после `-`-строки маркер утверждает состояние пина (несовпадение — отказ `CK-E-ARTIFACT-BROKEN`), после `+`-строки — задаёт состояние результата, после контекстной — и то и другое. @status:impl/done",
-      "line": 70,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-006#NO-NEWLINE-MARKER-SEMANTICS"
     },
     {
@@ -3681,7 +3690,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "6. «Нет вмешательств вне инвентаря» (полнота)",
-      "line": 72,
+      "line": 73,
       "uri": "spec://codkit/modules/codkit/PROP-006#completeness"
     },
     {
@@ -3690,7 +3699,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Вход: дерево в применённом состоянии (вершина сгенерированной ветки), пин. Алгоритм: `git diff --name-status <pin.sha> <branchTip>` → список изменённых путей. Каждый путь обязан объясняться ровно одним источником: own-каталог (`src/vs/<ownDirName>/**` — только в CI/publish-режиме, локально own не в коммитах), патч с этим целевым путём, overlay-цель, resource-map-цель. Необъяснённый путь → `CK-E-UNTRACKED-INTERVENTION`. Обратно: артефакт, чья цель не изменена в диффе → `CK-E-STALE-ARTIFACT` (например, пустой патч) — с оговоркой M1 для overlay: локальный sync материализует overlay только dev-каналом, поэтому overlay-цели ОБЪЯСНЯЮТ изменённый путь, но не ОБЯЗАНЫ присутствовать в диффе. Отсутствие сгенерированной ветки — не провал полноты, а пропуск проверки с предупреждением «run codkit sync first» (verify в остальном работает). @status:spec/done",
-      "line": 73,
+      "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-006#COMPLETENESS-CHECK"
     },
     {
@@ -3699,12 +3708,12 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Записи removed-registry — НЕ записи инвентаря (kind не является слоем): они не входят в `entries`, но входят в требования guard-покрытия (`contractCoverage.requiredTotal` может превышать число guard-обязанных entries) и проверяются verify (уточнение M1). @status:impl/done",
-      "line": 74,
+      "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-006#REMOVED-NOT-AN-ENTRY"
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:24fe80fd2fc8852586ebb1a282ef862626ac92bd33e344ba335b071d0846e5ad",
+      "content_hash": "sha256:e91e6d71f7a4c2485fc4702abb3e2b762934bb8cbba46dd4a5afe53db05628fb",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -3839,7 +3848,7 @@
     },
     {
       "anchor": "cmd-sync",
-      "content_hash": "sha256:2cee4bc28cfae49e4d0a365d35ddedca8d6dc2cd9b8b836724998e710465fb98",
+      "content_hash": "sha256:f000ee3b27c070878db982745dc120f8514382937ed4999748fa195150c09028",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "5. codkit load [--fresh] [--dry-run] [--clone-if-missing]",
@@ -3857,10 +3866,10 @@
     },
     {
       "anchor": "CMD-LOAD",
-      "content_hash": "sha256:a131b2e02df1ec361920d14abcb804e0c2cf119d40214113cabdb8db4798e450",
+      "content_hash": "sha256:1604566e522e85df5d78da746c032a93b59a1c83a4f5954ea37a0ee094021e3a",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Привести дерево к пину и наложить дельту (алгоритм — PROP-008 §3). Предусловия: конфиг валиден; дерево проходит `check-tree`; **нет незаизвлечённых правок** (страж; при них — выход 1 `CK-E-DIRTY-TREE`, список файлов, hint «run codkit save, or codkit status»). `--fresh` — режим «с нуля»: reset к пину + очистка неотслеживаемого по белому списку перед наложением (PROP-011 §4); известная материализация overlay-целей заменяется тем же прогоном (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`, PROP-008 §4). `--dry-run` — прогноз: полный цикл применения в памяти/индексе без изменения рабочих файлов и ссылок; печать классифицированных исходов (формат отчёта — как у `cycle`); используется `forecast`'ом. Побочные эффекты (не dry-run): ветка `codkit/applied/<pin.tag>` пересоздана (если отпечаток изменился), HEAD дерева — на её вершине, own-код скопирован, `product.overrides.json` записан, эффективный `info/exclude` восстановлен, метка и кэш обновлены. Повтор без изменений — быстрый no-op (правило сверки PROP-006 §1), печать `up to date`. Коды: 0; 1 (страж; артефакт не лёг — на своём пине это означает испорченный артефакт `CK-E-ARTIFACT-BROKEN`, печатается какой); 2 (окружение). Прежнее имя — usage error без конверта: `codkit sync` (в любом виде) → выход 2, stderr «codkit sync was renamed to codkit load; the name sync is reserved for the two-way save+load command»; алиас отвергнут намеренно — когда имя получит новый смысл, скрипты со старым обязаны сломаться громко. @status:spec/done",
+      "heading": "Привести дерево к пину и наложить дельту (алгоритм — PROP-008 §3). Предусловия: конфиг валиден; дерево проходит `check-tree`; сгенерированная ветка не разделена с соседним worktree (`CK-E-WORKTREE-REF-SHARED`, выход 2 — преflight идёт ПЕРЕД грязевой проверкой, рулинг D7 от 2026-09-06); **нет незаизвлечённых правок и коммитов дерева** (страж PROP-008 §4: правки — выход 1 `CK-E-DIRTY-TREE` со списком файлов, hint «run codkit save, or codkit status»; коммиты дерева — тот же код, «N commit(s) in the fork tree since the last codkit apply are not in patchset yet»; HEAD вне ветки при foreign — `CK-E-TREE-HEAD`, выход 1). `--fresh` — режим «с нуля»: reset к пину + очистка неотслеживаемого по белому списку перед наложением (PROP-011 §4); известная материализация overlay-целей заменяется тем же прогоном (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`, PROP-008 §4). `--dry-run` — прогноз: полный цикл применения в памяти/индексе без изменения рабочих файлов и ссылок; печать классифицированных исходов (формат отчёта — как у `cycle`); используется `forecast`'ом. Побочные эффекты (не dry-run): ветка `codkit/applied/<pin.tag>` пересоздана (если отпечаток изменился), HEAD дерева — на её вершине, own-код скопирован, `product.overrides.json` записан, эффективный `info/exclude` восстановлен, метка и кэш обновлены. Повтор без изменений — быстрый no-op (правило сверки PROP-006 §1), печать `up to date`. Коды: 0; 1 (страж; артефакт не лёг — на своём пине это означает испорченный артефакт `CK-E-ARTIFACT-BROKEN`, печатается какой); 2 (окружение). Прежнее имя — usage error без конверта: `codkit sync` (в любом виде) → выход 2, stderr «codkit sync was renamed to codkit load; the name sync is reserved for the two-way save+load command»; алиас отвергнут намеренно — когда имя получит новый смысл, скрипты со старым обязаны сломаться громко. @status:spec/done",
       "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LOAD"
     },
@@ -4253,7 +4262,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:77ef2c27186600dff6687c0fc345613df474ea51336bba6bd20a6d180cb416b2",
+      "content_hash": "sha256:e95f3bf0f1be3635be5730ab027749628169cf0f523a6ec729ddd6490aa5f3dc",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: Движки — резолвер, идентичность, sync, save, 3-way, переименования, причина",
@@ -4451,7 +4460,7 @@
     },
     {
       "anchor": "save",
-      "content_hash": "sha256:85a8cd5341c5005fe9029f524bfb5d63827fda89988b6406bec01333f12792ae",
+      "content_hash": "sha256:5944c4aa569dae11a3d31f4da19c06c550edc561063cf0cb3f52a26934f2a0eb",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "4. save/extract и страж дрейфа",
@@ -4469,12 +4478,21 @@
     },
     {
       "anchor": "DRIFT-GUARD-PREDICATE",
-      "content_hash": "sha256:5e043fd929bdf8af379ed40ed05b3c93114f1499446c4a2bbf9ffd5e6ed2e7e0",
+      "content_hash": "sha256:f0d36335ecdb1c8c3bfdddfe7298e21b5fd580287adec6253b02032a765dd81f",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "**Страж дрейфа**: `dirty(tree)` = (`git status --porcelain` непуст вне own-каталога) ∨ (own-расхождение классов `both` — байты различаются — или `tree-only` — файл есть только в дереве). Файл, существующий ТОЛЬКО в `delta/own/` patchset (`patchset-only`), — НЕ грязь: иначе первый sync любого дерева был бы невозможен (уточнение реализации M0). Разрушительные операции (`sync`, `cycle start`, `ci`, `publish`, `clone` поверх, `restart`) при dirty — выход 1 `CK-E-DIRTY-TREE` со списком и hint («codkit save» или «codkit status»). `--fresh` подавляет fast-path и не считает untracked-пути грязью (иначе fresh никогда ничего не чистил бы). Уточнение REPAIR-005 (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`): перед отказом `sync --fresh` классифицирует каждую tracked overlay-цель, отличную от HEAD, — байты, в точности равные строгой композиции настроенных overlay на пине в контексте прогона, суть известная материализация codkit, которую этот прогон заменяет (и объявляет это в выводе), а не грязь; всё остальное остаётся грязью, `--fresh` не бланкетный reset. Обычный `sync` исключения не получает: fast-path мог бы ответить «up to date» и оставить упаковочные байты. `ci` сознательно классификатор не передаёт: ci материализует overlay-цели только коммитами сгенерированной ветки, собственные прогоны ci это состояние не создают, а единственный источник таких байтов в ci-дереве — внеочередной `overlay apply`, то есть переиспользованное дерево разработчика, которое страж обязан назвать вслух; выход и там — codkit-команда (`sync --fresh` того дерева) или одноразовое свежее дерево, не прямой git-restore. @status:impl/done",
+      "heading": "**Страж дрейфа**: `dirty(tree)` = (`git status --porcelain` непуст вне own-каталога) ∨ (own-расхождение классов `both` — байты различаются — или `tree-only` — файл есть только в дереве) ∨ (**третья половина**, кампания TREE-COMMITS-SAVE, решение D7) foreign-коммиты дерева непусты (`##TREE-COMMITS-ARE-WORK`): коммиты first-parent линии выше последней сгенерированной вершины, которых обе другие половины не видят — `git status` по коммиту даёт чистое дерево. Список для человека включает строки `commit <short> \"<subject>\" (not in patchset)`; отказ — выход 1 `CK-E-DIRTY-TREE`: для правок «N path(s) … not in patchset yet», для коммитов «N commit(s) in the fork tree since the last codkit apply are not in patchset yet», hint («codkit save» или «codkit status»). **Порядок отказов (рулинг владельца 2026-09-06, спайк S0.12)**: преflight разделённого сгенерированного ref (`##GENERATED-REF-WORKTREE-PREFLIGHT`) выполняется ПЕРЕД любой грязевой проверкой, безусловно, во всех стражащих командах: коммит соседнего worktree на общей ветке сдвигает общий ref и делает индекс ЭТОГО дерева «staged-dirty» — фантомная грязь, чья причина — разделение ref, а не локальная работа; отказ `CK-E-WORKTREE-REF-SHARED` (выход 2) называет оба дерева и не советует `save` — подсказка «run codkit save» здесь втянула бы чужую работу в этот patch set как собственную правку. Причина диагностируется раньше симптома; тому же порядку подчинён `CK-E-TREE-HEAD` (D8: аномалия линии или HEAD вне ветки при foreign — выход 1, тем же кодом из `##TREE-COMMITS-ARE-WORK`). Файл, существующий ТОЛЬКО в `delta/own/` patchset (`patchset-only`), — НЕ грязь: иначе первый load любого дерева был бы невозможен (уточнение реализации M0). `--fresh` подавляет fast-path и не считает untracked-пути грязью (иначе fresh никогда ничего не чистил бы), но отказ по коммитам НЕ снимает: `--fresh` про untracked, а коммит — та же неизвлечённая работа, что и правка. `--dry-run` страж не запускает; `skipDriftGuard` — единственный обход, только для `save`/будущего двустороннего `sync` после извлечения. Уточнение REPAIR-005 (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`): перед отказом `load --fresh` классифицирует каждую tracked overlay-цель, отличную от HEAD, — байты, в точности равные строгой композиции настроенных overlay на пине в контексте прогона, суть известная материализация codkit, которую этот прогон заменяет (и объявляет это в выводе), а не грязь; всё остальное остаётся грязью, `--fresh` не бланкетный reset. Обычный `load` исключения не получает: fast-path мог бы ответить «up to date» и оставить упаковочные байты. `ci` сознательно классификатор не передаёт: ci материализует overlay-цели только коммитами сгенерированной ветки, собственные прогоны ci это состояние не создают, а единственный источник таких байтов в ci-дереве — внеочередной `overlay apply`, то есть переиспользованное дерево разработчика, которое страж обязан назвать вслух; выход и там — codkit-команда (`load --fresh` того дерева) или одноразовое свежее дерево, не прямой git-restore. @status:impl/done",
       "line": 123,
       "uri": "spec://codkit/modules/codkit/PROP-008#DRIFT-GUARD-PREDICATE"
+    },
+    {
+      "anchor": "TREE-COMMITS-ARE-WORK",
+      "content_hash": "sha256:e726fcf826284faecf965d9e5c63d59411d6ed0407931ac66220ca71fdc242ff",
+      "doc_path": "modules/codkit/PROP-008",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
+      "heading": "**Коммиты в дереве форка — работа** (кампания TREE-COMMITS-SAVE, решения D1/D2/D8). Работа = незакоммиченное ∨ коммиты first-parent линии, недостижимые из последней сгенерированной вершины. Детектор `foreignCommits(tree, pin, branch)` (`lib/treeCommits.ts`): `git rev-list --first-parent --format=…` для `<ref>` ∈ {HEAD, `refs/heads/<branch>`} (существующих), нижняя граница — всегда пин; коммит сгенерирован ⟺ автор `codkit@patchset.invalid` И трейлер `Codkit-Upstream-Pin` непуст (F13); `base` = самый верхний сгенерированный, нет ни одного — `base = pin.sha` (пустой patchset, ветка не создана); `foreign` = коммиты выше `base`, от старых к новым. Аномалия: несгенерированный коммит ниже `base` — история под сгенерированной вершиной переписана → `CK-E-TREE-HEAD` (выход 1, «reset the branch to <sha> or restore it from refs/codkit/consumed/…»). Тот же код отказывает, когда ветка существует, HEAD вне её и на линии HEAD есть foreign («HEAD is on <ref|detached> with N commit(s) not in patchset; switch to <branch> (git switch) or merge them there, then run codkit save»). Ветки нет — цепочка HEAD над пином есть работа, где бы HEAD ни был (первый load после clone); сама сгенерированная вершина — не работа. Отвергнуто: база из кэша/метки (неавторитетны, `##TREE-IS-TRUTH`); rev-list без `--first-parent` (состояния боковых веток никогда не существовали на линии ветки). Формат записи НЕ NUL-чист: перед каждой записью строка `commit <sha>`, трейлер добавляет свой `\\n` (S0.2); парсер режет по `/^commit [0-9a-f]{40}\\n/m`, затем по `\\0`, снимая хвостовые `\\n`. Потреблённые коммиты остаются достижимы через `refs/codkit/consumed/*` (PROP-006 §1 `##CONSUMED-REFS`). @status:impl/done",
+      "line": 124,
+      "uri": "spec://codkit/modules/codkit/PROP-008#TREE-COMMITS-ARE-WORK"
     },
     {
       "anchor": "PATCHSET-SIDE-EDIT-RULE",
@@ -4482,7 +4500,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Обратное направление: если рабочие файлы `delta/own/` в patchset изменены при чистом дереве, `sync` предупреждает `CK-W-PATCHSET-SIDE-EDIT` и применяет patchset-версию (направление истины в момент sync — patchset). Различение сторон — пофайлово, по карте `ownFiles` метки (PROP-006 §1): файл дерева == метке → менялся patchset (применить patchset); файл patchset == метке → менялось дерево (грязь стража, извлекается save); обе стороны != метке и друг другу — выход 1 `CK-E-BOTH-SIDES-EDITED` с именем файла. @status:impl/done",
-      "line": 124,
+      "line": 125,
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-SIDE-EDIT-RULE"
     },
     {
@@ -4491,7 +4509,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "5. 3-way применение при чужом пине и классификация исходов",
-      "line": 127,
+      "line": 128,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify"
     },
     {
@@ -4500,7 +4518,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Используется `cycle`, `forecast`, `rebase-onto-pin` (на своём пине конфликтов не бывает по построению — инвариант самосогласованности). Вход: артефакт A с целью F, старый пин `oldPin`, целевой ref `newRef`. Выход: исход из классов ниже + материалы. @status:spec/done",
-      "line": 128,
+      "line": 129,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify-usage"
     },
     {
@@ -4509,7 +4527,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Имена классов исходов в состоянии цикла: `clean`, `shifted`, `merged`, `conflict`, `target-deleted`, `target-renamed` (из §6), `rule-broken`, `contract-failed`. @status:spec/done",
-      "line": 144,
+      "line": 145,
       "uri": "spec://codkit/modules/codkit/PROP-008#OUTCOME-CLASS-NAMES"
     },
     {
@@ -4518,7 +4536,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Движок не останавливается на первом конфликте: он проходит все независимые артефакты и отдаёт полный классифицированный список; exit 3 относится к итоговой обязательной человеческой остановке. @status:spec/done",
-      "line": 145,
+      "line": 146,
       "uri": "spec://codkit/modules/codkit/PROP-008#ENGINE-NEVER-STOPS-AT-FIRST"
     },
     {
@@ -4527,7 +4545,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Материализация для резолва: для `conflict` оркестратор записывает в рабочий файл дерева результат `merge-file --diff3` со стандартными конфликт-маркерами — человек и агент правят в IDE обычным способом. @status:spec/done",
-      "line": 146,
+      "line": 147,
       "uri": "spec://codkit/modules/codkit/PROP-008#CONFLICT-MATERIALIZATION"
     },
     {
@@ -4536,7 +4554,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "6. Следование за переименованиями между пинами",
-      "line": 149,
+      "line": 150,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames"
     },
     {
@@ -4545,7 +4563,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Отдельный явный шаг до применения (не автоопределение внутри — на больших диффах git отключает rename-детекцию молча). @status:spec/done",
-      "line": 150,
+      "line": 151,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames-when"
     },
     {
@@ -4554,7 +4572,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Пары с `similarity < 100` помечаются «требует взгляда человека» в отчёте (перенос сделан, но попадает в красный список ревью). Проверочный кейс полигона: переименование `src/vs/platform/agentHost/browser/remoteAgentHostProtocolClient.ts → agentHostProtocolClient.ts` (R096, окно `1.134.0→1.135.0`). @status:spec/done",
-      "line": 162,
+      "line": 163,
       "uri": "spec://codkit/modules/codkit/PROP-008#RENAME-BELOW-100-FLAGGED"
     },
     {
@@ -4563,7 +4581,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "7. Поиск коммита-причины",
-      "line": 164,
+      "line": 165,
       "uri": "spec://codkit/modules/codkit/PROP-008#cause"
     },
     {
@@ -4572,7 +4590,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "`git log --format=%H --follow oldPin..newPin -- F` — коммиты, тронувшие файл. @status:spec/done",
-      "line": 166,
+      "line": 167,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-LOG"
     },
     {
@@ -4581,7 +4599,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Один коммит → он и есть причина. Несколько → сузить по строкам: для каждого ханка артефакта взять диапазон затронутых строк на `oldPin` и выполнить `git log -L<start>,<end>:F oldPin..newPin --format=%H`; коммит-причина — самый ранний коммит, пересёкший диапазон; если `-L` неприменим (файл удалён/переименован) — коммитом-причиной объявляется последний коммит из первого шага, с пометкой `approx`. @status:spec/done",
-      "line": 167,
+      "line": 168,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-NARROW"
     },
     {
@@ -4590,7 +4608,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Для `target-deleted`/`target-renamed` — коммит, удаливший/переименовавший (`git log --diff-filter=D|R --follow`). @status:spec/done",
-      "line": 168,
+      "line": 169,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-DELETED"
     },
     {
@@ -4599,7 +4617,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Выход: `{sha, approx: bool}`; пишется в `cause` шапки патча (шагом регенерации), в журнал и в трейлер `Cause:` коммита-фикса. Отчёт цикла группируется по коммитам-причинам (десятки отказов → единицы причин). @status:spec/done",
-      "line": 169,
+      "line": 170,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-OUTPUT"
     },
     {

@@ -502,6 +502,10 @@ const faqEntries = {
 		'The generated branch is checked out in another worktree of the same repository, and moving it here would leave that worktree dirty.',
 		'Let the named worktree use its own branch (git -C <path> switch --detach) or remove it (git worktree remove <path>), then re-run; nothing was changed.'
 	],
+	'TREE-HEAD': [
+		'HEAD of the fork tree is off the generated branch while carrying commits that are not in patchset, or the line below the generated tip was rewritten.',
+		'Return HEAD to the generated branch (git switch codkit/applied/<tag>) or merge the commits there, then run codkit save; for a rewritten line reset the branch to the named generated tip or restore it from refs/codkit/consumed/.'
+	],
 	INTERNAL: [
 		'An unexpected Codkit failure escaped domain diagnosis.',
 		'Rerun with `--verbose` and attach the complete output to a bug report.'

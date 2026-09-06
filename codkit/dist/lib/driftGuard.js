@@ -3,7 +3,7 @@
 //
 // Destructive commands (`load`, `cycle start`, `ci`, `publish`, `clone` over an
 // existing tree, `restart`) refuse to run over work that was never extracted
-// back into patchset. The predicate has two halves, and it needs both:
+// back into patchset. The predicate has three halves, and it needs all of them:
 //
 //   (a) `git status --porcelain` outside the own directory - edits to upstream
 //       files, which git can see because those files are tracked;
@@ -11,10 +11,16 @@
 //       edits to own code, which git cannot see, because locally the own
 //       directory is excluded (##OWN-EXCLUDED-LOCALLY: the managed block of
 //       info/exclude in a single-worktree repository, the worktree-local
-//       exclude file in a multi-worktree one).
+//       exclude file in a multi-worktree one);
+//   (c) the foreign commits of ##TREE-COMMITS-ARE-WORK - commits of the tree's
+//       first-parent line above the last generated tip, which both other halves
+//       are blind to: git status reports a clean tree over a commit, and own
+//       code says nothing about upstream files.
 //
 // Half (b) is not an optimization: without it every change to own code in the
-// tree would be silently overwritten by the next load.
+// tree would be silently overwritten by the next load. Neither is half (c):
+// without it the next load would rebuild the branch over a commit and leave the
+// work reachable only through the reflog.
 //
 // One refinement of the literal predicate: an own file that exists in patchset and
 // not in the tree is *not* dirt. It is own code that has not been materialized
@@ -35,11 +41,13 @@
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { OWN_SOURCE_DIR, compareOwn, ownTargetRelativeDir } from './ownCopy.js';
+import { foreignCommits } from './treeCommits.js';
 /** Marker appended to own-code entries of the list. */
 export const OWN_DIVERGENCE_NOTE = 'own code differs from';
-export function driftDirty(treeDir, ownDirName, patchesDir, options = {}) {
+export function driftDirty(treeDir, ownDirName, patchesDir, options) {
     const upstream = upstreamDirt(treeDir, ownDirName, options);
     const own = compareOwn(patchesDir, treeDir, ownDirName);
+    const treeCommits = foreignCommits(treeDir, options.generated.pinSha, options.generated.branch);
     const ownPrefix = ownTargetRelativeDir(ownDirName);
     const files = [...upstream];
     for (const divergence of own) {
@@ -51,7 +59,10 @@ export function driftDirty(treeDir, ownDirName, patchesDir, options = {}) {
             : `${OWN_DIVERGENCE_NOTE} ${OWN_SOURCE_DIR}/${divergence.relative}`;
         files.push(`${ownPrefix}/${divergence.relative} (${note})`);
     }
-    return { dirty: files.length > 0, files, upstream, own };
+    for (const commit of treeCommits.commits) {
+        files.push(`commit ${commit.sha.slice(0, 8)} "${commit.subject}" (not in patchset)`);
+    }
+    return { dirty: files.length > 0, files, upstream, own, commits: treeCommits.commits, treeCommits };
 }
 /**
  * Half (a): what git sees, minus the own directory it is not allowed to judge,
