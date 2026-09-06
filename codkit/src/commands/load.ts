@@ -7,7 +7,10 @@
 // This command is the one a developer runs every day, so its two guarantees
 // matter more than its features: it never destroys work that was not extracted
 // back into patchset (the drift guard), and running it twice costs nothing (the
-// fast path of PROP-006 sec. 1).
+// fast path of PROP-006 sec. 1). `--discard` (D11) is the one sanctioned way to
+// give up the commit half of that guarantee: the loss is named in advance, the
+// dropped line stays reachable under refs/codkit/consumed/, and a non-interactive
+// run may not make the decision at all.
 //
 // Cloning is not a side effect of a typo: a missing tree is an error unless
 // --clone-if-missing says otherwise, and even then --ci refuses, because a
@@ -29,8 +32,20 @@ import { cloneForkTree } from './clone.ts';
 const FRESH = '--fresh';
 const DRY_RUN = '--dry-run';
 const CLONE_IF_MISSING = '--clone-if-missing';
+const DISCARD = '--discard';
 
 async function run(ctx: CommandContext): Promise<number> {
+	// Before anything is resolved or read: a non-interactive run must never
+	// decide on its own to drop somebody's work (D11). The flag names a loss, and
+	// naming a loss is an interactive act.
+	const discard = commandFlagGiven(ctx.commandFlags, DISCARD);
+	if (discard && ctx.flags.ci) {
+		throw ckError(
+			'CONFIG',
+			'load --discard drops fork-tree commits on purpose, and a --ci run must not make that decision',
+			'run codkit save to keep the commits, or codkit load --discard interactively'
+		);
+	}
 	let resolution = forkResolution(ctx);
 	ctx.out.setForkTree(resolution.path, resolution.source);
 	ctx.out.info(formatForkTreeLine(resolution));
@@ -66,9 +81,10 @@ async function run(ctx: CommandContext): Promise<number> {
 				out: ctx.out,
 				fresh,
 				dryRun,
-				verbose: ctx.flags.verbose
+				verbose: ctx.flags.verbose,
+				discardTreeCommits: discard
 			});
-			report(ctx, result, { fresh, dryRun });
+			report(ctx, result, { fresh, dryRun, discard });
 			return result.exitCode;
 		},
 		(text) => {
@@ -118,11 +134,11 @@ function cloneMissingTree(ctx: CommandContext, resolution: ForkDirResolution, co
 	return null;
 }
 
-function report(ctx: CommandContext, result: SyncResult, flags: { fresh: boolean; dryRun: boolean }): void {
+function report(ctx: CommandContext, result: SyncResult, flags: { fresh: boolean; dryRun: boolean; discard: boolean }): void {
 	ctx.out.setData(buildData(result, flags));
 }
 
-function buildData(result: SyncResult, flags: { fresh: boolean; dryRun: boolean }): JsonValue {
+function buildData(result: SyncResult, flags: { fresh: boolean; dryRun: boolean; discard: boolean }): JsonValue {
 	const data: { [key: string]: JsonValue } = {
 		status: result.status,
 		branch: result.branch,
@@ -134,6 +150,10 @@ function buildData(result: SyncResult, flags: { fresh: boolean; dryRun: boolean 
 	};
 	if (flags.fresh) {
 		data['cleaned'] = result.cleaned;
+	}
+	if (flags.discard) {
+		data['discarded'] = [...result.discarded];
+		data['discardedRef'] = result.discardedRef;
 	}
 	if (result.dirtyFiles.length > 0) {
 		data['dirtyFiles'] = [...result.dirtyFiles];
@@ -152,6 +172,6 @@ export const loadCommand: CommandDefinition = {
 	summary: 'bring the fork tree to the pin and apply the delta',
 	configMode: 'load',
 	maxArgs: 0,
-	commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING],
+	commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING, DISCARD],
 	run
 };

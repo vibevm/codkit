@@ -20,8 +20,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { gitLocal } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
 import { applyUnified } from '../../src/lib/applyUnified.ts';
+import { loadConfig } from '../../src/lib/configFile.ts';
 import { loadConventions } from '../../src/lib/conventionsFile.ts';
+import { Output } from '../../src/lib/jsonOut.ts';
 import { parseCkpatch } from '../../src/lib/patchFormat.ts';
+import { runSync } from '../../src/lib/syncEngine.ts';
 import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { CODKIT_E2E_TEST_BUILD, makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture, Envelope, Run } from '../support/cliFixture.ts';
@@ -780,5 +783,167 @@ describe('--squash without tree commits is a no-op that says so', () => {
 		expect(outcome.status).toBe(0);
 		expect(outcome.stdout).toContain('--squash: no tree commits in the fork tree to fold');
 		expect(outcome.stdout).toContain('nothing to save');
+	});
+});
+
+describe('load --discard: dropping tree commits on purpose (D11)', () => {
+	let fixture: CliFixture;
+	let first: string;
+	let second: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-discard');
+		expect(fixture.run(['load']).status).toBe(0);
+		first = commitInTree(fixture, 'work: first tree commit', '// first committed line', '--no-verify', '2026-09-06T11:00:00Z');
+		second = commitInTree(fixture, 'work: second tree commit', '// second committed line', '--no-verify', '2026-09-06T11:01:00Z');
+	});
+
+	it('drops them: exit 0, files back, the line kept only by the consumed ref', () => {
+		const outcome = fixture.json(['load', '--discard']);
+
+		expect(outcome.run.status).toBe(0);
+		expect(outcome.envelope.errors).toEqual([]);
+		const refs = consumedRefs(fixture);
+		expect(refs.length).toBe(1);
+		const kept = refs[0];
+		// The ref points at the tree's former HEAD, and through it the whole line.
+		expect(kept?.sha).toBe(second);
+		expect(kept?.ref).toMatch(/^refs\/codkit\/consumed\/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7}$/);
+		expect(
+			outcome.envelope.messages.some(
+				(message) => message.text === `discarded 2 commit(s): ${first.slice(0, 8)}..${second.slice(0, 8)}; kept as ${kept?.ref}`
+			)
+		).toBe(true);
+		// Both halves of the criterion, asserted separately: unreachable from
+		// HEAD (the drop happened) and reachable from the ref (nothing was lost).
+		expect(isAncestor(fixture, first)).toBe(false);
+		expect(isAncestor(fixture, second)).toBe(false);
+		expect(fixture.git(['merge-base', '--is-ancestor', first, kept?.ref ?? '']).status).toBe(0);
+		expect(fixture.git(['merge-base', '--is-ancestor', second, kept?.ref ?? '']).status).toBe(0);
+		// The working files are back at the applied state, the tree is clean and
+		// back on the generated branch.
+		const file = readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8');
+		expect(file).not.toContain('// first committed line');
+		expect(file).not.toContain('// second committed line');
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+		expect(fixture.git(['symbolic-ref', 'HEAD']).stdout.trim()).toBe(`refs/heads/${fixture.branch}`);
+		expect(outcome.envelope.data['discarded']).toEqual([first, second]);
+		expect(outcome.envelope.data['discardedRef']).toBe(kept?.ref);
+	});
+
+	it('without commits it is an honest no-op, not a pretend discard', () => {
+		const outcome = fixture.json(['load', '--discard']);
+
+		expect(outcome.run.status).toBe(0);
+		expect(
+			outcome.envelope.messages.some((message) => message.text === 'discard: no fork-tree commits above the generated tip; nothing to drop')
+		).toBe(true);
+		// Still exactly the one ref the real discard left behind.
+		expect(consumedRefs(fixture).length).toBe(1);
+	});
+});
+
+describe('--ci never discards: the decision is interactive only (D11)', () => {
+	let fixture: CliFixture;
+	let first: string;
+	let second: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-discard-ci');
+		expect(fixture.run(['load']).status).toBe(0);
+		first = commitInTree(fixture, 'work: first tree commit', '// first committed line', '--no-verify', '2026-09-06T11:05:00Z');
+		second = commitInTree(fixture, 'work: second tree commit', '// second committed line', '--no-verify', '2026-09-06T11:06:00Z');
+	});
+
+	it('refuses with exit 2 and the commits stay reachable from HEAD', () => {
+		const outcome = fixture.json(['load', '--discard', '--ci']);
+
+		expect(outcome.run.status).toBe(2);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-CONFIG']);
+		expect(outcome.envelope.errors[0]?.message).toContain('--discard');
+		// A non-interactive run does not discard work: nothing moved.
+		expect(isAncestor(fixture, first)).toBe(true);
+		expect(isAncestor(fixture, second)).toBe(true);
+		expect(consumedRefs(fixture)).toEqual([]);
+	});
+});
+
+describe('--discard lifts only the commits half of the guard (D11)', () => {
+	let fixture: CliFixture;
+	let committed: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-discard-mixed');
+		expect(fixture.run(['load']).status).toBe(0);
+		committed = commitInTree(fixture, 'work: the committed part', '// committed line', '--no-verify', '2026-09-06T11:10:00Z');
+		// An uncommitted edit on top: the same insertion the commits use, minus
+		// the commit itself. The flag speaks about commits, never about edits.
+		const target = fixture.treePath(EXAMPLE_PART_PATH);
+		const text = readFileSync(target, 'utf8');
+		const at = text.indexOf(MARKER_BLOCK_NOTE);
+		writeFileSync(
+			target,
+			at === -1 ? `${text}// uncommitted line\n` : `${text.slice(0, at)}// uncommitted line\n\t\t${text.slice(at)}`,
+			'utf8'
+		);
+	});
+
+	it('refuses over the uncommitted edit and drops nothing', () => {
+		const outcome = fixture.json(['load', '--discard']);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
+		expect(outcome.envelope.errors[0]?.message).toBe('1 commit(s) in the fork tree since the last codkit apply are not in patchset yet');
+		// Nothing moved: the commit is still in HEAD's history, the edit is
+		// still in the file, and no consumed ref exists.
+		expect(isAncestor(fixture, committed)).toBe(true);
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toContain('// uncommitted line');
+		expect(consumedRefs(fixture)).toEqual([]);
+	});
+});
+
+describe('a crash during load --discard cannot lose the dropped line (ref written before the rebuild)', () => {
+	let fixture: CliFixture;
+	let first: string;
+	let second: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-discard-crash');
+		expect(fixture.run(['load']).status).toBe(0);
+		first = commitInTree(fixture, 'work: first tree commit', '// first committed line', '--no-verify', '2026-09-06T11:15:00Z');
+		second = commitInTree(fixture, 'work: second tree commit', '// second committed line', '--no-verify', '2026-09-06T11:16:00Z');
+	});
+
+	it('keeps the commits reachable from refs/codkit/consumed at the worktree-moved crash point', () => {
+		const config = loadConfig(fixture.patchesDir);
+		if (config === null) throw new Error('missing fixture config');
+		const out = new Output({ command: 'load', version: 'test', jsonMode: true, streams: { writeOut() {}, writeErr() {} } });
+		expect(() =>
+			runSync({
+				patchesDir: fixture.patchesDir,
+				resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
+				config,
+				out,
+				fresh: false,
+				dryRun: false,
+				verbose: false,
+				discardTreeCommits: true,
+				checkpoint(at) {
+					if (at === 'worktree-moved') throw new Error('crash:worktree-moved');
+				}
+			})
+		).toThrow('crash:worktree-moved');
+
+		// The decisive read is the ref itself, not the code path: the crash sits
+		// after the rebuild moved HEAD off the dropped line, and the line must
+		// already be kept by refs/codkit/consumed/* rather than by the reflog
+		// alone - verbatim the defect this campaign was created to remove.
+		const refs = consumedRefs(fixture);
+		expect(refs.length).toBe(1);
+		expect(refs[0]?.sha).toBe(second);
+		expect(fixture.git(['merge-base', '--is-ancestor', first, refs[0]?.ref ?? '']).status).toBe(0);
+		expect(fixture.git(['merge-base', '--is-ancestor', second, refs[0]?.ref ?? '']).status).toBe(0);
+		// The crash window is real: HEAD has already moved off the line.
+		expect(isAncestor(fixture, second)).toBe(false);
 	});
 });

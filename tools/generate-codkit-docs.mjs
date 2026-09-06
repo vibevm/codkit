@@ -146,7 +146,7 @@ const commandGuidance = {
 	load: {
 		positional: '',
 		detail:
-			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`.'
+			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`; `--discard` drops fork-tree commits on purpose (kept reachable under `refs/codkit/consumed/`) and is likewise refused under `--ci`.'
 	},
 	status: { positional: '', detail: 'Show the pin/generated branch and work in the fork tree that has not been extracted.' },
 	save: {
@@ -394,7 +394,7 @@ const faqEntries = {
 	],
 	'DIRTY-TREE': [
 		'Unextracted or otherwise disallowed work makes the requested transition unsafe.',
-		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
+		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. Fork-tree commits can also be dropped on purpose with `codkit load --discard` (they stay reachable under `refs/codkit/consumed/`; the flag is refused under `--ci`). A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
 	],
 	'TREE-READONLY': [
 		'Codkit cannot write the fork tree or its required runtime state.',

@@ -124,24 +124,35 @@ export function treeHeadError(state: TreeCommits, branch: string): CkError | nul
  * Returns the full ref name for the caller's report.
  */
 export function recordConsumedRef(treeDir: string, sha: string, now: () => Date = () => new Date()): string {
+	const coordination = acquireCommonRepositoryLock(treeDir, `consumed ref for ${sha.slice(0, 7)}`);
+	try {
+		return writeConsumedRef(treeDir, sha, now);
+	} finally {
+		coordination.release();
+	}
+}
+
+/**
+ * The ref write itself, for a caller already holding the common-repository
+ * lock (`load --discard` writes it inside its guarded generated-ref section,
+ * before the rebuild makes the commits unreachable - there the ref is the only
+ * keeper, and taking the lock twice for one mutation would deadlock the
+ * protocol). Everyone else uses `recordConsumedRef`.
+ */
+export function writeConsumedRef(treeDir: string, sha: string, now: () => Date = () => new Date()): string {
 	const stamp = now()
 		.toISOString()
 		.replace(/[-:]/g, '')
 		.replace(/\.\d{3}/, '');
 	const ref = `${CONSUMED_REF_PREFIX}${stamp}-${sha.slice(0, 7)}`;
-	const coordination = acquireCommonRepositoryLock(treeDir, `consumed ref ${ref}`);
-	try {
-		gitOk(
-			{ args: ['update-ref', ref, sha], cwd: treeDir },
-			{
-				code: 'INTERNAL',
-				message: `cannot record consumed ref ${ref}`,
-				hint: 'check that the fork repository is writable'
-			}
-		);
-	} finally {
-		coordination.release();
-	}
+	gitOk(
+		{ args: ['update-ref', ref, sha], cwd: treeDir },
+		{
+			code: 'INTERNAL',
+			message: `cannot record consumed ref ${ref}`,
+			hint: 'check that the fork repository is writable'
+		}
+	);
 	return ref;
 }
 

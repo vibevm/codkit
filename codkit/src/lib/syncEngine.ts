@@ -27,6 +27,7 @@ import type { CodkitConfig } from './configFile.ts';
 import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { driftDirty, porcelainPaths } from './driftGuard.ts';
+import type { DriftResult } from './driftGuard.ts';
 import { deltaFingerprint, treeId } from './fingerprint.ts';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.ts';
 import type { GeneratedLayerTarget, GeneratedOwnEvidence } from './generatedBranch.ts';
@@ -67,7 +68,8 @@ import {
 	writeTreeMark
 } from './treeCache.ts';
 import type { TreeMark } from './treeCache.ts';
-import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, treeHeadError } from './treeCommits.ts';
+import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, foreignCommits, treeHeadError, writeConsumedRef } from './treeCommits.ts';
+import type { TreeCommit, TreeCommits } from './treeCommits.ts';
 import { assertCompletedRebaseMoveSyncTree, completedRebaseMoveForSync, finishCompletedRebaseMoveSync } from './rebaseOntoPinMove.ts';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.ts';
 import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.ts';
@@ -176,6 +178,17 @@ export type SyncEngineOptions = {
 	 * skip the guard.
 	 */
 	readonly skipDriftGuard?: boolean;
+	/**
+	 * Only `load --discard` sets this (decision D11). The operator named the loss
+	 * in advance, so the commits half of the guard stops protecting what this run
+	 * was asked to drop: the rebuild moves HEAD off them the way it always could,
+	 * and the consumed ref, written before the rebuild performs the drop, keeps
+	 * them diagnosable (PROP-006 ##CONSUMED-REFS). The two file halves of the
+	 * guard stay armed - the flag speaks about commits, never about unextracted
+	 * edits - and so do the D8 refusals: a rewritten line or a HEAD off the
+	 * branch is a position to correct, not a thing to bury.
+	 */
+	readonly discardTreeCommits?: boolean;
 	/** Internal crash recovery: rebuild even when cache/mark would take the fast path. */
 	readonly forceApply?: boolean;
 	/** Test seam around the only two post-checkout durable metadata windows. */
@@ -210,6 +223,10 @@ export type SyncResult = {
 	readonly generatedOwnPaths: readonly string[];
 	readonly dirtyFiles: readonly string[];
 	readonly broken: readonly string[];
+	/** Shas this run dropped by name (`load --discard`); empty otherwise. */
+	readonly discarded: readonly string[];
+	/** The consumed ref that keeps the dropped commits reachable; null when none. */
+	readonly discardedRef: string | null;
 	/** Why the fast path was refused; null when it was taken. */
 	readonly fastPathReason: string | null;
 };
@@ -357,6 +374,12 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// the same bytes, or the classification would certify something else.
 	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), options.patchSetCommit ?? patchSetCommitId(patchesDir));
 
+	// The state `--discard` asked to drop (D11): captured by the guard below,
+	// performed by the rebuild of step 9, and kept diagnosable by the consumed
+	// ref that the rebuild writes before it makes the commits unreachable. Null
+	// until the guard sees both the flag and the commits.
+	let discard: { readonly head: string; readonly commits: readonly TreeCommit[] } | null = null;
+
 	// 4. Drift guard: never overwrite work that was not extracted back to patchset.
 	if (!dryRun && options.skipDriftGuard !== true && completedRebase === null) {
 		// --fresh is about to remove untracked paths by the whitelist, so they
@@ -384,6 +407,18 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			out.addError(head.toPayload());
 			return result('dirty', 1, { branch, dirtyFiles: drift.files });
 		}
+		// --discard lifts exactly the third half (D11). With commits present the
+		// state is captured now, whatever the verdict below does with the rest of
+		// the dirt: a refusal simply never reaches the rebuild that would use it.
+		// Without commits there is nothing the flag was asked to do, and the run
+		// says so instead of pretending it discarded anything.
+		if (options.discardTreeCommits === true) {
+			if (drift.treeCommits.commits.length === 0) {
+				out.info('discard: no fork-tree commits above the generated tip; nothing to drop');
+			} else {
+				discard = { head: drift.treeCommits.head, commits: drift.treeCommits.commits };
+			}
+		}
 		if (drift.dirty) {
 			const verdict = judgeOwnSides(drift, patchesDir, tree, config.ownDirName, mark, fingerprint);
 			if (verdict.kind === 'both-sides') {
@@ -391,23 +426,32 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 				return result('dirty', 1, { branch, dirtyFiles: drift.files });
 			}
 			if (verdict.kind === 'unextracted') {
-				for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
-					out.info(`  dirty: ${path}`);
+				// The one exemption: the dirt is the commits and nothing else, so
+				// the refusal would be protecting exactly what the operator asked
+				// to drop. File dirt or an own divergence keeps the refusal - the
+				// flag speaks about commits, never about edits.
+				if (discard === null || !commitsOnlyDirt(drift)) {
+					for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
+						out.info(`  dirty: ${path}`);
+					}
+					if (drift.files.length > DIRTY_LIST_LIMIT) {
+						out.info(`  ... and ${drift.files.length - DIRTY_LIST_LIMIT} more`);
+					}
+					out.addError({
+						code: 'DIRTY-TREE',
+						message:
+							drift.commits.length > 0
+								? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
+								: `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`,
+						hint: 'run codkit save, or codkit status; codkit load --discard drops tree commits deliberately'
+					});
+					return result('dirty', 1, { branch, dirtyFiles: drift.files });
 				}
-				if (drift.files.length > DIRTY_LIST_LIMIT) {
-					out.info(`  ... and ${drift.files.length - DIRTY_LIST_LIMIT} more`);
-				}
-				out.addError({
-					code: 'DIRTY-TREE',
-					message:
-						drift.commits.length > 0
-							? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
-							: `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`,
-					hint: 'run codkit save, or codkit status'
-				});
-				return result('dirty', 1, { branch, dirtyFiles: drift.files });
+				// Exempted: the commits are the payload of this run, the rebuild
+				// below is the answer to them, and there is nothing to warn about.
+			} else {
+				out.warn(verdict.text, 'PATCHSET-SIDE-EDIT');
 			}
-			out.warn(verdict.text, 'PATCHSET-SIDE-EDIT');
 		}
 		// Said out loud because the tree did look dirty a moment ago: these bytes
 		// were certified as codkit's own packaging state, and this run replaces
@@ -501,9 +545,28 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// the generated branch, or the run refuses with every ref, index and work
 	// tree unchanged.
 	let changedPaths: readonly string[];
+	let discardedRef: string | null = null;
 	const coordination = acquireCommonRepositoryLock(tree, `generated ref refs/heads/${branch}`);
 	try {
 		assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
+		// The discard's own precondition (the D6 discipline): the set the guard
+		// judged droppable must still be the set present, or a commit that
+		// appeared in between would be buried by the very rebuild asked to drop
+		// only the named work. Checked before any ref or worktree byte moves.
+		if (discard !== null) {
+			assertDiscardSetHeld(discard, foreignCommits(tree, config.pin.sha, branch));
+			// The consumed ref goes FIRST - before the rebuild makes the commits
+			// unreachable from HEAD - because here it is the only keeper: unlike
+			// `save`, nothing was replayed into patchset, so a crash before this
+			// write would leave the dropped line reachable from the reflog alone,
+			// the exact defect this campaign exists to remove. `save` writes the
+			// same ref after its rebuild for the opposite reason: the patchset is
+			// already the keeper there and the ref is diagnostics
+			// (PROP-006 ##CONSUMED-REFS). A ref left by an unfinished discard
+			// points at commits still on HEAD - "a discard was started and did
+			// not finish" - which loses nothing and names itself.
+			discardedRef = writeConsumedRef(tree, discard.head);
+		}
 		// No worktree byte changes before the exclusivity proof. In particular,
 		// --fresh cleanup used to delete user untracked files and only then learn
 		// that a sibling held the generated branch.
@@ -523,6 +586,14 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		coordination.release();
 	}
 	options.checkpoint?.('worktree-moved');
+	// Said only once the discard is a completed fact: HEAD has moved off the
+	// dropped line, and the ref written before the rebuild is what keeps that
+	// line diagnosable.
+	if (discard !== null && discardedRef !== null) {
+		const first = discard.commits[0]?.sha.slice(0, 8) ?? discard.head.slice(0, 8);
+		const last = discard.commits[discard.commits.length - 1]?.sha.slice(0, 8) ?? first;
+		out.info(`discarded ${discard.commits.length} commit(s): ${first}..${last}; kept as ${discardedRef}`);
+	}
 
 	// 10. Own code, dev overlay, exclude, hook, mark, cache.
 	const own = syncOwnCode(patchesDir, tree, config.ownDirName);
@@ -582,6 +653,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		changedPaths,
 		nonPatchTargets: saveMaterializationTargets(prebuiltPlan, ownershipEvidence.ownTargets),
 		generatedOwnPaths: generatedBranch ? ownershipEvidence.ownTargets : [],
+		discarded: discard === null ? [] : discard.commits.map((commit) => commit.sha),
+		discardedRef,
 		fastPathReason: verdict.reason
 	});
 }
@@ -1953,6 +2026,35 @@ function judgeOwnSides(
 	return { kind: 'patchset-side', text: patchsetSideText(unknown.map((divergence) => divergence.relative)) };
 }
 
+/**
+ * The dirt the guard sees is the commits and nothing else (D11's boundary): no
+ * upstream path, no own divergence that carries work. Only then may `--discard`
+ * answer the refusal, because everything it did not ask about is clean.
+ */
+function commitsOnlyDirt(drift: DriftResult): boolean {
+	return drift.upstream.length === 0 && drift.own.every((divergence) => divergence.kind === 'patchset-only');
+}
+
+/**
+ * The discard's precondition (the D6 discipline, phrased for D11): the rebuild
+ * is about to make the commits unreachable, so the set judged droppable must
+ * still be exactly the set present. A commit that appeared in between is work
+ * nobody asked to drop, and burying it is the failure mode the flag exists to
+ * make impossible.
+ */
+function assertDiscardSetHeld(selected: { readonly commits: readonly TreeCommit[] }, current: TreeCommits): void {
+	const held = new Set(current.commits.map((commit) => commit.sha));
+	const same = selected.commits.length === current.commits.length && selected.commits.every((commit) => held.has(commit.sha));
+	if (same) {
+		return;
+	}
+	throw ckError(
+		'INTERNAL',
+		`the fork tree changed during load --discard: ${current.commits.length} commit(s) not in patchset now, ${selected.commits.length} when the run started`,
+		'nothing was rebuilt and nothing was discarded; re-run codkit load --discard over the new state'
+	);
+}
+
 function patchsetSideText(relatives: readonly string[]): string {
 	const names = relatives.map((relative) => `${OWN_SOURCE_DIR}/${relative}`).join(', ');
 	return `own code was edited in patchset since this tree was last synced (${names}); the patchset version is being applied over the tree`;
@@ -2000,6 +2102,8 @@ type ResultParts = {
 	readonly generatedOwnPaths?: readonly string[];
 	readonly dirtyFiles?: readonly string[];
 	readonly broken?: readonly string[];
+	readonly discarded?: readonly string[];
+	readonly discardedRef?: string | null;
 	readonly fastPathReason?: string;
 };
 
@@ -2019,6 +2123,8 @@ function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncR
 		generatedOwnPaths: parts.generatedOwnPaths ?? [],
 		dirtyFiles: parts.dirtyFiles ?? [],
 		broken: parts.broken ?? [],
+		discarded: parts.discarded ?? [],
+		discardedRef: parts.discardedRef ?? null,
 		fastPathReason: parts.fastPathReason ?? null
 	};
 }

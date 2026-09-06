@@ -3794,7 +3794,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:18ea19b289f6b6f421a500db9c970c66616a2cdbfe162d92597ef7e53c8bf2ab",
+      "content_hash": "sha256:9ac28f9dcfe90d06c72aa6869716ccbedca460a753bfe06608d2fbf8b67918ea",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -3929,10 +3929,10 @@
     },
     {
       "anchor": "cmd-sync",
-      "content_hash": "sha256:f000ee3b27c070878db982745dc120f8514382937ed4999748fa195150c09028",
+      "content_hash": "sha256:182eff3649d5d4608e4de1cba96a204f03903f811b02fdf4c4aa97632a1f8d19",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "5. codkit load [--fresh] [--dry-run] [--clone-if-missing]",
+      "heading": "5. codkit load [--fresh] [--dry-run] [--clone-if-missing] [--discard]",
       "line": 25,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-sync"
     },
@@ -3947,10 +3947,10 @@
     },
     {
       "anchor": "CMD-LOAD",
-      "content_hash": "sha256:1604566e522e85df5d78da746c032a93b59a1c83a4f5954ea37a0ee094021e3a",
+      "content_hash": "sha256:06afa307cc907b7500471ad3d0cacd2499d00c6763209622541417b80bf9c692",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Привести дерево к пину и наложить дельту (алгоритм — PROP-008 §3). Предусловия: конфиг валиден; дерево проходит `check-tree`; сгенерированная ветка не разделена с соседним worktree (`CK-E-WORKTREE-REF-SHARED`, выход 2 — преflight идёт ПЕРЕД грязевой проверкой, рулинг D7 от 2026-09-06); **нет незаизвлечённых правок и коммитов дерева** (страж PROP-008 §4: правки — выход 1 `CK-E-DIRTY-TREE` со списком файлов, hint «run codkit save, or codkit status»; коммиты дерева — тот же код, «N commit(s) in the fork tree since the last codkit apply are not in patchset yet»; HEAD вне ветки при foreign — `CK-E-TREE-HEAD`, выход 1). `--fresh` — режим «с нуля»: reset к пину + очистка неотслеживаемого по белому списку перед наложением (PROP-011 §4); известная материализация overlay-целей заменяется тем же прогоном (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`, PROP-008 §4). `--dry-run` — прогноз: полный цикл применения в памяти/индексе без изменения рабочих файлов и ссылок; печать классифицированных исходов (формат отчёта — как у `cycle`); используется `forecast`'ом. Побочные эффекты (не dry-run): ветка `codkit/applied/<pin.tag>` пересоздана (если отпечаток изменился), HEAD дерева — на её вершине, own-код скопирован, `product.overrides.json` записан, эффективный `info/exclude` восстановлен, метка и кэш обновлены. Повтор без изменений — быстрый no-op (правило сверки PROP-006 §1), печать `up to date`. Коды: 0; 1 (страж; артефакт не лёг — на своём пине это означает испорченный артефакт `CK-E-ARTIFACT-BROKEN`, печатается какой); 2 (окружение). Прежнее имя — usage error без конверта: `codkit sync` (в любом виде) → выход 2, stderr «codkit sync was renamed to codkit load; the name sync is reserved for the two-way save+load command»; алиас отвергнут намеренно — когда имя получит новый смысл, скрипты со старым обязаны сломаться громко. @status:spec/done",
+      "heading": "Привести дерево к пину и наложить дельту (алгоритм — PROP-008 §3). Предусловия: конфиг валиден; дерево проходит `check-tree`; сгенерированная ветка не разделена с соседним worktree (`CK-E-WORKTREE-REF-SHARED`, выход 2 — преflight идёт ПЕРЕД грязевой проверкой, рулинг D7 от 2026-09-06); **нет незаизвлечённых правок и коммитов дерева** (страж PROP-008 §4: правки — выход 1 `CK-E-DIRTY-TREE` со списком файлов, hint «run codkit save, or codkit status; codkit load --discard drops tree commits deliberately»; коммиты дерева — тот же код, «N commit(s) in the fork tree since the last codkit apply are not in patchset yet»; HEAD вне ветки при foreign — `CK-E-TREE-HEAD`, выход 1). `--fresh` — режим «с нуля»: reset к пину + очистка неотслеживаемого по белому списку перед наложением (PROP-011 §4); известная материализация overlay-целей заменяется тем же прогоном (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`, PROP-008 §4). `--dry-run` — прогноз: полный цикл применения в памяти/индексе без изменения рабочих файлов и ссылок; печать классифицированных исходов (формат отчёта — как у `cycle`); используется `forecast`'ом. `--discard` (решение D11, Phase 6 кампании TREE-COMMITS-SAVE) — третьей половиной стража пожертвовано **по имени**: коммиты дерева над последней сгенерированной вершиной отбрасываются сознательно, тем же механизмом, которым страж раньше не давал пользоваться слепо, — обычной пересборкой ветки (коммиты перестают быть достижимы из HEAD) плюс consumed-ref `refs/codkit/consumed/…` (PROP-006 §1 `##CONSUMED-REFS`, чистит только `gc`) и сообщение `discarded N commit(s): <first>..<last>; kept as <ref>`. Ref пишется **до** пересборки, под замком общего репозитория, сразу за предусловием «множество foreign не изменилось с момента проверки, иначе `CK-E-INTERNAL` до любого движения ref/файлов»: в отличие от `save`, патчсет здесь ничего не воспроизвёл, и ref — единственный хранитель линии (рулинг родителя 2026-09-06: краш между ref и пересборкой оставляет ref на ещё живые коммиты — «discard начат и не закончен», что ничего не теряет и само себя называет; у `save` порядок обратный — там хранитель уже патчсет). Границы флага: правки файлов и own-код страж продолжает охранять (смешанная грязь — обычный отказ), аномалия переписанной истории и HEAD вне ветки — тоже (`CK-E-TREE-HEAD`); без коммитов дерева — no-op, выход 0 со строкой info; под `--ci` — выход 2 `CK-E-CONFIG`: неинтерактивный прогон не решает сам выбросить чужую работу. Побочные эффекты (не dry-run): ветка `codkit/applied/<pin.tag>` пересоздана (если отпечаток изменился), HEAD дерева — на её вершине, own-код скопирован, `product.overrides.json` записан, эффективный `info/exclude` восстановлен, метка и кэш обновлены. Повтор без изменений — быстрый no-op (правило сверки PROP-006 §1), печать `up to date`. Коды: 0; 1 (страж; артефакт не лёг — на своём пине это означает испорченный артефакт `CK-E-ARTIFACT-BROKEN`, печатается какой); 2 (окружение). Прежнее имя — usage error без конверта: `codkit sync` (в любом виде) → выход 2, stderr «codkit sync was renamed to codkit load; the name sync is reserved for the two-way save+load command»; алиас отвергнут намеренно — когда имя получит новый смысл, скрипты со старым обязаны сломаться громко. @status:spec/done",
       "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LOAD"
     },

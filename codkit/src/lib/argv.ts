@@ -55,6 +55,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--fresh', 'boolean'],
 	['--dry-run', 'boolean'],
 	['--clone-if-missing', 'boolean'],
+	['--discard', 'boolean'],
 	// save (PROP-007 sec. 7)
 	['--commit', 'boolean'],
 	['--message', 'value'],
