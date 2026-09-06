@@ -17,6 +17,7 @@ import { gcCommand } from './commands/gc.ts';
 import { hooksCommand } from './commands/hooks.ts';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.ts';
 import { inventoryCommand } from './commands/inventory.ts';
+import { licenseCheckCommand, licenseCommand } from './commands/license.ts';
 import { loadCommand } from './commands/load.ts';
 import { markerNewCommand } from './commands/markerNew.ts';
 import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.ts';
@@ -76,7 +77,9 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		imagesetCommand,
 		imagesetGenCommand,
 		imagesetIndexCommand,
-		imagesetVerifyCommand
+		imagesetVerifyCommand,
+		licenseCommand,
+		licenseCheckCommand
 	].map((definition) => [definition.name, definition])
 );
 
@@ -111,9 +114,14 @@ async function main(argv: readonly string[]): Promise<number> {
 		const name = matched.definition.name;
 		const subcommands = [...COMMANDS.keys()].filter((candidate) => candidate.startsWith(`${name} `));
 		const given = matched.args.length === 0 ? 'no subcommand given' : `unknown subcommand: ${matched.args.join(' ')}`;
+		// Only a namespace that declares `--help` has one to point at; the licence
+		// and standards families answer through the command reference instead
+		// (PROP-007 ##LICENSE-NAMESPACE), so offering them a flag they refuse
+		// would send a person straight into a usage error.
+		const help = (matched.definition.commandFlags ?? []).includes(GLOBAL_FLAG_HELP_NAME) ? `; see codkit ${name} --help` : '';
 		return usageFail({
 			error: `'${name}' is a namespace and does nothing by itself (${given})`,
-			hint: `available: ${subcommands.join(', ')}; see codkit ${name} --help`
+			hint: `available: ${subcommands.join(', ')}${help}`
 		});
 	}
 	if (matched.args.length > matched.definition.maxArgs) {
@@ -146,7 +154,7 @@ async function main(argv: readonly string[]): Promise<number> {
 		const locations = resolveLocations(flags, process.env, settings);
 		out.setRoots(toolRoot, locations);
 		assertDisjointRoots(toolRoot, locations);
-		const needsPatches = matched.definition.name !== 'where' && !helpOnly;
+		const needsPatches = (matched.definition.roots ?? 'patches') === 'patches' && !helpOnly;
 		const patches = needsPatches ? requirePatchesDir(locations) : locations.patchesDir;
 		const patchRoot = patches?.path ?? '';
 		if (needsPatches && patches !== null) out.info(formatPatchesLine(patches));

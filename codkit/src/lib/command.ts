@@ -97,6 +97,13 @@ export type CommandDefinition = {
 	 * before any root is resolved, so it never quietly does something.
 	 */
 	readonly namespace?: boolean;
+	/**
+	 * Which external roots the command needs before it runs. 'patches' (the
+	 * default) requires a resolved patch-set directory; 'none' lets a command
+	 * run without any external root - `where`, and `license check` over an
+	 * arbitrary directory (PROP-014 ##COMP-ROOTS-NONE).
+	 */
+	readonly roots?: 'patches' | 'none';
 	/** Positional arguments the command accepts beyond its name. */
 	readonly maxArgs: number;
 	/**

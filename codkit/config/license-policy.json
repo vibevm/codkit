@@ -1,0 +1,10 @@
+{
+  "codkitLicensePolicy": 1,
+  "holders": ["Oleg Chirukhin"],
+  "ownLicense": "UPL-1.0",
+  "allowedThirdParty": [
+    "UPL-1.0", "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC",
+    "0BSD", "Zlib", "Unlicense", "CC0-1.0", "CC-BY-4.0", "OFL-1.1"
+  ],
+  "allowedExceptions": []
+}

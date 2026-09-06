@@ -33,7 +33,9 @@ const COMMANDS = [
 	'imageset',
 	'imageset gen',
 	'imageset index',
-	'imageset verify'
+	'imageset verify',
+	'license',
+	'license check'
 ] as const;
 
 afterAll(cleanupTempRoots);
@@ -77,6 +79,24 @@ describe('aligned command roster', () => {
 		expect(bot.stderr).toContain("flag --yes-i-am-publish-bot is not a flag of command 'where'");
 		expect(fixture.run(['forecast', '--ref']).stderr).toContain('flag --ref needs a value');
 		expect(fixture.run(['publish', 'HEAD', '--release']).stderr).toContain('flag --release needs a value');
+
+		// `license check` declares no command flags at all: a flag another
+		// command owns is a usage error here too (PROP-014 ##CMD-LICENSE-CHECK).
+		const dryRun = fixture.run(['license', 'check', '--dry-run']);
+		expect(dryRun.status).toBe(2);
+		expect(dryRun.stderr).toContain("flag --dry-run is not a flag of command 'license check'");
+	});
+
+	it('answers a namespace without its own --help without offering one', () => {
+		const fixture = makeCliFixture('surface-namespace');
+		const bare = fixture.run(['license']);
+
+		expect(bare.status).toBe(2);
+		expect(bare.stderr).toContain("'license' is a namespace and does nothing by itself");
+		expect(bare.stderr).toContain('available: license check');
+		// PROP-007 ##LICENSE-NAMESPACE: this family has no --help of its own, so
+		// the hint must not send a person into a usage error.
+		expect(bare.stderr).not.toContain('codkit license --help');
 	});
 });
 

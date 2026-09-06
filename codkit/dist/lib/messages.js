@@ -76,7 +76,25 @@ export const ERROR_CODES = [
     // it about patchset's own, before src/ is loadable, and `ci --profile build`
     // about the fork tree's, which an air-gapped run may check but never install
     // (PROP-011 sec. 7).
-    'DEPS-MISSING'
+    'DEPS-MISSING',
+    // A file of a shipped or installed standards package carries no licence
+    // carrier, or a wrong one: no copyright line, no SPDX identifier, an
+    // identifier that is not SPDX, an own file under a licence other than the
+    // policy's, a binary without its `.license` sidecar, an orphan sidecar
+    // (PROP-014 ##LIC-CHECK-ALGORITHM).
+    'LICENSE-HEADER',
+    // A third-party file breaks the registry rules: no REUSE.toml annotation
+    // covers it, its licence is outside the allowlist or is LicenseRef/NOASSERTION,
+    // carrier and annotation disagree, or THIRD-PARTY-NOTICES.md is missing or
+    // stale (PROP-014 ##LIC-FILE-CLASSIFICATION, ##LIC-NOTICES-FILE).
+    'LICENSE-THIRD-PARTY',
+    // The package as a whole is inconsistent: manifest licence field, LICENSE
+    // shape, LICENSES/ contents, a symlink inside the tree (PROP-014 sec. 3).
+    'LICENSE-PACKAGE',
+    // The installed copy of the standards package differs from the shipped one;
+    // `standards load` refuses rather than overwrite what someone edited
+    // (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL).
+    'STANDARDS-DRIFT'
 ];
 export const publicErrorCodeSchema = z.templateLiteral(['CK-E-', z.enum(ERROR_CODES)]);
 export const WARNING_CODES = ['MARK-RO', 'PATCHSET-SIDE-EDIT', 'EMPTY-BLOCK'];

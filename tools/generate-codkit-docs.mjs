@@ -260,6 +260,16 @@ const commandGuidance = {
 		positional: '',
 		detail:
 			'The acceptance bands as an executable gate, run against the distribution the fork tree already holds. For every raster target the largest layer of a container becomes the master, the other layers of that same container are regenerated from it through the pipeline `gen` uses, and each is compared with the layer the distribution ships: structure exactly, pixels within the band of their size range - at most 10/255 mean absolute RGB difference from 256 px up, at most 25/255 from 64 px, nothing asserted below that. The master is always a layer of the same file, so no flag can make it compare one container with another; a target with a single layer has no round trip and is reported as unverifiable rather than counted as passed. Read-only: no lock, nothing written to the patchset, nothing written to or seeded into the masters directory. Exit 0 when every asserted comparison is inside its band, 1 when one is outside, 2 when the tree or a container cannot be read. Markdown by default; `--json` carries the same model structurally.'
+	},
+	license: {
+		positional: '<check>',
+		detail:
+			'A namespace, not a command: bare `codkit license` and any unknown subcommand print the subcommand list and exit 2 before any root is resolved. The one subcommand is `check`.'
+	},
+	'license check': {
+		positional: '[<dir>]',
+		detail:
+			'Check the licence carriers of a package directory the way REUSE reads them: every file resolves to a carrier - an adjacent `<file>.license` sidecar, a `REUSE.toml` annotation, or a header in its first 20 non-empty lines (copyright lines are read up to the `SPDX-License-Identifier` line). An own file (every holder in the policy) must carry a year and exactly `UPL-1.0`; a third-party file must be covered by a `REUSE.toml` annotation that agrees with its carrier, and its licence must be on the policy allowlist. `LICENSE`, one `LICENSES/<ID>.txt` per licence in use, the manifest `license` field and a current `THIRD-PARTY-NOTICES.md` are required. Without `<dir>` it checks the standards package codkit ships. Read-only, needs no root, never calls git. Exit 0 clean, 1 with one line per problem (`CK-E-LICENSE-HEADER` per carrier, `CK-E-LICENSE-THIRD-PARTY` per third-party rule, `CK-E-LICENSE-PACKAGE` for the package), 2 when the directory, the policy or the SPDX list cannot be read.'
 	}
 };
 
@@ -555,6 +565,22 @@ const faqEntries = {
 	'DEPS-MISSING': [
 		'Required runtime dependencies or their npm cache receipts are absent.',
 		'Install/restore Codkit dependencies in the tool root; for `ci --profile build`, also supply tree `node_modules` and `build/node_modules` through the air-gapped cache/mount. The patch set is not the tool installation, and empty bind-mount directories do not count as restored caches.'
+	],
+	'LICENSE-HEADER': [
+		'A file of the standards package has no licence carrier, or a wrong one: no copyright line, no year on an own file, no `SPDX-License-Identifier`, an identifier that is not SPDX, an own file under a licence other than `UPL-1.0`, a binary or JSON without its `.license` sidecar, or a sidecar without its file.',
+		'Run `codkit license annotate` for the file, or fix the header (or the sidecar) as PROP-014 sec. 2 shows, within the first 20 non-empty lines; an own file carries exactly `UPL-1.0`.'
+	],
+	'LICENSE-THIRD-PARTY': [
+		'A file whose holder is not in the policy breaks the third-party rules: no `REUSE.toml` annotation covers it (a typo in the holder, or an undeclared third-party file), its licence is outside the allowlist or is `LicenseRef-*`/`NOASSERTION`, the carrier and the annotation disagree, or `THIRD-PARTY-NOTICES.md` is missing or stale.',
+		'Declare the file with `codkit license annotate --third-party --holder <name> --license <SPDX-ID> --source <where it came from>` (or fix the holder typo), keep the carrier and the annotation on the same licence, put the licence text in `LICENSES/`, then run `codkit license notices`.'
+	],
+	'LICENSE-PACKAGE': [
+		'The package as a whole is inconsistent: the manifest `license` field is not `UPL-1.0`, `LICENSE` or `LICENSES/UPL-1.0.txt` differs from the canonical UPL text, a licence in use has no `LICENSES/<ID>.txt` or `LICENSES/` carries a text nobody uses, `REUSE.toml` does not parse, a notices file exists without third-party files, or a symlink sits inside the package.',
+		'Restore the canonical files from the shipped package (never edit a licence text), add the missing `LICENSES/<ID>.txt` verbatim from SPDX or remove the unused one, fix `REUSE.toml`, remove the symlink; rerun `codkit license check <dir>`.'
+	],
+	'STANDARDS-DRIFT': [
+		'The installed copy of the standards package under `vibevm/vibepacks/org.vibevm.codkit/standards/` differs from the package codkit ships: a file was modified, added or removed.',
+		'The copy is codkit-owned. Move local edits into your own specs as a recorded deviation, delete the copy directory, then run `codkit standards load` again (and `vibe install --offline` afterwards).'
 	]
 };
 

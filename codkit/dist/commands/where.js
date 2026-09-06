@@ -33,6 +33,7 @@ export const whereCommand = {
     summary: 'print the resolved fork tree path and the source of that path',
     // A broken codkit.json is fatal (exit 2); an absent one is not an error.
     configMode: 'none',
+    roots: 'none',
     maxArgs: 0,
     run
 };
