@@ -14,7 +14,9 @@
 // markup wants the whole list once.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { UPL_1_0_ID, UPL_1_0_TEXT, normalizeLicenseText } from './licenseTexts.js';
+import { UPL_1_0_ID, UPL_1_0_TEXT, normalizeLicenseText, noticeLines } from './licenseTexts.js';
+import { renderThirdPartyNotices } from './licenseNotices.js';
+import { REUSE_REGISTRY_NAME, readReuseRegistry } from './reuseRegistry.js';
 import { LICENSE_REF_PREFIX, NO_ASSERTION, expressionIds, spdxIdHint, unknownIds } from './spdxIds.js';
 /** Bytes probed for a NUL when deciding whether a file is binary. */
 const BINARY_PROBE_BYTES = 8192;
@@ -99,8 +101,7 @@ function annotationCarrier(annotation) {
     };
 }
 export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
-    const registry = options.registry ?? EMPTY_REGISTRY;
-    const problems = [...registry.problems];
+    const problems = [];
     const problem = (code, file, message) => {
         problems.push({ code, file, message });
     };
@@ -114,6 +115,13 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
         paths.push(entry.path);
     }
     const present = new Set(paths);
+    // Step (3): the registry, read once. A caller may supply it instead, which is
+    // how the unit tests exercise annotations without writing a TOML file.
+    const registry = options.registry ?? readReuseRegistry(dir, present.has(REUSE_REGISTRY_NAME));
+    problems.push(...registry.problems);
+    const expectedNotices = options.expectedNotices !== undefined
+        ? options.expectedNotices
+        : renderThirdPartyNotices(registry, policy.holders, noticeLines(packageNoticeYear(dir, present), policy.holders[0] ?? ''));
     const holders = new Set(policy.holders);
     const allowed = new Set(policy.allowedThirdParty);
     const exceptions = new Set(policy.allowedExceptions);
@@ -183,7 +191,7 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
         }
     }
     checkPackageConsistency(dir, policy, present, licencesInUse, problem);
-    checkNotices(dir, present, options.expectedNotices ?? null, problem);
+    checkNotices(dir, present, expectedNotices, problem);
     return {
         dir,
         files: paths.length,
@@ -195,6 +203,20 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
             notices: present.has('THIRD-PARTY-NOTICES.md') ? 'THIRD-PARTY-NOTICES.md' : null
         }
     };
+}
+/**
+ * The year the package states in its own `LICENSE` notice. The generated
+ * notices header must be stable for a given package: taking the current year
+ * would make every package go stale on the first of January, with no edit.
+ */
+function packageNoticeYear(dir, present) {
+    if (present.has('LICENSE')) {
+        const first = readFileSync(join(dir, 'LICENSE'), 'utf8').split('\n')[0] ?? '';
+        const stated = COPYRIGHT_LINE.exec(first)?.groups?.['years'];
+        if (stated !== undefined)
+            return stated;
+    }
+    return String(new Date().getUTCFullYear());
 }
 /** ##LIC-CARRIER-PRECEDENCE: sidecar, override annotation, header, annotation. */
 function selectCarrier(dir, relative, present, annotations, problem) {

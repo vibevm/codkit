@@ -254,6 +254,13 @@ patterns = ["LICENSE-CODKIT.md", "delta/own/LICENSE-CODKIT.md"]
 - полумера «чужой файл по заголовку без реестра» — без реестра нет происхождения и notices, проверка перестаёт быть строгой.
 
 **Когда пересматривать:** первый инцидент, когда `reuse lint` и `codkit license check` разошлись в вердикте на одном пакете (наблюдается ручной сверкой по `LIC-CHECK-CALLSITES`) — тогда расхождение разбирается как дефект одной из сторон.</DECISION-LIC-THIRD-PARTY-NOW></p>
+    <!-- REVIEW: DECISION-LIC-TOML-PARSER называет smol-toml лицензией MIT; установленная
+     версия 1.8.0 несёт BSD-3-Clause (npm-shrinkwrap.json, node_modules/smol-toml/LICENSE:
+     "Copyright (c) Squirrel Chat et al., All rights reserved." + три условия BSD).
+     Решение не меняется: BSD-3-Clause пермиссивна и входит в allowedThirdParty политики,
+     так что DEPENDENCIES-PERMISSIVE соблюдён, а «без зависимостей» подтвердилось
+     (замыкание выросло ровно на один пакет). Правка нормативного текста — за владельцем.
+     Измерено кампанией STANDARDS 2026-09-07. -->
     <p><DECISION-LIC-TOML-PARSER fact="true" status="spec/done">**Решение:** `REUSE.toml` читается библиотекой `smol-toml` (MIT, без зависимостей) — новой runtime-зависимостью Codkit; собственный парсер не пишется; `vibe.toml` и контракт scrape по-прежнему не разбираются (управляемые блоки — байтовый скан).
 
 **Почему:** реестр — чужой формат (спецификация REUSE), и файлы приходят не только от нас (`annotate` дописывает, человек правит); строгий парсер полной грамматики TOML за 200 строк не пишется без дефектов, а слабому исполнителю такой дефект не по силам найти. Зависимости разрешены, permissive-only (`DEPENDENCIES-PERMISSIVE`); лицензионный скан замыкания — как у `imageset` (`DECISION-IMAGESET-PERMISSIVE-LICENCES`): вывод в отчёте кампании.
