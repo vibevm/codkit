@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import type { Dirent } from 'node:fs';
 import { join } from 'node:path';
+import { OWN_SOURCE_DIR } from './ownCopy.ts';
 
 /** Directory holding every delta artifact, relative to the patchset root. */
 export const DELTA_DIR_NAME = 'delta';
@@ -37,19 +38,54 @@ export type DeltaFile = {
 	readonly sha256: string;
 };
 
+/** The delta as one traversal sees it: its fingerprint and its per-file map. */
+export type DeltaFiles = {
+	/** hex sha256 of the canonical string of PROP-006 ##DELTA-FINGERPRINT. */
+	readonly fingerprint: string;
+	/** sha256 of every file under delta/, by its patchset-relative POSIX path. */
+	readonly files: Readonly<Record<string, string>>;
+};
+
 /**
- * hex sha256 of the canonical string of PROP-006 ##DELTA-FINGERPRINT.
+ * The delta in one traversal (PROP-006 ##DELTA-FINGERPRINT): the fingerprint
+ * and the per-file map read the same walk, so a caller that needs both - every
+ * mark `load` writes now does (##TREE-MARK) - does not pay for the delta tree
+ * twice.
  *
  * A missing delta/ directory is not an error: it hashes the pin alone, which is
  * exactly the fingerprint of "no delta at all".
  */
-export function deltaFingerprint(patchesDir: string, pinSha: string): string {
+export function deltaFiles(patchesDir: string, pinSha: string): DeltaFiles {
 	const hash = createHash('sha256');
+	const files: Record<string, string> = {};
 	for (const file of listDeltaFiles(patchesDir)) {
 		hash.update(`${file.path}\n${file.sha256}\n`, 'utf8');
+		files[file.path] = file.sha256;
 	}
 	hash.update(`pin ${pinSha}\nschema ${FINGERPRINT_SCHEMA_VERSION}\n`, 'utf8');
-	return hash.digest('hex');
+	return { fingerprint: hash.digest('hex'), files };
+}
+
+export function deltaFingerprint(patchesDir: string, pinSha: string): string {
+	return deltaFiles(patchesDir, pinSha).fingerprint;
+}
+
+/**
+ * The mark's artifact map (PROP-006 ##TREE-MARK): `files` minus the own
+ * subtree - own keeps its own per-file map (`ownFiles`), so the two never
+ * double-cover a path. This filter is the single definition of "artifact" for
+ * the moved-check; the writer of the mark and its reader both go through it
+ * (PROP-008 ##PATCHSET-MOVED-RULE).
+ */
+export function deltaArtifactMap(files: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+	const ownPrefix = `${OWN_SOURCE_DIR}/`;
+	const artifacts: Record<string, string> = {};
+	for (const [path, sha256] of Object.entries(files)) {
+		if (!path.startsWith(ownPrefix)) {
+			artifacts[path] = sha256;
+		}
+	}
+	return artifacts;
 }
 
 /**

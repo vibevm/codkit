@@ -108,7 +108,7 @@ describe('cycle resolve save rebuild guard', () => {
 		}
 	});
 
-	it('still returns CK-E-INTERNAL for a rewrite no normative channel explains', () => {
+	it('refuses a patchset-only patch movement before the rewrite it would cause (was CK-E-INTERNAL)', () => {
 		const fixture = makeCliFixture('save-unexplained-rewrite');
 		expect(fixture.run(['load']).status).toBe(0);
 		const artifact = fixture.patchesPath(`delta/patches/${PATCH_FILE_NAME}`);
@@ -125,10 +125,16 @@ describe('cycle resolve save rebuild guard', () => {
 			'utf8'
 		);
 
+		// Before Phase 7 this shape ended in CK-E-INTERNAL AFTER the ref had
+		// moved and the patch target had been rewritten (spike S0.7/H1): the
+		// rebuild had no normative channel explaining the rewrite. The
+		// moved-check now refuses earlier, before any write
+		// (##PATCHSET-MOVED-RULE); assertNothingMoved keeps guarding the
+		// unexplained rewrites codkit itself produces.
 		const outcome = fixture.json(['save']);
-		expect(outcome.run.status).toBe(2);
-		expect(outcome.envelope.errors[0]).toMatchObject({ code: 'CK-E-INTERNAL' });
-		expect(outcome.envelope.errors[0]?.message).toContain(EXAMPLE_PART_PATH);
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors[0]).toMatchObject({ code: 'CK-E-PATCHSET-MOVED' });
+		expect(outcome.envelope.errors[0]?.message).toContain(`delta/patches/${PATCH_FILE_NAME}`);
 	});
 });
 

@@ -8,7 +8,7 @@
 import { mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { deltaFingerprint, listDeltaFiles, treeId } from '../../src/lib/fingerprint.ts';
+import { deltaArtifactMap, deltaFiles, deltaFingerprint, listDeltaFiles, treeId } from '../../src/lib/fingerprint.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 const PIN = 'f85f15468eedbafce8927c031d45cd39587e5263';
@@ -89,6 +89,40 @@ describe('deltaFingerprint', () => {
 			'delta/own/modes/.gitkeep',
 			'delta/patches/src__vs__a.ts.ckpatch'
 		]);
+	});
+});
+
+describe('deltaFiles', () => {
+	it('carries the same fingerprint as deltaFingerprint, one traversal for both halves', () => {
+		const root = makeDelta('fp-files', SAMPLE);
+		const both = deltaFiles(root, PIN);
+		expect(both.fingerprint).toBe(deltaFingerprint(root, PIN));
+		expect(both.files).toEqual({
+			'delta/overlays/product.json.overlay.json': listDeltaFiles(root).find(
+				(file) => file.path === 'delta/overlays/product.json.overlay.json'
+			)?.sha256,
+			'delta/own/hello.ts': listDeltaFiles(root).find((file) => file.path === 'delta/own/hello.ts')?.sha256,
+			'delta/own/modes/.gitkeep': listDeltaFiles(root).find((file) => file.path === 'delta/own/modes/.gitkeep')?.sha256,
+			'delta/patches/src__vs__a.ts.ckpatch': listDeltaFiles(root).find((file) => file.path === 'delta/patches/src__vs__a.ts.ckpatch')
+				?.sha256
+		});
+	});
+});
+
+describe('deltaArtifactMap', () => {
+	it('drops the own subtree and keeps every other layer: the mark never double-covers a path', () => {
+		const files: Record<string, string> = {
+			'delta/own/hello.ts': 'aaa',
+			'delta/own/modes/.gitkeep': 'bbb',
+			'delta/patches/src__vs__a.ts.ckpatch': 'ccc',
+			'delta/overlays/product.json.overlay.json': 'ddd',
+			'delta/resources/map.json': 'eee'
+		};
+		expect(deltaArtifactMap(files)).toEqual({
+			'delta/patches/src__vs__a.ts.ckpatch': 'ccc',
+			'delta/overlays/product.json.overlay.json': 'ddd',
+			'delta/resources/map.json': 'eee'
+		});
 	});
 });
 

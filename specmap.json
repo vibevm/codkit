@@ -3542,7 +3542,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:23750cdc68f05ee09149ead3db226dc2d08df24a312e178fface6195ffba6579",
+      "content_hash": "sha256:068903a8bfd00afe6432935fdf3611d99f8fc5045130530da05b2cb6b1c10332",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "codkit PROP-006: Метаданные применения, блокировка, инвентарь",
@@ -3551,7 +3551,7 @@
     },
     {
       "anchor": "apply-metadata",
-      "content_hash": "sha256:72075d578493ef843f9a822b63a0df72b2904dea63cf7f435d3cb3f24e637a64",
+      "content_hash": "sha256:dd7d5c072f5f69521d02acb9d30f0361b0aa666a5366045e2e8763bfb81be48d",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "1. Метаданные применения: кэш + метка (истина — само дерево)",
@@ -3596,10 +3596,10 @@
     },
     {
       "anchor": "TREE-MARK",
-      "content_hash": "sha256:c2f53c17226cbde1d42f54586933a16e59fb9b5d03f07a219c1a708611bb4abc",
+      "content_hash": "sha256:1b434dac5d10ecb3200936ded50ea5d59ca9b3946d4bd8885b022d8baf3ae7cc",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
-      "heading": "**Метка в дереве** — файл `codkit/applied.json` в per-worktree git-каталоге (`git rev-parse --absolute-git-dir`; в обычном дереве — `<tree>/.git/codkit/applied.json`, в linked worktree — per-worktree каталог, а не common dir: у каждого worktree своя метка; переживает `clean -fdx`, не виден статусу): `{\"codkitTreeMark\":1,\"pinSha\":…,\"deltaFingerprint\":…,\"branchTip\":…,\"ownFingerprint\":…}`. Поля `ownFingerprint` (хэш own-поддерева на момент `load`) и `ownFiles` (карта `путь → sha256` own-файлов на момент `load`; добавлены реализацией M0) нужны стражу, чтобы пофайлово отличать «правили patchset» / «правили дерево» / «правили обе стороны» (`##PATCHSET-SIDE-EDIT-RULE` PROP-008 §4). На read-only смонтированном дереве метка не пишется (ошибка записи в `.git` не фатальна, предупреждение `CK-W-MARK-RO`). @status:impl/done",
+      "heading": "**Метка в дереве** — файл `codkit/applied.json` в per-worktree git-каталоге (`git rev-parse --absolute-git-dir`; в обычном дереве — `<tree>/.git/codkit/applied.json`, в linked worktree — per-worktree каталог, а не common dir: у каждого worktree своя метка; переживает `clean -fdx`, не виден статусу): `{\"codkitTreeMark\":1,\"pinSha\":…,\"deltaFingerprint\":…,\"branchTip\":…,\"ownFingerprint\":…}`. Поля `ownFingerprint` (хэш own-поддерева на момент `load`) и `ownFiles` (карта `путь → sha256` own-файлов на момент `load`; добавлены реализацией M0) нужны стражу, чтобы пофайлово отличать «правили patchset» / «правили дерево» / «правили обе стороны» (`##PATCHSET-SIDE-EDIT-RULE` PROP-008 §4). Поля Phase 7 кампании TREE-COMMITS-SAVE (решения D16/D17, S0.9): `artifacts` — карта `путь → sha256` всех файлов `delta/` вне `delta/own/**` на момент load (один обход с отпечатком — `deltaFiles()`; исключение own — единственный фильтр `deltaArtifactMap`, писатель метки и читатель проверки идут через него) и `patchSetCommit` — патсет-коммит, который load представлял (`sha` | `dirty` | `none`; значение то же, что несёт трейлер `Codkit-Patchset-Commit` построенных коммитов, — метка отвечает случай пустого patchset, где трейлера нет). Оба `.optional()` в схеме: метка, писанная до них, читается без них, и проверка сдвига тогда честно отвечает «unknown» (R13, PROP-008 `##PATCHSET-MOVED-RULE`); каждую запись метки пишут оба. На read-only смонтированном дереве метка не пишется (ошибка записи в `.git` не фатальна, предупреждение `CK-W-MARK-RO`). @status:impl/done",
       "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-006#TREE-MARK"
     },
@@ -4379,7 +4379,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:df0340487794caf85fea666c92e9f13abc21637acc30138da44cc65c98fda3e8",
+      "content_hash": "sha256:4fa08920873e6cb7f888206e52d5f058ee92bab767a555c2d5c50454ba79f6ee",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: Движки — резолвер, идентичность, load, save, 3-way, переименования, причина",
@@ -4577,7 +4577,7 @@
     },
     {
       "anchor": "save",
-      "content_hash": "sha256:6b13bd95f1bceb8dc636513107c6c82f721a7388840742b9ae6cdbdac43a2698",
+      "content_hash": "sha256:0605e37cb2d60182f13bf50bdc7f21130df8ae29c1c1ca7302757a5b04df89a2",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "4. save/extract и страж дрейфа",
@@ -4604,10 +4604,10 @@
     },
     {
       "anchor": "PATCHSET-MOVED-RULE",
-      "content_hash": "sha256:eb46fad27c2e568bc66ced1c93e051753ef6f038fc4ecd1b219f85151d99aecc",
+      "content_hash": "sha256:fd87e2ce52813c168874a21230710854ae2f6f67605a6f89da97b91853da5820",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "**Сдвиг patchset под загруженным деревом — отказ до первой записи** (кампания TREE-COMMITS-SAVE, Phase 7, решения D16/D18; закрывает гипотезу H1/S0.7: `CK-E-INTERNAL` ПОСЛЕ сдвига ref и перезаписи файла). Метка дерева несёт карту `artifacts` — sha256 каждого файла `delta/` вне `delta/own/**` (own покрыт `ownFiles`) на момент load (PROP-006 §1 `##TREE-MARK`). `save` перед любой записью — включая зеркалирование own и проход 2 воспроизведения — сравнивает **байты** артефактов с картой, а не sha коммита: любой способ, возвращающий те же байты, проходит. Классификация (модуль `lib/syncMerge.ts`): `patchsetChanged` — байты отличаются от карты; `treeChanged` — цель в отборе `changesSince(base, worktree)`; слои overlay/resource/rule/removed авторуются только в patchset и всегда «только patchset». Для `save`: `patchsetOnly ∪ both` непусто → выход 1 `CK-E-PATCHSET-MOVED`, ничего не записано; в тексте — sha загрузки, список артефактов и ручной рецепт D18: (1) вернуть артефакты patchset к загруженному состоянию (`git stash`, `git switch <ветка>` либо `git checkout <sha> -- delta/`); (2) `codkit save`; (3) вернуть сдвиг (`git stash pop` / `git merge` / `git rebase`); (4) `codkit load`. Однокомандная форма — будущий двусторонний `codkit sync` (Phase 8); пока она не существует, в подсказку не входит: подсказка обязана быть исполнимой в день печати. **Уточнение реализации к букве D16/R13** (исполнитель Phase 7): артефакт из «both» не считается сдвигом, если его байты воспроизводят одно из состояний дерева (рабочий файл либо blob одного из foreign-коммитов) — это собственная частичная выгрузка codkit (адресный save, оборванное воспроизведение), а не чужая правка, и её отказ запер бы документированные пути восстановления (адресный save → полный save; обрыв → повторный save). Без карты (старая метка) `save` не отказывает, а предупреждает: несовпадение отпечатка само по себе не различает чужую правку и собственную выгрузку. `status` печатает `loaded from patchset commit: <sha|dirty>` и при сдвиге `patchset moved since load: N artifact(s)` — данные рецепта (PROP-007 §6). Исключение `skipPatchsetMovedCheck` — только цикл (D12: его фазы сами регенерируют и коммитят артефакты) и rebase-onto-pin/completed-rebase пути, которые сами двигают артефакты; внутренний флаг, не публичный. Двусторонний `sync` (Phase 8) примет ту же классификацию: только дерево → извлечь; только patchset → применить версию patchset, перезапись цели при rebuild **объяснима** (расширение множества `assertNothingMoved`); обе стороны → остановка `CK-E-BOTH-SIDES-EDITED` (сообщение обобщается с own на весь patch-слой, F20). @status:impl/done",
+      "heading": "**Сдвиг patchset под загруженным деревом — отказ до первой записи** (кампания TREE-COMMITS-SAVE, Phase 7, решения D16/D18; закрывает гипотезу H1/S0.7: `CK-E-INTERNAL` ПОСЛЕ сдвига ref и перезаписи файла). Метка дерева несёт карту `artifacts` — sha256 каждого файла `delta/` вне `delta/own/**` (own покрыт `ownFiles`) на момент load (PROP-006 §1 `##TREE-MARK`). `save` перед любой записью — включая зеркалирование own и проход 2 воспроизведения — сравнивает **байты** артефактов с картой, а не sha коммита: любой способ, возвращающий те же байты, проходит. **Область проверки — патч-слой `delta/patches/**`** (уточнение исполнителя Phase 7 по красному тесту M1-процедуры): слои overlay/resource/rule/removed авторуются только в patchset, и их материализация в дерево пересборкой — штатный поток (`##SAVE-EXTRACTS-TWO-LAYERS`: рукописный ресурсный артефакт между двумя save — документированная процедура, а не чужая правка), отказ на них вернул бы дефект M1 в виде нового отказа. Чужой сдвиг **патч-артефакта** — опасный случай: пересборка применила бы его к файлу, которому принадлежит работа дерева (H1). Классификация (модуль `lib/syncMerge.ts`): `patchsetChanged` — байты отличаются от карты; `treeChanged` — цель в отборе `changesSince(base, worktree)`. Для `save`: `patchsetOnly ∪ both` непусто → выход 1 `CK-E-PATCHSET-MOVED`, ничего не записано; в тексте — sha загрузки, список артефактов и ручной рецепт D18: (1) вернуть артефакты patchset к загруженному состоянию (`git stash`, `git switch <ветка>` либо `git checkout <sha> -- delta/`); (2) `codkit save`; (3) вернуть сдвиг (`git stash pop` / `git merge` / `git rebase`); (4) `codkit load`. Однокомандная форма — будущий двусторонний `codkit sync` (Phase 8); пока она не существует, в подсказку не входит: подсказка обязана быть исполнимой в день печати. **Уточнение реализации к букве D16/R13** (исполнитель Phase 7): артефакт из «both» не считается сдвигом, если его байты воспроизводят одно из состояний дерева (рабочий файл либо blob одного из foreign-коммитов) — это собственная частичная выгрузка codkit (адресный save, оборванное воспроизведение), а не чужая правка, и её отказ запер бы документированные пути восстановления (адресный save → полный save; обрыв → повторный save). Без карты (старая метка) `save` не отказывает, а предупреждает: несовпадение отпечатка само по себе не различает чужую правку и собственную выгрузку. `status` печатает `loaded from patchset commit: <sha|dirty>` и при сдвиге `patchset moved since load: N artifact(s)` — данные рецепта (PROP-007 §6). Исключение `skipPatchsetMovedCheck` — только цикл (D12: его фазы сами регенерируют и коммитят артефакты) и rebase-onto-pin/completed-rebase пути, которые сами двигают артефакты; внутренний флаг, не публичный. Двусторонний `sync` (Phase 8) примет ту же классификацию: только дерево → извлечь; только patchset → применить версию patchset, перезапись цели при rebuild **объяснима** (расширение множества `assertNothingMoved`); обе стороны → остановка `CK-E-BOTH-SIDES-EDITED` (сообщение обобщается с own на весь patch-слой, F20). @status:impl/done",
       "line": 144,
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-MOVED-RULE"
     },

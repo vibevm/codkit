@@ -24,7 +24,7 @@ import { readContainedFile, removeContainedFile, writeContainedFileAtomic } from
 import { ensureAdminDirectory, sameEffectivePath } from './containedPath.js';
 import { loadConventions, matchesPatternList } from './conventionsFile.js';
 import { driftDirty, porcelainPaths } from './driftGuard.js';
-import { deltaFingerprint, treeId } from './fingerprint.js';
+import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.js';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.js';
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
@@ -178,8 +178,11 @@ export function runSync(options) {
     }
     // 3. What patchset asks for, and what this tree was last brought to. Reading
     // them is free of effects, and the guard below needs to know which side of
-    // an own-code difference moved.
-    const delta = deltaFingerprint(patchesDir, config.pin.sha);
+    // an own-code difference moved. The walk is taken once: the fingerprint and
+    // the mark's artifact map below read the same files (##DELTA-FINGERPRINT,
+    // ##TREE-MARK).
+    const deltaState = deltaFiles(patchesDir, config.pin.sha);
+    const delta = deltaState.fingerprint;
     const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir) : delta;
     const id = treeId(tree);
     const warn = (text) => {
@@ -435,6 +438,11 @@ export function runSync(options) {
     writeTreeHook(tree, branch, out);
     // The own state is recorded after the copy, when both sides are identical by
     // construction: that is what makes the map usable as "who moved" evidence.
+    // The artifact map and the patchset commit join it here (##TREE-MARK): the
+    // map is the delta this load materialized outside delta/own/ (one traversal
+    // with the fingerprint of step 3), the commit is exactly what the built
+    // commits carry in their trailer - `save` reads both back before it writes
+    // anything (##PATCHSET-MOVED-RULE, ##LINEAGE-CHECK).
     const ownState = ownStateOfPatchSet(patchesDir);
     writeTreeMark(tree, {
         codkitTreeMark: TREE_MARK_SCHEMA_VERSION,
@@ -442,7 +450,9 @@ export function runSync(options) {
         deltaFingerprint: fingerprint,
         branchTip: built.top,
         ownFingerprint: ownState.fingerprint,
-        ownFiles: ownState.files
+        ownFiles: ownState.files,
+        artifacts: deltaArtifactMap(deltaState.files),
+        patchSetCommit: built.patchSetCommit
     }, (text) => {
         out.warn(text, 'MARK-RO');
     });

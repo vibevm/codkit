@@ -18,8 +18,11 @@
 //     an ancestor of patchset HEAD belongs to a state the checkout no longer
 //     carries;
 //   * bytes (D16) - the mark's artifact map records every delta file outside
-//     `delta/own/` as of the load; a file whose bytes differ moved on the
-//     patchset side, whatever commit - or lack of one - explains it.
+//     `delta/own/` as of the load; a *patch* artifact whose bytes differ moved
+//     on the patchset side, whatever commit - or lack of one - explains it.
+//     (The other layers are authored in patchset alone and materialize into
+//     the tree by design, so their movement is not a refusal - see
+//     classifyTargets.)
 //
 // One thing a byte difference alone cannot say is who moved the artifact:
 // codkit's own earlier partial extraction (a scoped save, an interrupted
@@ -34,12 +37,11 @@ import { join } from 'node:path';
 import { bytesEqual, encodeUtf8 } from './bytes.ts';
 import { applyUnified } from './applyUnified.ts';
 import { loadConventions } from './conventionsFile.ts';
-import { deltaFingerprint, listDeltaFiles } from './fingerprint.ts';
+import { deltaArtifactMap, deltaFingerprint, listDeltaFiles } from './fingerprint.ts';
 import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 import type { CkError } from './messages.ts';
 import { encodePatchName, parseCkpatch } from './patchFormat.ts';
-import { OWN_SOURCE_DIR } from './ownCopy.ts';
 import type { TreeMark } from './treeCache.ts';
 import type { TreeCommit } from './treeCommits.ts';
 import { bytesOf, changesSince } from './treeState.ts';
@@ -133,16 +135,18 @@ export function checkLineage(patchesDir: string, sha: string): LineageVerdict {
 // The artifact map and its classification (D16)
 // ---------------------------------------------------------------------------
 
-/** sha256 of every delta file outside `delta/own/`, by its patchset-relative path. */
+/**
+ * sha256 of every delta file outside `delta/own/`, by its patchset-relative
+ * path - the mark's `artifacts` map read off the current patchset. The filter
+ * itself is the single definition the mark's writer uses (##TREE-MARK), so
+ * the two sides of the comparison can never disagree about what counts.
+ */
 export function artifactMapOf(patchesDir: string): Readonly<Record<string, string>> {
-	const ownPrefix = `${OWN_SOURCE_DIR}/`;
 	const files: Record<string, string> = {};
 	for (const file of listDeltaFiles(patchesDir)) {
-		if (!file.path.startsWith(ownPrefix)) {
-			files[file.path] = file.sha256;
-		}
+		files[file.path] = file.sha256;
 	}
-	return files;
+	return deltaArtifactMap(files);
 }
 
 /** The D16 classification of the delta artifacts between the two sides. */
@@ -187,8 +191,17 @@ export function classifyTargets(input: ClassifyInput): TargetClasses {
 		};
 	}
 	const current = artifactMapOf(input.patchesDir);
+	// Only the patch layer can move "under" a save. The other delta layers are
+	// authored in patchset alone and reach the tree by materialization, which
+	// the rebuild performs by design (##SAVE-EXTRACTS-TWO-LAYERS): a
+	// hand-written resource between two saves is the documented procedure, and
+	// its rewrite of the tree is explained, not foreign. A shifted *patch*
+	// artifact is the dangerous case - the rebuild would apply it to a file the
+	// tree's work belongs to (the H1 defect) - so that is the refusal set.
 	const moved = new Set(
-		[...new Set([...Object.keys(current), ...Object.keys(marked)])].filter((path) => (current[path] ?? null) !== (marked[path] ?? null))
+		[...new Set([...Object.keys(current), ...Object.keys(marked)])]
+			.filter((path) => path.startsWith(`${PATCHES_DIR}/`))
+			.filter((path) => (current[path] ?? null) !== (marked[path] ?? null))
 	);
 	// The tree side, as the selection of a save reads it (D4): the worktree's
 	// final state against the same base, target paths keyed by their artifact.
@@ -267,10 +280,26 @@ export function patchsetMovedError(input: PatchsetMovedInput): CkError {
 	}
 	if (input.moved.length > 0) {
 		const listed = input.moved.slice(0, MOVED_LIST_LIMIT).join(', ');
-		const more = input.moved.length > MOVED_LIST_LIMIT ? ` (+${input.moved.length - MOVED_LIST_LIMIT} more)` : '';
-		lines.push(`${input.moved.length} artifact(s) differ from the loaded state (${listed}${more})`);
+		const more = input.moved.length > MOVED_LIST_LIMIT ? ` +${input.moved.length - MOVED_LIST_LIMIT} more` : '';
+		lines.push(
+			`${input.moved.length} patch artifact(s) differ from the state the tree was loaded from (${loadedPhrase(input.loaded)}): ${listed}${more}`
+		);
 	}
 	return ckError('PATCHSET-MOVED', lines.join('; '), recipeHint(input.loaded));
+}
+
+/** How a message names the loaded state: the sha when there is one. */
+function loadedPhrase(loaded: LoadedFrom): string {
+	switch (loaded.kind) {
+		case 'sha':
+			return `patchset commit ${loaded.sha.slice(0, 8)}`;
+		case 'dirty':
+			return 'an uncommitted patchset state';
+		case 'none':
+			return 'a patchset without a HEAD';
+		default:
+			return 'a state the mark does not name';
+	}
 }
 
 /**

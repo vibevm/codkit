@@ -685,3 +685,97 @@ function dirtyUtilBlock(fixture: CliFixture, line: string): void {
 	const target = fixture.treePath(UTIL_PATH);
 	writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), HOOK_ID, line), 'utf8');
 }
+
+describe('codkit save: an artifact shifted in patchset under a loaded tree (S22)', () => {
+	let fixture: CliFixture;
+	let loadedSha: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('save-moved-bytes');
+		expect(fixture.run(['load']).status).toBe(0);
+		loadedSha = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+		// The patchset side shifts file F's artifact after the load, uncommitted -
+		// the shape of spike S0.7/H1, which used to end in CK-E-INTERNAL after
+		// the ref had moved and F had been rewritten in the tree.
+		shiftExampleArtifact(fixture, ', shifted on the patchset side');
+		// The tree edits file G: the ordinary work a save exists to extract.
+		dirtyUtilBlock(fixture, '\t// the tree side line');
+	});
+
+	it('status names the loaded-from commit and the moved artifact', () => {
+		const outcome = fixture.json(['status']);
+
+		expect(outcome.envelope.messages.some((message) => message.text === `loaded from patchset commit: ${loadedSha.slice(0, 8)}`)).toBe(
+			true
+		);
+		expect(outcome.envelope.messages.some((message) => message.text === 'patchset moved since load: 1 artifact(s)')).toBe(true);
+		expect(outcome.envelope.messages.some((message) => message.text === `  ${EXAMPLE_PATCH}`)).toBe(true);
+		expect(outcome.envelope.data['patchsetMoved']).toEqual({ count: 1, artifacts: [EXAMPLE_PATCH] });
+	});
+
+	it('refuses before anything is written (the H1 case stops here now)', () => {
+		const headBefore = fixture.git(['rev-parse', 'HEAD']).stdout.trim();
+		const tipBefore = fixture.git(['rev-parse', `refs/heads/${fixture.branch}`]).stdout.trim();
+		const utilBefore = readFileSync(fixture.treePath(UTIL_PATH), 'utf8');
+
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-PATCHSET-MOVED']);
+		expect(outcome.envelope.errors[0]?.message).toContain(EXAMPLE_PATCH);
+		expect(outcome.envelope.errors[0]?.message).toContain(loadedSha.slice(0, 8));
+		expect(outcome.envelope.errors[0]?.hint).toContain('manual merge');
+		expect(outcome.envelope.errors[0]?.hint).toContain('git stash');
+		// Prove the absence: G's artifact was not created, the tree's HEAD, the
+		// generated branch and the working file stand where they were, and the
+		// patchset still holds exactly the one shift the operator made.
+		expect(existsSync(fixture.patchesPath(UTIL_PATCH))).toBe(false);
+		expect(fixture.git(['rev-parse', 'HEAD']).stdout.trim()).toBe(headBefore);
+		expect(fixture.git(['rev-parse', `refs/heads/${fixture.branch}`]).stdout.trim()).toBe(tipBefore);
+		expect(readFileSync(fixture.treePath(UTIL_PATH), 'utf8')).toBe(utilBefore);
+		const deltaStatus = fixture.patchGit(['status', '--porcelain', '--', 'delta/']).stdout.trim();
+		expect(deltaStatus.split('\n')).toHaveLength(1);
+		expect(deltaStatus).toContain(EXAMPLE_PATCH);
+	});
+
+	it('the printed recipe carried out by hand lands both changes in the tree', () => {
+		// (1) Return the delta to the loaded state, exactly as the hint says.
+		expect(fixture.patchGit(['stash', 'push', '--quiet', '--', 'delta/']).status).toBe(0);
+		// (2) save extracts the tree's work over the state it was loaded from.
+		const save = fixture.json(['save']);
+		expect(save.run.status).toBe(0);
+		expect(readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8')).toContain('// the tree side line');
+		// (3) Bring the shift back on top of the extraction.
+		expect(fixture.patchGit(['stash', 'pop', '--quiet']).status).toBe(0);
+		// (4) load materializes the shifted artifact into the tree.
+		const load = fixture.json(['load']);
+		expect(load.run.status).toBe(0);
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toContain('shifted on the patchset side');
+		expect(readFileSync(fixture.treePath(UTIL_PATH), 'utf8')).toContain('// the tree side line');
+	});
+});
+
+describe('codkit save: a mark from before the artifact map (R13)', () => {
+	it('warns about what it cannot verify and keeps the old behaviour', () => {
+		const fixture = makeCliFixture('save-moved-oldmark');
+		expect(fixture.run(['load']).status).toBe(0);
+		// Mark surgery: strip exactly the two fields a pre-Phase-7 mark lacks.
+		const markPath = fixture.treePath('.git/codkit/applied.json');
+		const aged = JSON.parse(readFileSync(markPath, 'utf8')) as Record<string, unknown>;
+		delete aged['artifacts'];
+		delete aged['patchSetCommit'];
+		writeFileSync(markPath, `${JSON.stringify(aged, null, 2)}\n`, 'utf8');
+		// A header-only shift: the applied bytes do not change, so the old
+		// behaviour completes; the question under test is whether the run
+		// refuses (it must not - it cannot know) or says what it cannot verify.
+		const artifact = fixture.patchesPath(EXAMPLE_PATCH);
+		writeFileSync(artifact, readFileSync(artifact, 'utf8').replace('# reason: mount point', '# reason: a shifted mount point'), 'utf8');
+		dirtyUtilBlock(fixture, '\t// the tree side line');
+
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status).toBe(0);
+		expect(outcome.envelope.messages.some((message) => message.text.includes('no delta artifact map'))).toBe(true);
+		expect(readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8')).toContain('// the tree side line');
+	});
+});
