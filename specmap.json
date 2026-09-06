@@ -806,7 +806,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:4df6d8a19d3b8f6f3debf0b49394c458e03b824745196d45b1e1894381036b06",
+      "content_hash": "sha256:eff53fd84fbee8f525301de79a8188c4a32e7ce363756fff450260091c939e74",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S19, S21 (Given/When/Then)",
@@ -1139,7 +1139,7 @@
     },
     {
       "anchor": "s17",
-      "content_hash": "sha256:5c7f7831e4d620f590e7d5bc6847ae7c5bd9602a901bbf1f8d101a2bda5e4047",
+      "content_hash": "sha256:dc4004359cf7b2b006515bf7a06a286676fd4e97d6966cde0734747135a0f88a",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S17 — коммиты в дереве форка: save извлекает их в patchset",
@@ -1148,10 +1148,10 @@
     },
     {
       "anchor": "S17",
-      "content_hash": "sha256:cb701065ec72d95147fb38042e2d5a753813cfe181180d9be9083484e2fb23f4",
+      "content_hash": "sha256:8ff192727ccfe1477c03e22c110f62cc39a9c77fb49b89dcc8272c7e7be05364",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: состояние S01; в `$FORK` на сгенерированной ветке сделаны два ручных коммита (`--no-verify` или `CODKIT_INTERNAL_COMMIT=1`; кампания TREE-COMMITS-SAVE, решения D3/D4/D6). **When**: `codkit save`; затем повторный `codkit save`; затем `codkit load`. **Then (a, Phase 3)**: первый — выход 0; патч-артефакты содержат строки обоих коммитов; `refs/codkit/consumed/*` указывает на прежний HEAD дерева; в patchset ровно один новый коммит `codkit save: squash of 2 tree commit(s)` с двумя трейлерами `Codkit-Tree-Commit`; дерево чисто, HEAD на сгенерированной ветке; повторный save — «nothing to save»; `load` — «up to date». Адресный `save <путь>` при чужих для пути коммитах: ветка не тронута, коммиты на месте, `info` «N tree commit(s) stay in the tree until a full save». **(b, Phase 4)**: три коммита → три коммита patchset с исходными subject/author/date; `--squash` сворачивает; идемпотентность повторного save. **(c, Phase 4)**: промежуточный коммит с правкой вне маркера — отказ с sha/subject, patchset без новых коммитов. @status:spec/plan",
+      "heading": "**Given**: состояние S01; в `$FORK` на сгенерированной ветке сделаны два ручных коммита (`--no-verify` или `CODKIT_INTERNAL_COMMIT=1`; кампания TREE-COMMITS-SAVE, решения D3/D4/D5/D6). **When**: `codkit save`; затем повторный `codkit save`; затем `codkit load`. **Then (a)**: первый — выход 0; патч-артефакты содержат строки обоих коммитов; `refs/codkit/consumed/*` указывает на прежний HEAD дерева; в patchset по одному новому коммиту на каждый коммит дерева — с исходными subject/author/date и трейлером `Codkit-Tree-Commit` на свой sha; дерево чисто, HEAD на сгенерированной ветке; повторный save — «nothing to save»; `load` — «up to date». Адресный `save <путь>` при чужих для пути коммитах: ветка не тронута, коммиты на месте, `info` «N tree commit(s) stay in the tree until a full save». **(b, Phase 4)**: три коммита трёх авторов → три коммита patchset с теми же subject/author/date, по одному трейлеру; незакоммиченный остаток — в рабочем дереве patchset без коммита; `--commit --message` добавляет четвёртый коммит (остаток, с данным сообщением, без трейлера); `--squash` — один коммит `codkit save: squash of 3 tree commit(s)` с тремя трейлерами и перечнем; `git show <коммит patchset>:delta/patches/…`, наложенный на пин, байт-в-байт воспроизводит файл соответствующего коммита дерева — доказательство, что воспроизведена история, а не только количество коммитов; идемпотентность — через test-seam `replayCheckpoint` (hard-exit после первого state-коммита): повторный save пропускает воспроизведённый коммит (трейлер уже в history), доигрывает остальные, не дублирует; пустое состояние (пустой коммит дерева) пропускается с видимым сообщением; некорректный `Cause:` в сообщении коммита дерева — blocked, выход 1, ничего не записано; `--squash` без коммитов дерева — no-op с сообщением. **(c, Phase 4)**: промежуточный коммит с правкой вне маркера — отказ `CK-E-HUNK-OUTSIDE-MARKER` с sha/subject этого коммита, patchset без новых коммитов и артефактов, дерево не тронуто; вариант «нарушение скрыто позднейшим коммитом» (финальное состояние чисто) отказывает тем же кодом — по-состоятельная валидация прохода 1 (P4). @status:spec/plan",
       "line": 59,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S17"
     },
@@ -5729,7 +5729,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b2ff34ac11d6d2ecb22215db14bb55fd32a374714b2cc97a97237d2b7eb9c95c",
+      "content_hash": "sha256:607460f929e440f0ad2da98a145e866e525a7d99a9b2606b590dd14b832ecc9d",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "codkit PROP-013: Как тестируется сам codkit",
@@ -5837,7 +5837,7 @@
     },
     {
       "anchor": "e2e",
-      "content_hash": "sha256:1b81df28da2cbc00b458c962fcf8b207985703fa75707a1b64e5015cf834221a",
+      "content_hash": "sha256:23e1c7e14b30f668834b379d34cadbaf9aa521e6d5746370e750aaff5ee86b61",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "4. E2e-тесты",
@@ -5846,10 +5846,10 @@
     },
     {
       "anchor": "E2E-HARNESS",
-      "content_hash": "sha256:494036cf6b6da961b639bcce8b02c701a9c2a72c2c15283a86457b25c682da96",
+      "content_hash": "sha256:19cc93b419a13c801944e580f8f1a18f9b66621b190bd3c82c1f7fda39993c8a",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
-      "heading": "Обвязка запускает CLI из настоящего toolRoot как подпроцесс, а patchesDir/forkDir создаёт отдельно. Она проверяет schema-2 `roots`, settings-only invocation из постороннего cwd и мини-версии S01–S19 (включая коммиты дерева форка: S17a/S18/S19 в `treeCommits.test.ts`, кампания TREE-COMMITS-SAVE). Full VS Code scenarios являются отдельным integration baseline и не подменяются мини-fixtures. @status:spec/done",
+      "heading": "Обвязка запускает CLI из настоящего toolRoot как подпроцесс, а patchesDir/forkDir создаёт отдельно. Она проверяет schema-2 `roots`, settings-only invocation из постороннего cwd и мини-версии S01–S19 (включая коммиты дерева форка: S17a/b/c, S18, S19 в `treeCommits.test.ts` — воспроизведение по коммитам, идемпотентность через test-seam `replayCheckpoint`, отказ на промежуточном состоянии вне маркера; кампания TREE-COMMITS-SAVE). Full VS Code scenarios являются отдельным integration baseline и не подменяются мини-fixtures. @status:spec/done",
       "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-013#E2E-HARNESS"
     },

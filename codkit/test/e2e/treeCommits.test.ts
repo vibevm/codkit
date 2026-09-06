@@ -4,7 +4,7 @@
 // committed state becomes its own patchset commit with the original subject,
 // author and date plus a `Codkit-Tree-Commit` trailer, the consumed commits
 // stay reachable under refs/codkit/consumed/, and the tree ends clean
-// (S17a, S19).
+// (S17a/b/c, S19; `--squash` folds the states into one commit).
 //
 // Before the campaign, a commit in the tree was invisible: `load` rebuilt the
 // branch over it, `save` answered "nothing to save", and the work survived only
@@ -19,10 +19,14 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { gitLocal } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
+import { applyUnified } from '../../src/lib/applyUnified.ts';
+import { loadConventions } from '../../src/lib/conventionsFile.ts';
+import { parseCkpatch } from '../../src/lib/patchFormat.ts';
 import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
-import { makeCliFixture } from '../support/cliFixture.ts';
-import type { CliFixture } from '../support/cliFixture.ts';
+import { CODKIT_E2E_TEST_BUILD, makeCliFixture } from '../support/cliFixture.ts';
+import type { CliFixture, Envelope, Run } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import { SAVE_REPLAY_CRASH_ENV, SAVE_REPLAY_CRASH_EXIT_CODE } from '../../src/lib/saveReplay.ts';
 
 const UTIL_PATH = 'src/vs/base/common/util.ts';
 const UTIL_PATCH = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
@@ -44,24 +48,54 @@ afterAll(() => {
 	cleanupTempRoots();
 });
 
-/** One commit in the fork tree, hook visible, bypassed the named way (F12). */
-function commitInTree(fixture: CliFixture, message: string, line: string, bypass: '--no-verify' | 'internal', dateIso: string): string {
+type TreeAuthor = { readonly name: string; readonly email: string };
+
+/**
+ * One commit in the fork tree, hook visible, bypassed the named way (F12).
+ * `line === null` commits without touching any file (an empty commit needs
+ * `--allow-empty` in `extra`); the line lands inside the patch's marker block,
+ * or at the very end of the file on the bare pin of the detached-HEAD fixture.
+ */
+function commitInTree(
+	fixture: CliFixture,
+	message: string,
+	line: string | null,
+	bypass: '--no-verify' | 'internal',
+	dateIso: string,
+	author: TreeAuthor = { name: 'human', email: 'human@example.invalid' },
+	extra: readonly string[] = []
+): string {
 	const target = fixture.treePath(EXAMPLE_PART_PATH);
-	const text = readFileSync(target, 'utf8');
-	// Inside the applied state the line goes into the patch's marker block; on
-	// the bare pin (the detached-HEAD fixture) the block does not exist yet and
-	// the line simply lands at the end - the guard speaks before any content is
-	// read, and the commit itself is what matters.
-	const at = text.indexOf(MARKER_BLOCK_NOTE);
-	writeFileSync(target, at === -1 ? `${text}${line}\n` : `${text.slice(0, at)}${line}\n\t\t${text.slice(at)}`, 'utf8');
-	const args = ['commit', '--quiet', '--all', '--message', message, ...(bypass === '--no-verify' ? ['--no-verify'] : [])];
-	const env: GitEnv = { ...IDENTITY, GIT_AUTHOR_DATE: dateIso, GIT_COMMITTER_DATE: dateIso };
+	if (line !== null) {
+		const text = readFileSync(target, 'utf8');
+		const at = text.indexOf(MARKER_BLOCK_NOTE);
+		writeFileSync(target, at === -1 ? `${text}${line}\n` : `${text.slice(0, at)}${line}\n\t\t${text.slice(at)}`, 'utf8');
+	}
+	const args = ['commit', '--quiet', '--all', '--message', message, ...extra, ...(bypass === '--no-verify' ? ['--no-verify'] : [])];
+	const env: GitEnv = {
+		...IDENTITY,
+		GIT_AUTHOR_NAME: author.name,
+		GIT_AUTHOR_EMAIL: author.email,
+		GIT_AUTHOR_DATE: dateIso,
+		GIT_COMMITTER_DATE: dateIso
+	};
 	const result = gitLocal({ args, cwd: fixture.treeDir, env: bypass === 'internal' ? { ...env, CODKIT_INTERNAL_COMMIT: '1' } : env });
 	expect(result.status, result.stderr).toBe(0);
 	return fixture.git(['rev-parse', 'HEAD']).stdout.trim();
 }
 
 function headOf(fixture: CliFixture): string {
+	return fixture.git(['rev-parse', 'HEAD']).stdout.trim();
+}
+
+/** A tree commit without helper magic: whatever is staged, `--no-verify`. */
+function commitRaw(fixture: CliFixture, message: string, dateIso: string): string {
+	const result = gitLocal({
+		args: ['commit', '--quiet', '--all', '--message', message, '--no-verify'],
+		cwd: fixture.treeDir,
+		env: { ...IDENTITY, GIT_AUTHOR_DATE: dateIso, GIT_COMMITTER_DATE: dateIso }
+	});
+	expect(result.status, result.stderr).toBe(0);
 	return fixture.git(['rev-parse', 'HEAD']).stdout.trim();
 }
 
@@ -123,6 +157,14 @@ function patchsetCommitsSince(fixture: CliFixture, since: string): readonly Patc
 			.filter((line) => line !== '');
 		return { sha, subject, authorName, authorEmail, authorDate, trailers };
 	});
+}
+
+/** Apply the artifact as it stands at patchset commit `sha` to the pin bytes. */
+function artifactStateAt(fixture: CliFixture, sha: string, artifact: string, pinSha: string): Uint8Array {
+	const bytes = fixture.patchGit(['show', `${sha}:${artifact}`]).stdout;
+	const parsed = parseCkpatch(Buffer.from(bytes, 'utf8'), loadConventions(fixture.patchesDir), artifact);
+	const pin = fixture.git(['show', `${pinSha}:${EXAMPLE_PART_PATH}`]).stdout;
+	return applyUnified(Buffer.from(pin, 'utf8'), parsed);
 }
 
 /** Scaffold a marker block in util.ts and leave one uncommitted line inside it. */
@@ -395,5 +437,348 @@ describe('save <path> over tree commits: the branch is not theirs to take', () =
 		const texts = outcome.envelope.messages.map((message) => message.text);
 		expect(texts.some((text) => text.startsWith('1 changed path(s) are outside the paths given to save'))).toBe(true);
 		expect(texts).toContain('1 tree commit(s) stay in the tree until a full save');
+	});
+});
+
+/** Three commits by three people, plus whatever remainder the fixture adds. */
+type ReplayTriple = {
+	readonly fixture: CliFixture;
+	readonly first: string;
+	readonly second: string;
+	readonly third: string;
+	readonly headBefore: string;
+};
+
+function makeReplayTriple(label: string, remainder: boolean): ReplayTriple {
+	const fixture = makeCliFixture(label);
+	expect(fixture.run(['load']).status).toBe(0);
+	const headBefore = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+	const first = commitInTree(fixture, 'work: alice adds the area log', '// alice committed line', '--no-verify', '2026-09-06T11:01:00Z', {
+		name: 'alice',
+		email: 'alice@example.invalid'
+	});
+	const second = commitInTree(fixture, 'work: bob extends it', '// bob committed line', '--no-verify', '2026-09-06T11:02:00Z', {
+		name: 'bob',
+		email: 'bob@example.invalid'
+	});
+	const third = commitInTree(fixture, 'work: carol finishes the series', '// carol committed line', '--no-verify', '2026-09-06T11:03:00Z', {
+		name: 'carol',
+		email: 'carol@example.invalid'
+	});
+	if (remainder) {
+		dirtyUtilBlock(fixture, '// uncommitted remainder line');
+	}
+	return { fixture, first, second, third, headBefore };
+}
+
+describe('S17b: three commits replay one by one, the remainder stays uncommitted', () => {
+	let setup: ReplayTriple;
+	let outcome: { run: Run; envelope: Envelope };
+
+	beforeAll(() => {
+		setup = makeReplayTriple('treecommits-s17b', true);
+		outcome = setup.fixture.json(['save']);
+		expect(outcome.run.status, outcome.run.stderr).toBe(0);
+	});
+
+	it('makes one patchset commit per tree commit with its subject, author and date', () => {
+		const commits = patchsetCommitsSince(setup.fixture, setup.headBefore);
+		expect(commits.map((commit) => commit.subject)).toEqual([
+			'work: alice adds the area log',
+			'work: bob extends it',
+			'work: carol finishes the series'
+		]);
+		expect(commits.map((commit) => commit.authorName)).toEqual(['alice', 'bob', 'carol']);
+		expect(commits.map((commit) => commit.authorEmail)).toEqual(['alice@example.invalid', 'bob@example.invalid', 'carol@example.invalid']);
+		expect(commits.map((commit) => commit.authorDate)).toEqual(['2026-09-06T11:01:00Z', '2026-09-06T11:02:00Z', '2026-09-06T11:03:00Z']);
+		expect(commits.map((commit) => commit.trailers)).toEqual([[setup.first], [setup.second], [setup.third]]);
+	});
+
+	it('reproduces each tree commit state from the patchset history', () => {
+		// The real proof that replay preserved history: the artifact as each
+		// patchset commit holds it, applied to the pin, is the file as the
+		// corresponding tree commit held it - not merely a commit count.
+		const pin = setup.fixture.upstream.t1.sha;
+		const commits = patchsetCommitsSince(setup.fixture, setup.headBefore);
+		for (const [index, treeSha] of [setup.first, setup.second, setup.third].entries()) {
+			const replayed = Buffer.from(artifactStateAt(setup.fixture, commits[index]?.sha ?? '', EXAMPLE_PATCH, pin)).toString('utf8');
+			const held = setup.fixture.git(['show', `${treeSha}:${EXAMPLE_PART_PATH}`]).stdout;
+			expect(replayed, `replay commit ${index}`).toBe(held);
+		}
+	});
+
+	it('leaves the uncommitted remainder in the patchset working tree, uncommitted', () => {
+		// A new artifact, held untracked: the replay commits the tree's history,
+		// and the remainder stays work in progress exactly as an uncommitted
+		// edit would.
+		expect(fixtureStatus(setup.fixture)).toBe(`?? ${UTIL_PATCH}`);
+		expect(readFileSync(setup.fixture.patchesPath(UTIL_PATCH), 'utf8')).toContain('// uncommitted remainder line');
+		const texts = outcome.envelope.messages.map((message) => message.text);
+		expect(texts).toContain('replayed 3 tree commit(s) into patchset history');
+	});
+
+	it('ends with a clean tree and consumed refs', () => {
+		expect(setup.fixture.git(['status', '--porcelain']).stdout).toBe('');
+		expect(consumedRefs(setup.fixture).map((row) => row.sha)).toEqual([setup.third]);
+	});
+});
+
+describe('S17b with --commit --message: the remainder becomes the fourth commit', () => {
+	let setup: ReplayTriple;
+
+	beforeAll(() => {
+		setup = makeReplayTriple('treecommits-s17b-commit', true);
+		const outcome = setup.fixture.json(['save', '--commit', '--message', 'codkit save: the remainder']);
+		expect(outcome.run.status, outcome.run.stderr).toBe(0);
+	});
+
+	it('replays the three commits and commits the remainder with the given message', () => {
+		const commits = patchsetCommitsSince(setup.fixture, setup.headBefore);
+		expect(commits.map((commit) => commit.subject)).toEqual([
+			'work: alice adds the area log',
+			'work: bob extends it',
+			'work: carol finishes the series',
+			'codkit save: the remainder'
+		]);
+		expect(commits.map((commit) => commit.trailers)).toEqual([[setup.first], [setup.second], [setup.third], []]);
+		// The fourth commit carries exactly the remainder's artifact.
+		const remainder = commits[3]?.sha ?? '';
+		expect(setup.fixture.patchGit(['show', '--name-only', '--format=', remainder]).stdout.trim()).toBe(UTIL_PATCH);
+		expect(fixtureStatus(setup.fixture)).toBe('');
+	});
+});
+
+describe('S17b with --squash: one commit folds the three, each named by a trailer', () => {
+	let setup: ReplayTriple;
+
+	beforeAll(() => {
+		setup = makeReplayTriple('treecommits-s17b-squash', false);
+		const outcome = setup.fixture.json(['save', '--squash']);
+		expect(outcome.run.status, outcome.run.stderr).toBe(0);
+	});
+
+	it('folds the three tree commits into a single patchset commit', () => {
+		const commits = patchsetCommitsSince(setup.fixture, setup.headBefore);
+		expect(commits.length).toBe(1);
+		const message = setup.fixture.patchGit(['log', '-1', '--format=%B']).stdout;
+		expect(message).toContain('codkit save: squash of 3 tree commit(s)');
+		expect(message).toContain(`${setup.first} work: alice adds the area log`);
+		expect(message).toContain(`${setup.second} work: bob extends it`);
+		expect(message).toContain(`${setup.third} work: carol finishes the series`);
+		expect(commits[0]?.trailers).toEqual([setup.first, setup.second, setup.third]);
+		expect(consumedRefs(setup.fixture).map((row) => row.sha)).toEqual([setup.third]);
+	});
+});
+
+describe('S17c: an intermediate commit outside any marker refuses the whole save', () => {
+	let fixture: CliFixture;
+	let second: string;
+	let third: string;
+	let headBefore: string;
+	let fileBefore: string;
+	let exampleBefore: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-s17c');
+		expect(fixture.run(['load']).status).toBe(0);
+		headBefore = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+		commitInTree(fixture, 'work: clean first commit', '// first committed line', '--no-verify', '2026-09-06T11:10:00Z');
+		// The second commit adds a line at the very end of the file - outside
+		// every marker block, the one edit a patch is never allowed to carry.
+		const target = fixture.treePath(EXAMPLE_PART_PATH);
+		const clean = readFileSync(target, 'utf8');
+		writeFileSync(target, `${clean}// outside every marker block\n`, 'utf8');
+		second = commitRaw(fixture, 'work: the outside edit', '2026-09-06T11:11:00Z');
+		third = commitInTree(fixture, 'work: clean third commit', '// third committed line', '--no-verify', '2026-09-06T11:12:00Z');
+		fileBefore = readFileSync(target, 'utf8');
+		exampleBefore = readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8');
+	});
+
+	it('refuses with CK-E-HUNK-OUTSIDE-MARKER naming the sha and subject', () => {
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status).toBe(1);
+		// The states that still carry the outside line each refuse - the second
+		// commit introduced it, and the third and the worktree inherit it.
+		expect(outcome.envelope.errors.length).toBeGreaterThanOrEqual(1);
+		expect(outcome.envelope.errors.every((error) => error.code === 'CK-E-HUNK-OUTSIDE-MARKER')).toBe(true);
+		expect(outcome.envelope.errors[0]?.message).toContain(`tree commit ${second.slice(0, 8)} "work: the outside edit":`);
+	});
+
+	it('leaves patchset without a new commit or artifact, and the tree untouched', () => {
+		expect(fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim()).toBe(headBefore);
+		expect(fixtureStatus(fixture)).toBe('');
+		expect(readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8')).toBe(exampleBefore);
+		expect(headOf(fixture)).toBe(third);
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toBe(fileBefore);
+		expect(consumedRefs(fixture)).toEqual([]);
+	});
+});
+
+describe('S17c reverted: only the per-state pass sees the violation', () => {
+	let fixture: CliFixture;
+	let second: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-s17c-reverted');
+		expect(fixture.run(['load']).status).toBe(0);
+		commitInTree(fixture, 'work: clean first commit', '// first committed line', '--no-verify', '2026-09-06T11:20:00Z');
+		const target = fixture.treePath(EXAMPLE_PART_PATH);
+		const clean = readFileSync(target, 'utf8');
+		writeFileSync(target, `${clean}// outside every marker block\n`, 'utf8');
+		second = commitRaw(fixture, 'work: the outside edit', '2026-09-06T11:21:00Z');
+		// The third commit reverts the outside line, so the FINAL state of the
+		// tree is clean: a one-pass implementation that plans only the final
+		// state would accept this save (prediction P4).
+		writeFileSync(target, clean, 'utf8');
+		commitRaw(fixture, 'work: revert the outside edit', '2026-09-06T11:22:00Z');
+	});
+
+	it('still refuses, naming the intermediate commit', () => {
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).not.toContain('// outside every marker block');
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-HUNK-OUTSIDE-MARKER']);
+		expect(outcome.envelope.errors[0]?.message).toContain(`tree commit ${second.slice(0, 8)} "work: the outside edit":`);
+	});
+});
+
+describe('idempotency: a save interrupted after the first replay commit resumes without duplicates', () => {
+	let fixture: CliFixture;
+	let first: string;
+	let second: string;
+	let headBefore: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-replay-resume');
+		expect(fixture.run(['load']).status).toBe(0);
+		headBefore = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+		first = commitInTree(fixture, 'work: first tree commit', '// first committed line', '--no-verify', '2026-09-06T11:30:00Z');
+		second = commitInTree(fixture, 'work: second tree commit', '// second committed line', '--no-verify', '2026-09-06T11:31:00Z');
+	});
+
+	it('crashes at the replayCheckpoint seam right after the first state commit', () => {
+		const crashed = fixture.run(['save'], {
+			[CODKIT_E2E_TEST_BUILD]: '1',
+			[SAVE_REPLAY_CRASH_ENV]: 'state-committed'
+		});
+
+		expect(crashed.status).toBe(SAVE_REPLAY_CRASH_EXIT_CODE);
+		// One replay commit exists; the tree was not rebuilt and still holds
+		// both commits.
+		const commits = patchsetCommitsSince(fixture, headBefore);
+		expect(commits.map((commit) => commit.trailers)).toEqual([[first]]);
+		expect(headOf(fixture)).toBe(second);
+		expect(consumedRefs(fixture)).toEqual([]);
+	});
+
+	it('the resumed save skips the replayed commit and finishes the rest', () => {
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status, outcome.run.stderr).toBe(0);
+		const texts = outcome.envelope.messages.map((message) => message.text);
+		expect(texts).toContain('1 tree commit(s) are already replayed into patchset; skipped');
+		expect(texts).toContain('replayed 1 tree commit(s) into patchset history');
+		// Each tree commit is named exactly once across the whole history.
+		const commits = patchsetCommitsSince(fixture, headBefore);
+		expect(commits.map((commit) => commit.subject)).toEqual(['work: first tree commit', 'work: second tree commit']);
+		expect(commits.map((commit) => commit.trailers)).toEqual([[first], [second]]);
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+		expect(consumedRefs(fixture).map((row) => row.sha)).toEqual([second]);
+	});
+
+	it('a third save is a no-op', () => {
+		const outcome = fixture.run(['save']);
+
+		expect(outcome.status).toBe(0);
+		expect(outcome.stdout).toContain('nothing to save');
+	});
+});
+
+describe('an empty tree commit is skipped, visibly', () => {
+	let fixture: CliFixture;
+	let empty: string;
+	let headBefore: string;
+	let outcome: { run: Run; envelope: Envelope };
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-empty-state');
+		expect(fixture.run(['load']).status).toBe(0);
+		headBefore = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+		commitInTree(fixture, 'work: first real edit', '// first committed line', '--no-verify', '2026-09-06T11:40:00Z');
+		empty = commitInTree(fixture, 'chore: an empty tree commit', null, '--no-verify', '2026-09-06T11:41:00Z', undefined, ['--allow-empty']);
+		commitInTree(fixture, 'work: third real edit', '// third committed line', '--no-verify', '2026-09-06T11:42:00Z');
+		outcome = fixture.json(['save']);
+		expect(outcome.run.status, outcome.run.stderr).toBe(0);
+	});
+
+	it('replays only the states that change an artifact, and says which one was skipped', () => {
+		const commits = patchsetCommitsSince(fixture, headBefore);
+		expect(commits.map((commit) => commit.subject)).toEqual(['work: first real edit', 'work: third real edit']);
+		const texts = outcome.envelope.messages.map((message) => message.text);
+		expect(texts).toContain(
+			`tree commit ${empty.slice(0, 8)} "chore: an empty tree commit" changes no artifact; no patchset commit for it`
+		);
+		// The empty commit is still consumed with the rest of the line.
+		expect(consumedRefs(fixture).length).toBe(1);
+	});
+});
+
+describe('a malformed Cause: trailer in a tree commit blocks the replay', () => {
+	let fixture: CliFixture;
+	let bad: string;
+	let headBefore: string;
+	let exampleBefore: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-bad-cause');
+		expect(fixture.run(['load']).status).toBe(0);
+		headBefore = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+		const target = fixture.treePath(EXAMPLE_PART_PATH);
+		const text = readFileSync(target, 'utf8');
+		const at = text.indexOf(MARKER_BLOCK_NOTE);
+		writeFileSync(
+			target,
+			at === -1 ? `${text}// committed line\n` : `${text.slice(0, at)}// committed line\n\t\t${text.slice(at)}`,
+			'utf8'
+		);
+		bad = commitRaw(fixture, 'work: the cause commit\n\nCause: not-a-sha', '2026-09-06T11:50:00Z');
+		exampleBefore = readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8');
+	});
+
+	it('refuses naming the commit and the trailer, writing nothing', () => {
+		const fileBefore = readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8');
+
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-CONFIG']);
+		expect(outcome.envelope.errors[0]?.message).toContain(`tree commit ${bad.slice(0, 8)} "work: the cause commit":`);
+		expect(outcome.envelope.errors[0]?.message).toContain('the Cause: trailer must be a 40-character upstream sha, got "not-a-sha"');
+		// The refusal is a pass-1 refusal: no commit, no artifact, no tree move.
+		expect(fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim()).toBe(headBefore);
+		expect(fixtureStatus(fixture)).toBe('');
+		expect(readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8')).toBe(exampleBefore);
+		expect(headOf(fixture)).toBe(bad);
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toBe(fileBefore);
+	});
+});
+
+describe('--squash without tree commits is a no-op that says so', () => {
+	let fixture: CliFixture;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-squash-noop');
+		expect(fixture.run(['load']).status).toBe(0);
+	});
+
+	it('says there is nothing to fold and nothing to save', () => {
+		const outcome = fixture.run(['save', '--squash']);
+
+		expect(outcome.status).toBe(0);
+		expect(outcome.stdout).toContain('--squash: no tree commits in the fork tree to fold');
+		expect(outcome.stdout).toContain('nothing to save');
 	});
 });
