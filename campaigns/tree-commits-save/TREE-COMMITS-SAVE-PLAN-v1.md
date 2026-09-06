@@ -1347,7 +1347,16 @@ node docs/codkit/protocol/human/check.mjs                                  # ok
   прозаические `sync`-в-смысле-load вне этих четырёх текстов (например,
   PROP-007 `##CMD-CHECK-TREE` hint «run codkit sync», PROP-004 §5, PROP-005
   §2/§5, PROP-006 §5, PROP-007 `##CMD-OVERLAY`) — не входили в маршрут
-  DEF-7, перечислены в отчёте Phase 5 для решения владельца.
+  DEF-7, перечислены в отчёте Phase 5 для решения владельца — и ЗАКРЫТЫ
+  отдельным родительским коммитом `docs(spec): spec prose says load where it
+  meant the one-way command` (2026-09-06): 29 вхождений в семи текстах
+  переведены на `load`, надгробия/имена элементов/`syncOwnCode`/тексты про
+  будущую двустороннюю команду сохранены намеренно. Найденное при этом
+  расхождение: PROP-006 `##COMPLETENESS-CHECK` предписывал hint «run codkit
+  sync first», а `verifyEngine` печатает `run codkit load first` с Phase 1 —
+  спек противоречил поставленным байтам. Ворота: docs:check, trace 121/121,
+  structural, specmap 666 units, `vibe check` 0 errors, полный прогон
+  113 файлов / 1610 тестов, выход 0. DEF-7 больше не имеет остатка.
 - **DEF-1** — воспроизведение коммитов боковых веток: rejected (D2); owner.
 - **DEF-2** — чистка `refs/codkit/consumed/*`: закрывается Phase 9 (D22);
   остаётся только вопрос умолчаний RP-4.
