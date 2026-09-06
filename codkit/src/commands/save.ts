@@ -10,6 +10,7 @@
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import { commandFlagGiven, commandFlagList, commandFlagValue, forkResolution } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
+import { isCycleTestBuild } from '../lib/cycleTestCrash.ts';
 import { treeId } from '../lib/fingerprint.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { withLock } from '../lib/lock.ts';
@@ -17,10 +18,12 @@ import { ckError } from '../lib/messages.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { runSave } from '../lib/saveEngine.ts';
 import type { SaveResult } from '../lib/saveEngine.ts';
+import { SAVE_REPLAY_CRASH_ENV, saveReplayCrashCheckpoint } from '../lib/saveReplay.ts';
 
 const COMMIT = '--commit';
 const MESSAGE = '--message';
 const ALLOW_NEW_FILE = '--allow-new-file';
+const SQUASH = '--squash';
 
 /** Positional paths; a real change set is never longer than a few hundred. */
 const MAX_PATHS = 1000;
@@ -34,6 +37,10 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	const config = requireConfig(ctx.config);
+	// The replay crash checkpoint is test-only and validated at this boundary,
+	// exactly like the cycle one: an unknown stage or a non-test runtime is a
+	// configuration error before any lock is taken.
+	const replayCheckpoint = saveReplayCrashCheckpoint(ctx.env[SAVE_REPLAY_CRASH_ENV], isCycleTestBuild(process.execArgv));
 
 	return withLock(
 		ctx.patchesDir,
@@ -49,7 +56,9 @@ async function run(ctx: CommandContext): Promise<number> {
 				allowNewFile: commandFlagList(ctx.commandFlags, ALLOW_NEW_FILE),
 				commit: commandFlagGiven(ctx.commandFlags, COMMIT),
 				message: commandFlagValue(ctx.commandFlags, MESSAGE),
-				verbose: ctx.flags.verbose
+				squash: commandFlagGiven(ctx.commandFlags, SQUASH),
+				verbose: ctx.flags.verbose,
+				...(replayCheckpoint === undefined ? {} : { replayCheckpoint })
 			});
 			ctx.out.setData(buildData(result));
 			return result.exitCode;
@@ -88,6 +97,6 @@ export const saveCommand: CommandDefinition = {
 	summary: 'extract the changes of the fork tree back into the patchset delta',
 	configMode: 'load',
 	maxArgs: MAX_PATHS,
-	commandFlags: [COMMIT, MESSAGE, ALLOW_NEW_FILE],
+	commandFlags: [COMMIT, MESSAGE, ALLOW_NEW_FILE, SQUASH],
 	run
 };

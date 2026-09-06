@@ -7,14 +7,17 @@
 // artifacts in the same run. Without arguments it takes every changed file;
 // with paths it takes only those.
 import { commandFlagGiven, commandFlagList, commandFlagValue, forkResolution } from '../lib/command.js';
+import { isCycleTestBuild } from '../lib/cycleTestCrash.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { runSave } from '../lib/saveEngine.js';
+import { SAVE_REPLAY_CRASH_ENV, saveReplayCrashCheckpoint } from '../lib/saveReplay.js';
 const COMMIT = '--commit';
 const MESSAGE = '--message';
 const ALLOW_NEW_FILE = '--allow-new-file';
+const SQUASH = '--squash';
 /** Positional paths; a real change set is never longer than a few hundred. */
 const MAX_PATHS = 1000;
 async function run(ctx) {
@@ -25,6 +28,10 @@ async function run(ctx) {
         ctx.out.warn(resolution.warning);
     }
     const config = requireConfig(ctx.config);
+    // The replay crash checkpoint is test-only and validated at this boundary,
+    // exactly like the cycle one: an unknown stage or a non-test runtime is a
+    // configuration error before any lock is taken.
+    const replayCheckpoint = saveReplayCrashCheckpoint(ctx.env[SAVE_REPLAY_CRASH_ENV], isCycleTestBuild(process.execArgv));
     return withLock(ctx.patchesDir, treeId(resolution.path), 'save', () => {
         const result = runSave({
             patchesDir: ctx.patchesDir,
@@ -35,7 +42,9 @@ async function run(ctx) {
             allowNewFile: commandFlagList(ctx.commandFlags, ALLOW_NEW_FILE),
             commit: commandFlagGiven(ctx.commandFlags, COMMIT),
             message: commandFlagValue(ctx.commandFlags, MESSAGE),
-            verbose: ctx.flags.verbose
+            squash: commandFlagGiven(ctx.commandFlags, SQUASH),
+            verbose: ctx.flags.verbose,
+            ...(replayCheckpoint === undefined ? {} : { replayCheckpoint })
         });
         ctx.out.setData(buildData(result));
         return result.exitCode;
@@ -65,6 +74,6 @@ export const saveCommand = {
     summary: 'extract the changes of the fork tree back into the patchset delta',
     configMode: 'load',
     maxArgs: MAX_PATHS,
-    commandFlags: [COMMIT, MESSAGE, ALLOW_NEW_FILE],
+    commandFlags: [COMMIT, MESSAGE, ALLOW_NEW_FILE, SQUASH],
     run
 };

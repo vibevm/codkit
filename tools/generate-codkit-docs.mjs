@@ -152,7 +152,7 @@ const commandGuidance = {
 	save: {
 		positional: '[path ...]',
 		detail:
-			'Extract all changed paths, or only the named paths, back into patchset. `--allow-new-file` is repeatable. `--commit` optionally commits the patchset result; `--message` supplies its message.'
+			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`).'
 	},
 	'marker new': {
 		positional: '<tree-file>',

@@ -3776,7 +3776,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:2ffa9765486c32ba565d11a507c5c06e5ccad9973819d0decd1ee3d6130e886c",
+      "content_hash": "sha256:9e02a7295e12cb65e496fcd9b4f377d8afe817b8f05410b1de3547daea3b2149",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -3956,19 +3956,19 @@
     },
     {
       "anchor": "cmd-save",
-      "content_hash": "sha256:1edb395288f0bd3d5195b57bdb271bcc13370508ea82ad5050f368a3b579959a",
+      "content_hash": "sha256:ecb57a058c85c0ea41697f96c0c7b218a6ac8a1361a309b58f26869e2516fbdf",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "7. codkit save [пути…] [--commit] [--message m] [--allow-new-file путь]",
+      "heading": "7. codkit save [пути…] [--commit] [--message m] [--squash] [--allow-new-file путь]",
       "line": 32,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-save"
     },
     {
       "anchor": "CMD-SAVE",
-      "content_hash": "sha256:6714c54db9bca6f541cf096c1747f09c6c3c74c8c32517109babe97fd1dca342",
+      "content_hash": "sha256:485fc166475ec49b67b06c242ef3d3bbbb45d0347a33acf41bd86d4817853abb",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Извлечь работу (алгоритм — PROP-008 §4). Без аргументов — все изменённые файлы; с путями — адресно. Работа = итоговое состояние дерева относительно последней применённой вершины — закоммиченное и незакоммиченное вместе, включая коммиты дерева (PROP-008 §4 `##SAVE-CONSUMES-TREE-COMMITS`): они извлекаются, ветка пересобирается поверх, прежний HEAD остаётся достижим через `refs/codkit/consumed/*`, а в patchset возникает один коммит `codkit save: squash of N tree commit(s)` с трейлерами `Codkit-Tree-Commit` (временно, до воспроизведения по коммитам в Phase 4 кампании). Шаги: зеркалирование own (дерево→patchset), валидация правок апстримных файлов (маркеры), пофайловая регенерация патчей, перестроение ветки без касания файлов, отчёт. `--commit` (при работе без коммитов дерева) — затем `git add` затронутых путей `delta/` и `git commit` в patchset с сообщением `codkit save: <N> file(s)` (редактируемым через `--message`; при потреблённых коммитах `--message` заменяет subject squash-коммита). Адресный `save <пути>` при коммитах дерева ветку не трогает и сообщает, что коммиты остаются до полного save (`##SAVE-SCOPED-BRANCH-RULE`). Коды: 0; 1 (правка вне маркеров, запрещённая цель, удаление апстримного файла, HEAD вне ветки при foreign — `CK-E-TREE-HEAD` — с точными файлами/строками и hint); 2. Идемпотентность: `save` без изменённых файлов И без коммитов дерева — no-op (выход 0, «nothing to save»). @status:spec/done",
+      "heading": "Извлечь работу (алгоритм — PROP-008 §4). Без аргументов — все изменённые файлы; с путями — адресно. Работа = итоговое состояние дерева относительно последней применённой вершины — закоммиченное и незакоммиченное вместе, включая коммиты дерева (PROP-008 §4 `##SAVE-CONSUMES-TREE-COMMITS`). **Коммиты дерева по умолчанию воспроизводятся по одному** (PROP-008 §4 `##SAVE-REPLAYS-TREE-COMMITS`): каждый foreign-коммит становится отдельным коммитом patchset с исходным сообщением, автором и датой плюс трейлер `Codkit-Tree-Commit: <sha40>`; коммитит запускающий команду (своей идентичностью). Аналогия кнопок слияния pull request'а: по умолчанию «rebase and merge», `--squash` — «squash and merge» (один коммит `codkit save: squash of N tree commit(s)` с перечнем `sha subject` в теле и трейлером на каждый свёрнутый sha; `--message` задаёт его subject); аналога «merge commit» не существует по построению — две истории живут в двух репозиториях, и третьей кнопке нет места. Незакоммиченный остаток ложится в рабочее дерево patchset и не коммитится; `--commit` коммитит его отдельным коммитом `codkit save: <N> file(s)` (`--message` — только для этого коммита). Состояние без изменений артефактов пропускается с сообщением (видимым, не молчаливым). Идемпотентность: коммит patchset с трейлером `Codkit-Tree-Commit: <sha>` означает «этот state уже воспроизведён» — повторный `save` (например, после обрыва) пропускает его, а `--squash` доигрывает оставшиеся одним коммитом; `save` без изменённых файлов И без коммитов дерева — no-op (выход 0, «nothing to save»); `--squash` без коммитов дерева — тоже no-op с сообщением, что сворачивать нечего. Шаги: зеркалирование own (дерево→patchset), валидация правок, пофайловая регенерация патчей, перестроение ветки без касания файлов, отчёт. Адресный `save <пути>` при коммитах дерева ветку не трогает и сообщает, что коммиты остаются до полного save (`##SAVE-SCOPED-BRANCH-RULE`). Коды: 0; 1 (правка вне маркеров — в том числе в промежуточном коммите, с именем sha/subject этого коммита, — запрещённая цель, удаление апстримного файла, некорректный `Cause:` в сообщении коммита дерева, HEAD вне ветки при foreign — `CK-E-TREE-HEAD` — с точными файлами/строками и hint); 2. @status:spec/done",
       "line": 33,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-SAVE"
     },
@@ -4325,7 +4325,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:22275b25ed9ba3a32fc59eeb4a93f7fe89924657a27c5d34b9d02979cd1bb7ce",
+      "content_hash": "sha256:9cc7bb5273d049cf8a65f5b6c61f0c60f3035c1905dea3a78860c428257da33d",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: Движки — резолвер, идентичность, sync, save, 3-way, переименования, причина",
@@ -4523,7 +4523,7 @@
     },
     {
       "anchor": "save",
-      "content_hash": "sha256:741659e4a4d915ec3ac58a662816ad8beebf1b4bfb10daa211506378edf67d78",
+      "content_hash": "sha256:2d1c3541341ba690d05f22bc1a19697a56b3f55334fba4463f3c815e5c14cf53",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "4. save/extract и страж дрейфа",
@@ -4536,7 +4536,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Прерывание между записью патча и перестроением ветки безопасно: следующий `sync`/`save` увидит несовпадение отпечатка и перестроит ветку; артефакты уже корректны. @status:spec/done",
-      "line": 133,
+      "line": 135,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-INTERRUPT-SAFE"
     },
     {
@@ -4545,7 +4545,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**Страж дрейфа**: `dirty(tree)` = (`git status --porcelain` непуст вне own-каталога) ∨ (own-расхождение классов `both` — байты различаются — или `tree-only` — файл есть только в дереве) ∨ (**третья половина**, кампания TREE-COMMITS-SAVE, решение D7) foreign-коммиты дерева непусты (`##TREE-COMMITS-ARE-WORK`): коммиты first-parent линии выше последней сгенерированной вершины, которых обе другие половины не видят — `git status` по коммиту даёт чистое дерево. Список для человека включает строки `commit <short> \"<subject>\" (not in patchset)`; отказ — выход 1 `CK-E-DIRTY-TREE`: для правок «N path(s) … not in patchset yet», для коммитов «N commit(s) in the fork tree since the last codkit apply are not in patchset yet», hint («codkit save» или «codkit status»). **Порядок отказов (рулинг владельца 2026-09-06, спайк S0.12)**: преflight разделённого сгенерированного ref (`##GENERATED-REF-WORKTREE-PREFLIGHT`) выполняется ПЕРЕД любой грязевой проверкой, безусловно, во всех стражащих командах: коммит соседнего worktree на общей ветке сдвигает общий ref и делает индекс ЭТОГО дерева «staged-dirty» — фантомная грязь, чья причина — разделение ref, а не локальная работа; отказ `CK-E-WORKTREE-REF-SHARED` (выход 2) называет оба дерева и не советует `save` — подсказка «run codkit save» здесь втянула бы чужую работу в этот patch set как собственную правку. Причина диагностируется раньше симптома; тому же порядку подчинён `CK-E-TREE-HEAD` (D8: аномалия линии или HEAD вне ветки при foreign — выход 1, тем же кодом из `##TREE-COMMITS-ARE-WORK`). Файл, существующий ТОЛЬКО в `delta/own/` patchset (`patchset-only`), — НЕ грязь: иначе первый load любого дерева был бы невозможен (уточнение реализации M0). `--fresh` подавляет fast-path и не считает untracked-пути грязью (иначе fresh никогда ничего не чистил бы), но отказ по коммитам НЕ снимает: `--fresh` про untracked, а коммит — та же неизвлечённая работа, что и правка. `--dry-run` страж не запускает; `skipDriftGuard` — единственный обход, только для `save`/будущего двустороннего `sync` после извлечения. Уточнение REPAIR-005 (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`): перед отказом `load --fresh` классифицирует каждую tracked overlay-цель, отличную от HEAD, — байты, в точности равные строгой композиции настроенных overlay на пине в контексте прогона, суть известная материализация codkit, которую этот прогон заменяет (и объявляет это в выводе), а не грязь; всё остальное остаётся грязью, `--fresh` не бланкетный reset. Обычный `load` исключения не получает: fast-path мог бы ответить «up to date» и оставить упаковочные байты. `ci` сознательно классификатор не передаёт: ci материализует overlay-цели только коммитами сгенерированной ветки, собственные прогоны ci это состояние не создают, а единственный источник таких байтов в ci-дереве — внеочередной `overlay apply`, то есть переиспользованное дерево разработчика, которое страж обязан назвать вслух; выход и там — codkit-команда (`load --fresh` того дерева) или одноразовое свежее дерево, не прямой git-restore. @status:impl/done",
-      "line": 135,
+      "line": 137,
       "uri": "spec://codkit/modules/codkit/PROP-008#DRIFT-GUARD-PREDICATE"
     },
     {
@@ -4554,7 +4554,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**Коммиты в дереве форка — работа** (кампания TREE-COMMITS-SAVE, решения D1/D2/D8). Работа = незакоммиченное ∨ коммиты first-parent линии, недостижимые из последней сгенерированной вершины. Детектор `foreignCommits(tree, pin, branch)` (`lib/treeCommits.ts`): `git rev-list --first-parent --format=…` для `<ref>` ∈ {HEAD, `refs/heads/<branch>`} (существующих), нижняя граница — всегда пин; коммит сгенерирован ⟺ автор `codkit@patchset.invalid` И трейлер `Codkit-Upstream-Pin` непуст (F13); `base` = самый верхний сгенерированный, нет ни одного — `base = pin.sha` (пустой patchset, ветка не создана); `foreign` = коммиты выше `base`, от старых к новым. Аномалия: несгенерированный коммит ниже `base` — история под сгенерированной вершиной переписана → `CK-E-TREE-HEAD` (выход 1, «reset the branch to <sha> or restore it from refs/codkit/consumed/…»). Тот же код отказывает, когда ветка существует, HEAD вне её и на линии HEAD есть foreign («HEAD is on <ref|detached> with N commit(s) not in patchset; switch to <branch> (git switch) or merge them there, then run codkit save»). Ветки нет — цепочка HEAD над пином есть работа, где бы HEAD ни был (первый load после clone); сама сгенерированная вершина — не работа. Отвергнуто: база из кэша/метки (неавторитетны, `##TREE-IS-TRUTH`); rev-list без `--first-parent` (состояния боковых веток никогда не существовали на линии ветки). Формат записи НЕ NUL-чист: перед каждой записью строка `commit <sha>`, трейлер добавляет свой `\\n` (S0.2); парсер режет по `/^commit [0-9a-f]{40}\\n/m`, затем по `\\0`, снимая хвостовые `\\n`. Потреблённые коммиты остаются достижимы через `refs/codkit/consumed/*` (PROP-006 §1 `##CONSUMED-REFS`). @status:impl/done",
-      "line": 136,
+      "line": 138,
       "uri": "spec://codkit/modules/codkit/PROP-008#TREE-COMMITS-ARE-WORK"
     },
     {
@@ -4563,17 +4563,26 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Обратное направление: если рабочие файлы `delta/own/` в patchset изменены при чистом дереве, `sync` предупреждает `CK-W-PATCHSET-SIDE-EDIT` и применяет patchset-версию (направление истины в момент sync — patchset). Различение сторон — пофайлово, по карте `ownFiles` метки (PROP-006 §1): файл дерева == метке → менялся patchset (применить patchset); файл patchset == метке → менялось дерево (грязь стража, извлекается save); обе стороны != метке и друг другу — выход 1 `CK-E-BOTH-SIDES-EDITED` с именем файла. @status:impl/done",
-      "line": 137,
+      "line": 139,
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-SIDE-EDIT-RULE"
     },
     {
       "anchor": "SAVE-CONSUMES-TREE-COMMITS",
-      "content_hash": "sha256:4bd18c3cea0748ce29d68582f3b3159ddcde07e954cbc539b170256c21255224",
+      "content_hash": "sha256:99175d8a429bb1dc64d852343847ae355b006a8e1b58bedb4f8d4400c631c90b",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "**`save` извлекает итоговое состояние дерева относительно последней применённой вершины** (кампания TREE-COMMITS-SAVE, решения D3/D4/D6). Отбор — `changesSince(tree, base, state)` (`lib/treeState.ts`): `git diff --name-status --no-renames <base>` (staged+unstaged+закоммиченное вместе — итоговое состояние) ∪ записи `??` из `git status --porcelain -z` (единственное, чего diff не видит), минус own-префикс, плюс `forcedPaths` внутренних вызовов; байты файла — через `bytesOf(state, path)` (рабочий файл либо `git cat-file blob` для состояния-коммита — фундамент будущего воспроизведения Phase 4). Отбор НЕ `git status`: по коммиту он пуст, и закоммиченная работа была невидима (F7). Rename при `--no-renames` = удаление + новый файл — удаление отказывает `CK-E-DELETES-UPSTREAM-FILE`, как непоставленный rename сегодня. «Nothing to save» учитывает коммиты: дерево с пустыми коммитами без файловых изменений — не nothing, а потребление. Предусловие перед пересборкой (D6): множество foreign не изменилось с начала извлечения, иначе `CK-E-INTERNAL` (выход 2) ДО `updateRef`/`moveWorkTree` — закрывает порядок F3 (разрушение раньше проверки). Потреблённые коммиты остаются достижимы: `refs/codkit/consumed/<UTC yyyymmddThhmmssZ>-<short7>` → прежний HEAD дерева, `update-ref` под общим замком репозитория, сообщение `tree commits consumed: N (<first>..<last>); kept as …`. Адресный `save <paths>` при foreign: ветка не трогается (##SAVE-SCOPED-BRANCH-RULE), коммиты остаются в дереве — `info` «N tree commit(s) stay in the tree until a full save», consumed ref не пишется. До Phase 4 потреблённые коммиты сворачиваются в ОДИН коммит patchset `codkit save: squash of N tree commit(s)` с перечнем `<sha> <subject>` в теле и трейлером `Codkit-Tree-Commit: <sha40>` на каждый; коммит идентичностью запускающего (`--message` заменяет subject, как у будущего `--squash`); состояние без изменений артефактов — коммит пропускается с сообщением. Отвергнуто: два списка `diff base..HEAD` + `status` — дублирует пути, теряет staged; сворачивание навсегда — Phase 4 воспроизводит по коммитам (D5); отказ без `--commit` — извлечение не должно требовать флага. @status:impl/done",
-      "line": 138,
+      "heading": "**`save` извлекает итоговое состояние дерева относительно последней применённой вершины** (кампания TREE-COMMITS-SAVE, решения D3/D4/D6). Отбор — `changesSince(tree, base, state)` (`lib/treeState.ts`): `git diff --name-status --no-renames <base>` (staged+unstaged+закоммиченное вместе — итоговое состояние) ∪ записи `??` из `git status --porcelain -z` (единственное, чего diff не видит), минус own-префикс, плюс `forcedPaths` внутренних вызовов; байты файла — через `bytesOf(state, path)` (рабочий файл либо `git cat-file blob` для состояния-коммита — фундамент воспроизведения `##SAVE-REPLAYS-TREE-COMMITS`). Отбор НЕ `git status`: по коммиту он пуст, и закоммиченная работа была невидима (F7). Rename при `--no-renames` = удаление + новый файл — удаление отказывает `CK-E-DELETES-UPSTREAM-FILE`, как непоставленный rename сегодня. «Nothing to save» учитывает коммиты: дерево с пустыми коммитами без файловых изменений — не nothing, а потребление. Предусловие перед пересборкой (D6): множество foreign не изменилось с начала извлечения, иначе `CK-E-INTERNAL` (выход 2) ДО `updateRef`/`moveWorkTree` — закрывает порядок F3 (разрушение раньше проверки). Потреблённые коммиты остаются достижимы: `refs/codkit/consumed/<UTC yyyymmddThhmmssZ>-<short7>` → прежний HEAD дерева, `update-ref` под общим замком репозитория, сообщение `tree commits consumed: N (<first>..<last>); kept as …`. Адресный `save <paths>` при foreign: ветка не трогается (##SAVE-SCOPED-BRANCH-RULE), коммиты остаются в дереве — `info` «N tree commit(s) stay in the tree until a full save», consumed ref не пишется. Коммиты patchset из потреблённых — см. `##SAVE-REPLAYS-TREE-COMMITS`: по умолчанию по одному на state, `--squash` — один свёрнутый. Отвергнуто: два списка `diff base..HEAD` + `status` — дублирует пути, теряет staged; отказ без `--commit` — извлечение не должно требовать флага. @status:impl/done",
+      "line": 140,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-CONSUMES-TREE-COMMITS"
+    },
+    {
+      "anchor": "SAVE-REPLAYS-TREE-COMMITS",
+      "content_hash": "sha256:a52eb920185e2b2e5be2c112bb0e2e1dc78c4b15a34f911f63134f4270fb3783",
+      "doc_path": "modules/codkit/PROP-008",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
+      "heading": "**`save` воспроизводит коммиты дерева в историю patchset по одному** (кампания TREE-COMMITS-SAVE, Phase 4, решение D5; рулинг владельца RP-3: режим с коммитами — по умолчанию, «rebase and merge»). Состояния `S_1…S_n` = foreign first-parent коммиты от старых к новым, затем `S_wt` = рабочее дерево. **Два прохода** (`lib/saveReplay.ts`). Проход 1 (`planStates`) без записи: `planFile` для каждого `S_i` поверх in-memory `ArtifactStore` (overlay над `delta/patches` и `.codkit/pending`; фиксирует потребление pending'ов — поздние состояния видят артефакты и заготовки ранних, какими они станут после их записи). Любая ошибка → `blocked`, выход 1, **ничего не записано** (ни артефакта, ни own-байта, ни коммита), в тексте sha и subject состояния-источника; валидация `Cause:` — тем же кодом, что `hooks commit-msg` (F12: патсетные хуки при коммитах `save` не выполняются, их работу делает проход 1). Проход 2 (`writeStates`): для `S_1…S_n` запись артефактов (`commitArtifacts`) + коммит patchset; для `S_wt` own (`mirrorOwnBack`) + артефакты, коммит только при `--commit`. Коммит patchset для `S_i`: пути = изменённые артефакты состояния; сообщение = исходное дословно (`%B`) + пустая строка + `Codkit-Tree-Commit: <sha40>` (разделитель безусловен: subject вида «work: …» неотличим от строки-трейлера, и угадывание склеило бы трейлер с subject-абзацем); `GIT_AUTHOR_*` = автор коммита дерева, committer = запускающий (`commitIdentity()`). Состояние, чей staged-дифф пуст, → коммит пропущен с сообщением (пропуск видим: пустое дерево коммитов — тоже потреблённая работа, но history для неё пуста). **Идемпотентность**: `git log --fixed-strings --grep=\"Codkit-Tree-Commit: <sha>\" -1` в patchset; найденный state пропускается (обрыв после его коммита — повторный `save` не дублирует), `--squash` после частичного replay доигрывает оставшиеся одним коммитом. `--squash`: промежуточные состояния всё равно валидируются (наивная однопроходная реализация пропускает нарушение, скрытое поздним коммитом — предсказание P4 доказано красным прогоном: с выключенной по-состоятельной валидацией S17c-reverted даёт ложный exit 0), пишется и коммитится только итоговое состояние — план пишется от диска, не от store (store описывает состояние после несостоявшихся записей). Test-seam `replayCheckpoint` (`CODKIT_TEST_SAVE_REPLAY_CRASH_AT`, только тестовая сборка): hard-exit после коммита state — краш-точка идемпотентности. Отвергнуто: однопроходная запись (полу-извлечённая дельта хуже, чем та, что человек правит и повторяет); squash по умолчанию (RP-3); own по коммитам (F14: own локально исключён, коммиты дерева его не несут). @status:impl/done",
+      "line": 141,
+      "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-REPLAYS-TREE-COMMITS"
     },
     {
       "anchor": "classify",
@@ -4581,7 +4590,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "5. 3-way применение при чужом пине и классификация исходов",
-      "line": 141,
+      "line": 144,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify"
     },
     {
@@ -4590,7 +4599,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Используется `cycle`, `forecast`, `rebase-onto-pin` (на своём пине конфликтов не бывает по построению — инвариант самосогласованности). Вход: артефакт A с целью F, старый пин `oldPin`, целевой ref `newRef`. Выход: исход из классов ниже + материалы. @status:spec/done",
-      "line": 142,
+      "line": 145,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify-usage"
     },
     {
@@ -4599,7 +4608,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Имена классов исходов в состоянии цикла: `clean`, `shifted`, `merged`, `conflict`, `target-deleted`, `target-renamed` (из §6), `rule-broken`, `contract-failed`. @status:spec/done",
-      "line": 158,
+      "line": 161,
       "uri": "spec://codkit/modules/codkit/PROP-008#OUTCOME-CLASS-NAMES"
     },
     {
@@ -4608,7 +4617,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Движок не останавливается на первом конфликте: он проходит все независимые артефакты и отдаёт полный классифицированный список; exit 3 относится к итоговой обязательной человеческой остановке. @status:spec/done",
-      "line": 159,
+      "line": 162,
       "uri": "spec://codkit/modules/codkit/PROP-008#ENGINE-NEVER-STOPS-AT-FIRST"
     },
     {
@@ -4617,7 +4626,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Материализация для резолва: для `conflict` оркестратор записывает в рабочий файл дерева результат `merge-file --diff3` со стандартными конфликт-маркерами — человек и агент правят в IDE обычным способом. @status:spec/done",
-      "line": 160,
+      "line": 163,
       "uri": "spec://codkit/modules/codkit/PROP-008#CONFLICT-MATERIALIZATION"
     },
     {
@@ -4626,7 +4635,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "6. Следование за переименованиями между пинами",
-      "line": 163,
+      "line": 166,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames"
     },
     {
@@ -4635,7 +4644,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Отдельный явный шаг до применения (не автоопределение внутри — на больших диффах git отключает rename-детекцию молча). @status:spec/done",
-      "line": 164,
+      "line": 167,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames-when"
     },
     {
@@ -4644,7 +4653,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Пары с `similarity < 100` помечаются «требует взгляда человека» в отчёте (перенос сделан, но попадает в красный список ревью). Проверочный кейс полигона: переименование `src/vs/platform/agentHost/browser/remoteAgentHostProtocolClient.ts → agentHostProtocolClient.ts` (R096, окно `1.134.0→1.135.0`). @status:spec/done",
-      "line": 176,
+      "line": 179,
       "uri": "spec://codkit/modules/codkit/PROP-008#RENAME-BELOW-100-FLAGGED"
     },
     {
@@ -4653,7 +4662,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "7. Поиск коммита-причины",
-      "line": 178,
+      "line": 181,
       "uri": "spec://codkit/modules/codkit/PROP-008#cause"
     },
     {
@@ -4662,7 +4671,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "`git log --format=%H --follow oldPin..newPin -- F` — коммиты, тронувшие файл. @status:spec/done",
-      "line": 180,
+      "line": 183,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-LOG"
     },
     {
@@ -4671,7 +4680,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Один коммит → он и есть причина. Несколько → сузить по строкам: для каждого ханка артефакта взять диапазон затронутых строк на `oldPin` и выполнить `git log -L<start>,<end>:F oldPin..newPin --format=%H`; коммит-причина — самый ранний коммит, пересёкший диапазон; если `-L` неприменим (файл удалён/переименован) — коммитом-причиной объявляется последний коммит из первого шага, с пометкой `approx`. @status:spec/done",
-      "line": 181,
+      "line": 184,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-NARROW"
     },
     {
@@ -4680,7 +4689,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Для `target-deleted`/`target-renamed` — коммит, удаливший/переименовавший (`git log --diff-filter=D|R --follow`). @status:spec/done",
-      "line": 182,
+      "line": 185,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-DELETED"
     },
     {
@@ -4689,7 +4698,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Выход: `{sha, approx: bool}`; пишется в `cause` шапки патча (шагом регенерации), в журнал и в трейлер `Cause:` коммита-фикса. Отчёт цикла группируется по коммитам-причинам (десятки отказов → единицы причин). @status:spec/done",
-      "line": 183,
+      "line": 186,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-OUTPUT"
     },
     {

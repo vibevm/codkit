@@ -59,6 +59,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--commit', 'boolean'],
 	['--message', 'value'],
 	['--allow-new-file', 'repeatable'],
+	['--squash', 'boolean'],
 	// inventory (PROP-007 sec. 10)
 	['--diff', 'value'],
 	['--md', 'boolean'],

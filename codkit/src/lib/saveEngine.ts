@@ -17,7 +17,7 @@
 // block. Only then are the artifacts written, and only when their bytes differ
 // (##GEN-BYTE-COMPARE, so mtimes stay put and watch daemons stay asleep).
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, relative as relativePath } from 'node:path';
 import { bytesEqual, encodeUtf8 } from './bytes.ts';
 import { applyUnified } from './applyUnified.ts';
@@ -37,11 +37,13 @@ import type { ParsedPatch } from './patchFormat.ts';
 import { regeneratePatch } from './patchGenerate.ts';
 import { repoRelativePathProblem } from './pathSafety.ts';
 import type { ForkDirResolution } from './paths.ts';
-import { readPendingHeader, removePendingHeader } from './pendingHeader.ts';
+import { removePendingHeader } from './pendingHeader.ts';
 import { listRebasePendingRecords, readRebasePending, rebaseHeaderMetadataSha256, removeRebasePending } from './rebaseOntoPinPending.ts';
 import type { RebasePendingOverride } from './rebaseOntoPinPending.ts';
 import { sha256 } from './renameFileState.ts';
 import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './rebaseOntoPinMove.ts';
+import { ArtifactStore, planStates, replayCommitMessage, writeStates } from './saveReplay.ts';
+import type { PlannedCommitState, ReplayWrites } from './saveReplay.ts';
 import { PATCHES_DIR, bothSidesError, runSync, toPosix } from './syncEngine.ts';
 import type { SyncEngineOptions } from './syncEngine.ts';
 import { readTreeMark } from './treeCache.ts';
@@ -64,6 +66,8 @@ export type SaveEngineOptions = {
 	readonly commit: boolean;
 	readonly message: string | null;
 	readonly verbose: boolean;
+	/** `--squash`: fold the consumed tree commits into one patchset commit (D3). */
+	readonly squash?: boolean;
 	/** Cycle-only metadata, validated and incorporated before artifact writes and the load. */
 	readonly patchHeaderOverrides?: readonly SavePatchHeaderOverride[];
 	/** Internal addressed files that must be regenerated even when tree HEAD already has their bytes. */
@@ -71,6 +75,8 @@ export type SaveEngineOptions = {
 	/** Internal extraction-only mode: leave refs, index, and work tree where the caller put them. */
 	readonly deferSync?: boolean;
 	readonly rebasePendingCheckpoint?: (stage: 'artifact-written' | 'receipt-updated' | 'before-pending-remove', target: string) => void;
+	/** Test-only observation point after each replayed state's patchset commit. */
+	readonly replayCheckpoint?: (stage: 'state-committed', sha: string) => void;
 	/** Test-only propagation of the two post-checkout load crash windows. */
 	readonly syncCheckpoint?: SyncEngineOptions['checkpoint'];
 };
@@ -113,7 +119,7 @@ const FALLBACK_COMMIT_NAME = 'codkit';
 const FALLBACK_COMMIT_EMAIL = 'codkit@patchset.invalid';
 
 /** One file's outcome after validation, before anything is written. */
-type PlannedFile = {
+export type PlannedFile = {
 	readonly target: string;
 	readonly artifact: string;
 	readonly artifactAbsolute: string;
@@ -195,7 +201,22 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			throw ckError('CONFIG', `cycle patch header override target is not an addressed dirty file: ${unused.join(', ')}`);
 	}
 
+	// A full save over tree commits plans every state before writing anything
+	// (D5, ##SAVE-REPLAYS-TREE-COMMITS). Scoped saves and the internal cycle and
+	// rebase extractions keep the direct single-state path: the first cannot
+	// rebuild the branch over commits it did not take, and the second owns its
+	// own commit discipline (##SAVE-SCOPED-BRANCH-RULE, campaign decision D12).
+	const replayEligible = treeState.commits.length > 0 && filters.length === 0 && headerOverrides.size === 0 && options.deferSync !== true;
+	const squashing = options.squash === true;
+	if (squashing && treeState.commits.length === 0) {
+		out.info('--squash: no tree commits in the fork tree to fold');
+	}
+
 	// 2. Own code: tree -> patchset, file by file, and only where the tree moved.
+	// The classification and its refusal stay first; the mirror itself is a
+	// write, so in replay mode it waits for pass 2 (D5), after every state has
+	// been validated - a refusal must leave patchset without new commits *and*
+	// without new own bytes.
 	const mark = readTreeMark(tree, (text) => {
 		out.warn(text);
 	});
@@ -206,36 +227,91 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		return result('blocked', 1, { branch });
 	}
 	const ownInScope = filterOwn(classes, filters, config.ownDirName);
-	const own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
-	reportOwn(out, own);
 
-	// 3. Upstream files: everything the tree's final state holds outside the own
-	// directory, relative to the last applied tip - not `git status`, which is
-	// blind to everything a commit already carries (D4).
-	const changed = changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths);
-	const dirty = changed.filter((entry) => matchesFilters(entry.path, filters));
-	if (options.verbose) {
-		out.diag(`changed upstream file(s): ${dirty.length === 0 ? 'none' : dirty.map((entry) => entry.path).join(', ')}`);
-	}
-	// An addressed save leaves the rest of the tree as it is - including the
-	// branch, which may not be rebuilt while work outside the given paths is
-	// still only in the tree: the rebuild rewrites every file that differs from
-	// the new tip, and that work would be exactly what it overwrites.
-	const leftOut = changed.length - dirty.length + (classes.length - ownInScope.length);
+	const store = new ArtifactStore(patchesDir);
+	const planFor = (entry: StateChange, state: TreeState, planning: ArtifactStore): PlannedFile | null =>
+		planFile(entry, state, planning, options, conventions, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
 
-	const planned: PlannedFile[] = [];
+	let own: OwnMirrorReport = NO_OWN;
+	let planned: readonly PlannedFile[] = [];
+	let written = 0;
+	let replayWrites: ReplayWrites | null = null;
+	let leftOut = 0;
+	let dirty: readonly StateChange[] = [];
 	const errors: CkError[] = [];
-	for (const entry of dirty) {
-		try {
-			const plan = planFile(entry, selection, options, conventions, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
-			if (plan !== null) {
-				planned.push(plan);
+
+	if (replayEligible) {
+		// Pass 1: every state - each foreign commit, then the worktree remainder -
+		// over one artifact store; a refusal names its state and blocks all writes.
+		const replayPlan = planStates({
+			patchesDir,
+			tree,
+			base: treeState.base,
+			ownDirName: config.ownDirName,
+			forcedPaths,
+			commits: treeState.commits,
+			planFile: planFor
+		});
+		planned = replayPlan.worktreePlans;
+		errors.push(...replayPlan.errors);
+		if (replayPlan.skipped.length > 0) {
+			out.info(`${replayPlan.skipped.length} tree commit(s) are already replayed into patchset; skipped`);
+		}
+		if (errors.length === 0 && !squashing) {
+			// Pass 2: artifacts and one patchset commit per state, oldest first,
+			// with the state's own subject, author and date (##SAVE-REPLAYS-TREE-COMMITS).
+			replayWrites = writeStates({
+				states: replayPlan.states,
+				out,
+				writeArtifacts: (statePlans) => commitArtifacts(patchesDir, tree, statePlans, out, options.rebasePendingCheckpoint),
+				commitState: (state) => commitReplayState(patchesDir, state, out),
+				...(options.replayCheckpoint === undefined ? {} : { checkpoint: options.replayCheckpoint })
+			});
+			written = replayWrites.written;
+			// S_wt of pass 2: own mirrors only after every state is written and
+			// committed (D5) - a refusal higher above never wrote any of it. The
+			// worktree remainder writes below read a store that pass 2 has already
+			// put on disk, so their 'unchanged' verdicts describe the real files.
+			own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
+			reportOwn(out, own);
+		}
+	}
+
+	// The direct write path: the plain save, and `--squash` after its states were
+	// validated. Own first, then the one selection there is - the final state of
+	// the worktree - planned against the DISK, not the store: `--squash` writes
+	// no intermediate state, so what its final plan must name are disk-changing
+	// actions ('updated' against the pre-save artifact, not 'unchanged' against
+	// the store's copy of the last state).
+	if (!replayEligible || (squashing && errors.length === 0)) {
+		own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
+		reportOwn(out, own);
+		// 3. Upstream files: everything the tree's final state holds outside the own
+		// directory, relative to the last applied tip - not `git status`, which is
+		// blind to everything a commit already carries (D4).
+		const changed = changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths);
+		dirty = changed.filter((entry) => matchesFilters(entry.path, filters));
+		if (options.verbose) {
+			out.diag(`changed upstream file(s): ${dirty.length === 0 ? 'none' : dirty.map((entry) => entry.path).join(', ')}`);
+		}
+		// An addressed save leaves the rest of the tree as it is - including the
+		// branch, which may not be rebuilt while work outside the given paths is
+		// still only in the tree: the rebuild rewrites every file that differs from
+		// the new tip, and that work would be exactly what it overwrites.
+		leftOut = changed.length - dirty.length + (classes.length - ownInScope.length);
+		planned = [];
+		for (const entry of dirty) {
+			try {
+				const plan = planFor(entry, selection, store);
+				if (plan !== null) {
+					planned = [...planned, plan];
+				}
+			} catch (error) {
+				if (!isCkError(error)) {
+					throw error;
+				}
+				errors.push(error);
 			}
-		} catch (error) {
-			if (!isCkError(error)) {
-				throw error;
-			}
-			errors.push(error);
 		}
 	}
 
@@ -248,8 +324,9 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		return result('blocked', 1, { branch, files: planned.map(toReport), own });
 	}
 
-	// 4. Write the artifacts.
-	const written = commitArtifacts(patchesDir, tree, planned, out, options.rebasePendingCheckpoint);
+	// 4. Write the artifacts of the worktree remainder (replay already wrote the
+	// states' artifacts in pass 2; --squash writes only this final state).
+	written += commitArtifacts(patchesDir, tree, planned, out, options.rebasePendingCheckpoint);
 
 	// Nothing moved in patchset *and* nothing is out of place in the tree: there is
 	// no work to extract and no branch to rebuild. A tree that is dirty while
@@ -320,16 +397,24 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		}
 	}
 
-	// 6. The patchset commit. With tree commits consumed, one commit carries
-	// them - the squash of the future `--squash` flag, temporary until Phase 4
-	// replays the commits one by one; `--commit` keeps its ordinary meaning for
-	// the runs that extracted no commits at all.
-	const commitSha =
-		consumed.length > 0
-			? commitTreeSquash(options, planned, own, consumed, out)
-			: options.commit
-				? commitDelta(options, planned, own, out)
-				: null;
+	// 6. The patchset commits. Replay already made one per state in pass 2;
+	// `--squash` folds everything this run extracted into the one commit of D3;
+	// `--commit` keeps its ordinary meaning - the remainder's own commit, on top
+	// of the replayed ones when both apply.
+	let commitSha: string | null = null;
+	if (replayWrites !== null) {
+		commitSha = replayWrites.commits[replayWrites.commits.length - 1] ?? null;
+		if (replayWrites.commits.length > 0) {
+			out.info(`replayed ${replayWrites.commits.length} tree commit(s) into patchset history`);
+		}
+		if (options.commit) {
+			commitSha = commitDelta(options, planned, own, out) ?? commitSha;
+		}
+	} else if (consumed.length > 0) {
+		commitSha = commitTreeSquash(options, planned, own, consumed, out);
+	} else if (options.commit) {
+		commitSha = commitDelta(options, planned, own, out);
+	}
 
 	out.info(`saved ${planned.filter((plan) => plan.action !== 'unchanged').length} file(s)`);
 	return result('saved', 0, {
@@ -423,6 +508,7 @@ function filterOwn(classes: readonly OwnSideClass[], filters: readonly string[],
 function planFile(
 	entry: StateChange,
 	state: TreeState,
+	store: ArtifactStore,
 	options: SaveEngineOptions,
 	conventions: Conventions,
 	allowNewFile: readonly string[],
@@ -456,7 +542,10 @@ function planFile(
 		);
 	}
 
-	const existingBytes = existsSync(artifactAbsolute) ? readFileSync(artifactAbsolute) : null;
+	// The artifact bytes come from the planning store: over the disk for an
+	// ordinary save, over what the earlier states of a replay produced for the
+	// later ones (##SAVE-REPLAYS-TREE-COMMITS).
+	const existingBytes = store.read(artifact);
 	const existing = existingBytes === null ? null : parseCkpatch(existingBytes, conventions, artifact);
 
 	// Whether the file is new is decided by the pin, not by the index: a file an
@@ -488,7 +577,7 @@ function planFile(
 	}
 
 	const base = pinBytes ?? new Uint8Array(0);
-	const missingArtifactPending = existing === null ? readRebasePending(patchesDir, target) : null;
+	const missingArtifactPending = existing === null ? store.readRebasePending(target) : null;
 	if (missingArtifactPending !== null && !isAddFile && bytesEqual(base, curBytes)) {
 		validateHeaderOverride(missingArtifactPending, config);
 		if (missingArtifactPending.artifactPath !== artifact || missingArtifactPending.targetPath !== target) {
@@ -497,7 +586,7 @@ function planFile(
 		assertRebasePendingMoveBinding(patchesDir, tree, missingArtifactPending, true);
 		return { target, artifact, artifactAbsolute, action: 'removed', bytes: null, consumesPending: true };
 	}
-	const header = headerFor(patchesDir, tree, target, artifact, existing, config, headerOverride);
+	const header = headerFor(patchesDir, tree, state, store, target, artifact, existing, config, headerOverride);
 
 	const regenerated = regeneratePatch({
 		targetPath: target,
@@ -554,17 +643,19 @@ type ChosenHeader = { readonly text: string; readonly fromPending: boolean };
 function headerFor(
 	patchesDir: string,
 	treeDir: string,
+	state: TreeState,
+	store: ArtifactStore,
 	target: string,
 	artifact: string,
 	existing: ParsedPatch | null,
 	config: CodkitConfig,
 	override: SavePatchHeaderOverride | undefined
 ): ChosenHeader {
-	const localOverride = override === undefined && existing !== null ? readRebasePending(patchesDir, target) : null;
+	const localOverride = override === undefined && existing !== null ? store.readRebasePending(target) : null;
 	if (localOverride !== null && existing !== null) {
 		const advanced = sha256(serializeCkpatch(existing)) !== localOverride.artifactSha256;
 		assertRebasePendingMoveBinding(patchesDir, treeDir, localOverride, advanced);
-		if (advanced) assertAdvancedPendingArtifact(treeDir, target, existing, localOverride, config);
+		if (advanced) assertAdvancedPendingArtifact(treeDir, state, target, existing, localOverride, config);
 	}
 	const selectedOverride = override ?? localOverride ?? undefined;
 	if (selectedOverride !== undefined) {
@@ -598,7 +689,7 @@ function headerFor(
 	if (existing !== null) {
 		return { text: extractHeaderText(existing), fromPending: false };
 	}
-	const pending = readPendingHeader(patchesDir, target);
+	const pending = store.readPendingHeader(target);
 	if (pending === null) {
 		throw ckError(
 			'HEADER-MISSING',
@@ -644,6 +735,7 @@ function validateHeaderOverrides(options: SaveEngineOptions): ReadonlyMap<string
 
 function assertAdvancedPendingArtifact(
 	treeDir: string,
+	state: TreeState,
 	target: string,
 	patch: ParsedPatch,
 	pending: RebasePendingOverride,
@@ -661,7 +753,10 @@ function assertAdvancedPendingArtifact(
 		throw ckError('ARTIFACT-BROKEN', `${pending.artifactPath}: transitioned conflict artifact has wrong add-file semantics`);
 	}
 	const applied = applyUnified(pinBytes ?? new Uint8Array(0), patch);
-	const current = readFileSync(join(treeDir, ...target.split('/')));
+	// The resolved state is read through the selection's byte provider (D4), the
+	// same one the patch was planned from: for a commit state of the replay this
+	// is the commit's blob, and the two reads must not diverge.
+	const current = bytesOf(treeDir, state, target);
 	if (!bytesEqual(applied, current)) {
 		throw ckError('ARTIFACT-BROKEN', `${pending.artifactPath}: transitioned conflict artifact body is not the resolved tree state`);
 	}
@@ -726,7 +821,7 @@ function checkPatchAgainstMarkers(
 // ---------------------------------------------------------------------------
 
 /** Write what the plan says and drop the drafts it consumed. Returns the count. */
-function commitArtifacts(
+export function commitArtifacts(
 	patchesDir: string,
 	treeDir: string,
 	planned: readonly PlannedFile[],
@@ -882,15 +977,15 @@ function commitDelta(options: SaveEngineOptions, planned: readonly PlannedFile[]
 
 	const count = planned.filter((plan) => plan.action !== 'unchanged').length + own.copied + own.removed;
 	const message = options.message ?? `codkit save: ${count} file(s)`;
-	return commitPatchSet(patchesDir, message, paths, out);
+	return commitPatchSet(patchesDir, { message, paths }, out);
 }
 
 /**
- * The temporary carrier of consumed tree commits: until Phase 4 replays them
- * one by one, one patchset commit holds everything this run extracted, named
- * for the squash it is - the default message of the future `--squash` flag -
- * with every consumed sha as a `Codkit-Tree-Commit` trailer so the history
- * stays answerable for what it folded (D3/D5).
+ * `--squash`: one patchset commit holds everything this run extracted, named
+ * for the squash it is, with every consumed sha as a `Codkit-Tree-Commit`
+ * trailer so the history stays answerable for what it folded (D3/D5). This is
+ * the behaviour `save` had over tree commits before replay became the default,
+ * and the flag is what keeps it reachable.
  */
 function commitTreeSquash(
 	options: SaveEngineOptions,
@@ -912,11 +1007,48 @@ function commitTreeSquash(
 	const listing = commits.map((commit) => `${commit.sha} ${commit.subject}`);
 	const trailers = commits.map((commit) => `Codkit-Tree-Commit: ${commit.sha}`);
 	const message = [subject, '', ...listing, '', ...trailers].join('\n');
-	return commitPatchSet(patchesDir, message, paths, out);
+	return commitPatchSet(patchesDir, { message, paths }, out);
 }
 
+/**
+ * One replayed state's patchset commit (##SAVE-REPLAYS-TREE-COMMITS): the tree
+ * commit's message verbatim plus the `Codkit-Tree-Commit` trailer, authored as
+ * the tree commit was - same name, address and date - and committed by whoever
+ * runs the command. A state that stages nothing is skipped out loud: the work
+ * is consumed either way, but patchset history has nothing to hold for it.
+ */
+function commitReplayState(patchesDir: string, state: PlannedCommitState, out: Output): string | null {
+	const paths = stageDeltaPaths(patchesDir, state.plans, NO_OWN, out, true);
+	if (paths === null) {
+		out.info(`tree commit ${state.commit.sha.slice(0, 8)} "${state.commit.subject}" changes no artifact; no patchset commit for it`);
+		return null;
+	}
+	return commitPatchSet(
+		patchesDir,
+		{
+			message: replayCommitMessage(state.message, state.commit.sha),
+			paths,
+			author: {
+				name: state.commit.authorName,
+				email: state.commit.authorEmail,
+				date: state.commit.authorDate
+			}
+		},
+		out
+	);
+}
+
+/** The patchset commit this engine makes: `{ message, author?, paths }`. */
+type PatchSetCommit = {
+	readonly message: string;
+	readonly paths: readonly string[];
+	/** Overrides the author only; the committer is always the local user (D5). */
+	readonly author?: { readonly name: string; readonly email: string; readonly date: string };
+};
+
 /** The one way this engine commits in patchset; identity is the local user's. */
-function commitPatchSet(patchesDir: string, message: string, paths: readonly string[], out: Output): string | null {
+function commitPatchSet(patchesDir: string, commit: PatchSetCommit, out: Output): string | null {
+	const { message, paths, author } = commit;
 	const identity = commitIdentity(patchesDir);
 	const committed = runGit({
 		args: [
@@ -931,7 +1063,10 @@ function commitPatchSet(patchesDir: string, message: string, paths: readonly str
 			'--',
 			...paths
 		],
-		cwd: patchesDir
+		cwd: patchesDir,
+		// The author of a replayed state is the author of the tree commit; the
+		// isolation keeps the committer at the local user, as D5 fixes it.
+		...(author === undefined ? {} : { env: { GIT_AUTHOR_NAME: author.name, GIT_AUTHOR_EMAIL: author.email, GIT_AUTHOR_DATE: author.date } })
 	});
 	if (committed.status !== 0) {
 		throw ckError(

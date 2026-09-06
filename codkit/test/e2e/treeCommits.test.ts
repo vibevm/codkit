@@ -1,9 +1,10 @@
 // e2e: commits made in the fork tree are work (PROP-008
 // ##TREE-COMMITS-ARE-WORK). The destructive commands refuse to cross them
-// (acceptance scenario S18 of FEAT-002), and `save` extracts them: everything
-// committed reaches patchset as artifacts plus one squash commit carrying
-// `Codkit-Tree-Commit` trailers, the consumed commits stay reachable under
-// refs/codkit/consumed/, and the tree ends clean (S17a, S19).
+// (acceptance scenario S18 of FEAT-002), and `save` replays them: every
+// committed state becomes its own patchset commit with the original subject,
+// author and date plus a `Codkit-Tree-Commit` trailer, the consumed commits
+// stay reachable under refs/codkit/consumed/, and the tree ends clean
+// (S17a, S19).
 //
 // Before the campaign, a commit in the tree was invisible: `load` rebuilt the
 // branch over it, `save` answered "nothing to save", and the work survived only
@@ -56,12 +57,21 @@ function commitInTree(fixture: CliFixture, message: string, line: string, bypass
 	const args = ['commit', '--quiet', '--all', '--message', message, ...(bypass === '--no-verify' ? ['--no-verify'] : [])];
 	const env: GitEnv = { ...IDENTITY, GIT_AUTHOR_DATE: dateIso, GIT_COMMITTER_DATE: dateIso };
 	const result = gitLocal({ args, cwd: fixture.treeDir, env: bypass === 'internal' ? { ...env, CODKIT_INTERNAL_COMMIT: '1' } : env });
-	expect(result.status).toBe(0);
+	expect(result.status, result.stderr).toBe(0);
 	return fixture.git(['rev-parse', 'HEAD']).stdout.trim();
 }
 
 function headOf(fixture: CliFixture): string {
 	return fixture.git(['rev-parse', 'HEAD']).stdout.trim();
+}
+
+/**
+ * The patchset status of the delta only, trimmed: `.codkit/` scratch (diff
+ * temporaries, tree cache, locks) is runtime state a save legitimately leaves
+ * behind (F24), and it is neither a commit nor an artifact.
+ */
+function fixtureStatus(fixture: CliFixture): string {
+	return fixture.patchGit(['status', '--porcelain', '--', 'delta/']).stdout.trim();
 }
 
 function isAncestor(fixture: CliFixture, sha: string): boolean {
@@ -89,6 +99,30 @@ function fillBlock(text: string, id: string, line: string): string {
 	}
 	const endOfBegin = text.indexOf('\n', at) + 1;
 	return `${text.slice(0, endOfBegin)}${line}\n${text.slice(endOfBegin)}`;
+}
+
+/** One patchset commit as the replay assertions read it. */
+type PatchsetCommit = {
+	readonly sha: string;
+	readonly subject: string;
+	readonly authorName: string;
+	readonly authorEmail: string;
+	readonly authorDate: string;
+	readonly trailers: readonly string[];
+};
+
+/** Patchset commits since `since`, oldest first, with their replay trailers. */
+function patchsetCommitsSince(fixture: CliFixture, since: string): readonly PatchsetCommit[] {
+	const rows = fixture.patchGit(['log', '--reverse', '--format=%H%x00%s%x00%an%x00%ae%x00%aI', `${since}..HEAD`]).stdout.trim();
+	return (rows === '' ? [] : rows.split('\n')).map((row) => {
+		const [sha = '', subject = '', authorName = '', authorEmail = '', authorDate = ''] = row.split('\0');
+		const trailers = fixture
+			.patchGit(['log', '-1', '--format=%(trailers:key=Codkit-Tree-Commit,valueonly)', sha])
+			.stdout.trim()
+			.split('\n')
+			.filter((line) => line !== '');
+		return { sha, subject, authorName, authorEmail, authorDate, trailers };
+	});
 }
 
 /** Scaffold a marker block in util.ts and leave one uncommitted line inside it. */
@@ -215,10 +249,12 @@ describe('S17a: everything committed in the fork tree - save extracts it', () =>
 	let fixture: CliFixture;
 	let first: string;
 	let second: string;
+	let headBefore: string;
 
 	beforeAll(() => {
 		fixture = makeCliFixture('treecommits-s17a');
 		expect(fixture.run(['load']).status).toBe(0);
+		headBefore = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
 		first = commitInTree(fixture, 'work: first tree commit', '// first committed line', '--no-verify', '2026-09-06T10:30:00Z');
 		second = commitInTree(fixture, 'work: second tree commit', '// second committed line', '--no-verify', '2026-09-06T10:31:00Z');
 		const outcome = fixture.json(['save']);
@@ -240,23 +276,17 @@ describe('S17a: everything committed in the fork tree - save extracts it', () =>
 		expect(refs[0]?.ref).toMatch(/^refs\/codkit\/consumed\/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7}$/);
 	});
 
-	it('carries both commits in one patchset commit with Codkit-Tree-Commit trailers', () => {
-		const message = fixture.patchGit(['log', '-1', '--format=%B']).stdout;
-		expect(message).toContain('codkit save: squash of 2 tree commit(s)');
-		expect(message).toContain(`${first} work: first tree commit`);
-		expect(message).toContain(`${second} work: second tree commit`);
-		const trailers = message
-			.split('\n')
-			.filter((line) => line.startsWith('Codkit-Tree-Commit:'))
-			.map((line) => line.slice('Codkit-Tree-Commit:'.length).trim());
-		expect(trailers).toEqual([first, second]);
-		// The trailers are real git trailers, not just lines that look like them.
-		const parsed = fixture
-			.patchGit(['log', '-1', '--format=%(trailers:key=Codkit-Tree-Commit,valueonly)'])
-			.stdout.trim()
-			.split('\n')
-			.filter((line) => line !== '');
-		expect(parsed).toEqual([first, second]);
+	it('replays both commits as their own patchset commits', () => {
+		const commits = patchsetCommitsSince(fixture, headBefore);
+		expect(commits.map((commit) => commit.subject)).toEqual(['work: first tree commit', 'work: second tree commit']);
+		expect(commits.map((commit) => commit.authorName)).toEqual(['human', 'human']);
+		expect(commits.map((commit) => commit.authorEmail)).toEqual(['human@example.invalid', 'human@example.invalid']);
+		// The author dates are the ones the tree commits were made with, one
+		// minute apart: the patchset history carries the original chronology.
+		expect(commits.map((commit) => commit.authorDate)).toEqual(['2026-09-06T10:30:00Z', '2026-09-06T10:31:00Z']);
+		expect(commits.map((commit) => commit.trailers)).toEqual([[first], [second]]);
+		// The committer is whoever ran the command, the same one for both.
+		expect(new Set(commits.map((commit) => fixture.patchGit(['log', '-1', '--format=%cn <%ce>', commit.sha]).stdout.trim())).size).toBe(1);
 	});
 
 	it('leaves the tree clean and on the generated branch', () => {
@@ -284,10 +314,12 @@ describe('S17a: everything committed in the fork tree - save extracts it', () =>
 describe('S19: half committed, half uncommitted - save extracts both', () => {
 	let fixture: CliFixture;
 	let committed: string;
+	let headBefore: string;
 
 	beforeAll(() => {
 		fixture = makeCliFixture('treecommits-s19');
 		expect(fixture.run(['load']).status).toBe(0);
+		headBefore = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
 		committed = commitInTree(fixture, 'work: the committed half', '// committed half line', '--no-verify', '2026-09-06T10:40:00Z');
 		dirtyUtilBlock(fixture, '// uncommitted half line');
 		const outcome = fixture.json(['save']);
@@ -311,11 +343,17 @@ describe('S19: half committed, half uncommitted - save extracts both', () => {
 		expect(fixture.git(['symbolic-ref', 'HEAD']).stdout.trim()).toBe(`refs/heads/${fixture.branch}`);
 	});
 
-	it('consumed the commit and folded it into one patchset commit', () => {
+	it('replays the committed half as its own commit and leaves the uncommitted half uncommitted', () => {
 		expect(consumedRefs(fixture).map((row) => row.sha)).toEqual([committed]);
-		const message = fixture.patchGit(['log', '-1', '--format=%B']).stdout;
-		expect(message).toContain('codkit save: squash of 1 tree commit(s)');
-		expect(message).toContain(`Codkit-Tree-Commit: ${committed}`);
+		const commits = patchsetCommitsSince(fixture, headBefore);
+		expect(commits.map((commit) => commit.subject)).toEqual(['work: the committed half']);
+		expect(commits.map((commit) => commit.trailers)).toEqual([[committed]]);
+		// The uncommitted half reached its artifact, and that artifact is the
+		// one change patchset holds without a commit - the default replay
+		// commits the tree's history, and the worktree remainder stays work in
+		// progress exactly as an uncommitted edit would. The artifact is new
+		// (util.ts carried no patch before), so patchset holds it untracked.
+		expect(fixtureStatus(fixture)).toBe(`?? ${UTIL_PATCH}`);
 	});
 });
 
