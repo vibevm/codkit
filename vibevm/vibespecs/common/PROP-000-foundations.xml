@@ -24,7 +24,8 @@
     <facts ordered="false">
       <AI-NATIVE-APPLIES-TO-CODKIT fact="true" status="spec/done">The AI-native TypeScript discipline applies to Codkit production code and tests.</AI-NATIVE-APPLIES-TO-CODKIT>
       <DEPENDENCIES-PERMISSIVE fact="true" status="spec/done">Dependencies are permissive-only unless the owner explicitly approves an exception.</DEPENDENCIES-PERMISSIVE>
-      <LICENSE-PROPRIETARY fact="true" status="spec/done">Codkit is proprietary; the root `LICENSE.md` is the governing notice.</LICENSE-PROPRIETARY>
+      <LICENSE-PROPRIETARY fact="true" status="spec/done">Надгробие (кампания STANDARDS, 2026-09-06): проприетарная позиция 2026-08-31 отменена решением владельца; действующий якорь — `LICENSE-UPL` ниже. Адрес не удалён (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR).</LICENSE-PROPRIETARY>
+      <LICENSE-UPL fact="true" status="spec/done">Codkit is released under The Universal Permissive License (UPL), Version 1.0 (SPDX `UPL-1.0`); the root `LICENSE.md` is the governing notice, the `license` field of `package.json` states the same, and the standards packages under `vibevm/vibepacks/` carry the same licence. Changing this posture is an owner decision made in one commit that updates every licence statement together.</LICENSE-UPL>
     </facts>
   </engineering>
 </spec>

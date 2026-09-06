@@ -2,7 +2,7 @@
 	"name": "codkit",
 	"version": "0.1.0",
 	"private": true,
-	"license": "UNLICENSED",
+	"license": "UPL-1.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.6.0"
