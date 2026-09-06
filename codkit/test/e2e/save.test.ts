@@ -581,3 +581,107 @@ describe('codkit load: own code edited in patchset', () => {
 		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-BOTH-SIDES-EDITED');
 	});
 });
+
+describe('codkit save: the patchset branch was switched under the tree (S23)', () => {
+	let fixture: CliFixture;
+	let loadedSha: string;
+	let otherTip: string;
+	let headBefore: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('save-moved-lineage');
+		expect(fixture.run(['load']).status).toBe(0);
+		loadedSha = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+		// A branch whose tip is not a descendant of the loaded commit: the
+		// fixture patchset's first commit, one below the delta it carries.
+		otherTip = fixture.patchGit(['rev-parse', `${loadedSha}~1`]).stdout.trim();
+		fixture.patchGit(['branch', 'other-state', otherTip]);
+		fixture.patchGit(['switch', '--quiet', 'other-state']);
+		headBefore = fixture.git(['rev-parse', 'HEAD']).stdout.trim();
+	});
+
+	it('refuses with the lineage text and writes nothing', () => {
+		const fileBefore = readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8');
+		const statusBefore = fixture.git(['status', '--porcelain']).stdout;
+
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-PATCHSET-MOVED']);
+		expect(outcome.envelope.errors[0]?.message).toContain('not an ancestor of patchset HEAD');
+		expect(outcome.envelope.errors[0]?.message).toContain(loadedSha.slice(0, 8));
+		expect(outcome.envelope.errors[0]?.hint).toContain('codkit save');
+		expect(outcome.envelope.errors[0]?.hint).toContain('codkit load');
+		// Nothing moved on either side: the tree stands exactly as it was, and
+		// the patchset keeps the switched branch where the operator put it.
+		expect(fixture.git(['rev-parse', 'HEAD']).stdout.trim()).toBe(headBefore);
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe(statusBefore);
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toBe(fileBefore);
+		expect(fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim()).toBe(otherTip);
+	});
+
+	it('status names the state the tree was loaded from', () => {
+		const outcome = fixture.json(['status']);
+
+		expect(outcome.run.status).toBe(0);
+		expect(outcome.envelope.messages.some((message) => message.text === `loaded from patchset commit: ${loadedSha.slice(0, 8)}`)).toBe(
+			true
+		);
+		expect(outcome.envelope.data['loadedFrom']).toBe(loadedSha);
+	});
+});
+
+describe('codkit save: a patchset that was dirty at load time (S23)', () => {
+	let fixture: CliFixture;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('save-moved-dirty');
+		// The artifact is shifted before the first load, so patchset carries
+		// uncommitted delta work and no sha can name what the load represents.
+		shiftExampleArtifact(fixture, ', shifted on the patchset side');
+		expect(fixture.run(['load']).status).toBe(0);
+		// The tree then edits another file - the ordinary work of a save.
+		dirtyUtilBlock(fixture, '\t// one more util line');
+	});
+
+	it('warns about the unverifiable lineage and continues', () => {
+		const outcome = fixture.json(['save']);
+
+		expect(outcome.run.status).toBe(0);
+		expect(outcome.envelope.messages.some((message) => message.text.includes('uncommitted patchset state (dirty)'))).toBe(true);
+		expect(readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8')).toContain('// one more util line');
+		// The shifted artifact was loaded as-is, so the tree carries its text.
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toContain('shifted on the patchset side');
+	});
+});
+
+/** Edit the added line of the fixture patch: a patchset-side shift that still applies. */
+function shiftExampleArtifact(fixture: CliFixture, suffix: string): void {
+	const artifact = fixture.patchesPath(EXAMPLE_PATCH);
+	const before = readFileSync(artifact, 'utf8');
+	const added = '+\t\t// (hook body lives in patchset own code; this block only delegates)';
+	if (!before.includes(added)) {
+		throw new Error('the fixture patch body does not carry the expected added line');
+	}
+	writeFileSync(artifact, before.replace(added, `${added}${suffix}`), 'utf8');
+}
+
+/** Scaffold a marker block in util.ts and leave one uncommitted line inside it. */
+function dirtyUtilBlock(fixture: CliFixture, line: string): void {
+	const outcome = fixture.json([
+		'marker',
+		'new',
+		UTIL_PATH,
+		'--id',
+		HOOK_ID,
+		'--type',
+		'hook',
+		'--owner',
+		'workbench-core',
+		'--reason',
+		'uncommitted half'
+	]);
+	expect(outcome.run.status).toBe(0);
+	const target = fixture.treePath(UTIL_PATH);
+	writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), HOOK_ID, line), 'utf8');
+}

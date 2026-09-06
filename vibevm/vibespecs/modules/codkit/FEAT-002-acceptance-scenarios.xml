@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec xmlns="https://vibevm.org/spec/1">
-  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S21 (Given/When/Then)</title>
+  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S23 (Given/When/Then)</title>
   <status stage="spec" state="plan" comment="standalone Given/When/Then acceptance on FEAT-001; e2e harness is PROP-013"/>
   <conventions title="0. Обозначения">
     <p><SCENARIO-CONVENTIONS fact="true" status="spec/done">`$TOOL`, `$PATCHES`, `$FORK` — три несвязанных disjoint roots; cwd находится в четвёртом месте. Чистый fork — checkout upstream pin без локальных правок. Then по выводу проверяется через schema-2 `roots.tool|patches|fork`; исключения — явные проверки human message. Коды — 0/1/2/3 из PROP-007.</SCENARIO-CONVENTIONS></p>
@@ -70,4 +70,10 @@
   <s21 title="S21 — прежнее имя sync: заглушка с выходом 2">
     <p><S21 fact="true" status="spec/plan">**Given**: любое состояние корней (заглушка срабатывает до резолва путей); односторонняя команда переименована в `load` (Phase 1 кампании TREE-COMMITS-SAVE, решение D14). **When**: `codkit sync`; отдельно `codkit --json sync`. **Then**: оба запуска — выход 2; stderr содержит `codkit sync was renamed to codkit load` и `the name sync is reserved for the two-way save+load command`; конверт не печатается (usage error, как у неизвестной команды), stdout пуст и без `--json`, и под ним; алиаса нет — скрипты со старым именем обязаны ломаться громко.</S21></p>
   </s21>
+  <s22 title="S22 — артефакт сдвинут в patchset: save отказывает до первой записи, рецепт работает руками">
+    <p><S22 fact="true" status="spec/plan">**Given**: состояние S01 (метка несёт карту артефактов, Phase 7); тело `.ckpatch` файла F отредактировано на стороне patchset (незакоммичено), в дереве сделана незакоммиченная правка G в другом файле (кампания TREE-COMMITS-SAVE, решения D16/D18; форма H1/S0.7 — раньше `CK-E-INTERNAL` ПОСЛЕ перестановки ref и перезаписи F). **When**: `codkit --json save`. **Then**: выход 1, `CK-E-PATCHSET-MOVED`; в тексте sha загрузки, имя артефакта F и ручной рецепт; **ничего не записано** — артефакт G не создан, HEAD и ветка дерева не тронуты, правка G на месте (ref не сдвинут). **When (рецепт руками)**: `git stash` в patchset → `codkit save` (выход 0, G извлечён) → `git stash pop` → `codkit load` (выход 0). **Then**: оба изменения в дереве — файл F несёт текст сдвинутого артефакта, файл G — правку дерева; `codkit status` между сдвигом и отказом печатает `loaded from patchset commit: …` и `patchset moved since load: 1 artifact(s)`. Старая метка без карты (R13) в том же сценарии — предупреждение и старое поведение, не отказ.</S22></p>
+  </s22>
+  <s23 title="S23 — ветка patchset переключена: родословная; грязный patchset при load — предупреждение">
+    <p><S23 fact="true" status="spec/plan">**Given**: состояние S01; в patchset создана ветка, чья вершина НЕ потомок коммита загрузки, и выполнен `git switch` на неё (кампания TREE-COMMITS-SAVE, решение D17; поэтому полный `codkit save` — до switch, см. 02-daily). **When**: `codkit --json save`. **Then**: выход 1, `CK-E-PATCHSET-MOVED`, текст родословной «the tree was loaded from patchset commit &lt;sha&gt;, which is not an ancestor of patchset HEAD &lt;sha2&gt;»; ничего не записано. **When (грязный patchset при load)**: артефакт отредактирован в patchset ДО `load`, затем правка в дереве, `codkit save`. **Then**: выход 0 с предупреждением о неверифицируемой родословной (значение `dirty`) — работа дерева принадлежит этому состоянию, `save` продолжается.</S23></p>
+  </s23>
 </spec>

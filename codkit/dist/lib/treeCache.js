@@ -37,7 +37,9 @@ const treeMarkSchema = z.object({
     deltaFingerprint: z.string().min(1),
     branchTip: z.string().min(1),
     ownFingerprint: z.string().min(1).optional(),
-    ownFiles: z.record(z.string(), z.string().min(1)).optional()
+    ownFiles: z.record(z.string(), z.string().min(1)).optional(),
+    artifacts: z.record(z.string(), z.string().min(1)).optional(),
+    patchSetCommit: z.string().min(1).optional()
 });
 export function treeCachePath(patchesDir, treeId) {
     return join(patchesDir, ...TREES_DIR.split('/'), `${treeId}.json`);

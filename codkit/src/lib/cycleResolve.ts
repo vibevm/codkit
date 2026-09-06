@@ -474,7 +474,7 @@ function headerOverride(artifact: CycleResolveArtifact, config: CodkitConfig): S
 }
 
 export const nodeCycleResolvePatchAdapter: CycleResolvePatchAdapter = {
-	extract: runSave,
+	extract: (options) => runSave({ ...options, skipPatchsetMovedCheck: true }), // the cycle's phases moved the delta themselves (F16; D12)
 	prove(options, artifact, proof) {
 		const target = requireTarget(artifact);
 		const absolute = contained(options.patchesDir, artifact.artifactPath);

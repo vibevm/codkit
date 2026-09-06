@@ -59,6 +59,11 @@ export const ERROR_CODES = [
     // destructive commands refuse rather than extract from the wrong place
     // (PROP-008 ##TREE-COMMITS-ARE-WORK, campaign decision D8).
     'TREE-HEAD',
+    // The patch set moved under a tree that was loaded from an older state -
+    // an artifact was edited or the branch switched between the load and the
+    // save - so extracting would rebuild the tree from a delta it was never
+    // loaded from (PROP-008 ##PATCHSET-MOVED-RULE, ##LINEAGE-CHECK).
+    'PATCHSET-MOVED',
     // Not carried by a domain spec section, but required by the runtime:
     'INTERNAL',
     // Dependencies that are not there: the launcher (codkit/bin/codkit.mjs) says

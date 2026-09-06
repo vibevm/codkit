@@ -402,7 +402,11 @@ function saveAutomatic(
 		verbose: options.verbose === true,
 		patchHeaderOverrides: prepared.map((entry) => entry.override),
 		forcedPaths: prepared.map((entry) => entry.targetPath),
-		deferSync: true
+		deferSync: true,
+		// The rebase path moves the artifacts itself - it replays feature
+		// patches onto a new pin and hands `save` the regeneration - so the
+		// delta under the tree is its own doing (campaign decision D18).
+		skipPatchsetMovedCheck: true
 	});
 }
 

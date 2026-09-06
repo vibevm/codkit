@@ -506,6 +506,10 @@ const faqEntries = {
 		'HEAD of the fork tree is off the generated branch while carrying commits that are not in patchset, or the line below the generated tip was rewritten.',
 		'Return HEAD to the generated branch (git switch codkit/applied/<tag>) or merge the commits there, then run codkit save; for a rewritten line reset the branch to the named generated tip or restore it from refs/codkit/consumed/.'
 	],
+	'PATCHSET-MOVED': [
+		'The patch set moved under a fork tree loaded from an older state: an artifact was edited or the patchset branch was switched between the load and the save.',
+		'Follow the printed manual merge recipe: return the delta to the loaded state (`git stash`, `git switch <branch>`, or `git checkout <sha> -- delta/`), run `codkit save`, bring the shift back (`git stash pop`, `git merge`, or `git rebase`), then `codkit load`. Switching branches deliberately starts with a full `codkit save`, not a switch.'
+	],
 	INTERNAL: [
 		'An unexpected Codkit failure escaped domain diagnosis.',
 		'Rerun with `--verbose` and attach the complete output to a bug report.'

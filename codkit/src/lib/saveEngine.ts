@@ -44,6 +44,7 @@ import { sha256 } from './renameFileState.ts';
 import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './rebaseOntoPinMove.ts';
 import { ArtifactStore, planStates, replayCommitMessage, writeStates } from './saveReplay.ts';
 import type { PlannedCommitState, ReplayWrites } from './saveReplay.ts';
+import { checkLineage, classifyTargets, loadedFrom, movedArtifactsOf, patchsetMovedError } from './syncMerge.ts';
 import { PATCHES_DIR, bothSidesError, runSync, toPosix } from './syncEngine.ts';
 import type { SyncEngineOptions } from './syncEngine.ts';
 import { readTreeMark } from './treeCache.ts';
@@ -68,6 +69,15 @@ export type SaveEngineOptions = {
 	readonly verbose: boolean;
 	/** `--squash`: fold the consumed tree commits into one patchset commit (D3). */
 	readonly squash?: boolean;
+	/**
+	 * Only the cycle and rebase-onto-pin extraction paths set this (campaign
+	 * decisions D12/D18): they move the delta themselves between the load and
+	 * the extraction - the cycle regenerates and commits artifacts, the rebase
+	 * replays them onto a new pin - so the moved state is theirs, not a
+	 * foreign edit under the tree. An escape hatch for those named callers,
+	 * never a general flag: the public `save` keeps the check armed.
+	 */
+	readonly skipPatchsetMovedCheck?: boolean;
 	/** Cycle-only metadata, validated and incorporated before artifact writes and the load. */
 	readonly patchHeaderOverrides?: readonly SavePatchHeaderOverride[];
 	/** Internal addressed files that must be regenerated even when tree HEAD already has their bytes. */
@@ -180,6 +190,68 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// base the walk just named (D4).
 	const selection: TreeState = { kind: 'worktree' };
 
+	// 1d. The other side of the load: the patchset this tree was loaded from
+	// must still be the one under it (##LINEAGE-CHECK, ##PATCHSET-MOVED-RULE).
+	// Somebody editing an artifact, or switching the patchset branch, moves the
+	// delta under a tree whose work belongs to the older state; extracting then
+	// would rebuild the tree from artifacts it was never loaded from (the H1
+	// defect, spike S0.7) or bury a patchset-side edit under an artifact
+	// regenerated from the tree. Both refusals come before any write of this
+	// run - own mirroring and the replay's pass 2 included - which is what
+	// separates them from the CK-E-INTERNAL they replace.
+	const mark = readTreeMark(tree, (text) => {
+		out.warn(text);
+	});
+	if (options.skipPatchsetMovedCheck !== true) {
+		// D17 first: the lineage is a question about commits, answered without
+		// the mark's byte map and independent of it.
+		const loaded = loadedFrom({ treeDir: tree, base: treeState.base, pinSha: config.pin.sha, mark });
+		if (loaded.kind === 'sha') {
+			const lineage = checkLineage(patchesDir, loaded.sha);
+			if (!lineage.ok) {
+				out.addError(patchsetMovedError({ loaded, lineageHead: lineage.head, moved: [] }).toPayload());
+				return result('blocked', 1, { branch });
+			}
+		} else if (loaded.kind === 'dirty' || loaded.kind === 'none') {
+			// A state that cannot be named cannot be verified either; the tree's
+			// work still belongs to it, so the run continues over the warning.
+			out.warn(
+				loaded.kind === 'dirty'
+					? 'the tree was loaded from an uncommitted patchset state (dirty); save cannot verify the patchset lineage and proceeds'
+					: 'the tree was loaded from a patchset without a HEAD (none); save cannot verify the patchset lineage and proceeds'
+			);
+		}
+		// Then D16: the byte question, artifact by artifact against the mark.
+		const classes = classifyTargets({
+			patchesDir,
+			treeDir: tree,
+			pinSha: config.pin.sha,
+			base: treeState.base,
+			mark,
+			ownDirName: config.ownDirName,
+			commits: treeState.commits
+		});
+		if (classes.unknown) {
+			// R13: a mark without the artifact map cannot answer by bytes. A
+			// matching fingerprint proves the delta did not move; a differing one
+			// may be a foreign edit or codkit's own partial extraction (a scoped
+			// save, an interrupted replay) - which a refusal would deadlock, since
+			// the tree's work is exactly what the next save must extract - so the
+			// run says what it cannot verify and stays on the old behaviour.
+			if (!classes.fingerprintMatches) {
+				out.warn(
+					'the apply mark carries no delta artifact map, so save cannot verify whether the delta moved since the load; the next load that rebuilds the tree records the map'
+				);
+			}
+		} else {
+			const moved = movedArtifactsOf(classes);
+			if (moved.length > 0) {
+				out.addError(patchsetMovedError({ loaded, lineageHead: null, moved }).toPayload());
+				return result('blocked', 1, { branch });
+			}
+		}
+	}
+
 	const conventions = loadConventions(patchesDir);
 	const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
 	const headerOverrides = validateHeaderOverrides(options);
@@ -216,10 +288,8 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// The classification and its refusal stay first; the mirror itself is a
 	// write, so in replay mode it waits for pass 2 (D5), after every state has
 	// been validated - a refusal must leave patchset without new commits *and*
-	// without new own bytes.
-	const mark = readTreeMark(tree, (text) => {
-		out.warn(text);
-	});
+	// without new own bytes. The mark itself was read at 1d, before the
+	// moved-check needed it.
 	const classes = classifyOwn(patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
 	const conflict = classes.find((entry) => entry.kind === 'both-edited');
 	if (conflict !== undefined) {

@@ -20,6 +20,7 @@ import { ckError } from '../lib/messages.js';
 import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { listPendingHeaders } from '../lib/pendingHeader.js';
+import { classifyTargets, loadedFrom, loadedFromLabel, movedArtifactsOf } from '../lib/syncMerge.js';
 import { foreignCommits } from '../lib/treeCommits.js';
 import { fastPathConditions, readTreeCache, readTreeMark, revParse } from '../lib/treeCache.js';
 import { checkTree } from '../lib/treeIdentity.js';
@@ -49,11 +50,12 @@ async function run(ctx) {
     // such commits exist they are the question to answer: the reload move is
     // exactly what would destroy them, so the reload line stays silent and the
     // commits are reported instead.
+    const mark = readTreeMark(tree);
     const conditions = fastPathConditions({
         treeDir: tree,
         branch,
         cache: readTreeCache(ctx.patchesDir, treeId(tree)),
-        mark: readTreeMark(tree),
+        mark,
         pinSha: config.pin.sha,
         deltaFingerprint: deltaFingerprint(ctx.patchesDir, config.pin.sha)
     });
@@ -76,8 +78,32 @@ async function run(ctx) {
             ? `branch up to date (${met}/${conditions.length} conditions)`
             : `reload needed (${met}/${conditions.length} conditions): ${firstUnmet(conditions)}`);
     }
+    // 1b. The other side of the same question: what the tree was loaded from,
+    // and whether the delta moved under it since (PROP-008 ##LINEAGE-CHECK,
+    // ##PATCHSET-MOVED-RULE). This is the data the manual merge recipe of
+    // CK-E-PATCHSET-MOVED works from, so it belongs in the report even while
+    // the tree itself is clean.
+    const loaded = loadedFrom({ treeDir: tree, base: treeCommits.base, pinSha: config.pin.sha, mark });
+    ctx.out.info(`loaded from patchset commit: ${loadedFromLabel(loaded)}`);
+    const movedArtifacts = movedArtifactsOf(classifyTargets({
+        patchesDir: ctx.patchesDir,
+        treeDir: tree,
+        pinSha: config.pin.sha,
+        base: treeCommits.base,
+        mark,
+        ownDirName: config.ownDirName,
+        commits: treeCommits.commits
+    }));
+    if (movedArtifacts.length > 0) {
+        ctx.out.info(`patchset moved since load: ${movedArtifacts.length} artifact(s)`);
+        for (const path of movedArtifacts.slice(0, LIST_LIMIT)) {
+            ctx.out.info(`  ${path}`);
+        }
+        if (movedArtifacts.length > LIST_LIMIT) {
+            ctx.out.info(`  ... and ${movedArtifacts.length - LIST_LIMIT} more`);
+        }
+    }
     // 2. Own code, per file and per side (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
-    const mark = readTreeMark(tree);
     const own = classifyOwn(ctx.patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
     reportOwn(ctx.out, own, config.ownDirName);
     // 3. Upstream files: what git sees outside the own directory, and whether
@@ -113,6 +139,8 @@ async function run(ctx) {
             count: treeCommits.commits.length,
             commits: treeCommits.commits.map((commit) => ({ sha: commit.sha, subject: commit.subject }))
         },
+        loadedFrom: loaded.kind === 'sha' ? loaded.sha : loadedFromLabel(loaded),
+        patchsetMoved: { count: movedArtifacts.length, artifacts: [...movedArtifacts] },
         own: ownData(own),
         upstream: {
             changed: upstream.length,

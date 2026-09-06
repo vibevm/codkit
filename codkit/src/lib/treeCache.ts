@@ -57,6 +57,24 @@ export type TreeMark = {
 	 */
 	readonly ownFingerprint?: string | undefined;
 	readonly ownFiles?: Readonly<Record<string, string>> | undefined;
+	/**
+	 * The delta outside own code as of the last apply (PROP-006 ##TREE-MARK):
+	 * sha256 of every file under `delta/` except `delta/own/**`, which the map
+	 * above already covers. This is what lets `save` tell "the delta moved
+	 * under the tree" from "the tree moved" artifact by artifact, by bytes and
+	 * not by commit sha (PROP-008 ##PATCHSET-MOVED-RULE).
+	 *
+	 * The patchset commit the load represented (PROP-008 ##LINEAGE-CHECK):
+	 * a 40-hex sha, `dirty`, or `none` - the same value the base commit's
+	 * `Codkit-Patchset-Commit` trailer carries, kept for the one case no
+	 * trailer exists in (the empty patchset of a first load).
+	 *
+	 * Both are optional in the schema and only in it: a mark written before
+	 * they existed still reads, and the classifier then answers "unknown"
+	 * instead of guessing (R13). Every mark codkit writes carries them.
+	 */
+	readonly artifacts?: Readonly<Record<string, string>> | undefined;
+	readonly patchSetCommit?: string | undefined;
 };
 
 export type WarnSink = (text: string) => void;
@@ -77,7 +95,9 @@ const treeMarkSchema = z.object({
 	deltaFingerprint: z.string().min(1),
 	branchTip: z.string().min(1),
 	ownFingerprint: z.string().min(1).optional(),
-	ownFiles: z.record(z.string(), z.string().min(1)).optional()
+	ownFiles: z.record(z.string(), z.string().min(1)).optional(),
+	artifacts: z.record(z.string(), z.string().min(1)).optional(),
+	patchSetCommit: z.string().min(1).optional()
 });
 
 export function treeCachePath(patchesDir: string, treeId: string): string {
