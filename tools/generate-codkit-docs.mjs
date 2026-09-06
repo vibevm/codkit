@@ -126,7 +126,9 @@ const valueLabels = {
 	'--line': 'n',
 	'--patch': 'contained-old-patch',
 	'--ref': 'ref',
-	'--release': 'semver'
+	'--release': 'semver',
+	'--keep-consumed': 'n',
+	'--older-than': 'days'
 };
 
 const commandGuidance = {
@@ -157,7 +159,12 @@ const commandGuidance = {
 	sync: {
 		positional: '',
 		detail:
-			'The two-way command: extract the fork tree work and apply the patch set shifts in one run, per target and under a durable transaction. A file both sides changed stops the run with the 3-way materialized as diff3 markers inside the file\'s codkit block - resolve them by hand, then `sync --continue` finishes the run and `sync --abort` returns everything to the state before it. `--dry-run` prints the classification; `--discard` drops fork-tree commits on purpose (refused under `--ci`); `--squash`/`--commit`/`--message` shape the patchset history and `--fresh` the rebuild (the extraction flags also apply to `--continue`).'
+			"The two-way command: extract the fork tree work and apply the patch set shifts in one run, per target and under a durable transaction. A file both sides changed stops the run with the 3-way materialized as diff3 markers inside the file's codkit block - resolve them by hand, then `sync --continue` finishes the run and `sync --abort` returns everything to the state before it. `--dry-run` prints the classification; `--discard` drops fork-tree commits on purpose (refused under `--ci`); `--squash`/`--commit`/`--message` shape the patchset history and `--fresh` the rebuild (the extraction flags also apply to `--continue`)."
+	},
+	gc: {
+		positional: '',
+		detail:
+			"Remove spent runtime state: consumed refs beyond `--keep-consumed <n>` (default 5) that are also `--older-than <days>` old (default 30), crash scratch under `.codkit/tmp`, dead-owner tree locks, apply caches of trees that no longer exist, and generated `.codkit/out` output. `--dry-run` prints the same plan without removing anything; the kept classes - a stopped sync's transaction, pending draft headers, daemon records, a live owner's lock - are named as kept in the plan and never touched."
 	},
 	'marker new': {
 		positional: '<tree-file>',
@@ -230,7 +237,8 @@ const commandGuidance = {
 	},
 	hooks: {
 		positional: '<install | check>',
-		detail: 'Install or inspect effective Codkit-owned patchset hooks. Check is green only when Git demonstrably executes the current owned bytes; linked/custom/foreign hook paths are inactive refusals.'
+		detail:
+			'Install or inspect effective Codkit-owned patchset hooks. Check is green only when Git demonstrably executes the current owned bytes; linked/custom/foreign hook paths are inactive refusals.'
 	}
 };
 
@@ -399,7 +407,7 @@ const faqEntries = {
 	],
 	'DIRTY-TREE': [
 		'Unextracted or otherwise disallowed work makes the requested transition unsafe.',
-		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. Fork-tree commits can also be dropped on purpose with `codkit load --discard` (they stay reachable under `refs/codkit/consumed/`; the flag is refused under `--ci`). A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
+		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. Fork-tree commits can also be dropped on purpose with `codkit load --discard` (they stay reachable under `refs/codkit/consumed/`, where `codkit gc` eventually spends them; the flag is refused under `--ci`). A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
 	],
 	'TREE-READONLY': [
 		'Codkit cannot write the fork tree or its required runtime state.',

@@ -12,6 +12,7 @@ import { ciCommand } from './commands/ci.js';
 import { cloneCommand } from './commands/clone.js';
 import { cycleCommand } from './commands/cycle.js';
 import { forecastCommand } from './commands/forecast.js';
+import { gcCommand } from './commands/gc.js';
 import { hooksCommand } from './commands/hooks.js';
 import { inventoryCommand } from './commands/inventory.js';
 import { loadCommand } from './commands/load.js';
@@ -44,6 +45,7 @@ const COMMANDS = new Map([
     statusCommand,
     saveCommand,
     syncCommand,
+    gcCommand,
     markerNewCommand,
     reresolveCommand,
     inventoryCommand,

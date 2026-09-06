@@ -67,6 +67,9 @@ patchset. Конфликт обеих сторон при `codkit sync` мате
 custom/global/system `core.hooksPath`, `/dev/null`, foreign hook или
 неразрешимый effective path дают явное предупреждение: напоминание не
 печатает, Codkit не пишет shared/custom location; защищает отказ команд.
+Накопившиеся consumed refs и мусор крэшей чистит `codkit gc` (сначала
+`--dry-run`: план перечисляет и kept-классы); транзакции остановленного
+`sync`, pending-черновики и чужие замки команда не трогает.
 
 Запрещено в дереве:
 

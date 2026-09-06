@@ -14,7 +14,18 @@ REPAIR-001…010 (снимок `codkit-jobs/linked-worktree-paths/snapshots/2026
 
 ## 2. Execution record
 
-_(пусто до закрытия; заполняет исполняющая сессия — см. §14)_
+Кампания исполнена 2026-09-06 в worktree `codkit-linked-worktree-fix` (ветка
+`fix/linked-worktree-git-path`) в порядке 0 → 1 → 2 (+fix) → 3 → 4 → 5 (+DEF-7
+родителем) → 6 → 7 → 8 → 8b → 9; каждая фаза — своим пакетом
+`codkit-jobs/linked-worktree-paths/PACKET-CAMPAIGN-P*.md` и отчётом
+`WORKER-REPORT-CAMPAIGN-P*.md`. Все приёмочные сценарии S17–S28 зелёные
+(FEAT-002 доведён до 28), полный `npm run floor` exit 0 (116 файлов / 1670
+тестов), `vibe check --quiet` — 0 errors / 1 известный warning, specmap 694
+units / 0 suspects. Коммиты фаз — от `050d0c9` (переименование) до финального
+`feat(gc): …` Phase 9; полный список — §14. Построчный журнал — §14, судьба
+предсказаний P1–P12 — там же; закрытие рисков и деферралов — §15 и §9.
+Дальнейшие шаги закрытия (риск-регистр, «ничто не ссылается на план», аудит)
+— за владельцем/родителем.
 
 ## 3. Мандат
 
@@ -1335,6 +1346,75 @@ node docs/codkit/protocol/human/check.mjs                                  # ok
 фазы (109/109 файлов, 1547/1547 теста, structural 8 frozen / 0 new, specmap
 646), `vibe check --quiet` — 0 errors, 1 warning.
 
+### Phases 1–8b — EXECUTED (2026-09-06); per-phase packets and worker reports
+
+Каждая фаза исполнена своим пакетом и закрыта своим отчётом в
+`codkit-jobs/linked-worktree-paths/` (PACKET-/WORKER-REPORT-CAMPAIGN-P1…P8B);
+здесь — коммитная цепочка и приёмка. Phase 1 `050d0c9`+`de9b829`+`bc446ed`
+(переименование `sync`→`load`, заглушка, надгробия; P9 — held in substance,
+два механических фикспоинта сверх sed: расстановка надгробий вне `<td>` и
+осиротевший dist-emit). Phase 2 `e80df2e`+`4347bc4` (страж-третья половина,
+`treeCommits.ts`, S18; предсказание P1 — held: сломалось ровно 2 паритетные
+панели). Phase 3 `c400ade`+`bfd0c80` (отбор относительно base, consumed refs,
+S17a/S19; P2/P7 held, cycle-сьюты зелёные — P3 held). Phase 4 `1895f54`+`fb7128d`
+(`saveReplay.ts`, `--squash`, S17b/S17c, идемпотентность; P4 held — overlay
+ArtifactStore необходим, P5 held: structural 8 frozen / 0 new). Phase 5
+`7faa03c`+`3247bd4`+`6af4771`(+`4d68915` родителем; хук-напоминание, протокол
+людей, DEF-7). Phase 6 `34a7fea` (`load --discard`; плюс родительский фикс
+`3ba456c` — отказ по коммитам дерева выведен из-под own-вердикта). Phase 7
+`abf4d8a`+`362dcc8` (карта артефактов в метке, `CK-E-PATCHSET-MOVED`,
+родословная; H1-кейс больше не даёт `CK-E-INTERNAL` — P10 held). Phase 8
+`2bd40cf`+`d5a0e14` (двусторонний `sync`, транзакция, S24/S25). Phase 8b
+`cb6c299` (diff3-материализация, `--continue`/`--abort`, S26/S27; P11 held —
+ядро `runMergeFile`, сигнатуры не менялись).
+
+### Phase 9 — EXECUTED (2026-09-06); `codkit gc`; campaign closing step 1
+
+`lib/gc.ts` + `commands/gc.ts` + флаги `--dry-run/--keep-consumed/--older-than`;
+e2e `gc.test.ts` (S28, 7 тестов); спеки: PROP-007 `CMD-GC` (новый §20, сводка
+перенумерована в 21 — только заголовок, анкер `COMMAND-ROSTER` на месте, в
+текст добавлен `gc`), PROP-006 §1 `GC-CLASSES`, FEAT-002 S28 (титул S01–S28);
+одна строка в `02-daily.md`; `commands.md`/FAQ перегенерированы; specmap
+689→694 (0 suspects, 1 известный warning). Отклонение зафиксировано: «краш
+buildBranch через seam» реализован жёстким убийством группы процессов реального
+`load --fresh` в момент появления скретча — внутри `buildBranch` seam нет (оба
+стадия `runSync` стоят после его `finally`), а `syncEngine.ts` вне периметра
+фазы. Единственный RED-proof — по названному рисску ложной зелёности: мутация
+класса транзакции в remove красит 4 теста, включая асерции dry-run вывода
+(`keep transaction .codkit/sync-transaction.json`), восстановление — 7/7.
+Floor: 116 файлов / 1670 тестов, exit 0; §12 зелёный дословно.
+
+### Predictions P1–P12 — dispositions (2026-09-06, closing)
+
+- **P1 held** — Phase 2 сломала ровно 2 существующих теста (обе паритетные
+  панели), cycle-сьюты зелёные.
+- **P2 held** — `save.test.ts` не покраснел при замене отбора (во всех
+  fixture `base == HEAD`).
+- **P3 held** — cycle/rebase сьюты зелёны без правок (P3-отчёт: doubleRegen/
+  reresolve 30/30; Phase 7 — благодаря `skipPatchsetMovedCheck`).
+- **P4 held** — наивная однопроходная реализация не проходит S17c; overlay
+  `ArtifactStore` необходим (ложная зелёность названа и закрыта RED-прогоном).
+- **P5 held** — рост `saveEngine.ts` не создал нового conform finding
+  (8 frozen / 0 new на каждой границе).
+- **P6 held in substance** — воспроизведение на fixture быстро (S17b,
+  3 коммита); отдельный прогон с 10 коммитами никто не снимал — цифра не
+  измерялась, подозрений на неё нет.
+- **P7 held** — `moveWorkTree`/`updateRef` не менялись.
+- **P8 held (на грани)** — новых анкеров по diff specmap ≈27 плюс 5
+  законных наследников переименования (итог 646→694 units; точное число
+  анкеров размывается переносами строк в diff); спекмап-гейты held: 0
+  suspects, 1 известный warning.
+- **P9 held in substance, с сюрпризом** — ни одной строки, меняющей
+  поведение, но потребовались два механических фикспоинта сверх пословного
+  sed (надгробия вне `<td>`, осиротевший dist-emit); отчёт Phase 1.
+- **P10 held** — H1 подтверждён S0.7 дословно и закрыт Phase 7
+  (`CK-E-PATCHSET-MOVED` вместо `CK-E-INTERNAL`).
+- **P11 held** — diff3-машинерия вызвана вне цикла без смены сигнатур;
+  уточнение S0.8: обёртка зовёт `runMergeFile`, не `replayPatch`.
+- **P12 falsified по числу, форма held** — `syncTransaction.ts` 412 строк к
+  концу Phase 8 и 464 после 8b: больше 400, но втрое под лимитом 600; форма
+  pending/complete/retire как у `rebaseOntoPinMove.ts` — held.
+
 ## 15. Deferrals ledger
 
 - **DEF-7** — DRAINED (Phase 5, 2026-09-06). Упоминания `sync` в текстах
@@ -1358,8 +1438,12 @@ node docs/codkit/protocol/human/check.mjs                                  # ok
   structural, specmap 666 units, `vibe check` 0 errors, полный прогон
   113 файлов / 1610 тестов, выход 0. DEF-7 больше не имеет остатка.
 - **DEF-1** — воспроизведение коммитов боковых веток: rejected (D2); owner.
-- **DEF-2** — чистка `refs/codkit/consumed/*`: закрывается Phase 9 (D22);
-  остаётся только вопрос умолчаний RP-4.
+- **DEF-2** — DRAINED (Phase 9, 2026-09-06): чистка `refs/codkit/consumed/*`
+  реализована `codkit gc` по D22 (`--keep-consumed`, умолчание 5;
+  `--older-than`, умолчание 30 — рекомендация RP-4 применена, отдельного
+  рулинга владельца к Phase 9 не было). Семантика: ref удаляется, только если
+  он вне последних n И старше N дней; S28 доказывает `--keep-consumed 1
+  --older-than 0` → ровно один ref.
 - **DEF-3** — распознавание rename в foreign-коммитах: deferred; owner.
 - **DEF-4** — `verify --staged-fast` для коммитов, создаваемых `save`/`sync`
   в patchset (F12): deferred; owner.

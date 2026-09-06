@@ -49,6 +49,10 @@ const COMMAND_FLAG_KINDS = new Map([
     // half-flags above are shared with it; --abort/--continue are its own.
     ['--abort', 'boolean'],
     ['--continue', 'boolean'],
+    // gc (PROP-007 sec. 20, campaign TREE-COMMITS-SAVE D22); --dry-run above is
+    // shared with load and sync.
+    ['--keep-consumed', 'value'],
+    ['--older-than', 'value'],
     // inventory (PROP-007 sec. 10)
     ['--diff', 'value'],
     ['--md', 'boolean'],

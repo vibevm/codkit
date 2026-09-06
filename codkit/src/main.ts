@@ -13,6 +13,7 @@ import { ciCommand } from './commands/ci.ts';
 import { cloneCommand } from './commands/clone.ts';
 import { cycleCommand } from './commands/cycle.ts';
 import { forecastCommand } from './commands/forecast.ts';
+import { gcCommand } from './commands/gc.ts';
 import { hooksCommand } from './commands/hooks.ts';
 import { inventoryCommand } from './commands/inventory.ts';
 import { loadCommand } from './commands/load.ts';
@@ -51,6 +52,7 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		statusCommand,
 		saveCommand,
 		syncCommand,
+		gcCommand,
 		markerNewCommand,
 		reresolveCommand,
 		inventoryCommand,
