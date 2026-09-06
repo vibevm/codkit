@@ -154,6 +154,11 @@ const commandGuidance = {
 		detail:
 			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`).'
 	},
+	sync: {
+		positional: '',
+		detail:
+			'The two-way command: extract the fork tree work and apply the patch set shifts in one run, per target and under a durable transaction. A file both sides changed is a refusal (`CK-E-BOTH-SIDES-EDITED`) with a choose-a-side recipe, never a merge. `--dry-run` prints the classification; `--discard` drops fork-tree commits on purpose (refused under `--ci`); `--squash`/`--commit`/`--message` shape the patchset history and `--fresh` the rebuild. `--abort`/`--continue` recover a stopped sync and arrive with the conflict-materialization phase.'
+	},
 	'marker new': {
 		positional: '<tree-file>',
 		requiredFlags: ['--id', '--type', '--owner', '--reason'],
@@ -508,7 +513,11 @@ const faqEntries = {
 	],
 	'PATCHSET-MOVED': [
 		'The patch set moved under a fork tree loaded from an older state: an artifact was edited or the patchset branch was switched between the load and the save.',
-		'Follow the printed manual merge recipe: return the delta to the loaded state (`git stash`, `git switch <branch>`, or `git checkout <sha> -- delta/`), run `codkit save`, bring the shift back (`git stash pop`, `git merge`, or `git rebase`), then `codkit load`. Switching branches deliberately starts with a full `codkit save`, not a switch.'
+		'Follow the printed manual merge recipe: return the delta to the loaded state (`git stash`, `git switch <branch>`, or `git checkout <sha> -- delta/`), run `codkit save`, bring the shift back (`git stash pop`, `git merge`, or `git rebase`), then `codkit load` - or let `codkit sync` perform all four in one command. Switching branches deliberately starts with a full `codkit save`, not a switch.'
+	],
+	'SYNC-IN-PROGRESS': [
+		'A two-way `codkit sync` left its transaction record behind without finishing, so the fork tree and the patch set are half one state and half another.',
+		'Wait for the running sync; if none is running, resolve the record at `.codkit/sync-transaction.json` - it carries the pre-run heads and byte snapshots of everything the run intended to rewrite, and `codkit sync --abort`/`--continue` recover it once the conflict-materialization phase lands. Do not delete it blind.'
 	],
 	INTERNAL: [
 		'An unexpected Codkit failure escaped domain diagnosis.',

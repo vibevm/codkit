@@ -39,6 +39,7 @@ import { applyUnified } from './applyUnified.ts';
 import { loadConventions } from './conventionsFile.ts';
 import { deltaArtifactMap, deltaFingerprint, listDeltaFiles } from './fingerprint.ts';
 import { runGit } from './gitx.ts';
+import type { Output } from './jsonOut.ts';
 import { ckError } from './messages.ts';
 import type { CkError } from './messages.ts';
 import { encodePatchName, parseCkpatch } from './patchFormat.ts';
@@ -302,11 +303,68 @@ function loadedPhrase(loaded: LoadedFrom): string {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// The both-sides conflict (D19)
+// ---------------------------------------------------------------------------
+
+/** One target the classification put on both sides: its artifact and its tree path. */
+export type BothSideTarget = { readonly artifact: string; readonly target: string };
+
+/**
+ * The CK-E-BOTH-SIDES-EDITED refusal of the two-way `sync` (PROP-008 sec. 5a
+ * ##SYNC-TWO-PASS; the generalization of F20's own-code refusal to the whole
+ * patch layer): the file, both its sides, and the manual recipe that chooses
+ * one - never a merge. Taking the tree means restoring the artifact to the
+ * loaded state and letting `save` regenerate it; taking the patch set means
+ * reverting the tree edit.
+ */
+export function bothSidesConflictError(sides: readonly BothSideTarget[], restoreRef: string): CkError {
+	const list = sides.map((side) => `${side.artifact} (target ${side.target})`).join(', ');
+	const first = sides[0];
+	return ckError(
+		'BOTH-SIDES-EDITED',
+		`the fork tree and the patch set both changed ${sides.length} target(s) since the last load: ${list}`,
+		'choose a side by hand - take the tree: ' +
+			`git checkout ${restoreRef} -- ${first?.artifact ?? '<artifact>'} in the patchset, then codkit save; ` +
+			`take the patch set: revert the tree's edit of ${first?.target ?? '<target>'}, then codkit sync`,
+		first?.artifact
+	);
+}
+
+/** How many paths each dry-run list prints before summarizing the rest. */
+const PLAN_LIST_LIMIT = 5;
+
+/**
+ * The classification a `codkit sync --dry-run` prints (D15): what each side
+ * would contribute. The tree side is named by its selection - the changed
+ * paths, whether or not an artifact exists for them yet - because that is the
+ * set the run extracts.
+ */
+export function reportSyncPlan(out: Output, classes: TargetClasses, treeCommitCount: number, changedPaths: readonly string[]): void {
+	out.info(
+		`sync plan: ${treeCommitCount} tree commit(s) to replay, ${changedPaths.length} changed file(s) to extract, ` +
+			`${classes.patchsetOnly.length} patchset-side artifact(s) to apply, ${classes.both.length} on both sides`
+	);
+	planList(out, 'extract from the tree', changedPaths);
+	planList(out, 'apply from the patch set', classes.patchsetOnly);
+	planList(out, 'refuse (both sides)', classes.both);
+}
+
+function planList(out: Output, label: string, paths: readonly string[]): void {
+	if (paths.length === 0) {
+		out.info(`  ${label}: none`);
+		return;
+	}
+	out.info(
+		`  ${label}: ${paths.slice(0, PLAN_LIST_LIMIT).join(', ')}${paths.length > PLAN_LIST_LIMIT ? ` +${paths.length - PLAN_LIST_LIMIT} more` : ''}`
+	);
+}
+
 /**
  * The manual merge recipe of D18, exactly the four steps: return the delta to
- * the loaded state, save, bring the shift back, load. The one-command form is
- * deliberately not promised here - the two-way `codkit sync` that will carry
- * it does not exist yet, and a hint must be actionable the day it prints.
+ * the loaded state, save, bring the shift back, load - and, since Phase 8 of
+ * the campaign, the one-command form that performs all four: the two-way
+ * `codkit sync`, which accepts the shift instead of refusing it.
  */
 function recipeHint(loaded: LoadedFrom): string {
 	const restore =
@@ -315,7 +373,8 @@ function recipeHint(loaded: LoadedFrom): string {
 			: 'git stash, or git switch <branch>, or git checkout <sha> -- delta/';
 	return (
 		`manual merge: (1) return the delta to the loaded state (${restore}); ` +
-		'(2) codkit save; (3) bring the shift back (git stash pop, git merge, or git rebase); (4) codkit load'
+		'(2) codkit save; (3) bring the shift back (git stash pop, git merge, or git rebase); (4) codkit load; ' +
+		'codkit sync performs all four in one command'
 	);
 }
 

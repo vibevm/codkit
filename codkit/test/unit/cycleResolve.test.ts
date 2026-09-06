@@ -163,7 +163,8 @@ function harness(
 					own: { copied: 0, removed: 0, kept: 0, total: 0 },
 					branch: '',
 					branchTip: null,
-					commit: null
+					commit: null,
+					consumedRef: null
 				};
 			},
 			prove: (_options, artifact) => proof.has(artifact.artifactPath)

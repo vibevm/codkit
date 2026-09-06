@@ -38,6 +38,7 @@ import { TREE_CACHE_SCHEMA_VERSION, TREE_MARK_SCHEMA_VERSION, effectiveGitPath, 
 import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, foreignCommits, treeHeadError, writeConsumedRef } from './treeCommits.js';
 import { assertCompletedRebaseMoveSyncTree, completedRebaseMoveForSync, finishCompletedRebaseMoveSync } from './rebaseOntoPinMove.js';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.js';
+import { refuseOverLiveSyncTransaction } from './syncTransaction.js';
 import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.js';
 /** Patch artifacts live here, relative to the patchset root. */
 export const PATCHES_DIR = 'delta/patches';
@@ -89,6 +90,13 @@ export function runSync(options) {
     let generatedBranch = options.generatedBranch === true;
     let materializeOverlays = generatedBranch || options.materializeOverlays === true;
     let completedRebase = null;
+    // 0. A live two-way sync leaves the tree half one state and half another;
+    // this engine is what applies and rebuilds, so it is the first thing to
+    // refuse over that (PROP-008 ##SYNC-TWO-PASS, decision D20). Only the sync
+    // that owns the record passes its halves through (skipSyncInProgressCheck).
+    if (options.skipSyncInProgressCheck !== true && refuseOverLiveSyncTransaction(patchesDir, 'load', out)) {
+        return result('blocked', 1, { branch });
+    }
     // 1. Is this the tree we think it is, and may we write to it?
     const identity = checkTree(resolution, config, { mode: dryRun ? 'read' : 'write' });
     if (options.verbose) {

@@ -530,21 +530,8 @@ describe('codkit load: the lock', () => {
 	});
 });
 
-describe('codkit sync: the reserved name (S21)', () => {
-	it('exits 2 with the rename message and no envelope', () => {
-		const run = runCli(['sync']);
-
-		expect(run.status).toBe(2);
-		expect(run.stderr).toContain('error: codkit sync was renamed to codkit load');
-		expect(run.stderr).toContain('the name sync is reserved for the two-way save+load command');
-		expect(run.stdout).toBe('');
-	});
-
-	it('stays a plain usage error under --json, like an unknown command', () => {
-		const run = runCli(['--json', 'sync']);
-
-		expect(run.status).toBe(2);
-		expect(run.stderr).toContain('renamed to codkit load');
-		expect(run.stdout).toBe('');
-	});
-});
+// The S21 block that lived here - `codkit sync` as a reserved-name usage error
+// with exit 2 - was removed by Phase 8 of campaign TREE-COMMITS-SAVE: the name
+// now belongs to the real two-way command, whose acceptance scenarios (S24,
+// S25, the transaction crash atoms) live in syncTwoWay.test.ts, and the S21
+// anchor itself stayed as a tombstone (FEAT-002).

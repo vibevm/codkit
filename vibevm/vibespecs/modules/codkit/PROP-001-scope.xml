@@ -7,7 +7,7 @@
   <does title="1. Что делает codkit">
     <facts ordered="true">
       <DOES-RESOLVE-TREE fact="true" status="spec/done">Разрешает путь к дереву форка и проверяет его пригодность (PROP-008 §1–2).</DOES-RESOLVE-TREE>
-      <DOES-SYNC fact="true" status="spec/done">Надгробие (Phase 1 кампании TREE-COMMITS-SAVE, 2026-09-06): анкер заменён на `DOES-LOAD` ниже; адрес этого якоря неизменен (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR), имя `sync` зарезервировано для двусторонней команды будущей фазы 8.</DOES-SYNC>
+      <DOES-SYNC fact="true" status="spec/done">Надгробие (Phase 1 кампании TREE-COMMITS-SAVE, 2026-09-06): анкер заменён на `DOES-LOAD` ниже; адрес этого якоря неизменен (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR). Резервирование имени исполнено: с Phase 8 той кампании (2026-09-06) `codkit sync` — настоящая двусторонняя команда save+load, живой контракт — PROP-007 `##CMD-SYNC-TWO-WAY`, алгоритм — PROP-008 §5a.</DOES-SYNC>
       <DOES-LOAD fact="true" status="spec/done">Приводит дерево форка к пину и накладывает дельту коммитами на одноразовой сгенерированной ветке (`load`), доставляет собственный код копированием.</DOES-LOAD>
       <DOES-EXTRACT fact="true" status="spec/done">Извлекает правки из дерева в артефакты patchset (`save`/extract), защищает от молчаливой потери работы (страж дрейфа).</DOES-EXTRACT>
       <DOES-LAYERS fact="true" status="spec/done">Ведёт слои дельты (PROP-005), маркеры (PROP-004), инвентарь (PROP-006).</DOES-LAYERS>
@@ -37,7 +37,7 @@
         <td><LATER-RULE-ENGINE fact="true" status="spec/done">движок rewrite-rule (формат и валидация — в MVP)</LATER-RULE-ENGINE></td>
       </tr>
       <tr>
-        <td><MVP-SYNC-SAVE fact="true" status="spec/done">Надгробие (Phase 1 кампании TREE-COMMITS-SAVE, 2026-09-06): анкер заменён на `MVP-LOAD-SAVE` (см. ниже, вне таблицы); адрес неизменен (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR).</MVP-SYNC-SAVE></td>
+        <td><MVP-SYNC-SAVE fact="true" status="spec/done">Надгробие (Phase 1 кампании TREE-COMMITS-SAVE, 2026-09-06): анкер заменён на `MVP-LOAD-SAVE` (см. ниже, вне таблицы); адрес неизменен (NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR). Пара `load`+`save` дополнена двусторонним `sync` в Phase 8 той кампании — PROP-007 `##CMD-SYNC-TWO-WAY`.</MVP-SYNC-SAVE></td>
         <td><LATER-NLS fact="true" status="spec/done">слой строк/nls сверх префиксного правила</LATER-NLS></td>
       </tr>
       <tr>

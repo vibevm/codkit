@@ -61,6 +61,10 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--message', 'value'],
 	['--allow-new-file', 'repeatable'],
 	['--squash', 'boolean'],
+	// sync (PROP-007 sec. 5a, campaign TREE-COMMITS-SAVE D15): the save/load
+	// half-flags above are shared with it; --abort/--continue are its own.
+	['--abort', 'boolean'],
+	['--continue', 'boolean'],
 	// inventory (PROP-007 sec. 10)
 	['--diff', 'value'],
 	['--md', 'boolean'],

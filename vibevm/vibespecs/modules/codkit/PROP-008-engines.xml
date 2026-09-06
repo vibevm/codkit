@@ -172,6 +172,38 @@ assertDisjoint(toolRoot, patchesDir, forkDir):
       <CONFLICT-MATERIALIZATION fact="true" status="spec/done">Материализация для резолва: для `conflict` оркестратор записывает в рабочий файл дерева результат `merge-file --diff3` со стандартными конфликт-маркерами — человек и агент правят в IDE обычным способом.</CONFLICT-MATERIALIZATION>
     </facts>
   </classify>
+  <sync-two-way title="5a. sync: слияние двух сторон">
+    <fence>sync(tree, cfg, opts):
+  lock(tree); checkTree(tree)
+  if exists(.codkit/sync-transaction.json):         # ##SYNC-TRANSACTION-FILE
+      выход 1 CK-E-SYNC-IN-PROGRESS (то же делают load и save, шаг 0)
+  преflight разделённого ref -> выход 2 CK-E-WORKTREE-REF-SHARED
+  state = foreignCommits(tree, pin, branch); D8 -> выход 1 CK-E-TREE-HEAD
+  loaded = lineage (D17); не-предок HEAD patchset -> выход 1 CK-E-PATCHSET-MOVED
+  classes = classifyTargets(mark.artifacts)          # D16
+  карты нет (R13) -> выход 1 CK-E-PATCHSET-MOVED, hint "run codkit load once"
+  own both-edited ∪ classes.both непусто (под --discard: только незакоммиченная
+      часть both) -> выход 1 CK-E-BOTH-SIDES-EDITED с рецептом «выбери сторону»
+      (D19) — ДО ЛЮБОЙ ЗАПИСИ: ни файла транзакции, ни ref, ни байта
+  opts.dryRun: печать классификации; выход 0
+  opts.discard и коммиты есть: транзакция -> runSync(discardTreeCommits)
+      (guard файлов вооружён; ref consumed до пересборки) -> снятие транзакции
+  ничего ни с одной стороны: runSync (обычно fast path "up to date"), без транзакции
+  транзакция: snapshot hash-object -w всего, что прогон перепишет; patchset.head,
+      tree.head, markSnapshot; patchsetCommits = []
+  если у дерева есть работа: runSave(skipPatchsetMovedCheck, explainedRewrites
+      = patchsetOnly-цели, syncTransactionId)      # извлечение + пересборка;
+      пересборка применяет сдвиг patchset, перезапись объяснима (D16)
+  иначе (сдвинулся только patchset): runSync         # половина load одна
+  каждый коммит patchset: трейлер Codkit-Sync-Transaction: &lt;id&gt; +
+      дописывание sha в patchsetCommits записи; consumed ref дописывается
+  успех: удаление файла транзакции
+  отказ/краш: записано ничего (снимки совпадают, HEAD не двинут) -> запись
+      снимается сама; записано что-то -> запись остаётся, load/save отказывают
+  unlock(); выход 0</fence>
+    <p><SYNC-TWO-PASS fact="true" status="impl/done">**Два прохода, и оба порядка сознательны** (кампания TREE-COMMITS-SAVE, Phase 8, решения D15/D16/D19). Первый проход — чтение: родословная (D17), классификация D16 (`classifyTargets`, `##PATCHSET-MOVED-RULE`), обе стороны own и patch-слоя; конфликт обнаруживается **до первой записи**, и `CK-E-BOTH-SIDES-EDITED` (обобщение с own на patch-слой, F20) уходит с ручным рецептом «выбери сторону»: взять дерево — `git checkout &lt;sha&gt; -- delta/patches/&lt;F&gt;.ckpatch` в patchset, затем `save`; взять patchset — откатить правку F в дереве, затем `sync`. Второй проход — запись под транзакцией: половина save (`runSave` с `skipPatchsetMovedCheck` — сдвиг patchset здесь не отказ, а входные данные — и `explainedRewrites` = цели `patchsetOnly`: пересборка, применяющая к ним версию patchset, объяснима, расширение множества «ничего не сдвинулось»), затем consumed ref и метка с новой картой; если работы дерева нет, запись — одна половина load (`runSync`). `--discard` (D11/D15) отбрасывает коммиты дерева сознательно (та же ветка движка load: consumed ref до пересборки, файловые половины стража вооружены); под `--ci` — выход 2. `--squash`/`--commit`/`--message` — наследие save-половины, `--fresh` — load-половины. Автослияние отвергнуто и здесь: 3-way — территория цикла, diff3-материализация для человека — Phase 8b (`--abort`/`--continue` там же; до неё флаги зарегистрированы и отказывают честно).</SYNC-TWO-PASS></p>
+    <p><SYNC-TRANSACTION fact="true" status="impl/done">**Транзакция** (решение D20): файл `.codkit/sync-transaction.json` в корне patchset (протокол владения — PROP-006 §1 `##SYNC-TRANSACTION-FILE`), пишется `writeContainedFileExclusive` **до первой мутации** — повторный старт поверх живой записи невозможен по построению (link-EEXIST → отказ) — и снимается после последней. Запись: `{codkitSyncTransaction, id, startedAt, patchset:{head, dirtyBefore}, tree:{head, branchTip, markSnapshot}, rewrite:[{repo, path, blob}], patchsetCommits:[], consumedRef: null, conflicts: []}`; снимки — `git hash-object -w` только файлов, которые прогон собирается переписать (артефакты отбора дерева в patchset, цели `patchsetOnly` в дереве, расходящиеся own-файлы обеих сторон; отсутствующий файл — blob null, «снимок отсутствия»). Каждый созданный коммит patchset несёт трейлер `Codkit-Sync-Transaction: &lt;id&gt;` (распознавание по содержимому переживает обрыв списка записи) и дописывается в `patchsetCommits` атомарной перезаписью. Пока файл существует, шаг 0 `load`/`save`/`sync` (и каждого вызова движков) — выход 1 `CK-E-SYNC-IN-PROGRESS`, hint называет обе команды восстановления; `status` печатает `sync in progress: &lt;id&gt;, conflicts: N`. Отказ без единой записи снимает запись сам (снимки совпали, HEAD не двинут — доказательство проверкой, не догадкой); отказ после записи оставляет её. Crash-тесты — seam `CODKIT_TEST_SYNC_CRASH_AT` (только тестовая сборка), атомы: transaction-written, state-committed, worktree-moved, mark-written (PROP-013 §5 `##SYNC-CRASH-TESTS`). Восстановление `--abort`/`--continue` — Phase 8b (D21); «undo» после успешного sync отвергнуто там же.</SYNC-TRANSACTION></p>
+  </sync-two-way>
   <renames title="6. Следование за переименованиями между пинами">
     <p><renames-when fact="true" status="spec/done">Отдельный явный шаг до применения (не автоопределение внутри — на больших диффах git отключает rename-детекцию молча).</renames-when></p>
     <fence>renames(oldPin, newPin, threshold=50):

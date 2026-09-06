@@ -20,6 +20,7 @@ import { ckError } from '../lib/messages.js';
 import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { listPendingHeaders } from '../lib/pendingHeader.js';
+import { readSyncTransaction } from '../lib/syncTransaction.js';
 import { classifyTargets, loadedFrom, loadedFromLabel, movedArtifactsOf } from '../lib/syncMerge.js';
 import { foreignCommits } from '../lib/treeCommits.js';
 import { fastPathConditions, readTreeCache, readTreeMark, revParse } from '../lib/treeCache.js';
@@ -45,6 +46,14 @@ async function run(ctx) {
     const tree = resolution.path;
     const conventions = loadConventions(ctx.patchesDir);
     const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+    // 0. A live two-way sync outranks every question below: while its
+    // transaction record exists, the tree may be half one state and half
+    // another, and `status` - the command a developer runs *because* something
+    // looks wrong - is where that says its name (PROP-008 ##SYNC-TRANSACTION).
+    const liveSync = readSyncTransaction(ctx.patchesDir);
+    if (liveSync !== null) {
+        ctx.out.info(`sync in progress: ${liveSync.id}, conflicts: ${liveSync.conflicts.length}`);
+    }
     // 1. The branch, how far it is from being up to date, and the tree commits
     // that are not in patchset yet (PROP-008 ##TREE-COMMITS-ARE-WORK). While
     // such commits exist they are the question to answer: the reload move is
@@ -133,6 +142,7 @@ async function run(ctx) {
     const unextracted = upstream.length + own.filter((entry) => entry.kind !== 'patchset-edited').length + treeCommits.commits.length;
     ctx.out.setData({
         pin: pinData(config),
+        syncInProgress: liveSync === null ? null : { id: liveSync.id, conflicts: liveSync.conflicts.length, startedAt: liveSync.startedAt },
         branch: { name: branch, tip, upToDate, conditionsMet: met, conditionsTotal: conditions.length, conditions: conditionsData(conditions) },
         treeCommits: {
             base: treeCommits.base,

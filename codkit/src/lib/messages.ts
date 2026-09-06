@@ -66,6 +66,12 @@ export const ERROR_CODES = [
 	// save - so extracting would rebuild the tree from a delta it was never
 	// loaded from (PROP-008 ##PATCHSET-MOVED-RULE, ##LINEAGE-CHECK).
 	'PATCHSET-MOVED',
+	// A two-way `codkit sync` left its transaction record behind without
+	// finishing: the tree and the patch set are half one state and half
+	// another, and every tree-writing command refuses over them until the
+	// record is resolved (PROP-008 ##SYNC-TRANSACTION, PROP-006
+	// ##SYNC-TRANSACTION-FILE).
+	'SYNC-IN-PROGRESS',
 	// Not carried by a domain spec section, but required by the runtime:
 	'INTERNAL',
 	// Dependencies that are not there: the launcher (codkit/bin/codkit.mjs) says

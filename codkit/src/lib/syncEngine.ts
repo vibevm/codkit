@@ -72,6 +72,7 @@ import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, foreignCommits, treeHeadError,
 import type { TreeCommit, TreeCommits } from './treeCommits.ts';
 import { assertCompletedRebaseMoveSyncTree, completedRebaseMoveForSync, finishCompletedRebaseMoveSync } from './rebaseOntoPinMove.ts';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.ts';
+import { refuseOverLiveSyncTransaction } from './syncTransaction.ts';
 import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.ts';
 
 /** Patch artifacts live here, relative to the patchset root. */
@@ -193,9 +194,16 @@ export type SyncEngineOptions = {
 	readonly forceApply?: boolean;
 	/** Test seam around the only two post-checkout durable metadata windows. */
 	readonly checkpoint?: (checkpoint: 'worktree-moved' | 'mark-written') => void;
+	/**
+	 * Only the two-way `codkit sync` sets this (campaign decision D20): it owns
+	 * the live transaction on disk and calls the engine for its halves, so the
+	 * CK-E-SYNC-IN-PROGRESS refusal of step 0 must not fire against its own
+	 * record. No other caller may skip it.
+	 */
+	readonly skipSyncInProgressCheck?: boolean;
 };
 
-export type SyncStatus = 'unfit' | 'dirty' | 'broken' | 'up-to-date' | 'applied' | 'dry-run';
+export type SyncStatus = 'unfit' | 'dirty' | 'broken' | 'up-to-date' | 'applied' | 'dry-run' | 'blocked';
 
 export type SyncResult = {
 	readonly exitCode: number;
@@ -271,6 +279,14 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	let generatedBranch = options.generatedBranch === true;
 	let materializeOverlays = generatedBranch || options.materializeOverlays === true;
 	let completedRebase: ReturnType<typeof completedRebaseMoveForSync> = null;
+
+	// 0. A live two-way sync leaves the tree half one state and half another;
+	// this engine is what applies and rebuilds, so it is the first thing to
+	// refuse over that (PROP-008 ##SYNC-TWO-PASS, decision D20). Only the sync
+	// that owns the record passes its halves through (skipSyncInProgressCheck).
+	if (options.skipSyncInProgressCheck !== true && refuseOverLiveSyncTransaction(patchesDir, 'load', out)) {
+		return result('blocked', 1, { branch });
+	}
 
 	// 1. Is this the tree we think it is, and may we write to it?
 	const identity = checkTree(resolution, config, { mode: dryRun ? 'read' : 'write' });

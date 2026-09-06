@@ -47,6 +47,7 @@ import type { PlannedCommitState, ReplayWrites } from './saveReplay.ts';
 import { checkLineage, classifyTargets, loadedFrom, movedArtifactsOf, patchsetMovedError } from './syncMerge.ts';
 import { PATCHES_DIR, bothSidesError, runSync, toPosix } from './syncEngine.ts';
 import type { SyncEngineOptions } from './syncEngine.ts';
+import { refuseOverLiveSyncTransaction, SYNC_TRANSACTION_TRAILER } from './syncTransaction.ts';
 import { readTreeMark } from './treeCache.ts';
 import { CONSUMED_REF_PREFIX, foreignCommits, recordConsumedRef, treeHeadError } from './treeCommits.ts';
 import type { TreeCommit, TreeCommits } from './treeCommits.ts';
@@ -89,6 +90,33 @@ export type SaveEngineOptions = {
 	readonly replayCheckpoint?: (stage: 'state-committed', sha: string) => void;
 	/** Test-only propagation of the two post-checkout load crash windows. */
 	readonly syncCheckpoint?: SyncEngineOptions['checkpoint'];
+	/**
+	 * `--fresh` of the two-way sync (campaign decision D15): the rebuild at the
+	 * end of the extraction honors it the way `load --fresh` does. The public
+	 * `save` has no such flag and leaves it unset.
+	 */
+	readonly fresh?: boolean;
+	/**
+	 * Targets the patch set moved under the tree while the tree did not touch
+	 * them (campaign decision D16): the two-way sync passes the `patchsetOnly`
+	 * targets here, because its rebuild is *supposed* to apply their patchset
+	 * state into the tree - the rewrite is explained, not foreign. The public
+	 * `save` never passes any: for it, such a rewrite is the H1 defect.
+	 */
+	readonly explainedRewrites?: readonly string[];
+	/**
+	 * Only the two-way `codkit sync` sets this (decision D20): it owns the live
+	 * transaction record and calls this engine for its save half, so the step 0
+	 * CK-E-SYNC-IN-PROGRESS refusal must not fire against its own record.
+	 */
+	readonly skipSyncInProgressCheck?: boolean;
+	/**
+	 * The id of the sync transaction this extraction belongs to (decision D20):
+	 * every patchset commit this engine then makes carries the
+	 * `Codkit-Sync-Transaction` trailer, so a recovery recognizes the run's
+	 * commits by content even where the record's list ends mid-crash.
+	 */
+	readonly syncTransactionId?: string;
 };
 
 export type SavePatchHeaderOverride = {
@@ -120,6 +148,8 @@ export type SaveResult = {
 	readonly branchTip: string | null;
 	/** PatchSet commit made by `--commit`, or null. */
 	readonly commit: string | null;
+	/** The consumed ref written for consumed tree commits, or null (##CONSUMED-REFS). */
+	readonly consumedRef: string | null;
 };
 
 const NO_OWN: OwnMirrorReport = { copied: 0, removed: 0, kept: 0, total: 0 };
@@ -147,6 +177,14 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	const { patchesDir, resolution, config, out } = options;
 	const tree = resolution.path;
 	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+
+	// 0. A live two-way sync leaves the tree and the patch set half-mutated;
+	// extracting into that state is what this refusal prevents (PROP-008
+	// ##SYNC-TWO-PASS, decision D20). Only the sync that owns the record passes
+	// its save half through (skipSyncInProgressCheck).
+	if (options.skipSyncInProgressCheck !== true && refuseOverLiveSyncTransaction(patchesDir, 'save', out)) {
+		return result('blocked', 1, { branch });
+	}
 
 	// 1. Is this the tree we think it is, and may we write to it?
 	const identity = checkTree(resolution, config, { mode: 'write' });
@@ -334,7 +372,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 				states: replayPlan.states,
 				out,
 				writeArtifacts: (statePlans) => commitArtifacts(patchesDir, tree, statePlans, out, options.rebasePendingCheckpoint),
-				commitState: (state) => commitReplayState(patchesDir, state, out),
+				commitState: (state) => commitReplayState(patchesDir, state, out, options.syncTransactionId),
 				...(options.replayCheckpoint === undefined ? {} : { checkpoint: options.replayCheckpoint })
 			});
 			written = replayWrites.written;
@@ -414,6 +452,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// and the rebuild must not touch a single work-tree file (PROP-008 sec. 4).
 	let branchTip: string | null = null;
 	let consumed: readonly TreeCommit[] = [];
+	let consumedRefOfRun: string | null = null;
 	if (leftOut > 0) {
 		out.warn(
 			`${leftOut} changed path(s) are outside the paths given to save, so the generated branch is left where it is; ` +
@@ -439,10 +478,11 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			resolution,
 			config,
 			out,
-			fresh: false,
+			fresh: options.fresh === true,
 			dryRun: false,
 			verbose: options.verbose,
 			skipDriftGuard: true,
+			skipSyncInProgressCheck: options.skipSyncInProgressCheck === true,
 			...(options.syncCheckpoint === undefined ? {} : { checkpoint: options.syncCheckpoint })
 		});
 		if (rebuilt.exitCode !== 0) {
@@ -453,16 +493,16 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 				own
 			});
 		}
-		assertNothingMoved(rebuilt.changedPaths, rebuilt.nonPatchTargets, out);
+		assertNothingMoved(rebuilt.changedPaths, rebuilt.nonPatchTargets, options.explainedRewrites ?? [], out);
 		branchTip = rebuilt.branchTip;
 		// The consumed commits stay reachable for diagnosis (##CONSUMED-REFS):
 		// the ref is written after the rebuild, under the common-repository
 		// lock, pointing at the tree's former HEAD.
 		if (treeState.commits.length > 0) {
-			const ref = recordConsumedRef(tree, treeState.head);
+			consumedRefOfRun = recordConsumedRef(tree, treeState.head);
 			const first = treeState.commits[0]?.sha.slice(0, 8) ?? treeState.head.slice(0, 8);
 			const last = treeState.commits[treeState.commits.length - 1]?.sha.slice(0, 8) ?? first;
-			out.info(`tree commits consumed: ${treeState.commits.length} (${first}..${last}); kept as ${ref}`);
+			out.info(`tree commits consumed: ${treeState.commits.length} (${first}..${last}); kept as ${consumedRefOfRun}`);
 			consumed = treeState.commits;
 		}
 	}
@@ -492,7 +532,8 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		branchTip,
 		files: planned.map(toReport),
 		own,
-		commit: commitSha
+		commit: commitSha,
+		consumedRef: consumedRefOfRun
 	});
 }
 
@@ -960,19 +1001,39 @@ export function commitArtifacts(
  * file that is in patchset and not yet in the tree, and writing it is the rebuild
  * doing its job. Such a rewrite is explained by the artifact that asked for it
  * and is reported; every other one is still the internal error above.
+ *
+ * The two-way sync owns a second, explicit exception (campaign decision D16):
+ * the `patchsetOnly` targets it passes as `explainedRewrites` are files the
+ * patch set moved while the tree did not touch them, and the rebuild applying
+ * their patchset state is exactly what that command is for. The public `save`
+ * passes none, and its invariant is unchanged.
  */
-function assertNothingMoved(changedPaths: readonly string[], nonPatchTargets: readonly string[], out: Output): void {
+function assertNothingMoved(
+	changedPaths: readonly string[],
+	nonPatchTargets: readonly string[],
+	explainedRewrites: readonly string[],
+	out: Output
+): void {
 	if (changedPaths.length === 0) {
 		return;
 	}
-	const explained = new Set(nonPatchTargets);
-	const materialized = changedPaths.filter((path) => explained.has(path));
+	const materialized = new Set(nonPatchTargets);
+	const patchsetSide = new Set(explainedRewrites.filter((path) => !materialized.has(path)));
+	const explained = new Set([...nonPatchTargets, ...explainedRewrites]);
+	const materializedHits = changedPaths.filter((path) => materialized.has(path));
+	const patchsetSideHits = changedPaths.filter((path) => patchsetSide.has(path));
 	const unexplained = changedPaths.filter((path) => !explained.has(path));
 
-	if (materialized.length > 0) {
+	if (materializedHits.length > 0) {
 		out.info(
-			`reconciled ${materialized.length} file(s) through normative overlay/resource/own materialization ` +
-				`(${materialized.slice(0, 5).join(', ')}); the rebuild put their patchset-authored state into the selected tree channel`
+			`reconciled ${materializedHits.length} file(s) through normative overlay/resource/own materialization ` +
+				`(${materializedHits.slice(0, 5).join(', ')}); the rebuild put their patchset-authored state into the selected tree channel`
+		);
+	}
+	if (patchsetSideHits.length > 0) {
+		out.info(
+			`applied the patchset side of ${patchsetSideHits.length} target(s) the fork tree had not moved ` +
+				`(${patchsetSideHits.slice(0, 5).join(', ')}); the per-target merge rule of codkit sync took the patch set there`
 		);
 	}
 	if (unexplained.length === 0) {
@@ -1047,7 +1108,11 @@ function commitDelta(options: SaveEngineOptions, planned: readonly PlannedFile[]
 
 	const count = planned.filter((plan) => plan.action !== 'unchanged').length + own.copied + own.removed;
 	const message = options.message ?? `codkit save: ${count} file(s)`;
-	return commitPatchSet(patchesDir, { message, paths }, out);
+	// A plain subject needs the blank-line separator before a trailer paragraph;
+	// the sync trailer names the transaction this commit belongs to (D20).
+	const withTrailer =
+		options.syncTransactionId === undefined ? message : `${message}\n\n${SYNC_TRANSACTION_TRAILER}: ${options.syncTransactionId}`;
+	return commitPatchSet(patchesDir, { message: withTrailer, paths }, out);
 }
 
 /**
@@ -1076,6 +1141,11 @@ function commitTreeSquash(
 	const subject = options.message ?? `codkit save: squash of ${commits.length} tree commit(s)`;
 	const listing = commits.map((commit) => `${commit.sha} ${commit.subject}`);
 	const trailers = commits.map((commit) => `Codkit-Tree-Commit: ${commit.sha}`);
+	// The sync trailer joins the squash's own trailer paragraph: a second
+	// paragraph would fall outside the trailer block git reads (D20).
+	if (options.syncTransactionId !== undefined) {
+		trailers.push(`${SYNC_TRANSACTION_TRAILER}: ${options.syncTransactionId}`);
+	}
 	const message = [subject, '', ...listing, '', ...trailers].join('\n');
 	return commitPatchSet(patchesDir, { message, paths }, out);
 }
@@ -1087,16 +1157,22 @@ function commitTreeSquash(
  * runs the command. A state that stages nothing is skipped out loud: the work
  * is consumed either way, but patchset history has nothing to hold for it.
  */
-function commitReplayState(patchesDir: string, state: PlannedCommitState, out: Output): string | null {
+function commitReplayState(patchesDir: string, state: PlannedCommitState, out: Output, syncTransactionId?: string): string | null {
 	const paths = stageDeltaPaths(patchesDir, state.plans, NO_OWN, out, true);
 	if (paths === null) {
 		out.info(`tree commit ${state.commit.sha.slice(0, 8)} "${state.commit.subject}" changes no artifact; no patchset commit for it`);
 		return null;
 	}
+	// The replay message ends inside its trailer paragraph, so the sync trailer
+	// joins it there rather than opening a paragraph git would not read (D20).
+	const message =
+		syncTransactionId === undefined
+			? replayCommitMessage(state.message, state.commit.sha)
+			: `${replayCommitMessage(state.message, state.commit.sha)}${SYNC_TRANSACTION_TRAILER}: ${syncTransactionId}\n`;
 	return commitPatchSet(
 		patchesDir,
 		{
-			message: replayCommitMessage(state.message, state.commit.sha),
+			message,
 			paths,
 			author: {
 				name: state.commit.authorName,
@@ -1200,6 +1276,7 @@ type ResultParts = {
 	readonly files?: readonly SaveFileReport[];
 	readonly own?: OwnMirrorReport;
 	readonly commit?: string | null;
+	readonly consumedRef?: string | null;
 };
 
 function result(status: SaveStatus, exitCode: number, parts: ResultParts): SaveResult {
@@ -1210,6 +1287,7 @@ function result(status: SaveStatus, exitCode: number, parts: ResultParts): SaveR
 		own: parts.own ?? NO_OWN,
 		branch: parts.branch,
 		branchTip: parts.branchTip ?? null,
-		commit: parts.commit ?? null
+		commit: parts.commit ?? null,
+		consumedRef: parts.consumedRef ?? null
 	};
 }
