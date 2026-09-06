@@ -20,6 +20,7 @@ import { ckError } from '../lib/messages.js';
 import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { listPendingHeaders } from '../lib/pendingHeader.js';
+import { foreignCommits } from '../lib/treeCommits.js';
 import { fastPathConditions, readTreeCache, readTreeMark, revParse } from '../lib/treeCache.js';
 import { checkTree } from '../lib/treeIdentity.js';
 /** How many paths are listed before the rest is summarized. */
@@ -43,7 +44,11 @@ async function run(ctx) {
     const tree = resolution.path;
     const conventions = loadConventions(ctx.patchesDir);
     const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
-    // 1. The branch and how far it is from being up to date.
+    // 1. The branch, how far it is from being up to date, and the tree commits
+    // that are not in patchset yet (PROP-008 ##TREE-COMMITS-ARE-WORK). While
+    // such commits exist they are the question to answer: the reload move is
+    // exactly what would destroy them, so the reload line stays silent and the
+    // commits are reported instead.
     const conditions = fastPathConditions({
         treeDir: tree,
         branch,
@@ -55,10 +60,22 @@ async function run(ctx) {
     const met = conditions.filter((condition) => condition.ok).length;
     const upToDate = met === conditions.length;
     const tip = revParse(tree, `refs/heads/${branch}`);
+    const treeCommits = foreignCommits(tree, config.pin.sha, branch);
     ctx.out.info(`branch ${branch}: ${tip === null ? 'not created yet' : tip.slice(0, 8)}`);
-    ctx.out.info(upToDate
-        ? `branch up to date (${met}/${conditions.length} conditions)`
-        : `reload needed (${met}/${conditions.length} conditions): ${firstUnmet(conditions)}`);
+    if (treeCommits.commits.length > 0) {
+        ctx.out.info(`tree commits not in patchset: ${treeCommits.commits.length}`);
+        for (const commit of treeCommits.commits.slice(0, LIST_LIMIT)) {
+            ctx.out.info(`  ${commit.sha.slice(0, 8)} ${commit.subject}`);
+        }
+        if (treeCommits.commits.length > LIST_LIMIT) {
+            ctx.out.info(`  ... and ${treeCommits.commits.length - LIST_LIMIT} more`);
+        }
+    }
+    else {
+        ctx.out.info(upToDate
+            ? `branch up to date (${met}/${conditions.length} conditions)`
+            : `reload needed (${met}/${conditions.length} conditions): ${firstUnmet(conditions)}`);
+    }
     // 2. Own code, per file and per side (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
     const mark = readTreeMark(tree);
     const own = classifyOwn(ctx.patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
@@ -87,10 +104,15 @@ async function run(ctx) {
     if (pending.length > 0) {
         ctx.out.info(`pending patch header(s): ${pending.length} (from codkit marker new)`);
     }
-    const unextracted = upstream.length + own.filter((entry) => entry.kind !== 'patchset-edited').length;
+    const unextracted = upstream.length + own.filter((entry) => entry.kind !== 'patchset-edited').length + treeCommits.commits.length;
     ctx.out.setData({
         pin: pinData(config),
         branch: { name: branch, tip, upToDate, conditionsMet: met, conditionsTotal: conditions.length, conditions: conditionsData(conditions) },
+        treeCommits: {
+            base: treeCommits.base,
+            count: treeCommits.commits.length,
+            commits: treeCommits.commits.map((commit) => ({ sha: commit.sha, subject: commit.subject }))
+        },
         own: ownData(own),
         upstream: {
             changed: upstream.length,

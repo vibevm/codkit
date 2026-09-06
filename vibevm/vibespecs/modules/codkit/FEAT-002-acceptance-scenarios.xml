@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec xmlns="https://vibevm.org/spec/1">
-  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S16, S21 (Given/When/Then)</title>
+  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S16, S18, S21 (Given/When/Then)</title>
   <status stage="spec" state="plan" comment="standalone Given/When/Then acceptance on FEAT-001; e2e harness is PROP-013"/>
   <conventions title="0. Обозначения">
     <p><SCENARIO-CONVENTIONS fact="true" status="spec/done">`$TOOL`, `$PATCHES`, `$FORK` — три несвязанных disjoint roots; cwd находится в четвёртом месте. Чистый fork — checkout upstream pin без локальных правок. Then по выводу проверяется через schema-2 `roots.tool|patches|fork`; исключения — явные проверки human message. Коды — 0/1/2/3 из PROP-007.</SCENARIO-CONVENTIONS></p>
@@ -55,6 +55,9 @@
   <s16 title="S16 — двойная регенерация: пустой дифф (три ОС)">
     <p><S16 fact="true" status="spec/plan">**Given**: одинаковая непустая fixture на native Linux, macOS and Windows runners. **When**: save → snapshot patch bytes/tip → restore → repeat identical edit → save. **Then**: each native run produces identical patch bytes and generated tip for the same patch-set/pin. Current Linux evidence closes only Linux; macOS/Windows remain open until actually executed.</S16></p>
   </s16>
+  <s18 title="S18 — коммиты в дереве форка: страж и статус">
+    <p><S18 fact="true" status="spec/plan">**Given**: состояние S01; в `$FORK` на сгенерированной ветке сделаны два ручных коммита (`--no-verify` или `CODKIT_INTERNAL_COMMIT=1` — обход хука тривиален, страж обязан видеть результат; кампания TREE-COMMITS-SAVE, решения D7/D8). **When**: `codkit load`; `codkit ci --profile verify`; `codkit status`; `codkit load --fresh`; `codkit save`. **Then**: `load` — выход 1 `CK-E-DIRTY-TREE` с текстом «2 commit(s) in the fork tree since the last codkit apply are not in patchset yet»; HEAD, рабочие файлы и статус дерева не тронуты, оба коммита — предки HEAD; `ci --profile verify` — тот же отказ; `status` — выход 1 с `treeCommits.count = 2` и без строки `reload needed`; `--fresh` отказ не снимает; `save` отказывается ДО любой записи («save does not extract tree commits yet», артефакты patchset байт-в-байт) — до фазы извлечения той же кампании. Отдельный кейс `CK-E-TREE-HEAD`: ветка существует, HEAD вне её и несёт foreign — `load` и `save` отказывают с рецептом возврата (`git switch &lt;ветка&gt;`).</S18></p>
+  </s18>
   <s21 title="S21 — прежнее имя sync: заглушка с выходом 2">
     <p><S21 fact="true" status="spec/plan">**Given**: любое состояние корней (заглушка срабатывает до резолва путей); односторонняя команда переименована в `load` (Phase 1 кампании TREE-COMMITS-SAVE, решение D14). **When**: `codkit sync`; отдельно `codkit --json sync`. **Then**: оба запуска — выход 2; stderr содержит `codkit sync was renamed to codkit load` и `the name sync is reserved for the two-way save+load command`; конверт не печатается (usage error, как у неизвестной команды), stdout пуст и без `--json`, и под ним; алиаса нет — скрипты со старым именем обязаны ломаться громко.</S21></p>
   </s21>

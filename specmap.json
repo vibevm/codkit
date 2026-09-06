@@ -806,10 +806,10 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:657b339e8a1dbed7ca55df6104f451ae0516d528d835fc6bf1cad64c70d2357a",
+      "content_hash": "sha256:4c9ddef14943afde7de18c8716f52c3392f5da7c8519b25adb68c1a330a1a409",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S16, S21 (Given/When/Then)",
+      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S16, S18, S21 (Given/When/Then)",
       "line": 3,
       "uri": "spec://codkit/modules/codkit/FEAT-002#root"
     },
@@ -1138,12 +1138,30 @@
       "uri": "spec://codkit/modules/codkit/FEAT-002#S16"
     },
     {
+      "anchor": "s18",
+      "content_hash": "sha256:cac478a8f02a2b1d062df247b2a58bbb7e89d351720e1aa3c598fc85d4d2bc95",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S18 — коммиты в дереве форка: страж и статус",
+      "line": 58,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s18"
+    },
+    {
+      "anchor": "S18",
+      "content_hash": "sha256:7949f43961ae70b490f60cf58fde9a281edf389cdda756dfa2ad33750acecd2c",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: состояние S01; в `$FORK` на сгенерированной ветке сделаны два ручных коммита (`--no-verify` или `CODKIT_INTERNAL_COMMIT=1` — обход хука тривиален, страж обязан видеть результат; кампания TREE-COMMITS-SAVE, решения D7/D8). **When**: `codkit load`; `codkit ci --profile verify`; `codkit status`; `codkit load --fresh`; `codkit save`. **Then**: `load` — выход 1 `CK-E-DIRTY-TREE` с текстом «2 commit(s) in the fork tree since the last codkit apply are not in patchset yet»; HEAD, рабочие файлы и статус дерева не тронуты, оба коммита — предки HEAD; `ci --profile verify` — тот же отказ; `status` — выход 1 с `treeCommits.count = 2` и без строки `reload needed`; `--fresh` отказ не снимает; `save` отказывается ДО любой записи («save does not extract tree commits yet», артефакты patchset байт-в-байт) — до фазы извлечения той же кампании. Отдельный кейс `CK-E-TREE-HEAD`: ветка существует, HEAD вне её и несёт foreign — `load` и `save` отказывают с рецептом возврата (`git switch <ветка>`). @status:spec/plan",
+      "line": 59,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S18"
+    },
+    {
       "anchor": "s21",
       "content_hash": "sha256:c41a578dc9327e1ec6a59392aef4ed90a76468422946e7464878ec68306c1a82",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S21 — прежнее имя sync: заглушка с выходом 2",
-      "line": 58,
+      "line": 61,
       "uri": "spec://codkit/modules/codkit/FEAT-002#s21"
     },
     {
@@ -1152,7 +1170,7 @@
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "**Given**: любое состояние корней (заглушка срабатывает до резолва путей); односторонняя команда переименована в `load` (Phase 1 кампании TREE-COMMITS-SAVE, решение D14). **When**: `codkit sync`; отдельно `codkit --json sync`. **Then**: оба запуска — выход 2; stderr содержит `codkit sync was renamed to codkit load` и `the name sync is reserved for the two-way save+load command`; конверт не печатается (usage error, как у неизвестной команды), stdout пуст и без `--json`, и под ним; алиаса нет — скрипты со старым именем обязаны ломаться громко. @status:spec/plan",
-      "line": 59,
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S21"
     },
     {
@@ -3713,7 +3731,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e91e6d71f7a4c2485fc4702abb3e2b762934bb8cbba46dd4a5afe53db05628fb",
+      "content_hash": "sha256:e7ef476945fd475218b5250bec450612cb87ae672a276fc8bddad1fc078e5f50",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -3875,7 +3893,7 @@
     },
     {
       "anchor": "cmd-status",
-      "content_hash": "sha256:c67f6d2e5d2f70c91c103895f6d14cd1e401e05959e5a267fdc144f0044d557f",
+      "content_hash": "sha256:c2706c676eb595820fcb2cfee38d8c2999004875bdcb0abf23853e9ddde96d63",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "6. codkit status",
@@ -3884,10 +3902,10 @@
     },
     {
       "anchor": "CMD-STATUS",
-      "content_hash": "sha256:85692e1e79c8464acb6988eafe40bdf914efa006fb2ff3c7b9fa8fd940670b15",
+      "content_hash": "sha256:be4e2d3697e2fa98537a3d389275416627caf519e3407f43d495d42c78619d93",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Показать: пин; вершину и актуальность ветки; own-код — N изменённых файлов (дерево против `delta/own/`); апстримные файлы — M изменённых (грязь против HEAD), K маркерных блоков в них, валидность маркеров (парность/id); незакоммиченные изменения `delta/` в patchset при чистом дереве (расхождение направления истины). Только чтение; работает и при захваченной блокировке. Коды: 0 чисто/консистентно; 1 есть незаизвлечённое или невалидные маркеры (информационная команда — код 1 позволяет использовать её в скриптах). Время — секунды на полном дереве. @status:spec/done",
+      "heading": "Показать: пин; вершину ветки; коммиты дерева вне patchset — строку `tree commits not in patchset: N` + до 20 строк `<short> <subject>` (`data.treeCommits: {base, count, commits}`); при N>0 строка `reload needed …` НЕ печатается — перемещение к patchset и есть то, что уничтожило бы эти коммиты, вопрос адресуется `save`; актуальность ветки (up to date / reload needed) — при N=0; own-код — N изменённых файлов (дерево против `delta/own/`); апстримные файлы — M изменённых (грязь против HEAD), K маркерных блоков в них, валидность маркеров (парность/id); незакоммиченные изменения `delta/` в patchset при чистом дереве (расхождение направления истины). Только чтение; работает и при захваченной блокировке. Коды: 0 чисто/консистентно; 1 есть незаизвлечённое (правки, own или коммиты дерева) или невалидные маркеры (информационная команда — код 1 позволяет использовать её в скриптах). Время — секунды на полном дереве. @status:spec/done",
       "line": 30,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-STATUS"
     },

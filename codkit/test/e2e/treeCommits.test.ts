@@ -122,6 +122,20 @@ describe('S18: two commits in the fork tree stop every destructive command', () 
 		expect(headOf(fixture)).toBe(headBefore);
 	});
 
+	it('status reports the commits instead of asking for a reload', () => {
+		const outcome = fixture.json(['status']);
+
+		expect(outcome.run.status).toBe(1);
+		const reported = outcome.envelope.data['treeCommits'] as { base: string; count: number; commits: { sha: string; subject: string }[] };
+		expect(reported.count).toBe(2);
+		expect(reported.commits.map((commit) => commit.subject)).toEqual(['work: first tree commit', 'work: second tree commit']);
+		expect(reported.commits.map((commit) => commit.sha)).toEqual([first, second]);
+		expect(reported.base).toMatch(/^[0-9a-f]{40}$/);
+		expect(outcome.envelope.messages.some((message) => message.text.startsWith('reload needed'))).toBe(false);
+		expect(outcome.envelope.messages.some((message) => message.text.startsWith('tree commits not in patchset: 2'))).toBe(true);
+		expect(outcome.envelope.messages.some((message) => message.text.includes('codkit save'))).toBe(true);
+	});
+
 	it('--fresh does not lift the refusal', () => {
 		const headBefore = headOf(fixture);
 
