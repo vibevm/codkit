@@ -43,6 +43,7 @@
 		"floor": "npm run format:check && npm run typecheck && npm run runtime:check && npm run trace:check && npm run docs:check && npm test && npm run ai-native:structural"
 	},
 	"dependencies": {
+		"@resvg/resvg-js": "2.6.2",
 		"typescript": "^7.0.2",
 		"zod": "^4.5.4"
 	},
