@@ -11,8 +11,7 @@
 // The commits are made with the tree hook visible (gitLocal) and bypassed the
 // two ways a human can: --no-verify, and CODKIT_INTERNAL_COMMIT=1 (F12).
 
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { gitLocal } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
@@ -59,22 +58,6 @@ function headOf(fixture: CliFixture): string {
 
 function isAncestor(fixture: CliFixture, sha: string): boolean {
 	return fixture.git(['merge-base', '--is-ancestor', sha, 'HEAD']).status === 0;
-}
-
-/** Byte snapshots of everything `save` could have written, plus the tree file. */
-function snapshotOf(fixture: CliFixture): { patchset: Map<string, string>; treeFiles: Map<string, string> } {
-	const patchset = new Map<string, string>();
-	for (const layer of ['delta/patches', 'delta/own']) {
-		const root = fixture.patchesPath(layer);
-		for (const name of readdirSync(root)) {
-			const path = join(root, name);
-			if (statSync(path).isFile()) {
-				patchset.set(`${layer}/${name}`, readFileSync(path).toString('base64'));
-			}
-		}
-	}
-	const treeFiles = new Map<string, string>([[EXAMPLE_PART_PATH, readFileSync(fixture.treePath(EXAMPLE_PART_PATH)).toString('base64')]]);
-	return { patchset, treeFiles };
 }
 
 describe('S18: two commits in the fork tree stop every destructive command', () => {
@@ -145,30 +128,6 @@ describe('S18: two commits in the fork tree stop every destructive command', () 
 		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
 		expect(outcome.envelope.errors[0]?.message).toContain('2 commit(s) in the fork tree');
 		expect(headOf(fixture)).toBe(headBefore);
-	});
-
-	it('save refuses before writing anything', () => {
-		const before = snapshotOf(fixture);
-		const headBefore = headOf(fixture);
-		// `.codkit/` scratch state of the earlier runs may be untracked here; the
-		// proof is that save leaves the status byte-identical, not that it was
-		// empty to begin with.
-		const patchsetStatusBefore = fixture.patchGit(['status', '--porcelain']).stdout;
-
-		const outcome = fixture.json(['save']);
-
-		expect(outcome.run.status).toBe(1);
-		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
-		expect(outcome.envelope.errors[0]?.message).toBe('save does not extract tree commits yet; see campaign TREE-COMMITS-SAVE');
-		// Proof that nothing was written, not merely that the command refused:
-		// the patchset status is unchanged, every artifact byte is the one from
-		// before, and the tree kept its HEAD and its committed lines.
-		expect(fixture.patchGit(['status', '--porcelain']).stdout).toBe(patchsetStatusBefore);
-		const after = snapshotOf(fixture);
-		expect(after.patchset).toEqual(before.patchset);
-		expect(after.treeFiles).toEqual(before.treeFiles);
-		expect(headOf(fixture)).toBe(headBefore);
-		expect(isAncestor(fixture, second)).toBe(true);
 	});
 });
 

@@ -24,7 +24,6 @@ import { applyUnified } from './applyUnified.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
-import { porcelainZEntries } from './driftGuard.ts';
 import { gitLocal, runGit } from './gitx.ts';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.ts';
 import type { Output } from './jsonOut.ts';
@@ -46,7 +45,10 @@ import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './re
 import { PATCHES_DIR, bothSidesError, runSync, toPosix } from './syncEngine.ts';
 import type { SyncEngineOptions } from './syncEngine.ts';
 import { readTreeMark } from './treeCache.ts';
-import { foreignCommits, treeHeadError } from './treeCommits.ts';
+import { CONSUMED_REF_PREFIX, foreignCommits, recordConsumedRef, treeHeadError } from './treeCommits.ts';
+import type { TreeCommit, TreeCommits } from './treeCommits.ts';
+import { bytesOf, changesSince } from './treeState.ts';
+import type { StateChange, TreeState } from './treeState.ts';
 import { checkTree, formatCheckLine } from './treeIdentity.ts';
 import { assertGeneratedRefExclusive } from './worktrees.ts';
 
@@ -110,9 +112,6 @@ const NO_OWN: OwnMirrorReport = { copied: 0, removed: 0, kept: 0, total: 0 };
 const FALLBACK_COMMIT_NAME = 'codkit';
 const FALLBACK_COMMIT_EMAIL = 'codkit@patchset.invalid';
 
-/** How many tree commits the Phase-2 refusal lists before summarizing the rest. */
-const DIRTY_LIST_LIMIT = 20;
-
 /** One file's outcome after validation, before anything is written. */
 type PlannedFile = {
 	readonly target: string;
@@ -160,31 +159,20 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	}
 
 	// 1c. Commits made in the fork tree are work (##TREE-COMMITS-ARE-WORK), and
-	// this build of the campaign does not extract them yet - Phase 3 teaches
-	// `save` to, and doing it half-way here would make both phases unreviewable.
-	// The refusal therefore comes before the own mirror and before every
-	// artifact write. A HEAD outside the generated branch while carrying work
-	// refuses first (D8).
+	// this run extracts them: the selection below reads the tree relative to
+	// their base - the last applied tip - so a commit and an uncommitted edit
+	// are the same kind of fact. A HEAD outside the generated branch while
+	// carrying work still refuses first (D8): extracting from the wrong line
+	// has no honest meaning.
 	const treeState = foreignCommits(tree, config.pin.sha, branch);
 	const head = treeHeadError(treeState, branch);
 	if (head !== null) {
 		out.addError(head.toPayload());
 		return result('blocked', 1, { branch });
 	}
-	if (treeState.commits.length > 0) {
-		for (const commit of treeState.commits.slice(0, DIRTY_LIST_LIMIT)) {
-			out.info(`  commit: ${commit.sha.slice(0, 8)} "${commit.subject}" (not in patchset)`);
-		}
-		if (treeState.commits.length > DIRTY_LIST_LIMIT) {
-			out.info(`  ... and ${treeState.commits.length - DIRTY_LIST_LIMIT} more`);
-		}
-		out.addError({
-			code: 'DIRTY-TREE',
-			message: 'save does not extract tree commits yet; see campaign TREE-COMMITS-SAVE',
-			hint: `${treeState.commits.length} commit(s) in the fork tree are not in patchset; nothing was written, and the commits stay in the tree`
-		});
-		return result('blocked', 1, { branch });
-	}
+	// The selection state of this run: the worktree, read as a diff against the
+	// base the walk just named (D4).
+	const selection: TreeState = { kind: 'worktree' };
 
 	const conventions = loadConventions(patchesDir);
 	const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
@@ -198,7 +186,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	];
 	if (headerOverrides.size > 0) {
 		const addressed = new Set(
-			upstreamChanges(tree, config.ownDirName, forcedPaths)
+			changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths)
 				.filter((entry) => matchesFilters(entry.path, filters))
 				.map((entry) => entry.path)
 		);
@@ -221,8 +209,10 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	const own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
 	reportOwn(out, own);
 
-	// 3. Upstream files: everything git sees outside the own directory.
-	const changed = upstreamChanges(tree, config.ownDirName, forcedPaths);
+	// 3. Upstream files: everything the tree's final state holds outside the own
+	// directory, relative to the last applied tip - not `git status`, which is
+	// blind to everything a commit already carries (D4).
+	const changed = changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths);
 	const dirty = changed.filter((entry) => matchesFilters(entry.path, filters));
 	if (options.verbose) {
 		out.diag(`changed upstream file(s): ${dirty.length === 0 ? 'none' : dirty.map((entry) => entry.path).join(', ')}`);
@@ -237,7 +227,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	const errors: CkError[] = [];
 	for (const entry of dirty) {
 		try {
-			const plan = planFile(entry, options, conventions, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
+			const plan = planFile(entry, selection, options, conventions, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
 			if (plan !== null) {
 				planned.push(plan);
 			}
@@ -264,8 +254,10 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// Nothing moved in patchset *and* nothing is out of place in the tree: there is
 	// no work to extract and no branch to rebuild. A tree that is dirty while
 	// every artifact stays byte-identical is not this case - the branch is then
-	// behind the artifacts and step 5 has to put it back on top of them.
-	if (written === 0 && own.copied === 0 && own.removed === 0 && dirty.length === 0) {
+	// behind the artifacts and step 5 has to put it back on top of them. A tree
+	// with commits but without file changes is not this case either: the commits
+	// are work, and consuming them is exactly what this run is for.
+	if (written === 0 && own.copied === 0 && own.removed === 0 && dirty.length === 0 && treeState.commits.length === 0) {
 		out.info('nothing to save');
 		return result('nothing', 0, { branch, files: planned.map(toReport), own });
 	}
@@ -274,14 +266,27 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// the tree carries is in patchset now, so the guard has nothing left to protect
 	// and the rebuild must not touch a single work-tree file (PROP-008 sec. 4).
 	let branchTip: string | null = null;
+	let consumed: readonly TreeCommit[] = [];
 	if (leftOut > 0) {
 		out.warn(
 			`${leftOut} changed path(s) are outside the paths given to save, so the generated branch is left where it is; ` +
 				'run codkit save without paths to extract the rest and rebuild the branch'
 		);
+		if (treeState.commits.length > 0) {
+			// ##SAVE-SCOPED-BRANCH-RULE: the unreplayed line keeps its commits
+			// until a full save takes them.
+			out.info(`${treeState.commits.length} tree commit(s) stay in the tree until a full save`);
+		}
 	} else if (options.deferSync === true) {
 		out.info('saved addressed rebase artifacts without moving the generated branch');
 	} else {
+		// The rebuild is the destructive half of the run: HEAD moves onto the
+		// branch and every commit above the old tip stops being reachable from
+		// it. That is safe only over the exact set this run extracted - a commit
+		// that appeared in between would be buried by the very rebuild that is
+		// supposed to rescue it (D6), so the set is re-read and compared before
+		// any ref or work-tree byte moves.
+		assertCommitsHeld(treeState, foreignCommits(tree, config.pin.sha, branch));
 		const rebuilt = runSync({
 			patchesDir,
 			resolution,
@@ -303,10 +308,28 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		}
 		assertNothingMoved(rebuilt.changedPaths, rebuilt.nonPatchTargets, out);
 		branchTip = rebuilt.branchTip;
+		// The consumed commits stay reachable for diagnosis (##CONSUMED-REFS):
+		// the ref is written after the rebuild, under the common-repository
+		// lock, pointing at the tree's former HEAD.
+		if (treeState.commits.length > 0) {
+			const ref = recordConsumedRef(tree, treeState.head);
+			const first = treeState.commits[0]?.sha.slice(0, 8) ?? treeState.head.slice(0, 8);
+			const last = treeState.commits[treeState.commits.length - 1]?.sha.slice(0, 8) ?? first;
+			out.info(`tree commits consumed: ${treeState.commits.length} (${first}..${last}); kept as ${ref}`);
+			consumed = treeState.commits;
+		}
 	}
 
-	// 6. --commit: the delta paths this run touched, and only those.
-	const commitSha = options.commit ? commitDelta(options, planned, own, out) : null;
+	// 6. The patchset commit. With tree commits consumed, one commit carries
+	// them - the squash of the future `--squash` flag, temporary until Phase 4
+	// replays the commits one by one; `--commit` keeps its ordinary meaning for
+	// the runs that extracted no commits at all.
+	const commitSha =
+		consumed.length > 0
+			? commitTreeSquash(options, planned, own, consumed, out)
+			: options.commit
+				? commitDelta(options, planned, own, out)
+				: null;
 
 	out.info(`saved ${planned.filter((plan) => plan.action !== 'unchanged').length} file(s)`);
 	return result('saved', 0, {
@@ -321,8 +344,6 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 // ---------------------------------------------------------------------------
 // Which files are in play
 // ---------------------------------------------------------------------------
-
-type UpstreamChange = { readonly status: string; readonly path: string };
 
 function loadEntryModuleIds(patchesDir: string, conventions: Conventions): readonly string[] {
 	const directory = join(patchesDir, ...PATCHES_DIR.split('/'));
@@ -343,29 +364,25 @@ function loadEntryModuleIds(patchesDir: string, conventions: Conventions): reado
 }
 
 /**
- * `git status --porcelain -z`, minus the own directory (git may see it in CI
- * mode, and it is not an upstream file in any mode).
+ * The D6 precondition: the foreign set this run is about to consume by rebuild
+ * is the set it selected from. Anything else - a commit that landed after the
+ * walk - means the rebuild would bury work it never extracted, and the refusal
+ * comes while the tree still holds every byte of it.
  */
-function upstreamChanges(treeDir: string, ownDirName: string, forcedPaths: readonly string[] = []): readonly UpstreamChange[] {
-	const status = runGit({ args: ['status', '--porcelain', '-z'], cwd: treeDir });
-	if (status.status !== 0) {
-		throw ckError(
-			'NOT-A-REPO',
-			`git status failed in ${treeDir}: ${status.stderr.trim()}`,
-			'check that the fork tree is a healthy git work tree'
-		);
+function assertCommitsHeld(selected: TreeCommits, current: TreeCommits): void {
+	const held = new Set(current.commits.map((commit) => commit.sha));
+	const same = selected.commits.length === current.commits.length && selected.commits.every((commit) => held.has(commit.sha));
+	if (same) {
+		return;
 	}
-	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
-	const changes = porcelainZEntries(status.stdout)
-		.filter((entry) => !entry.path.startsWith(ownPrefix))
-		.map((entry) => ({ status: entry.status, path: entry.path }));
-	const present = new Set(changes.map((entry) => entry.path));
-	for (const path of forcedPaths) {
-		const problem = repoRelativePathProblem(path);
-		if (problem !== null || path.startsWith(ownPrefix)) throw ckError('CONFIG', `invalid forced save path ${JSON.stringify(path)}`);
-		if (!present.has(path)) changes.push({ status: ' M', path });
-	}
-	return changes.sort((left, right) => Buffer.from(left.path).compare(Buffer.from(right.path)));
+	const appeared = current.commits.filter((commit) => !selected.commits.some((other) => other.sha === commit.sha));
+	const named = appeared[0];
+	throw ckError(
+		'INTERNAL',
+		`the fork tree changed during save: ${current.commits.length} commit(s) not in patchset now, ${selected.commits.length} when the extraction started` +
+			(named === undefined ? '' : `; first difference: ${named.sha.slice(0, 8)} "${named.subject}"`),
+		'nothing was rebuilt and nothing was consumed; re-run codkit save over the new state'
+	);
 }
 
 /** Positional paths, as tree-relative POSIX paths. */
@@ -404,7 +421,8 @@ function filterOwn(classes: readonly OwnSideClass[], filters: readonly string[],
  * has nothing to contribute (its patch stays exactly as it is on disk).
  */
 function planFile(
-	entry: UpstreamChange,
+	entry: StateChange,
+	state: TreeState,
 	options: SaveEngineOptions,
 	conventions: Conventions,
 	allowNewFile: readonly string[],
@@ -456,8 +474,9 @@ function planFile(
 		);
 	}
 
-	const absolute = join(tree, ...target.split('/'));
-	const curBytes = readFileSync(absolute);
+	// The working bytes come from the selection state (D4): the worktree today,
+	// a commit's blob the day Phase 4 replays one.
+	const curBytes = bytesOf(tree, state, target);
 	const ext = extname(target);
 
 	// Markers of the working file: a block that is not closed, nested or
@@ -803,18 +822,22 @@ function assertNothingMoved(changedPaths: readonly string[], nonPatchTargets: re
 }
 
 // ---------------------------------------------------------------------------
-// --commit
+// Patchset commits
 // ---------------------------------------------------------------------------
 
 /**
- * Stage exactly the delta paths this run touched and commit them in patchset.
- *
- * The commit is an ordinary commit of the person running the command, so the
- * identity is read with the machine's own git configuration (##gitLocal) rather
- * than with the isolated environment the tree work uses.
+ * Stage exactly the delta paths this run touched and report whether anything
+ * was staged. The delta can already be what the last commit holds - a change
+ * made, undone and made again ends there - and git refuses an empty commit;
+ * that is a result, not a failure.
  */
-function commitDelta(options: SaveEngineOptions, planned: readonly PlannedFile[], own: OwnMirrorReport, out: Output): string | null {
-	const { patchesDir } = options;
+function stageDeltaPaths(
+	patchesDir: string,
+	planned: readonly PlannedFile[],
+	own: OwnMirrorReport,
+	out: Output,
+	quietEmpty: boolean
+): readonly string[] | null {
 	const paths = [...new Set(planned.filter((plan) => plan.action !== 'unchanged').map((plan) => plan.artifact))].sort();
 	if (own.copied > 0 || own.removed > 0) {
 		paths.push('delta/own');
@@ -832,17 +855,68 @@ function commitDelta(options: SaveEngineOptions, planned: readonly PlannedFile[]
 		);
 	}
 
-	// The delta can already be what the last commit holds - a change made, undone
-	// and made again ends there - and git refuses an empty commit. That is a
-	// result, not a failure.
 	const staged = runGit({ args: ['diff', '--cached', '--name-only', '--', ...paths], cwd: patchesDir });
 	if (staged.status === 0 && staged.stdout.trim() === '') {
-		out.info('nothing to commit: the saved delta is already what the last commit of patchset holds');
+		if (!quietEmpty) {
+			out.info('nothing to commit: the saved delta is already what the last commit of patchset holds');
+		}
+		return null;
+	}
+	return paths;
+}
+
+/**
+ * `--commit`: stage exactly the delta paths this run touched and commit them
+ * in patchset.
+ *
+ * The commit is an ordinary commit of the person running the command, so the
+ * identity is read with the machine's own git configuration (##gitLocal) rather
+ * than with the isolated environment the tree work uses.
+ */
+function commitDelta(options: SaveEngineOptions, planned: readonly PlannedFile[], own: OwnMirrorReport, out: Output): string | null {
+	const { patchesDir } = options;
+	const paths = stageDeltaPaths(patchesDir, planned, own, out, false);
+	if (paths === null) {
 		return null;
 	}
 
 	const count = planned.filter((plan) => plan.action !== 'unchanged').length + own.copied + own.removed;
 	const message = options.message ?? `codkit save: ${count} file(s)`;
+	return commitPatchSet(patchesDir, message, paths, out);
+}
+
+/**
+ * The temporary carrier of consumed tree commits: until Phase 4 replays them
+ * one by one, one patchset commit holds everything this run extracted, named
+ * for the squash it is - the default message of the future `--squash` flag -
+ * with every consumed sha as a `Codkit-Tree-Commit` trailer so the history
+ * stays answerable for what it folded (D3/D5).
+ */
+function commitTreeSquash(
+	options: SaveEngineOptions,
+	planned: readonly PlannedFile[],
+	own: OwnMirrorReport,
+	commits: readonly TreeCommit[],
+	out: Output
+): string | null {
+	const { patchesDir } = options;
+	const paths = stageDeltaPaths(patchesDir, planned, own, out, true);
+	if (paths === null) {
+		out.info(
+			`no artifact changes to commit for ${commits.length} consumed tree commit(s); the commits stay named in ${CONSUMED_REF_PREFIX}...`
+		);
+		return null;
+	}
+
+	const subject = options.message ?? `codkit save: squash of ${commits.length} tree commit(s)`;
+	const listing = commits.map((commit) => `${commit.sha} ${commit.subject}`);
+	const trailers = commits.map((commit) => `Codkit-Tree-Commit: ${commit.sha}`);
+	const message = [subject, '', ...listing, '', ...trailers].join('\n');
+	return commitPatchSet(patchesDir, message, paths, out);
+}
+
+/** The one way this engine commits in patchset; identity is the local user's. */
+function commitPatchSet(patchesDir: string, message: string, paths: readonly string[], out: Output): string | null {
 	const identity = commitIdentity(patchesDir);
 	const committed = runGit({
 		args: [
@@ -868,7 +942,8 @@ function commitDelta(options: SaveEngineOptions, planned: readonly PlannedFile[]
 	}
 	const head = runGit({ args: ['rev-parse', 'HEAD'], cwd: patchesDir });
 	const sha = head.status === 0 ? head.stdout.trim() : null;
-	out.info(`committed ${paths.length} delta path(s) in patchset${sha === null ? '' : ` at ${sha.slice(0, 8)}`}: ${message}`);
+	const [subject] = message.split('\n');
+	out.info(`committed ${paths.length} delta path(s) in patchset${sha === null ? '' : ` at ${sha.slice(0, 8)}`}: ${subject ?? message}`);
 	return sha;
 }
 

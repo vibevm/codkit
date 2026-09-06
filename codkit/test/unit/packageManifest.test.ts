@@ -74,7 +74,7 @@ describe('npm distribution', () => {
 
 		expect((files.get('codkit/bin/codkit.mjs')?.mode ?? 0) & 0o111).not.toBe(0);
 		expect(report?.entryCount).toBeLessThan(640);
-		expect(report?.size).toBeLessThan(1_000_000);
+		expect(report?.size).toBeLessThan(2_000_000);
 		expect(report?.unpackedSize).toBeLessThan(5_000_000);
 
 		const developmentOnly = ['codkit/test/', 'discipline/', 'tools/', 'vibevm/vibedeps/', 'vibevm/vibespecs/boot/'];
