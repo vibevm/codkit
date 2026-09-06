@@ -35,6 +35,9 @@ const UTIL_PATH = 'src/vs/base/common/util.ts';
 const UTIL_PATCH = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
 const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
 const UTIL_BLOCK_ID = 'CK-base-905';
+/** The fixture's own-code pair: one file, its patchset source and tree target. */
+const OWN_IN_PATCHSET = 'delta/own/hello.ts';
+const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
 
 const IDENTITY: GitEnv = {
 	GIT_AUTHOR_NAME: 'human',
@@ -899,6 +902,94 @@ describe('--discard lifts only the commits half of the guard (D11)', () => {
 		expect(isAncestor(fixture, committed)).toBe(true);
 		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toContain('// uncommitted line');
 		expect(consumedRefs(fixture)).toEqual([]);
+	});
+});
+
+describe('the commits refusal is not subordinate to the own-side verdict (P6B)', () => {
+	// The state every test here builds: own code moved only on the patch-set
+	// side (the guard verdict is `patchset-side`, ##PATCHSET-SIDE-EDIT-RULE)
+	// while foreign commits stand on the generated branch. Phase 2 of the
+	// campaign wired the commits refusal inside that verdict, so this exact
+	// state warned and continued, and the rebuild dropped the commits with no
+	// consumed ref - reachable from the reflog alone. The pair of tests below
+	// proves each half: the refusal over the commits, and - through the
+	// discard run, where the verdict still speaks - that the dirt really is
+	// patchset-side, so only the commits half is what refused.
+	let fixture: CliFixture;
+	let first: string;
+	let second: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-own-side-commits');
+		expect(fixture.run(['load']).status).toBe(0);
+		const edited = '// the patchset side moved\nexport function hello(name: string): string {\n\treturn name;\n}\n';
+		writeFileSync(fixture.patchesPath(OWN_IN_PATCHSET), edited, 'utf8');
+		first = commitInTree(fixture, 'work: first tree commit', '// first committed line', '--no-verify', '2026-09-06T11:55:00Z');
+		second = commitInTree(fixture, 'work: second tree commit', '// second committed line', '--no-verify', '2026-09-06T11:56:00Z');
+	});
+
+	it('load refuses over the commits; no own-side verdict may waive it', () => {
+		const headBefore = headOf(fixture);
+		const fileBefore = readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8');
+
+		const outcome = fixture.json(['load']);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
+		expect(outcome.envelope.errors[0]?.message).toBe('2 commit(s) in the fork tree since the last codkit apply are not in patchset yet');
+		expect(outcome.envelope.data['dirtyFiles']).toContain(`commit ${first.slice(0, 8)} "work: first tree commit" (not in patchset)`);
+		expect(outcome.envelope.data['dirtyFiles']).toContain(`commit ${second.slice(0, 8)} "work: second tree commit" (not in patchset)`);
+		// The patchset-side verdict is not the answer over commits: its warning
+		// must not appear where the refusal stands.
+		expect(outcome.envelope.messages.some((message) => message.code === 'CK-W-PATCHSET-SIDE-EDIT')).toBe(false);
+		// Nothing moved: HEAD stands on the commits, the committed lines are in
+		// the working file, and no consumed ref exists.
+		expect(headOf(fixture)).toBe(headBefore);
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toBe(fileBefore);
+		expect(isAncestor(fixture, first)).toBe(true);
+		expect(isAncestor(fixture, second)).toBe(true);
+		expect(consumedRefs(fixture)).toEqual([]);
+	});
+
+	it('the same state with --discard proceeds, warns about the own side, and writes the consumed ref', () => {
+		const outcome = fixture.json(['load', '--discard']);
+
+		expect(outcome.run.status).toBe(0);
+		expect(outcome.envelope.errors).toEqual([]);
+		// The verdict under the same dirt is really patchset-side: it warns and
+		// applies the patchset version rather than refusing - so the refusal
+		// above was the commits half alone, decided before any verdict.
+		expect(outcome.envelope.messages.some((message) => message.code === 'CK-W-PATCHSET-SIDE-EDIT')).toBe(true);
+		expect(readFileSync(fixture.treePath(OWN_IN_TREE), 'utf8')).toContain('// the patchset side moved');
+		const refs = consumedRefs(fixture);
+		expect(refs.length).toBe(1);
+		expect(refs[0]?.sha).toBe(second);
+		expect(isAncestor(fixture, first)).toBe(false);
+		expect(isAncestor(fixture, second)).toBe(false);
+		expect(fixture.git(['merge-base', '--is-ancestor', first, refs[0]?.ref ?? '']).status).toBe(0);
+		expect(fixture.git(['merge-base', '--is-ancestor', second, refs[0]?.ref ?? '']).status).toBe(0);
+		expect(outcome.envelope.data['discarded']).toEqual([first, second]);
+		expect(outcome.envelope.data['discardedRef']).toBe(refs[0]?.ref);
+	});
+});
+
+describe('the patchset-side warning stands when there are no commits', () => {
+	it('warns CK-W-PATCHSET-SIDE-EDIT and applies the patchset version', () => {
+		const fixture = makeCliFixture('treecommits-own-side-clean');
+		expect(fixture.run(['load']).status).toBe(0);
+		const edited = '// the patchset side moved\nexport function hello(name: string): string {\n\treturn name;\n}\n';
+		writeFileSync(fixture.patchesPath(OWN_IN_PATCHSET), edited, 'utf8');
+
+		const outcome = fixture.json(['load']);
+
+		// No commits, so the commits half has nothing to say: the own-side
+		// verdict is the whole guard here, and a patchset-side move stays a
+		// warning that applies the patchset version - the fix must not turn it
+		// into a refusal.
+		expect(outcome.run.status).toBe(0);
+		expect(outcome.envelope.errors).toEqual([]);
+		expect(outcome.envelope.messages.some((message) => message.code === 'CK-W-PATCHSET-SIDE-EDIT')).toBe(true);
+		expect(readFileSync(fixture.treePath(OWN_IN_TREE), 'utf8')).toBe(edited);
 	});
 });
 

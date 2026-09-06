@@ -236,6 +236,35 @@ export function runSync(options) {
                 discard = { head: drift.treeCommits.head, commits: drift.treeCommits.commits };
             }
         }
+        // The dirt refusal itself, shared by the halves that fire it: the listing
+        // is the same whichever half carries the work, only the message names
+        // which one.
+        const refuseDrift = (message) => {
+            for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
+                out.info(`  dirty: ${path}`);
+            }
+            if (drift.files.length > DIRTY_LIST_LIMIT) {
+                out.info(`  ... and ${drift.files.length - DIRTY_LIST_LIMIT} more`);
+            }
+            out.addError({
+                code: 'DIRTY-TREE',
+                message,
+                hint: 'run codkit save, or codkit status; codkit load --discard drops tree commits deliberately'
+            });
+            return result('dirty', 1, { branch, dirtyFiles: drift.files });
+        };
+        // The commits half is decided here, on its own and before the file-dirt
+        // verdict: it is about commits, and no own-side verdict may subordinate
+        // it. Wired one level deeper - inside the verdict, under `unextracted` -
+        // a `patchset-side` verdict warned and continued, and the rebuild moved
+        // the branch off commits that stayed reachable from the reflog alone:
+        // the exact silent loss this half exists to make impossible
+        // (##TREE-COMMITS-ARE-WORK). Only the captured discard lifts it (D11);
+        // a tree without commits never sees this refusal, and the file halves
+        // below keep their own verdicts.
+        if (drift.commits.length > 0 && discard === null) {
+            return refuseDrift(`${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`);
+        }
         if (drift.dirty) {
             const verdict = judgeOwnSides(drift, patchesDir, tree, config.ownDirName, mark, fingerprint);
             if (verdict.kind === 'both-sides') {
@@ -246,22 +275,14 @@ export function runSync(options) {
                 // The one exemption: the dirt is the commits and nothing else, so
                 // the refusal would be protecting exactly what the operator asked
                 // to drop. File dirt or an own divergence keeps the refusal - the
-                // flag speaks about commits, never about edits.
+                // flag speaks about commits, never about edits. Commits reach this
+                // branch only under `--discard` (without it the refusal above
+                // fired), and the message still names them: they are the dirt the
+                // listing shows, even though the edits are what stops this run.
                 if (discard === null || !commitsOnlyDirt(drift)) {
-                    for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
-                        out.info(`  dirty: ${path}`);
-                    }
-                    if (drift.files.length > DIRTY_LIST_LIMIT) {
-                        out.info(`  ... and ${drift.files.length - DIRTY_LIST_LIMIT} more`);
-                    }
-                    out.addError({
-                        code: 'DIRTY-TREE',
-                        message: drift.commits.length > 0
-                            ? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
-                            : `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`,
-                        hint: 'run codkit save, or codkit status; codkit load --discard drops tree commits deliberately'
-                    });
-                    return result('dirty', 1, { branch, dirtyFiles: drift.files });
+                    return refuseDrift(drift.commits.length > 0
+                        ? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
+                        : `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`);
                 }
                 // Exempted: the commits are the payload of this run, the rebuild
                 // below is the answer to them, and there is nothing to warn about.
