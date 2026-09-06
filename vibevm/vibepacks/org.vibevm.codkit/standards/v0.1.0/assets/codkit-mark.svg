@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2026 Oleg Chirukhin
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+SPDX-License-Identifier: UPL-1.0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="codkit">
+  <title>codkit — a delta held inside its markers</title>
+  <g fill="none" stroke="#ffb547" stroke-width="38" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="178,150 124,150 124,362 178,362"/>
+    <polyline points="334,150 388,150 388,362 334,362"/>
+  </g>
+  <polygon points="256,168 186,330 326,330" fill="#1c2a49" stroke="#1c2a49" stroke-width="20" stroke-linejoin="round"/>
+</svg>

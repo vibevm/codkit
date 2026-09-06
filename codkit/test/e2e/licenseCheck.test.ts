@@ -85,6 +85,16 @@ describe('codkit license check', () => {
 		expect(run.stderr).toContain('no such directory');
 	});
 
+	it('checks the shipped package when no directory is given, from any cwd', () => {
+		// ##CMD-LICENSE-CHECK: no argument means the standards package of this
+		// codkit, and the command needs no root - so a foreign cwd is enough.
+		const cwd = foreignCwd('shipped');
+		const run = runCli(cwd, ['license', 'check']);
+
+		expect(run.status).toBe(0);
+		expect(run.stdout).toContain('11 files checked, 0 problems');
+	});
+
 	it('accepts a copyright-looking table row below the SPDX line (S29 s)', () => {
 		const cwd = foreignCwd('table');
 		const pkg = makeLicensePackage(makeTempRoot('lic-e2e-table'));

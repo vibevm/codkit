@@ -1,0 +1,13 @@
+version = 1
+SPDX-PackageName = "org.vibevm.codkit/standards"
+SPDX-PackageSupplier = "Person: Oleg Chirukhin"
+
+# Registry of third-party files (PROP-014 §2, LIC-THIRD-PARTY-REGISTRY). Each file also
+# carries its own carrier (a sidecar here); this table is the single source that
+# THIRD-PARTY-NOTICES.md is generated from.
+[[annotations]]
+path = "assets/third-party/feather/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2013-2023 Cole Bemis"
+SPDX-License-Identifier = "MIT"
+SPDX-FileComment = "third-party; https://github.com/feathericons/feather tag v4.29.1"

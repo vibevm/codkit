@@ -67,7 +67,16 @@ describe('npm distribution', () => {
 			'bin/codkit.ps1',
 			'codkit/claude/skills/ck-resolve/scripts/append-journal.mjs',
 			'vibevm/vibespecs/common/PROP-000-foundations.xml',
-			'vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml'
+			'vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml',
+			// The standards package ships in the tarball, licence carriers and all
+			// (PROP-014 ##STD-PACKAGE-SHIPS-IN-THE-TARBALL); the policy and the SPDX
+			// identifier list are the data its check reads.
+			'codkit/config/license-policy.json',
+			'codkit/config/spdx-license-ids.json',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/LICENSE',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/vibe.toml',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/THIRD-PARTY-NOTICES.md',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/assets/codkit.png.license'
 		]) {
 			expect(files.has(path), path).toBe(true);
 		}

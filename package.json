@@ -27,6 +27,7 @@
 		"npm-shrinkwrap.json",
 		"README.md",
 		"vibe.toml",
+		"vibevm/vibepacks",
 		"vibevm/vibespecs/common",
 		"vibevm/vibespecs/modules/codkit"
 	],

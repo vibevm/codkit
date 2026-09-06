@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2026 Oleg Chirukhin
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+SPDX-License-Identifier: UPL-1.0
+-->
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">Standard: minimal intervention in the fork</title>
+  <status stage="spec" state="done" comment="edition 0.1.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab; distilled from a first rebranding pilot in 2026"/>
+  <p><MI-SCOPE fact="true" status="spec/done">The standard applies to every patch set maintained by codkit: to a delta artifact of any layer and to any own code delivered into the fork tree.</MI-SCOPE></p>
+  <p><MI-THE-MEASURE fact="true" status="spec/done">The measure of an intervention is not the directory a file lives in but the number of upstream points that must stay unchanged for the intervention to keep working: an export name, the shape of a record, an id, a load order, the body of a method — each such point counts.</MI-THE-MEASURE></p>
+  <source-norm title="1. Where the layer norm comes from">
+    <p><MI-LAYER-LADDER-IS-CODKIT fact="true" status="spec/done">The layer ladder and the choice rule come from codkit, not from this standard: the highest applicable layer of `own → service-override → entry-module → config-overlay → resource-file → rewrite-rule → patch` (PROP-005 §1, anchor `LAYER-CHOICE-RULE`, file `&lt;codkit-tool-root&gt;/vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml`) and the decision tree in `&lt;codkit-tool-root&gt;/docs/codkit/protocol/human/03-interventions.md`. The standard restates neither and opens no second ladder.</MI-LAYER-LADDER-IS-CODKIT></p>
+    <p><MI-DESCENT-NEEDS-A-NAMED-REASON fact="true" status="spec/done">Descending a layer is allowed only with a named reason: why not own, why not a service override, why not an overlay — in the terms of the decision tree, never "it was simpler".</MI-DESCENT-NEEDS-A-NAMED-REASON></p>
+    <p><MI-NECESSITY-WINS fact="true" status="spec/done">Necessity wins over minimality: a feature the product requires is implemented even where only an invasive layer can express it — for example, localising a surface that upstream never localises. Minimality then means the least invasive form of that necessary intervention, never its omission; and an existing intervention that can be made less invasive is made less invasive.</MI-NECESSITY-WINS></p>
+    <p><why-necessity-wins fact="true" status="spec/done">A standard that could veto a required feature would be routed around, and the routing would be the silent choice this standard exists to prevent; naming the least invasive form keeps the choice visible without denying the feature.</why-necessity-wins></p>
+  </source-norm>
+  <presented-choice title="2. The choice is presented, never made silently">
+    <p><MI-REASON-NAMES-THE-REJECTED-LEAF fact="true" status="spec/done">The `reason` field of an artifact of any layer below own begins with the rejected upper leaf and why it was rejected, in the form `not &lt;leaf&gt;: &lt;reason&gt;; …` — for example `not own: bootstrap before DI, no graft; not overlay: the target is not JSON` — and only then describes the intervention itself.</MI-REASON-NAMES-THE-REJECTED-LEAF></p>
+    <p><MI-LOCAL-WORK-IS-RECORDED-BEFORE-COMMIT fact="true" status="spec/done">An intervention that appeared during the work with no home in the product's specs (no FEAT requires it) gets either a FEAT entry or a four-field decision record in the product's specs before it is committed; an intervention known only to the inventory counts as unrecorded.</MI-LOCAL-WORK-IS-RECORDED-BEFORE-COMMIT></p>
+    <p><why-silent-choices-compound fact="true" status="spec/done">A first rebranding pilot brought three interventions its feature spec never knew of — a locale operation in the overlay and two patches under it; each was reasonable, and none could be reviewed, because the reason stayed in its author's head.</why-silent-choices-compound></p>
+  </presented-choice>
+  <own-coupling title="3. The three degrees of own-code coupling">
+    <p><MI-OWN-THREE-DEGREES fact="true" status="spec/done">Own code distinguishes three degrees of coupling to upstream: (a) the public extension API; (b) core registries and DI named in the product's seam map (§6); (c) the internals of upstream modules — mutating exported structures, depending on load order, on a field name, on a record id.</MI-OWN-THREE-DEGREES></p>
+    <p><MI-INTERNALS-ARE-PATCH-EQUIVALENT fact="true" status="spec/done">Own code of degree (c) counts as a patch equivalent: a mandatory contract test (`contractTests` of the record is non-empty and the test checks the observable result), a row in the seam map, a `reason` per §2; in the metric of §7 it is counted together with `rewrite-rule` and `patch`, wherever the file lives.</MI-INTERNALS-ARE-PATCH-EQUIVALENT></p>
+    <p><why-own-is-not-free fact="true" status="spec/done">Moving the mutation of an upstream walkthrough array from a patch into an own module removed not one coupling point — the export name, the record shape, the record id and the load order stayed the same four; all that changed was where the failure surfaces: from the 3-way merge at `sync` to the moment the product starts.</why-own-is-not-free></p>
+    <p><MI-OWN-NEVER-THROWS-AT-MODULE-EVALUATION fact="true" status="spec/done">Own code never throws while a module is evaluated and never brings a process down over a missing upstream point: when the expected record or export is absent it degrades to upstream behaviour; the loud failure is the guards' job (contract tests, the static proof), not the product runtime's.</MI-OWN-NEVER-THROWS-AT-MODULE-EVALUATION></p>
+    <p><why-degrade-not-throw fact="true" status="spec/done">A block that throws when a walkthrough entry is missing keeps the whole workbench from starting on a future pin where that entry was renamed — over the title of one walkthrough.</why-degrade-not-throw></p>
+  </own-coupling>
+  <channel-per-process title="4. One channel per process; bootstrap has none">
+    <p><MI-ONE-GRAFT-PER-PROCESS fact="true" status="spec/done">A graft of own code (the entry-module layer, PROP-005 §3 `OWN-GRAFT-POINT`) reaches only the process whose entry it edits: renderer, main, shared process, server, CLI — each with its own entry and, if own code is needed there, its own graft.</MI-ONE-GRAFT-PER-PROCESS></p>
+    <p><MI-BOOTSTRAP-HAS-NO-CHANNEL fact="true" status="spec/done">Bootstrap code that runs before DI (in VS Code, `src/main.ts` and what it calls before the services exist) has no channel: an intervention there is always a patch, and its `reason` calls it a patch instead of dressing it as own code.</MI-BOOTSTRAP-HAS-NO-CHANNEL></p>
+    <p><MI-GRAFT-SET-IS-NAMED-WHOLE fact="true" status="spec/done">The constant graft set — the entry graft, the lint target for the own directory, the confirmation of the tsconfig/layering/test/nls globs, the decision on header hygiene — is named as a whole at the first own module, not one item at a time as things break; its size does not grow with the amount of own code (PROP-005 §11 `CONSTANT-GRAFT-SET`).</MI-GRAFT-SET-IS-NAMED-WHOLE></p>
+    <p><why-the-set-is-named-whole fact="true" status="spec/done">"One import line" in fact cost a graft, a lint target, a ruling on a red header check over own tests and a check of the globs; the price named as a whole compares honestly with two title patches, the price named one item at a time does not.</why-the-set-is-named-whole></p>
+  </channel-per-process>
+  <two-channels title="5. An interface string has two channels">
+    <p><MI-STRING-HAS-TWO-CHANNELS fact="true" status="spec/done">Every interface string lives in two channels: the English text in the source (`localize(key, "…")`, an index into `nls.messages.json` in the build) and the translation in the language pack (data under the same key). An intervention that closes one channel names the fate of the other.</MI-STRING-HAS-TWO-CHANNELS></p>
+    <p><MI-NLS-KEY-CHANGE-NEEDS-A-PACK-DECISION fact="true" status="spec/done">Changing or adding an nls key in a patch is allowed only together with a recorded language-pack decision: the product's own pack carries the translation of the new key, or the key is kept and the pack translates the upstream string, or it is recorded that a translation is deliberately absent; the decision is a decision record in the product's specs. Where upstream localises nothing at all, the invasive route is the necessary one (§1 `MI-NECESSITY-WINS`) and the record says so.</MI-NLS-KEY-CHANGE-NEEDS-A-PACK-DECISION></p>
+    <p><why-two-channels fact="true" status="spec/done">Patches that renamed keys with a private suffix made the branded strings untranslatable for good: any future language pack shows the English branded string; had the keys been kept, the pack would have shown a translation carrying the upstream name. Both outcomes are bad, and neither had been named.</why-two-channels></p>
+  </two-channels>
+  <seam-map title="6. The seam map per pin">
+    <p><MI-SEAM-MAP-REQUIRED fact="true" status="spec/done">The product keeps a seam map in its specs: for every upstream seam the delta leans on — the codkit layer, what breaks when the pin moves, what catches it; the map is dated to the pin and cited from the product's boot.</MI-SEAM-MAP-REQUIRED></p>
+    <p><MI-SEAM-MAP-IS-RANKED fact="true" status="spec/done">Seams are ordered by how far upstream sanctions them: a pull request upstream (layer 0, outside the delta) → product configuration (`product.json`) → the public extension API and built-in extensions → resources → core registries and DI through a graft → the entry of a process → build and hygiene targets → bootstrap, a method body, a literal (patch) → the internals of upstream modules (patch equivalent); a new intervention looks for the most sanctioned seam that expresses it.</MI-SEAM-MAP-IS-RANKED></p>
+    <p><MI-SEAM-MAP-REVALIDATED-PER-PIN fact="true" status="spec/done">On every upgrade cycle the map is re-validated on the new pin: until confirmed it is marked "needs re-validation"; a row whose seam vanished or moved leads to a review of the intervention, not to a silent carry-over.</MI-SEAM-MAP-REVALIDATED-PER-PIN></p>
+    <p><seam-map-template-lead fact="true" status="spec/done">The map is a table; the columns are mandatory, the rows are each product's own:</seam-map-template-lead></p>
+    <table>
+      <tr>
+        <td>Upstream seam</td>
+        <td>Codkit layer</td>
+        <td>Breaks when the pin moves if…</td>
+        <td>Caught by</td>
+      </tr>
+      <tr>
+        <td><ROW-EXAMPLE-PRODUCT-JSON fact="true" status="spec/done">`product.json` / `product.overrides.json`</ROW-EXAMPLE-PRODUCT-JSON></td>
+        <td>config-overlay</td>
+        <td>upstream renamed a key</td>
+        <td>`expectUpstream` → `CK-E-OVERLAY-DRIFT`</td>
+      </tr>
+      <tr>
+        <td><ROW-EXAMPLE-ENTRY fact="true" status="spec/done">the entry of a process (renderer/main/shared/server/CLI)</ROW-EXAMPLE-ENTRY></td>
+        <td>entry-module</td>
+        <td>the context shifted</td>
+        <td>the 3-way merge at `sync`</td>
+      </tr>
+      <tr>
+        <td><ROW-EXAMPLE-INTERNALS fact="true" status="spec/done">internals of an upstream module used from own code</ROW-EXAMPLE-INTERNALS></td>
+        <td>own (patch equivalent)</td>
+        <td>anything; the failure is at runtime</td>
+        <td>a contract test only, mandatory</td>
+      </tr>
+    </table>
+  </seam-map>
+  <metric title="7. The metric">
+    <p><MI-METRIC-FALLS fact="true" status="spec/done">The intervention metric is the number of `rewrite-rule` and `patch` artifacts plus the own records marked as patch equivalents, per subsystem; it must fall from cycle to cycle (PROP-005 §1 `LAYER-METRIC`), and the de-intrusion iteration of `03-interventions.md` runs on every upgrade cycle.</MI-METRIC-FALLS></p>
+  </metric>
+  <conformance title="8. Checking conformance">
+    <p><conformance-lead fact="true" status="spec/done">The intervention reviewer checks conformance by observable facts, not by assurances:</conformance-lead></p>
+    <facts ordered="true">
+      <CONF-REASONS-NAME-REJECTED-LEAVES fact="true" status="spec/done">In `codkit inventory --md` the `reason` of every artifact below own begins with the rejected upper leaf (§2).</CONF-REASONS-NAME-REJECTED-LEAVES>
+      <CONF-EVERY-INTERVENTION-HAS-A-SPEC-HOME fact="true" status="spec/done">Every inventory id is mentioned in a product FEAT or in a decision record (§2).</CONF-EVERY-INTERVENTION-HAS-A-SPEC-HOME>
+      <CONF-NECESSARY-INVASIVE-WORK-IS-NAMED fact="true" status="spec/done">Every invasive intervention that a required feature forced names that necessity in its `reason`, and the less invasive form was looked for (§1).</CONF-NECESSARY-INVASIVE-WORK-IS-NAMED>
+      <CONF-NO-OWN-MODULE-THROWS-AT-IMPORT fact="true" status="spec/done">No own module throws at import: the guards cover a missing upstream point by degradation, not by an exception (§3).</CONF-NO-OWN-MODULE-THROWS-AT-IMPORT>
+      <CONF-PATCH-EQUIVALENT-OWN-HAS-A-GUARD fact="true" status="spec/done">Own code of degree (c) carries a non-empty `contractTests` and a seam-map row (§3).</CONF-PATCH-EQUIVALENT-OWN-HAS-A-GUARD>
+      <CONF-NLS-CHANGES-HAVE-A-PACK-DECISION fact="true" status="spec/done">Every patch that changes an nls key cites a language-pack decision record (§5).</CONF-NLS-CHANGES-HAVE-A-PACK-DECISION>
+      <CONF-SEAM-MAP-IS-DATED-TO-THE-PIN fact="true" status="spec/done">The seam map exists, is dated to the current pin and is not marked "needs re-validation" (§6).</CONF-SEAM-MAP-IS-DATED-TO-THE-PIN>
+    </facts>
+  </conformance>
+  <never title="Never">
+    <facts ordered="false">
+      <NEVER-DESCEND-A-LAYER-WITHOUT-A-NAMED-REASON fact="true" status="spec/done">Never descend a layer without a reason in `reason` named in the terms of the decision tree.</NEVER-DESCEND-A-LAYER-WITHOUT-A-NAMED-REASON>
+      <NEVER-OMIT-A-REQUIRED-FEATURE-FOR-MINIMALITY fact="true" status="spec/done">Never omit a feature the product requires in the name of minimality — choose the least invasive form of it instead.</NEVER-OMIT-A-REQUIRED-FEATURE-FOR-MINIMALITY>
+      <NEVER-COUNT-OWN-AS-FREE fact="true" status="spec/done">Never count own code as free: coupling is measured by what it leans on upstream, not by its directory.</NEVER-COUNT-OWN-AS-FREE>
+      <NEVER-THROW-FROM-OWN-AT-MODULE-EVALUATION fact="true" status="spec/done">Never throw from own code while a module is evaluated.</NEVER-THROW-FROM-OWN-AT-MODULE-EVALUATION>
+      <NEVER-CHANGE-AN-NLS-KEY-WITHOUT-A-PACK-DECISION fact="true" status="spec/done">Never change an nls key in a patch without a recorded language-pack decision.</NEVER-CHANGE-AN-NLS-KEY-WITHOUT-A-PACK-DECISION>
+      <NEVER-CARRY-THE-SEAM-MAP-ACROSS-A-PIN-UNCHECKED fact="true" status="spec/done">Never carry the seam map onto a new pin unchecked.</NEVER-CARRY-THE-SEAM-MAP-ACROSS-A-PIN-UNCHECKED>
+      <NEVER-RESTATE-THE-LAYER-LADDER fact="true" status="spec/done">Never restate the codkit layer ladder in a product's specs — cite `LAYER-CHOICE-RULE`.</NEVER-RESTATE-THE-LAYER-LADDER>
+    </facts>
+  </never>
+</spec>

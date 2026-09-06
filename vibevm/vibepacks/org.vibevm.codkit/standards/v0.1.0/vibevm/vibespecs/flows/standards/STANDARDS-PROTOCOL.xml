@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2026 Oleg Chirukhin
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+SPDX-License-Identifier: UPL-1.0
+-->
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">The codkit standards protocol</title>
+  <status stage="spec" state="done" comment="edition 0.1.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab"/>
+  <p><A-STANDARD-IS-A-BINDING-NORM-FOR-A-PATCH-SET fact="true" status="spec/done">A **standard** is a binding norm for a patch-set repository maintained by codkit: it says how the delta over the fork must be shaped, whatever product is made from the fork.</A-STANDARD-IS-A-BINDING-NORM-FOR-A-PATCH-SET></p>
+  <p><THE-SET-IS-AN-EDITION fact="true" status="spec/done">The set of standards is an **edition**: the version of this package is the edition number; a product pins the edition to an exact version in `vibe.toml`, and the content of an edition never changes under one version — a change to a standard is always a new package version.</THE-SET-IS-AN-EDITION></p>
+  <p><EDITION-0-1-0-ROSTER fact="true" status="spec/done">Edition 0.1.0 holds one standard: `minimal-intervention` — minimal intervention in the fork.</EDITION-0-1-0-ROSTER></p>
+  <delivery title="How the standards reach a product">
+    <facts ordered="true">
+      <DELIVERY-CODKIT-LOADS-THE-PACKAGE fact="true" status="spec/done">The package comes from the codkit installation: `codkit standards load` copies it byte for byte into `vibevm/vibepacks/org.vibevm.codkit/standards/v&lt;version&gt;/` of the product repository and keeps a managed block in the product `vibe.toml` between the lines `# codkit:begin standards` and `# codkit:end standards`, declaring the dependency `org.vibevm.codkit/standards` at the exact version with `link = "static"`.</DELIVERY-CODKIT-LOADS-THE-PACKAGE>
+      <DELIVERY-VIBE-MATERIALISES fact="true" status="spec/done">Materialisation is `vibe install`'s job: the copy under `vibevm/vibedeps/`, the static boot lane, `vibe.lock`; codkit neither invokes nor replaces vibe.</DELIVERY-VIBE-MATERIALISES>
+      <DELIVERY-STATIC-LINK-MEANS-READ-FIRST fact="true" status="spec/done">A static link means the standards' boot snippet is compiled into the priority `STATIC` lane and read by every session first and in full.</DELIVERY-STATIC-LINK-MEANS-READ-FIRST>
+    </facts>
+    <p><INSTALLED-COPY-IS-CODKIT-OWNED fact="true" status="spec/done">The installed copy belongs to codkit the way `vibedeps` belongs to vibe: it is not edited, extended or trimmed; `codkit standards load` refuses over any edit without writing a byte, and `codkit standards check` names every differing file.</INSTALLED-COPY-IS-CODKIT-OWNED></p>
+    <p><why-the-copy-is-owned fact="true" status="spec/done">A copy that may be edited in place stops being the standard the anchors point at within two upgrade cycles, and nobody can say where exactly it diverged.</why-the-copy-is-owned></p>
+  </delivery>
+  <binding title="How a standard binds a project">
+    <p><STANDARD-BINDS-UNLESS-A-DEVIATION-IS-RECORDED fact="true" status="spec/done">Every norm of a standard (an UPPER-KEBAB anchor) binds the project until the product records a deviation from it.</STANDARD-BINDS-UNLESS-A-DEVIATION-IS-RECORDED></p>
+    <p><DEVIATION-IS-A-DECISION-RECORD-IN-THE-PRODUCT fact="true" status="spec/done">A deviation is recorded in the product's own specs — under an addressable anchor, with the four fields of a decision record (Decision / Why with data / Considered and rejected / When to revisit) and an exact citation of the standard's anchor the product deviates from; a deviation that cites no anchor is not a deviation but a violation.</DEVIATION-IS-A-DECISION-RECORD-IN-THE-PRODUCT></p>
+    <p><PRODUCT-SPECIFIC-INSTANCES-LIVE-IN-THE-PRODUCT fact="true" status="spec/done">The instances a standard demands from a product (the seam map per pin, the language-pack decisions) live in the product's specs and are cited from its boot; the standard sets the form, the product supplies the content.</PRODUCT-SPECIFIC-INSTANCES-LIVE-IN-THE-PRODUCT></p>
+    <p><CONFLICT-ORDER fact="true" status="spec/done">On a contradiction the winner is, in this order: a recorded ruling of the product owner → the codkit specs (PROP-*) the standard cites → the standard → the standard's boot snippet; the snippet is a digest, and where it diverges from the full text the full text is right.</CONFLICT-ORDER></p>
+    <p><CODKIT-SPECS-ARE-CITED-BY-INSTALL-PATH fact="true" status="spec/done">The codkit specs are not part of the product's vibe space; a standard cites them by the install root (`roots.tool.path` from `codkit --json where`) and the anchor name, for example `&lt;codkit-tool-root&gt;/vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml`, anchor `LAYER-CHOICE-RULE`.</CODKIT-SPECS-ARE-CITED-BY-INSTALL-PATH></p>
+  </binding>
+  <licence-scopes title="Where the three licence scopes end">
+    <p><LICENCE-SCOPES-ARE-THREE fact="true" status="spec/done">Three licences meet in a codkit-maintained product and none of them replaces another: (1) the **package licence** — the `LICENSE` and `REUSE.toml` inside the package directory describe the package only and travel with it as part of the copy, and the notice file `LICENSE-CODKIT.md` restates Codkit's licence where Codkit-delivered content lives; (2) the **product repository licence** — the root licence file of the patch-set repository governs that repository only: codkit never reads, copies or modifies it, and it never leaves the repository; (3) the **fork licence** — the licence files and notices of the fork tree and the licence fields of `product.json` are upstream files, and changing them is an ordinary delta artifact authored in the patch set like any other intervention, never a side effect of `codkit standards load` or `codkit load`.</LICENCE-SCOPES-ARE-THREE></p>
+    <p><FORK-LICENCE-IS-A-DELTA-ARTIFACT fact="true" status="spec/done">A product that wants a different licence on the fork expresses it with the layers the ladder offers — a config-overlay for the `product.json` licence fields, a resource-file or add-file patch for the licence text and the notices — each with an owner, a reason and a guard, so the change is inventoried and survives an upgrade like everything else.</FORK-LICENCE-IS-A-DELTA-ARTIFACT></p>
+    <p><REUSE-TOML-FOLLOWS-THE-SAME-RULE fact="true" status="spec/done">`REUSE.toml` follows the same rule: the package's file stays in the package; a `REUSE.toml` for the fork tree, if a product wants one, is a delta artifact.</REUSE-TOML-FOLLOWS-THE-SAME-RULE></p>
+    <p><LOAD-PRINTS-THE-LICENCE-NOTE fact="true" status="spec/done">`codkit standards load` prints this rule as a fixed licence note on every run, so the person installing the standards sees where each licence ends before anything is committed.</LOAD-PRINTS-THE-LICENCE-NOTE></p>
+    <p><why-three-scopes fact="true" status="spec/done">The tool, the product repository and the fork are three products that may well carry three different licences; a licence file that silently travelled from one into the next would relicense something its author never meant to.</why-three-scopes></p>
+  </licence-scopes>
+  <licence-notice title="The Codkit licence notice file">
+    <p><NOTICE-FILE-IS-PLACED-IN-TWO-ROOTS fact="true" status="spec/done">`codkit standards load` places the Codkit licence notice — the file `LICENSE-CODKIT.md`: a bilingual scope paragraph saying that it licenses Codkit and its standards package and nothing around it, then the UPL text — into two roots of the product repository: the repository root and the root of the own code in the delta (`delta/own/LICENSE-CODKIT.md`). Both copies are byte-identical to the file codkit ships and belong to codkit like the installed package: edits are refused on the next `load`, and `codkit standards check` names a differing copy.</NOTICE-FILE-IS-PLACED-IN-TWO-ROOTS></p>
+    <p><NOTICE-FILE-TRAVELS-WITH-THE-DELTA fact="true" status="spec/done">Because the own-code root is delivered into the fork tree by `codkit load` (and committed by `ci`/`publish`), the notice reaches the fork automatically as an ordinary delivered own file; codkit exempts it from the rule that every own file belongs to a unit, and nothing else about own code changes.</NOTICE-FILE-TRAVELS-WITH-THE-DELTA></p>
+    <p><LINKS-TO-THE-NOTICE-ARE-THE-PRODUCTS-CHOICE fact="true" status="spec/done">Whether and where the product points at the notice — from its own README, from a patch-set intervention on the fork's README — is the product owner's deliberate choice; codkit places the file and prints the recommendations, and never edits a README. The file's text and the recommendations are printed at install time and by `codkit standards license`.</LINKS-TO-THE-NOTICE-ARE-THE-PRODUCTS-CHOICE></p>
+    <p><SCRAPE-REMOVES-THE-NOTICE fact="true" status="spec/done">A clean export of the product repository made with `vibe scrape` removes the notice together with the rest of the Vibe layer: the product's scrape contract (`vibevm/scrape/contract.toml`, PROP-056 of vibevm) carries the two rows below, and codkit keeps them there itself — inside a managed block between `# codkit:begin scrape` and `# codkit:end scrape`, written or refreshed by every `codkit standards load` when the contract exists. Codkit never creates the contract (its schema needs the product's own health checks): without one, `load` says so and the product owner runs `vibe scrape contract init` and `codkit standards load` again. A contract kept at another path (`vibe scrape --contract`) is unknown to codkit; for it, `codkit standards license` prints the rows to paste.</SCRAPE-REMOVES-THE-NOTICE></p>
+    <fence lang="toml"># Codkit licence notice: removed from a scraped export together with the Vibe layer.
+[[classify]]
+id = "remove-codkit-licence-notice"
+kind = "delete"
+patterns = ["LICENSE-CODKIT.md", "delta/own/LICENSE-CODKIT.md"]
+owner = "vibe"
+proof = "contract-assertion-v1"
+modified = "delete"
+require_match = false
+
+[[assert]]
+id = "codkit-licence-notice-absent"
+kind = "paths-absent-v1"
+patterns = ["LICENSE-CODKIT.md", "delta/own/LICENSE-CODKIT.md"]</fence>
+    <p><RELEASE-BRANCH-EXCLUDES-THE-NOTICE fact="true" status="spec/done">The fork's release branch is built by `codkit publish` from an immutable patch-set commit, and it leaves the notice out: `src/vs/&lt;ownDirName&gt;/LICENSE-CODKIT.md` is absent from the published tree, while the developer tree after `codkit load`, the `ci` branch and the upgrade-cycle branch carry it. Nobody deletes the file in the fork tree by hand or with another tool: the tree is a materialisation of the patch set, and a deletion there would read as unextracted work.</RELEASE-BRANCH-EXCLUDES-THE-NOTICE></p>
+    <p><why-the-notice-travels fact="true" status="spec/done">The tool, the product repository and the fork may carry three different licences; a notice that names exactly what Codkit's licence covers, travelling with the code Codkit helped deliver, is what keeps the three from being confused — and a release export scrapes it away with the rest of the tooling.</why-the-notice-travels></p>
+  </licence-notice>
+  <language title="Language">
+    <p><PROSE-IS-ENGLISH-NOTICES-ARE-BILINGUAL fact="true" status="spec/done">The standards, their boot snippet and this package's README are English; the licence notice — in every file header, in `LICENSE` and in the README — is given twice, in English and in Russian; the UPL text itself exists in English only, and where the two notices diverge the English one governs.</PROSE-IS-ENGLISH-NOTICES-ARE-BILINGUAL></p>
+    <p><why-english fact="true" status="spec/done">The package is the surface a product receives and may pass on; its licence is English, and a second normative language would be a second copy of every norm with nothing proving the copies agree.</why-english></p>
+  </language>
+  <never title="Never">
+    <facts ordered="false">
+      <NEVER-EDIT-THE-INSTALLED-COPY fact="true" status="spec/done">Never edit the installed copy — a deviation lives in the product's specs.</NEVER-EDIT-THE-INSTALLED-COPY>
+      <NEVER-CHANGE-AN-EDITION-UNDER-ITS-VERSION fact="true" status="spec/done">Never change the content of an edition under a released version — only a new version.</NEVER-CHANGE-AN-EDITION-UNDER-ITS-VERSION>
+      <NEVER-RESTATE-A-CODKIT-NORM-IN-A-STANDARD fact="true" status="spec/done">Never restate a codkit norm inside a standard — cite the anchor; a second layer ladder in one project is two truths.</NEVER-RESTATE-A-CODKIT-NORM-IN-A-STANDARD>
+      <NEVER-DEVIATE-WITHOUT-CITING-THE-ANCHOR fact="true" status="spec/done">Never deviate from a standard without a record that names its anchor.</NEVER-DEVIATE-WITHOUT-CITING-THE-ANCHOR>
+      <NEVER-LET-A-LICENCE-FILE-TRAVEL fact="true" status="spec/done">Never let the product repository's licence file travel into the fork — the fork's licence is a delta artifact; the only licence file that travels is Codkit's own notice, `LICENSE-CODKIT.md`, it says so in its first paragraph, and `codkit publish` leaves it out of the release branch.</NEVER-LET-A-LICENCE-FILE-TRAVEL>
+    </facts>
+  </never>
+</spec>

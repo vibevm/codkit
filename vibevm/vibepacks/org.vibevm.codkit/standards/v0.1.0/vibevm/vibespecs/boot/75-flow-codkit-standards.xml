@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2026 Oleg Chirukhin
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+SPDX-License-Identifier: UPL-1.0
+-->
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">Flow: Codkit standards</title>
+  <status stage="impl" state="done"/>
+  <p><PROJECT-FOLLOWS-CODKIT-STANDARDS fact="true" status="impl/done">This repository is a patch set maintained by codkit, and it follows the **codkit standards**, edition 0.1.0; the one standard of this edition is minimal intervention in the fork: @spec://org.vibevm.codkit/standards/flows/standards/minimal-intervention#root.</PROJECT-FOLLOWS-CODKIT-STANDARDS></p>
+  <p><HOW-A-STANDARD-BINDS fact="true" status="impl/done">How a standard binds the project, how a deviation is recorded, who wins on conflict, and where the three licence scopes end: @spec://org.vibevm.codkit/standards/flows/standards/STANDARDS-PROTOCOL#root.</HOW-A-STANDARD-BINDS></p>
+  <laws title="The laws, one line each">
+    <facts ordered="false">
+      <LAW-HIGHEST-LAYER-WINS fact="true" status="impl/done">The layer chosen is the highest applicable one — the ladder and the decision tree come from the installed codkit (PROP-005 §1 `LAYER-CHOICE-RULE`, `docs/codkit/protocol/human/03-interventions.md`); the standard never restates them.</LAW-HIGHEST-LAYER-WINS>
+      <LAW-NECESSITY-WINS fact="true" status="impl/done">A feature the product requires is implemented even where only an invasive layer can express it; minimality then means the least invasive form of that intervention, never its omission — and an existing intervention that can be made less invasive is.</LAW-NECESSITY-WINS>
+      <LAW-CHOICE-IS-PRESENTED fact="true" status="impl/done">The choice of layer is presented: the `reason` of every artifact below own names the rejected upper leaf and why; an intervention with no home in the product's specs gets one before it is committed.</LAW-CHOICE-IS-PRESENTED>
+      <LAW-OWN-IS-NOT-FREE fact="true" status="impl/done">Own code is not free by definition: code that leans on the internals of upstream modules counts as a patch equivalent with a mandatory contract test.</LAW-OWN-IS-NOT-FREE>
+      <LAW-OWN-NEVER-THROWS-AT-IMPORT fact="true" status="impl/done">Own code never throws while a module is evaluated: when an upstream point is missing it degrades to upstream behaviour; the guards fail loudly, the product does not.</LAW-OWN-NEVER-THROWS-AT-IMPORT>
+      <LAW-ONE-CHANNEL-PER-PROCESS fact="true" status="impl/done">One channel per process, and bootstrap has none: a graft in the renderer gives own code no road into main, the shared process, the server or the CLI, and code that runs before DI is patched and called a patch.</LAW-ONE-CHANNEL-PER-PROCESS>
+      <LAW-STRING-HAS-TWO-CHANNELS fact="true" status="impl/done">An interface string has two channels — the source and the language pack; an intervention that closes one names the fate of the other, and an nls key changes in a patch only together with a recorded language-pack decision.</LAW-STRING-HAS-TWO-CHANNELS>
+      <LAW-SEAM-MAP-PER-PIN fact="true" status="impl/done">The product keeps a seam map per pin — layer, what breaks when the pin moves, what catches it — and re-validates it on every upgrade cycle.</LAW-SEAM-MAP-PER-PIN>
+    </facts>
+  </laws>
+  <never title="Never">
+    <facts ordered="false">
+      <NEVER-EDIT-THE-INSTALLED-STANDARDS fact="true" status="impl/done">Never edit the installed copy of the standards under `vibevm/vibepacks/org.vibevm.codkit/` — a deviation is recorded in the product's own specs, and `codkit standards load` refuses over edits.</NEVER-EDIT-THE-INSTALLED-STANDARDS>
+      <NEVER-DESCEND-A-LAYER-SILENTLY fact="true" status="impl/done">Never descend a layer without a named reason in `reason` — the silent descent is exactly what the standard forbids.</NEVER-DESCEND-A-LAYER-SILENTLY>
+      <NEVER-THROW-FROM-OWN-MODULE-EVALUATION fact="true" status="impl/done">Never bring the product down from own code because an upstream entry vanished — degrade to upstream, catch it with a guard.</NEVER-THROW-FROM-OWN-MODULE-EVALUATION>
+      <NEVER-CHANGE-AN-NLS-KEY-WITHOUT-A-PACK-DECISION fact="true" status="impl/done">Never change an nls key in a patch without a recorded language-pack decision.</NEVER-CHANGE-AN-NLS-KEY-WITHOUT-A-PACK-DECISION>
+      <NEVER-CARRY-A-SEAM-MAP-ACROSS-A-PIN-UNCHECKED fact="true" status="impl/done">Never carry the seam map onto a new pin unchecked — until confirmed it is marked "needs re-validation".</NEVER-CARRY-A-SEAM-MAP-ACROSS-A-PIN-UNCHECKED>
+      <NEVER-COPY-A-REPOSITORY-LICENCE-INTO-THE-FORK fact="true" status="impl/done">Never let this repository's licence file travel: the package licence stays in the package, the product repository's licence stays in that repository, and the fork's licence changes only through a delta artifact; the one file that travels is Codkit's own notice `LICENSE-CODKIT.md`, placed by codkit, never edited by hand, and left out of the release branch by `codkit publish`.</NEVER-COPY-A-REPOSITORY-LICENCE-INTO-THE-FORK>
+    </facts>
+  </never>
+</spec>
