@@ -131,6 +131,13 @@ describe('codkit imageset (the bare namespace)', () => {
 		expect(existsSync(join(fixture.patchset.dir, 'delta', 'resources'))).toBe(false);
 	});
 
+	it('sends --help on a subcommand to the one help the family has', () => {
+		const fixture = makeImagesetFixture('e2e-namespace-subhelp');
+		const run = fixture.run(['imageset', 'gen', '--help']);
+		expect(run.status).toBe(2);
+		expect(run.stderr).toContain('run codkit imageset --help');
+	});
+
 	it('refuses an unknown subcommand the same way', () => {
 		const fixture = makeImagesetFixture('e2e-namespace-unknown');
 		const run = fixture.run(['imageset', 'regenerate']);

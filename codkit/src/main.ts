@@ -185,11 +185,28 @@ function misplacedFlag(definition: CommandDefinition, given: CommandFlagValues):
 			const usable = advertised.length === 0 ? 'it takes global flags only' : `it takes: ${advertised.join(', ')}`;
 			return {
 				error: `flag ${name} is not a flag of command '${definition.name}'`,
-				hint: `${usable}; see codkit --help for the global flags`
+				hint: namespaceHelpHint(definition, name) ?? `${usable}; see codkit --help for the global flags`
 			};
 		}
 	}
 	return null;
+}
+
+/**
+ * `--help` given to a subcommand of a namespace. The namespace carries one
+ * help text for the whole family on purpose, so the reader is sent there
+ * rather than shown a flag list they did not ask for.
+ */
+function namespaceHelpHint(definition: CommandDefinition, flag: string): string | null {
+	if (flag !== GLOBAL_FLAG_HELP_NAME) {
+		return null;
+	}
+	const parentName = definition.name.slice(0, definition.name.lastIndexOf(' '));
+	const parent = parentName === '' ? undefined : COMMANDS.get(parentName);
+	if (parent?.namespace !== true || !(parent.commandFlags ?? []).includes(GLOBAL_FLAG_HELP_NAME)) {
+		return null;
+	}
+	return `the help of this family lives on its namespace: run codkit ${parentName} --help`;
 }
 
 /** Longest-first match, so `marker new` wins over a hypothetical `marker`. */
