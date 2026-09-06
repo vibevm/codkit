@@ -806,10 +806,10 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:4c9ddef14943afde7de18c8716f52c3392f5da7c8519b25adb68c1a330a1a409",
+      "content_hash": "sha256:4df6d8a19d3b8f6f3debf0b49394c458e03b824745196d45b1e1894381036b06",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S16, S18, S21 (Given/When/Then)",
+      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S19, S21 (Given/When/Then)",
       "line": 3,
       "uri": "spec://codkit/modules/codkit/FEAT-002#root"
     },
@@ -1138,22 +1138,58 @@
       "uri": "spec://codkit/modules/codkit/FEAT-002#S16"
     },
     {
+      "anchor": "s17",
+      "content_hash": "sha256:5c7f7831e4d620f590e7d5bc6847ae7c5bd9602a901bbf1f8d101a2bda5e4047",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S17 — коммиты в дереве форка: save извлекает их в patchset",
+      "line": 58,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s17"
+    },
+    {
+      "anchor": "S17",
+      "content_hash": "sha256:cb701065ec72d95147fb38042e2d5a753813cfe181180d9be9083484e2fb23f4",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: состояние S01; в `$FORK` на сгенерированной ветке сделаны два ручных коммита (`--no-verify` или `CODKIT_INTERNAL_COMMIT=1`; кампания TREE-COMMITS-SAVE, решения D3/D4/D6). **When**: `codkit save`; затем повторный `codkit save`; затем `codkit load`. **Then (a, Phase 3)**: первый — выход 0; патч-артефакты содержат строки обоих коммитов; `refs/codkit/consumed/*` указывает на прежний HEAD дерева; в patchset ровно один новый коммит `codkit save: squash of 2 tree commit(s)` с двумя трейлерами `Codkit-Tree-Commit`; дерево чисто, HEAD на сгенерированной ветке; повторный save — «nothing to save»; `load` — «up to date». Адресный `save <путь>` при чужих для пути коммитах: ветка не тронута, коммиты на месте, `info` «N tree commit(s) stay in the tree until a full save». **(b, Phase 4)**: три коммита → три коммита patchset с исходными subject/author/date; `--squash` сворачивает; идемпотентность повторного save. **(c, Phase 4)**: промежуточный коммит с правкой вне маркера — отказ с sha/subject, patchset без новых коммитов. @status:spec/plan",
+      "line": 59,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S17"
+    },
+    {
       "anchor": "s18",
-      "content_hash": "sha256:cac478a8f02a2b1d062df247b2a58bbb7e89d351720e1aa3c598fc85d4d2bc95",
+      "content_hash": "sha256:46513a49ecfdfa0339eea26d147cace481848f9af2071ff945d5285d3e12b857",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S18 — коммиты в дереве форка: страж и статус",
-      "line": 58,
+      "line": 61,
       "uri": "spec://codkit/modules/codkit/FEAT-002#s18"
     },
     {
       "anchor": "S18",
-      "content_hash": "sha256:7949f43961ae70b490f60cf58fde9a281edf389cdda756dfa2ad33750acecd2c",
+      "content_hash": "sha256:d5189b5f76e948767214e88f40c205d9ef7e9ff9ea23a7e8ead343e5e7ad11e6",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: состояние S01; в `$FORK` на сгенерированной ветке сделаны два ручных коммита (`--no-verify` или `CODKIT_INTERNAL_COMMIT=1` — обход хука тривиален, страж обязан видеть результат; кампания TREE-COMMITS-SAVE, решения D7/D8). **When**: `codkit load`; `codkit ci --profile verify`; `codkit status`; `codkit load --fresh`; `codkit save`. **Then**: `load` — выход 1 `CK-E-DIRTY-TREE` с текстом «2 commit(s) in the fork tree since the last codkit apply are not in patchset yet»; HEAD, рабочие файлы и статус дерева не тронуты, оба коммита — предки HEAD; `ci --profile verify` — тот же отказ; `status` — выход 1 с `treeCommits.count = 2` и без строки `reload needed`; `--fresh` отказ не снимает; `save` отказывается ДО любой записи («save does not extract tree commits yet», артефакты patchset байт-в-байт) — до фазы извлечения той же кампании. Отдельный кейс `CK-E-TREE-HEAD`: ветка существует, HEAD вне её и несёт foreign — `load` и `save` отказывают с рецептом возврата (`git switch <ветка>`). @status:spec/plan",
-      "line": 59,
+      "heading": "**Given**: состояние S01; в `$FORK` на сгенерированной ветке сделаны два ручных коммита (`--no-verify` или `CODKIT_INTERNAL_COMMIT=1` — обход хука тривиален, страж обязан видеть результат; кампания TREE-COMMITS-SAVE, решения D7/D8). **When**: `codkit load`; `codkit ci --profile verify`; `codkit status`; `codkit load --fresh`. **Then**: `load` — выход 1 `CK-E-DIRTY-TREE` с текстом «2 commit(s) in the fork tree since the last codkit apply are not in patchset yet»; HEAD, рабочие файлы и статус дерева не тронуты, оба коммита — предки HEAD; `ci --profile verify` — тот же отказ; `status` — выход 1 с `treeCommits.count = 2` и без строки `reload needed`; `--fresh` отказ не снимает. Извлечение этой работы — сценарий S17. Отдельный кейс `CK-E-TREE-HEAD`: ветка существует, HEAD вне её и несёт foreign — `load` и `save` отказывают с рецептом возврата (`git switch <ветка>`). @status:spec/plan",
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S18"
+    },
+    {
+      "anchor": "s19",
+      "content_hash": "sha256:53528ab5ac575cfdbd9247014c4e66cf61b66bf661b13c9c71d250ab10c7077a",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S19 — наполовину закоммиченная работа: save извлекает обе половины",
+      "line": 64,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s19"
+    },
+    {
+      "anchor": "S19",
+      "content_hash": "sha256:15c8ad3633858a212c43484562b860278800f63c86974aaeef3ba3989fe9d312",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: состояние S01; половина работы закоммичена в дереве (ручной коммит с правкой внутри маркерного блока), половина оставлена незакоммиченной (правка в блоке другого файла). **When**: `codkit save`. **Then**: выход 0; обе половины достигают своих артефактов; файл, нёсший закоммиченную строку, по-прежнему несёт её (перестройка воспроизводит состояние коммита, а не переписывает его — контрпример пути потери F9); дерево чисто; потреблённый коммит достижим через `refs/codkit/consumed/*` и назван трейлером `Codkit-Tree-Commit` единственного нового коммита patchset. @status:spec/plan",
+      "line": 65,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S19"
     },
     {
       "anchor": "s21",
@@ -1161,7 +1197,7 @@
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S21 — прежнее имя sync: заглушка с выходом 2",
-      "line": 61,
+      "line": 67,
       "uri": "spec://codkit/modules/codkit/FEAT-002#s21"
     },
     {
@@ -1170,7 +1206,7 @@
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "**Given**: любое состояние корней (заглушка срабатывает до резолва путей); односторонняя команда переименована в `load` (Phase 1 кампании TREE-COMMITS-SAVE, решение D14). **When**: `codkit sync`; отдельно `codkit --json sync`. **Then**: оба запуска — выход 2; stderr содержит `codkit sync was renamed to codkit load` и `the name sync is reserved for the two-way save+load command`; конверт не печатается (usage error, как у неизвестной команды), stdout пуст и без `--json`, и под ним; алиаса нет — скрипты со старым именем обязаны ломаться громко. @status:spec/plan",
-      "line": 62,
+      "line": 68,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S21"
     },
     {
@@ -5684,7 +5720,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:6394b12c324cde85c6b5ee152408756dd602169bcecae5bfdbdfbce297fea8a4",
+      "content_hash": "sha256:b2ff34ac11d6d2ecb22215db14bb55fd32a374714b2cc97a97237d2b7eb9c95c",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "codkit PROP-013: Как тестируется сам codkit",
@@ -5792,7 +5828,7 @@
     },
     {
       "anchor": "e2e",
-      "content_hash": "sha256:7de590007443de6073b95c47b32d9e8e4321734260601867c32c11837ddb82aa",
+      "content_hash": "sha256:1b81df28da2cbc00b458c962fcf8b207985703fa75707a1b64e5015cf834221a",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "4. E2e-тесты",
@@ -5801,10 +5837,10 @@
     },
     {
       "anchor": "E2E-HARNESS",
-      "content_hash": "sha256:87eef07aba4bca074d693ce1416d5c6133d50ee0f635fd5c6acabf747fc39829",
+      "content_hash": "sha256:494036cf6b6da961b639bcce8b02c701a9c2a72c2c15283a86457b25c682da96",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
-      "heading": "Обвязка запускает CLI из настоящего toolRoot как подпроцесс, а patchesDir/forkDir создаёт отдельно. Она проверяет schema-2 `roots`, settings-only invocation из постороннего cwd и мини-версии S01–S16. Full VS Code scenarios являются отдельным integration baseline и не подменяются мини-fixtures. @status:spec/done",
+      "heading": "Обвязка запускает CLI из настоящего toolRoot как подпроцесс, а patchesDir/forkDir создаёт отдельно. Она проверяет schema-2 `roots`, settings-only invocation из постороннего cwd и мини-версии S01–S19 (включая коммиты дерева форка: S17a/S18/S19 в `treeCommits.test.ts`, кампания TREE-COMMITS-SAVE). Full VS Code scenarios являются отдельным integration baseline и не подменяются мини-fixtures. @status:spec/done",
       "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-013#E2E-HARNESS"
     },

@@ -1,6 +1,9 @@
-// e2e: the third half of the drift guard - commits made in the fork tree are
-// work, and the destructive commands refuse to cross them (PROP-008
-// ##TREE-COMMITS-ARE-WORK, acceptance scenario S18 of FEAT-002).
+// e2e: commits made in the fork tree are work (PROP-008
+// ##TREE-COMMITS-ARE-WORK). The destructive commands refuse to cross them
+// (acceptance scenario S18 of FEAT-002), and `save` extracts them: everything
+// committed reaches patchset as artifacts plus one squash commit carrying
+// `Codkit-Tree-Commit` trailers, the consumed commits stay reachable under
+// refs/codkit/consumed/, and the tree ends clean (S17a, S19).
 //
 // Before the campaign, a commit in the tree was invisible: `load` rebuilt the
 // branch over it, `save` answered "nothing to save", and the work survived only
@@ -19,6 +22,11 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+
+const UTIL_PATH = 'src/vs/base/common/util.ts';
+const UTIL_PATCH = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
+const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
+const UTIL_BLOCK_ID = 'CK-base-905';
 
 const IDENTITY: GitEnv = {
 	GIT_AUTHOR_NAME: 'human',
@@ -58,6 +66,49 @@ function headOf(fixture: CliFixture): string {
 
 function isAncestor(fixture: CliFixture, sha: string): boolean {
 	return fixture.git(['merge-base', '--is-ancestor', sha, 'HEAD']).status === 0;
+}
+
+/** The consumed refs `save` leaves behind, as `ref -> sha` rows. */
+function consumedRefs(fixture: CliFixture): readonly { ref: string; sha: string }[] {
+	return fixture
+		.git(['for-each-ref', '--format=%(refname) %(objectname)', 'refs/codkit/consumed/'])
+		.stdout.trim()
+		.split('\n')
+		.filter((line) => line !== '')
+		.map((line) => {
+			const [ref = '', sha = ''] = line.split(' ');
+			return { ref, sha };
+		});
+}
+
+/** Put a line inside the marker block `id` of `text`. */
+function fillBlock(text: string, id: string, line: string): string {
+	const at = text.indexOf(`// codkit:begin ${id}`);
+	if (at === -1) {
+		throw new Error(`the block ${id} is not in the file`);
+	}
+	const endOfBegin = text.indexOf('\n', at) + 1;
+	return `${text.slice(0, endOfBegin)}${line}\n${text.slice(endOfBegin)}`;
+}
+
+/** Scaffold a marker block in util.ts and leave one uncommitted line inside it. */
+function dirtyUtilBlock(fixture: CliFixture, line: string): void {
+	const outcome = fixture.json([
+		'marker',
+		'new',
+		UTIL_PATH,
+		'--id',
+		UTIL_BLOCK_ID,
+		'--type',
+		'hook',
+		'--owner',
+		'workbench-core',
+		'--reason',
+		'uncommitted half'
+	]);
+	expect(outcome.run.status).toBe(0);
+	const target = fixture.treePath(UTIL_PATH);
+	writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), UTIL_BLOCK_ID, line), 'utf8');
 }
 
 describe('S18: two commits in the fork tree stop every destructive command', () => {
@@ -157,5 +208,154 @@ describe('CK-E-TREE-HEAD: HEAD off the generated branch while carrying work (D8)
 
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-TREE-HEAD']);
+	});
+});
+
+describe('S17a: everything committed in the fork tree - save extracts it', () => {
+	let fixture: CliFixture;
+	let first: string;
+	let second: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-s17a');
+		expect(fixture.run(['load']).status).toBe(0);
+		first = commitInTree(fixture, 'work: first tree commit', '// first committed line', '--no-verify', '2026-09-06T10:30:00Z');
+		second = commitInTree(fixture, 'work: second tree commit', '// second committed line', '--no-verify', '2026-09-06T10:31:00Z');
+		const outcome = fixture.json(['save']);
+		expect(outcome.run.status).toBe(0);
+	});
+
+	it('puts the lines of both commits into the patch artifact', () => {
+		const patch = readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8');
+		expect(patch).toContain('// first committed line');
+		expect(patch).toContain('// second committed line');
+	});
+
+	it('keeps the consumed commits reachable under refs/codkit/consumed/', () => {
+		const refs = consumedRefs(fixture);
+		expect(refs.length).toBe(1);
+		// The ref points at the tree's former HEAD, which stood at the second
+		// commit when the save started, and through it the whole consumed line.
+		expect(refs[0]?.sha).toBe(second);
+		expect(refs[0]?.ref).toMatch(/^refs\/codkit\/consumed\/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7}$/);
+	});
+
+	it('carries both commits in one patchset commit with Codkit-Tree-Commit trailers', () => {
+		const message = fixture.patchGit(['log', '-1', '--format=%B']).stdout;
+		expect(message).toContain('codkit save: squash of 2 tree commit(s)');
+		expect(message).toContain(`${first} work: first tree commit`);
+		expect(message).toContain(`${second} work: second tree commit`);
+		const trailers = message
+			.split('\n')
+			.filter((line) => line.startsWith('Codkit-Tree-Commit:'))
+			.map((line) => line.slice('Codkit-Tree-Commit:'.length).trim());
+		expect(trailers).toEqual([first, second]);
+		// The trailers are real git trailers, not just lines that look like them.
+		const parsed = fixture
+			.patchGit(['log', '-1', '--format=%(trailers:key=Codkit-Tree-Commit,valueonly)'])
+			.stdout.trim()
+			.split('\n')
+			.filter((line) => line !== '');
+		expect(parsed).toEqual([first, second]);
+	});
+
+	it('leaves the tree clean and on the generated branch', () => {
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+		expect(fixture.git(['symbolic-ref', 'HEAD']).stdout.trim()).toBe(`refs/heads/${fixture.branch}`);
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toContain('// first committed line');
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toContain('// second committed line');
+	});
+
+	it('says nothing to save the second time', () => {
+		const outcome = fixture.run(['save']);
+
+		expect(outcome.status).toBe(0);
+		expect(outcome.stdout).toContain('nothing to save');
+	});
+
+	it('load afterwards reports up to date', () => {
+		const outcome = fixture.run(['load']);
+
+		expect(outcome.status).toBe(0);
+		expect(outcome.stdout).toContain('up to date');
+	});
+});
+
+describe('S19: half committed, half uncommitted - save extracts both', () => {
+	let fixture: CliFixture;
+	let committed: string;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-s19');
+		expect(fixture.run(['load']).status).toBe(0);
+		committed = commitInTree(fixture, 'work: the committed half', '// committed half line', '--no-verify', '2026-09-06T10:40:00Z');
+		dirtyUtilBlock(fixture, '// uncommitted half line');
+		const outcome = fixture.json(['save']);
+		expect(outcome.run.status).toBe(0);
+	});
+
+	it('extracts both halves into their artifacts', () => {
+		const examplePatch = readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8');
+		expect(examplePatch).toContain('// committed half line');
+		const utilPatch = readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8');
+		expect(utilPatch).toContain('// uncommitted half line');
+	});
+
+	it('keeps the committed line in the tree and leaves the tree clean', () => {
+		// The file that carried the committed line still carries it: the
+		// rebuild reproduces the state the commit held instead of rewriting it
+		// away, which was the loss path of F9.
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toContain('// committed half line');
+		expect(readFileSync(fixture.treePath(UTIL_PATH), 'utf8')).toContain('// uncommitted half line');
+		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+		expect(fixture.git(['symbolic-ref', 'HEAD']).stdout.trim()).toBe(`refs/heads/${fixture.branch}`);
+	});
+
+	it('consumed the commit and folded it into one patchset commit', () => {
+		expect(consumedRefs(fixture).map((row) => row.sha)).toEqual([committed]);
+		const message = fixture.patchGit(['log', '-1', '--format=%B']).stdout;
+		expect(message).toContain('codkit save: squash of 1 tree commit(s)');
+		expect(message).toContain(`Codkit-Tree-Commit: ${committed}`);
+	});
+});
+
+describe('save <path> over tree commits: the branch is not theirs to take', () => {
+	let fixture: CliFixture;
+	let committed: string;
+	let branchTipBefore: string;
+	let outcome: { run: { status: number }; envelope: { messages: { level: string; text: string }[] } };
+
+	beforeAll(() => {
+		fixture = makeCliFixture('treecommits-scoped');
+		expect(fixture.run(['load']).status).toBe(0);
+		branchTipBefore = fixture.git(['rev-parse', `refs/heads/${fixture.branch}`]).stdout.trim();
+		committed = commitInTree(fixture, 'work outside the named path', '// outside line', '--no-verify', '2026-09-06T10:50:00Z');
+		dirtyUtilBlock(fixture, '// named path line');
+		outcome = fixture.json(['save', UTIL_PATH]);
+		expect(outcome.run.status).toBe(0);
+	});
+
+	it('extracts only the named path', () => {
+		const utilPatch = readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8');
+		expect(utilPatch).toContain('// named path line');
+		const examplePatch = readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8');
+		expect(examplePatch).not.toContain('// outside line');
+	});
+
+	it('leaves the branch and the commits exactly where they were', () => {
+		// The human commit moved the branch to itself before the save ran;
+		// the scoped save must not move it anywhere further, and must not
+		// consume the commit.
+		expect(branchTipBefore).not.toBe(committed);
+		expect(fixture.git(['rev-parse', `refs/heads/${fixture.branch}`]).stdout.trim()).toBe(committed);
+		expect(headOf(fixture)).toBe(committed);
+		expect(isAncestor(fixture, committed)).toBe(true);
+		expect(consumedRefs(fixture)).toEqual([]);
+	});
+
+	it('says that the tree commits stay until a full save', () => {
+		const texts = outcome.envelope.messages.map((message) => message.text);
+		expect(texts.some((text) => text.startsWith('1 changed path(s) are outside the paths given to save'))).toBe(true);
+		expect(texts).toContain('1 tree commit(s) stay in the tree until a full save');
 	});
 });
