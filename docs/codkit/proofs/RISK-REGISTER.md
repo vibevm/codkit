@@ -23,6 +23,7 @@
 | CK-R-RECOVERY-001 | crash/lock/receipt recovery could lose bytes or resume the wrong root | P1 | open | transaction, cycle, lock, receipt, rebase or path-resolution changes | crash-at-each-atom suite plus operator rehearsal: exact resume, digest preservation, stale-lock behavior, wrong-root rejection, restart/rollback record |
 | CK-R-HUMAN-001 | protocols 01/02/05/08 are mechanically checked but not independently field-tested for each deployment | P2 | open | protocol/setup/CI change or new consumer | two novice 01/02 runs, independent DRI 05 run, foreign CI engineer 08 run with commands, exits, elapsed time, findings disposition |
 | CK-R-TRACE-001 | specmap with zero code edges can be structurally green but semantically vacuous | P2 | open | specmap/extractor/toolchain change | non-zero intended spec-to-code/test edges, reviewed sampling, and gate that fails on unexpected vacuity |
+| CK-R-TREE-COMMITS-001 | производительность отбора относительно base и классификации D16 (`save`, двусторонний `sync`) на реальном дереве VS Code не измерена: кампания TREE-COMMITS-SAVE принята на e2e-фикстурах в десятки файлов, а не на полном дереве | P2 | open | первый реальный `save` или `sync` на полном дереве форка | замер на полном дереве: время отбора и классификации не превышает времени `git status` на том же дереве, с записанными командами, числом файлов и обоими замерами |
 
 ## Правило сопровождения
 
