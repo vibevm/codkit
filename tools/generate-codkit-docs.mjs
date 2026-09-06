@@ -242,7 +242,7 @@ const commandGuidance = {
 			'Install or inspect effective Codkit-owned patchset hooks. Check is green only when Git demonstrably executes the current owned bytes; linked/custom/foreign hook paths are inactive refusals.'
 	},
 	imageset: {
-		positional: '<gen | index>',
+		positional: '<gen | index | verify>',
 		detail:
 			'A namespace, not a command: it never generates. Bare `codkit imageset`, and any unknown subcommand, print the subcommand list and exit 2 before any root is resolved. `--help` lives here and answers the tools question for the whole namespace: none are required, on every supported OS, with the linked libraries and their licences listed so the claim can be checked.'
 	},
@@ -255,6 +255,11 @@ const commandGuidance = {
 		positional: '',
 		detail:
 			'Read-only index of the image set, computed from the distribution and the masters directory rather than written down: a per-family summary, then per target its role and container, the exact sizes the distribution requires, and for each size whether it comes from a hand-made master, is generated from a base master, or has no master at all. It writes nothing - not even the seeding `gen` does - and exits 0 whether or not masters are missing. Markdown by default; `--json` carries the same model structurally.'
+	},
+	'imageset verify': {
+		positional: '',
+		detail:
+			'The acceptance bands as an executable gate, run against the distribution the fork tree already holds. For every raster target the largest layer of a container becomes the master, the other layers of that same container are regenerated from it through the pipeline `gen` uses, and each is compared with the layer the distribution ships: structure exactly, pixels within the band of their size range - at most 10/255 mean absolute RGB difference from 256 px up, at most 25/255 from 64 px, nothing asserted below that. The master is always a layer of the same file, so no flag can make it compare one container with another; a target with a single layer has no round trip and is reported as unverifiable rather than counted as passed. Read-only: no lock, nothing written to the patchset, nothing written to or seeded into the masters directory. Exit 0 when every asserted comparison is inside its band, 1 when one is outside, 2 when the tree or a container cannot be read. Markdown by default; `--json` carries the same model structurally.'
 	}
 };
 

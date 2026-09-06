@@ -32,7 +32,8 @@ const COMMANDS = [
 	'hooks',
 	'imageset',
 	'imageset gen',
-	'imageset index'
+	'imageset index',
+	'imageset verify'
 ] as const;
 
 afterAll(cleanupTempRoots);

@@ -12,6 +12,7 @@
 // the ordered list of PNG-capable elements the distribution shipped.
 
 import { decodePng, isPng } from './imagesetPng.ts';
+import type { Rgba } from './imagesetPng.ts';
 import { ckError } from './messages.ts';
 
 export type IcnsElement = {
@@ -20,6 +21,12 @@ export type IcnsElement = {
 	readonly height: number;
 	/** True when the element is one of the eight PNG-capable types. */
 	readonly pngCapable: boolean;
+};
+
+/** One decoded element: its type and the pixels its PNG payload carries. */
+export type IcnsElementImage = {
+	readonly type: string;
+	readonly image: Rgba;
 };
 
 export type IcnsStructure = {
@@ -54,6 +61,42 @@ function broken(message: string, hint: string): Error {
 
 /** Read the element list of an .icns in file order, with sizes when known. */
 export function parseIcns(bytes: Uint8Array): IcnsStructure {
+	const elements: IcnsElement[] = payloads(bytes).map(({ type, payload }) => {
+		const known = ICNS_PNG_TYPES.get(type) ?? (isPng(payload) ? pngDimensions(payload) : (ICNS_LEGACY_DIMENSIONS.get(type) ?? null));
+		return {
+			type,
+			width: known?.width ?? 0,
+			height: known?.height ?? 0,
+			pngCapable: ICNS_PNG_TYPES.has(type)
+		};
+	});
+	return {
+		elements,
+		legacyTypes: elements.filter((element) => !element.pngCapable).map((element) => element.type)
+	};
+}
+
+/**
+ * Decode the PNG-capable elements to RGBA, in file order. The legacy elements
+ * are skipped for the same reason the encoder does not write them: they are
+ * not PNG payloads and codkit does not reproduce them (##IMAGESET-CONTAINERS).
+ */
+export function decodeIcnsElements(bytes: Uint8Array): readonly IcnsElementImage[] {
+	const images: IcnsElementImage[] = [];
+	for (const { type, payload } of payloads(bytes)) {
+		if (!ICNS_PNG_TYPES.has(type)) {
+			continue;
+		}
+		if (!isPng(payload)) {
+			throw broken(`element ${type} is a PNG-capable type carrying something that is not a PNG`, 'the target must be an intact .icns file');
+		}
+		images.push({ type, image: decodePng(payload) });
+	}
+	return images;
+}
+
+/** Walk the elements once, validating the file: both readers go through here. */
+function payloads(bytes: Uint8Array): readonly { type: string; payload: Uint8Array }[] {
 	if (bytes.length < ICNS_HEADER) {
 		throw broken('file is shorter than the 8-byte header', 'the target must be an intact .icns file');
 	}
@@ -65,7 +108,7 @@ export function parseIcns(bytes: Uint8Array): IcnsStructure {
 	if (total > bytes.length) {
 		throw broken(`header announces ${total} bytes but the file holds ${bytes.length}`, 'the target must be an intact .icns file');
 	}
-	const elements: IcnsElement[] = [];
+	const out: { type: string; payload: Uint8Array }[] = [];
 	let at = ICNS_HEADER;
 	while (at < total) {
 		if (at + ICNS_HEADER > total) {
@@ -76,20 +119,10 @@ export function parseIcns(bytes: Uint8Array): IcnsStructure {
 		if (length < ICNS_HEADER || at + length > total) {
 			throw broken(`element ${type} announces ${length} bytes, which does not fit the file`, 'the target must be an intact .icns file');
 		}
-		const payload = bytes.subarray(at + ICNS_HEADER, at + length);
-		const known = ICNS_PNG_TYPES.get(type) ?? (isPng(payload) ? pngDimensions(payload) : (ICNS_LEGACY_DIMENSIONS.get(type) ?? null));
-		elements.push({
-			type,
-			width: known?.width ?? 0,
-			height: known?.height ?? 0,
-			pngCapable: ICNS_PNG_TYPES.has(type)
-		});
+		out.push({ type, payload: bytes.subarray(at + ICNS_HEADER, at + length) });
 		at += length;
 	}
-	return {
-		elements,
-		legacyTypes: elements.filter((element) => !element.pngCapable).map((element) => element.type)
-	};
+	return out;
 }
 
 /** Build an .icns from PNG payloads, preserving the caller's element order. */

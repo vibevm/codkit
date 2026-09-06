@@ -1,9 +1,9 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-IMAGESET */
-// codkit imageset - the namespace of the product icon set, with `gen` and
-// `index` under it. Contract: PROP-007 (##CMD-IMAGESET, ##IMAGESET-INDEX and
-// the other IMAGESET-* anchors of its section). The operator runs these, looks
-// at the result, and commits the patchset themselves; no other command invokes
-// them and they invoke none.
+// codkit imageset - the namespace of the product icon set, with `gen`, `index`
+// and `verify` under it. Contract: PROP-007 (##CMD-IMAGESET, ##IMAGESET-INDEX,
+// ##IMAGESET-VERIFY and the other IMAGESET-* anchors of its section). The
+// operator runs these, looks at the result, and commits the patchset
+// themselves; no other command invokes them and they invoke none.
 //
 // Delivery is the resource layer: `gen` writes generated files under
 // delta/resources/files/ with map entries in delta/resources/map.json, and
@@ -20,6 +20,7 @@ import type { CodkitConfig } from '../lib/configFile.ts';
 import { runImageset } from '../lib/imagesetEngine.ts';
 import { buildImagesetIndex, indexData, renderImagesetIndex } from '../lib/imagesetIndex.ts';
 import { defaultBrandingDir } from '../lib/imagesetMasters.ts';
+import { renderImagesetVerification, verificationData, verificationExitCode, verifyImageset } from '../lib/imagesetVerify.ts';
 import { ckError } from '../lib/messages.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { withLock } from '../lib/lock.ts';
@@ -51,6 +52,13 @@ subcommands:
       Print an index of the image set - every target, its role, the sizes the
       distribution requires, and where each size comes from. Read-only: it
       never seeds and never writes. --json emits the same model structurally.
+  verify [--branding-dir <path>]
+      Run the acceptance bands against the distribution the fork tree already
+      holds: for every raster target, take the largest layer of a container,
+      regenerate the other layers of that same container from it, and measure
+      each against the layer the distribution ships. Read-only, and it never
+      compares one container with another. Exit 0 when every asserted
+      comparison is inside its band, 1 when one is outside.
 
 Masters live in <patchset>/branding by default; --branding-dir overrides it.
 On the first gen run the directory is created and seeded with the fork tree's
@@ -156,12 +164,37 @@ async function runIndex(ctx: CommandContext): Promise<number> {
 	return EXIT_OK;
 }
 
+/**
+ * `verify` is the executable form of the acceptance bands, and it is as
+ * read-only as `index`: no lock, nothing written to the patchset, nothing
+ * written to - or seeded into - the masters directory. The masters take no
+ * part in the measurement at all, because the master of every round trip is a
+ * layer of the shipped file itself; --branding-dir is accepted so the three
+ * verbs of the namespace are addressed the same way, and the report names the
+ * directory it did not touch.
+ */
+async function runVerify(ctx: CommandContext): Promise<number> {
+	const resolution = requireTree(ctx, 'verify');
+	const verification = verifyImageset({
+		treeDir: resolution.path,
+		brandingDir: brandingDirOf(ctx),
+		onReport: (text) => ctx.out.info(text)
+	});
+	ctx.out.setData(verificationData(verification));
+	if (!ctx.out.jsonMode) {
+		for (const line of renderImagesetVerification(verification).split('\n')) {
+			ctx.out.info(line);
+		}
+	}
+	return verificationExitCode(verification);
+}
+
 function brandingDirOf(ctx: CommandContext): string {
 	const flag = commandFlagValue(ctx.commandFlags, BRANDING_DIR);
 	return flag !== null ? flag : defaultBrandingDir(ctx.patchesDir);
 }
 
-function requireTree(ctx: CommandContext, mode: 'gen' | 'index') {
+function requireTree(ctx: CommandContext, mode: 'gen' | 'index' | 'verify') {
 	const resolution = forkResolution(ctx);
 	if (!resolution.exists) {
 		throw ckError(
@@ -208,7 +241,7 @@ function dataOf(report: ReturnType<typeof runImageset>['report']): JsonValue {
 
 export const imagesetCommand: CommandDefinition = {
 	name: 'imageset',
-	summary: 'namespace of the product icon set; run imageset gen or imageset index',
+	summary: 'namespace of the product icon set; run imageset gen, index or verify',
 	configMode: 'none',
 	namespace: true,
 	maxArgs: 0,
@@ -232,4 +265,13 @@ export const imagesetIndexCommand: CommandDefinition = {
 	maxArgs: 0,
 	commandFlags: [BRANDING_DIR],
 	run: runIndex
+};
+
+export const imagesetVerifyCommand: CommandDefinition = {
+	name: 'imageset verify',
+	summary: 'round-trip every layered target against itself and check the acceptance bands',
+	configMode: 'load',
+	maxArgs: 0,
+	commandFlags: [BRANDING_DIR],
+	run: runVerify
 };
