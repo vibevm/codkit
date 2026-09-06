@@ -14,6 +14,7 @@ import { cycleCommand } from './commands/cycle.js';
 import { forecastCommand } from './commands/forecast.js';
 import { gcCommand } from './commands/gc.js';
 import { hooksCommand } from './commands/hooks.js';
+import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand } from './commands/imageset.js';
 import { inventoryCommand } from './commands/inventory.js';
 import { loadCommand } from './commands/load.js';
 import { markerNewCommand } from './commands/markerNew.js';
@@ -35,6 +36,8 @@ import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocat
 import { loadSettings } from './lib/settingsFile.js';
 /** Longest command name in words; `marker new` and `overlay check` make this 2. */
 const MAX_COMMAND_WORDS = 2;
+/** The one command-scoped help flag; a namespace answers it instead of usage. */
+const GLOBAL_FLAG_HELP_NAME = '--help';
 /** Diagnosed domain verdicts: the command ran, but its requested check failed. */
 const CHECK_ERROR_CODES = new Set(['DIRTY-TREE']);
 const COMMANDS = new Map([
@@ -61,7 +64,10 @@ const COMMANDS = new Map([
     rebaseOntoPinCommand,
     ciCommand,
     publishCommand,
-    hooksCommand
+    hooksCommand,
+    imagesetCommand,
+    imagesetGenCommand,
+    imagesetIndexCommand
 ].map((definition) => [definition.name, definition]));
 /** Immutable Codkit install/source root; never discovered from cwd or settings. */
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -83,6 +89,18 @@ async function main(argv) {
             hint: `available commands: ${[...COMMANDS.keys()].join(', ')}`
         });
     }
+    // A namespace carries no work: it answers with the usage of its subcommands
+    // and exit 2, exactly as an unknown command does, and it does so before any
+    // root is resolved. Only its `--help` reaches the command itself.
+    if (matched.definition.namespace === true && !commandFlags.has(GLOBAL_FLAG_HELP_NAME)) {
+        const name = matched.definition.name;
+        const subcommands = [...COMMANDS.keys()].filter((candidate) => candidate.startsWith(`${name} `));
+        const given = matched.args.length === 0 ? 'no subcommand given' : `unknown subcommand: ${matched.args.join(' ')}`;
+        return usageFail({
+            error: `'${name}' is a namespace and does nothing by itself (${given})`,
+            hint: `available: ${subcommands.join(', ')}; see codkit ${name} --help`
+        });
+    }
     if (matched.args.length > matched.definition.maxArgs) {
         const allowed = matched.definition.maxArgs === 0 ? 'takes no arguments' : `takes at most ${matched.definition.maxArgs} argument(s)`;
         return usageFail({
@@ -94,6 +112,9 @@ async function main(argv) {
     if (misplaced !== null) {
         return usageFail(misplaced);
     }
+    // `--help` answers before any root is required: asking what a command
+    // needs must not itself need a configured patchset or fork tree.
+    const helpOnly = (matched.definition.commandFlags ?? []).includes(GLOBAL_FLAG_HELP_NAME) && commandFlags.has(GLOBAL_FLAG_HELP_NAME);
     const out = new Output({
         command: matched.definition.name,
         version: readCodkitVersion(toolRoot),
@@ -106,12 +127,12 @@ async function main(argv) {
         const locations = resolveLocations(flags, process.env, settings);
         out.setRoots(toolRoot, locations);
         assertDisjointRoots(toolRoot, locations);
-        const needsPatches = matched.definition.name !== 'where';
+        const needsPatches = matched.definition.name !== 'where' && !helpOnly;
         const patches = needsPatches ? requirePatchesDir(locations) : locations.patchesDir;
         const patchRoot = patches?.path ?? '';
         if (needsPatches && patches !== null)
             out.info(formatPatchesLine(patches));
-        const config = matched.definition.configMode === 'none' ? null : loadConfig(patchRoot);
+        const config = matched.definition.configMode === 'none' || helpOnly ? null : loadConfig(patchRoot);
         const exitCode = await matched.definition.run({
             toolRoot,
             locations,

@@ -83,7 +83,12 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--ref', 'value'],
     // publish (PROP-007 sec. 18)
     ['--release', 'value'],
-    ['--yes-i-am-publish-bot', 'boolean']
+    ['--yes-i-am-publish-bot', 'boolean'],
+    // imageset (PROP-007 sec. 21); --dry-run above is shared with load, sync
+    // and gc. --help is imageset's own for now: it is the one command whose
+    // tools question has a long, checkable answer.
+    ['--branding-dir', 'value'],
+    ['--help', 'boolean']
 ]);
 export function parseArgv(argv) {
     let forkDir = null;

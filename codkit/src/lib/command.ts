@@ -91,6 +91,12 @@ export type CommandDefinition = {
 	readonly name: string;
 	readonly summary: string;
 	readonly configMode: ConfigMode;
+	/**
+	 * A namespace: the name is a prefix of real commands and carries no work of
+	 * its own. main.ts answers it with the usage of its subcommands and exit 2,
+	 * before any root is resolved, so it never quietly does something.
+	 */
+	readonly namespace?: boolean;
 	/** Positional arguments the command accepts beyond its name. */
 	readonly maxArgs: number;
 	/**

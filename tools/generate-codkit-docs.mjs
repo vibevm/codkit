@@ -128,7 +128,8 @@ const valueLabels = {
 	'--ref': 'ref',
 	'--release': 'semver',
 	'--keep-consumed': 'n',
-	'--older-than': 'days'
+	'--older-than': 'days',
+	'--branding-dir': 'path'
 };
 
 const commandGuidance = {
@@ -239,6 +240,21 @@ const commandGuidance = {
 		positional: '<install | check>',
 		detail:
 			'Install or inspect effective Codkit-owned patchset hooks. Check is green only when Git demonstrably executes the current owned bytes; linked/custom/foreign hook paths are inactive refusals.'
+	},
+	imageset: {
+		positional: '<gen | index>',
+		detail:
+			'A namespace, not a command: it never generates. Bare `codkit imageset`, and any unknown subcommand, print the subcommand list and exit 2 before any root is resolved. `--help` lives here and answers the tools question for the whole namespace: none are required, on every supported OS, with the linked libraries and their licences listed so the claim can be checked.'
+	},
+	'imageset gen': {
+		positional: '',
+		detail:
+			'Regenerate the product icon set from the branding masters in `<patchset>/branding` (`--branding-dir` overrides). The first run seeds that directory with the fork tree\'s own icons; `<family>.svg`/`<family>.png` masters serve every size, a per-size `<family>-<N>.png` override wins verbatim, and the output lands in the resource layer - `delta/resources/files/` plus `map.json` entries - for `load` to materialise. `--dry-run` prints the plan, including which master serves each frame, and writes nothing. A family without a master is skipped with a warning and exit 1; a new map entry needs its `guard.brand.<family>` suite declared under `delta/own/test/` first.'
+	},
+	'imageset index': {
+		positional: '',
+		detail:
+			'Read-only index of the icon set, computed from the distribution and the masters directory rather than written down: per target its role and container, the exact sizes the distribution requires, and for each size whether it comes from a hand-made master, is generated from a base master, or has no master at all. It writes nothing - not even the seeding `gen` does - and exits 0 whether or not masters are missing. Markdown by default; `--json` carries the same model structurally.'
 	}
 };
 
@@ -267,7 +283,7 @@ function renderCommands({ commands, globalFlags }, kinds) {
 		`
 Codkit manages an external patch set and a separate VS Code fork tree. The public command and flag tables below are rendered from the output of the live CLI; command-flag arity is read from \`codkit/src/lib/argv.ts\`.
 
-Install the launcher as \`codkit\` on \`PATH\`, or invoke the explicit Bash launcher as \`<codkit-tool-root>/bin/codkit ...\` and the PowerShell launcher as \`& <codkit-tool-root>\\bin\\codkit.ps1 ...\`. Never look for a launcher or \`package.json\` in the patch-set directory. Running the launcher with no arguments prints the current help and exits 0. There is currently no \`--help\` flag; passing it is a usage error (exit 2).
+Install the launcher as \`codkit\` on \`PATH\`, or invoke the explicit Bash launcher as \`<codkit-tool-root>/bin/codkit ...\` and the PowerShell launcher as \`& <codkit-tool-root>\\bin\\codkit.ps1 ...\`. Never look for a launcher or \`package.json\` in the patch-set directory. Running the launcher with no arguments prints the current help and exits 0. There is no global \`--help\`; \`codkit imageset --help\` is the one command-scoped help and it answers before any root is required, while passing \`--help\` to another command is a usage error (exit 2).
 
 ## Global flags
 

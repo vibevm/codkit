@@ -29,7 +29,10 @@ const COMMANDS = [
 	'rebase-onto-pin',
 	'ci',
 	'publish',
-	'hooks'
+	'hooks',
+	'imageset',
+	'imageset gen',
+	'imageset index'
 ] as const;
 
 afterAll(cleanupTempRoots);
