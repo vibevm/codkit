@@ -67,3 +67,18 @@ export function upl10BodyWithoutPlaceholder() {
     const lines = UPL_1_0_TEXT.split('\n');
     return lines.slice(2).join('\n');
 }
+/**
+ * ##LIC-NOTICE-BILINGUAL: the four lines of an own file's licence notice - the
+ * copyright line, the English reference to the UPL, the Russian one, and the
+ * SPDX line. The check requires the first and the fourth; the shipped package
+ * carries all four, and where the two references differ the English one
+ * governs.
+ */
+export function noticeLines(year, holder) {
+    return [
+        `Copyright (c) ${year} ${holder}`,
+        'Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/',
+        'Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/',
+        `SPDX-License-Identifier: ${UPL_1_0_ID}`
+    ];
+}

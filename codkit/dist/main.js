@@ -16,7 +16,7 @@ import { gcCommand } from './commands/gc.js';
 import { hooksCommand } from './commands/hooks.js';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.js';
 import { inventoryCommand } from './commands/inventory.js';
-import { licenseCheckCommand, licenseCommand } from './commands/license.js';
+import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.js';
 import { loadCommand } from './commands/load.js';
 import { markerNewCommand } from './commands/markerNew.js';
 import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.js';
@@ -71,7 +71,9 @@ const COMMANDS = new Map([
     imagesetIndexCommand,
     imagesetVerifyCommand,
     licenseCommand,
-    licenseCheckCommand
+    licenseCheckCommand,
+    licenseAnnotateCommand,
+    licenseNoticesCommand
 ].map((definition) => [definition.name, definition]));
 /** Immutable Codkit install/source root; never discovered from cwd or settings. */
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');

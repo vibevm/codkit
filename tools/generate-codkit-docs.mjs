@@ -129,7 +129,12 @@ const valueLabels = {
 	'--release': 'semver',
 	'--keep-consumed': 'n',
 	'--older-than': 'days',
-	'--branding-dir': 'path'
+	'--branding-dir': 'path',
+	'--dir': 'path',
+	'--year': 'YYYY',
+	'--holder': 'name',
+	'--license': 'spdx-id',
+	'--source': 'text'
 };
 
 const commandGuidance = {
@@ -262,14 +267,24 @@ const commandGuidance = {
 			'The acceptance bands as an executable gate, run against the distribution the fork tree already holds. For every raster target the largest layer of a container becomes the master, the other layers of that same container are regenerated from it through the pipeline `gen` uses, and each is compared with the layer the distribution ships: structure exactly, pixels within the band of their size range - at most 10/255 mean absolute RGB difference from 256 px up, at most 25/255 from 64 px, nothing asserted below that. The master is always a layer of the same file, so no flag can make it compare one container with another; a target with a single layer has no round trip and is reported as unverifiable rather than counted as passed. Read-only: no lock, nothing written to the patchset, nothing written to or seeded into the masters directory. Exit 0 when every asserted comparison is inside its band, 1 when one is outside, 2 when the tree or a container cannot be read. Markdown by default; `--json` carries the same model structurally.'
 	},
 	license: {
-		positional: '<check>',
+		positional: '<check | annotate | notices>',
 		detail:
-			'A namespace, not a command: bare `codkit license` and any unknown subcommand print the subcommand list and exit 2 before any root is resolved. The one subcommand is `check`.'
+			'A namespace, not a command: bare `codkit license` and any unknown subcommand print the subcommand list and exit 2 before any root is resolved. The subcommands are `check`, `annotate` and `notices`, and none of them needs a patch set or a fork tree.'
 	},
 	'license check': {
 		positional: '[<dir>]',
 		detail:
 			'Check the licence carriers of a package directory the way REUSE reads them: every file resolves to a carrier - an adjacent `<file>.license` sidecar, a `REUSE.toml` annotation, or a header in its first 20 non-empty lines (copyright lines are read up to the `SPDX-License-Identifier` line). An own file (every holder in the policy) must carry a year and exactly `UPL-1.0`; a third-party file must be covered by a `REUSE.toml` annotation that agrees with its carrier, and its licence must be on the policy allowlist. `LICENSE`, one `LICENSES/<ID>.txt` per licence in use, the manifest `license` field and a current `THIRD-PARTY-NOTICES.md` are required. Without `<dir>` it checks the standards package codkit ships. Read-only, needs no root, never calls git. Exit 0 clean, 1 with one line per problem (`CK-E-LICENSE-HEADER` per carrier, `CK-E-LICENSE-THIRD-PARTY` per third-party rule, `CK-E-LICENSE-PACKAGE` for the package), 2 when the directory, the policy or the SPDX list cannot be read.'
+	},
+	'license annotate': {
+		positional: '<path ...>',
+		detail:
+			'Give files a licence carrier: for an own file a four-line header in the comment style of its extension, placed after the prelude (shebang, `<?xml?>`, encoding line, doctype, front matter), or a `<file>.license` sidecar for binaries and comment-less formats; with `--third-party --holder <name> --license <SPDX-ID> [--source <text>]` a carrier with the other party\'s holder and licence plus an annotation appended to `REUSE.toml` (the licence must be on the allowlist and an SPDX identifier). `--dir` names the package root (default `.`); a path outside it is refused. `--year` and `--holder` default to the current year and the first policy holder. Idempotent: a file that already resolves to a carrier is reported `unchanged`, so a second run leaves `git diff` empty. `--dry-run` prints the plan and writes nothing. Never downloads a licence text: put `LICENSES/<ID>.txt` in place yourself.'
+	},
+	'license notices': {
+		positional: '',
+		detail:
+			'Generate `THIRD-PARTY-NOTICES.md` from the `REUSE.toml` registry of the package named by `--dir` (default `.`): one table row per third-party annotation, in the order the registry lists them. Writes only when the bytes would change (`written` / `unchanged`), removes the file when the registry declares no third-party row, and `--dry-run` prints the generated body on stdout instead of writing - which is what makes `codkit license notices --dry-run | diff - THIRD-PARTY-NOTICES.md` a check anyone can run. `license check` reports a hand-edited or outdated notices file as stale.'
 	}
 };
 

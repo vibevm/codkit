@@ -17,7 +17,7 @@ import { gcCommand } from './commands/gc.ts';
 import { hooksCommand } from './commands/hooks.ts';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.ts';
 import { inventoryCommand } from './commands/inventory.ts';
-import { licenseCheckCommand, licenseCommand } from './commands/license.ts';
+import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.ts';
 import { loadCommand } from './commands/load.ts';
 import { markerNewCommand } from './commands/markerNew.ts';
 import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.ts';
@@ -79,7 +79,9 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		imagesetIndexCommand,
 		imagesetVerifyCommand,
 		licenseCommand,
-		licenseCheckCommand
+		licenseCheckCommand,
+		licenseAnnotateCommand,
+		licenseNoticesCommand
 	].map((definition) => [definition.name, definition])
 );
 

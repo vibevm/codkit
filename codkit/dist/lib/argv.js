@@ -88,7 +88,15 @@ const COMMAND_FLAG_KINDS = new Map([
     // and gc. --help is imageset's own for now: it is the one command whose
     // tools question has a long, checkable answer.
     ['--branding-dir', 'value'],
-    ['--help', 'boolean']
+    ['--help', 'boolean'],
+    // license annotate|notices (PROP-007 sec. 23); --dry-run above is shared with
+    // load, sync, gc and imageset gen.
+    ['--dir', 'value'],
+    ['--year', 'value'],
+    ['--holder', 'value'],
+    ['--license', 'value'],
+    ['--source', 'value'],
+    ['--third-party', 'boolean']
 ]);
 export function parseArgv(argv) {
     let forkDir = null;
