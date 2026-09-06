@@ -212,7 +212,7 @@ describe('codkit load: applying the delta (S01)', () => {
 		expect(cache['treeRepoAnchor']).toBe(upstream.anchorSha);
 	});
 
-	it('installs the pre-commit hook that refuses manual commits', () => {
+	it('installs the pre-commit hook that reminds about save', () => {
 		const hook = join(tree, '.git', 'hooks', 'pre-commit');
 		expect(existsSync(hook)).toBe(true);
 		expect(readFileSync(hook, 'utf8')).toContain('codkit save');
@@ -360,9 +360,14 @@ describe('codkit load --fresh', () => {
 });
 
 describe('codkit load: the fork-tree hook', () => {
-	it('refuses a manual commit and lets codkit through', () => {
+	// S20 (PROP-012 sec. 5 ##FORK-TREE-PRECOMMIT-HOOK): the hook never rejects
+	// a commit - a commit in the tree is work - it only says which command
+	// carries that work to the patchset, or that save refuses while HEAD is off
+	// the generated branch.
+	it('lets a manual commit through with the reminder, and stays silent for codkit', () => {
 		const tree = freshTree(treePath('sync-hook'));
 		expect(load(tree).run.status).toBe(0);
+		const appliedTip = gitOut(tree, ['rev-parse', 'HEAD']);
 		const identity: GitEnv = {
 			GIT_AUTHOR_NAME: 'human',
 			GIT_AUTHOR_EMAIL: 'human@example.invalid',
@@ -370,19 +375,33 @@ describe('codkit load: the fork-tree hook', () => {
 			GIT_COMMITTER_EMAIL: 'human@example.invalid'
 		};
 
-		const refused = gitLocal({ args: ['commit', '--allow-empty', '--message', 'by hand'], cwd: tree, env: identity });
-		expect(refused.status).not.toBe(0);
-		expect(refused.stderr).toContain('codkit save');
+		// On the generated branch: the commit succeeds and the hook says the work
+		// reaches the patchset only through codkit.
+		const onBranch = gitLocal({ args: ['commit', '--allow-empty', '--quiet', '--message', 'by hand'], cwd: tree, env: identity });
+		expect(onBranch.status).toBe(0);
+		expect(onBranch.stderr).toContain('this commit is work in the fork tree');
+		expect(onBranch.stderr).toContain('codkit save or codkit sync');
 
-		const allowed = gitLocal({
+		// Off the branch (detached HEAD): the commit still succeeds, with the
+		// other reminder naming this tree's generated branch.
+		git(tree, ['checkout', '--quiet', '--detach']);
+		const detached = gitLocal({ args: ['commit', '--allow-empty', '--quiet', '--message', 'detached'], cwd: tree, env: identity });
+		expect(detached.status).toBe(0);
+		expect(detached.stderr).toContain(`HEAD is not on ${BRANCH}`);
+		expect(detached.stderr).toContain(`git switch ${BRANCH}`);
+
+		// The internal variable is the one sanctioned silence: no reminder line.
+		const internal = gitLocal({
 			args: ['commit', '--allow-empty', '--quiet', '--message', 'by codkit'],
 			cwd: tree,
 			env: { ...identity, CODKIT_INTERNAL_COMMIT: '1' }
 		});
-		expect(allowed.status).toBe(0);
+		expect(internal.status).toBe(0);
+		expect(internal.stderr).not.toContain('codkit:');
 
-		// Put the branch back where load left it, so nothing leaks into later runs.
-		git(tree, ['reset', '--hard', 'HEAD~1']);
+		// Put the tree back where load left it, so nothing leaks into later runs.
+		git(tree, ['checkout', '--quiet', BRANCH]);
+		git(tree, ['reset', '--hard', appliedTip]);
 	});
 });
 

@@ -806,10 +806,10 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:eff53fd84fbee8f525301de79a8188c4a32e7ce363756fff450260091c939e74",
+      "content_hash": "sha256:01aaaeadc8591a04a609d15530f3d09676349a7f8e926b11d266ee43df92e17e",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S19, S21 (Given/When/Then)",
+      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S21 (Given/When/Then)",
       "line": 3,
       "uri": "spec://codkit/modules/codkit/FEAT-002#root"
     },
@@ -1192,12 +1192,30 @@
       "uri": "spec://codkit/modules/codkit/FEAT-002#S19"
     },
     {
+      "anchor": "s20",
+      "content_hash": "sha256:099d0095469bce29fc2a7c3358ec5ffa9fba56aff8a6ebc172984b5e7b6d2c8a",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S20 — хук дерева напоминает о save, а не отказывает",
+      "line": 67,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s20"
+    },
+    {
+      "anchor": "S20",
+      "content_hash": "sha256:cd579f7779d3d43c3fd462d84863586636b9b78571283a01978fbd8b0348de31",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: состояние S01 — HEAD на сгенерированной ветке, хук установлен очередным `load` (кампания TREE-COMMITS-SAVE, решение D9; норма PROP-012 §5 `##FORK-TREE-PRECOMMIT-HOOK`). **When**: ручной `git commit` на ветке; затем на detached HEAD; затем с `CODKIT_INTERNAL_COMMIT=1`. **Then**: все три — выход 0: хук никогда не отклоняет коммит. На ветке stderr содержит «this commit is work in the fork tree» и «codkit save or codkit sync»; на detached HEAD — «HEAD is not on codkit/applied/<tag>» и «git switch codkit/applied/<tag>» с конкретным tag дерева; с `CODKIT_INTERNAL_COMMIT=1` — ни одной строки `codkit:`. В linked worktree хука нет (S0-уровень: предупреждение `CK-W-MARK-RO`), там норму держит отказ `load`/`save` — S18. @status:spec/plan",
+      "line": 68,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S20"
+    },
+    {
       "anchor": "s21",
       "content_hash": "sha256:c41a578dc9327e1ec6a59392aef4ed90a76468422946e7464878ec68306c1a82",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S21 — прежнее имя sync: заглушка с выходом 2",
-      "line": 67,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/FEAT-002#s21"
     },
     {
@@ -1206,7 +1224,7 @@
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "**Given**: любое состояние корней (заглушка срабатывает до резолва путей); односторонняя команда переименована в `load` (Phase 1 кампании TREE-COMMITS-SAVE, решение D14). **When**: `codkit sync`; отдельно `codkit --json sync`. **Then**: оба запуска — выход 2; stderr содержит `codkit sync was renamed to codkit load` и `the name sync is reserved for the two-way save+load command`; конверт не печатается (usage error, как у неизвестной команды), stdout пуст и без `--json`, и под ним; алиаса нет — скрипты со старым именем обязаны ломаться громко. @status:spec/plan",
-      "line": 68,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S21"
     },
     {
@@ -4325,7 +4343,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:9cc7bb5273d049cf8a65f5b6c61f0c60f3035c1905dea3a78860c428257da33d",
+      "content_hash": "sha256:514cba9de5b3eecb6414235018c31ae69afe1c1221828b10252adacb07252239",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: Движки — резолвер, идентичность, sync, save, 3-way, переименования, причина",
@@ -4442,7 +4460,7 @@
     },
     {
       "anchor": "sync",
-      "content_hash": "sha256:9005d8ccce7ab7030c4bab8022d2def262c205d3c2cc8cc4cf4044c5dd1c0e78",
+      "content_hash": "sha256:01e9830726b4a9b8a21e3f6ff68cdb5506e92613c3be92fa0c899a58e67ae0c9",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "3. load: приведение к пину и построение сгенерированной ветки",
@@ -4460,10 +4478,10 @@
     },
     {
       "anchor": "TREE-HOOK-STEP",
-      "content_hash": "sha256:34e5ef8fa0a01a6d4c58b1efb0be4bb0aea6fa9bd46b325ef1bc6ea6d41dde04",
+      "content_hash": "sha256:fac6628698e8d9bad7992bc26bac9f764d8d1b6c835ff06f655db60989564260",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "`writeTreeHook()` — установка pre-commit-хука дерева против ручных коммитов (норма PROP-012 §5 `##FORK-TREE-PRECOMMIT-HOOK`): в обычном дереве (per-worktree admin dir == common dir) пишет только в собственный административный путь репозитория — `hooks/pre-commit` под абсолютным git-каталогом дерева (`--absolute-git-dir`) — нашим скриптом (shebang `sh`, переносимый), отклоняющим коммит с подсказкой при отсутствии `CODKIT_INTERNAL_COMMIT=1`; на read-only mount ошибка записи не фатальна (как у метки, `CK-W-MARK-RO`). Эффективный путь `git rev-parse --path-format=absolute --git-path hooks/pre-commit` для установки сознательно НЕ используется: он следует за `core.hooksPath`, а тот может указывать вне административного каталога репозитория (пользовательский или общий на сайт набор хуков) — у codkit нет полномочий ни следовать этому конфигу, ни писать туда. Пока настроенный `core.hooksPath` стоит, git выполняет настроенный хук, а не административную копию: копия всё равно ставится (файл самого репозитория, восстанавливается каждым load и становится живым guard'ом сразу после снятия конфига), но `writeTreeHook()` возвращает false и выдаёт явное fail-soft предупреждение (`CK-W-MARK-RO`), что guard ручных коммитов недоступен, пока этот конфиг стоит. Эффективный путь разрешается в ДВУХ областях видимости (REPAIR-006): изолированно (видит local-конфиг репозитория) и с машинным конфигом (`machineConfig` — единственное исключение изоляции PROP-002, read-only path-resolution): global/system `core.hooksPath` тоже ловится. Отказ разрешения (например, local `core.hooksPath=/dev/null` делает `--git-path hooks/*` фатальным) НЕ считается доказательством активного guard'а: `writeTreeHook()` возвращает false с предупреждением «нельзя доказать, какой хук выполняет git» — честный «неактивен» вместо молчаливого «активен» (ложноположительный обход guard'а — находка REPAIR-006). Право собственности: хук несёт маркер `# codkit-hook v1` под shebang (как хуки patch-set, PROP-007 §19); ЧУЖОЙ файл `hooks/pre-commit` не перезаписывается и не цепляется — предупреждение и false, байты нетронуты (находка REPAIR-006); точные байты хука, писанного codkit'ом до введения маркера, узнаются как свои и обновляются. В linked worktree хук НЕ ставится ни в общий common dir, ни по старому appended-пути: `--git-path hooks/...` разрешается в общий common dir, и блокирующий хук менял бы поведение ручных коммитов всех sibling-worktree'ев репозитория, включая деревья, которыми codkit не управляет; `writeTreeHook()` возвращает false и выдаёт явное fail-soft предупреждение, что guard ручных коммитов в этом дереве недоступен. Единое правило административных путей дерева: административные файлы никогда не строятся дописыванием суффикса к `--absolute-git-dir` — в linked worktree тот указывает в per-worktree каталог, который git для этих файлов не читает; `info/exclude` всегда спрашивается у самого git через `--git-path` (в обычном дереве это даёт те же `<tree>/.git/...`, в linked worktree — common dir), а хук — единственное исключение из «спроси git»: его эффективный `--git-path` следует за `core.hooksPath`, поэтому пишется только собственный админ-путь репозитория, а сам `--git-path hooks/...` используется лишь чтобы проверить, выполняет ли git нашу копию. Если административный путь или эффективное расположение не разрешается, это отказ/недоказанный guard, а не fallback к сконструированному пути. Worktree-scoped hook (`extensions.worktreeConfig` + per-worktree `core.hooksPath`) — открытый архитектурный пункт для владельца (PROP-012 §5), здесь не авторизован. @status:spec/done",
+      "heading": "`writeTreeHook()` — установка pre-commit-хука-напоминания дерева (норма PROP-012 §5 `##FORK-TREE-PRECOMMIT-HOOK`; кампания TREE-COMMITS-SAVE, решение D9): в обычном дереве (per-worktree admin dir == common dir) пишет только в собственный административный путь репозитория — `hooks/pre-commit` под абсолютным git-каталогом дерева (`--absolute-git-dir`) — нашим скриптом (shebang `sh`, переносимый), который НИКОГДА не отклоняет коммит: при отсутствии `CODKIT_INTERNAL_COMMIT=1` он печатает напоминание (на ветке `codkit/applied/*` — работа достигает patchset только через codkit save/sync; вне ветки при существующей ветке — `save` откажет до возврата `git switch codkit/applied/<tag>`, конкретный tag подставлен в текст при установке), с переменной — молчит; на read-only mount ошибка записи не фатальна (как у метки, `CK-W-MARK-RO`). Эффективный путь `git rev-parse --path-format=absolute --git-path hooks/pre-commit` для установки сознательно НЕ используется: он следует за `core.hooksPath`, а тот может указывать вне административного каталога репозитория (пользовательский или общий на сайт набор хуков) — у codkit нет полномочий ни следовать этому конфигу, ни писать туда. Пока настроенный `core.hooksPath` стоит, git выполняет настроенный хук, а не административную копию: копия всё равно ставится (файл самого репозитория, восстанавливается каждым load и становится живым напоминанием сразу после снятия конфига), но `writeTreeHook()` возвращает false и выдаёт явное fail-soft предупреждение (`CK-W-MARK-RO`), что напоминание не печатает, пока этот конфиг стоит. Эффективный путь разрешается в ДВУХ областях видимости (REPAIR-006): изолированно (видит local-конфиг репозитория) и с машинным конфигом (`machineConfig` — единственное исключение изоляции PROP-002, read-only path-resolution): global/system `core.hooksPath` тоже ловится. Отказ разрешения (например, local `core.hooksPath=/dev/null` делает `--git-path hooks/*` фатальным) НЕ считается доказательством печатающего напоминания: `writeTreeHook()` возвращает false с предупреждением «нельзя доказать, какой хук выполняет git» — честное «не печатает» вместо молчаливого «печатает» (ложноположительный активный guard — находка REPAIR-006; класс тот же, обещание теперь мягче, честность — нет). Право собственности: хук несёт маркер `# codkit-hook v1` под shebang (как хуки patch-set, PROP-007 §19); ЧУЖОЙ файл `hooks/pre-commit` не перезаписывается и не цепляется — предупреждение и false, байты нетронуты (находка REPAIR-006); точные байты хука, писанного codkit'ом до введения маркера, узнаются как свои и обновляются. В linked worktree хук НЕ ставится ни в общий common dir, ни по старому appended-пути: `--git-path hooks/...` разрешается в общий common dir, и напоминание говорило бы от имени ветки одного дерева во всех sibling-worktree'ах репозитория, включая деревья, которыми codkit не управляет; `writeTreeHook()` возвращает false и выдаёт явное fail-soft предупреждение, что напоминание в этом дереве недоступно (защита — отказ `load`/`save` по foreign-коммитам, не хук). Единое правило административных путей дерева: административные файлы никогда не строятся дописыванием суффикса к `--absolute-git-dir` — в linked worktree тот указывает в per-worktree каталог, который git для этих файлов не читает; `info/exclude` всегда спрашивается у самого git через `--git-path` (в обычном дереве это даёт те же `<tree>/.git/...`, в linked worktree — common dir), а хук — единственное исключение из «спроси git»: его эффективный `--git-path` следует за `core.hooksPath`, поэтому пишется только собственный админ-путь репозитория, а сам `--git-path hooks/...` используется лишь чтобы проверить, выполняет ли git нашу копию. Если административный путь или эффективное расположение не разрешается, это отказ/недоказанное напоминание, а не fallback к сконструированному пути. Worktree-scoped hook (`extensions.worktreeConfig` + per-worktree `core.hooksPath`) — открытый архитектурный пункт для владельца (PROP-012 §5), здесь не авторизован. @status:impl/done",
       "line": 86,
       "uri": "spec://codkit/modules/codkit/PROP-008#TREE-HOOK-STEP"
     },
@@ -5540,7 +5558,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ea8cefe7548fd2ea1af59c16a791f06a7d236481c62f6c6f077fef71d18ab5d0",
+      "content_hash": "sha256:c81f0edea51d061a50cc0031225d7700a0ea7e11f506d2baf7376fe241cfddea",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "codkit PROP-012: Вывод и сообщения, НФТ, документация, открытые развилки",
@@ -5702,7 +5720,7 @@
     },
     {
       "anchor": "open-forks",
-      "content_hash": "sha256:ed7b68247a6d0b55bbc4cc7cbacd9ff2538500361cee6dc383e109debd091c68",
+      "content_hash": "sha256:8c57d0bb9b2eb093768edfd884aa31777136424aae79cc22f642568ec269479c",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "5. Открытые развилки (работа продолжается на дефолте)",
@@ -5711,10 +5729,10 @@
     },
     {
       "anchor": "FORK-TREE-PRECOMMIT-HOOK",
-      "content_hash": "sha256:b74ab137f33d2c558998f0b391ce9efcbcaee7b7c63c4767445ede84abe5a3b5",
+      "content_hash": "sha256:9a7f84515725227d8412bec4b58abfb9f700628da37e6da6ee5b5807eab78ac3",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
-      "heading": "**Pre-commit-хук в дереве форка — НОРМА (решение владельца 2026-08-31: «согласен с обеими утверждениями»).** `load` устанавливает скрипт только в собственный административный путь репозитория — `hooks/pre-commit` под абсолютным git-каталогом дерева (обычное дерево: `<tree>/.git/hooks/pre-commit`; правило административных путей — PROP-008 §3 `##TREE-HOOK-STEP`), никогда не следуя за `core.hooksPath` вне административного каталога репозитория — отклоняющий ручной коммит с текстом-подсказкой («сохраняй через codkit save; коммиты в дереве создаёт только codkit»), если не выставлена переменная `CODKIT_INTERNAL_COMMIT=1` (её выставляют только собственные git-вызовы codkit; впрочем, sync строит ветку через commit-tree/update-ref — хук им не мешает по построению). Исключение 1: в linked worktree хук не ставится и `load` выдаёт предупреждение — hooks общие на весь репозиторий, блокирующий хук задел бы ручные коммиты sibling-worktree'ев, которыми codkit не управляет (реализация — PROP-008 §3). Исключение 2: при настроенном `core.hooksPath` (ЛЮБОЙ области видимости — local/global/system; проверяется в обеих, REPAIR-006), уводящем хуки git'а из hooks-каталога репозитория, административная копия ставится, но git продолжает выполнять настроенный хук — `load` предупреждает, а `writeTreeHook()` возвращает false: guard ручных коммитов недоступен/недоказуем, пока этот конфиг стоит (честная диагностика вместо молчаливой нерабочей копии; отказ разрешения пути — например `core.hooksPath=/dev/null` — тоже недоступен-с-предупреждением, никогда «активен»; местоположение настроенного хука — не дело codkit). Исключение 3: ЧУЖОЙ `hooks/pre-commit` (без маркера владения `# codkit-hook v1`) не перезаписывается и не цепляется: предупреждение, false, байты сохранены в точности — та же дисциплина владения, что у хуков patch-set (REPAIR-006). Норма для обычных деревьев этими исключениями не смягчается. ОТКРЫТЫЙ АРХИТЕКТУРНЫЙ ПУНКТ (на рассмотрении владельца): worktree- scoped hook требует `extensions.worktreeConfig` и управления per-worktree `core.hooksPath`; не авторизовано в этой задаче. Хук восстанавливается каждым `load` (файл локальный, им владеет codkit); апстрим хуков не ставит (`hooks/` эффективного расположения пуст, кроме LFS) — место свободно. Реализация — шаг `load` (PROP-008 §3), задача вехи M0. @status:spec/done",
+      "heading": "**Pre-commit-хук в дереве форка — НОРМА, переписана решением владельца RP-1 кампании TREE-COMMITS-SAVE (рулинг дословно: «вместо запрета сделать напоминание»; первоначальная норма 2026-08-31 «согласен с обеими утверждениями» устанавливала отклоняющий хук и отменена этим решением).** Хук НИКОГДА не отклоняет коммит: коммит в дереве — работа (PROP-008 §4 `##TREE-COMMITS-ARE-WORK`), с фаз 2–4 кампании она не теряется — разрушительные команды отказывают над ней (`##DRIFT-GUARD-PREDICATE`), а `save` извлекает её, — так что отказ ничего не защищал. Хук печатает напоминание в stderr: на ветке `codkit/applied/*` — «codkit: this commit is work in the fork tree; it reaches patchset only when you run codkit save or codkit sync»; вне её при существующей ветке (включая detached HEAD) — «codkit: HEAD is not on codkit/applied/<tag>; codkit save will refuse until you switch back (git switch codkit/applied/<tag>)» с конкретным `<tag>` этого дерева, подставленным при установке (`save` там откажет `CK-E-TREE-HEAD`, решение D8). `CODKIT_INTERNAL_COMMIT=1` подавляет напоминание (её выставляют только собственные git-вызовы codkit; впрочем, load строит ветку через commit-tree/update-ref — хук им не мешает по построению). `load` устанавливает скрипт только в собственный административный путь репозитория — `hooks/pre-commit` под абсолютным git-каталогом дерева (обычное дерево: `<tree>/.git/hooks/pre-commit`; правило административных путей — PROP-008 §3 `##TREE-HOOK-STEP`), никогда не следуя за `core.hooksPath` вне административного каталога репозитория; хук восстанавливается каждым `load` с актуальным именем ветки. Исключение 1: в linked worktree хук не ставится и `load` выдаёт предупреждение — hooks общие на весь репозиторий, напоминание говорило бы от имени ветки одного дерева даже в sibling-worktree'ах, которыми codkit не управляет; защита там — отказ `load`/`save` по foreign-коммитам (реализация — PROP-008 §3). Исключение 2: при настроенном `core.hooksPath` (ЛЮБОЙ области видимости — local/global/system; проверяется в обеих, REPAIR-006), уводящем хуки git'а из hooks-каталога репозитория, административная копия ставится, но git продолжает выполнять настроенный хук — `load` предупреждает, а `writeTreeHook()` возвращает false: напоминание недоступно/недоказуемо, пока этот конфиг стоит (честная диагностика вместо молчаливой нерабочей копии; отказ разрешения пути — например `core.hooksPath=/dev/null` — тоже недоступен-с-предупреждением, никогда «активен»; местоположение настроенного хука — не дело codkit). Исключение 3: ЧУЖОЙ `hooks/pre-commit` (без маркера владения `# codkit-hook v1`) не перезаписывается и не цепляется: предупреждение, false, байты сохранены в точности — та же дисциплина владения, что у хуков patch-set (REPAIR-006). ОТКРЫТЫЙ АРХИТЕКТУРНЫЙ ПУНКТ (на рассмотрении владельца): worktree-scoped hook требует `extensions.worktreeConfig` и управления per-worktree `core.hooksPath`; не авторизовано в этой задаче. Апстрим хуков не ставит (`hooks/` эффективного расположения пуст, кроме LFS) — место свободно. Реализация — шаг `load` (PROP-008 §3), сценарий приёмки S20. @status:impl/done",
       "line": 53,
       "uri": "spec://codkit/modules/codkit/PROP-012#FORK-TREE-PRECOMMIT-HOOK"
     },

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec xmlns="https://vibevm.org/spec/1">
-  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S19, S21 (Given/When/Then)</title>
+  <title id="root">codkit FEAT-002: Сквозные приёмочные сценарии S01–S21 (Given/When/Then)</title>
   <status stage="spec" state="plan" comment="standalone Given/When/Then acceptance on FEAT-001; e2e harness is PROP-013"/>
   <conventions title="0. Обозначения">
     <p><SCENARIO-CONVENTIONS fact="true" status="spec/done">`$TOOL`, `$PATCHES`, `$FORK` — три несвязанных disjoint roots; cwd находится в четвёртом месте. Чистый fork — checkout upstream pin без локальных правок. Then по выводу проверяется через schema-2 `roots.tool|patches|fork`; исключения — явные проверки human message. Коды — 0/1/2/3 из PROP-007.</SCENARIO-CONVENTIONS></p>
@@ -64,6 +64,9 @@
   <s19 title="S19 — наполовину закоммиченная работа: save извлекает обе половины">
     <p><S19 fact="true" status="spec/plan">**Given**: состояние S01; половина работы закоммичена в дереве (ручной коммит с правкой внутри маркерного блока), половина оставлена незакоммиченной (правка в блоке другого файла). **When**: `codkit save`. **Then**: выход 0; обе половины достигают своих артефактов; файл, нёсший закоммиченную строку, по-прежнему несёт её (перестройка воспроизводит состояние коммита, а не переписывает его — контрпример пути потери F9); дерево чисто; потреблённый коммит достижим через `refs/codkit/consumed/*` и назван трейлером `Codkit-Tree-Commit` единственного нового коммита patchset.</S19></p>
   </s19>
+  <s20 title="S20 — хук дерева напоминает о save, а не отказывает">
+    <p><S20 fact="true" status="spec/plan">**Given**: состояние S01 — HEAD на сгенерированной ветке, хук установлен очередным `load` (кампания TREE-COMMITS-SAVE, решение D9; норма PROP-012 §5 `##FORK-TREE-PRECOMMIT-HOOK`). **When**: ручной `git commit` на ветке; затем на detached HEAD; затем с `CODKIT_INTERNAL_COMMIT=1`. **Then**: все три — выход 0: хук никогда не отклоняет коммит. На ветке stderr содержит «this commit is work in the fork tree» и «codkit save or codkit sync»; на detached HEAD — «HEAD is not on codkit/applied/&lt;tag&gt;» и «git switch codkit/applied/&lt;tag&gt;» с конкретным tag дерева; с `CODKIT_INTERNAL_COMMIT=1` — ни одной строки `codkit:`. В linked worktree хука нет (S0-уровень: предупреждение `CK-W-MARK-RO`), там норму держит отказ `load`/`save` — S18.</S20></p>
+  </s20>
   <s21 title="S21 — прежнее имя sync: заглушка с выходом 2">
     <p><S21 fact="true" status="spec/plan">**Given**: любое состояние корней (заглушка срабатывает до резолва путей); односторонняя команда переименована в `load` (Phase 1 кампании TREE-COMMITS-SAVE, решение D14). **When**: `codkit sync`; отдельно `codkit --json sync`. **Then**: оба запуска — выход 2; stderr содержит `codkit sync was renamed to codkit load` и `the name sync is reserved for the two-way save+load command`; конверт не печатается (usage error, как у неизвестной команды), stdout пуст и без `--json`, и под ним; алиаса нет — скрипты со старым именем обязаны ломаться громко.</S21></p>
   </s21>

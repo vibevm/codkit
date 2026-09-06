@@ -20,6 +20,9 @@ afterAll(() => {
 	cleanupTempRoots();
 });
 
+/** The generated branch the tree hook names in its reminder. */
+const BRANCH = 'codkit/applied/t1';
+
 function makeNormalRepo(label: string): string {
 	const repo = makeTempRoot(label);
 	runGit({ args: ['init', '--quiet', '-b', 'main', '.'], cwd: repo });
@@ -110,7 +113,7 @@ describe('git-admin writes refuse symlinked paths', () => {
 		symlinkSync(outside, join(gitDir, 'hooks'));
 
 		const warned = collectingOutput();
-		expect(writeTreeHook(repo, warned.out)).toBe(false);
+		expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(false);
 		expect(existsSync(join(outside, 'pre-commit'))).toBe(false);
 		// The repository keeps its link, but no codkit hook was pushed through it.
 		expect(existsSync(join(outside, 'pre-commit'))).toBe(false);
@@ -127,7 +130,7 @@ describe('git-admin writes refuse symlinked paths', () => {
 		symlinkSync(sentinel, join(hooks, 'pre-commit'));
 
 		const warned = collectingOutput();
-		expect(writeTreeHook(repo, warned.out)).toBe(false);
+		expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(false);
 		expect(readFileSync(sentinel, 'utf8')).toBe(SENTINEL_HOOK);
 		expect(statSync(sentinel).mode & 0o777).toBe(SENTINEL_MODE);
 		const text = warned.lines.join('\n').toLowerCase();
@@ -194,7 +197,7 @@ describe('git-admin writes refuse symlinked paths', () => {
 		try {
 			const warned = collectingOutput();
 			expect(
-				writeTreeHook(repo, warned.out, () => {
+				writeTreeHook(repo, BRANCH, warned.out, () => {
 					renameSync(hooks, held);
 					symlinkSync(outside, hooks);
 				})

@@ -7,7 +7,7 @@
 // (PROP-005 ##OWN-EXCLUDED-LOCALLY); the hook and the tree mark follow
 // PROP-008 ##TREE-HOOK-STEP and PROP-006 ##TREE-MARK. The one deliberate
 // exception is the hook under a custom `core.hooksPath`: that effective
-// location can sit outside the repository, and the guard then stays in the
+// location can sit outside the repository, and the reminder then stays in the
 // repository's own admin dir instead (PROP-008 ##TREE-HOOK-STEP).
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -99,6 +99,9 @@ function manualCommit(repo: string): { readonly status: number; readonly stderr:
 	});
 	return { status: result.status, stderr: result.stderr };
 }
+
+/** The generated branch a load of these fixtures would name in the hook. */
+const BRANCH = 'codkit/applied/t1';
 
 const MARK: TreeMark = {
 	codkitTreeMark: 1,
@@ -294,21 +297,23 @@ describe('a linked worktree fork tree', () => {
 		expect(status.stdout).toContain('?? loose.txt');
 	});
 
-	it('still installs the executable blocking hook in a normal repository checkout', () => {
+	it('still installs the executable reminder hook in a normal repository checkout', () => {
 		const { main } = makeLinkedWorktree('hook-normal');
 		const hook = gitPathOf(main, 'hooks/pre-commit');
 		expect(hook).toBe(join(main, '.git', 'hooks', 'pre-commit'));
 
-		expect(writeTreeHook(main, hookOutput())).toBe(true);
+		expect(writeTreeHook(main, BRANCH, hookOutput())).toBe(true);
 		expect(readFileSync(hook, 'utf8')).toContain('codkit save');
 		expect((statSync(hook).mode & 0o111) !== 0).toBe(true);
 
-		const refused = manualCommit(main);
-		expect(refused.status).not.toBe(0);
-		expect(refused.stderr).toContain('codkit save');
+		// The hook never rejects: this checkout sits on `main`, so the commit
+		// succeeds with the off-branch reminder naming the generated branch.
+		const reminded = manualCommit(main);
+		expect(reminded.status).toBe(0);
+		expect(reminded.stderr).toContain(`HEAD is not on ${BRANCH}`);
 	});
 
-	it('refuses to touch the shared hook of a linked worktree and warns that the guard is off', () => {
+	it('refuses to touch the shared hook of a linked worktree and warns that the reminder is off', () => {
 		const { main, worktree } = makeLinkedWorktree('hook-shared');
 		const sentinel = gitPathOf(worktree, 'hooks/pre-commit');
 		plantSentinel(sentinel);
@@ -316,7 +321,7 @@ describe('a linked worktree fork tree', () => {
 		const mode = statSync(sentinel).mode;
 
 		const warned = collectingOutput();
-		expect(writeTreeHook(worktree, warned.out)).toBe(false);
+		expect(writeTreeHook(worktree, BRANCH, warned.out)).toBe(false);
 
 		// The common hook is byte- and mode-identical, and nothing appears at
 		// the old per-worktree appended location either.
@@ -324,7 +329,7 @@ describe('a linked worktree fork tree', () => {
 		expect(statSync(sentinel).mode).toBe(mode);
 		expect(existsSync(join(perWorktreeDir(worktree), 'hooks', 'pre-commit'))).toBe(false);
 		const text = warned.lines.join('\n').toLowerCase();
-		expect(text).toContain('manual-commit guard is unavailable');
+		expect(text).toContain('commit reminder is unavailable');
 		expect(text).toContain('sibling worktree');
 
 		// The main checkout stays governed by the sentinel alone: its veto is
@@ -338,7 +343,7 @@ describe('a linked worktree fork tree', () => {
 	it('leaves a linked worktree without any codkit hook, so manual commits simply go through', () => {
 		const { worktree } = makeLinkedWorktree('hook-unguarded');
 		const warned = collectingOutput();
-		expect(writeTreeHook(worktree, warned.out)).toBe(false);
+		expect(writeTreeHook(worktree, BRANCH, warned.out)).toBe(false);
 
 		expect(manualCommit(worktree).status).toBe(0);
 		expect(existsSync(join(perWorktreeDir(worktree), 'hooks', 'pre-commit'))).toBe(false);
@@ -374,7 +379,7 @@ describe('a normal repository with a custom core.hooksPath', () => {
 		return { repo, sentinel };
 	}
 
-	it('writes only its own admin hook and reports the guard as unavailable', () => {
+	it('writes only its own admin hook and reports the reminder as unavailable', () => {
 		const { repo, sentinel } = makeCustomHooksRepo('hook-custom');
 		// The premise of the scenario: while the config stands, git really
 		// resolves the hook to the external directory, not the repo's own.
@@ -383,7 +388,7 @@ describe('a normal repository with a custom core.hooksPath', () => {
 		const mode = statSync(sentinel).mode;
 
 		const warned = collectingOutput();
-		expect(writeTreeHook(repo, warned.out)).toBe(false);
+		expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(false);
 
 		// The external hook is byte- and mode-identical: codkit never follows
 		// core.hooksPath out of the repository's administrative directory.
@@ -397,30 +402,30 @@ describe('a normal repository with a custom core.hooksPath', () => {
 
 		const text = warned.lines.join('\n').toLowerCase();
 		expect(text).toContain('core.hookspath');
-		expect(text).toContain('manual-commit guard is unavailable');
+		expect(text).toContain('its commit reminder will not print');
 
 		// The honest effect: git keeps executing the configured custom hook, so
 		// the veto a manual commit meets is the sentinel's and codkit's hint is
-		// nowhere - the guard is unavailable while that config remains.
+		// nowhere - the reminder does not print while that config remains.
 		const refused = manualCommit(repo);
 		expect(refused.status).not.toBe(0);
 		expect(refused.stderr).toContain('sentinel-veto');
 		expect(refused.stderr).not.toContain('codkit save');
 	});
 
-	it('has the admin hook become the live guard once the custom hooksPath is gone', () => {
+	it('has the admin hook become the live reminder once the custom hooksPath is gone', () => {
 		const { repo } = makeCustomHooksRepo('hook-custom-restored');
 		const warned = collectingOutput();
-		expect(writeTreeHook(repo, warned.out)).toBe(false);
+		expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(false);
 
 		runGit({ args: ['config', '--unset', 'core.hooksPath'], cwd: repo });
-		const refused = manualCommit(repo);
-		expect(refused.status).not.toBe(0);
-		expect(refused.stderr).toContain('codkit save');
+		const reminded = manualCommit(repo);
+		expect(reminded.status).toBe(0);
+		expect(reminded.stderr).toContain('codkit save');
 	});
 });
 
-describe('the commit guard across every git config scope', () => {
+describe('the commit reminder across every git config scope', () => {
 	/** A temporary machine-level git config naming an external hooks directory. */
 	function makeGlobalHooksConfig(label: string): { readonly path: string; readonly sentinel: string } {
 		const external = makeTempRoot(`${label}-external`);
@@ -431,17 +436,17 @@ describe('the commit guard across every git config scope', () => {
 		return { path: config, sentinel };
 	}
 
-	it("reports the guard unavailable while a global core.hooksPath redirects the user's git", () => {
+	it("reports the reminder unavailable while a global core.hooksPath redirects the user's git", () => {
 		const repo = makeNormalRepo('hook-global-hookspath');
 		const global = makeGlobalHooksConfig('hook-global-hookspath');
 		const previous = process.env['GIT_CONFIG_GLOBAL'];
 		process.env['GIT_CONFIG_GLOBAL'] = global.path;
 		try {
 			const warned = collectingOutput();
-			expect(writeTreeHook(repo, warned.out)).toBe(false);
+			expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(false);
 			const text = warned.lines.join('\n').toLowerCase();
 			expect(text).toContain('core.hookspath');
-			expect(text).toContain('manual-commit guard is unavailable');
+			expect(text).toContain('its commit reminder will not print');
 
 			// The honest effect: the user's git runs the machine-level sentinel,
 			// not the codkit hook that sits in the repository's admin dir.
@@ -458,32 +463,32 @@ describe('the commit guard across every git config scope', () => {
 		}
 	});
 
-	it('never treats a failing path resolution as proof of an active guard (core.hooksPath=/dev/null)', () => {
+	it('never treats a failing path resolution as proof of a printing reminder (core.hooksPath=/dev/null)', () => {
 		const repo = makeNormalRepo('hook-devnull');
 		runGit({ args: ['config', 'core.hooksPath', '/dev/null'], cwd: repo });
 
 		const warned = collectingOutput();
-		expect(writeTreeHook(repo, warned.out)).toBe(false);
+		expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(false);
 		const text = warned.lines.join('\n').toLowerCase();
 		expect(text).toContain('cannot prove');
-		expect(text).toContain('manual-commit guard');
+		expect(text).toContain('commit reminder');
 
-		// The honest effect: with hooks at /dev/null nothing refuses a manual
+		// The honest effect: with hooks at /dev/null nothing prints on a manual
 		// commit, and codkit did not claim otherwise.
 		expect(manualCommit(repo).status).toBe(0);
-		// The repository's own copy is still installed, and becomes the guard
-		// once the broken config is gone.
+		// The repository's own copy is still installed, and becomes the live
+		// reminder once the broken config is gone.
 		const adminHook = join(repo, '.git', 'hooks', 'pre-commit');
 		expect(readFileSync(adminHook, 'utf8')).toContain('codkit save');
 		runGit({ args: ['config', '--unset', 'core.hooksPath'], cwd: repo });
-		const refused = manualCommit(repo);
-		expect(refused.status).not.toBe(0);
-		expect(refused.stderr).toContain('codkit save');
+		const reminded = manualCommit(repo);
+		expect(reminded.status).toBe(0);
+		expect(reminded.stderr).toContain('codkit save');
 	});
 });
 
 describe('a foreign pre-commit hook in a normal repository', () => {
-	it('is never overwritten: byte- and mode-identical, guard reported unavailable', () => {
+	it('is never overwritten: byte- and mode-identical, reminder reported unavailable', () => {
 		const repo = makeNormalRepo('hook-foreign');
 		const hookPath = join(repo, '.git', 'hooks', 'pre-commit');
 		plantSentinel(hookPath);
@@ -491,12 +496,12 @@ describe('a foreign pre-commit hook in a normal repository', () => {
 		const mode = statSync(hookPath).mode;
 
 		const warned = collectingOutput();
-		expect(writeTreeHook(repo, warned.out)).toBe(false);
+		expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(false);
 		expect(readFileSync(hookPath, 'utf8')).toBe(bytes);
 		expect(statSync(hookPath).mode).toBe(mode);
 		const text = warned.lines.join('\n').toLowerCase();
 		expect(text).toContain('foreign');
-		expect(text).toContain('manual-commit guard');
+		expect(text).toContain('commit reminder');
 
 		// The foreign hook keeps governing the repository on its own terms.
 		const refused = manualCommit(repo);
@@ -527,13 +532,13 @@ describe('a foreign pre-commit hook in a normal repository', () => {
 		chmodSync(hookPath, 0o755);
 
 		const warned = collectingOutput();
-		expect(writeTreeHook(repo, warned.out)).toBe(true);
+		expect(writeTreeHook(repo, BRANCH, warned.out)).toBe(true);
 		const renewed = readFileSync(hookPath, 'utf8');
 		expect(renewed).toContain('# codkit-hook v1');
 		expect(renewed).toContain('codkit save');
-		const refused = manualCommit(repo);
-		expect(refused.status).not.toBe(0);
-		expect(refused.stderr).toContain('codkit save');
+		const reminded = manualCommit(repo);
+		expect(reminded.status).toBe(0);
+		expect(reminded.stderr).toContain('codkit save');
 	});
 });
 
