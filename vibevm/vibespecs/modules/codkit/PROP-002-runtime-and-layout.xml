@@ -13,6 +13,7 @@
   codkit/config/**                 обязательная safety policy и default build-watch data
   codkit/test/**                   unit/e2e
   vibevm/vibespecs/**              нормативные спеки инструмента
+  vibevm/vibepacks/**              поставляемые vibe-пакеты (пакет стандартов, PROP-014)
 
 patchesDir/                      внешний Git work tree потребителя
   codkit.json                    pin и параметры данного patch-set
@@ -20,12 +21,14 @@ patchesDir/                      внешний Git work tree потребите
   delta/**                       own/patches/overlays/resources/rules/removed/owners
   cycle/**                       коммитимые состояние и журнал upgrade cycle
   .codkit/**                     локальные locks/cache/logs/generated output
+  vibe.toml                      манифест vibevm-проекта продукта; блок codkit:begin/end standards (PROP-014 §4)
+  vibevm/vibepacks/**            установленная копия пакета стандартов (PROP-014 §5), принадлежит codkit
 
 forkDir/                         внешний managed VS Code checkout
   .git/**                        upstream objects, generated refs и local marks/hooks
   src/**, product.json, ...      материализованное рабочее состояние</fence>
     <facts ordered="false">
-      <ROOT-OWNERSHIP fact="true" status="spec/done">Только toolRoot владеет исходниками, launchers, базовыми safety-конфигами, тестами и npm-зависимостями Codkit. Только patchesDir владеет `codkit.json`, `delta/**`, `cycle/**`, runtime `.codkit/**` и Git-историей patch-set. Только forkDir владеет VS Code checkout и generated refs.</ROOT-OWNERSHIP>
+      <ROOT-OWNERSHIP fact="true" status="spec/done">Только toolRoot владеет исходниками, launchers, базовыми safety-конфигами, тестами и npm-зависимостями Codkit. Только patchesDir владеет `codkit.json`, `delta/**`, `cycle/**`, runtime `.codkit/**` и Git-историей patch-set. Только forkDir владеет VS Code checkout и generated refs. Пакет стандартов в toolRoot принадлежит toolRoot; его установленная копия под patchesDir принадлежит codkit и правится только командой standards load (PROP-014).</ROOT-OWNERSHIP>
       <PATCHSET-GITIGNORE fact="true" status="spec/done">Patch-set игнорирует как минимум `codkit.local.json` и `.codkit/`. Он не обязан иметь `package.json` или `node_modules` ради Codkit.</PATCHSET-GITIGNORE>
       <TOOL-PACKAGE fact="true" status="spec/done">`package.json` и publishable `npm-shrinkwrap.json` принадлежат toolRoot и одинаково фиксируют runtime dependency graph в source checkout и npm-артефакте. Runtime-зависимости устанавливаются рядом с инструментом. Отсутствие зависимостей даёт диагностированный отказ с требованием восстановить установку из утверждённого supply; для source checkout допустим `npm ci`.</TOOL-PACKAGE>
       <TOOL-PACKAGE-TAR-BOUND fact="true" status="spec/done">Bounds of the npm tarball in `codkit/test/unit/packageManifest.test.ts`. **Decision (owner ruling, 2026-09-06):** the tar bound becomes `2_000_000`; `entryCount &lt; 640` and `unpackedSize &lt; 5_000_000` stay as they are. **Why:** the bound is a ratchet against unnoticed growth, not a consumer requirement. At 330 files, 999_361 tar bytes and 3_786_257 unpacked, nothing a consumer experiences is near a limit, and the campaign legitimately adds modules. A ratchet that blocks planned work without naming a cost is measuring the wrong thing. **Considered and rejected:** keeping 1 MB and shrinking the shipped set - would drop spec files consumers need; removing the bound - loses the growth signal; making it track current size plus a margin - a rubber band never catches slow growth. **When to revisit:** the tar exceeds 2 MB, or a consumer reports install size or time.</TOOL-PACKAGE-TAR-BOUND>
@@ -79,6 +82,8 @@ forkDir/                         внешний managed VS Code checkout
       <tr><td><COMP-CI fact="true" status="spec/done">`ciCmd.ts`</COMP-CI></td><td><COMP-CI-RESP fact="true" status="spec/done">контейнерный прогон `--ci`</COMP-CI-RESP></td><td>PROP-011</td></tr>
       <tr><td><COMP-HOOKS fact="true" status="spec/done">`hooks.ts`</COMP-HOOKS></td><td><COMP-HOOKS-RESP fact="true" status="spec/done">установка/проверка git-хуков patchset и дерева</COMP-HOOKS-RESP></td><td>PROP-007 §18</td></tr>
       <tr><td><COMP-JSON-OUT fact="true" status="spec/done">`jsonOut.ts`</COMP-JSON-OUT></td><td><COMP-JSON-OUT-RESP fact="true" status="spec/done">конверт `--json`, реестр кодов сообщений</COMP-JSON-OUT-RESP></td><td>PROP-012 §1–2</td></tr>
+      <tr><td><COMP-LICENSE-CHECK-MODULES fact="true" status="spec/done">`licensePolicy.ts`, `licenseTexts.ts`, `licenseCheck.ts`</COMP-LICENSE-CHECK-MODULES></td><td><COMP-LICENSE-CHECK-MODULES-RESP fact="true" status="spec/done">политика, канонический текст UPL и проверка лицензионной разметки пакета</COMP-LICENSE-CHECK-MODULES-RESP></td><td>PROP-014 §2–3</td></tr>
+      <tr><td><COMP-STANDARDS-MODULES fact="true" status="spec/done">`standardsPackage.ts`, `standardsManifest.ts`, `standardsLoad.ts`</COMP-STANDARDS-MODULES></td><td><COMP-STANDARDS-MODULES-RESP fact="true" status="spec/done">пакет стандартов в toolRoot, управляемый блок `vibe.toml`, движок `standards load|check`</COMP-STANDARDS-MODULES-RESP></td><td>PROP-014 §4–6</td></tr>
       <tr><td><COMP-FAKE-TREE fact="true" status="spec/done">`fakeTree.ts` (в test/)</COMP-FAKE-TREE></td><td><COMP-FAKE-TREE-RESP fact="true" status="spec/done">фейковое дерево форка для тестов</COMP-FAKE-TREE-RESP></td><td>PROP-013 §2</td></tr>
     </table>
     <p><DEPENDENCY-RULE-BETWEEN-MODULES fact="true" status="spec/done">`layers/*`, `applyEngine` и `inventory` не знают про CLI; команды получают явные toolRoot, patchesDir, forkDir и объект patch-set config, а не переоткрывают корни через cwd. Это же — правило ячеек AI-native TypeScript: один модуль = одна ячейка с единственным публичным входом.</DEPENDENCY-RULE-BETWEEN-MODULES></p>
