@@ -1337,11 +1337,17 @@ node docs/codkit/protocol/human/check.mjs                                  # ok
 
 ## 15. Deferrals ledger
 
-- **DEF-7** — упоминания `sync` в текстах спеков вне списка анкеров Phase 1
-  (`CMD-CLONE`, `DOC-README`, пример конверта `"command": "sync"`,
-  PROP-008 §4): найдены исполнителем Phase 1 и вынесены центральной сессией
-  2026-09-06 в **Phase 5**, где и так правится протокол людей. Не откладывать
-  дальше Phase 5: пока они говорят `sync`, документ и команда расходятся.
+- **DEF-7** — DRAINED (Phase 5, 2026-09-06). Упоминания `sync` в текстах
+  спеков вне списка анкеров Phase 1 (`CMD-CLONE`, `DOC-README`, пример
+  конверта `"command": "sync"`, PROP-008 §4) исправлены на `load`
+  (PROP-007 `##CMD-CLONE` — `load --clone-if-missing`; PROP-012
+  `##DOC-README` — `load`/`status`/`save`; конверт — `"command": "load"`;
+  PROP-008 §4 — fence «перестроить ветку как load шаги 1–2»,
+  `##SAVE-INTERRUPT-SAFE`, `##PATCHSET-SIDE-EDIT-RULE`). Остаточные
+  прозаические `sync`-в-смысле-load вне этих четырёх текстов (например,
+  PROP-007 `##CMD-CHECK-TREE` hint «run codkit sync», PROP-004 §5, PROP-005
+  §2/§5, PROP-006 §5, PROP-007 `##CMD-OVERLAY`) — не входили в маршрут
+  DEF-7, перечислены в отчёте Phase 5 для решения владельца.
 - **DEF-1** — воспроизведение коммитов боковых веток: rejected (D2); owner.
 - **DEF-2** — чистка `refs/codkit/consumed/*`: закрывается Phase 9 (D22);
   остаётся только вопрос умолчаний RP-4.

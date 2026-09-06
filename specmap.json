@@ -3794,7 +3794,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:9e02a7295e12cb65e496fcd9b4f377d8afe817b8f05410b1de3547daea3b2149",
+      "content_hash": "sha256:37e0d8cb5e2e5160df2f7ad4247095c08870297c62ef6c3ddc51cad30e8b28f1",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -3902,7 +3902,7 @@
     },
     {
       "anchor": "cmd-clone",
-      "content_hash": "sha256:6b38629b21c3c19187339ba2ff162a99bc611867ff34d7ebb00fa63e7c4d421c",
+      "content_hash": "sha256:bfb6f7b1de258e74e714d0855ea8b74598ae35eb27b4b656b8d84699029946b7",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "4. codkit clone [--from url]",
@@ -3911,10 +3911,10 @@
     },
     {
       "anchor": "CMD-CLONE",
-      "content_hash": "sha256:2397a30abc5a92b939528209a789cec86352dbc263ff0d19f50ea80f74db09b8",
+      "content_hash": "sha256:15e47e8349627101b3cca65c0209f00db173a0e3f1b6471b990c234bc200a03c",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Клонировать дерево в пустой/отсутствующий каталог и выставить пин. **Только локально**: в `--ci` — немедленный выход 2 `CK-E-NET-FORBIDDEN`. Предусловия: путь разрешён; каталог отсутствует или пуст; задан источник — `publishRemoteUrl` из конфига или `--from <url>`. Шаги: `git clone --no-checkout <url> <path>`; `git checkout --detach <pin.sha>`; при наличии LFS-путей — `git lfs install --local` и `git lfs pull` (сеть разрешена — команда локальная); финальный `check-tree`. Идемпотентность: непустой каталог с пригодным деревом → сообщение «already present», выход 0; непустой с чужим содержимым → 2. Клонирование — только эта команда или явный `sync --clone-if-missing` (не побочный эффект: опечатка в пути не должна запускать скачивание гигабайт). @status:impl/done",
+      "heading": "Клонировать дерево в пустой/отсутствующий каталог и выставить пин. **Только локально**: в `--ci` — немедленный выход 2 `CK-E-NET-FORBIDDEN`. Предусловия: путь разрешён; каталог отсутствует или пуст; задан источник — `publishRemoteUrl` из конфига или `--from <url>`. Шаги: `git clone --no-checkout <url> <path>`; `git checkout --detach <pin.sha>`; при наличии LFS-путей — `git lfs install --local` и `git lfs pull` (сеть разрешена — команда локальная); финальный `check-tree`. Идемпотентность: непустой каталог с пригодным деревом → сообщение «already present», выход 0; непустой с чужим содержимым → 2. Клонирование — только эта команда или явный `load --clone-if-missing` (не побочный эффект: опечатка в пути не должна запускать скачивание гигабайт). @status:impl/done",
       "line": 22,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-CLONE"
     },
@@ -4343,7 +4343,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:514cba9de5b3eecb6414235018c31ae69afe1c1221828b10252adacb07252239",
+      "content_hash": "sha256:544ca2e8795f3f450f341b7234477696d76b8ef38368d8bcaa78661306fb3bbd",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: Движки — резолвер, идентичность, sync, save, 3-way, переименования, причина",
@@ -4541,7 +4541,7 @@
     },
     {
       "anchor": "save",
-      "content_hash": "sha256:2d1c3541341ba690d05f22bc1a19697a56b3f55334fba4463f3c815e5c14cf53",
+      "content_hash": "sha256:f9bb492f957a928b757ea4b99c582be4a7b9154c4a53c6120d0ef98fa44ee255",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "4. save/extract и страж дрейфа",
@@ -4550,10 +4550,10 @@
     },
     {
       "anchor": "SAVE-INTERRUPT-SAFE",
-      "content_hash": "sha256:bac09649bc8131c1575fe764f56d9400c5f77d1068467125a3859de9ba8c978e",
+      "content_hash": "sha256:c0ab136de3b2ccaefbe46bcd9f2f47d872e34a679f778cb471691a5666bc5563",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "Прерывание между записью патча и перестроением ветки безопасно: следующий `sync`/`save` увидит несовпадение отпечатка и перестроит ветку; артефакты уже корректны. @status:spec/done",
+      "heading": "Прерывание между записью патча и перестроением ветки безопасно: следующий `load`/`save` увидит несовпадение отпечатка и перестроит ветку; артефакты уже корректны. @status:spec/done",
       "line": 135,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-INTERRUPT-SAFE"
     },
@@ -4577,10 +4577,10 @@
     },
     {
       "anchor": "PATCHSET-SIDE-EDIT-RULE",
-      "content_hash": "sha256:0237a10d1d913aa1d6d80e385b1a5592b7624e6c63f6669ed0f3340c7dcc67a3",
+      "content_hash": "sha256:7687675c9a870eb9d58fed8e77abe8f37833f38cc4862d2ef4bafbd447e0d4ee",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "Обратное направление: если рабочие файлы `delta/own/` в patchset изменены при чистом дереве, `sync` предупреждает `CK-W-PATCHSET-SIDE-EDIT` и применяет patchset-версию (направление истины в момент sync — patchset). Различение сторон — пофайлово, по карте `ownFiles` метки (PROP-006 §1): файл дерева == метке → менялся patchset (применить patchset); файл patchset == метке → менялось дерево (грязь стража, извлекается save); обе стороны != метке и друг другу — выход 1 `CK-E-BOTH-SIDES-EDITED` с именем файла. @status:impl/done",
+      "heading": "Обратное направление: если рабочие файлы `delta/own/` в patchset изменены при чистом дереве, `load` предупреждает `CK-W-PATCHSET-SIDE-EDIT` и применяет patchset-версию (направление истины в момент load — patchset). Различение сторон — пофайлово, по карте `ownFiles` метки (PROP-006 §1): файл дерева == метке → менялся patchset (применить patchset); файл patchset == метке → менялось дерево (грязь стража, извлекается save); обе стороны != метке и друг другу — выход 1 `CK-E-BOTH-SIDES-EDITED` с именем файла. @status:impl/done",
       "line": 139,
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-SIDE-EDIT-RULE"
     },
@@ -5558,7 +5558,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c81f0edea51d061a50cc0031225d7700a0ea7e11f506d2baf7376fe241cfddea",
+      "content_hash": "sha256:5015e551c58d4a112a7075728a19b833576d8e19a161dc426bf84f20d9dcd63c",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "codkit PROP-012: Вывод и сообщения, НФТ, документация, открытые развилки",
@@ -5567,7 +5567,7 @@
     },
     {
       "anchor": "json-envelope",
-      "content_hash": "sha256:d0cfe571d3445c3cfa0fff9668cbb9793ec3126fa7be9b602177e3338ad5b822",
+      "content_hash": "sha256:853a62291797214106c5e30521980c2537458f2723faa35aa173537f2e0dac9c",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "1. Конверт --json",
@@ -5648,7 +5648,7 @@
     },
     {
       "anchor": "docs",
-      "content_hash": "sha256:ce0294d4912478b32e2766f9b321f558411f837149ee996f65d5b3fec8792aec",
+      "content_hash": "sha256:6ef4785d617d92f9a6594da7fef39d40ebc1d6254584d20c6dd72ea5ddf0d38e",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "4. Документация, поставляемая с кодом",
@@ -5666,10 +5666,10 @@
     },
     {
       "anchor": "DOC-README",
-      "content_hash": "sha256:9cf2050c6e78e6f56aa587b12e3b90b0388ed2a2b75cb296bf305d012c145662",
+      "content_hash": "sha256:9c86f23fe2399df238ea4f6f38ef0aada46a104f8aa3e4e961645b86f407de92",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
-      "heading": "`codkit/README.md` — что это, три команды разработчика (`sync`/`status`/`save`), ссылка на справочник. @status:spec/done",
+      "heading": "`codkit/README.md` — что это, три команды разработчика (`load`/`status`/`save`), ссылка на справочник. @status:spec/done",
       "line": 43,
       "uri": "spec://codkit/modules/codkit/PROP-012#DOC-README"
     },

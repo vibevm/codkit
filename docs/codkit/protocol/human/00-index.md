@@ -63,7 +63,7 @@ profile выбранного проекта: его strict channel schema тре
 | --- | --- | --- |
 | Правка дерева не теряется | `load` отказывает с `CK-E-DIRTY-TREE`; `status` перечисляет грязь | [02: синхронизация](02-daily.md#цикл-дня) |
 | Апстрим правится только внутри маркеров | `marker new`, `save`, `verify`, patchset pre-commit | [03: patch](03-interventions.md#терминальный-лист-patch) |
-| Ручных коммитов в дереве нет | `load` устанавливает tree pre-commit hook; внутренние коммиты имеют `CODKIT_INTERNAL_COMMIT=1`; в linked worktree guard отключён с предупреждением | [02: запреты](02-daily.md#что-в-дереве-запрещено) |
+| Коммиты дерева — работа до извлечения | tree pre-commit hook напоминает про `codkit save`; `load`/`ci`/`publish` отказывают над неизвлечёнными коммитами; внутренние коммиты имеют `CODKIT_INTERNAL_COMMIT=1`; в linked worktree напоминание отключено с предупреждением | [02: коммиты и запреты](02-daily.md#коммиты-в-дереве-и-что-в-нём-запрещено) |
 | Пин PR равен пину target | `ci --pin-guard-base`; перенос — `rebase-onto-pin` | [04: S12](04-team.md#s12-feature-на-старом-пине) |
 | Коммиты цикла несут трейлеры | `hooks install`; commit-msg hook; независимая проверка CI | [06](06-history.md) |
 | Дельта ложится на чистый пин | `ci --profile verify` на каждом PR | [02: PR](02-daily.md#pr) |

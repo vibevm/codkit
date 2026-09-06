@@ -19,9 +19,11 @@ Git координирует историю patchset. Ниже ветки выб
 
 ## R4: `load` видит незаизвлечённое
 
-1. `codkit load` → exit `1`, `CK-E-DIRTY-TREE`, список путей.
-2. `codkit status` → exit `1`, классификация own/upstream/markers.
-3. Работа нужна → `codkit save` → exit `0`; работа чужая → владелец процесса завершает/сохраняет её.
+1. `codkit load` → exit `1`, `CK-E-DIRTY-TREE`, список путей; коммиты дерева входят в тот же список
+   строками `commit <short> "<subject>" (not in patchset)`.
+2. `codkit status` → exit `1`, классификация own/upstream/markers и `tree commits not in patchset: N`.
+3. Работа нужна → `codkit save` → exit `0` (коммиты дерева воспроизводятся коммитами patchset
+   с исходными subject/author/date); работа чужая → владелец процесса завершает/сохраняет её.
 4. `codkit load` → exit `0`. Терминальный исход: материализована выбранная ветка без потери байтов.
 
 ## `CK-E-LOCKED`

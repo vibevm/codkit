@@ -22,6 +22,7 @@ fork roots должны быть попарно непересекающимис
 1. `git status --short` в patchset должен быть пуст, либо показывать только осознанную незавершённую работу текущей ветки.
 2. `codkit load` → `applied ...`/`up to date`, exit `0`; переходи к шагу 3.
    Exit `1` + `CK-E-DIRTY-TREE` → `codkit status`, затем `codkit save`, затем повтор шага 2.
+   Отказ покрывает и правки, и коммиты дерева: строка `N commit(s) in the fork tree ...` — та же незаизвлечённая работа.
    Exit `1` + `CK-E-ARTIFACT-BROKEN` → не редактируй артефакт вслепую; владелец исправляет названный артефакт в patchset.
    Exit `2` → исполни точный `hint` и повтори шаг 2.
 3. Редактируй только пути own manifest в дереве. Для апстримного файла сначала
@@ -50,9 +51,22 @@ fork roots должны быть попарно непересекающимис
 Прямой `tsc`, `npm run compile`, `npm install` при живых демонах и чужие watch-скрипты исключены:
 обёртка владеет процессами и логами `.codkit/build/`.
 
-## Что в дереве запрещено
+## Коммиты в дереве и что в нём запрещено
 
-- `git commit`: в обычном checkout effective owned hook, проверяемый каждым `load`, отклоняет его. Linked worktree, custom/global/system `core.hooksPath`, `/dev/null`, foreign hook или неразрешимый effective path дают явное предупреждение: guard неактивен, Codkit не пишет shared/custom location, а запрет остаётся процедурным.
+Коммит в дереве — работа: он достигает patchset только через `codkit save`
+(или двусторонний `codkit sync`), а `load`/`ci`/`publish` отказывают
+`CK-E-DIRTY-TREE`, пока такие коммиты не извлечены или не отброшены
+(`load --discard`); `save` воспроизводит каждый коммит отдельным коммитом
+patchset. В обычном checkout `load` ставит хук-напоминание, проверяемый
+каждым `load`: ручной коммит проходит, и хук печатает, какой командой
+работа доедет до patchset; на HEAD вне `codkit/applied/<tag>` — что `save`
+откажет до возврата (`git switch codkit/applied/<tag>`). Linked worktree,
+custom/global/system `core.hooksPath`, `/dev/null`, foreign hook или
+неразрешимый effective path дают явное предупреждение: напоминание не
+печатает, Codkit не пишет shared/custom location; защищает отказ команд.
+
+Запрещено в дереве:
+
 - Правка generated/managed результата вместо источника в patchset: `save` извлекает только own и patch.
 - Ручная правка `product.json`: authoring идёт через `delta/overlays/`, проверка — `overlay check`/`verify`.
 - Удаление апстримного файла/строки: `save` возвращает `CK-E-DELETES-UPSTREAM-*`.
@@ -65,9 +79,12 @@ fork roots должны быть попарно непересекающимис
 2. `git switch <branch>` в patchset → exit `0`.
 3. `codkit load` → exit `0`; это обязательная материализация дельты выбранной ветки.
 4. Если шаг 3 дал `CK-E-DIRTY-TREE`, ветка не материализована: вернись к прежней ветке, извлеки грязь, повтори процедуру.
+5. `save` после переключения, но до шага 3, отказывает `CK-E-PATCHSET-MOVED`:
+   дерево загружено из состояния patchset, которого ветка больше не несёт
+   (рецепт ручного слияния — FAQ `CK-E-PATCHSET-MOVED`); поэтому полный `save` — шаг 1, до switch.
 
 В multi-root IDE открой корень patchset и корень дерева. Git-панель patchset используется для commit/PR;
-панель дерева — только для просмотра неизвлечённой грязи. Коммит из панели дерева заблокирует hook.
+панель дерева — для просмотра незаизвлечённой работы: коммит из неё проходит и напоминает о `codkit save`.
 
 ## PR
 

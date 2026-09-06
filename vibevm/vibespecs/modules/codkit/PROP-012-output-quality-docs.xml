@@ -4,7 +4,7 @@
   <status stage="spec" state="done" comment="standalone schema-2 output, errors, quality and documentation contract"/>
   <json-envelope title="1. Конверт --json">
     <p><JSON-ENVELOPE-RULE fact="true" status="spec/done">Каждая команда при `--json` печатает в stdout ровно один JSON-объект (человеческий вывод — в stderr). Схема конверта версионируется полем `codkit.schema`. Потребители — агенты и CI.</JSON-ENVELOPE-RULE></p>
-    <fence lang="json">{ "codkit": { "schema": 2, "command": "sync", "version": "&lt;toolRoot package version&gt;" },
+    <fence lang="json">{ "codkit": { "schema": 2, "command": "load", "version": "&lt;toolRoot package version&gt;" },
   "ok": true, "exitCode": 0,
   "roots": {
     "tool": { "path": "/opt/codkit", "source": "install", "exists": true },
@@ -40,7 +40,7 @@
   <docs title="4. Документация, поставляемая с кодом">
     <p><M3-OPERATIONAL-DOCS-IMPL fact="true" status="impl/done">Реализованы standalone README, генерируемые `commands.md`/`conventions.md`/`faq.md`, CI examples и air-gapped supply-kit contract. `docs:check` строится на live CLI/registries/configs. Документированный PowerShell/macOS путь не считается нативно доказанным до исполнения на соответствующем runner.</M3-OPERATIONAL-DOCS-IMPL></p>
     <facts ordered="true">
-      <DOC-README fact="true" status="spec/done">`codkit/README.md` — что это, три команды разработчика (`sync`/`status`/`save`), ссылка на справочник.</DOC-README>
+      <DOC-README fact="true" status="spec/done">`codkit/README.md` — что это, три команды разработчика (`load`/`status`/`save`), ссылка на справочник.</DOC-README>
       <DOC-COMMANDS-REF fact="true" status="spec/done">`docs/codkit/reference/commands.md` — справочник команд (генерируемый из определений CLI — единственное определение флагов в коде).</DOC-COMMANDS-REF>
       <DOC-CONVENTIONS-REF fact="true" status="spec/done">`docs/codkit/reference/conventions.md` — конвенции: маркеры, id, слои, ветки (рендер `conventions.json` + текст PROP-003…005).</DOC-CONVENTIONS-REF>
       <DOC-FAQ fact="true" status="spec/done">`docs/codkit/reference/faq.md` — типичные отказы (по реестру кодов §2) и ловушки, переписанные своими словами.</DOC-FAQ>

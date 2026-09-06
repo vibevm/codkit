@@ -25,6 +25,12 @@ The everyday loop is:
 3. `status` shows work not represented by the patch set.
 4. `save` extracts that work into the patch-set directory.
 
+A commit made in the fork tree is work like any other: `save` extracts it -
+replaying each tree commit into the patch-set history - while `load`
+refuses over unextracted commits instead of destroying them. The tree's
+pre-commit hook never blocks a commit; it reminds which command carries the
+work to the patch set.
+
 Configure paths with `--fork-dir` and `--patches-dir`, with
 `CODKIT_FORK_DIR` and `CODKIT_PATCHES_DIR`, or with a strict
 `{"codkitSettings":1,"forkDir":"/abs/...","patchesDir":"/abs/..."}` object
