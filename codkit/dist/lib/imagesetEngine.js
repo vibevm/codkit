@@ -9,11 +9,12 @@ import { dirname, join } from 'node:path';
 import { encodeBmp24 } from './imagesetBmp.js';
 import { encodeIcns } from './imagesetIcns.js';
 import { encodeIco } from './imagesetIco.js';
-import { chooseMaster, ignoredMasterFiles, seedMasters } from './imagesetMasters.js';
+import { chooseMaster, ignoredMasterFiles, inBranding, seedMasters } from './imagesetMasters.js';
 import { decodePng, encodePng } from './imagesetPng.js';
 import { renderSvgToRgba } from './imagesetRender.js';
+import { parseSvg } from './imagesetSvg.js';
 import { resizeRgba } from './imagesetRaster.js';
-import { discoverTargets } from './imagesetTargets.js';
+import { artworkKey, discoverTargets } from './imagesetTargets.js';
 import { encodeXpm } from './imagesetXpm.js';
 import { ckError } from './messages.js';
 import { ownTestIds } from './inventory.js';
@@ -37,14 +38,14 @@ export function runImageset(options) {
     for (const seed of seeded) {
         onInfo(`${dryRun ? 'would seed' : 'seeded'} branding/${seed.file} from ${seed.from} (${seed.width}x${seed.height})`);
     }
-    const families = [...new Set(targets.map((target) => target.family))];
-    for (const ignored of ignoredMasterFiles(brandingDir, families)) {
+    const keys = [...new Set(targets.map((target) => artworkKey(target)))].sort();
+    for (const ignored of ignoredMasterFiles(brandingDir, keys)) {
         onWarn(`branding file matches no master convention and was ignored: ${ignored}`);
     }
     // In a dry run the planned seeds are not on disk yet; the plan still has
-    // to say which master would serve each frame, so the seeded families count
-    // as having their raster master.
-    const virtualMasters = new Set(seeded.map((seed) => seed.file.replace(/\.png$/, '')));
+    // to say which master would serve each frame, so a planned seed counts as
+    // the master it will become.
+    const virtualMasters = new Set(seeded.map((seed) => seed.file));
     const map = loadResourceMap(patchesDir);
     const ownerOf = ownerResolver(patchesDir);
     const declaredTests = ownTestIds(patchesDir);
@@ -146,12 +147,16 @@ export function runImageset(options) {
     };
 }
 function renderTarget(brandingDir, target, virtualMasters, dryRun) {
+    const key = artworkKey(target);
+    if (target.kind === 'svg') {
+        return emitVectorTarget(brandingDir, target, key, virtualMasters, dryRun);
+    }
     const frames = [];
     const rendered = [];
     for (const frame of target.frames) {
-        const master = chooseMaster(brandingDir, target.family, frame.width, frame.height, virtualMasters);
+        const master = chooseMaster(brandingDir, key, frame.width, frame.height, virtualMasters);
         if (master === null) {
-            return { bytes: new Uint8Array(0), frames: [], skipped: `no ${target.family} master in ${brandingDir}` };
+            return { bytes: new Uint8Array(0), frames: [], skipped: `no ${key} master in ${brandingDir}` };
         }
         frames.push({ width: frame.width, height: frame.height, source: describeMaster(master, frame) });
         if (dryRun) {
@@ -199,12 +204,48 @@ function renderTarget(brandingDir, target, virtualMasters, dryRun) {
     const text = encodeXpm(rendered[0]?.image ?? { width: 0, height: 0, data: new Uint8Array(0) }, target.stem);
     return { bytes: new TextEncoder().encode(text), frames, skipped: null };
 }
+/**
+ * A vector target: the master IS the artifact, so nothing is rasterised and
+ * the bytes are emitted unchanged. Two things are still checked, because a
+ * watermark delivered at the wrong size or from a raster master would
+ * otherwise ship silently: the master has to be a vector, and it has to carry
+ * the size the distribution ships the image at.
+ */
+function emitVectorTarget(brandingDir, target, key, virtualMasters, dryRun) {
+    const nothing = (skipped) => ({ bytes: new Uint8Array(0), frames: [], skipped });
+    const frame = target.frames[0];
+    if (frame === undefined) {
+        return nothing(`${target.target} carries no readable size`);
+    }
+    const master = chooseMaster(brandingDir, key, frame.width, frame.height, virtualMasters);
+    if (master === null) {
+        return nothing(`no ${key} master in ${brandingDir}`);
+    }
+    if (master.origin !== 'vector') {
+        return nothing(`${target.target} is a vector target and needs ${key}.svg; ${master.file} is a raster master`);
+    }
+    const frames = [
+        { width: frame.width, height: frame.height, source: `emitted ${master.file} unchanged at ${frame.width}x${frame.height}` }
+    ];
+    if (dryRun) {
+        return { bytes: new Uint8Array(0), frames, skipped: null };
+    }
+    const text = readFileSync(inBranding(brandingDir, master.file), 'utf8');
+    const size = parseSvg(text);
+    if (size === null) {
+        return nothing(`${master.file} is not an SVG document with usable dimensions`);
+    }
+    if (size.width !== frame.width || size.height !== frame.height) {
+        return nothing(`${master.file} is ${size.width}x${size.height} but ${target.target} ships ${frame.width}x${frame.height}`);
+    }
+    return { bytes: new TextEncoder().encode(text), frames, skipped: null };
+}
 /** Render one frame from its master: verbatim override, vector, or resample. */
 function masterAt(brandingDir, master, frame) {
     if (master.origin === 'vector') {
-        return renderSvgToRgba(readFileSync(join(brandingDir, master.file), 'utf8'), frame.width, frame.height).image;
+        return renderSvgToRgba(readFileSync(inBranding(brandingDir, master.file), 'utf8'), frame.width, frame.height).image;
     }
-    const image = decodePng(readFileSync(join(brandingDir, master.file)));
+    const image = decodePng(readFileSync(inBranding(brandingDir, master.file)));
     if (master.origin === 'override') {
         if (image.width !== frame.width || image.height !== frame.height) {
             return null;
@@ -305,6 +346,7 @@ function buildReport(options, seeded, targets, renders, created, updated, skippe
         targets: targets.map((target) => ({
             target: target.target,
             family: target.family,
+            artwork: target.artwork,
             kind: target.kind,
             frames: byTarget.get(target.target)?.frames ?? [],
             skipped: skipByTarget.get(target.target) ?? null,

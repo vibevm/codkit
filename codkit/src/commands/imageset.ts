@@ -37,17 +37,18 @@ const HELP = '--help';
  * so the claim can be checked instead of trusted. Repeating any of that per
  * subcommand would only invite the two copies to drift apart.
  */
-const HELP_TEXT = `codkit imageset - the product icon set: generate it, or report on it
+const HELP_TEXT = `codkit imageset - the product's brand images: generate them, or report on them
 
 usage: codkit imageset <subcommand> [flags]
 
 subcommands:
   gen [--dry-run] [--branding-dir <path>]
-      Regenerate every icon of the distribution from the branding masters and
-      write the result into the resource layer. --dry-run prints the plan,
-      including which master would serve each size, and writes nothing.
+      Regenerate every brand image of the distribution from the branding
+      masters and write the result into the resource layer. --dry-run prints
+      the plan, including which master would serve each size, and writes
+      nothing.
   index [--branding-dir <path>]
-      Print an index of the icon set - every target, its role, the sizes the
+      Print an index of the image set - every target, its role, the sizes the
       distribution requires, and where each size comes from. Read-only: it
       never seeds and never writes. --json emits the same model structurally.
 
@@ -55,18 +56,28 @@ Masters live in <patchset>/branding by default; --branding-dir overrides it.
 On the first gen run the directory is created and seeded with the fork tree's
 own icons, then you replace them piece by piece:
 
-  <family>.svg          vector master, rendered at every size (preferred)
-  <family>.png          raster master, Lanczos-resampled to every size
-  <family>-<N>.png      per-size override, used verbatim at exactly NxN
-  <family>-<W>x<H>.png  per-size override for non-square sizes
+  <key>.svg          vector master, rendered at every size (preferred)
+  <key>.png          raster master, Lanczos-resampled to every size
+  <key>-<N>.png      per-size override, used verbatim at exactly NxN
+  <key>-<W>x<H>.png  per-size override for non-square sizes
 
-Families: icon (the .ico, .icns, .png and .xpm icons), installer-big and
-installer-small (the Windows installer bitmaps). Every size is rendered from
-a vector at its native resolution; raster masters are the only resampled path.
+<key> is the family for a family that holds one drawing, and family/artwork
+for one that holds several - so icon.svg, but filetype/json.svg.
+
+Families: icon (the application icon in .ico, .icns, .png and .xpm, the Start
+tiles and the web client's icons), installer-big and installer-small (the
+Windows installer bitmaps), filetype (one drawing per file type registered by
+the distribution) and letterpress (the empty-editor watermark, one per theme).
+
+Every raster size is rendered from a vector at its native resolution; raster
+masters are the only resampled path. A letterpress target is not rasterised at
+all: its master is emitted unchanged, so whatever the file contains - comments
+included - is what ships.
 
 Generated files are written into delta/resources/files/ and map entries into
 delta/resources/map.json; a new map entry needs the guard suite
-guard.brand.<family> declared under delta/own/test/ first. Deliver the icons
+guard.brand.<family> declared under delta/own/test/ first - one suite per
+family, not one per drawing. Deliver the icons
 into the fork tree with codkit load, then review and commit the patchset.
 
 Required tools: none, on every supported OS. The SVG rasteriser ships as a

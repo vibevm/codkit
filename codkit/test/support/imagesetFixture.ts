@@ -24,17 +24,33 @@ export const SHIPPED_ICONS: ReadonlyMap<string, string> = new Map([
 	['resources/win32/inno-small-100.bmp', 'inno-small-100.bmp']
 ]);
 
+/**
+ * The rest of the brand surface, added only when a test asks for it: a file
+ * type present on both platforms, one present on macOS alone, the web
+ * client's icons and a vector watermark. Kept out of the default tree so the
+ * tests written against the small set keep their exact counts.
+ */
+export const EXTENDED_ICONS: ReadonlyMap<string, string> = new Map([
+	['resources/win32/json.ico', 'code.ico'],
+	['resources/darwin/json.icns', 'code.icns'],
+	['resources/darwin/yaml.icns', 'code.icns'],
+	['resources/server/favicon.ico', 'code.ico'],
+	['resources/server/code-192.png', 'code.png'],
+	['src/vs/workbench/browser/parts/editor/media/letterpress-dark.svg', 'letterpress.svg']
+]);
+
 export type ImagesetTreeFixture = {
 	readonly dir: string;
 	readonly pin: { readonly tag: string; readonly sha: string; readonly date: string };
 };
 
 /** A git repository that plays the fork tree: the icon set committed at t1. */
-export function makeImagesetTree(label: string): ImagesetTreeFixture {
+export function makeImagesetTree(label: string, options: { readonly extended?: boolean } = {}): ImagesetTreeFixture {
 	const dir = makeTempRoot(`${label}-tree`);
 	fixtureGit(dir, ['init', '--quiet', '--initial-branch=main', '.']);
 	writeFileSync(join(dir, 'product.json'), '{\n\t"nameShort": "Fixture - OSS"\n}\n', 'utf8');
-	for (const [relative, name] of SHIPPED_ICONS) {
+	const shipped = options.extended === true ? new Map([...SHIPPED_ICONS, ...EXTENDED_ICONS]) : SHIPPED_ICONS;
+	for (const [relative, name] of shipped) {
 		const absolute = join(dir, ...relative.split('/'));
 		mkdirSync(dirname(absolute), { recursive: true });
 		copyFileSync(join(fixtureRoot, name), absolute);
@@ -77,7 +93,7 @@ export function makeImagesetPatchSet(label: string, tree: ImagesetTreeFixture): 
 	);
 	writeFileSync(
 		owners,
-		`${JSON.stringify({ codkitOwners: 1, owners: { product: { contact: 'fixture', paths: ['resources/**'] } } }, null, '\t')}\n`,
+		`${JSON.stringify({ codkitOwners: 1, owners: { product: { contact: 'fixture', paths: ['resources/**', 'src/**'] } } }, null, '\t')}\n`,
 		'utf8'
 	);
 	writeGuards(dir);
@@ -131,6 +147,8 @@ function writeGuards(dir: string): void {
 			"suite('guard.brand.icon', () => {});",
 			"suite('guard.brand.installer-big', () => {});",
 			"suite('guard.brand.installer-small', () => {});",
+			"suite('guard.brand.filetype', () => {});",
+			"suite('guard.brand.letterpress', () => {});",
 			''
 		].join('\n'),
 		'utf8'

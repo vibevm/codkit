@@ -169,12 +169,16 @@ describe('codkit imageset index', () => {
 		expect(after.status).toBe(0);
 		const beforeLines = before.stdout.split('\n');
 		const changed = after.stdout.split('\n').filter((line, at) => line !== beforeLines[at]);
-		// Exactly one size line flips. The other three differences are the same
-		// one fact counted again - the master inventory and the totals - and
-		// naming them here is what stops a future change hiding a second flip
-		// behind them.
+		// Exactly one line of the PER-SIZE table flips. The other differences
+		// are the same one fact counted again - the master inventory, the row
+		// of the family summary, and the totals - and every one of them is
+		// obliged to move, because a count that did not change when a source
+		// changed would be the defect. Naming the exact list here, rather than
+		// a number, is what stops a future change hiding a second flip behind
+		// those counts.
 		expect(changed).toEqual([
 			'Present: `icon-16.png`, `icon.png`, `installer-big.png`, `installer-small.png`.',
+			'| `icon` | 1 | 1 | 6 | 0 |',
 			'| 16x16 | - | `master` | `icon-16.png`, used verbatim |',
 			'- from a hand-made master: 1',
 			'- generated from a base master: 9'

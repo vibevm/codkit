@@ -1,26 +1,29 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#IMAGESET-MASTERS */
 // Master discovery and seeding (IMAGESET-MASTERS).
 //
-// Naming convention of the branding directory:
-//   <family>.svg          vector master of a family (rendered per size);
-//   <family>.png          raster master of a family (resampled per size);
-//   <family>-<N>.png      per-size override, used verbatim at exactly NxN;
-//   <family>-<W>x<H>.png  per-size override for non-square sizes.
+// Naming convention of the branding directory, where <key> is the family for
+// a family that holds one drawing and <family>/<artwork> for one that holds
+// several (IMAGESET-ARTWORK):
+//   <key>.svg          vector master (rendered per size);
+//   <key>.png          raster master (resampled per size);
+//   <key>-<N>.png      per-size override, used verbatim at exactly NxN;
+//   <key>-<W>x<H>.png  per-size override for non-square sizes.
 // A per-size override beats the vector master, and the vector master beats
 // the raster one. Anything else in the directory is reported as ignored -
 // nothing is silently picked up, and nothing is silently skipped.
 //
 // Seeding: when the directory does not exist, the first run creates it and
-// fills it with the distribution's own artwork, read from the fork tree: the
-// largest icon raster becomes icon.png, the largest installer bitmap of each
-// family becomes that family's master. Seeding is reported, never silent, and
+// fills it with the distribution's own artwork, read from the fork tree - per
+// key, the largest raster its own targets carry, converted to PNG, or the
+// vector itself for a vector family. Seeding is reported, never silent, and
 // an existing directory is never touched.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { decodeBmp } from './imagesetBmp.ts';
 import { encodePng, isPng } from './imagesetPng.ts';
 import type { DiscoveredTarget } from './imagesetTargets.ts';
+import { artworkKey } from './imagesetTargets.ts';
 
 type RasterSource = { width: number; height: number; bytes: Uint8Array };
 
@@ -33,57 +36,89 @@ export type MasterOrigin = 'override' | 'vector' | 'raster';
 
 export type MasterChoice = {
 	readonly origin: MasterOrigin;
-	/** File name inside the branding directory. */
+	/** Path inside the branding directory, forward slashes. */
 	readonly file: string;
 };
 
 /**
  * The master that serves one frame: an exact-size raster override wins, then
- * the vector master, then the raster master. Null when the family has no
- * master at all - the caller reports the target as skipped.
+ * the vector master, then the raster master. Null when the key has no master
+ * at all - the caller reports the target as skipped.
  */
 export function chooseMaster(
 	brandingDir: string,
-	family: string,
+	key: string,
 	width: number,
 	height: number,
 	virtualMasters: ReadonlySet<string> = new Set()
 ): MasterChoice | null {
-	const square = width === height ? `${family}-${width}.png` : null;
-	const exact = `${family}-${width}x${height}.png`;
+	const square = width === height ? `${key}-${width}.png` : null;
+	const exact = `${key}-${width}x${height}.png`;
 	for (const candidate of [square, exact]) {
-		if (candidate !== null && existsSync(join(brandingDir, candidate))) {
+		if (candidate !== null && existsSync(inBranding(brandingDir, candidate))) {
 			return { origin: 'override', file: candidate };
 		}
 	}
-	if (existsSync(join(brandingDir, `${family}.svg`))) {
-		return { origin: 'vector', file: `${family}.svg` };
+	if (existsSync(inBranding(brandingDir, `${key}.svg`)) || virtualMasters.has(`${key}.svg`)) {
+		return { origin: 'vector', file: `${key}.svg` };
 	}
-	if (existsSync(join(brandingDir, `${family}.png`)) || virtualMasters.has(family)) {
-		return { origin: 'raster', file: `${family}.png` };
+	if (existsSync(inBranding(brandingDir, `${key}.png`)) || virtualMasters.has(`${key}.png`)) {
+		return { origin: 'raster', file: `${key}.png` };
 	}
 	return null;
 }
 
+/** Absolute path of a master file named with forward slashes. */
+export function inBranding(brandingDir: string, file: string): string {
+	return join(brandingDir, ...file.split('/'));
+}
+
 /** Files in the branding directory the convention does not know about. */
-export function ignoredMasterFiles(brandingDir: string, families: readonly string[]): readonly string[] {
+export function ignoredMasterFiles(brandingDir: string, keys: readonly string[]): readonly string[] {
 	if (!existsSync(brandingDir)) {
 		return [];
 	}
 	const known = new Set<string>();
-	for (const family of families) {
-		known.add(`${family}.svg`);
-		known.add(`${family}.png`);
+	for (const key of keys) {
+		known.add(`${key}.svg`);
+		known.add(`${key}.png`);
 	}
-	return readdirSync(brandingDir)
+	const keySet = new Set(keys);
+	return listFiles(brandingDir, '')
 		.filter((name) => {
 			if (known.has(name)) {
 				return false;
 			}
-			const match = /^([a-z0-9-]+)-(\d+(?:x\d+)?)\.png$/.exec(name);
-			return !(match !== null && families.includes(match[1] ?? ''));
+			const match = /^(.+)-(\d+(?:x\d+)?)\.png$/.exec(name);
+			return !(match !== null && keySet.has(match[1] ?? ''));
 		})
 		.sort();
+}
+
+/** Master files the convention recognises, present in the directory; sorted. */
+export function knownMasterFiles(brandingDir: string, keys: readonly string[]): readonly string[] {
+	if (!existsSync(brandingDir)) {
+		return [];
+	}
+	const ignored = new Set(ignoredMasterFiles(brandingDir, keys));
+	return listFiles(brandingDir, '')
+		.filter((name) => !ignored.has(name))
+		.sort();
+}
+
+/** Every file under the branding directory, as forward-slash relative paths. */
+function listFiles(root: string, prefix: string): string[] {
+	const here = prefix === '' ? root : join(root, ...prefix.split('/'));
+	const found: string[] = [];
+	for (const name of readdirSync(here)) {
+		const relative = prefix === '' ? name : `${prefix}/${name}`;
+		if (statSync(join(here, name)).isDirectory()) {
+			found.push(...listFiles(root, relative));
+			continue;
+		}
+		found.push(relative);
+	}
+	return found;
 }
 
 export type SeededMaster = {
@@ -98,6 +133,8 @@ type SeedCandidate = {
 	readonly bytes: Uint8Array;
 	readonly width: number;
 	readonly height: number;
+	/** File extension the seed is written with: a vector stays a vector. */
+	readonly extension: 'png' | 'svg';
 };
 
 /**
@@ -115,56 +152,20 @@ export function seedMasters(
 	if (existsSync(brandingDir)) {
 		return [];
 	}
-	const seeds: { file: string; seed: SeedCandidate }[] = [];
-	const iconCandidates: SeedCandidate[] = [];
+	const byKey = new Map<string, DiscoveredTarget[]>();
 	for (const target of targets) {
-		if (target.family !== 'icon') {
-			continue;
-		}
-		if (target.kind === 'png') {
-			const frame = target.frames[0];
-			if (frame === undefined) {
-				continue;
-			}
-			iconCandidates.push({
-				from: target.target,
-				bytes: Uint8Array.from(readFileSync(join(treeDir, ...target.target.split('/')))),
-				width: frame.width,
-				height: frame.height
-			});
-			continue;
-		}
-		if (target.kind === 'icns') {
-			const largest = largestIcnsPng(treeDir, target);
-			if (largest !== null) {
-				iconCandidates.push({
-					from: `${target.target} (${largest.width}x${largest.height} element)`,
-					bytes: largest.bytes,
-					width: largest.width,
-					height: largest.height
-				});
-			}
-		}
+		const key = artworkKey(target);
+		byKey.set(key, [...(byKey.get(key) ?? []), target]);
 	}
-	const icon = iconCandidates.sort((left, right) => right.width * right.height - left.width * left.height)[0];
-	if (icon !== undefined) {
-		seeds.push({ file: 'icon.png', seed: icon });
-	}
-	for (const family of ['installer-big', 'installer-small']) {
-		const sized = targets
-			.filter((target) => target.family === family)
-			.flatMap((target) => {
-				const frame = target.frames[0];
-				return frame === undefined ? [] : [{ target, frame }];
-			});
-		sized.sort((left, right) => right.frame.width * right.frame.height - left.frame.width * left.frame.height);
-		const largest = sized[0];
-		if (largest !== undefined) {
-			const image = decodeBmp(readFileSync(join(treeDir, ...largest.target.target.split('/'))));
-			seeds.push({
-				file: `${family}.png`,
-				seed: { from: largest.target.target, bytes: encodePng(image), width: image.width, height: image.height }
-			});
+	const seeds: { file: string; seed: SeedCandidate }[] = [];
+	for (const key of [...byKey.keys()].sort()) {
+		const candidates = (byKey.get(key) ?? []).flatMap((target) => seedCandidatesOf(treeDir, target));
+		// Largest wins: the master is downsampled to every other size, so the
+		// most detail available in the tree is the honest starting point.
+		candidates.sort((left, right) => right.width * right.height - left.width * left.height);
+		const best = candidates[0];
+		if (best !== undefined) {
+			seeds.push({ file: `${key}.${best.extension}`, seed: best });
 		}
 	}
 	if (dryRun) {
@@ -173,17 +174,59 @@ export function seedMasters(
 	mkdirSync(brandingDir, { recursive: true });
 	const seeded: SeededMaster[] = [];
 	for (const { file, seed } of seeds) {
-		writeFileSync(join(brandingDir, file), seed.bytes);
+		const path = inBranding(brandingDir, file);
+		mkdirSync(dirname(path), { recursive: true });
+		writeFileSync(path, seed.bytes);
 		seeded.push({ file, from: seed.from, width: seed.width, height: seed.height });
 	}
 	return seeded;
 }
 
 /**
+ * What one target can contribute as a seed. A container codkit can only write
+ * and not read back - .ico frames and .xpm palettes - contributes nothing,
+ * which is why the icon family seeds from the PNG and ICNS targets it also
+ * carries rather than from the .ico.
+ */
+function seedCandidatesOf(treeDir: string, target: DiscoveredTarget): SeedCandidate[] {
+	const absolute = join(treeDir, ...target.target.split('/'));
+	const frame = target.frames[0];
+	if (target.kind === 'png' && frame !== undefined) {
+		return [
+			{ from: target.target, bytes: Uint8Array.from(readFileSync(absolute)), width: frame.width, height: frame.height, extension: 'png' }
+		];
+	}
+	if (target.kind === 'svg' && frame !== undefined) {
+		return [
+			{ from: target.target, bytes: Uint8Array.from(readFileSync(absolute)), width: frame.width, height: frame.height, extension: 'svg' }
+		];
+	}
+	if (target.kind === 'bmp' && frame !== undefined) {
+		const image = decodeBmp(readFileSync(absolute));
+		return [{ from: target.target, bytes: encodePng(image), width: image.width, height: image.height, extension: 'png' }];
+	}
+	if (target.kind === 'icns') {
+		const largest = largestIcnsPng(treeDir, target);
+		return largest === null
+			? []
+			: [
+					{
+						from: `${target.target} (${largest.width}x${largest.height} element)`,
+						bytes: largest.bytes,
+						width: largest.width,
+						height: largest.height,
+						extension: 'png'
+					}
+				];
+	}
+	return [];
+}
+
+/**
  * Extract the largest PNG payload of an .icns target, or null when the file
  * carries none. The payload is already a PNG; it is written out verbatim.
  */
-export function largestIcnsPng(treeDir: string, target: DiscoveredTarget): Omit<RasterSource, 'target'> | null {
+export function largestIcnsPng(treeDir: string, target: DiscoveredTarget): RasterSource | null {
 	const bytes = readFileSync(join(treeDir, ...target.target.split('/')));
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	let at = 8;
