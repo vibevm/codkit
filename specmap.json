@@ -806,10 +806,10 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:910a88a263327f6cd917a6b615923d50d5be566db851efc9d977b6865b0b294c",
+      "content_hash": "sha256:8ae084d9df5f4112da39220cf4fed971c13d40e4670c7b955919e087202b87ab",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S25 (Given/When/Then)",
+      "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S27 (Given/When/Then)",
       "line": 3,
       "uri": "spec://codkit/modules/codkit/FEAT-002#root"
     },
@@ -1283,7 +1283,7 @@
     },
     {
       "anchor": "s25",
-      "content_hash": "sha256:f0270342d0cb029a4d03e89639484812c0af170471b8d8ae521af92576e77d8d",
+      "content_hash": "sha256:5adce62a6da1f15d1bfcc4745b3a5b4e2c119d86f5622f68f7a0ae7cc9fa17bb",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S25 — двусторонний sync: обе стороны правят F — отказ до первой записи, рецепт работает руками",
@@ -1292,12 +1292,48 @@
     },
     {
       "anchor": "S25",
-      "content_hash": "sha256:2788987a46d9223af4cba9fdc9b585dcb60fb732843ecf7691cc383fea264fab",
+      "content_hash": "sha256:ce20e93c65b803ca2519be4d05886484d5509c964d713e0554f7b588c7e7129d",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: состояние S01; артефакт F сдвинут на стороне patchset (незакоммичено) И файл F правится в дереве (внутри того же маркерного блока) — решения D16/D19: автоматическое слияние отвергнуто. **When**: `codkit --json sync`. **Then**: выход 1 `CK-E-BOTH-SIDES-EDITED`; в тексте артефакт/цель и обе стороны, в hint ручной рецепт «выбери сторону» (взять дерево: `git checkout <sha загрузки> -- delta/patches/<F>.ckpatch` в patchset, затем `codkit save`; взять patchset: откатить правку F в дереве, затем `codkit sync`). **Отсутствие доказывается, а не подразумевается**: файла транзакции нет, HEAD patchset не сдвинут, байты дерева и артефакта неизменны (сравнение до/после). **When (рецепт руками)**: `git checkout <sha> -- delta/patches/<F>.ckpatch`; `codkit save`. **Then**: выход 0, артефакт F регенерирован со строкой дерева, дерево чисто. Доведение конфликта до diff3-маркеров в файле дерева и `sync --continue` — Phase 8b (S26). @status:spec/plan",
+      "heading": "Правка Phase 8b (кампания TREE-COMMITS-SAVE, решения D19/D21): до неё этот сценарий утверждал отказ обеих сторон до первой записи с рецептом «выбери сторону». Ответ изменился: конфликт обеих сторон — **материализация diff3 + остановка**, а не отказ (живой контракт — PROP-008 `##SYNC-CONFLICT-DIFF3`, приёмка — S26/S27 ниже). **Given**: состояние S01; артефакт F сдвинут на стороне patchset (незакоммичено) И файл F правится в дереве (внутри того же маркерного блока). **When**: `codkit --json sync`. **Then**: выход 1 `CK-E-BOTH-SIDES-EDITED`; в тексте цель и слово о diff3-маркерах, в hint обе команды — `codkit sync --continue` и `codkit sync --abort`; маркеры лежат **внутри** маркерного блока файла дерева (наша и их строки обе видны); файл транзакции существует и несёт `conflicts[]` со снимками ours; HEAD patchset не сдвинут, артефакт не тронут, consumed ref нет. **When**: `codkit sync --abort`. **Then**: выход 0, файл дерева байт-в-байт как до прогона, записи нет (глубокое доказательство — S27). Рецепт «выбери сторону» остаётся ответом для own-конфликта (нет маркерных блоков) и для незакоммиченной both-части под `--discard`. @status:impl/done",
       "line": 83,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S25"
+    },
+    {
+      "anchor": "s26",
+      "content_hash": "sha256:16da15ee0c406cd039438c38584386c508346568ccb27402db0beda4f396d491",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S26 — конфликт обеих сторон: diff3 в файле дерева, человек решает, sync --continue завершает",
+      "line": 85,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s26"
+    },
+    {
+      "anchor": "S26",
+      "content_hash": "sha256:5a09706317e8978af098cabe4c88ee9411cce804e9b653d2a626f5f4cb3dd73b",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: состояние S01 (метка несёт карту артефактов, Phase 7); артефакт F сдвинут в patchset (незакоммичено, строка в маркерном блоке тела патча), файл F правится в дереве в том же блоке; рядом — коммит G в другом файле (Phase 8b, D19/D21; e2e `syncConflict.test.ts`). **When**: `codkit --json sync`. **Then**: выход 1 `CK-E-BOTH-SIDES-EDITED`; в файле дерева — diff3-маркеры (`<<<<<<< ours` / `||||||| base` / `=======` / `>>>>>>> theirs`) внутри блока `codkit:begin/end`, обе строки на местах; транзакция жива: `conflicts: [{path, materialized: sha256}]`, ours-снимок конфликтного файла в `rewrite`; `load` и `save` отказывают `CK-E-SYNC-IN-PROGRESS` (выход 1); `status` печатает `sync in progress: <id>, conflicts: 1`. **When**: `codkit sync --continue` до решения. **Then**: выход 1, файл с маркерами назван. **When (человек)**: маркеры решены (сохранены обе стороны и id блока), `codkit sync --continue`. **Then**: выход 0; артефакт F несёт обе строки; G воспроизведён коммитом patchset с трейлером транзакции; дерево чисто; файл транзакции снят; следующий `codkit load` — «up to date». **When (краш-матрица)**: краш на каждом атоме (`transaction-written`, `conflict-materialized`, `state-committed`, `worktree-moved`, `mark-written`) через seam `CODKIT_TEST_SYNC_CRASH_AT`, затем `--continue` и `--abort` по отдельности. **Then**: обе дороги доходят до определённого состояния; отказывающаяся — называет файл и причину («маркеры не решены» / «слияние не дошло до файла» — краш между записью и маркерами не выдаёт себя за человеческое «взять дерево»). @status:impl/done",
+      "line": 86,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S26"
+    },
+    {
+      "anchor": "s27",
+      "content_hash": "sha256:f652be9da7f012f5d01470d454304b67609ee91ee68b8753c88d26bad201900f",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S27 — sync --abort возвращает всё: байты по хэшам, HEAD и ветки, коммиты прогона сняты, чужой коммит поверх — отказ",
+      "line": 88,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s27"
+    },
+    {
+      "anchor": "S27",
+      "content_hash": "sha256:8922bdccc1d2f020070e3fe02c1d7f78be9a2c5fb420a9a92a58ece6b6ed67d2",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: состояние S26 после материализации (Phase 8b, D21; e2e `syncConflict.test.ts`); до прогона сняты sha256 байтов дерева и артефакта — байты **намеренно различимы** (строка с уникальным суффиксом), чтобы восстановление из неверного снимка (база, их сторона, любая не-наша версия) не могло пройти сравнение — плюс HEAD/ветка дерева, HEAD patchset, `git status`. **When**: `codkit sync --abort`. **Then**: выход 0 `aborted`; файл дерева байт-в-байт (сравнение хэшей до/после **печатается**); HEAD и ветка дерева на месте; HEAD patchset не сдвинут; артефакт байт-в-байт; `git status` равен донабеговому; файла транзакции нет. **When (после краша продолжения на state-committed)**: материализация → решение маркеров → `sync --continue` с крашом после первого коммита patchset → `codkit sync --abort`. **Then**: выход 0; коммиты прогона сняты с ветки patchset (HEAD вернулся к записанному), байты/HEAD/ветка — по тем же хэшам, записи нет. **When (после краша пересборки на mark-written)**: то же. **Then**: выход 0; ветка и HEAD дерева возвращены, байты — по хэшам, коммиты прогона сняты. **When (чужой коммит поверх)**: материализация → коммит человеком в patchset над записанным HEAD → `codkit sync --abort`. **Then**: выход 1 `CK-E-SYNC-IN-PROGRESS`, отказ называет sha и subject чужого коммита и объясняет причину; ничего не тронуто — чужой коммит стоит, запись жива, маркеры в файле. `--abort`/`--continue` без живой записи — выход 2, честный ответ «восстанавливать нечего». @status:impl/done",
+      "line": 89,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S27"
     },
     {
       "anchor": "root",
@@ -3578,7 +3614,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:7f7fa32c05b4180e4675227bb4e1abca2832274398893efc9bd73c7d40738adf",
+      "content_hash": "sha256:ea805dbc601dc5224895761870504d5cbd832757ad0f15be212cde6b8539e4da",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "codkit PROP-006: Метаданные применения, блокировка, инвентарь",
@@ -3587,7 +3623,7 @@
     },
     {
       "anchor": "apply-metadata",
-      "content_hash": "sha256:c81cbeefb044f611a62968e8948816763e357c4d26509281efbec92a4eb1d3b0",
+      "content_hash": "sha256:1205b59920b99111987347d3c13ab59c2b6178e6e279878b3392cf755cab1c28",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "1. Метаданные применения: кэш + метка (истина — само дерево)",
@@ -3650,10 +3686,10 @@
     },
     {
       "anchor": "SYNC-TRANSACTION-FILE",
-      "content_hash": "sha256:8b227ffe80d64c45aeeeed11288f07eeb5aa286accf1e6a168c7fb27863f4ffc",
+      "content_hash": "sha256:fe8f55a38dd9b67c39821705dfe8dee3e8f5342e3c844c263fdf3255a152de15",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
-      "heading": "**Файл транзакции двустороннего `sync`** — `.codkit/sync-transaction.json` в корне patchset (кампания TREE-COMMITS-SAVE, Phase 8, решение D20; модуль `lib/syncTransaction.ts`, алгоритм — PROP-008 §5a `##SYNC-TRANSACTION`). Пишется `writeContainedFileExclusive` до первой мутации прогона (повторный старт поверх живой записи невозможен по построению), атомарно перезаписывается после каждого атома (коммит patchset — с трейлером `Codkit-Sync-Transaction: <id>` — и consumed ref дописываются в запись), снимается после последней. Носит: оба HEAD, `markSnapshot` (метка как её нашли), `dirtyBefore`, снимки `hash-object -w` всего, что прогон перепишет, `patchsetCommits`, `consumedRef`, `conflicts` (пуст до Phase 8b). Пока файл существует: `load`/`save`/`sync` (шаг 0 каждого вызова движков) отказывают `CK-E-SYNC-IN-PROGRESS` (выход 1), `status` печатает `sync in progress: <id>, conflicts: N`. Протокол владения — собственный (F24): руками и `gc` не трогается (D22 перечисляет и объясняет); отказ без единой записи снимает файл сам (доказательство — сверка снимков и HEAD, не догадка), отказ/краш после записи оставляет его для восстановления `--abort`/`--continue` (Phase 8b, D21). Битый/чужой файл — fail closed: отказ, а не угадывание. @status:impl/done",
+      "heading": "**Файл транзакции двустороннего `sync`** — `.codkit/sync-transaction.json` в корне patchset (кампания TREE-COMMITS-SAVE, Phase 8, решение D20; модуль `lib/syncTransaction.ts`, алгоритм — PROP-008 §5a `##SYNC-TRANSACTION`). Пишется `writeContainedFileExclusive` до первой мутации прогона (повторный старт поверх живой записи невозможен по построению), атомарно перезаписывается после каждого атома (коммит patchset — с трейлером `Codkit-Sync-Transaction: <id>` — и consumed ref дописываются в запись), снимается после последней. Носит: оба HEAD, `markSnapshot` (метка как её нашли), `dirtyBefore`, снимки `hash-object -w` всего, что прогон перепишет, `patchsetCommits`, `consumedRef`, `conflicts` — `[{path, materialized}]` (Phase 8b: sha256 записанных маркеров либо `null` — слияние до файла не дошло; по этому полю `status` печатает `conflicts: N` и `--continue` проверяет полноту). Пока файл существует: `load`/`save`/`sync` (шаг 0 каждого вызова движков) отказывают `CK-E-SYNC-IN-PROGRESS` (выход 1), `status` печатает `sync in progress: <id>, conflicts: N`. Протокол владения — собственный (F24): руками и `gc` не трогается (D22 перечисляет и объясняет); отказ без единой записи снимает файл сам (доказательство — сверка снимков и HEAD, не догадка), отказ/краш после записи оставляет его для восстановления `--abort`/`--continue` (Phase 8b, D21; audit `--abort` и восстановление из снимков — PROP-008 §5a). Битый/чужой файл — fail closed: отказ, а не угадывание. @status:impl/done",
       "line": 13,
       "uri": "spec://codkit/modules/codkit/PROP-006#SYNC-TRANSACTION-FILE"
     },
@@ -3875,7 +3911,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:93e2c3f7399c1ad0af69d919de7eae91e838111c42636be90c32e18e5daa9f5f",
+      "content_hash": "sha256:d9e70ee6bf4aa03e148948e1a1dfb00bb40e8a901c75435bb33cd79c38021a78",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -4010,7 +4046,7 @@
     },
     {
       "anchor": "cmd-sync",
-      "content_hash": "sha256:76dd0f5694c478e4e4008e48d8302eebec83c4ff06f4dbb25651e7b754e38e5a",
+      "content_hash": "sha256:09d1c5e5d489ebc8fc9901c495733f80f4e76ca397a581498a4ed7781b6f6d02",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "5. codkit load […] и двусторонний codkit sync […]",
@@ -4028,10 +4064,10 @@
     },
     {
       "anchor": "CMD-SYNC-TWO-WAY",
-      "content_hash": "sha256:26742bcb43a1e4983c3fc1e70725886f9e3f32a463a929a45b47fc4f6eaf730b",
+      "content_hash": "sha256:977ecd2cc4723aeda37b5b781b3565b887260963c35160de73d376c55567f9be",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "**Двусторонняя команда** (Phase 8 кампании TREE-COMMITS-SAVE, решения D15/D16/D19/D20; алгоритм — PROP-008 §5a). `codkit sync [--squash] [--commit] [--message m] [--discard] [--fresh] [--dry-run] [--abort] [--continue]`: одна команда, которая извлекает работу дерева (как `save`, включая воспроизведение коммитов и `--squash`) и доставляет сдвиг patchset (как `load`), по правилу D16 на каждый файл: только дерево → извлечь; только patchset → применить версию patchset, перезапись цели при rebuild объяснима; обе стороны → **остановка**, выход 1 `CK-E-BOTH-SIDES-EDITED` с ручным рецептом «выбери сторону» (взять дерево: `git checkout <sha> -- delta/patches/<F>.ckpatch` в patchset, затем `save`; взять patchset: откатить правку F в дереве, затем `sync`) — автоматического слияния нет и в этой фазе не появляется (diff3-материализация — Phase 8b). Родословная D17 проверяется как в `save`: не-предок HEAD patchset → `CK-E-PATCHSET-MOVED`; метка без карты артефактов → тот же отказ с hint «run codkit load once» (R13). Порядок: замок дерева → живая транзакция → `CK-E-SYNC-IN-PROGRESS` → check-tree/ref-preflight → D8 → D17 → классификация → обе стороны → отказ **до первой записи** (ни файла транзакции, ни сдвинутого ref, ни байта) → `--dry-run` (печать классификации, выход 0, ничего не записано) → запись транзакции → половина save → пересборка=половина load → consumed ref → метка → снятие транзакции. `--discard` — тот же смысл, что у `load` (D11): коммиты дерева отбрасываются сознательно (consumed ref), правки страж продолжает охранять; под `--ci` — выход 2. Ничего не сдвинулось ни с одной стороны и нет транзакции → ответ движка load, обычно «up to date», выход 0, без транзакции. `--abort`/`--continue` — восстановление остановленной синхронизации (Phase 8b); до неё флаги зарегистрированы и отвечают честным отказом. Коды: 0; 1 (`CK-E-BOTH-SIDES-EDITED`, `CK-E-PATCHSET-MOVED`, `CK-E-SYNC-IN-PROGRESS`, наследие `save`: маркеры/Cause/запрещённая цель/удаление); 2 (окружение, `--ci`+`--discard`, `--abort`/`--continue` до Phase 8b). @status:impl/done",
+      "heading": "**Двусторонняя команда** (Phase 8 кампании TREE-COMMITS-SAVE, решения D15/D16/D19/D20; алгоритм — PROP-008 §5a). `codkit sync [--squash] [--commit] [--message m] [--discard] [--fresh] [--dry-run] [--abort] [--continue]`: одна команда, которая извлекает работу дерева (как `save`, включая воспроизведение коммитов и `--squash`) и доставляет сдвиг patchset (как `load`), по правилу D16 на каждый файл: только дерево → извлечь; только patchset → применить версию patchset, перезапись цели при rebuild объяснима; обе стороны → **материализация diff3** (Phase 8b, D19): 3-way слияние ложится маркерами в файл дерева под живой транзакцией, выход 1 `CK-E-BOTH-SIDES-EDITED` с перечнем файлов и обеими дорогами — человек решает маркеры (как в фазе resolve цикла), затем `codkit sync --continue` заканчивает прогон, `codkit sync --abort` возвращает всё, как было (PROP-008 `##SYNC-CONFLICT-DIFF3`, `##SYNC-ABORT`, `##SYNC-CONTINUE`); автоматического слияния нет. Own-конфликт обеих сторон остаётся рецептом «выбери сторону» (own-код не имеет маркерных блоков), и под `--discard` незакоммиченная both-часть тоже — `--continue` есть извлечение, не отбрасывание. Родословная D17 проверяется как в `save`: не-предок HEAD patchset → `CK-E-PATCHSET-MOVED`; метка без карты артефактов → тот же отказ с hint «run codkit load once» (R13). Порядок: замок дерева → живая транзакция → `CK-E-SYNC-IN-PROGRESS` → check-tree/ref-preflight → D8 → D17 → классификация → обе стороны → отказ **до первой записи** (ни файла транзакции, ни сдвинутого ref, ни байта) → `--dry-run` (печать классификации, выход 0, ничего не записано) → запись транзакции → половина save → пересборка=половина load → consumed ref → метка → снятие транзакции. `--discard` — тот же смысл, что у `load` (D11): коммиты дерева отбрасываются сознательно (consumed ref), правки страж продолжает охранять; под `--ci` — выход 2. Ничего не сдвинулось ни с одной стороны и нет транзакции → ответ движка load, обычно «up to date», выход 0, без транзакции. `--abort`/`--continue` — восстановление остановленной синхронизации (Phase 8b, D21): нет записи — честный выход 2; флаги извлечения (`--squash`/`--commit`/`--message`/`--fresh`) применимы к `--continue`, а `--discard`/`--dry-run` и любые флаги при `--abort` — выход 2. Коды: 0; 1 (`CK-E-BOTH-SIDES-EDITED` — материализованные нерешённые маркеры, «слияние не дошло до файла» и own-конфликт; `CK-E-PATCHSET-MOVED`; `CK-E-SYNC-IN-PROGRESS` — живая запись и отказы `--abort` поверх чужой работы; наследие `save`: маркеры/Cause/запрещённая цель/удаление); 2 (окружение, `--ci`+`--discard`, восстановление без записи или с чужими флагами). @status:impl/done",
       "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-SYNC-TWO-WAY"
     },
@@ -4433,7 +4469,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:8eed4e2d55ddfd75daf194bb8184cad9b4ec444b9b76993b9150d2bbfffd6394",
+      "content_hash": "sha256:ff7ef68ae7635976f1c7dbe8387597fb48e1984ae71eadbcc0fd821c94d283b7",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: Движки — резолвер, идентичность, load, save, 3-way, переименования, причина",
@@ -4757,7 +4793,7 @@
     },
     {
       "anchor": "sync-two-way",
-      "content_hash": "sha256:1f1fb7f8d386011f7ebc626a41acbda010bc20c787580bed090b20cb06ad18be",
+      "content_hash": "sha256:6e9901ecf6a674783a2d527a3598dfe5593054d18e265f0b476dbac29a32bd5f",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "5a. sync: слияние двух сторон",
@@ -4766,21 +4802,48 @@
     },
     {
       "anchor": "SYNC-TWO-PASS",
-      "content_hash": "sha256:a6c12b083767befd907ca1b35c8e77352817a4c1fd9e8bb68714f1a3b8944739",
+      "content_hash": "sha256:92ded636acfc5a09fc21d2d012a57defa143349483985639511bb8b110b86e40",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "**Два прохода, и оба порядка сознательны** (кампания TREE-COMMITS-SAVE, Phase 8, решения D15/D16/D19). Первый проход — чтение: родословная (D17), классификация D16 (`classifyTargets`, `##PATCHSET-MOVED-RULE`), обе стороны own и patch-слоя; конфликт обнаруживается **до первой записи**, и `CK-E-BOTH-SIDES-EDITED` (обобщение с own на patch-слой, F20) уходит с ручным рецептом «выбери сторону»: взять дерево — `git checkout <sha> -- delta/patches/<F>.ckpatch` в patchset, затем `save`; взять patchset — откатить правку F в дереве, затем `sync`. Второй проход — запись под транзакцией: половина save (`runSave` с `skipPatchsetMovedCheck` — сдвиг patchset здесь не отказ, а входные данные — и `explainedRewrites` = цели `patchsetOnly`: пересборка, применяющая к ним версию patchset, объяснима, расширение множества «ничего не сдвинулось»), затем consumed ref и метка с новой картой; если работы дерева нет, запись — одна половина load (`runSync`). `--discard` (D11/D15) отбрасывает коммиты дерева сознательно (та же ветка движка load: consumed ref до пересборки, файловые половины стража вооружены); под `--ci` — выход 2. `--squash`/`--commit`/`--message` — наследие save-половины, `--fresh` — load-половины. Автослияние отвергнуто и здесь: 3-way — территория цикла, diff3-материализация для человека — Phase 8b (`--abort`/`--continue` там же; до неё флаги зарегистрированы и отказывают честно). @status:impl/done",
-      "line": 204,
+      "heading": "**Два прохода, и оба порядка сознательны** (кампания TREE-COMMITS-SAVE, Phase 8, решения D15/D16/D19). Первый проход — чтение: родословная (D17), классификация D16 (`classifyTargets`, `##PATCHSET-MOVED-RULE`), обе стороны own и patch-слоя; конфликт обнаруживается **до первой записи**, и все 3-way слияния вычисляются до неё же (Phase 8b, D19): конфликт patch-слоя материализуется diff3-маркерами (`##SYNC-CONFLICT-DIFF3` ниже) с выходом 1 и живой транзакцией; own-конфликт — `CK-E-BOTH-SIDES-EDITED` без маркеров (own-код не имеет маркерных блоков), F20, с ручным рецептом «выбери сторону»: взять дерево — `git checkout <sha> -- delta/own/<F>` в patchset, затем `save`; взять patchset — откатить правку F в дереве, затем `sync`. Второй проход — запись под транзакцией: половина save (`runSave` с `skipPatchsetMovedCheck` — сдвиг patchset здесь не отказ, а входные данные — и `explainedRewrites` = цели `patchsetOnly`: пересборка, применяющая к ним версию patchset, объяснима, расширение множества «ничего не сдвинулось»), затем consumed ref и метка с новой картой; если работы дерева нет, запись — одна половина load (`runSync`). `--discard` (D11/D15) отбрасывает коммиты дерева сознательно (та же ветка движка load: consumed ref до пересборки, файловые половины стража вооружены); под `--ci` — выход 2. `--squash`/`--commit`/`--message` — наследие save-половины, `--fresh` — load-половины. Автослияние отвергнуто и здесь: человек решает diff3-маркеры сам (материализация — `##SYNC-CONFLICT-DIFF3`, восстановление — `##SYNC-ABORT`/`##SYNC-CONTINUE`, Phase 8b); под `--discard` незакоммиченная both-часть держит рецепт «выбери сторону» — `--continue` есть извлечение, не отбрасывание (D11). @status:impl/done",
+      "line": 218,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-TWO-PASS"
     },
     {
       "anchor": "SYNC-TRANSACTION",
-      "content_hash": "sha256:fc19270d267bef5d0844d3099b7f54f5a0f1ef480e1d466309ca0fd6a6b745f8",
+      "content_hash": "sha256:336aef801a7ddb9f00a25a6d92d9cacfaf4dc4d1ebc3e8376b4103f3f6aa757d",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "**Транзакция** (решение D20): файл `.codkit/sync-transaction.json` в корне patchset (протокол владения — PROP-006 §1 `##SYNC-TRANSACTION-FILE`), пишется `writeContainedFileExclusive` **до первой мутации** — повторный старт поверх живой записи невозможен по построению (link-EEXIST → отказ) — и снимается после последней. Запись: `{codkitSyncTransaction, id, startedAt, patchset:{head, dirtyBefore}, tree:{head, branchTip, markSnapshot}, rewrite:[{repo, path, blob}], patchsetCommits:[], consumedRef: null, conflicts: []}`; снимки — `git hash-object -w` только файлов, которые прогон собирается переписать (артефакты отбора дерева в patchset, цели `patchsetOnly` в дереве, расходящиеся own-файлы обеих сторон; отсутствующий файл — blob null, «снимок отсутствия»). Каждый созданный коммит patchset несёт трейлер `Codkit-Sync-Transaction: <id>` (распознавание по содержимому переживает обрыв списка записи) и дописывается в `patchsetCommits` атомарной перезаписью. Пока файл существует, шаг 0 `load`/`save`/`sync` (и каждого вызова движков) — выход 1 `CK-E-SYNC-IN-PROGRESS`, hint называет обе команды восстановления; `status` печатает `sync in progress: <id>, conflicts: N`. Отказ без единой записи снимает запись сам (снимки совпали, HEAD не двинут — доказательство проверкой, не догадкой); отказ после записи оставляет её. Crash-тесты — seam `CODKIT_TEST_SYNC_CRASH_AT` (только тестовая сборка), атомы: transaction-written, state-committed, worktree-moved, mark-written (PROP-013 §5 `##SYNC-CRASH-TESTS`). Восстановление `--abort`/`--continue` — Phase 8b (D21); «undo» после успешного sync отвергнуто там же. @status:impl/done",
-      "line": 205,
+      "heading": "**Транзакция** (решение D20): файл `.codkit/sync-transaction.json` в корне patchset (протокол владения — PROP-006 §1 `##SYNC-TRANSACTION-FILE`), пишется `writeContainedFileExclusive` **до первой мутации** — повторный старт поверх живой записи невозможен по построению (link-EEXIST → отказ) — и снимается после последней. Запись: `{codkitSyncTransaction, id, startedAt, patchset:{head, dirtyBefore}, tree:{head, branchTip, markSnapshot}, rewrite:[{repo, path, blob}], patchsetCommits:[], consumedRef: null, conflicts:[{path, materialized}]}` (форма conflicts — Phase 8b: `materialized` — sha256 записанных маркеров, `null` — слияние до файла не дошло); снимки — `git hash-object -w` только файлов, которые прогон собирается переписать (артефакты отбора дерева в patchset, цели `patchsetOnly` в дереве, расходящиеся own-файлы обеих сторон; отсутствующий файл — blob null, «снимок отсутствия»). Каждый созданный коммит patchset несёт трейлер `Codkit-Sync-Transaction: <id>` (распознавание по содержимому переживает обрыв списка записи) и дописывается в `patchsetCommits` атомарной перезаписью. Пока файл существует, шаг 0 `load`/`save`/`sync` (и каждого вызова движков) — выход 1 `CK-E-SYNC-IN-PROGRESS`, hint называет обе команды восстановления; `status` печатает `sync in progress: <id>, conflicts: N`. Отказ без единой записи снимает запись сам (снимки совпали, HEAD не двинут — доказательство проверкой, не догадкой); отказ после записи оставляет её. Crash-тесты — seam `CODKIT_TEST_SYNC_CRASH_AT` (только тестовая сборка), атомы: transaction-written, conflict-materialized, state-committed, worktree-moved, mark-written (PROP-013 §5 `##SYNC-CRASH-TESTS`). Восстановление `--abort`/`--continue` — Phase 8b (D21, `##SYNC-ABORT`/`##SYNC-CONTINUE`); «undo» после успешного sync отвергнуто там же. @status:impl/done",
+      "line": 219,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-TRANSACTION"
+    },
+    {
+      "anchor": "SYNC-CONFLICT-DIFF3",
+      "content_hash": "sha256:90a090fcc524a9b1953593b7ecc14c11bdd918d48b3ef4cb9d0a5996de48a6a2",
+      "doc_path": "modules/codkit/PROP-008",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
+      "heading": "**Материализация конфликта обеих сторон** (Phase 8b кампании TREE-COMMITS-SAVE, решения D19/D21; `codkit sync`, e2e `syncConflict.test.ts`, S26). Когда классификация D16 кладёт цель в `both`, `sync` не отказывается и не сливает сам: он кладёт 3-way в файл дерева стандартными diff3-маркерами **внутри маркерного блока** `codkit:begin/end`. Стороны (D19): база — файл как его загрузил последний apply (`<base>:<F>`, вершина сгенерированной ветки); наша — рабочий файл (или `HEAD:<F>`, если рабочий не читается); их — пин + текущий артефакт через `applyUnified`. Слияние — `runMergeFile` (classifyEngine, единственная реализация diff3 в codkit, спайк S0.8; `replayPatch` здесь неверен: их = пин+артефакт, не база+патч). Порядок: все слияния вычисляются **до** любой записи (артефакт, не ложащийся на пин, отказывает прогон, пока не записано ни байта) → транзакция со снимками ours конфликтных файлов (`rewrite`, blob) → каждое слияние пишется durable-записью одного файла (wx-temp + rename с сохранением mode, прецедент `atomicReplace`) и помечается в записи атомом `conflict-materialized` с sha256 записанных байтов → выход 1 `CK-E-BOTH-SIDES-EDITED` с перечнем файлов и обеими дорогами дальше. Человек решает маркеры как в фазе resolve цикла (сохранить обе стороны и id блоков; процедура — 05-upgrade-cycle), затем `codkit sync --continue`. Под `--discard` незакоммиченная both-часть рецепт не материализуется: `--continue` — извлечение, не отбрасывание (D11). Собственное 3-way-автослияние отвергнуто и здесь. @status:impl/done",
+      "line": 220,
+      "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-CONFLICT-DIFF3"
+    },
+    {
+      "anchor": "SYNC-CONTINUE",
+      "content_hash": "sha256:4603fada2a25140afd0a80da15b19358c3a596e947b16b7f22d5eec740c53aad",
+      "doc_path": "modules/codkit/PROP-008",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
+      "heading": "**`codkit sync --continue`** (решение D21; e2e S26): закончить прерванный прогон по записи. Нет записи — честный выход 2: восстанавливать нечего. Проверка полноты по `conflicts[]`, файл за файлом: маркеры остались (те же четыре строки, что grep-ит ручная процедура) → отказ `CK-E-BOTH-SIDES-EDITED` с именами; `materialized = null` и файл байт-в-байт равен ours-снимку → отказ «слияние не дошло до файла» (краш между записью записи и записью маркеров не выдаёт себя за человеческое «взять дерево»; настоящее «взять дерево» после материализации даёт те же байты, но запись уже несёт sha — разница и есть доказательство). Затем тот же записывающий проход, что у свежего прогона (`runSave` с `skipPatchsetMovedCheck` + `explainedRewrites`, те же атомы и трейлеры) под той же записью; новые both-цели, появившиеся после остановки, получают тот же ответ — маркеры, выход 1, запись расширена; снимки артефактов, которых записи не хватало, дополняются до прохода (abort после краша в продолжении покрывает и их). Успех — запись снята, выход 0. Флаги извлечения (`--squash`/`--commit`/`--message`/`--fresh`) применимы к продолжению; `--discard`/`--dry-run` — нет. @status:impl/done",
+      "line": 221,
+      "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-CONTINUE"
+    },
+    {
+      "anchor": "SYNC-ABORT",
+      "content_hash": "sha256:ebb23d571bc0c61aa3f560a23a28b0695447a1ba87b292d38e5470150fffa04e",
+      "doc_path": "modules/codkit/PROP-008",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
+      "heading": "**`codkit sync --abort`** (решение D21; e2e S27): вернуть всё, как прогон застал. Это несущая половина фазы: материализовать маркеры просто; обещание, что оператор всегда может вернуться назад, — то, что делает маркеры безопасным предложением. Нет записи — выход 2. Аудит **до первой мутации**: коммиты patchset выше записанного HEAD снимаются, только если каждый несёт трейлер `Codkit-Sync-Transaction: <id>` этой записи, а HEAD остался на записанной линии; коммиты дерева выше записанного HEAD — только если каждый сгенерированный (автор codkit + трейлер пина, F13; проверка потомства для дерева НЕ требуется — пересборка штатно уходит с линии, D6); HEAD дерева на чужом ref, не-перечислимая история — отказ с объяснением и именами; чужой коммит поверх **не выбрасывается никогда** — отказ `CK-E-SYNC-IN-PROGRESS` называет sha и subject. Мутации в порядке, делающем прерванный abort перезапускаемым (каждый шаг идемпотентен, запись снимается последней): patchset — `reset --mixed` к записанному HEAD (индекс пересинхронизируется, снятые коммиты не выживают staged-изменениями) и артефакты из снимков байт-в-байт (blob из object database, wx-temp + rename с mode); дерево — файлы из снимков (отсутствовавшие — удаляются), ветка к `tree.head` с guard текущего tip (созданную прогоном ветку — удалить), HEAD туда же (detached остаётся detached, `--no-deref`), при сдвинутом HEAD — `reset --mixed` индекса, метка — из `markSnapshot` (не было — снимается). `refs/codkit/consumed/*` остаётся (безвреден, D22 чистит). Порядок снятия patchset-коммитов — `--mixed`, не `--soft`: план D21 называл оба механизма одной семьёй; индекс обязан вернуться вместе с HEAD, иначе снятое выживает staged. «Undo» после успешного sync не существует — это `git reset --hard <до>` в patchset + `codkit load` (рецепт D18). @status:impl/done",
+      "line": 222,
+      "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-ABORT"
     },
     {
       "anchor": "renames",
@@ -4788,7 +4851,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "6. Следование за переименованиями между пинами",
-      "line": 207,
+      "line": 224,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames"
     },
     {
@@ -4797,7 +4860,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Отдельный явный шаг до применения (не автоопределение внутри — на больших диффах git отключает rename-детекцию молча). @status:spec/done",
-      "line": 208,
+      "line": 225,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames-when"
     },
     {
@@ -4806,7 +4869,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Пары с `similarity < 100` помечаются «требует взгляда человека» в отчёте (перенос сделан, но попадает в красный список ревью). Проверочный кейс полигона: переименование `src/vs/platform/agentHost/browser/remoteAgentHostProtocolClient.ts → agentHostProtocolClient.ts` (R096, окно `1.134.0→1.135.0`). @status:spec/done",
-      "line": 220,
+      "line": 237,
       "uri": "spec://codkit/modules/codkit/PROP-008#RENAME-BELOW-100-FLAGGED"
     },
     {
@@ -4815,7 +4878,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "7. Поиск коммита-причины",
-      "line": 222,
+      "line": 239,
       "uri": "spec://codkit/modules/codkit/PROP-008#cause"
     },
     {
@@ -4824,7 +4887,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "`git log --format=%H --follow oldPin..newPin -- F` — коммиты, тронувшие файл. @status:spec/done",
-      "line": 224,
+      "line": 241,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-LOG"
     },
     {
@@ -4833,7 +4896,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Один коммит → он и есть причина. Несколько → сузить по строкам: для каждого ханка артефакта взять диапазон затронутых строк на `oldPin` и выполнить `git log -L<start>,<end>:F oldPin..newPin --format=%H`; коммит-причина — самый ранний коммит, пересёкший диапазон; если `-L` неприменим (файл удалён/переименован) — коммитом-причиной объявляется последний коммит из первого шага, с пометкой `approx`. @status:spec/done",
-      "line": 225,
+      "line": 242,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-NARROW"
     },
     {
@@ -4842,7 +4905,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Для `target-deleted`/`target-renamed` — коммит, удаливший/переименовавший (`git log --diff-filter=D|R --follow`). @status:spec/done",
-      "line": 226,
+      "line": 243,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-DELETED"
     },
     {
@@ -4851,7 +4914,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Выход: `{sha, approx: bool}`; пишется в `cause` шапки патча (шагом регенерации), в журнал и в трейлер `Cause:` коммита-фикса. Отчёт цикла группируется по коммитам-причинам (десятки отказов → единицы причин). @status:spec/done",
-      "line": 227,
+      "line": 244,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-OUTPUT"
     },
     {
@@ -5882,7 +5945,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:5785a082187e2a9c886e48f37fb37545bb1cea704e4ee697e87fc48b44a27624",
+      "content_hash": "sha256:c2b01f56134cbf8d89514828afc9b482fce55217cf3e7a051a691587e4a2e548",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "codkit PROP-013: Как тестируется сам codkit",
@@ -6026,7 +6089,7 @@
     },
     {
       "anchor": "resumability",
-      "content_hash": "sha256:f483ebcfe198d5d08eb7f8a4d9e8e422d88d73d9f948ae614beca28a577bf15c",
+      "content_hash": "sha256:d29370d80f0702b2a1733b5a7b1a062f2b6f49ab750f6a3b615e7c29eaa16e25",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "5. Тесты возобновляемости оркестратора",
@@ -6044,10 +6107,10 @@
     },
     {
       "anchor": "SYNC-CRASH-TESTS",
-      "content_hash": "sha256:9b68b31bf09bd8398652c433e13b752dde3128736e0fd2d681653279d4c848b5",
+      "content_hash": "sha256:c702115c986b71059631ecde92bbbc375178b106204770d434a1f556201c23f3",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
-      "heading": "Краш-атомы двустороннего `codkit sync` (кампания TREE-COMMITS-SAVE, Phase 8, решения D20/D21; e2e `syncTwoWay.test.ts`): env `CODKIT_TEST_SYNC_CRASH_AT=<атом>` (только тестовая сборка, hard-exit 86 в стиле `CODKIT_TEST_SAVE_REPLAY_CRASH_AT`) на каждом атоме с seam — `transaction-written` (до первой мутации), `state-committed` (после каждого коммита patchset), `worktree-moved`, `mark-written` (два post-checkout окна пересборки). После каждого краша доказываются три факта, не один код выхода: файл `.codkit/sync-transaction.json` существует и содержит записанные атомы (`patchsetCommits` соответственно этапу); `load` и `save` новым процессом отказывают `CK-E-SYNC-IN-PROGRESS` (выход 1); `status` печатает `sync in progress: <id>, conflicts: N`. Доведение `--continue` — Phase 8b: в этой фазе тесты доказывают отказ и запись, не восстановление. Отдельный красный прогон (инверсия «транзакция раньше отказа») держит главный инвариант S25: отказ обеих сторон не оставляет ни файла записи, ни сдвинутого ref, ни изменённого байта. @status:impl/done",
+      "heading": "Краш-атомы двустороннего `codkit sync` (кампания TREE-COMMITS-SAVE, Phase 8+8b, решения D20/D21; e2e `syncTwoWay.test.ts` и `syncConflict.test.ts`): env `CODKIT_TEST_SYNC_CRASH_AT=<атом>` (только тестовая сборка, hard-exit 86 в стиле `CODKIT_TEST_SAVE_REPLAY_CRASH_AT`) на каждом атоме с seam — `transaction-written` (до первой мутации), `conflict-materialized` (после каждой записанной пары маркеров, Phase 8b), `state-committed` (после каждого коммита patchset), `worktree-moved`, `mark-written` (два post-checkout окна пересборки). После каждого краша доказываются три факта, не один код выхода: файл `.codkit/sync-transaction.json` существует и содержит записанные атомы (`patchsetCommits` соответственно этапу); `load` и `save` новым процессом отказывают `CK-E-SYNC-IN-PROGRESS` (выход 1); `status` печатает `sync in progress: <id>, conflicts: N`. Фаза 8b добавила матрицу восстановления (`syncConflict.test.ts`): после краша на каждом атоме обе дороги — `--continue` и `--abort` — доводят до определённого состояния (продолжение завершает прогон либо отказывает с именем файла: маркеры не решены / слияние не дошло до файла), а `--abort` возвращает байты, HEAD и ветки по sha256-снимкам, снятым до прогона над специально различимыми байтами. Отдельный красный прогон (инверсия «транзакция раньше отказа») держит главный инвариант S25: отказ обеих сторон не оставляет ни файла записи, ни сдвинутого ref, ни изменённого байта. @status:impl/done",
       "line": 50,
       "uri": "spec://codkit/modules/codkit/PROP-013#SYNC-CRASH-TESTS"
     },

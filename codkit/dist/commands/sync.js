@@ -4,13 +4,16 @@
 // algorithm: PROP-008 sec. 5a; campaign TREE-COMMITS-SAVE, decisions D15-D21).
 // The name was reserved for it since the one-way `sync` became `load` (D14).
 //
-// Two properties are the phase, not details: a file both sides moved is a
-// refusal, never a merge - the classification runs before the first write, so
-// CK-E-BOTH-SIDES-EDITED leaves no record, no moved ref and no changed byte
-// behind (D16/D19); and a crash never leaves an unreadable half-state - the
-// transaction record is written before the first mutation and retired after
-// the last, and while it exists the engines refuse with CK-E-SYNC-IN-PROGRESS
-// (D20).
+// The run has two answers for a file both sides moved, and both are the
+// phase's point, not a detail: the classification runs before the first write,
+// so nothing happens until the conflict is named; then the 3-way goes into the
+// tree file as diff3 markers under a durable transaction (##SYNC-CONFLICT-DIFF3),
+// the run stops with exit 1, and the operator resolves it by hand -
+// `sync --continue` finishes the run, `sync --abort` puts everything back
+// (##SYNC-CONTINUE, ##SYNC-ABORT; the recovery lives in lib/syncRecovery.ts).
+// A crash never leaves an unreadable half-state: the transaction record is
+// written before the first mutation and retired after the last, and while it
+// exists the engines refuse with CK-E-SYNC-IN-PROGRESS (D20).
 //
 // The halves are the one-way engines: the save half (`runSave`, with the
 // patchset-shift refusal replaced by the per-target rule) and the load half
@@ -23,12 +26,12 @@ import { runGit } from '../lib/gitx.js';
 import { withLock } from '../lib/lock.js';
 import { ckError, isCkError } from '../lib/messages.js';
 import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.js';
-import { decodePatchName, encodePatchName } from '../lib/patchFormat.js';
+import { encodePatchName } from '../lib/patchFormat.js';
 import { formatForkTreeLine } from '../lib/paths.js';
-import { runSave } from '../lib/saveEngine.js';
-import { PATCHES_DIR, generatedBranchName, runSync } from '../lib/syncEngine.js';
+import { artifactTarget, blocked, materializeConflicts, NO_CLASSES, ok, runSyncRecovery, runWritePass, stoppedMidway, unfit } from '../lib/syncRecovery.js';
 import { bothSidesConflictError, checkLineage, classifyTargets, loadedFrom, patchsetMovedError, reportSyncPlan } from '../lib/syncMerge.js';
-import { SYNC_TEST_CRASH_ENV, SYNC_TRANSACTION_RELATIVE_PATH, openSyncTransaction, refuseOverLiveSyncTransaction, resolveStoppedTransaction, retireSyncTransaction, saveSyncTransaction, syncCrashCheckpoint } from '../lib/syncTransaction.js';
+import { PATCHES_DIR, generatedBranchName, runSync } from '../lib/syncEngine.js';
+import { SYNC_TEST_CRASH_ENV, openSyncTransaction, refuseOverLiveSyncTransaction, retireSyncTransaction, saveSyncTransaction, syncCrashCheckpoint } from '../lib/syncTransaction.js';
 import { readTreeMark, revParse } from '../lib/treeCache.js';
 import { foreignCommits, treeHeadError } from '../lib/treeCommits.js';
 import { changesSince } from '../lib/treeState.js';
@@ -50,12 +53,6 @@ async function run(ctx) {
         ctx.out.warn(resolution.warning);
     }
     const config = requireConfig(ctx.config);
-    // Recovery of a live record belongs to the conflict-materialization phase
-    // (D21, Phase 8b): the flags are part of the command's contract (D15) and
-    // answer honestly until that phase lands, rather than pretending.
-    if (commandFlagGiven(ctx.commandFlags, ABORT) || commandFlagGiven(ctx.commandFlags, CONTINUE)) {
-        throw ckError('CONFIG', 'codkit sync --abort/--continue recover a stopped sync and arrive with the conflict-materialization phase', `until then, resolve the record by hand: its snapshots and commit shas are in ${SYNC_TRANSACTION_RELATIVE_PATH}`);
-    }
     // A non-interactive run must never decide on its own to drop somebody's
     // work (D11): the flag names a loss, and naming a loss is interactive.
     const discard = commandFlagGiven(ctx.commandFlags, DISCARD);
@@ -77,31 +74,32 @@ async function run(ctx) {
         fresh: commandFlagGiven(ctx.commandFlags, FRESH),
         dryRun: commandFlagGiven(ctx.commandFlags, DRY_RUN)
     };
+    // The recovery of a stopped sync (D21): --abort puts everything back,
+    // --continue finishes the interrupted run. Recovery takes no side of its
+    // own - a discard or a dry run is a fresh run's decision, and --abort
+    // shapes no extraction at all.
+    const aborting = commandFlagGiven(ctx.commandFlags, ABORT);
+    const continuing = commandFlagGiven(ctx.commandFlags, CONTINUE);
+    if (aborting || continuing) {
+        const mode = aborting ? 'abort' : 'continue';
+        if (aborting && continuing) {
+            throw ckError('CONFIG', 'codkit sync takes one of --abort and --continue, not both', 'choose the recovery the stopped sync needs');
+        }
+        if (flags.discard || flags.dryRun) {
+            throw ckError('CONFIG', `codkit sync --${mode} recovers a stopped sync and takes neither --discard nor --dry-run`, 'run the recovery alone; the extraction flags --squash/--commit/--message/--fresh may shape the continued extraction');
+        }
+        if (aborting && (flags.squash || flags.commit || flags.message !== null || flags.fresh)) {
+            throw ckError('CONFIG', 'codkit sync --abort returns the tree and the patch set to the state before the run and shapes no extraction', 'drop the extraction flags, or run the recovery as codkit sync --abort alone');
+        }
+    }
     return withLock(ctx.patchesDir, treeId(resolution.path), 'sync', () => {
-        const result = runTwoWay({ patchesDir: ctx.patchesDir, resolution, config, out: ctx.out, flags, verbose: ctx.flags.verbose, crash });
+        const input = { patchesDir: ctx.patchesDir, resolution, config, out: ctx.out, flags, verbose: ctx.flags.verbose, crash };
+        const result = aborting || continuing ? runSyncRecovery(input, aborting ? 'abort' : 'continue') : runTwoWay(input);
         ctx.out.setData(buildData(result));
         return result.exitCode;
     }, (text) => {
         ctx.out.warn(text);
     });
-}
-const NO_CLASSES = { treeOnly: [], patchsetOnly: [], both: [], unknown: true, fingerprintMatches: false };
-function ok(status, classes, treeCommitCount, parts = {}) {
-    return {
-        exitCode: 0,
-        status,
-        classes,
-        treeCommitCount,
-        transactionId: parts.transaction ?? null,
-        patchsetCommits: [...(parts.patchsetCommits ?? [])],
-        consumedRef: parts.consumedRef ?? null
-    };
-}
-function unfit() {
-    return { ...ok('unfit', NO_CLASSES, 0), exitCode: 2 };
-}
-function blocked(classes, treeCommitCount) {
-    return { ...ok('blocked', classes, treeCommitCount), exitCode: 1 };
 }
 function runTwoWay(input) {
     const { patchesDir, resolution, config, out, flags, crash } = input;
@@ -176,9 +174,9 @@ function runTwoWay(input) {
         out.addError(ckError('PATCHSET-MOVED', 'the apply mark carries no delta artifact map, so sync cannot tell which side moved which artifact', 'run codkit load once to record the loaded state (every load writes the map), then codkit sync').toPayload());
         return blocked(classes, treeState.commits.length);
     }
-    const patchsetOnlyTargets = classes.patchsetOnly.map(artifactTarget);
-    // 5. Own code, file by file (##PATCHSET-SIDE-EDIT-RULE): a both-sided own
-    // file is the same refusal as a both-sided patch target.
+    // 5. Own code, file by file (##PATCHSET-SIDE-EDIT-RULE): own code has no
+    // marker blocks to materialize a merge into, so a both-sided own file keeps
+    // the choose-a-side refusal.
     const ownClasses = classifyOwn(patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
     const ownBoth = ownClasses.filter((entry) => entry.kind === 'both-edited');
     if (ownBoth.length > 0) {
@@ -187,15 +185,21 @@ function runTwoWay(input) {
         out.addError(bothSidesConflictError(sides, restoreRef).toPayload());
         return blocked(classes, treeState.commits.length);
     }
-    // 6. The patch layer: both sides moved the same target (D19). Under
+    // 6. The patch layer: both sides moved the same target (D19). The answer
+    // is the markers - materialized under the transaction at step 10. Under
     // `--discard` the commits' half of the tree side is dropped on purpose, so
-    // only targets the *uncommitted* state still carries refuse (D11: the flag
-    // speaks about commits, never about edits).
+    // only targets the *uncommitted* state still carries conflict, and those
+    // keep the choose-a-side refusal: a `--continue` is an extraction, never a
+    // discard, and materializing under `--discard` would resurrect what the
+    // operator named as lost (D11: the flag speaks about commits, never edits).
     const bothSides = classes.both.map((artifact) => ({ artifact, target: artifactTarget(artifact) }));
-    const refusingBoth = flags.discard && treeState.commits.length > 0
-        ? bothSides.filter((side) => uncommittedChanges(tree, treeState, config.ownDirName).some((change) => change.path === side.target))
-        : bothSides;
-    if (refusingBoth.length > 0) {
+    const conflictTargets = flags.discard
+        ? bothSides
+            .filter((side) => uncommittedChanges(tree, treeState, config.ownDirName).some((change) => change.path === side.target))
+            .map((side) => side.target)
+        : bothSides.map((side) => side.target);
+    if (flags.discard && conflictTargets.length > 0) {
+        const refusingBoth = bothSides.filter((side) => conflictTargets.includes(side.target));
         out.addError(bothSidesConflictError(refusingBoth, restoreRef).toPayload());
         return blocked(classes, treeState.commits.length);
     }
@@ -229,81 +233,20 @@ function runTwoWay(input) {
             exitCode: settled.exitCode
         };
     }
-    // 10. The merge, under the transaction: the record exists before the first
+    // 10. The conflict stop (D19, ##SYNC-CONFLICT-DIFF3): the record exists
+    // before the first mutation - the ours-snapshots of the conflict files
+    // included - then every merge lands in its tree file, and the run stops
+    // with exit 1 naming them. Recovery: `sync --continue` / `sync --abort`.
+    if (conflictTargets.length > 0) {
+        const record = openRecord(input, treeState, mark, changes, ownClasses, classes.patchsetOnly, conflictTargets);
+        crash('transaction-written');
+        return materializeConflicts(input, record, classes, treeState, conflictTargets);
+    }
+    // 11. The merge, under the transaction: the record exists before the first
     // mutation and is retired after the last (D20).
-    let record = openRecord(input, treeState, mark, changes, ownClasses, classes.patchsetOnly);
+    const record = openRecord(input, treeState, mark, changes, ownClasses, classes.patchsetOnly, []);
     crash('transaction-written');
-    // 11a. The tree has work: the save half extracts it, and its rebuild is
-    // the load half over the delta as it stands now - patchset's shift
-    // included, its rewrites explained (D16).
-    if (hasTreeWork) {
-        let saved;
-        try {
-            saved = runSave({
-                patchesDir,
-                resolution,
-                config,
-                out,
-                paths: [],
-                allowNewFile: [],
-                commit: flags.commit,
-                message: flags.message,
-                squash: flags.squash,
-                verbose: input.verbose,
-                fresh: flags.fresh,
-                skipPatchsetMovedCheck: true,
-                skipSyncInProgressCheck: true,
-                explainedRewrites: patchsetOnlyTargets,
-                syncTransactionId: record.id,
-                replayCheckpoint: (stage, sha) => {
-                    record = saveSyncTransaction(patchesDir, { ...record, patchsetCommits: [...record.patchsetCommits, sha] });
-                    crash(stage);
-                },
-                syncCheckpoint: (stage) => {
-                    crash(stage);
-                }
-            });
-        }
-        catch (error) {
-            return stoppedMidway(input, record, classes, treeState, { error });
-        }
-        if (saved.exitCode !== 0) {
-            return stoppedMidway(input, record, classes, treeState, { engine: saved });
-        }
-        record = appendOutcome(patchesDir, record, saved);
-        retireSyncTransaction(patchesDir);
-        out.info(`sync complete: ${record.patchsetCommits.length} patchset commit(s), both sides settled; transaction ${record.id} retired`);
-        return ok('synced', classes, treeState.commits.length, {
-            transaction: record.id,
-            patchsetCommits: record.patchsetCommits,
-            consumedRef: saved.consumedRef
-        });
-    }
-    // 11b. Only patchset moved: the load half alone, still under the
-    // transaction - the rebuild rewrites tree files, and a crash between them
-    // must leave the record that says so.
-    let applied;
-    try {
-        applied = runSync({
-            patchesDir,
-            resolution,
-            config,
-            out,
-            fresh: flags.fresh,
-            dryRun: false,
-            verbose: input.verbose,
-            skipSyncInProgressCheck: true
-        });
-    }
-    catch (error) {
-        return stoppedMidway(input, record, classes, treeState, { error });
-    }
-    if (applied.exitCode !== 0) {
-        return stoppedMidway(input, record, classes, treeState, { engine: applied });
-    }
-    retireSyncTransaction(patchesDir);
-    out.info(`sync complete: the patchset side was applied to the tree; transaction ${record.id} retired`);
-    return ok('synced', classes, 0, { transaction: record.id, consumedRef: applied.discardedRef });
+    return runWritePass(input, record, classes, treeState, hasTreeWork, false);
 }
 // ---------------------------------------------------------------------------
 // The discard branch
@@ -316,7 +259,7 @@ function runTwoWay(input) {
  */
 function discardBranch(input, classes, treeState, mark, crash) {
     const { patchesDir, resolution, config, out, flags } = input;
-    let record = openRecord(input, treeState, mark, [], [], classes.patchsetOnly);
+    let record = openRecord(input, treeState, mark, [], [], classes.patchsetOnly, []);
     crash('transaction-written');
     let discarded;
     try {
@@ -353,10 +296,11 @@ function discardBranch(input, classes, treeState, mark, crash) {
 // ---------------------------------------------------------------------------
 /**
  * The record of this run before its first mutation (D20), by way of
- * `openSyncTransaction`: heads, mark, and snapshots of everything the run
- * intends to rewrite.
+ * `openSyncTransaction`: heads, mark, snapshots of everything the run intends
+ * to rewrite, and - for a conflict stop - the ours-snapshots of the files the
+ * markers are about to rewrite.
  */
-function openRecord(input, treeState, mark, changes, ownClasses, patchsetOnly) {
+function openRecord(input, treeState, mark, changes, ownClasses, patchsetOnly, conflictTargets) {
     const { patchesDir, resolution, config } = input;
     return openSyncTransaction({
         patchesDir,
@@ -369,45 +313,9 @@ function openRecord(input, treeState, mark, changes, ownClasses, patchsetOnly) {
         treeArtifacts: changes.map((change) => `${PATCHES_DIR}/${encodePatchName(change.path)}`),
         patchsetTargets: patchsetOnly.map(artifactTarget),
         ownRelatives: ownClasses.map((entry) => entry.relative),
-        ownTargetPrefix: ownTargetRelativeDir(config.ownDirName)
+        ownTargetPrefix: ownTargetRelativeDir(config.ownDirName),
+        conflictTargets
     });
-}
-/** The final atoms of a successful save half: the consumed ref and the closing commit. */
-function appendOutcome(patchesDir, record, saved) {
-    const commits = saved.commit !== null && !record.patchsetCommits.includes(saved.commit)
-        ? [...record.patchsetCommits, saved.commit]
-        : record.patchsetCommits;
-    return saveSyncTransaction(patchesDir, { ...record, patchsetCommits: commits, consumedRef: saved.consumedRef });
-}
-/**
- * A run that refused or crashed mid-way. The engine's refusal (or the escaped
- * error) is already on the envelope; what this decides is the record's fate -
- * `resolveStoppedTransaction` retires it when nothing was written and keeps it
- * when something was, and the answer decides the exit path.
- */
-function stoppedMidway(input, record, classes, treeState, failure) {
-    const { patchesDir, resolution, out } = input;
-    let exitCode = 1;
-    if ('error' in failure) {
-        if (!isCkError(failure.error)) {
-            throw failure.error;
-        }
-        out.addError(failure.error.toPayload());
-        exitCode = failure.error.code === 'CONFIG' ? 2 : 1;
-    }
-    else if (failure.engine.status === 'unfit') {
-        exitCode = 2;
-    }
-    const settled = resolveStoppedTransaction(patchesDir, resolution.path, record, out);
-    return {
-        exitCode: settled === 'untouched' ? exitCode : 1,
-        status: settled === 'untouched' && exitCode === 2 ? 'unfit' : 'blocked',
-        classes,
-        treeCommitCount: treeState.commits.length,
-        transactionId: settled === 'untouched' ? null : record.id,
-        patchsetCommits: [...record.patchsetCommits],
-        consumedRef: null
-    };
 }
 // ---------------------------------------------------------------------------
 // Reports
@@ -429,10 +337,6 @@ function buildData(result) {
 // ---------------------------------------------------------------------------
 // Small readers
 // ---------------------------------------------------------------------------
-/** The tree path a delta/patches artifact name encodes (PROP-004 sec. 4). */
-function artifactTarget(artifact) {
-    return decodePatchName(artifact.split('/').pop() ?? '');
-}
 /** Changes the working tree carries on top of its own HEAD: the part `--discard` may not drop. */
 function uncommittedChanges(tree, treeState, ownDirName) {
     return changesSince(tree, treeState.head, { kind: 'worktree' }, ownDirName);

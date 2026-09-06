@@ -57,7 +57,7 @@ const syncTransactionSchema = z.object({
     rewrite: z.array(z.object({ repo: z.enum(['patchset', 'tree']), path: z.string().min(1), blob: z.string().min(1).nullable() })),
     patchsetCommits: z.array(z.string().min(1)),
     consumedRef: z.string().min(1).nullable(),
-    conflicts: z.array(z.string().min(1))
+    conflicts: z.array(z.object({ path: z.string().min(1), materialized: z.string().min(1).nullable() }))
 });
 /**
  * The record of a live sync, or null when none is. A present file that does not
@@ -107,8 +107,8 @@ export function refuseOverLiveSyncTransaction(patchesDir, command, out) {
     if (record === null) {
         return false;
     }
-    out.addError(ckError('SYNC-IN-PROGRESS', `a codkit sync (transaction ${record.id}) did not finish, and ${command} refuses to operate on its half-applied state`, 'wait for the running sync, or resolve its record first: codkit sync --abort or codkit sync --continue ' +
-        `(--continue is not implemented yet); the record is ${SYNC_TRANSACTION_RELATIVE_PATH}`, SYNC_TRANSACTION_RELATIVE_PATH).toPayload());
+    out.addError(ckError('SYNC-IN-PROGRESS', `a codkit sync (transaction ${record.id}) did not finish, and ${command} refuses to operate on its half-applied state`, 'wait for the running sync, or resolve its record first: codkit sync --continue after resolving its conflict markers, ' +
+        `or codkit sync --abort to return everything to the state before the run; the record is ${SYNC_TRANSACTION_RELATIVE_PATH}`, SYNC_TRANSACTION_RELATIVE_PATH).toPayload());
     return true;
 }
 /**
@@ -127,7 +127,7 @@ export function createSyncTransaction(patchesDir, input) {
         rewrite: input.rewrite,
         patchsetCommits: [],
         consumedRef: null,
-        conflicts: []
+        conflicts: [...(input.conflicts ?? [])]
     };
     const published = writeContainedFileExclusive(patchesDir, SYNC_TRANSACTION_RELATIVE_PATH, {
         bytes: encodeUtf8(serialize(record)),
@@ -135,7 +135,7 @@ export function createSyncTransaction(patchesDir, input) {
     });
     if (!published) {
         const existing = readSyncTransaction(patchesDir);
-        throw ckError('SYNC-IN-PROGRESS', `cannot start a sync: ${SYNC_TRANSACTION_RELATIVE_PATH} already exists` + (existing === null ? '' : ` (transaction ${existing.id})`), 'resolve the live record first: codkit sync --abort or codkit sync --continue (--continue is not implemented yet)');
+        throw ckError('SYNC-IN-PROGRESS', `cannot start a sync: ${SYNC_TRANSACTION_RELATIVE_PATH} already exists` + (existing === null ? '' : ` (transaction ${existing.id})`), 'resolve the live record first: codkit sync --continue after resolving its conflict markers, or codkit sync --abort');
     }
     return record;
 }
@@ -159,7 +159,8 @@ export function retireSyncTransaction(patchesDir) {
  * The record before the first mutation, snapshots included (D20): both heads,
  * the mark as the run found it, and the byte snapshots of everything the run
  * intends to rewrite - the artifacts of the tree's selection, the targets the
- * patch set moved, and every divergent own file on both its sides.
+ * patch set moved, every divergent own file on both its sides, and the files
+ * the diff3 materialization is about to rewrite (Phase 8b).
  */
 export function openSyncTransaction(input) {
     return createSyncTransaction(input.patchesDir, {
@@ -169,8 +170,10 @@ export function openSyncTransaction(input) {
             ...snapshotForTransaction(input.patchesDir, 'patchset', input.treeArtifacts),
             ...snapshotForTransaction(input.treeDir, 'tree', input.patchsetTargets),
             ...snapshotForTransaction(input.patchesDir, 'patchset', input.ownRelatives.map((relative) => `delta/own/${relative}`)),
-            ...snapshotForTransaction(input.treeDir, 'tree', input.ownRelatives.map((relative) => `${input.ownTargetPrefix}/${relative}`))
-        ]
+            ...snapshotForTransaction(input.treeDir, 'tree', input.ownRelatives.map((relative) => `${input.ownTargetPrefix}/${relative}`)),
+            ...snapshotForTransaction(input.treeDir, 'tree', input.conflictTargets)
+        ],
+        conflicts: input.conflictTargets.map((path) => ({ path, materialized: null }))
     });
 }
 /**
@@ -188,6 +191,21 @@ export function resolveStoppedTransaction(patchesDir, treeDir, record, out) {
     }
     out.warn(`the sync stopped after writing; its record stays at ${SYNC_TRANSACTION_RELATIVE_PATH} and load/save refuse until it is resolved`);
     return 'written';
+}
+/**
+ * Record that one conflict's markers actually landed in its file (D21): the
+ * sha256 of the written bytes turns the record's entry from "never reached the
+ * file" into "materialized", which is the difference `sync --continue` refuses
+ * over. Appended only after the write, so a crash between the two leaves the
+ * honest `null`.
+ */
+export function appendConflictMaterialized(patchesDir, record, path, materialized) {
+    const conflicts = record.conflicts.map((conflict) => (conflict.path === path ? { path, materialized } : conflict));
+    return saveSyncTransaction(patchesDir, { ...record, conflicts });
+}
+/** The snapshot entry of one path, by repository, as the record holds it. */
+export function recordedRewriteOf(record, repo, path) {
+    return record.rewrite.find((entry) => entry.repo === repo && entry.path === path) ?? null;
 }
 /**
  * The snapshots of D20: `git hash-object -w` of every named file into the
@@ -257,13 +275,20 @@ function unreadable(cause) {
 // Test-only hard-process interruption through the real CLI (the shape of
 // saveReplay.ts): the environment variable names a stage, the checkpoint
 // hard-exits the first time the stage is reached, and both are refused outside
-// the test runtime. The stages are the atoms of PROP-008 sec. 5a that this
-// phase proves: the record before the first mutation, each patchset commit,
-// and the two post-checkout windows of the rebuild.
+// the test runtime. The stages are the atoms of PROP-008 sec. 5a that the
+// campaign proves: the record before the first mutation, each materialized
+// conflict file (Phase 8b), each patchset commit, and the two post-checkout
+// windows of the rebuild.
 // ---------------------------------------------------------------------------
 export const SYNC_TEST_CRASH_ENV = 'CODKIT_TEST_SYNC_CRASH_AT';
 export const SYNC_TEST_CRASH_EXIT_CODE = 86;
-export const SYNC_TEST_CRASH_STAGES = ['transaction-written', 'state-committed', 'worktree-moved', 'mark-written'];
+export const SYNC_TEST_CRASH_STAGES = [
+    'transaction-written',
+    'conflict-materialized',
+    'state-committed',
+    'worktree-moved',
+    'mark-written'
+];
 export function syncCrashCheckpoint(crashAt, testBuild, terminate = hardExit) {
     if (crashAt === undefined || crashAt === '') {
         return undefined;

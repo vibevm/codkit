@@ -157,7 +157,7 @@ const commandGuidance = {
 	sync: {
 		positional: '',
 		detail:
-			'The two-way command: extract the fork tree work and apply the patch set shifts in one run, per target and under a durable transaction. A file both sides changed is a refusal (`CK-E-BOTH-SIDES-EDITED`) with a choose-a-side recipe, never a merge. `--dry-run` prints the classification; `--discard` drops fork-tree commits on purpose (refused under `--ci`); `--squash`/`--commit`/`--message` shape the patchset history and `--fresh` the rebuild. `--abort`/`--continue` recover a stopped sync and arrive with the conflict-materialization phase.'
+			'The two-way command: extract the fork tree work and apply the patch set shifts in one run, per target and under a durable transaction. A file both sides changed stops the run with the 3-way materialized as diff3 markers inside the file\'s codkit block - resolve them by hand, then `sync --continue` finishes the run and `sync --abort` returns everything to the state before it. `--dry-run` prints the classification; `--discard` drops fork-tree commits on purpose (refused under `--ci`); `--squash`/`--commit`/`--message` shape the patchset history and `--fresh` the rebuild (the extraction flags also apply to `--continue`).'
 	},
 	'marker new': {
 		positional: '<tree-file>',
@@ -500,8 +500,8 @@ const faqEntries = {
 		'Complete the required record through `codkit cycle` before continuing.'
 	],
 	'BOTH-SIDES-EDITED': [
-		'The same intervention changed on both relevant sides and needs a decision.',
-		'Stop, compare the named states, resolve in the fork tree, and record the decision in the cycle procedure.'
+		'The same file changed on both sides of the two repositories and needs a human decision.',
+		'For a `codkit sync` conflict the 3-way is already in the fork-tree file as diff3 markers: keep both sides and the block ids, then `codkit sync --continue` (`codkit sync --abort` returns everything to the state before the run; while markers remain, `--continue` refuses naming the file). For own code and mixed `--discard` runs there are no blocks to materialize into - pick a side by hand as the printed recipe says.'
 	],
 	'WORKTREE-REF-SHARED': [
 		'The generated branch is checked out in another worktree of the same repository, and moving it here would leave that worktree dirty.',
@@ -516,8 +516,8 @@ const faqEntries = {
 		'Follow the printed manual merge recipe: return the delta to the loaded state (`git stash`, `git switch <branch>`, or `git checkout <sha> -- delta/`), run `codkit save`, bring the shift back (`git stash pop`, `git merge`, or `git rebase`), then `codkit load` - or let `codkit sync` perform all four in one command. Switching branches deliberately starts with a full `codkit save`, not a switch.'
 	],
 	'SYNC-IN-PROGRESS': [
-		'A two-way `codkit sync` left its transaction record behind without finishing, so the fork tree and the patch set are half one state and half another.',
-		'Wait for the running sync; if none is running, resolve the record at `.codkit/sync-transaction.json` - it carries the pre-run heads and byte snapshots of everything the run intended to rewrite, and `codkit sync --abort`/`--continue` recover it once the conflict-materialization phase lands. Do not delete it blind.'
+		'A two-way `codkit sync` left its transaction record behind without finishing, so the fork tree and the patch set are half one state and half another - or the abort found commits above the record that were not made by that run.',
+		'Wait for the running sync; otherwise resolve the record: resolve the conflict markers and `codkit sync --continue`, or `codkit sync --abort` to return everything to the state before the run. An abort that names foreign commits refuses on purpose - move or remove them by hand first. The record at `.codkit/sync-transaction.json` carries the pre-run heads and byte snapshots; do not delete it blind.'
 	],
 	INTERNAL: [
 		'An unexpected Codkit failure escaped domain diagnosis.',

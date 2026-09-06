@@ -1,17 +1,18 @@
 // e2e: the two-way `codkit sync` (PROP-007 sec. 5a ##CMD-SYNC-TWO-WAY,
 // PROP-008 sec. 5a ##SYNC-TWO-PASS/##SYNC-TRANSACTION; campaign
-// TREE-COMMITS-SAVE Phase 8, decisions D15-D21).
+// TREE-COMMITS-SAVE Phase 8 + 8b, decisions D15-D21).
 //
 // S24: one run extracts the tree's committed and uncommitted work and applies
 // what the patch set moved, per target, under a transaction that retires at
-// the end. S25: a file both sides changed is a refusal with a choose-a-side
-// recipe - and the refusal is proven by absence, not by exit code alone: no
-// transaction file, no moved patchset ref, no changed tree byte.
+// the end. S25 (as of Phase 8b): a file both sides changed stops the run with
+// the 3-way materialized as diff3 markers in the tree file under a live
+// transaction - the deep proof of the stop and its recovery (resolve +
+// `sync --continue`, `sync --abort`) lives in syncConflict.test.ts.
 //
 // The crash atoms prove the second property of the phase at every checkpoint
 // seam: a process loss at any recorded atom leaves the transaction file with
 // the atoms done so far, and `load`/`save` answer CK-E-SYNC-IN-PROGRESS over
-// the half-applied state instead of operating on it (recovery is Phase 8b).
+// the half-applied state instead of operating on it.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -141,13 +142,22 @@ function transactionPath(fixture: CliFixture): string {
 }
 
 /** The transaction record of a crashed run, as the recovery of Phase 8b reads it. */
-function readTransaction(fixture: CliFixture): { id: string; startedAt: string; patchsetCommits: string[]; consumedRef: string | null } {
+function readTransaction(fixture: CliFixture): {
+	id: string;
+	startedAt: string;
+	patchsetCommits: string[];
+	consumedRef: string | null;
+	conflicts: { path: string; materialized: string | null }[];
+	rewrite: { repo: string; path: string; blob: string | null }[];
+} {
 	expect(existsSync(transactionPath(fixture)), 'the sync transaction file should exist').toBe(true);
 	return JSON.parse(readFileSync(transactionPath(fixture), 'utf8')) as {
 		id: string;
 		startedAt: string;
 		patchsetCommits: string[];
 		consumedRef: string | null;
+		conflicts: { path: string; materialized: string | null }[];
+		rewrite: { repo: string; path: string; blob: string | null }[];
 	};
 }
 
@@ -266,7 +276,7 @@ describe('S24: sync merges non-overlapping work of both sides in one run', () =>
 	});
 });
 
-describe('S25: both sides changed F - a refusal proven by absence, then the recipe by hand', () => {
+describe('S25: both sides changed F - the stop is the materialized merge (Phase 8b)', () => {
 	let fixture: CliFixture;
 	let patchHeadBefore: string;
 	let treeFileBefore: string;
@@ -288,64 +298,49 @@ describe('S25: both sides changed F - a refusal proven by absence, then the reci
 		outcome = fixture.json(['sync']);
 	});
 
-	it('exits 1 with CK-E-BOTH-SIDES-EDITED and the choose-a-side recipe', () => {
+	it('exits 1 with CK-E-BOTH-SIDES-EDITED, the diff3 markers in the tree file, the transaction live', () => {
 		expect(outcome.run.status).toBe(1);
 		const [error] = outcome.envelope.errors;
 		expect(error?.code).toBe('CK-E-BOTH-SIDES-EDITED');
-		expect(error?.message).toContain(EXAMPLE_PATCH);
-		expect(error?.hint).toContain(`git checkout ${patchHeadBefore} -- ${EXAMPLE_PATCH}`);
-		expect(error?.hint).toContain('codkit save');
-		expect(error?.hint).toContain('codkit sync');
+		expect(error?.message).toContain(EXAMPLE_PART_PATH);
+		expect(error?.message).toContain('diff3 markers');
+		expect(error?.hint).toContain('codkit sync --continue');
+		expect(error?.hint).toContain('codkit sync --abort');
+		const treeFile = readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8');
+		expect(treeFile).toContain('<<<<<<< ours');
+		expect(treeFile).toContain('||||||| base');
+		expect(treeFile).toContain('>>>>>>> theirs');
+		expect(treeFile).toContain('// the tree side of F');
+		expect(treeFile).toContain(PATCHSET_LINE);
+		expect(typeof outcome.envelope.data['transaction']).toBe('string');
 	});
 
-	it('wrote nothing: no transaction file, no moved ref, no changed byte', () => {
-		// Shown, not merely asserted: the before/after of everything a
-		// write-happy implementation would have touched.
-		const after = {
-			transactionFile: existsSync(transactionPath(fixture)),
-			patchsetHead: fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim(),
-			treeFile: readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8'),
-			artifact: readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8'),
-			consumedRefs: consumedRefs(fixture).length
-		};
-		process.stdout.write(
-			`S25 absence proof: ${JSON.stringify(
-				{
-					before: {
-						transactionFile: false,
-						patchsetHead: patchHeadBefore,
-						treeFile: `${treeFileBefore.length} bytes`,
-						artifact: `${artifactBefore.length} bytes`,
-						consumedRefs: 0
-					},
-					after: {
-						transactionFile: after.transactionFile,
-						patchsetHead: after.patchsetHead,
-						treeFile: `${after.treeFile.length} bytes`,
-						artifact: `${after.artifact.length} bytes`,
-						consumedRefs: after.consumedRefs
-					}
-				},
-				null,
-				2
-			)}\n`
-		);
-		expect(after.transactionFile).toBe(false);
-		expect(after.patchsetHead).toBe(patchHeadBefore);
-		expect(after.treeFile).toBe(treeFileBefore);
-		expect(after.artifact).toBe(artifactBefore);
-		expect(after.consumedRefs).toBe(0);
+	it('writes only the markers and the record: the record carries the ours-snapshot and the sha', () => {
+		// The record is the recovery plan: the conflict file listed with its
+		// materialized sha, and its pre-run bytes snapshotted (D20/D21).
+		const record = readTransaction(fixture);
+		expect(record.conflicts).toEqual([{ path: EXAMPLE_PART_PATH, materialized: expect.stringMatching(/^[0-9a-f]{64}$/) }]);
+		const ours = record.rewrite.find((entry) => entry.repo === 'tree' && entry.path === EXAMPLE_PART_PATH);
+		expect(ours?.blob).toMatch(/^[0-9a-f]{40}$/);
+		// Nothing else moved: no patchset ref, no touched artifact, no consumed
+		// line (the markers and the record are the run's only writes).
+		expect(fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim()).toBe(patchHeadBefore);
+		expect(readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8')).toBe(artifactBefore);
+		expect(consumedRefs(fixture).length).toBe(0);
 	});
 
-	it('the recipe by hand (take the tree) lets save finish with exit 0', () => {
-		fixture.patchGit(['checkout', patchHeadBefore, '--', EXAMPLE_PATCH]);
-
-		const save = fixture.json(['save']);
-
-		expect(save.run.status, save.run.stderr).toBe(0);
-		expect(readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8')).toContain('// the tree side of F');
-		expect(readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8')).not.toContain(PATCHSET_LINE);
-		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
+	it('sync --abort returns the file byte for byte and retires the record', () => {
+		const abort = fixture.json(['sync', '--abort']);
+		expect(abort.run.status, abort.run.stderr).toBe(0);
+		expect(abort.envelope.data['status']).toBe('aborted');
+		expect(readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')).toBe(treeFileBefore);
+		expect(existsSync(transactionPath(fixture))).toBe(false);
+		// The world is the pre-run world: the unextracted tree edit is back, so
+		// `load` answers with the ordinary guard - not with the transaction's
+		// refusal. The record is gone; the engine no longer sees it.
+		const load = fixture.json(['load']);
+		expect(load.run.status).toBe(1);
+		expect(load.envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
 	});
 });
 
@@ -428,7 +423,9 @@ describe('--discard drops the tree commits and takes the patchset side (D11/D15)
 });
 
 describe('a crash at any recorded atom leaves the transaction and refuses load/save', () => {
-	const stageCases = SYNC_TEST_CRASH_STAGES.map((stage) => ({
+	// The conflict atom ('conflict-materialized') fires only in a conflict run;
+	// syncConflict.test.ts proves it together with its recovery.
+	const stageCases = SYNC_TEST_CRASH_STAGES.filter((stage) => stage !== 'conflict-materialized').map((stage) => ({
 		stage,
 		/** Atoms recorded in the file when the crash lands: the replay commit exists from 'state-committed' on. */
 		commitsRecorded: stage === 'transaction-written' ? 0 : 1
@@ -494,7 +491,7 @@ describe('the name sync is the two-way command now (S21 successor)', () => {
 		expect(outcome.run.stderr).not.toContain('renamed');
 	});
 
-	it('--abort and --continue answer honestly until the recovery phase', () => {
+	it('--abort and --continue without a stopped sync answer honestly', () => {
 		const fixture = makeCliFixture('sync-abort-honest');
 		expect(fixture.run(['load']).status).toBe(0);
 
@@ -502,7 +499,7 @@ describe('the name sync is the two-way command now (S21 successor)', () => {
 
 		expect(outcome.run.status).toBe(2);
 		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-CONFIG']);
-		expect(outcome.envelope.errors[0]?.message).toContain('--abort/--continue');
+		expect(outcome.envelope.errors[0]?.message).toContain('no stopped sync');
 		expect(existsSync(transactionPath(fixture))).toBe(false);
 	});
 });

@@ -77,8 +77,20 @@ export type SyncTransaction = {
 	/** Shas of the patchset commits this run made, oldest first. */
 	readonly patchsetCommits: readonly string[];
 	readonly consumedRef: string | null;
-	/** Conflict tree files the run materialized markers into; empty until the diff3 phase. */
-	readonly conflicts: readonly string[];
+	/** Conflict tree files of the run (D19, Phase 8b), with the state of their materialization. */
+	readonly conflicts: readonly SyncTransactionConflict[];
+};
+
+/**
+ * One materialized conflict of the record (D21): the tree path the markers
+ * went into, and - only once the bytes were actually written - the sha256 of
+ * what was written. `materialized: null` means the run stopped before the
+ * merge reached this file (a crash between the record and the write), which is
+ * exactly the fact `sync --continue` refuses over: no human ever saw markers.
+ */
+export type SyncTransactionConflict = {
+	readonly path: string;
+	readonly materialized: string | null;
 };
 
 // The mark snapshot is stored as the parsed mark this run read (already
@@ -97,7 +109,7 @@ const syncTransactionSchema = z.object({
 	rewrite: z.array(z.object({ repo: z.enum(['patchset', 'tree']), path: z.string().min(1), blob: z.string().min(1).nullable() })),
 	patchsetCommits: z.array(z.string().min(1)),
 	consumedRef: z.string().min(1).nullable(),
-	conflicts: z.array(z.string().min(1))
+	conflicts: z.array(z.object({ path: z.string().min(1), materialized: z.string().min(1).nullable() }))
 });
 
 /** What a caller needs to start a record; `id` and `startedAt` are made here. */
@@ -105,6 +117,8 @@ export type SyncTransactionInput = {
 	readonly patchset: { readonly head: string; readonly dirtyBefore: boolean };
 	readonly tree: { readonly head: string; readonly branchTip: string | null; readonly markSnapshot: TreeMark | null };
 	readonly rewrite: readonly SyncTransactionRewrite[];
+	/** Tree paths of the both-sides conflicts this run opens with (D19), unmaterialized. */
+	readonly conflicts?: readonly SyncTransactionConflict[];
 	readonly now?: () => Date;
 };
 
@@ -160,8 +174,8 @@ export function refuseOverLiveSyncTransaction(patchesDir: string, command: strin
 		ckError(
 			'SYNC-IN-PROGRESS',
 			`a codkit sync (transaction ${record.id}) did not finish, and ${command} refuses to operate on its half-applied state`,
-			'wait for the running sync, or resolve its record first: codkit sync --abort or codkit sync --continue ' +
-				`(--continue is not implemented yet); the record is ${SYNC_TRANSACTION_RELATIVE_PATH}`,
+			'wait for the running sync, or resolve its record first: codkit sync --continue after resolving its conflict markers, ' +
+				`or codkit sync --abort to return everything to the state before the run; the record is ${SYNC_TRANSACTION_RELATIVE_PATH}`,
 			SYNC_TRANSACTION_RELATIVE_PATH
 		).toPayload()
 	);
@@ -184,7 +198,7 @@ export function createSyncTransaction(patchesDir: string, input: SyncTransaction
 		rewrite: input.rewrite,
 		patchsetCommits: [],
 		consumedRef: null,
-		conflicts: []
+		conflicts: [...(input.conflicts ?? [])]
 	};
 	const published = writeContainedFileExclusive(patchesDir, SYNC_TRANSACTION_RELATIVE_PATH, {
 		bytes: encodeUtf8(serialize(record)),
@@ -195,7 +209,7 @@ export function createSyncTransaction(patchesDir: string, input: SyncTransaction
 		throw ckError(
 			'SYNC-IN-PROGRESS',
 			`cannot start a sync: ${SYNC_TRANSACTION_RELATIVE_PATH} already exists` + (existing === null ? '' : ` (transaction ${existing.id})`),
-			'resolve the live record first: codkit sync --abort or codkit sync --continue (--continue is not implemented yet)'
+			'resolve the live record first: codkit sync --continue after resolving its conflict markers, or codkit sync --abort'
 		);
 	}
 	return record;
@@ -235,13 +249,16 @@ export type OpenSyncTransactionInput = {
 	/** delta/own-relative paths diverging between the sides, and their tree-side prefix. */
 	readonly ownRelatives: readonly string[];
 	readonly ownTargetPrefix: string;
+	/** Tree paths of the both-sides conflicts (D19): the run materializes markers into them. */
+	readonly conflictTargets: readonly string[];
 };
 
 /**
  * The record before the first mutation, snapshots included (D20): both heads,
  * the mark as the run found it, and the byte snapshots of everything the run
  * intends to rewrite - the artifacts of the tree's selection, the targets the
- * patch set moved, and every divergent own file on both its sides.
+ * patch set moved, every divergent own file on both its sides, and the files
+ * the diff3 materialization is about to rewrite (Phase 8b).
  */
 export function openSyncTransaction(input: OpenSyncTransactionInput): SyncTransaction {
 	return createSyncTransaction(input.patchesDir, {
@@ -259,8 +276,10 @@ export function openSyncTransaction(input: OpenSyncTransactionInput): SyncTransa
 				input.treeDir,
 				'tree',
 				input.ownRelatives.map((relative) => `${input.ownTargetPrefix}/${relative}`)
-			)
-		]
+			),
+			...snapshotForTransaction(input.treeDir, 'tree', input.conflictTargets)
+		],
+		conflicts: input.conflictTargets.map((path) => ({ path, materialized: null }))
 	});
 }
 
@@ -286,6 +305,32 @@ export function resolveStoppedTransaction(
 		`the sync stopped after writing; its record stays at ${SYNC_TRANSACTION_RELATIVE_PATH} and load/save refuse until it is resolved`
 	);
 	return 'written';
+}
+
+/**
+ * Record that one conflict's markers actually landed in its file (D21): the
+ * sha256 of the written bytes turns the record's entry from "never reached the
+ * file" into "materialized", which is the difference `sync --continue` refuses
+ * over. Appended only after the write, so a crash between the two leaves the
+ * honest `null`.
+ */
+export function appendConflictMaterialized(
+	patchesDir: string,
+	record: SyncTransaction,
+	path: string,
+	materialized: string
+): SyncTransaction {
+	const conflicts = record.conflicts.map((conflict) => (conflict.path === path ? { path, materialized } : conflict));
+	return saveSyncTransaction(patchesDir, { ...record, conflicts });
+}
+
+/** The snapshot entry of one path, by repository, as the record holds it. */
+export function recordedRewriteOf(
+	record: SyncTransaction,
+	repo: SyncTransactionRewrite['repo'],
+	path: string
+): SyncTransactionRewrite | null {
+	return record.rewrite.find((entry) => entry.repo === repo && entry.path === path) ?? null;
 }
 
 /**
@@ -373,14 +418,21 @@ function unreadable(cause: unknown): Error {
 // Test-only hard-process interruption through the real CLI (the shape of
 // saveReplay.ts): the environment variable names a stage, the checkpoint
 // hard-exits the first time the stage is reached, and both are refused outside
-// the test runtime. The stages are the atoms of PROP-008 sec. 5a that this
-// phase proves: the record before the first mutation, each patchset commit,
-// and the two post-checkout windows of the rebuild.
+// the test runtime. The stages are the atoms of PROP-008 sec. 5a that the
+// campaign proves: the record before the first mutation, each materialized
+// conflict file (Phase 8b), each patchset commit, and the two post-checkout
+// windows of the rebuild.
 // ---------------------------------------------------------------------------
 
 export const SYNC_TEST_CRASH_ENV = 'CODKIT_TEST_SYNC_CRASH_AT';
 export const SYNC_TEST_CRASH_EXIT_CODE = 86;
-export const SYNC_TEST_CRASH_STAGES = ['transaction-written', 'state-committed', 'worktree-moved', 'mark-written'] as const;
+export const SYNC_TEST_CRASH_STAGES = [
+	'transaction-written',
+	'conflict-materialized',
+	'state-committed',
+	'worktree-moved',
+	'mark-written'
+] as const;
 
 export type SyncTestCrashStage = (typeof SYNC_TEST_CRASH_STAGES)[number];
 

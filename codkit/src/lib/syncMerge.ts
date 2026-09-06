@@ -347,7 +347,7 @@ export function reportSyncPlan(out: Output, classes: TargetClasses, treeCommitCo
 	);
 	planList(out, 'extract from the tree', changedPaths);
 	planList(out, 'apply from the patch set', classes.patchsetOnly);
-	planList(out, 'refuse (both sides)', classes.both);
+	planList(out, 'materialize (both sides)', classes.both);
 }
 
 function planList(out: Output, label: string, paths: readonly string[]): void {
@@ -440,7 +440,7 @@ function reproducesTreeState(input: ClassifyInput, target: string, artifactPath:
 }
 
 /** The target as the pin carries it, or null when the pin does not have it. */
-function pinBytesOf(treeDir: string, pinSha: string, target: string): Uint8Array | null {
+export function pinBytesOf(treeDir: string, pinSha: string, target: string): Uint8Array | null {
 	const shown = runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir });
 	return shown.status === 0 ? encodeUtf8(shown.stdout) : null;
 }

@@ -237,7 +237,7 @@ export function reportSyncPlan(out, classes, treeCommitCount, changedPaths) {
         `${classes.patchsetOnly.length} patchset-side artifact(s) to apply, ${classes.both.length} on both sides`);
     planList(out, 'extract from the tree', changedPaths);
     planList(out, 'apply from the patch set', classes.patchsetOnly);
-    planList(out, 'refuse (both sides)', classes.both);
+    planList(out, 'materialize (both sides)', classes.both);
 }
 function planList(out, label, paths) {
     if (paths.length === 0) {
@@ -319,7 +319,7 @@ function reproducesTreeState(input, target, artifactPath) {
     return false;
 }
 /** The target as the pin carries it, or null when the pin does not have it. */
-function pinBytesOf(treeDir, pinSha, target) {
+export function pinBytesOf(treeDir, pinSha, target) {
     const shown = runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir });
     return shown.status === 0 ? encodeUtf8(shown.stdout) : null;
 }
