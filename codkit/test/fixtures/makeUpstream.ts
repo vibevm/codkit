@@ -265,7 +265,7 @@ if (step === 'hygiene' || step === 'eslint') {
 if (step === 'product-tests') {
 	const runGlobAt = process.argv.indexOf('--runGlob');
 	const runGlob = runGlobAt === -1 ? undefined : process.argv[runGlobAt + 1];
-	if (runGlob !== 'vs/patchset/test/**/*.test.js') {
+	if (runGlob !== 'vs/patchset/**/test/**/*.test.js') {
 		console.error('product-tests: expected the own-test --runGlob, got ' + String(runGlob));
 		process.exit(1);
 	}

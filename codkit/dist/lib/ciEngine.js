@@ -799,9 +799,11 @@ export function upstreamHygieneStep(treeDir, out, run = defaultCiCommandRunner) 
 }
 /**
  * Product tests live below `src/vs/<own>/test/` and run through the upstream
- * node runner over compiled `out/` files (PROP-010 sec. 4). FEAT-001 records the
- * proven selector as `--runGlob vs/patchset/test/**\/*.test.js`; using the tree's
- * `test-node` script preserves the upstream runner's own mandatory flags.
+ * node runner over compiled `out/` files (PROP-010 sec. 4). The selector takes
+ * every `test/` directory under the own directory, so the suites of a delivered
+ * library (`<own>/codkit/test/`) and of a feature folder run with the product's
+ * own; using the tree's `test-node` script preserves the upstream runner's own
+ * mandatory flags.
  */
 export function productTestsStep(patchesDir, treeDir, ownDirName, out, run = defaultCiCommandRunner) {
     const root = ownSourceRoot(patchesDir);
@@ -818,7 +820,7 @@ export function productTestsStep(patchesDir, treeDir, ownDirName, out, run = def
             exitCode: EXIT_ENVIRONMENT
         };
     }
-    const glob = `vs/${ownDirName}/test/**/*.test.js`;
+    const glob = `vs/${ownDirName}/**/test/**/*.test.js`;
     const result = runCommandSequence(out, [
         {
             label: 'product tests',
