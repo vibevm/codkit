@@ -42,3 +42,7 @@ ships under `codkit/claude/`; see the
 repository itself carries no agent perimeter. Current accepted
 evidence and open external risks are tracked in the
 [risk register](docs/codkit/proofs/RISK-REGISTER.md).
+
+Default standards for a patch set ship as the UPL-1.0 vibe package under
+`vibevm/vibepacks/org.vibevm.codkit/standards/`; `codkit standards load`
+delivers it into a product repository (human protocol page 13).

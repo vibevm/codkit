@@ -25,6 +25,12 @@ The everyday loop is:
 3. `status` shows work not represented by the patch set.
 4. `save` extracts that work into the patch-set directory.
 
+`codkit standards load` delivers the standards package codkit ships (the
+default norms of a patch set, UPL-1.0) into the patch-set repository as a
+vibe package; `vibe install --offline` materialises it and `codkit standards
+check` confirms the installed copy. See
+[13-standards.md](../docs/codkit/protocol/human/13-standards.md).
+
 A commit made in the fork tree is work like any other: `save` extracts it -
 replaying each tree commit into the patch-set history - while `load`
 refuses over unextracted commits instead of destroying them. The tree's
