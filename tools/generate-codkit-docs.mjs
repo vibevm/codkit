@@ -616,6 +616,34 @@ const faqEntries = {
 	'STANDARDS-DRIFT': [
 		'The installed copy of the standards package under `vibevm/vibepacks/org.vibevm.codkit/standards/` differs from the package codkit ships: a file was modified, added or removed.',
 		'The copy is codkit-owned. Move local edits into your own specs as a recorded deviation, delete the copy directory, then run `codkit standards load` again (and `vibe install --offline` afterwards).'
+	],
+	'RUNTIME-DRIFT': [
+		'The installed copy of the codkit runtime library under `delta/own/codkit/` differs from the library codkit ships: a file was edited, added or removed, or an older version is installed.',
+		'The library is codkit-owned. Change it in codkit, not in the product; to take the shipped version run `codkit runtime load --upgrade`, which replaces the directory as a whole and lists what it replaced.'
+	],
+	'RUNTIME-PACKAGE': [
+		'The codkit installation carries no usable runtime library: `codkit/runtime/` has zero or several version directories, or the `CODKIT_RUNTIME_VERSION` literal in `common/version.ts` disagrees with the directory name.',
+		'Restore the codkit installation from the approved supply; nothing in the product repository is wrong.'
+	],
+	'DELIVERED-EDIT': [
+		'`codkit save` found a file under `src/vs/<own>/codkit/` in the fork tree that differs from `delta/own/codkit/`: a file delivered by codkit was edited in the tree.',
+		'Nothing was mirrored. Revert the edit in the tree, or make the change in codkit and run `codkit runtime load --upgrade`.'
+	],
+	'OWN-UNDER-CODKIT': [
+		'A unit in `patchset.delta.json` roots a path under `codkit/`, which is reserved for files codkit delivers and licenses.',
+		'Move the unit to another own path; `codkit/` belongs to codkit and the licence notice describes it as such.'
+	],
+	'HOOK-TOO-LARGE': [
+		'A patch declared `type = hook` carries more than three lines of code between its markers, or none of its lines imports or calls own code.',
+		'A hook is a graft: keep one import or one call that delegates into own code and move the logic into the own layer.'
+	],
+	'GEN-EXISTS': [
+		'`codkit gen` would overwrite a file that already exists under `delta/own/`.',
+		'Nothing was written. Remove or rename the existing file, or pick another feature id.'
+	],
+	'GEN-ID': [
+		'The feature id passed to `codkit gen feature` is not two or more dot-separated camelCase segments (for example `acme.smartPaste`).',
+		'Use a product prefix followed by camelCase segments; the first segment names the product.'
 	]
 };
 

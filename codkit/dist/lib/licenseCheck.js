@@ -190,8 +190,10 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
             problem('LICENSE-HEADER', relative, 'orphan sidecar: its file does not exist');
         }
     }
-    checkPackageConsistency(dir, policy, present, licencesInUse, problem);
-    checkNotices(dir, present, expectedNotices, problem);
+    if (options.packageShape !== false) {
+        checkPackageConsistency(dir, policy, present, licencesInUse, problem);
+        checkNotices(dir, present, expectedNotices, problem);
+    }
     return {
         dir,
         files: paths.length,

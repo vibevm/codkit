@@ -94,7 +94,14 @@ export const ERROR_CODES = [
     // The installed copy of the standards package differs from the shipped one;
     // `standards load` refuses rather than overwrite what someone edited
     // (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL).
-    'STANDARDS-DRIFT'
+    'STANDARDS-DRIFT',
+    'RUNTIME-DRIFT',
+    'RUNTIME-PACKAGE',
+    'DELIVERED-EDIT',
+    'OWN-UNDER-CODKIT',
+    'HOOK-TOO-LARGE',
+    'GEN-EXISTS',
+    'GEN-ID'
 ];
 export const publicErrorCodeSchema = z.templateLiteral(['CK-E-', z.enum(ERROR_CODES)]);
 export const WARNING_CODES = ['MARK-RO', 'PATCHSET-SIDE-EDIT', 'EMPTY-BLOCK'];

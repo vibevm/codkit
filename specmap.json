@@ -7304,7 +7304,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:72b2a2330ceb405db8f4f1bf3f83a36b2590bcf044f794bc9483f81f90d18df4",
+      "content_hash": "sha256:323af134ef5e88de685a915ff2f4d7347f7cfa48e84ab350d4c21eb452328f9c",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: Пакет стандартов и лицензионная разметка",
@@ -7763,7 +7763,7 @@
     },
     {
       "anchor": "check",
-      "content_hash": "sha256:35b31bc68ebbf8907803ebd3ff89eb718e371d774c35a325b277d1b8f5afd353",
+      "content_hash": "sha256:d409f0535385169dfd84802de4583d15118d3d6f8e776ec0eb43944ae4e356de",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "3. Проверка: алгоритм `license check`; команды `annotate` и `notices`",
@@ -7772,10 +7772,10 @@
     },
     {
       "anchor": "LIC-CHECK-ALGORITHM",
-      "content_hash": "sha256:46abd80f539aa2396e53b9a2d4c30f2c13ec9978694a1c383d04b6f830d27603",
+      "content_hash": "sha256:f514bab5efa768eb7cc2524ebfc591f527f4276e96600a3cb2ff5d002533c5c1",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Вход — каталог пакета (по умолчанию пакет стандартов в toolRoot). Шаги: (1) загрузить политику и список SPDX; (2) обойти каталог рекурсивно, отсортировав пути лексикографически по UTF-8 в POSIX-форме, исключив `.git`; символьная ссылка — ошибка `LICENSE-PACKAGE`, перечисление продолжается (все ошибки, не первая); (3) прочитать каждый `REUSE.toml` дерева (`LIC-THIRD-PARTY-REGISTRY`, `LIC-REGISTRY-NESTED`; ошибка разбора — `LICENSE-PACKAGE`); (4) исключить `LIC-UNSCANNED-SET`; (5) для каждого файла выбрать носитель по `LIC-CARRIER-PRECEDENCE` с учётом `LIC-CARRIER-ANNOTATION`: бинарность — нулевой байт в первых 8 KiB; недекодируемый файл или файл без стиля комментария без sidecar и без аннотации — ошибка; (6) извлечь copyright-строки из блока (`LIC-HEADER-BLOCK-ENDS-AT-SPDX`) и SPDX-строку носителя (для аннотации — её поля); ошибки: нет copyright-строки; две SPDX-строки; невалидный идентификатор; (7) классифицировать файл (`LIC-FILE-CLASSIFICATION`, `LIC-ANNOTATION-OWN`): собственный — год и ровно `ownLicense`; сторонний — аннотация, совпадение лицензий, allowlist, запрет `LicenseRef-*`/`NOASSERTION`; (8) orphan-sidecar: каждый `*.license` обязан иметь файл-владельца; (9) консистентность пакета: `LIC-MANIFEST-FIELD`, `LIC-LICENSE-FILE-SHAPE`, `LIC-LICENSES-DIR`, `LIC-NOTICES-FILE`; (10) отчёт `LIC-CHECK-REPORT` — у каждой строки `checked[]` поле `carrier` (`header` | `sidecar` | `annotation`) и путь реестра для аннотации. Проверка не пишет ничего и не выполняет git. @status:spec/done",
+      "heading": "Вход — каталог пакета (по умолчанию пакет стандартов в toolRoot). Шаги: (1) загрузить политику и список SPDX; (2) обойти каталог рекурсивно, отсортировав пути лексикографически по UTF-8 в POSIX-форме, исключив `.git`; символьная ссылка — ошибка `LICENSE-PACKAGE`, перечисление продолжается (все ошибки, не первая); (3) прочитать каждый `REUSE.toml` дерева (`LIC-THIRD-PARTY-REGISTRY`, `LIC-REGISTRY-NESTED`; ошибка разбора — `LICENSE-PACKAGE`); (4) исключить `LIC-UNSCANNED-SET`; (5) для каждого файла выбрать носитель по `LIC-CARRIER-PRECEDENCE` с учётом `LIC-CARRIER-ANNOTATION`: бинарность — нулевой байт в первых 8 KiB; недекодируемый файл или файл без стиля комментария без sidecar и без аннотации — ошибка; (6) извлечь copyright-строки из блока (`LIC-HEADER-BLOCK-ENDS-AT-SPDX`) и SPDX-строку носителя (для аннотации — её поля); ошибки: нет copyright-строки; две SPDX-строки; невалидный идентификатор; (7) классифицировать файл (`LIC-FILE-CLASSIFICATION`, `LIC-ANNOTATION-OWN`): собственный — год и ровно `ownLicense`; сторонний — аннотация, совпадение лицензий, allowlist, запрет `LicenseRef-*`/`NOASSERTION`; (8) orphan-sidecar: каждый `*.license` обязан иметь файл-владельца; (9) консистентность пакета: `LIC-MANIFEST-FIELD`, `LIC-LICENSE-FILE-SHAPE`, `LIC-LICENSES-DIR`, `LIC-NOTICES-FILE`; (9а) для каталога, не являющегося vibe-пакетом (библиотека рантайма, PROP-015 `RT-EVERY-FILE-CARRIES-THE-BANNER`), вызов идёт с `packageShape: false`: шаг (9) и проверка notices пропускаются, носители файлов проверяются как обычно; (10) отчёт `LIC-CHECK-REPORT` — у каждой строки `checked[]` поле `carrier` (`header` | `sidecar` | `annotation`) и путь реестра для аннотации. Проверка не пишет ничего и не выполняет git. @status:spec/done",
       "line": 124,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CHECK-ALGORITHM"
     },

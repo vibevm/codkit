@@ -112,6 +112,12 @@ export type LicenseCheckOptions = {
 	 * (##LIC-NOTICES-FILE).
 	 */
 	readonly expectedNotices?: string | null;
+	/**
+	 * `false` for a directory that is not a vibe package (the runtime library of
+	 * PROP-015): every file still needs its carrier, but there is no manifest,
+	 * no LICENSE, no LICENSES/ and no notices file to check.
+	 */
+	readonly packageShape?: boolean;
 };
 
 /** ##LIC-UNSCANNED-SET: files that carry no markup and are never scanned. */
@@ -295,8 +301,10 @@ export function checkLicenseCarriers(
 		}
 	}
 
-	checkPackageConsistency(dir, policy, present, licencesInUse, problem);
-	checkNotices(dir, present, expectedNotices, problem);
+	if (options.packageShape !== false) {
+		checkPackageConsistency(dir, policy, present, licencesInUse, problem);
+		checkNotices(dir, present, expectedNotices, problem);
+	}
 
 	return {
 		dir,

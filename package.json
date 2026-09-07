@@ -21,6 +21,7 @@
 		"codkit/config",
 		"codkit/dist",
 		"codkit/hooks",
+    "codkit/runtime",
 		"codkit/src",
 		"codkit/README.md",
 		"docs/codkit",
