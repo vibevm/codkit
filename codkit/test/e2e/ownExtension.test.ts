@@ -111,6 +111,17 @@ describe('S54 - load materializes an own extension, save brings the edit back', 
 		expect(outcome.stdout).toContain('own extensions: 2 file(s), 0 copied, 0 removed');
 	});
 
+	it('is own code to status: the materialized directory is neither upstream dirt nor unextracted work', () => {
+		const outcome = fixture.json(['status']);
+		const data = outcome.envelope.data as { upstream: { changed: number; files: { path: string }[] }; ownExtensions?: unknown };
+
+		expect(outcome.run.status).toBe(0);
+		expect(data.upstream.changed).toBe(0);
+		expect(data.upstream.files.some((file) => file.path.startsWith('extensions/'))).toBe(false);
+		expect(outcome.run.stdout).toContain('own extensions: 1 declared, 0 path(s) differ');
+		expect(outcome.run.stdout).not.toContain('run codkit save');
+	});
+
 	it('carries an inventory record of category own-extension in the own layer', () => {
 		const outcome = fixture.json(['inventory']);
 		const entries = (outcome.envelope.data as unknown as InventoryData).inventory.entries;

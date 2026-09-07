@@ -16,12 +16,15 @@ import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution } from '..
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { loadConventions } from '../lib/conventionsFile.ts';
 import type { Conventions } from '../lib/conventionsFile.ts';
-import { porcelainZEntries } from '../lib/driftGuard.ts';
+import { expandCollapsedUntracked, porcelainZEntries } from '../lib/driftGuard.ts';
 import { deltaFingerprint, treeId } from '../lib/fingerprint.ts';
 import { runGit } from '../lib/gitx.ts';
 import type { JsonValue, Output } from '../lib/jsonOut.ts';
 import { markerFormFor, parseMarkers } from '../lib/markers.ts';
 import { ckError } from '../lib/messages.ts';
+import { OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from '../lib/layers/ownExtensions.ts';
+import type { OwnExtension } from '../lib/layers/ownManifest.ts';
+import { loadOwnManifest } from '../lib/layers/ownManifest.ts';
 import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.ts';
 import type { OwnSideClass, OwnSideKind } from '../lib/ownCopy.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
@@ -142,9 +145,22 @@ async function run(ctx: CommandContext): Promise<number> {
 	const own = classifyOwn(ctx.patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
 	reportOwn(ctx.out, own, config.ownDirName);
 
-	// 3. Upstream files: what git sees outside the own directory, and whether
-	// the markers of those files are still valid.
-	const upstream = upstreamFiles(tree, config.ownDirName, conventions);
+	// 2a. Own extensions (PROP-005 ##OWN-EXTENSION-UNIT): materialized under
+	// `extensions/<name>/`, they are own code in the upstream zone - drift is
+	// reported here, and their paths never count as upstream dirt below.
+	const declared = declaredExtensionsOf(ctx.patchesDir);
+	const extensionDrift = compareOwnExtensions(ctx.patchesDir, tree, declared);
+	if (declared.length > 0) {
+		ctx.out.info(`own extensions: ${declared.length} declared, ${extensionDrift.length} path(s) differ between tree and patchset`);
+		for (const entry of extensionDrift.slice(0, LIST_LIMIT)) {
+			ctx.out.info(`  ${entry.kind.padEnd(13)} ${OWN_EXTENSIONS_DIR}/${entry.relative}`);
+		}
+	}
+
+	// 3. Upstream files: what git sees outside the own directory and outside
+	// the declared own extensions, and whether the markers of those files are
+	// still valid.
+	const upstream = upstreamFiles(tree, config.ownDirName, conventions, ownExtensionTreePrefixes(declared));
 	const blocks = upstream.reduce((sum, file) => sum + file.blocks, 0);
 	const markerErrors = upstream.reduce((sum, file) => sum + file.markerErrors, 0);
 	ctx.out.info(`upstream files: ${upstream.length} changed, ${blocks} marker block(s) in them, ${markerErrors} marker error(s)`);
@@ -157,7 +173,7 @@ async function run(ctx: CommandContext): Promise<number> {
 
 	// 4. The other direction of truth: delta/ edited in patchset and not committed.
 	const uncommitted = uncommittedDelta(ctx.patchesDir);
-	const treeClean = upstream.length === 0 && own.length === 0;
+	const treeClean = upstream.length === 0 && own.length === 0 && extensionDrift.length === 0;
 	if (uncommitted.length > 0 && treeClean) {
 		ctx.out.warn(
 			`${uncommitted.length} path(s) under delta/ are modified in patchset and not committed while the fork tree is clean; ` +
@@ -171,7 +187,8 @@ async function run(ctx: CommandContext): Promise<number> {
 		ctx.out.info(`pending patch header(s): ${pending.length} (from codkit marker new)`);
 	}
 
-	const unextracted = upstream.length + own.filter((entry) => entry.kind !== 'patchset-edited').length + treeCommits.commits.length;
+	const unextracted =
+		upstream.length + own.filter((entry) => entry.kind !== 'patchset-edited').length + extensionDrift.length + treeCommits.commits.length;
 	ctx.out.setData({
 		pin: pinData(config),
 		syncInProgress: liveSync === null ? null : { id: liveSync.id, conflicts: liveSync.conflicts.length, startedAt: liveSync.startedAt },
@@ -184,6 +201,10 @@ async function run(ctx: CommandContext): Promise<number> {
 		loadedFrom: loaded.kind === 'sha' ? loaded.sha : loadedFromLabel(loaded),
 		patchsetMoved: { count: movedArtifacts.length, artifacts: [...movedArtifacts] },
 		own: ownData(own),
+		ownExtensions: {
+			declared: declared.length,
+			differing: extensionDrift.map((entry) => ({ path: `${OWN_EXTENSIONS_DIR}/${entry.relative}`, kind: entry.kind }))
+		},
 		upstream: {
 			changed: upstream.length,
 			markerBlocks: blocks,
@@ -259,7 +280,12 @@ function countKinds(own: readonly OwnSideClass[]): Record<OwnSideKind, number> {
 }
 
 /** Changed upstream files, with the marker verdict of each readable one. */
-function upstreamFiles(treeDir: string, ownDirName: string, conventions: Conventions): readonly UpstreamFile[] {
+function upstreamFiles(
+	treeDir: string,
+	ownDirName: string,
+	conventions: Conventions,
+	ownedPrefixes: readonly string[]
+): readonly UpstreamFile[] {
 	const status = runGit({ args: ['status', '--porcelain', '-z'], cwd: treeDir });
 	if (status.status !== 0) {
 		throw ckError(
@@ -268,10 +294,10 @@ function upstreamFiles(treeDir: string, ownDirName: string, conventions: Convent
 			'check that the fork tree is a healthy git work tree'
 		);
 	}
-	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
+	const owned = [`${ownTargetRelativeDir(ownDirName)}/`, ...ownedPrefixes];
 	const files: UpstreamFile[] = [];
-	for (const entry of porcelainZEntries(status.stdout)) {
-		if (entry.path.startsWith(ownPrefix)) {
+	for (const entry of expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), ownedPrefixes)) {
+		if (owned.some((prefix) => entry.path.startsWith(prefix))) {
 			continue;
 		}
 		const absolute = join(treeDir, ...entry.path.split('/'));
@@ -287,6 +313,15 @@ function upstreamFiles(treeDir: string, ownDirName: string, conventions: Convent
 		files.push({ path: entry.path, status: entry.status, blocks: parsed.blocks.length, markerErrors: parsed.errors.length });
 	}
 	return files;
+}
+
+/** The own extensions the manifest declares; a manifest that does not parse declares none. */
+function declaredExtensionsOf(patchesDir: string): readonly OwnExtension[] {
+	try {
+		return loadOwnManifest(patchesDir).extensions;
+	} catch {
+		return [];
+	}
 }
 
 /** Paths under delta/ that patchset carries as uncommitted work. */
