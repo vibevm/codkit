@@ -14,6 +14,7 @@
   codkit/test/**                   unit/e2e
   vibevm/vibespecs/**              нормативные спеки инструмента
   vibevm/vibepacks/**              поставляемые vibe-пакеты (пакет стандартов, PROP-014)
+  codkit/runtime/**                поставляемая библиотека рантайма (PROP-015), один каталог версии
 
 patchesDir/                      внешний Git work tree потребителя
   codkit.json                    pin и параметры данного patch-set
@@ -23,6 +24,8 @@ patchesDir/                      внешний Git work tree потребите
   .codkit/**                     локальные locks/cache/logs/generated output
   vibe.toml                      манифест vibevm-проекта продукта; блок codkit:begin/end standards (PROP-014 §4)
   vibevm/vibepacks/**            установленная копия пакета стандартов (PROP-014 §5), принадлежит codkit
+  delta/own/codkit/**            установленная библиотека рантайма и копия уведомления (PROP-015 §4), принадлежит codkit
+  delta/own-extensions/**        встроенные расширения продукта как юниты own-extension (PROP-005 §13)
 
 forkDir/                         внешний managed VS Code checkout
   .git/**                        upstream objects, generated refs и local marks/hooks
@@ -84,6 +87,8 @@ forkDir/                         внешний managed VS Code checkout
       <tr><td><COMP-JSON-OUT fact="true" status="spec/done">`jsonOut.ts`</COMP-JSON-OUT></td><td><COMP-JSON-OUT-RESP fact="true" status="spec/done">конверт `--json`, реестр кодов сообщений</COMP-JSON-OUT-RESP></td><td>PROP-012 §1–2</td></tr>
       <tr><td><COMP-LICENSE-CHECK-MODULES fact="true" status="spec/done">`licensePolicy.ts`, `licenseTexts.ts`, `licenseCheck.ts`</COMP-LICENSE-CHECK-MODULES></td><td><COMP-LICENSE-CHECK-MODULES-RESP fact="true" status="spec/done">политика, канонический текст UPL и проверка лицензионной разметки пакета</COMP-LICENSE-CHECK-MODULES-RESP></td><td>PROP-014 §2–3</td></tr>
       <tr><td><COMP-STANDARDS-MODULES fact="true" status="spec/done">`standardsPackage.ts`, `standardsManifest.ts`, `standardsLoad.ts`</COMP-STANDARDS-MODULES></td><td><COMP-STANDARDS-MODULES-RESP fact="true" status="spec/done">пакет стандартов в toolRoot, управляемый блок `vibe.toml`, движок `standards load|check`</COMP-STANDARDS-MODULES-RESP></td><td>PROP-014 §4–6</td></tr>
+      <tr><td><COMP-RUNTIME-MODULES fact="true" status="spec/done">`runtimePackage.ts`, `runtimeLoad.ts`</COMP-RUNTIME-MODULES></td><td><COMP-RUNTIME-MODULES-RESP fact="true" status="spec/done">библиотека рантайма в toolRoot, движок `runtime load|check`, доставленные файлы</COMP-RUNTIME-MODULES-RESP></td><td>PROP-015 §1, §4</td></tr>
+      <tr><td><COMP-GEN-MODULES fact="true" status="spec/done">`genFeature.ts`, `genTemplates.ts`</COMP-GEN-MODULES></td><td><COMP-GEN-MODULES-RESP fact="true" status="spec/done">скелеты фичи и таблицы бренда в own продукта</COMP-GEN-MODULES-RESP></td><td>PROP-015 §5</td></tr>
       <tr><td><COMP-FAKE-TREE fact="true" status="spec/done">`fakeTree.ts` (в test/)</COMP-FAKE-TREE></td><td><COMP-FAKE-TREE-RESP fact="true" status="spec/done">фейковое дерево форка для тестов</COMP-FAKE-TREE-RESP></td><td>PROP-013 §2</td></tr>
     </table>
     <p><DEPENDENCY-RULE-BETWEEN-MODULES fact="true" status="spec/done">`layers/*`, `applyEngine` и `inventory` не знают про CLI; команды получают явные toolRoot, patchesDir, forkDir и объект patch-set config, а не переоткрывают корни через cwd. Это же — правило ячеек AI-native TypeScript: один модуль = одна ячейка с единственным публичным входом.</DEPENDENCY-RULE-BETWEEN-MODULES></p>

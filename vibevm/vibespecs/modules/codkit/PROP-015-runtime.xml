@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">codkit PROP-015: Рантайм Codkit — библиотека фич и флагов, доставляемая в own-слой продукта</title>
+  <status stage="spec" state="done" comment="the runtime library, its delivery (runtime load|check), the feature scaffolds (gen feature|brand); decisions of 2026-09-07"/>
+  <purpose title="1. Назначение и форма поставки">
+    <p><RT-PURPOSE fact="true" status="spec/done">Рантайм Codkit — библиотека TypeScript в духе и стиле VS Code, общая для всех форков, которые ведёт Codkit: сервис фичефлагов на портах и адаптерах с observables, хост, создающий фичу при включении флага и уничтожающий при выключении, движок брендирования строк, имитатор удалённого источника флагов и инспектор. Она нужна, чтобы дельта продукта строилась как параллельная система (сервисы через DI, контрибуции через реестры), а не как набор патчей, и чтобы каждая новая фича продукта была изолирована в своём каталоге и включалась флагом (рулинги владельца 2026-09-07).</RT-PURPOSE></p>
+    <facts ordered="false">
+      <RT-IS-A-MANAGED-COPY fact="true" status="spec/done">Библиотека доставляется в продукт **сопровождаемой копией**, как пакет стандартов: `codkit runtime load` копирует каталог версии из toolRoot в `&lt;patchesDir&gt;/delta/own/codkit/`, обычный `codkit load` доносит его в `&lt;tree&gt;/src/vs/&lt;ownDirName&gt;/codkit/`; копия сверяется с поставляемой версией побайтно; правка на месте — дрейф; обновление приходит только новой версией Codkit (`RT-LOAD-UPGRADE`).</RT-IS-A-MANAGED-COPY>
+      <RT-DIRECTORY-IS-CODKIT fact="true" status="spec/done">Каталог библиотеки в own-слое называется `codkit/` (не `kit/`, не `lib/`): имя однозначно называет владельца кода и совпадает с префиксом области лицензии (PROP-014 §4a `STD-NOTICE-SCOPE-BY-PATHS`). Внутренние идентификаторы библиотеки (декораторы сервисов, id контрибуций, команд, ключей хранилища) — в пространстве имён `codkit`; идентификаторы фич, настроек и context keys продукта несут префикс продукта и задаются его декларациями.</RT-DIRECTORY-IS-CODKIT>
+      <RT-SHIPPED-LOCATION fact="true" status="spec/done">В toolRoot библиотека лежит в `codkit/runtime/v&lt;semver&gt;/` — ровно один каталог версии (как `STD-PACKAGE-LOCATION`); каталог входит в `files` `package.json` и едет в tarball. Содержимое каталога версии есть в точности то дерево, которое ложится в `delta/own/codkit/` (без файла уведомления — он принадлежит PROP-014 §4a).</RT-SHIPPED-LOCATION>
+      <RT-VERSION-LITERAL fact="true" status="spec/done">Версия библиотеки — имя каталога `v&lt;semver&gt;` и литерал `export const CODKIT_RUNTIME_VERSION = '&lt;semver&gt;';` в `common/version.ts`; расхождение — `CK-E-RUNTIME-PACKAGE`. Там же `CODKIT_RUNTIME_VERIFIED_UPSTREAM: readonly string[]` — теги апстрима, на которых библиотека скомпилирована и проверена.</RT-VERSION-LITERAL>
+      <RT-ONLY-TS-AND-MD fact="true" status="spec/done">Библиотека состоит только из файлов `.ts` и `.md`: ни JSON, ни TOML, ни картинок, ни спутников `.license` — так она не требует от продукта ни allow-list ресурсов сборки, ни исключений гигиены для чужих расширений; данные живут в модулях TypeScript. В коде и строках нет символов вне ASCII (минификатор апстрима отвергает не-ASCII в выводе), кириллица допустима только в комментариях шапки.</RT-ONLY-TS-AND-MD>
+      <RT-EVERY-FILE-CARRIES-THE-BANNER fact="true" status="spec/done">Каждый файл библиотеки несёт носитель лицензии по PROP-014 §2: четыре строки уведомления (copyright, английская и русская ссылки на UPL, `SPDX-License-Identifier: UPL-1.0`) в стиле комментария своего расширения (`//` для `.ts`, `&lt;!-- --&gt;` для `.md`) в первых строках файла. Поставляемый каталог проходит `LIC-CHECK-ALGORITHM` с нулём проблем: это проверяет `shippedRuntime.test.ts` в `npm run floor` и лицензионные ворота `runtime load` перед любой записью.</RT-EVERY-FILE-CARRIES-THE-BANNER>
+      <RT-NO-PRODUCT-NAMES fact="true" status="spec/done">В библиотеке нет имени ни одного продукта; примеры в комментариях и тестах используют нейтральные идентификаторы (`acme.sample`).</RT-NO-PRODUCT-NAMES>
+    </facts>
+    <fence>codkit/runtime/v0.1.0/
+  README.md                          что это, версия, «не редактировать», лицензия EN/RU
+  LAYERS.md                          разрешённые импорты по каталогам = содержание блока code-import-patterns продукта
+  common/version.ts                  CODKIT_RUNTIME_VERSION, CODKIT_RUNTIME_VERIFIED_UPSTREAM
+  common/features/featureDescriptor.ts   FeatureId, IFeatureDescriptor, IFeatureSettingDeclaration, validateFeatureDescriptor
+  common/features/flagLayers.ts          FlagLayer, FLAG_LAYER_PRECEDENCE, FlagReading, FeatureState, resolveFeature
+  common/features/flagSource.ts          IFlagSource
+  common/features/remoteFlags.ts         RemoteFlagsSnapshot, IRemoteFlagsProvider, IRemoteFlagsSimulator, parseRemoteFlagsSnapshot
+  common/features/featureFlagsService.ts IFeatureFlagsService, FeatureExplanation
+  common/features/featureFlagsServiceBase.ts  FeatureFlagsServiceBase
+  common/features/featureDeclarations.ts FeatureDeclarations, featureDeclarations
+  common/features/featureHost.ts         FeatureHost
+  common/brand/brandRules.ts             IBrandRule, createBrandTransform, affectedEntries
+  browser/featureFlags.contribution.ts   registerSingleton + registerAction2 + host contribution (side effects)
+  browser/browserFeatureFlagsService.ts  BrowserFeatureFlagsService
+  browser/featureRegistry.ts             registerFeature
+  browser/featuresHost.contribution.ts   FeaturesHostContribution
+  browser/adapters/*.ts                  configurationFlagSource, productFlagSource, remoteFlagSource, storageRemoteFlagsProvider, contextKeyPublisher, hostRestart
+  browser/inspector/featureFlagsInspector.ts  InspectFeatureFlagsAction
+  test/common/*.test.ts, test/browser/*.test.ts</fence>
+  </purpose>
+  <architecture title="2. Архитектура">
+    <facts ordered="false">
+      <RT-PORTS-AND-ADAPTERS fact="true" status="spec/done">Ядро библиотеки (`common/`) зависит только от собственных портов: источник флага (`IFlagSource`), поставщик удалённого снимка (`IRemoteFlagsProvider`), публикатор context key, порт перезапуска хоста, фабрика экземпляров фич. Адаптеры к API апстрима лежат в одном каталоге `browser/adapters/` и реализуют порты над текущими API; смена API апстрима меняет один адаптер, ядро и фичи продукта не трогаются. Для процессов без реестра DI и без context keys предусмотрены нулевые адаптеры.</RT-PORTS-AND-ADAPTERS>
+      <RT-NARROW-UPSTREAM-SURFACE fact="true" status="spec/done">Поверхность контакта с апстримом ограничена и навязана: `common/**` импортирует только `vs/base/common/**`, `vs/platform/*/common/**` и своё; `browser/**` — дополнительно `vs/workbench/common/contributions.js`, `vs/workbench/services/host/browser/host.js`, `vs/workbench/services/lifecycle/common/lifecycle.js`, `vs/platform/*/common/**`; из `vs/workbench/contrib/**` не импортируется ничего. Тот же список — содержание `LAYERS.md` и блока `code-import-patterns`, который продукт ставит для цели `src/vs/&lt;ownDirName&gt;/codkit/~`; `shippedRuntime.test.ts` проверяет импорты библиотеки регулярными выражениями по спецификаторам.</RT-NARROW-UPSTREAM-SURFACE>
+      <RT-OBSERVABLES-ARE-THE-REACTIVE-PRIMITIVE fact="true" status="spec/done">Состояние флага — observable (`observableValue`/`derived` из `vs/base/common/observable.js`), а не только событие: `enablement(id)` и `liveState(id)` возвращают `IObservable&lt;FeatureState&gt;`, хост подписывается через `autorun`, context key обновляется из того же observable; событие `onDidChangeEnablement` остаётся адаптером для кода без observables. Это текущая реактивная норма апстрима (инструкция `.github/instructions/observables.instructions.md`, сотни файлов с `autorun`/`derived`).</RT-OBSERVABLES-ARE-THE-REACTIVE-PRIMITIVE>
+      <RT-FLAG-LAYERS fact="true" status="spec/done">Источники флага образуют слои с фиксированным старшинством `FLAG_LAYER_PRECEDENCE`: `build` (значение сборки из `product.json` через функцию `descriptor.product`) → `policy` (`inspect().policyValue` настройки) → `remote-force` (принудительный ключ удалённого снимка) → `user` (первое определённое из `applicationValue`, `userValue`, `userLocalValue`, `userRemoteValue`) → `remote-default` (дефолтный ключ удалённого снимка) → `default` (`descriptor.default`). Значение сборки не отменяется никаким другим слоем: так фичи безопасности остаются свойством сборки.</RT-FLAG-LAYERS>
+      <RT-RESOLUTION fact="true" status="spec/done">`resolveFeature(descriptor, readings)` возвращает `{ enabled, decidedBy }`: первое определённое чтение в порядке старшинства; слой `default` определён всегда. Функция чистая и покрыта таблицей тестов по всем слоям.</RT-RESOLUTION>
+      <RT-TRANSACTION-PER-CHANGE fact="true" status="spec/done">Каждое событие источника (изменение настройки, новый удалённый снимок) пересчитывает затронутые фичи и применяет результат одной `transaction()`: наблюдатели не видят промежуточных состояний; `onDidChangeEnablement` срабатывает один раз со списком реально изменившихся id; context keys публикуются только для изменившихся.</RT-TRANSACTION-PER-CHANGE>
+      <RT-COLD-FEATURES fact="true" status="spec/done">Фича с `hotToggle: false` («cold») читает `enablement(id)`, замороженное на первом вычислении в этой сессии; `liveState(id)` при этом меняется, `restartPending` содержит id всех cold-фич, у которых живое состояние отличается от замороженного, и порт перезапуска один раз на каждое такое изменение показывает уведомление «Restart» по идиоме апстрима (`INotificationService.prompt` + `IHostService.restart()`).</RT-COLD-FEATURES>
+      <RT-REMOTE-IS-A-PORT fact="true" status="spec/done">Удалённый источник — тот же порт, что и любой другой: `IRemoteFlagsProvider` отдаёт текущий снимок `RemoteFlagsSnapshot { version: 1, force, defaults, issuedAt? }` и событие его смены; `parseRemoteFlagsSnapshot` разбирает текст строго (версия 1, значения boolean, ключи строки) и на любой ошибке возвращает `undefined`, никогда не бросая. Библиотека не содержит сетевого кода; будущий сервер реализует порт над каналом shared process.</RT-REMOTE-IS-A-PORT>
+      <RT-SIMULATOR fact="true" status="spec/done">Имитатор удалённого источника — `StorageRemoteFlagsProvider`: снимок хранится в `IStorageService` (`StorageScope.APPLICATION`, `StorageTarget.MACHINE`, ключ `codkit.features.remoteSnapshot`), меняется методами `simulate(patch)` и `clear()` порта `IRemoteFlagsSimulator` (значение `null` в патче снимает ключ) и оповещает через `onDidChangeValue`. Так внутренний интерфейс переключения и будущий сервер проходят один и тот же путь: снимок → транзакция → observables → фичи и `when`.</RT-SIMULATOR>
+      <RT-INSPECTOR fact="true" status="spec/done">Инспектор — `InspectFeatureFlagsAction` (id `codkit.features.inspect`, заголовок `Feature Flags: Inspect`, `f1: true`): Quick Pick со строкой на фичу (иконка состояния, заголовок, id, слой, определивший состояние, значения по слоям, статус экземпляра, `restart pending`); выбор фичи открывает действия — включить/выключить/сбросить пользовательскую настройку (`updateValue(…, ConfigurationTarget.USER)`), имитировать удалённый `force`/`default` on/off/clear, очистить имитированный снимок. Все строки — через `localize`.</RT-INSPECTOR>
+      <RT-FEATURE-IS-AN-INSTANCE fact="true" status="spec/done">Фича продукта — обычный класс VS Code: `extends Disposable`, зависимости конструктором через DI, всё, что фича добавляет (команды, меню, виды, слушатели), регистрируется в `this._register(...)`. **Включение фичи = создание экземпляра через `IInstantiationService.createInstance(ctor)`, выключение = `dispose()`.** Базового класса с обязательным `activate` нет: он вызывал бы метод подкласса из конструктора базового класса до присвоения параметров-свойств подкласса.</RT-FEATURE-IS-AN-INSTANCE>
+      <RT-FEATURE-HOST fact="true" status="spec/done">`FeatureHost` (common) держит `autorun` над `enablement(descriptor.id)`: включено → создаёт экземпляр фабрикой, выключено → `dispose()` экземпляра; `dispose()` хоста уничтожает экземпляр; `state: IObservable&lt;'inactive' | 'active' | 'failed'&gt;`. `FeaturesHostContribution` (browser) — единственная workbench-контрибуция библиотеки (`registerWorkbenchContribution2('codkit.features.host', …, WorkbenchPhase.BlockRestore)`): для каждой декларации ждёт её фазу через `ILifecycleService.when(фаза)` (как реестр контрибуций апстрима) и создаёт `FeatureHost` с фабрикой `ctor =&gt; instantiationService.createInstance(ctor)`.</RT-FEATURE-HOST>
+      <RT-FEATURE-FAILURE-IS-CONTAINED fact="true" status="spec/done">Исключение из конструктора фичи не роняет workbench: хост ловит его, переводит фичу в `failed`, пишет `ILogService.error` и экземпляр не создаёт; инспектор показывает статус. Ошибки самой библиотеки в рантайме не бросаются (снимок с ошибкой игнорируется, отсутствующее значение — `undefined`); единственные исключения — ошибки программирования при регистрации (`RT-REGISTER-FEATURE`) и неизвестный id в `enablement`/`liveState`/`explain`.</RT-FEATURE-FAILURE-IS-CONTAINED>
+      <RT-REGISTER-FEATURE fact="true" status="spec/done">`registerFeature(descriptor, ctor, phase = WorkbenchPhase.AfterRestored)` (browser) вызывается при вычислении модуля контрибуции продукта: `validateFeatureDescriptor` (нарушение — `throw`: ошибка автора, ловится тестом продукта до любого UI); `featureDeclarations.declare({ descriptor, ctor, phase })` (дубликат id — `throw`); если есть `descriptor.setting` и сборка не форсирует значение (`descriptor.product?.(product)` не определено, где `product` — статический импорт `vs/platform/product/common/product.js`, идиома апстрима) — `registerConfiguration` с узлом `{ id: setting.id, properties: { [setting.id]: { type: 'boolean', default: descriptor.default, description: setting.description, scope: setting.scope ?? ConfigurationScope.APPLICATION, tags: setting.tags, policy: setting.policy } } }`. Форсированная сборкой фича настройку не регистрирует вовсе.</RT-REGISTER-FEATURE>
+      <RT-DESCRIPTOR fact="true" status="spec/done">`IFeatureDescriptor { id, title, default, hotToggle, setting?, product?, remote? }`; `id` по форме `^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$` (две и более части — префикс продукта обязателен по форме); `setting: { id, description, scope?, tags?, policy? }` — `description` уже локализована продуктом; `product` — функция от `IProductConfiguration` (тип расширяет продукт аугментацией), а не строковый ключ: типобезопасно и без `any`; `remote.key` — ключ в удалённом снимке, умолчание — `id`.</RT-DESCRIPTOR>
+      <RT-CONTEXT-KEYS fact="true" status="spec/done">Для каждой декларации публикуется context key `&lt;id&gt;.enabled` (boolean) через `IContextKeyService.createKey`; он следует `enablement(id)`, так что `when`-выражения меню, команд и видов продукта реагируют на флаг без кода.</RT-CONTEXT-KEYS>
+      <RT-BRAND-ENGINE fact="true" status="spec/done">`createBrandTransform(rules)` возвращает чистую функцию `message =&gt; message`: правила `{ find, replace, except? }` применяются по порядку, `find` — литерал (без RegExp), правило пропускается, если сообщение содержит любую строку из `except`; быстрый путь — ни одно `find` не входит в сообщение; результаты кэшируются `LRUCache` (2048). `affectedEntries(transform, entries)` возвращает ключи сообщений, которые преобразование меняет — для снимка-стража продукта. Модуль чист (`common`, только `vs/base/common/map.js`): продукт ставит крючок в `_format` (`nls.ts`), вычисляемый во всех процессах, включая bootstrap; сам крючок — патч продукта типа `hook`, библиотека `nls.ts` не трогает.</RT-BRAND-ENGINE>
+      <RT-NO-GLOBALS fact="true" status="spec/done">Библиотека не создаёт глобальных имён и не читает `globalThis` (правило апстрима «Do not introduce new types or values to the global namespace»); единственные модульные синглтоны — `featureDeclarations` и декоратор сервиса, как у реестров апстрима.</RT-NO-GLOBALS>
+    </facts>
+  </architecture>
+  <testing title="3. Стенд типов и тесты">
+    <facts ordered="false">
+      <RT-TYPECHECK-HARNESS fact="true" status="spec/done">Библиотека компилируется против исходников апстрима на пине TypeScript'ом самого форка: каталог-зеркало, где `src/vs/*` — символьные ссылки на дерево форка, `src/typings` и `src/vscode-dts` — ссылки, `node_modules` — ссылка, `tsconfig` наследует `src/tsconfig.base.json` форка и включает только own-каталог с библиотекой; `tsc --noEmit` → 0. Стенд — процедура центральной сессии и второго прохода продукта; в `npm run floor` Codkit он не входит (в репозитории нет исходников апстрима). Результат записывается в отчёт кампании и в `CODKIT_RUNTIME_VERIFIED_UPSTREAM`.</RT-TYPECHECK-HARNESS>
+      <RT-CONTRACT-TESTS fact="true" status="spec/done">Библиотека несёт тесты в стиле апстрима (`suite`/`test`, `ensureNoDisposablesAreLeakedInTestSuite`, снимки `assert.deepStrictEqual`) на своё поведение и **на допущения об апстриме**: последняя регистрация в `ServiceCollection` побеждает; `included: false` убирает свойство из реестра конфигурации; `affectsConfiguration` срабатывает на ключ настройки фичи. Красный контрактный тест на новом пине называет сломавшееся допущение.</RT-CONTRACT-TESTS>
+      <RT-TESTS-RUN-IN-THE-FORK fact="true" status="spec/done">Тесты библиотеки компилируются стендом, но **выполняются только в дереве форка** после `runtime load` и `load` (раннеры `test/unit/node` и electron апстрима находят `test/**/*.test.js` под own-каталогом сами). В vitest Codkit они не запускаются: заглушки апстрима были бы вторым, ложным апстримом. Ограничение записано в кампании как отложенное до второго прохода продукта.</RT-TESTS-RUN-IN-THE-FORK>
+      <RT-SHIPPED-RUNTIME-TEST fact="true" status="spec/done">`codkit/test/unit/shippedRuntime.test.ts` в `npm run floor`: ровно один каталог версии; литерал версии равен имени каталога; только `.ts`/`.md`; четыре строки шапки в каждом файле; `checkLicenseCarriers` → 0 проблем; импорты по `RT-NARROW-UPSTREAM-SURFACE`; нет продуктовых имён; нет не-ASCII вне комментариев шапки.</RT-SHIPPED-RUNTIME-TEST>
+    </facts>
+  </testing>
+  <commands title="4. Команды `runtime load|check`; доставленные файлы в `verify`, `save`, `inventory`">
+    <facts ordered="true">
+      <RT-LOAD-STEPS fact="true" status="spec/done">`codkit runtime load [--dry-run] [--upgrade]` (только patchesDir, дерево не читается): (1) источник — единственный каталог версии в toolRoot и литерал версии (`RT-VERSION-LITERAL`; иначе `CK-E-RUNTIME-PACKAGE`, выход 2); (2) лицензионные ворота — `LIC-CHECK-ALGORITHM` на каталоге версии с политикой Codkit → 0 проблем, иначе `CK-E-LICENSE-PACKAGE` с перечнем, выход 2, ни одной записи; (3) цель `delta/own/codkit/` без файла уведомления: `absent` / `identical` / `drift` по сравнению деревьев; `drift` без `--upgrade` — `CK-E-RUNTIME-DRIFT` с путями, выход 1, ни одной записи; (4) `--dry-run` печатает план (созданные/заменённые/удалённые пути) и выходит 0; (5) запись каталога во временный каталог и переименование целиком, файл уведомления в цели сохраняется; (6) уведомление в оба корня по PROP-014 §4a (`STD-LOAD-STEP-WRITE-NOTICE`, блок компонентов); (7) отчёт `{ command: 'runtime load', version, target, state: 'created' | 'upgraded' | 'unchanged', files: { written, removed }, notice }` и три подсказки: прививка `import '../codkit/browser/featureFlags.contribution.js';` в корне композиции продукта, блок `code-import-patterns` по `LAYERS.md`, первая фича через `codkit gen feature`.</RT-LOAD-STEPS>
+      <RT-LOAD-UPGRADE fact="true" status="spec/done">`--upgrade` заменяет каталог целиком без сравнения с прошлой версией (Codkit не хранит старых версий и не сливает): печатает список удаляемых и заменяемых путей; без флага любой дрейф — отказ, так что правки доставленного теряются только по явному решению.</RT-LOAD-UPGRADE>
+      <RT-CHECK fact="true" status="spec/done">`codkit runtime check` — только чтение: `identical` → 0; `absent` → 0 с текстом `runtime not installed`; `drift` → `CK-E-RUNTIME-DRIFT` с путями, выход 1; плюс состояние копий уведомления по PROP-014 §4a. `--json`: `data: {target:{state, version, paths}, notice}`.</RT-CHECK>
+      <RT-DELIVERED-NOT-OWN fact="true" status="spec/done">Файлы под `delta/own/codkit/**` доставлены Codkit (PROP-005 `OWN-DELIVERED-BY-CODKIT`): не покрываются юнитами и не считаются кодом продукта; `verify` сравнивает установленную копию с поставляемой версией (`CK-E-RUNTIME-DRIFT` на отличии) и отвергает юнит own с корнем внутри `codkit/` (`CK-E-OWN-UNDER-CODKIT`).</RT-DELIVERED-NOT-OWN>
+      <RT-SAVE-REFUSES-DELIVERED-EDITS fact="true" status="spec/done">`save` отказывает `CK-E-DELIVERED-EDIT` с перечнем, если файл дерева под `src/vs/&lt;ownDirName&gt;/codkit/**` отличается от `delta/own/codkit/**` или отсутствует в дельте; ничего не зеркалируется. Hint: изменить в Codkit и выполнить `runtime load --upgrade`.</RT-SAVE-REFUSES-DELIVERED-EDITS>
+      <RT-INVENTORY-ENTRY fact="true" status="spec/done">Инвентарь показывает установленную библиотеку одной синтетической записью `CK-codkit-runtime` (layer `own`, category `delivered`, `reason` с версией), а не файлами.</RT-INVENTORY-ENTRY>
+      <RT-PUBLISH-KEEPS-THE-RUNTIME fact="true" status="spec/done">Релизная ветка `publish` несёт файлы библиотеки: каждый несёт свою шапку, и условие UPL выполнено; исключается только файл уведомления (PROP-014 §4a `STD-NOTICE-RELEASE-EXCLUSION`).</RT-PUBLISH-KEEPS-THE-RUNTIME>
+    </facts>
+  </commands>
+  <gen title="5. Генератор скелетов `codkit gen feature|brand`">
+    <facts ordered="false">
+      <GEN-FEATURE fact="true" status="spec/done">`codkit gen feature &lt;id&gt; --title &lt;text&gt; [--setting] [--cold] [--holder &lt;h&gt;] [--license &lt;spdx&gt;] [--year &lt;y&gt;]`: id по форме `RT-DESCRIPTOR` (иначе `CK-E-GEN-ID`, выход 2); каталог фичи — последний сегмент id; пишет `delta/own/contrib/&lt;name&gt;/common/&lt;name&gt;.ts` (константы id и, при `--setting`, id настройки), `delta/own/contrib/&lt;name&gt;/browser/&lt;name&gt;.contribution.ts` (класс `extends Disposable` с DI-конструктором и вызов `registerFeature({...}, &lt;Class&gt;)`; при `--cold` — `hotToggle: false`; описание настройки — через `localize`), `delta/own/test/browser/&lt;name&gt;.test.ts` (скелет с `ensureNoDisposablesAreLeakedInTestSuite`); в конце печатает строку импорта для корня композиции продукта и напоминание объявить юнит в `patchset.delta.json`.</GEN-FEATURE>
+      <GEN-BRAND fact="true" status="spec/done">`codkit gen brand [--holder …] [--license …] [--year …]` пишет `delta/own/common/brand.ts` — таблицу правил-заготовку с одним примером и комментарием об исключениях, экспортирующую `brandMessage = createBrandTransform(RULES)`, — и печатает текст крючка для `_format` в `nls.ts` с двумя напоминаниями: крючок — патч продукта типа `hook`; цель `src/vs/{monaco.d.ts,nls.ts}` в `code-import-patterns` должна разрешать `vs/&lt;ownDirName&gt;/common/~`.</GEN-BRAND>
+      <GEN-HEADER-IS-THE-PRODUCTS fact="true" status="spec/done">Сгенерированные файлы — код продукта: шапка пишется из `--holder`/`--license` (год — `--year` или текущий) в стиле `//`; без этих флагов файлы пишутся без шапки с предупреждением `no header written; pass --holder and --license`. Шапка Codkit в файлы продукта не пишется никогда.</GEN-HEADER-IS-THE-PRODUCTS>
+      <GEN-REFUSES-EXISTING fact="true" status="spec/done">Если хотя бы один целевой файл существует — `CK-E-GEN-EXISTS` с путём, выход 1, ничего не записано.</GEN-REFUSES-EXISTING>
+    </facts>
+  </gen>
+  <compat title="6. Совместимость и версии">
+    <facts ordered="false">
+      <RT-COMPAT-DECLARATION fact="true" status="spec/done">`CODKIT_RUNTIME_VERIFIED_UPSTREAM` перечисляет теги апстрима, на которых текущая версия библиотеки скомпилирована стендом и прошла свои тесты; `runtime load` печатает предупреждение, если пин продукта (`codkit.json` `pin.tag`) не входит в список.</RT-COMPAT-DECLARATION>
+      <RT-SEMVER fact="true" status="spec/done">API библиотеки к фичам продукта (`registerFeature`, `IFeatureFlagsService`, `IFeatureDescriptor`, `createBrandTransform`) версионируется семантически; ломающее изменение — новая мажорная версия, и `runtime load --upgrade` через мажор печатает предупреждение с перечнем изменений из `README.md` библиотеки.</RT-SEMVER>
+      <RT-CYCLE-GATE fact="true" status="spec/plan">Цикл апгрейда (`codkit cycle`) на новом пине первым делом компилирует установленную библиотеку и гоняет её тесты в дереве форка; красный результат называет файл адаптера и допущение. Норма записана, реализация — следующая кампания.</RT-CYCLE-GATE>
+    </facts>
+  </compat>
+  <components title="7. Компоненты">
+    <table>
+      <tr><td>Модуль</td><td>Ответственность</td><td>Секции</td></tr>
+      <tr><td><COMP-RUNTIME-LIBRARY fact="true" status="spec/done">`codkit/runtime/v*/**`</COMP-RUNTIME-LIBRARY></td><td>поставляемая библиотека (данные tarball, не исходники Codkit)</td><td>§1–3</td></tr>
+      <tr><td><COMP-RUNTIME-PACKAGE fact="true" status="spec/done">`runtimePackage.ts`</COMP-RUNTIME-PACKAGE></td><td>единственный каталог версии, литерал версии, сравнение деревьев</td><td>§1, §4</td></tr>
+      <tr><td><COMP-RUNTIME-LOAD fact="true" status="spec/done">`runtimeLoad.ts`</COMP-RUNTIME-LOAD></td><td>движок `runtime load|check`: порядок шагов, план, `--upgrade`, отчёт, подсказки</td><td>§4</td></tr>
+      <tr><td><COMP-CMD-RUNTIME fact="true" status="spec/done">`commands/runtime.ts`</COMP-CMD-RUNTIME></td><td>пространство имён `runtime`</td><td>§4, PROP-007 §25</td></tr>
+      <tr><td><COMP-GEN fact="true" status="spec/done">`commands/gen.ts`, `genFeature.ts`, `genTemplates.ts`</COMP-GEN></td><td>скелеты фичи и таблицы бренда</td><td>§5, PROP-007 §26</td></tr>
+      <tr><td><COMP-DELIVERED-BY-CODKIT fact="true" status="spec/done">`layers/ownManifest.ts` (`isDeliveredByCodkit`), `verifyEngine.ts`, `ownCopy.ts`, `inventory.ts`</COMP-DELIVERED-BY-CODKIT></td><td>доставленные файлы в покрытии, дрейф, отказ `save`, синтетическая запись инвентаря</td><td>§4, PROP-005</td></tr>
+    </table>
+  </components>
+  <decisions title="8. Решения">
+    <p><DECISION-RT-MANAGED-COPY fact="true" status="spec/done">**Решение:** библиотека доставляется сопровождаемой копией под управлением Codkit, а не генерируется один раз.
+
+**Почему:** три продукта с тремя разошедшимися редакциями сервиса флагов — то, чего владелец хотел избежать; механизм доставляемых own-файлов уже есть (`LICENSE-CODKIT.md`).
+
+**Рассмотрено и отвергнуто:**
+- «сгенерировать и забыть» (`flags gen` буквально) — исправления не доходят до продуктов;
+- vibe-пакет — не доставляет TypeScript в `src/`;
+- писать сервис в каждом продукте — дублирование и расхождение.
+
+**Когда пересматривать:** если продукты начнут править доставленные файлы чаще раза в цикл — тогда часть библиотеки переезжает в генерируемые скелеты.</DECISION-RT-MANAGED-COPY></p>
+    <p><DECISION-RT-NAME-CODKIT fact="true" status="spec/done">**Решение:** каталог `codkit/`, идентификаторы библиотеки в пространстве имён `codkit`.
+
+**Почему:** `kit` — общее слово, возможна коллизия с каталогом продукта; `codkit` называет владельца и совпадает с префиксом области лицензии.
+
+**Рассмотрено и отвергнуто:** `kit/`, `lib/`, `vendor/`.
+
+**Когда пересматривать:** не планируется.</DECISION-RT-NAME-CODKIT></p>
+    <p><DECISION-RT-PORTS-AND-ADAPTERS fact="true" status="spec/done">**Решение:** ядро на собственных портах, адаптеры к апстриму в одном каталоге, узкая поверхность импортов, навязанная линтером; никакого определения формы API апстрима в рантайме.
+
+**Почему:** за 814 коммитов с пина реестры DI, контрибуций и конфигурации не менялись, но история знает замену API (`registerWorkbenchContribution` → `registerWorkbenchContribution2`); адаптер делает такую замену правкой одного файла; поломка должна быть громкой на компиляции, не тихой в рантайме.
+
+**Рассмотрено и отвергнуто:** `if ('x' in service)` и утиная типизация — тихая деградация; `any` — запрещён правилами апстрима; копии апстримных классов «для устойчивости» — второй апстрим.
+
+**Когда пересматривать:** при переписывании апстримом DI или модели конфигурации — новый набор адаптеров при неизменном API к фичам.</DECISION-RT-PORTS-AND-ADAPTERS></p>
+    <p><DECISION-RT-FEATURE-IS-AN-INSTANCE fact="true" status="spec/done">**Решение:** фича — экземпляр `Disposable`, который хост создаёт через DI при включении флага и уничтожает при выключении; одна контрибуция-хост на все фичи, фазы — через `ILifecycleService.when`.
+
+**Почему:** это жизненный цикл самого апстрима; базовый класс с `activate()` из `autorun` в своём конструкторе вызывал бы метод подкласса до присвоения его параметров-свойств (они присваиваются после `super()`), то есть падал бы на первой фиче с инъекцией.
+
+**Рассмотрено и отвергнуто:** `abstract class FeatureContribution` с `activate(store)` — ловушка порядка конструирования; `queueMicrotask` — скрывает порядок; `registerWorkbenchContribution2` на каждую фичу с динамическим подклассом — декораторы параметров недопустимы на class expression, а реестр принимает только конструктор.
+
+**Когда пересматривать:** если апстрим даст реестру контрибуций фабрику с аргументами.</DECISION-RT-FEATURE-IS-AN-INSTANCE></p>
+    <p><DECISION-RT-OBSERVABLES fact="true" status="spec/done">**Решение:** состояние флага — observable; событие остаётся адаптером.
+
+**Почему:** норма апстрима (инструкция `observables.instructions.md`, `autorun`/`derived` в сотнях файлов); `transaction()` даёт снимок без промежуточных состояний; апстрим не рекомендует события для управления потоком.
+
+**Рассмотрено и отвергнуто:** только `Emitter`/`Event` — нет транзакций и деривации.
+
+**Когда пересматривать:** при смене реактивного примитива апстрима.</DECISION-RT-OBSERVABLES></p>
+    <p><DECISION-RT-REMOTE-LAYERS fact="true" status="spec/done">**Решение:** удалённый источник даёт два слоя — принудительный (kill switch) над пользователем и дефолтный под ним; сборка старше всех.
+
+**Почему:** у сервера два разных намерения — выключить сломанную фичу у всех и задать дефолт раскатки; у апстрима есть слой «дефолт настройки приходит с сервера» (`experiment` в схеме настройки → `IWorkbenchAssignmentService.getTreatment` → `registerDefaultConfigurations(source: 'experiments')`), что подтверждает форму дефолтного слоя; принудительного у апстрима нет, кроме политики.
+
+**Рассмотрено и отвергнуто:** один удалённый слой без режима — либо ломает пользовательский выбор, либо не умеет гасить фичу.
+
+**Когда пересматривать:** при появлении реального сервера — решить, идёт ли дефолтный слой через собственную реализацию апстримного сервиса назначений.</DECISION-RT-REMOTE-LAYERS></p>
+    <p><DECISION-RT-SIMULATOR-IN-STORAGE fact="true" status="spec/done">**Решение:** имитатор удалённого источника хранит снимок в `IStorageService` и редактируется инспектором.
+
+**Почему:** работает в desktop и web, не требует watcher'а и файлового пути, проходит тот же порт, что будущий сервер.
+
+**Рассмотрено и отвергнуто:** файл под user data с коррелированным watcher'ом — нет в web, лишний код.
+
+**Когда пересматривать:** если понадобится подменять снимок извне процесса (тогда — канал shared process, как у сервера).</DECISION-RT-SIMULATOR-IN-STORAGE></p>
+    <p><DECISION-RT-STATIC-PRODUCT-AT-REGISTRATION fact="true" status="spec/done">**Решение:** форсирование сборкой проверяется при вычислении модуля статическим импортом продукта; настройка либо регистрируется, либо нет.
+
+**Почему:** регистрация схемы настроек — действие момента вычисления модуля (идиома апстрима); DI в этот момент недоступен; статический `product` в этот момент читают и `src/main.ts`, и `server.main.ts` апстрима.
+
+**Рассмотрено и отвергнуто:** `included: false` — пустая запись в реестре; `configure({ prefix })` перед импортами — импорты поднимаются, порядок не гарантирован.
+
+**Когда пересматривать:** если апстрим перестанет экспортировать статический `product`.</DECISION-RT-STATIC-PRODUCT-AT-REGISTRATION></p>
+    <p><DECISION-RT-UPGRADE-FLAG fact="true" status="spec/done">**Решение:** обновление версии — `--upgrade`, заменяющий каталог целиком; без флага любой дрейф — отказ.
+
+**Почему:** Codkit не хранит прошлые версии, поэтому отличить «правка продукта» от «старая версия» нельзя; явный флаг делает потерю правок осознанной.
+
+**Рассмотрено и отвергнуто:** трёхстороннее слияние — нет базы; автоматическая замена — теряет правки молча.
+
+**Когда пересматривать:** если Codkit начнёт хранить манифест хешей прошлых версий.</DECISION-RT-UPGRADE-FLAG></p>
+    <p><DECISION-RT-TESTS-IN-FORK fact="true" status="spec/done">**Решение:** тесты библиотеки компилируются стендом, выполняются в дереве форка.
+
+**Почему:** в репозитории Codkit нет исходников апстрима; заглушки были бы вторым, ложным апстримом.
+
+**Рассмотрено и отвергнуто:** vitest с моками `vs/*`; сборка мини-апстрима в фикстуре.
+
+**Когда пересматривать:** если у Codkit появится полигон с деревом форка в CI.</DECISION-RT-TESTS-IN-FORK></p>
+    <p><DECISION-RT-ONLY-TS-AND-MD fact="true" status="spec/done">**Решение:** в библиотеке нет ресурсов и данных вне TypeScript и Markdown.
+
+**Почему:** гигиена форка: неизвестные расширения попадают под проверки отступов и заголовка; ресурсы требуют записей в двух allow-list сборки; спутники `.license` — ещё одно неизвестное расширение; данные в TS — идиома апстрима (`codiconsLibrary.ts`).
+
+**Рассмотрено и отвергнуто:** `compat.json`/`RUNTIME.toml` для версии — не нужны, версия читается из литерала.
+
+**Когда пересматривать:** если библиотеке потребуется бинарный ресурс.</DECISION-RT-ONLY-TS-AND-MD></p>
+  </decisions>
+</spec>

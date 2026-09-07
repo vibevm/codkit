@@ -130,4 +130,46 @@
   <s41 title="S41 — standards load переносит пилот-активы вместе с sidecar и печатает сводку лицензий">
     <p><S41 fact="true" status="impl/done">**Given**: свежий patchesDir с `vibe.toml`. **When**: `codkit --json standards load`. **Then**: в копии присутствуют пары `assets/codkit.png` + `assets/codkit.png.license` и `assets/third-party/feather/package.svg` + `.license`, а также `REUSE.toml`, `LICENSES/MIT.txt`, `THIRD-PARTY-NOTICES.md` — все байт-в-байт; сводка содержит строку `licences loaded: UPL-1.0 (own, 10 files); MIT (third-party, 1 file); notices: THIRD-PARTY-NOTICES.md`; `data.licences = {own: ["UPL-1.0"], thirdParty: ["MIT"], notices: "THIRD-PARTY-NOTICES.md"}`. **When (тестовая сборка, `CODKIT_TEST_STANDARDS_SOURCE`)**: источник — копия пакета, в которой у сторонней иконки удалена аннотация. **Then**: `load` — выход 1 `CK-E-LICENSE-THIRD-PARTY`, ничего не записано.</S41></p>
   </s41>
+  <s42 title="S42 — runtime load доставляет библиотеку в чистый продукт и пишет уведомление с блоком компонентов">
+    <p><S42 fact="true" status="spec/plan">**Given**: свежий patchesDir с `codkit.json` (`pin.tag` из `CODKIT_RUNTIME_VERIFIED_UPSTREAM`), пустой `delta/own/`, пакет стандартов уже установлен. **When**: `codkit --json runtime load`. **Then**: выход 0; `delta/own/codkit/**` побайтно равен `codkit/runtime/v&lt;версия&gt;/**`; `data.state = "created"`, `data.version` равна имени каталога; обе копии `LICENSE-CODKIT.md` (корень и `delta/own/codkit/`) равны рендеру шаблона с блоком компонентов из двух строк (`standards`, `runtime`); текстовый вывод содержит три подсказки (прививка `featureFlags.contribution.js`, блок `code-import-patterns`, `codkit gen feature`); `data.verifiedUpstream = true`.</S42></p>
+  </s42>
+  <s43 title="S43 — runtime load идемпотентен">
+    <p><S43 fact="true" status="spec/plan">**Given**: продукт после S42. **When**: `codkit --json runtime load` повторно. **Then**: выход 0; `data.state = "unchanged"`; mtime ни одного файла библиотеки не изменился; копии уведомления не переписаны.</S43></p>
+  </s43>
+  <s44 title="S44 — runtime load отказывает на дрейфе до первой записи">
+    <p><S44 fact="true" status="spec/plan">**Given**: продукт после S42, один файл `delta/own/codkit/common/version.ts` изменён и один файл добавлен. **When**: `codkit runtime load`. **Then**: выход 1, `CK-E-RUNTIME-DRIFT` с обоими путями; ни один файл не записан и не удалён (снимок дерева до и после равен). **When**: `codkit runtime load --dry-run --upgrade`. **Then**: выход 0, план перечисляет заменяемый и удаляемый пути, ничего не записано.</S44></p>
+  </s44>
+  <s45 title="S45 — runtime load --upgrade заменяет каталог целиком">
+    <p><S45 fact="true" status="spec/plan">**Given**: продукт после S44. **When**: `codkit --json runtime load --upgrade`. **Then**: выход 0; `data.state = "upgraded"`; `data.files.removed = 1`; каталог снова побайтно равен поставляемому; копия уведомления в `delta/own/codkit/` сохранена и актуальна.</S45></p>
+  </s45>
+  <s46 title="S46 — runtime check называет состояния">
+    <p><S46 fact="true" status="spec/plan">**Given**: продукт без библиотеки. **When**: `codkit runtime check`. **Then**: выход 0, текст `runtime not installed`. **Given**: продукт после S42. **Then**: выход 0, `identical`. **Given**: изменённый файл библиотеки. **Then**: выход 1, `CK-E-RUNTIME-DRIFT` с путём и hint `run codkit runtime load --upgrade`.</S46></p>
+  </s46>
+  <s47 title="S47 — save отказывает на правке доставленного файла">
+    <p><S47 fact="true" status="spec/plan">**Given**: дерево форка после `load` с библиотекой в `src/vs/&lt;ownDirName&gt;/codkit/`; разработчик правит `codkit/common/version.ts` в дереве и добавляет собственный файл own. **When**: `codkit save`. **Then**: выход 1, `CK-E-DELIVERED-EDIT` с путём доставленного файла и hint про `runtime load --upgrade`; в `delta/own/` не изменён ни один файл, включая собственный.</S47></p>
+  </s47>
+  <s48 title="S48 — verify отвергает юнит под codkit/ и дрейф библиотеки">
+    <p><S48 fact="true" status="spec/plan">**Given**: `patchset.delta.json` с юнитом, у которого `roots: ["codkit/extra/"]`. **When**: `codkit verify`. **Then**: выход 1, `CK-E-OWN-UNDER-CODKIT` с id юнита. **Given**: юнит убран, изменён файл библиотеки в `delta/own/codkit/`. **Then**: `CK-E-RUNTIME-DRIFT`. **Given**: патч `type = hook` с четырьмя строками кода между маркерами. **Then**: `CK-E-HOOK-TOO-LARGE` с именем патча и числом `4`.</S48></p>
+  </s48>
+  <s49 title="S49 — gen feature пишет скелет с шапкой продукта и отказывает на существующем">
+    <p><S49 fact="true" status="spec/plan">**Given**: patchesDir с `delta/own/`. **When**: `codkit --json gen feature acme.sample --title "Sample" --setting --holder "Acme" --license MIT --year 2026`. **Then**: выход 0; созданы `delta/own/contrib/sample/common/sample.ts`, `delta/own/contrib/sample/browser/sample.contribution.ts`, `delta/own/test/browser/sample.test.ts`; каждый начинается четырьмя строками шапки с `Acme` и `SPDX-License-Identifier: MIT`; контрибуция содержит `registerFeature(` и `hotToggle: true`; `data.importLine` — строка импорта. **When**: повтор. **Then**: выход 1, `CK-E-GEN-EXISTS`, файлы не тронуты. **When**: `codkit gen feature Sample --title x`. **Then**: выход 2, `CK-E-GEN-ID`. **When**: без `--holder`/`--license`. **Then**: файлы без шапки и предупреждение `no header written`.</S49></p>
+  </s49>
+  <s50 title="S50 — gen brand пишет таблицу правил и печатает крючок">
+    <p><S50 fact="true" status="spec/plan">**Given**: patchesDir с `delta/own/`. **When**: `codkit --json gen brand --holder Acme --license MIT`. **Then**: выход 0; `delta/own/common/brand.ts` экспортирует `brandMessage` через `createBrandTransform`; `data.hookText` содержит `brandMessage(`; `data.reminders` содержит напоминание о `type = hook` и о цели `nls.ts` в `code-import-patterns`.</S50></p>
+  </s50>
+  <s51 title="S51 — уведомление издания 3: пути, блок компонентов, устаревшая копия, строки REUSE">
+    <p><S51 fact="true" status="spec/plan">**Given**: продукт с копией уведомления издания 2 в `delta/own/LICENSE-CODKIT.md`. **When**: `codkit standards load`. **Then**: копия под `delta/own/codkit/LICENSE-CODKIT.md` создана, устаревшая удалена, вывод содержит `moved`; обе копии содержат абзацы области действия с четырьмя префиксами, блок `codkit:begin components` со строкой `standards`, абзац о копиях vibe. **When**: `codkit --json standards license`. **Then**: `data.reuseAnnotation` содержит `[[annotations]]`, четыре пути и `SPDX-License-Identifier = "UPL-1.0"`; `data.scrapeContractRows` содержит три пути уведомления. **When**: `codkit standards check` с устаревшей копией, восстановленной руками. **Then**: выход 0 и строка `legacy-copy`.</S51></p>
+  </s51>
+  <s52 title="S52 — license check: аннотация как носитель, вложенный реестр, собственная аннотация">
+    <p><S52 fact="true" status="spec/plan">**Given**: пакет-фикстура с `assets/x.png` без спутника и корневым `REUSE.toml`, чья собственная аннотация покрывает `assets/**`. **When**: `codkit license check &lt;dir&gt;`. **Then**: 0 проблем, `checked[]` для `x.png` несёт `carrier: "annotation"`. **Given**: `src/a.ts` без шапки под той же аннотацией. **Then**: ровно одна проблема `LICENSE-HEADER` на `src/a.ts`. **Given**: `sub/REUSE.toml` с аннотацией на `sub/data.csv`. **Then**: 0 проблем, путь реестра — `sub/REUSE.toml`. **Given**: аннотация без `third-party;` с чужим правообладателем. **Then**: `LICENSE-HEADER` с текстом `own annotation names a foreign holder or licence` на каждый покрытый файл. **And**: `tools/license-fixtures.py` даёт 25/25 совпадений с референсом.</S52></p>
+  </s52>
+  <s53 title="S53 — пакет стандартов издания 0.2.0 в дереве и в продукте">
+    <p><S53 fact="true" status="spec/plan">**Given**: toolRoot. **Then**: под `vibevm/vibepacks/org.vibevm.codkit/standards/` ровно `v0.2.0` с 19 файлами, среди них `vibevm/vibespecs/flows/standards/seam-catalogue.xml`; `shippedStandards.test.ts` зелёный. **Given**: продукт с установленным `v0.1.0`. **When**: `codkit --json standards load`. **Then**: появляется `v0.2.0`, `v0.1.0` остаётся (`otherVersions`), блок манифеста `vibe.toml` указывает `0.2.0`, блок компонентов уведомления перечисляет обе версии по строке на каждую.</S53></p>
+  </s53>
+  <s54 title="S54 — own-extension: load материализует расширение, save возвращает правку">
+    <p><S54 fact="true" status="spec/plan">**Given**: `delta/own-extensions/acme-pack/{package.json, package.nls.json}` и секция `extensions` манифеста. **When**: `codkit load`. **Then**: `extensions/acme-pack/**` дерева равен дельте побайтно. **When**: правка `package.nls.json` в дереве и `codkit save`. **Then**: дельта получает правку; `codkit inventory --json` содержит запись category `own-extension`.</S54></p>
+  </s54>
+  <s55 title="S55 — own-extension: verify красен на манифесте и дрейфе">
+    <p><S55 fact="true" status="spec/plan">**Given**: расширение без `package.json`. **When**: `codkit verify`. **Then**: `CK-E-OWN-EXTENSION-MANIFEST`. **Given**: имя, совпадающее с апстримным каталогом `extensions/&lt;name&gt;` на пине. **Then**: тот же код с текстом `name collides with an upstream extension`. **Given**: файл расширения в дереве отличается от дельты. **Then**: `CK-E-OWN-EXTENSION-DRIFT` с путём.</S55></p>
+  </s55>
 </spec>
