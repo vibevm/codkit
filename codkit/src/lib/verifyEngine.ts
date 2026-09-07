@@ -50,6 +50,7 @@ import {
 	OWN_MANIFEST_PATH,
 	checkServiceOverrideModules,
 	checkUnitCoverage,
+	isNotOwnCode,
 	loadOwnManifest,
 	parseOwnManifest,
 	serializeOwnManifest
@@ -664,7 +665,9 @@ function checkOverlays(treeDir: string, config: CodkitConfig, overlays: readonly
 function checkOwn(patchesDir: string, conventions: Conventions, manifest: OwnManifest, findings: Finding[]): void {
 	const root = ownSourceRoot(patchesDir);
 	const ownFiles = listOwnFiles(root, { refuseSymlinks: true });
-	const codeFiles = ownFiles.filter((file) => file !== 'patchset.delta.json' && !file.endsWith('/.gitkeep') && file !== '.gitkeep');
+	// One definition of "not own code", in the manifest module, rather than two
+	// that can drift (PROP-014 ##STD-NOTICE-IS-A-DELIVERED-OWN-FILE).
+	const codeFiles = ownFiles.filter((file) => !isNotOwnCode(file));
 
 	if (!manifest.present && codeFiles.length > 0) {
 		findings.push(

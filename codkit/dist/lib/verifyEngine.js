@@ -28,7 +28,7 @@ import { runGit } from './gitx.js';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.js';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.js';
 import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, PRODUCT_JSON_TARGET, checkOverlay, devChannelIgnoreWarning, loadOverlays, nonProductTargetViolations, overlayDriftErrors, parseOverlay, serializeOverlay } from './layers/overlay.js';
-import { OWN_MANIFEST_PATH, checkServiceOverrideModules, checkUnitCoverage, loadOwnManifest, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.js';
+import { OWN_MANIFEST_PATH, checkServiceOverrideModules, checkUnitCoverage, isNotOwnCode, loadOwnManifest, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.js';
 import { REMOVED_PATH, loadRemoved, parseRemoved, serializeRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap, parseResourceMap, resourceSourcePath, serializeResourceMap } from './layers/resource.js';
 import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, serializeRule } from './layers/rule.js';
@@ -430,7 +430,9 @@ function checkOverlays(treeDir, config, overlays, findings) {
 function checkOwn(patchesDir, conventions, manifest, findings) {
     const root = ownSourceRoot(patchesDir);
     const ownFiles = listOwnFiles(root, { refuseSymlinks: true });
-    const codeFiles = ownFiles.filter((file) => file !== 'patchset.delta.json' && !file.endsWith('/.gitkeep') && file !== '.gitkeep');
+    // One definition of "not own code", in the manifest module, rather than two
+    // that can drift (PROP-014 ##STD-NOTICE-IS-A-DELIVERED-OWN-FILE).
+    const codeFiles = ownFiles.filter((file) => !isNotOwnCode(file));
     if (!manifest.present && codeFiles.length > 0) {
         findings.push(finding('OWN-UNCOVERED', `${codeFiles.length} file(s) under ${OWN_SOURCE_DIR}/ and no manifest to declare them`, `create ${OWN_MANIFEST_PATH} and put every own file into exactly one unit`, OWN_MANIFEST_PATH));
         return;

@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:11da711c2b0171d1e315e6b316721cfd65056fe704c6c325958b6259dddf7722",
+      "content_hash": "sha256:89c32ff148375d88e91c88834d7027e25efd0d91916c8842ceb4b0fcf8f7a461",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1364,7 +1364,7 @@
     },
     {
       "anchor": "s29",
-      "content_hash": "sha256:f9ce5562efc60fc894f71f9e1e3a76a16c068b99637cf0bddfb13ef3a726eeab",
+      "content_hash": "sha256:8719a3422deaff1d3533593a9bf44895eb2f44955c81378fdc2f02cadc81b7e3",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S29 — license check: чистый пакет проходит, каждый дефект носителя называется",
@@ -1373,16 +1373,16 @@
     },
     {
       "anchor": "S29",
-      "content_hash": "sha256:4e1281954f138135a5b3aa6419c904612061e9510be368bea9874d2ed7f88fb1",
+      "content_hash": "sha256:875a5370aa3896ead2225a4297f3cc30011ba803300f06faca235ee19ed7ea53",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given** (кампания STANDARDS, PROP-014 §2–3; unit `licenseCheck.test.ts`, e2e `licenseCheck.test.ts`, дифференциальный `licenseReference.test.ts`): фикстура — побайтовая копия поставляемого пакета (`vibe.toml` с `license = \"UPL-1.0\"`, `README.md`, `LICENSE`, `LICENSES/UPL-1.0.txt`, `LICENSES/MIT.txt`, `REUSE.toml` с одной аннотацией, `THIRD-PARTY-NOTICES.md`, три XML-спеки, `assets/codkit.svg`, `assets/codkit-mark.svg`, `assets/codkit.png` и `assets/codkit-128.png` с sidecar, `assets/third-party/feather/package.svg` + sidecar). **When**: `codkit license check <dir>`. **Then**: выход 0, `11 files checked, 0 problems`, `--json` — `problems: []`, `checked` перечисляет одиннадцать файлов в лексикографическом порядке с `carrier` (`header` для спек, README, notices, `vibe.toml`, обоих SVG знака; `sidecar` для обоих PNG и сторонней иконки) и `kind` (`own`/`third-party`), `licences.thirdParty = [\"MIT\"]`. **When (по одному дефекту на копии, оракул `tools/license-fixtures.py`)**: (a) спека без заголовка; (b) заголовок ниже 20-й непустой строки; (c) `GPL-3.0-only` на собственном файле; (d) `SPDX-License-Identifier: UPL`; (e) PNG без sidecar; (f) `data.json` без sidecar; (g) holder `Oleg Chiruhin` (опечатка) без аннотации; (h) orphan `ghost.txt.license`; (i) `LICENSE` с одним изменённым словом; (j) `vibe.toml` с `license = \"MIT\"`; (k) лишний `LICENSES/BSD-2-Clause.txt`; (l) символьная ссылка внутри пакета; (m) собственная copyright-строка без года; (n) сторонний файл без аннотации; (o) лицензия стороннего файла `GPL-3.0-only` в аннотации и носителе; (p) носитель говорит `ISC`, аннотация — `MIT`; (q) устаревший `THIRD-PARTY-NOTICES.md`; (r) отсутствует `LICENSES/MIT.txt`. **Then**: в каждом случае выход 1 и среди проблем — ожидаемый код с ожидаемым путём (`LICENSE-HEADER` для a–f, h, m; `LICENSE-THIRD-PARTY` для g, n, o, p, q; `LICENSE-PACKAGE` для i–l, r), следственные проблемы (неиспользуемый текст лицензии, устаревшие notices) допустимы рядом; текст (d) содержит `the only valid form is UPL-1.0`; текст (g) содержит `holder not in policy`. **When (s)**: в конец `README.md` дописана строка `| Path | Copyright | License |`. **Then**: выход 0 — copyright-строки ниже строки SPDX не читаются (`LIC-HEADER-BLOCK-ENDS-AT-SPDX`). **When**: `codkit license check` без аргумента из постороннего cwd. **Then**: проверяется пакет из toolRoot, выход 0 (то же утверждает unit `shippedStandards.test.ts`). Несуществующий каталог — выход 2. Дифференциальный тест: на каждой фикстуре оракула вердикт TypeScript (коды и пути) равен вердикту `tools/license-reference.py`; без `python3` ≥ 3.11 тест пропускается с причиной, не проходит. @status:spec/plan",
+      "heading": "**Given** (кампания STANDARDS, PROP-014 §2–3; unit `licenseCheck.test.ts`, e2e `licenseCheck.test.ts`, дифференциальный `licenseReference.test.ts`): фикстура — побайтовая копия поставляемого пакета (`vibe.toml` с `license = \"UPL-1.0\"`, `README.md`, `LICENSE`, `LICENSES/UPL-1.0.txt`, `LICENSES/MIT.txt`, `REUSE.toml` с одной аннотацией, `THIRD-PARTY-NOTICES.md`, три XML-спеки, `assets/codkit.svg`, `assets/codkit-mark.svg`, `assets/codkit.png` и `assets/codkit-128.png` с sidecar, `assets/third-party/feather/package.svg` + sidecar). **When**: `codkit license check <dir>`. **Then**: выход 0, `11 files checked, 0 problems`, `--json` — `problems: []`, `checked` перечисляет одиннадцать файлов в лексикографическом порядке с `carrier` (`header` для спек, README, notices, `vibe.toml`, обоих SVG знака; `sidecar` для обоих PNG и сторонней иконки) и `kind` (`own`/`third-party`), `licences.thirdParty = [\"MIT\"]`. **When (по одному дефекту на копии, оракул `tools/license-fixtures.py`)**: (a) спека без заголовка; (b) заголовок ниже 20-й непустой строки; (c) `GPL-3.0-only` на собственном файле; (d) `SPDX-License-Identifier: UPL`; (e) PNG без sidecar; (f) `data.json` без sidecar; (g) holder `Oleg Chiruhin` (опечатка) без аннотации; (h) orphan `ghost.txt.license`; (i) `LICENSE` с одним изменённым словом; (j) `vibe.toml` с `license = \"MIT\"`; (k) лишний `LICENSES/BSD-2-Clause.txt`; (l) символьная ссылка внутри пакета; (m) собственная copyright-строка без года; (n) сторонний файл без аннотации; (o) лицензия стороннего файла `GPL-3.0-only` в аннотации и носителе; (p) носитель говорит `ISC`, аннотация — `MIT`; (q) устаревший `THIRD-PARTY-NOTICES.md`; (r) отсутствует `LICENSES/MIT.txt`. **Then**: в каждом случае выход 1 и среди проблем — ожидаемый код с ожидаемым путём (`LICENSE-HEADER` для a–f, h, m; `LICENSE-THIRD-PARTY` для g, n, o, p, q; `LICENSE-PACKAGE` для i–l, r), следственные проблемы (неиспользуемый текст лицензии, устаревшие notices) допустимы рядом; текст (d) содержит `the only valid form is UPL-1.0`; текст (g) содержит `holder not in policy`. **When (s)**: в конец `README.md` дописана строка `| Path | Copyright | License |`. **Then**: выход 0 — copyright-строки ниже строки SPDX не читаются (`LIC-HEADER-BLOCK-ENDS-AT-SPDX`). **When**: `codkit license check` без аргумента из постороннего cwd. **Then**: проверяется пакет из toolRoot, выход 0 (то же утверждает unit `shippedStandards.test.ts`). Несуществующий каталог — выход 2. Дифференциальный тест: на каждой фикстуре оракула вердикт TypeScript (коды и пути) равен вердикту `tools/license-reference.py`; без `python3` ≥ 3.11 тест пропускается с причиной, не проходит. @status:impl/done",
       "line": 95,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S29"
     },
     {
       "anchor": "s30",
-      "content_hash": "sha256:641b7549d8e30fc9a3caee3670f7a8006ecca944dd107eff12cd0ef92bded8b6",
+      "content_hash": "sha256:d3255bf64c6c53cef4cf4e2f38cbb890f559f1559bf9a1c96f1cf14b0869976e",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S30 — standards load в свежий продукт: копия, блок манифеста, затем vibe install",
@@ -1391,16 +1391,16 @@
     },
     {
       "anchor": "S30",
-      "content_hash": "sha256:22319b5b448e3f8639eae1e2746614404cf3ce394913e24872c18b4c903e76ed",
+      "content_hash": "sha256:3657736a873912b7c99a529afaab10ff63e5261bf974b303a7665dffb8ede771",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given** (PROP-014 §4–5; e2e `standards.test.ts`): patchesDir из `makeCliFixture` плюс записанный тестом `vibe.toml` `[project]\\nname = \"fixture\"\\nversion = \"0.0.1\"\\n`; forkDir не задан вовсе. **When**: `codkit --json standards load --dry-run`. **Then**: выход 0; `data.files.created` равно числу файлов пакета, `data.manifest.action = \"append\"`, ни одного байта не записано (sha256 `vibe.toml` и отсутствие каталога проверяются). **When**: `codkit --json standards load`. **Then**: выход 0; `vibevm/vibepacks/org.vibevm.codkit/standards/v<версия>/` побайтово равен пакету toolRoot (`diff -r` пуст, включая `LICENSE` и `LICENSES/UPL-1.0.txt`); `LICENSE-CODKIT.md` в корне patchesDir и в `delta/own/` побайтово равны `toolRoot/codkit/config/LICENSE-CODKIT.md` (`data.noticeFiles` — две записи `created`); после примечания напечатан блок `licence notice file:` и полный текст файла (`data.noticeText` присутствует); `vibe.toml` = прежние байты + LF-нормализация + пустая строка + канонический блок; строки вне блока не изменились ни на байт; `data.next = \"vibe install --offline\"`; после сводки напечатаны ровно четыре строки, начинающиеся с `licence note:`, дословно по PROP-014 `STD-LOAD-LICENCE-NOTE`, и `data.notes` несёт те же четыре строки (также при `up to date` и `--dry-run`); `.codkit-load-*` под `standards/` нет. **When (если `vibe` на PATH; иначе шаг пропускается с пометкой в выводе теста)**: `vibe install --offline --assume-yes` в patchesDir, затем `vibe check --quiet`. **Then**: `vibevm/vibedeps/org.vibevm.codkit.standards/<версия>/` побайтово равен копии, `vibe.lock` содержит `source_kind = \"local\"`, `vibe check` — 0 ошибок. Ручной эквивалент на реальном репозитории продукта — `docs/codkit/protocol/human/13-standards.md`. @status:spec/plan",
+      "heading": "**Given** (PROP-014 §4–5; e2e `standards.test.ts`): patchesDir из `makeCliFixture` плюс записанный тестом `vibe.toml` `[project]\\nname = \"fixture\"\\nversion = \"0.0.1\"\\n`; forkDir не задан вовсе. **When**: `codkit --json standards load --dry-run`. **Then**: выход 0; `data.files.created` равно числу файлов пакета, `data.manifest.action = \"append\"`, ни одного байта не записано (sha256 `vibe.toml` и отсутствие каталога проверяются). **When**: `codkit --json standards load`. **Then**: выход 0; `vibevm/vibepacks/org.vibevm.codkit/standards/v<версия>/` побайтово равен пакету toolRoot (`diff -r` пуст, включая `LICENSE` и `LICENSES/UPL-1.0.txt`); `LICENSE-CODKIT.md` в корне patchesDir и в `delta/own/` побайтово равны `toolRoot/codkit/config/LICENSE-CODKIT.md` (`data.noticeFiles` — две записи `created`); после примечания напечатан блок `licence notice file:` и полный текст файла (`data.noticeText` присутствует); `vibe.toml` = прежние байты + LF-нормализация + пустая строка + канонический блок; строки вне блока не изменились ни на байт; `data.next = \"vibe install --offline\"`; после сводки напечатаны ровно четыре строки, начинающиеся с `licence note:`, дословно по PROP-014 `STD-LOAD-LICENCE-NOTE`, и `data.notes` несёт те же четыре строки (также при `up to date` и `--dry-run`); `.codkit-load-*` под `standards/` нет. **When (если `vibe` на PATH; иначе шаг пропускается с пометкой в выводе теста)**: `vibe install --offline --assume-yes` в patchesDir, затем `vibe check --quiet`. **Then**: `vibevm/vibedeps/org.vibevm.codkit.standards/<версия>/` побайтово равен копии, `vibe.lock` содержит `source_kind = \"local\"`, `vibe check` — 0 ошибок. Ручной эквивалент на реальном репозитории продукта — `docs/codkit/protocol/human/13-standards.md`. @status:impl/done",
       "line": 98,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S30"
     },
     {
       "anchor": "s31",
-      "content_hash": "sha256:90aefaa58268536c127dfdcb1ab129bc05b0068e8f410f89c18d731b145bd571",
+      "content_hash": "sha256:2120cc0544f665b823441294930806a69fbaa0aad3cb0e744a07a85b6b6ba8f6",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S31 — standards load идемпотентен и переживает прерывание",
@@ -1409,16 +1409,16 @@
     },
     {
       "anchor": "S31",
-      "content_hash": "sha256:e1864b85737496509d87f674cc3571ea5ce64a4a668064c955265b62585851f4",
+      "content_hash": "sha256:19fce054fd05fe4aeb9ad9b640484010e79ddbfb90854155c062b7a4a80ebe64",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: состояние после S30; sha256 каждого файла копии и `vibe.toml` сняты. **When**: `codkit standards load` повторно. **Then**: выход 0, `up to date`, `data.files.unchanged` = число файлов, `data.noticeFiles` — две записи `unchanged`, `data.manifest.action = \"unchanged\"`, все sha256 совпали, mtime `vibe.toml` не изменился; рекомендации напечатаны, полного текста файла нет (`data.noticeText` отсутствует). **When**: удалён блок из `vibe.toml` (копия на месте). **Then**: `load` дописывает только блок (`append`), файлы `unchanged`. **When**: в `standards/` оставлен каталог `.codkit-load-123-abc/` с частичным содержимым (имитация прерывания), копия удалена. **Then**: `load` печатает удалённый scratch-каталог в `data.removedScratch`, создаёт копию заново, выход 0. **When**: блок пинит другую версию (`version = \"=0.0.1\"`). **Then**: блок переписан на текущую версию (`updated`), байты вне блока прежние. @status:spec/plan",
+      "heading": "**Given**: состояние после S30; sha256 каждого файла копии и `vibe.toml` сняты. **When**: `codkit standards load` повторно. **Then**: выход 0, `up to date`, `data.files.unchanged` = число файлов, `data.noticeFiles` — две записи `unchanged`, `data.manifest.action = \"unchanged\"`, все sha256 совпали, mtime `vibe.toml` не изменился; рекомендации напечатаны, полного текста файла нет (`data.noticeText` отсутствует). **When**: удалён блок из `vibe.toml` (копия на месте). **Then**: `load` дописывает только блок (`append`), файлы `unchanged`. **When**: в `standards/` оставлен каталог `.codkit-load-123-abc/` с частичным содержимым (имитация прерывания), копия удалена. **Then**: `load` печатает удалённый scratch-каталог в `data.removedScratch`, создаёт копию заново, выход 0. **When**: блок пинит другую версию (`version = \"=0.0.1\"`). **Then**: блок переписан на текущую версию (`updated`), байты вне блока прежние. @status:impl/done",
       "line": 101,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S31"
     },
     {
       "anchor": "s32",
-      "content_hash": "sha256:0079567634396bb876f27f3481745848be709fc8b714cc8b63c2e18a72548d1c",
+      "content_hash": "sha256:36ea71a97a37b315097a9175d7fad12aa3fffcdbc200607c26270546c9545fab",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S32 — standards load отказывает поверх правок и битого блока, ничего не записав",
@@ -1427,16 +1427,16 @@
     },
     {
       "anchor": "S32",
-      "content_hash": "sha256:e3120702f62ef32cd2bf9690476095ba27ad6e468c3268497b771724ab80350b",
+      "content_hash": "sha256:418ac10e327865731fab247ff7d0c70f0d7c1b83c8f81a1cbc896df106abdea3",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: состояние после S30; sha256 всех файлов копии и `vibe.toml` сняты. **When (drift)**: в копии изменён один байт спеки; добавлен лишний файл `notes.md`; удалён `README.md`; изменён один байт `delta/own/LICENSE-CODKIT.md` — четыре отдельных прогона. **Then**: каждый — выход 1 `CK-E-STANDARDS-DRIFT` с перечнем ровно одного пути и его классом (`modified` / `extra` / `missing`), hint называет «codkit-owned» и путь; ни один файл копии, ни одна копия уведомления и `vibe.toml` не изменились (sha256). **When (malformed)**: в `vibe.toml` удалена строка `# codkit:end standards`. **Then**: выход 1 `CK-E-CONFIG` с номером строки begin-маркера, ничего не записано. **When (entry outside block)**: блок удалён, в `[requires.packages]` добавлен inline-ключ `\"org.vibevm.codkit/standards\" = \"^0.1.0\"`. **Then**: выход 1 `CK-E-CONFIG`, номер строки, ничего не записано. **When**: `vibe.toml` отсутствует; `vibe.toml` без `[project]`; `vibe.toml` с CRLF. **Then**: 2 (`CK-E-CONFIG`, hint про `vibe init`), 2, 1 (`CK-E-CRLF`) соответственно, каталог копии не создан. @status:spec/plan",
+      "heading": "**Given**: состояние после S30; sha256 всех файлов копии и `vibe.toml` сняты. **When (drift)**: в копии изменён один байт спеки; добавлен лишний файл `notes.md`; удалён `README.md`; изменён один байт `delta/own/LICENSE-CODKIT.md` — четыре отдельных прогона. **Then**: каждый — выход 1 `CK-E-STANDARDS-DRIFT` с перечнем ровно одного пути и его классом (`modified` / `extra` / `missing`), hint называет «codkit-owned» и путь; ни один файл копии, ни одна копия уведомления и `vibe.toml` не изменились (sha256). **When (malformed)**: в `vibe.toml` удалена строка `# codkit:end standards`. **Then**: выход 1 `CK-E-CONFIG` с номером строки begin-маркера, ничего не записано. **When (entry outside block)**: блок удалён, в `[requires.packages]` добавлен inline-ключ `\"org.vibevm.codkit/standards\" = \"^0.1.0\"`. **Then**: выход 1 `CK-E-CONFIG`, номер строки, ничего не записано. **When**: `vibe.toml` отсутствует; `vibe.toml` без `[project]`; `vibe.toml` с CRLF. **Then**: 2 (`CK-E-CONFIG`, hint про `vibe init`), 2, 1 (`CK-E-CRLF`) соответственно, каталог копии не создан. @status:impl/done",
       "line": 104,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S32"
     },
     {
       "anchor": "s33",
-      "content_hash": "sha256:b29ae130c129c8a2a6abe930d813f0b193357a4b06430d6c1dfda3b9a6926d1b",
+      "content_hash": "sha256:63564e981b83bce695cc3eee695eac81a3c19dc2461ece1d8b0bc523b54c756d",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S33 — standards load не копирует пакет, не прошедший лицензионную проверку",
@@ -1445,16 +1445,16 @@
     },
     {
       "anchor": "S33",
-      "content_hash": "sha256:74069b9ef08548049eac43be240f0ba148b34a6191e53561268e83c22fb27283",
+      "content_hash": "sha256:b93ccef9a9ece471c602a3205b027056e25229271158a2e28025324a78689b6e",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: тестовая сборка (`CODKIT_E2E_TEST_BUILD=1`), `CODKIT_TEST_STANDARDS_SOURCE` указывает на копию пакета из toolRoot, в которой у одной спеки удалён заголовок; свежий patchesDir с `vibe.toml`. **When**: `codkit --json standards load`. **Then**: выход 1; `errors[0].code = \"CK-E-LICENSE-HEADER\"` с путём файла; каталога `vibevm/vibepacks/` в patchesDir нет; `vibe.toml` побайтово прежний. **When**: та же переменная без условия сборки `codkit-test`. **Then**: переменная игнорируется — проверяется и копируется пакет из toolRoot, выход 0 (seam не утекает в production-запуск). @status:spec/plan",
+      "heading": "**Given**: тестовая сборка (`CODKIT_E2E_TEST_BUILD=1`), `CODKIT_TEST_STANDARDS_SOURCE` указывает на копию пакета из toolRoot, в которой у одной спеки удалён заголовок; свежий patchesDir с `vibe.toml`. **When**: `codkit --json standards load`. **Then**: выход 1; `errors[0].code = \"CK-E-LICENSE-HEADER\"` с путём файла; каталога `vibevm/vibepacks/` в patchesDir нет; `vibe.toml` побайтово прежний. **When**: та же переменная без условия сборки `codkit-test`. **Then**: переменная игнорируется — проверяется и копируется пакет из toolRoot, выход 0 (seam не утекает в production-запуск). @status:impl/done",
       "line": 107,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S33"
     },
     {
       "anchor": "s34",
-      "content_hash": "sha256:d50b59744a0f34c2d3cb25dbddf566b7fa407e7c315ed5a0328ba09496ec8095",
+      "content_hash": "sha256:0765423b9682710078cab34a825575d1a5e02a8f3241c77e85ed9a022ef0e8bc",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S34 — standards check называет каждое состояние копии и блока",
@@ -1463,16 +1463,16 @@
     },
     {
       "anchor": "S34",
-      "content_hash": "sha256:4635e13ddc4fb8a0772b4ff63e6b2739345bb35984b62e29e1231584335d7310",
+      "content_hash": "sha256:b751beccf16e1b5166e3384bd357cc77885f178154c8f1faf96f2f7369d78c40",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: свежий patchesDir с `vibe.toml`. **When**: `codkit --json standards check`. **Then**: выход 1, `data.target.state = \"absent\"`, `data.manifest.state = \"absent\"`, hint `run codkit standards load`. **When**: после `standards load`. **Then**: выход 0, `target.state = \"identical\"`, `noticeFiles` — обе `identical`, `manifest.state = \"current\"`, `license.problems = []`. **When**: удалена копия `LICENSE-CODKIT.md` в корне. **Then**: 1, `noticeFiles[0].state = \"absent\"`, hint `run codkit standards load`. **When**: один байт копии изменён. **Then**: 1, `target.state = \"drift\"` с путём. **When**: блок переписан на другую версию. **Then**: 1, `manifest.state = \"stale\"`. **When**: после блока дописана строка `foo = 1` без заголовка таблицы. **Then**: предупреждение в stderr без кода, назвавшее номер строки; код выхода определяется остальными находками. **When**: `standards check` под `--ci`. **Then**: работает так же — сети и дерева команда не касается. @status:spec/plan",
+      "heading": "**Given**: свежий patchesDir с `vibe.toml`. **When**: `codkit --json standards check`. **Then**: выход 1, `data.target.state = \"absent\"`, `data.manifest.state = \"absent\"`, hint `run codkit standards load`. **When**: после `standards load`. **Then**: выход 0, `target.state = \"identical\"`, `noticeFiles` — обе `identical`, `manifest.state = \"current\"`, `license.problems = []`. **When**: удалена копия `LICENSE-CODKIT.md` в корне. **Then**: 1, `noticeFiles[0].state = \"absent\"`, hint `run codkit standards load`. **When**: один байт копии изменён. **Then**: 1, `target.state = \"drift\"` с путём. **When**: блок переписан на другую версию. **Then**: 1, `manifest.state = \"stale\"`. **When**: после блока дописана строка `foo = 1` без заголовка таблицы. **Then**: предупреждение в stderr без кода, назвавшее номер строки; код выхода определяется остальными находками. **When**: `standards check` под `--ci`. **Then**: работает так же — сети и дерева команда не касается. @status:impl/done",
       "line": 110,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S34"
     },
     {
       "anchor": "s35",
-      "content_hash": "sha256:19c26725456c2865ffc43709a8dae07a544b06be3fb6e3f8c4a3f9764d37b69d",
+      "content_hash": "sha256:330a7802a3a3acd0fe6ace01916518f9ef55f0daa4b4bf6368732fcaaf199f81",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S35 — standards license печатает файл уведомления, рекомендации и строки контракта scrape",
@@ -1481,16 +1481,16 @@
     },
     {
       "anchor": "S35",
-      "content_hash": "sha256:f36b90bbcb47fdb35589809d56e5cbce7649e373dcdec85e1eabf3bfbdcedf8c",
+      "content_hash": "sha256:875c8888db9175fd88f368ddf2b1395884618b2963aa5ae14add2e944a4ca9f5",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: любой cwd, корни не заданы. **When**: `codkit standards license`. **Then**: выход 0; stdout содержит полный текст `toolRoot/codkit/config/LICENSE-CODKIT.md` (сравнение с файлом), блок рекомендаций (обе копии, «не править», ссылки — выбор владельца из README продукта и из вмешательства в README форка, три контура) и дословно две строки контракта из PROP-014 `STD-SCRAPE-CONTRACT-ROWS`; `--json` — `data.text`, `data.recommendations` (непустой массив), `data.scrapeContractRows` (строка, парсится `tomllib`-подобным парсером теста как две таблицы `classify` и `assert` с ожидаемыми полями). **When**: `codkit standards license --dry-run`. **Then**: usage exit 2 (флаг не объявлен). @status:spec/plan",
+      "heading": "**Given**: любой cwd, корни не заданы. **When**: `codkit standards license`. **Then**: выход 0; stdout содержит полный текст `toolRoot/codkit/config/LICENSE-CODKIT.md` (сравнение с файлом), блок рекомендаций (обе копии, «не править», ссылки — выбор владельца из README продукта и из вмешательства в README форка, три контура) и дословно две строки контракта из PROP-014 `STD-SCRAPE-CONTRACT-ROWS`; `--json` — `data.text`, `data.recommendations` (непустой массив), `data.scrapeContractRows` (строка, парсится `tomllib`-подобным парсером теста как две таблицы `classify` и `assert` с ожидаемыми полями). **When**: `codkit standards license --dry-run`. **Then**: usage exit 2 (флаг не объявлен). @status:impl/done",
       "line": 113,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S35"
     },
     {
       "anchor": "s36",
-      "content_hash": "sha256:67339e59108c608ec7b0c6ae4db9b0bbe07dde82ec1e31ae9d8997b7a76ff878",
+      "content_hash": "sha256:30978213a522faf6cd840bd8f9cdf4db92b63fc729810646cab23a4dcf3432cc",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S36 — LICENSE-CODKIT.md в delta/own доставляется в дерево и не требует юнита",
@@ -1499,16 +1499,16 @@
     },
     {
       "anchor": "S36",
-      "content_hash": "sha256:d88e19f3b92294f018291f62eec84224f7c0f45acdbe901a33f2431d86843834",
+      "content_hash": "sha256:c0225d933d6264bda6223b7339bc58b716dcc6e97675f8472d2aad7fe41b81ba",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: фикстура `makeCliFixture` (тройка upstream/patchset/tree) с `vibe.toml`, `standards load` выполнен. **When**: `codkit verify`. **Then**: ни одной находки `CK-E-OWN-UNCOVERED` о `LICENSE-CODKIT.md` (файл в `NOT_OWN_CODE`). **When**: `codkit load`. **Then**: выход 0; `src/vs/<ownDirName>/LICENSE-CODKIT.md` в дереве побайтово равен `delta/own/LICENSE-CODKIT.md`. **When**: файл в дереве изменён на один байт, `codkit status`, `codkit save`. **Then**: `status` показывает own-изменение; `save` зеркалирует его в `delta/own/LICENSE-CODKIT.md`; затем `codkit standards check` — выход 1, `noticeFiles[1].state = \"drift\"` с hint «delete both LICENSE-CODKIT.md copies and run codkit standards load». **Given (без манифеста)**: patchesDir, в чьём `delta/own/` лежит только `LICENSE-CODKIT.md` и нет `patchset.delta.json`. **When**: `codkit verify`. **Then**: нет находки «file(s) under delta/own/ and no manifest» — единственный файл не own-код. @status:spec/plan",
+      "heading": "**Given**: фикстура `makeCliFixture` (тройка upstream/patchset/tree) с `vibe.toml`, `standards load` выполнен. **When**: `codkit verify`. **Then**: ни одной находки `CK-E-OWN-UNCOVERED` о `LICENSE-CODKIT.md` (файл в `NOT_OWN_CODE`). **When**: `codkit load`. **Then**: выход 0; `src/vs/<ownDirName>/LICENSE-CODKIT.md` в дереве побайтово равен `delta/own/LICENSE-CODKIT.md`. **When**: файл в дереве изменён на один байт, `codkit status`, `codkit save`. **Then**: `status` показывает own-изменение; `save` зеркалирует его в `delta/own/LICENSE-CODKIT.md`; затем `codkit standards check` — выход 1, `noticeFiles[1].state = \"drift\"` с hint «delete both LICENSE-CODKIT.md copies and run codkit standards load». **Given (без манифеста)**: patchesDir, в чьём `delta/own/` лежит только `LICENSE-CODKIT.md` и нет `patchset.delta.json`. **When**: `codkit verify`. **Then**: нет находки «file(s) under delta/own/ and no manifest» — единственный файл не own-код. @status:impl/done",
       "line": 116,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S36"
     },
     {
       "anchor": "s37",
-      "content_hash": "sha256:ec793201685ecee5da0db2df6168913b5820de6815ae035f9f2f5909ccc772cf",
+      "content_hash": "sha256:f0d75b32bfd47ce8cad5a19dbe470d6555a5c7c1b295bb2635429a3a734a660a",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S37 — строки контракта scrape ведутся управляемым блоком",
@@ -1517,16 +1517,16 @@
     },
     {
       "anchor": "S37",
-      "content_hash": "sha256:a86893280acee9672e3c6c8a865bdfcd15f20b1bdccc14e9ee335dfcfea55112",
+      "content_hash": "sha256:e94cce4daa41aef859aa8a879047cd15b43ed10f5a295bb0c2e8d48b9a69a674",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: patchesDir с `vibe.toml`; тест сам пишет `vibevm/scrape/contract.toml` — минимальный контракт схемы 1 той же формы, что создаёт `vibe scrape contract init` (`policy`, `scope`, `commit`, две `[[classify]]`, один `[[assert]]`, `[health]`, один `[[healthcheck]]`; файл кончается элементом `[[healthcheck]]`); sha256 файла снят. **When**: `codkit --json standards load`. **Then**: выход 0; `data.scrape.action = \"appended\"`; байты контракта = прежние + LF-нормализация + пустая строка + канонический блок PROP-014 `STD-SCRAPE-BLOCK-FORM`; строки вне блока не изменились ни на байт; повторный `load` — `data.scrape.action = \"unchanged\"`, sha256 прежний. **When (если `vibe` на PATH; иначе шаг пропускается с пометкой)**: `vibe scrape contract check` в patchesDir. **Then**: вывод содержит `\"rule_ids\":[\"remove-codkit-licence-notice\"]` для обеих копий и assert `codkit-licence-notice-absent`; ни одна строка вывода с `blocker` не содержит `codkit-licence` или `LICENSE-CODKIT`. **When**: контракт отсутствует. **Then**: `load` — выход 0, `data.scrape.action = \"no-contract\"`, строка `scrape contract: none - run vibe scrape contract init…`; `standards check` — та же информация, код выхода не меняется. **When**: в блоке удалена строка `# codkit:end scrape`; в отдельном прогоне — вне блока добавлена своя строка `[[classify]]` с `id = \"remove-codkit-licence-notice\"`; в третьем — вне блока `patterns = [\"LICENSE-CODKIT.md\"]` в чужой строке keep. **Then**: каждый — выход 1 `CK-E-CONFIG` с номером строки, ничего не записано (sha256 контракта, копий и `vibe.toml` прежние). **When**: блок другой версии Codkit (изменён комментарий внутри блока). **Then**: `standards check` — 1, `scrape.state = \"stale\"`; `load` — `updated`, байты вне блока прежние. @status:spec/plan",
+      "heading": "**Given**: patchesDir с `vibe.toml`; тест сам пишет `vibevm/scrape/contract.toml` — минимальный контракт схемы 1 той же формы, что создаёт `vibe scrape contract init` (`policy`, `scope`, `commit`, две `[[classify]]`, один `[[assert]]`, `[health]`, один `[[healthcheck]]`; файл кончается элементом `[[healthcheck]]`); sha256 файла снят. **When**: `codkit --json standards load`. **Then**: выход 0; `data.scrape.action = \"appended\"`; байты контракта = прежние + LF-нормализация + пустая строка + канонический блок PROP-014 `STD-SCRAPE-BLOCK-FORM`; строки вне блока не изменились ни на байт; повторный `load` — `data.scrape.action = \"unchanged\"`, sha256 прежний. **When (если `vibe` на PATH; иначе шаг пропускается с пометкой)**: `vibe scrape contract check` в patchesDir. **Then**: вывод содержит `\"rule_ids\":[\"remove-codkit-licence-notice\"]` для обеих копий и assert `codkit-licence-notice-absent`; ни одна строка вывода с `blocker` не содержит `codkit-licence` или `LICENSE-CODKIT`. **When**: контракт отсутствует. **Then**: `load` — выход 0, `data.scrape.action = \"no-contract\"`, строка `scrape contract: none - run vibe scrape contract init…`; `standards check` — та же информация, код выхода не меняется. **When**: в блоке удалена строка `# codkit:end scrape`; в отдельном прогоне — вне блока добавлена своя строка `[[classify]]` с `id = \"remove-codkit-licence-notice\"`; в третьем — вне блока `patterns = [\"LICENSE-CODKIT.md\"]` в чужой строке keep. **Then**: каждый — выход 1 `CK-E-CONFIG` с номером строки, ничего не записано (sha256 контракта, копий и `vibe.toml` прежние). **When**: блок другой версии Codkit (изменён комментарий внутри блока). **Then**: `standards check` — 1, `scrape.state = \"stale\"`; `load` — `updated`, байты вне блока прежние. @status:impl/done",
       "line": 119,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S37"
     },
     {
       "anchor": "s38",
-      "content_hash": "sha256:bcc9a927021474351821198e9e4c96f2a80be88ca630fce6b165240174db5caf",
+      "content_hash": "sha256:8905b76bbe25bab5e2cf57f7f17ad46033193fb85e63974b6a3d77931ef23a53",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S38 — релизная ветка publish не несёт LICENSE-CODKIT.md, а ветка ci и dev-дерево несут",
@@ -1535,16 +1535,16 @@
     },
     {
       "anchor": "S38",
-      "content_hash": "sha256:1d040a9ee0c7c1faaee81a64a85e6796cfdce028c2741759e73fd35900f5c673",
+      "content_hash": "sha256:306600bc48406e91094e34366b8abfa164fcda4258d74c725c7d727de040d678",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: фикстура publish (локальный bare-remote, полный набор слоёв, как в `publish.test.ts`), в patchset закоммичен `delta/own/LICENSE-CODKIT.md` рядом с `hello.ts`; `vibe.toml` не нужен. **When**: `codkit publish <ref> --yes-i-am-publish-bot`. **Then**: выход 0; в дереве вершины релизной ветки на remote (`git show <tip>:src/vs/<ownDirName>/hello.ts` есть) файла `src/vs/<ownDirName>/LICENSE-CODKIT.md` нет (`git show` — exit ≠ 0); порядок и субъекты сгенерированных коммитов прежние. **When**: `codkit ci --profile verify` на той же фикстуре. **Then**: сгенерированная ветка `ci` несёт `src/vs/<ownDirName>/LICENSE-CODKIT.md`. **When**: `codkit load`. **Then**: dev-дерево несёт файл. **Given (только уведомление в own)**: `delta/own/` содержит лишь `LICENSE-CODKIT.md`. **When**: `publish`. **Then**: own-коммита в релизной истории нет (пустой слой пропущен), выход 0. **Then (детерминизм)**: повторный `publish` того же ref — идемпотентный успех, вершина та же; отпечаток истории `publish` отличается от отпечатка `ci` того же patchset (маркер `omit-licence-notice`). @status:spec/plan",
+      "heading": "**Given**: фикстура publish (локальный bare-remote, полный набор слоёв, как в `publish.test.ts`), в patchset закоммичен `delta/own/LICENSE-CODKIT.md` рядом с `hello.ts`; `vibe.toml` не нужен. **When**: `codkit publish <ref> --yes-i-am-publish-bot`. **Then**: выход 0; в дереве вершины релизной ветки на remote (`git show <tip>:src/vs/<ownDirName>/hello.ts` есть) файла `src/vs/<ownDirName>/LICENSE-CODKIT.md` нет (`git show` — exit ≠ 0); порядок и субъекты сгенерированных коммитов прежние. **When**: `codkit ci --profile verify` на той же фикстуре. **Then**: сгенерированная ветка `ci` несёт `src/vs/<ownDirName>/LICENSE-CODKIT.md`. **When**: `codkit load`. **Then**: dev-дерево несёт файл. **Given (только уведомление в own)**: `delta/own/` содержит лишь `LICENSE-CODKIT.md`. **When**: `publish`. **Then**: own-коммита в релизной истории нет (пустой слой пропущен), выход 0. **Then (детерминизм)**: повторный `publish` того же ref — идемпотентный успех, вершина та же; отпечаток истории `publish` отличается от отпечатка `ci` того же patchset (маркер `omit-licence-notice`). @status:impl/done",
       "line": 122,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S38"
     },
     {
       "anchor": "s39",
-      "content_hash": "sha256:451dd7c062cbe2fa606bab817c74be53e6e6bad72b1e39e11a6afbf0503925d5",
+      "content_hash": "sha256:0acff3a27ad1d02593dced225157ada57653b46053bd06320a8aa548887c2bb2",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S39 — license annotate проставляет носитель и идемпотентна",
@@ -1553,16 +1553,16 @@
     },
     {
       "anchor": "S39",
-      "content_hash": "sha256:9a8e43ec3d4db8008aeab3bca4cd29084cb2e917561a8b39deed9205ed7753c1",
+      "content_hash": "sha256:003ad439d310405f165841d8a2c860739c9c6068671fe3b7517d2e4f04036b54",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: копия пакета в temp-каталоге; в неё добавлены неразмеченные файлы: `notes.md`, `script.sh` с shebang, `doc.xml` с `<?xml?>`-прелюдией, `data.json`, `logo2.png` (байты с нулём), `style.css`. **When**: `codkit license annotate --dir <dir> notes.md script.sh doc.xml data.json logo2.png style.css --year 2026`. **Then**: выход 0; `notes.md`, `doc.xml` — `<!-- -->`-заголовок (в `doc.xml` — после `<?xml?>`), `script.sh` — `#`-заголовок после shebang, `style.css` — `/* */`, `data.json` и `logo2.png` — sidecar; каждый носитель — четыре строки шаблона; `codkit license check <dir>` → 0. **When**: та же команда повторно. **Then**: все файлы `unchanged`, байты не изменились (sha256 до/после). **When**: `--dry-run` на новом неразмеченном файле. **Then**: план напечатан, ничего не записано. **When**: `codkit license annotate --dir <dir> assets/third-party/other/icon.svg --third-party --holder \"Jane Roe\" --license MIT --source \"https://example.invalid/icons v1.0\"`. **Then**: sidecar с `Copyright (c) Jane Roe`, `SPDX-License-Identifier: MIT`, `Source: …` без наших строк; в конец `REUSE.toml` дописана аннотация с точным путём, `precedence = \"closest\"`, `SPDX-FileComment = \"third-party; https://example.invalid/icons v1.0\"`; байты `REUSE.toml` до аннотации не изменились; hint про `LICENSES/MIT.txt` (уже есть) не печатается, для `--license ISC` — печатается. **When**: `--third-party --license GPL-3.0-only`. **Then**: выход 1, ничего не записано. **When**: путь вне `--dir`. **Then**: выход 1, ничего не записано. @status:spec/plan",
+      "heading": "**Given**: копия пакета в temp-каталоге; в неё добавлены неразмеченные файлы: `notes.md`, `script.sh` с shebang, `doc.xml` с `<?xml?>`-прелюдией, `data.json`, `logo2.png` (байты с нулём), `style.css`. **When**: `codkit license annotate --dir <dir> notes.md script.sh doc.xml data.json logo2.png style.css --year 2026`. **Then**: выход 0; `notes.md`, `doc.xml` — `<!-- -->`-заголовок (в `doc.xml` — после `<?xml?>`), `script.sh` — `#`-заголовок после shebang, `style.css` — `/* */`, `data.json` и `logo2.png` — sidecar; каждый носитель — четыре строки шаблона; `codkit license check <dir>` → 0. **When**: та же команда повторно. **Then**: все файлы `unchanged`, байты не изменились (sha256 до/после). **When**: `--dry-run` на новом неразмеченном файле. **Then**: план напечатан, ничего не записано. **When**: `codkit license annotate --dir <dir> assets/third-party/other/icon.svg --third-party --holder \"Jane Roe\" --license MIT --source \"https://example.invalid/icons v1.0\"`. **Then**: sidecar с `Copyright (c) Jane Roe`, `SPDX-License-Identifier: MIT`, `Source: …` без наших строк; в конец `REUSE.toml` дописана аннотация с точным путём, `precedence = \"closest\"`, `SPDX-FileComment = \"third-party; https://example.invalid/icons v1.0\"`; байты `REUSE.toml` до аннотации не изменились; hint про `LICENSES/MIT.txt` (уже есть) не печатается, для `--license ISC` — печатается. **When**: `--third-party --license GPL-3.0-only`. **Then**: выход 1, ничего не записано. **When**: путь вне `--dir`. **Then**: выход 1, ничего не записано. @status:impl/done",
       "line": 125,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S39"
     },
     {
       "anchor": "s40",
-      "content_hash": "sha256:7442676aceec2bcde91355de4f0b0ddb7d38aecbf977f99e88b77deaae8066f8",
+      "content_hash": "sha256:e9915ef30c857cf03b793ebe04a28f19a102261f656b0bfaf5e98787bc616f77",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S40 — license notices генерирует файл, устаревание ловит check",
@@ -1571,16 +1571,16 @@
     },
     {
       "anchor": "S40",
-      "content_hash": "sha256:ce4e86babf4159c74fe868434272453ba58f84cbd5f29d5eb31e3a4ca1a17746",
+      "content_hash": "sha256:e39a9588f57bf8235bdaf6c3928b6453b8ce14bd4537c1a54fa176ca131c3e67",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: копия пакета. **When**: `codkit license notices --dir <dir>`. **Then**: выход 0, `unchanged` — файл байт-в-байт равен поставляемому. **When**: в `REUSE.toml` изменён тег в `SPDX-FileComment`; `codkit license check`. **Then**: выход 1, `LICENSE-THIRD-PARTY: THIRD-PARTY-NOTICES.md: stale…`. **When**: `codkit license notices --dir <dir>`. **Then**: `written`, файл соответствует `LIC-NOTICES-FILE` (шапка, заголовок, абзац, таблица с новым тегом); `check` → 0. **When**: все аннотации удалены из `REUSE.toml`, `notices`. **Then**: `removed`, файла нет; `check` красен только по сторонней иконке без аннотации (n) и по неиспользуемому `LICENSES/MIT.txt`. **When**: `--dry-run`. **Then**: результат в stdout, файл не тронут. @status:spec/plan",
+      "heading": "**Given**: копия пакета. **When**: `codkit license notices --dir <dir>`. **Then**: выход 0, `unchanged` — файл байт-в-байт равен поставляемому. **When**: в `REUSE.toml` изменён тег в `SPDX-FileComment`; `codkit license check`. **Then**: выход 1, `LICENSE-THIRD-PARTY: THIRD-PARTY-NOTICES.md: stale…`. **When**: `codkit license notices --dir <dir>`. **Then**: `written`, файл соответствует `LIC-NOTICES-FILE` (шапка, заголовок, абзац, таблица с новым тегом); `check` → 0. **When**: все аннотации удалены из `REUSE.toml`, `notices`. **Then**: `removed`, файла нет; `check` красен только по сторонней иконке без аннотации (n) и по неиспользуемому `LICENSES/MIT.txt`. **When**: `--dry-run`. **Then**: результат в stdout, файл не тронут. @status:impl/done",
       "line": 128,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S40"
     },
     {
       "anchor": "s41",
-      "content_hash": "sha256:d9ab47275e753100d0cdeddb0a213dff006f49861a89be5118a1d37681daa8da",
+      "content_hash": "sha256:5d1c362aa6bbfdd2b1c9d17fa81770835341ec2313ba5889452ee2507588eb48",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S41 — standards load переносит пилот-активы вместе с sidecar и печатает сводку лицензий",
@@ -1589,10 +1589,10 @@
     },
     {
       "anchor": "S41",
-      "content_hash": "sha256:085418d831b9269b60c2143b341fd072dd68df718bf69e00df61f32f7779c4bc",
+      "content_hash": "sha256:7652b9e9867554a0e5b18b1528fc5e2b515c0b6cdedc94e68f62a29b188ed2b6",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: свежий patchesDir с `vibe.toml`. **When**: `codkit --json standards load`. **Then**: в копии присутствуют пары `assets/codkit.png` + `assets/codkit.png.license` и `assets/third-party/feather/package.svg` + `.license`, а также `REUSE.toml`, `LICENSES/MIT.txt`, `THIRD-PARTY-NOTICES.md` — все байт-в-байт; сводка содержит строку `licences loaded: UPL-1.0 (own, 10 files); MIT (third-party, 1 file); notices: THIRD-PARTY-NOTICES.md`; `data.licences = {own: [\"UPL-1.0\"], thirdParty: [\"MIT\"], notices: \"THIRD-PARTY-NOTICES.md\"}`. **When (тестовая сборка, `CODKIT_TEST_STANDARDS_SOURCE`)**: источник — копия пакета, в которой у сторонней иконки удалена аннотация. **Then**: `load` — выход 1 `CK-E-LICENSE-THIRD-PARTY`, ничего не записано. @status:spec/plan",
+      "heading": "**Given**: свежий patchesDir с `vibe.toml`. **When**: `codkit --json standards load`. **Then**: в копии присутствуют пары `assets/codkit.png` + `assets/codkit.png.license` и `assets/third-party/feather/package.svg` + `.license`, а также `REUSE.toml`, `LICENSES/MIT.txt`, `THIRD-PARTY-NOTICES.md` — все байт-в-байт; сводка содержит строку `licences loaded: UPL-1.0 (own, 10 files); MIT (third-party, 1 file); notices: THIRD-PARTY-NOTICES.md`; `data.licences = {own: [\"UPL-1.0\"], thirdParty: [\"MIT\"], notices: \"THIRD-PARTY-NOTICES.md\"}`. **When (тестовая сборка, `CODKIT_TEST_STANDARDS_SOURCE`)**: источник — копия пакета, в которой у сторонней иконки удалена аннотация. **Then**: `load` — выход 1 `CK-E-LICENSE-THIRD-PARTY`, ничего не записано. @status:impl/done",
       "line": 131,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S41"
     },
@@ -2570,7 +2570,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:42d13c633922abf05b078a87098d4128ce10725e2b065034f80b5f924fc53fb6",
+      "content_hash": "sha256:71ad3cc18d05f6aabea52cda7a503822ab3c58a09453986bccaeca245469b7b2",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "codkit PROP-002: Раскладка кода, запуск, тулчейн, компоненты",
@@ -2579,7 +2579,7 @@
     },
     {
       "anchor": "layout",
-      "content_hash": "sha256:67ee20bdc6d28aa613992f30975181d4a463fbe2fc50b3d1bfc114b29637fd32",
+      "content_hash": "sha256:5725ef92612a71eb8a4e3cfab6d89b37d06a6d022a7410a50f61fc89943c3d41",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "1. Где живёт код",
@@ -2624,10 +2624,10 @@
     },
     {
       "anchor": "TOOL-PACKAGE-TAR-BOUND",
-      "content_hash": "sha256:be77a4079d0228b0edfb770081f8aa265143d0e4ffd2a4525ee2c49ed7c8b636",
+      "content_hash": "sha256:d4d5e3c0cf0f044945cb28d154333650849198e943a4718b2c7c69fa1ce3bdf4",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "Bounds of the npm tarball in `codkit/test/unit/packageManifest.test.ts`. **Decision (owner ruling, 2026-09-06):** the tar bound becomes `2_000_000`; `entryCount < 640` and `unpackedSize < 5_000_000` stay as they are. **Why:** the bound is a ratchet against unnoticed growth, not a consumer requirement. At 330 files, 999_361 tar bytes and 3_786_257 unpacked, nothing a consumer experiences is near a limit, and the campaign legitimately adds modules. A ratchet that blocks planned work without naming a cost is measuring the wrong thing. **Considered and rejected:** keeping 1 MB and shrinking the shipped set - would drop spec files consumers need; removing the bound - loses the growth signal; making it track current size plus a margin - a rubber band never catches slow growth. **When to revisit:** the tar exceeds 2 MB, or a consumer reports install size or time. @status:spec/done",
+      "heading": "Bounds of the npm tarball in `codkit/test/unit/packageManifest.test.ts`. **Decision (owner ruling, 2026-09-07, verbatim: «поднять размер в тесте до 50 мегабайт»):** `unpackedSize < 50_000_000`; `entryCount < 640` and the tar bound `2_000_000` stay as the ruling of 2026-09-06 left them. **Why:** the unpacked bound fired on planned work - the STANDARDS campaign added the standards package (81_940 bytes), PROP-014 (112_670) and six modules that ship twice, as sources and as their compiled output, taking the tarball to 5_055_081 unpacked with the tar at 1_383_894 and 429 of 640 entries. Nothing a consumer experiences was near a limit: 5 MB unpacked on a developer machine costs nothing, and this decision's own revisit trigger (the tar above 2 MB, or a consumer complaint) had not fired. A ratchet that blocks planned work without naming a cost measures the wrong thing. The consequence is recorded rather than hidden: at this number the effective ratchet is the tar bound, which text compressing about fivefold reaches near 10 MB unpacked, so 50 MB is never approached - the unpacked bound is now a backstop against a pathological artifact, not the growth signal. **Considered and rejected:** dropping `codkit/src` from the shipped set - measured at 272 entries and 3_063_152 unpacked, and the launcher runs `codkit/dist/main.js` so sources are not needed at runtime, but a consumer would stop receiving the source of the tool they installed, and that is a distribution decision nobody asked for; a smaller step such as 5_500_000 - the owner named 50 MB; dropping `AUDIT.md` or `docs/codkit` - documentation a consumer should have. **When to revisit:** the tar exceeds 2 MB (unchanged, and now the binding signal), or a consumer reports install size or time. @status:spec/done",
       "line": 34,
       "uri": "spec://codkit/modules/codkit/PROP-002#TOOL-PACKAGE-TAR-BOUND"
     },
@@ -3398,7 +3398,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:66725a254cd97dcd2069ebdd9e5f0ba34b83f84194719ff6326efa82c51d8c32",
+      "content_hash": "sha256:ce3a9cb9afc7fef908f11a82892a1b712b13b9e907ef1c18ff44127ff405ac24",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Слои дельты — форматы, материализация, запреты",
@@ -3470,7 +3470,7 @@
     },
     {
       "anchor": "own",
-      "content_hash": "sha256:4c90d1cfc46f25213f3d78b4c238f21ab9b29ea1743dde450a5191556fdd6c90",
+      "content_hash": "sha256:079af32e2dc0eb59465afe0cc990743c3a2892d592c0741d2563a598ccdfe74c",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "3. own — собственный код",
@@ -3533,10 +3533,10 @@
     },
     {
       "anchor": "OWN-MANIFEST",
-      "content_hash": "sha256:f5a68419b7649349b88ea35330a6692087111fcbb872ca13c07ab464e24b6ea7",
+      "content_hash": "sha256:b40af1fafb3746efed595b2424fc4faa4126639ee3bee7e1a7282ecd0e2a0b92",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "**Декларация юнитов own** — `delta/own/patchset.delta.json` (`codkitOwnManifest: 2`): массив `units` — записи `{id, layer:\"own\", type, category, owner, reason, link, cause, pin, contractTests, roots}`, где `roots` — пути внутри `delta/own/`; массив `serviceOverrides` — записи `{id, serviceId, module, owner, reason, link, cause, pin, contractTests}`; их `type`/`category` в инвентаре — производные константы `modify`/`own` (полей в схеме нет; уточнение M1). Каждый файл own обязан попадать ровно в один юнит — включая модули из `serviceOverrides[].module` (запись override задаёт слой, файл модуля покрывается юнитом own; уточнение M1); `verify` проверяет покрытие и непересечение; файл вне юнитов — `CK-E-OWN-UNCOVERED`. @status:spec/done",
+      "heading": "**Декларация юнитов own** — `delta/own/patchset.delta.json` (`codkitOwnManifest: 2`): массив `units` — записи `{id, layer:\"own\", type, category, owner, reason, link, cause, pin, contractTests, roots}`, где `roots` — пути внутри `delta/own/`; массив `serviceOverrides` — записи `{id, serviceId, module, owner, reason, link, cause, pin, contractTests}`; их `type`/`category` в инвентаре — производные константы `modify`/`own` (полей в схеме нет; уточнение M1). Каждый файл own обязан попадать ровно в один юнит — включая модули из `serviceOverrides[].module` (запись override задаёт слой, файл модуля покрывается юнитом own; уточнение M1); `verify` проверяет покрытие и непересечение; файл вне юнитов — `CK-E-OWN-UNCOVERED`. Исключение кампании STANDARDS (2026-09-06): файл `LICENSE-CODKIT.md`, который `codkit standards load` кладёт в `delta/own/`, юнита не требует, но доставляется в дерево как обычный own-файл (PROP-014 §4a `STD-NOTICE-IS-A-DELIVERED-OWN-FILE`); множество «не own-код» — `patchset.delta.json`, `.gitkeep`, `LICENSE-CODKIT.md`. @status:spec/done",
       "line": 33,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-MANIFEST"
     },
@@ -4181,7 +4181,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:744c5b41bb6c507894390ba1e193691f04649663984ec5fcadda87ea34d45c8f",
+      "content_hash": "sha256:f6ce64d7f005565d1021c2581ce516404e290cf41eab02b7af8df2423e436a22",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -4658,7 +4658,7 @@
     },
     {
       "anchor": "cmd-publish",
-      "content_hash": "sha256:54a78d2bb525314c681d6071f247db86da68cd2abbe097670369535ed49aef2a",
+      "content_hash": "sha256:3ffedcbef9a874c74fa627f35ae3a4102e6e8740d78887019aa4b1978b719eae",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "18. codkit publish patchset-ref [--profile verify|build] [--release semver] --yes-i-am-publish-bot",
@@ -4685,10 +4685,10 @@
     },
     {
       "anchor": "PUBLISH-GENERATED-ORDER",
-      "content_hash": "sha256:ae6032198783b54cb921ffde4ef0697475d350891d4c9d44c0529eca82752e0c",
+      "content_hash": "sha256:d3cda300481afe5c1b6443ff6c953d7426529ccde4afca75faf317df9f5eb3bc",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "История строится от пина из `codkit.json` на разрешённом `patchset-ref` строго в порядке: (1) patch-коммиты по одному, лексикографически по UTF-8 пути `.ckpatch`; (2) один own-коммит для снимка `delta/own/**`, если доставляемый own-код непуст; (3) overlay-коммиты по целям, лексикографически по target, с композицией overlay одной цели; (4) resource-коммиты по entries, отсортированным по target. Затем выполняется выбранный профиль проверок. Каждый из этих сгенерированных коммитов несёт канонические трейлеры с точным регистром: `Codkit-Patchset-Commit: <полный 40-hex SHA patchset-ref>` и `Codkit-Upstream-Pin: <pin.tag>@<полный 40-hex pin.sha>`. @status:spec/done",
+      "heading": "История строится от пина из `codkit.json` на разрешённом `patchset-ref` строго в порядке: (1) patch-коммиты по одному, лексикографически по UTF-8 пути `.ckpatch`; (2) один own-коммит для снимка `delta/own/**`, если доставляемый own-код непуст — за вычетом `LICENSE-CODKIT.md`: релизная ветка не несёт уведомление Codkit (PROP-014 §4a `STD-NOTICE-RELEASE-EXCLUSION`); own-снимок из одного уведомления пуст, и коммит пропускается; (3) overlay-коммиты по целям, лексикографически по target, с композицией overlay одной цели; (4) resource-коммиты по entries, отсортированным по target. Затем выполняется выбранный профиль проверок. Каждый из этих сгенерированных коммитов несёт канонические трейлеры с точным регистром: `Codkit-Patchset-Commit: <полный 40-hex SHA patchset-ref>` и `Codkit-Upstream-Pin: <pin.tag>@<полный 40-hex pin.sha>`. @status:spec/done",
       "line": 82,
       "uri": "spec://codkit/modules/codkit/PROP-007#PUBLISH-GENERATED-ORDER"
     },
@@ -6899,7 +6899,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:5efe68f92617958e4a9f3aa93a223927cb734303141d825799ad3380ab2b0bcb",
+      "content_hash": "sha256:69ba10ff5befb2b52888e5806158908b8a5c7174591f8b6b6def644e0a79e603",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: Пакет стандартов и лицензионная разметка",
@@ -6926,7 +6926,7 @@
     },
     {
       "anchor": "package",
-      "content_hash": "sha256:a0fe3af75795137a6b3362a3158a6b52726b339c8d1a503ac34e6ab4eb1b43ed",
+      "content_hash": "sha256:0dd5446d9f8bc4dabf020a612dd1af99f8bedf75c9384f222594e0e341b1bf78",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "1. Пакет стандартов",
@@ -6962,10 +6962,10 @@
     },
     {
       "anchor": "STD-PACKAGE-SHIPS-IN-THE-TARBALL",
-      "content_hash": "sha256:a6985fa0aeaf39c5c8f2e020abdbe5c34e1cb907314257ba8a1d6b57da306a4a",
+      "content_hash": "sha256:92c127435cffda5c4ab4926d708c7835c5df560a2ce281ae3b3d0c768eab4790",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Каталог `vibevm/vibepacks` входит в `files` `package.json` и в npm-артефакт; тест `packageManifest.test.ts` требует `vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/LICENSE` в списке упакованных файлов, границы тарбола (PROP-002 `TOOL-PACKAGE-TAR-BOUND`) не меняются. @status:spec/done",
+      "heading": "Каталог `vibevm/vibepacks` входит в `files` `package.json` и в npm-артефакт; тест `packageManifest.test.ts` требует `vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/LICENSE` в списке упакованных файлов, границы тарбола ведёт PROP-002 `TOOL-PACKAGE-TAR-BOUND` — кампания их не выбирает; рулингом владельца 2026-09-07 `unpackedSize` поднят до 50_000_000, потому что храповик сработал на плановой работе (числа — в том якоре). @status:spec/done",
       "line": 12,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-PACKAGE-SHIPS-IN-THE-TARBALL"
     },

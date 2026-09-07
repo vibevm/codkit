@@ -19,8 +19,14 @@ export const OWN_MANIFEST_SCHEMA_VERSION = 2;
 export const OWN_MANIFEST_NAME = 'patchset.delta.json';
 /** The manifest, relative to the patchset root. */
 export const OWN_MANIFEST_PATH = `delta/own/${OWN_MANIFEST_NAME}`;
+/**
+ * The licence notice `codkit standards load` places in `delta/own/`
+ * (PROP-014 ##STD-NOTICE-IS-A-DELIVERED-OWN-FILE). It is delivered into the
+ * tree like any own file, but it is not own code and needs no unit.
+ */
+export const LICENCE_NOTICE_NAME = 'LICENSE-CODKIT.md';
 /** Files under delta/own/ that are never part of a unit. */
-const NOT_OWN_CODE = [OWN_MANIFEST_NAME, '.gitkeep'];
+const NOT_OWN_CODE = [OWN_MANIFEST_NAME, '.gitkeep', LICENCE_NOTICE_NAME];
 const unitSchema = z.object({
     id: z.string().min(1),
     layer: z.literal('own'),
@@ -176,8 +182,8 @@ export function checkServiceOverrideModules(manifest, ownFiles) {
         return { override, module, delivered: deliveredFiles.has(module), units };
     });
 }
-/** The manifest and the placeholders git needs are not own code. */
-function isNotOwnCode(file) {
+/** The manifest, the placeholders git needs and the licence notice are not own code. */
+export function isNotOwnCode(file) {
     const name = file.slice(file.lastIndexOf('/') + 1);
     return file === OWN_MANIFEST_NAME || NOT_OWN_CODE.includes(name);
 }

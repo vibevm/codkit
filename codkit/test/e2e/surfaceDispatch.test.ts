@@ -37,7 +37,11 @@ const COMMANDS = [
 	'license',
 	'license check',
 	'license annotate',
-	'license notices'
+	'license notices',
+	'standards',
+	'standards load',
+	'standards check',
+	'standards license'
 ] as const;
 
 afterAll(cleanupTempRoots);
@@ -49,7 +53,7 @@ describe('aligned command roster', () => {
 
 		expect(run.status).toBe(0);
 		for (const command of COMMANDS) {
-			const prefix = `  ${command.padEnd(18)}`;
+			const prefix = `  ${command.padEnd(19)}`;
 			expect(
 				run.stdout.split('\n').filter((line) => line.startsWith(prefix)),
 				command

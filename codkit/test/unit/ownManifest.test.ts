@@ -7,7 +7,14 @@
 // lists this module returns are what `verify` turns into CK-E-OWN-UNCOVERED.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkServiceOverrideModules, checkUnitCoverage, loadOwnManifest, parseOwnManifest } from '../../src/lib/layers/ownManifest.ts';
+import {
+	LICENCE_NOTICE_NAME,
+	checkServiceOverrideModules,
+	checkUnitCoverage,
+	isNotOwnCode,
+	loadOwnManifest,
+	parseOwnManifest
+} from '../../src/lib/layers/ownManifest.ts';
 import type { OwnManifest } from '../../src/lib/layers/ownManifest.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
@@ -128,6 +135,18 @@ describe('loadOwnManifest', () => {
 	});
 });
 
+describe('isNotOwnCode', () => {
+	it('is the one definition verify and the manifest share', () => {
+		// PROP-014 ##STD-NOTICE-IS-A-DELIVERED-OWN-FILE: `verifyEngine` used to
+		// keep its own copy of this list, and two copies of a rule drift.
+		expect(isNotOwnCode('patchset.delta.json')).toBe(true);
+		expect(isNotOwnCode('.gitkeep')).toBe(true);
+		expect(isNotOwnCode('modes/.gitkeep')).toBe(true);
+		expect(isNotOwnCode(LICENCE_NOTICE_NAME)).toBe(true);
+		expect(isNotOwnCode('patchset.contribution.ts')).toBe(false);
+	});
+});
+
 describe('checkUnitCoverage', () => {
 	it('covers a file by an exact root and a directory by a trailing slash', () => {
 		const coverage = checkUnitCoverage(manifest([UNIT]), ['patchset.contribution.ts', 'modes/zen/zenMode.ts', 'modes/focus.ts']);
@@ -136,8 +155,10 @@ describe('checkUnitCoverage', () => {
 		expect(coverage.overlapping).toEqual([]);
 	});
 
-	it('never expects the manifest itself or a .gitkeep to be claimed', () => {
-		const coverage = checkUnitCoverage(manifest([UNIT]), ['patchset.delta.json', '.gitkeep', 'modes/.gitkeep']);
+	it('never expects the manifest, a .gitkeep or the codkit licence notice to be claimed', () => {
+		// ##STD-NOTICE-IS-A-DELIVERED-OWN-FILE: LICENSE-CODKIT.md is delivered into
+		// the tree like any own file, but it is not own code and needs no unit.
+		const coverage = checkUnitCoverage(manifest([UNIT]), ['patchset.delta.json', '.gitkeep', 'modes/.gitkeep', LICENCE_NOTICE_NAME]);
 
 		expect(coverage.uncovered).toEqual([]);
 	});

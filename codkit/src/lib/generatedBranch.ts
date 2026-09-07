@@ -8,7 +8,7 @@ import { gitOk, runGit } from './gitx.ts';
 import type { GitEnv } from './gitx.ts';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.ts';
 import { ckError } from './messages.ts';
-import { isDeliveredOwnFile, listOwnFiles, ownSourceRoot, ownTargetRelativeDir } from './ownCopy.ts';
+import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot, ownTargetRelativeDir } from './ownCopy.ts';
 
 export const GENERATED_HISTORY_FINGERPRINT_VERSION = 1;
 
@@ -24,6 +24,11 @@ export type GeneratedOwnCommitOptions = {
 	readonly patchSetCommit: string;
 	readonly authorName: string;
 	readonly authorEmail: string;
+	/**
+	 * Leave the codkit licence notice out of the snapshot: only `publish` sets
+	 * it (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
+	 */
+	readonly omitLicenceNotice?: boolean;
 	/** Git source of modes when patchesDir is only a scratch file export. */
 	readonly modeSource?: { readonly repositoryRoot: string; readonly ref: string };
 };
@@ -45,15 +50,25 @@ export type GeneratedOwnEvidence = {
 	readonly ownTargets: readonly string[];
 };
 
+/**
+ * Which own files the generated snapshot carries. A release branch leaves the
+ * codkit licence notice out; every other generated branch carries it
+ * (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
+ */
+function ownPredicate(omitLicenceNotice: boolean): (relative: string) => boolean {
+	return omitLicenceNotice ? isReleasedOwnFile : isDeliveredOwnFile;
+}
+
 /** Fail before object/ref/worktree mutation when two generated layers claim one target. */
 export function assertGeneratedTargetOwnership(
 	patchesDir: string,
 	ownDirName: string,
-	layerTargets: readonly GeneratedLayerTarget[]
+	layerTargets: readonly GeneratedLayerTarget[],
+	omitLicenceNotice = false
 ): GeneratedOwnEvidence {
 	const ownRoot = ownTargetRelativeDir(ownDirName);
 	const ownTargets = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })
-		.filter(isDeliveredOwnFile)
+		.filter(ownPredicate(omitLicenceNotice))
 		.map((relative) => `${ownRoot}/${relative}`);
 	const claims = new Map(ownTargets.map((target) => [target, { layer: 'own', artifact: `delta/own/${target.slice(ownRoot.length + 1)}` }]));
 	const ids = new Map<string, string>();
@@ -102,12 +117,15 @@ export function assertGeneratedTargetOwnership(
 }
 
 /** Keep full and local branch/cache variants distinct without changing schemas. */
-export function generatedHistoryFingerprint(deltaFingerprint: string, patchesDir: string): string {
+export function generatedHistoryFingerprint(deltaFingerprint: string, patchesDir: string, omitLicenceNotice = false): string {
 	const sourceRoot = ownSourceRoot(patchesDir);
-	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
+	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(omitLicenceNotice));
 	const hash = createHash('sha256')
 		.update(`codkit-generated-history\0${GENERATED_HISTORY_FINGERPRINT_VERSION}\0`, 'utf8')
 		.update(deltaFingerprint, 'utf8');
+	// The release snapshot and the ci snapshot must never share a fingerprint:
+	// they hold different bytes (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
+	if (omitLicenceNotice) hash.update('\0omit-licence-notice\0', 'utf8');
 	for (const relative of files) hash.update(`\0${relative}\0${ownFileMode(patchesDir, relative)}`, 'utf8');
 	return hash.digest('hex');
 }
@@ -122,7 +140,9 @@ export function appendGeneratedOwnCommit(options: GeneratedOwnCommitOptions): Ge
 	const indexEnv: GitEnv = { GIT_INDEX_FILE: options.indexFile };
 	const targetRoot = ownTargetRelativeDir(options.ownDirName);
 	const sourceRoot = ownSourceRoot(options.patchesDir);
-	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
+	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(options.omitLicenceNotice ?? false));
+	// An own snapshot that is only the licence notice is empty for a release, and
+	// an empty layer is skipped exactly like any other.
 	if (files.length === 0) return { sha: null, files };
 	removeIndexedOwnTree(options.treeDir, targetRoot, indexEnv);
 	for (const relative of files) {

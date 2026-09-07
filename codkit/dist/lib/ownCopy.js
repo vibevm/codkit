@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readFileSync, readdirSync, rmdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { bytesEqual } from './bytes.js';
-import { OWN_MANIFEST_NAME } from './layers/ownManifest.js';
+import { LICENCE_NOTICE_NAME, OWN_MANIFEST_NAME } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
 import { resolveContainedPath, safeBasenameProblem } from './pathSafety.js';
 /** Own code inside patchset, relative to the patchset root. */
@@ -43,6 +43,18 @@ export const GITKEEP_NAME = '.gitkeep';
 export function isDeliveredOwnFile(relative) {
     const name = relative.slice(relative.lastIndexOf('/') + 1);
     return name !== GITKEEP_NAME && name !== OWN_MANIFEST_NAME;
+}
+/**
+ * The own snapshot of a release branch: everything delivered except the codkit
+ * licence notice (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
+ *
+ * Only `publish` builds a release; the `ci` branch, the cycle branch and the
+ * developer tree after `load` carry the notice as usual, because those are
+ * working trees and not something anybody ships.
+ */
+export function isReleasedOwnFile(relative) {
+    const name = relative.slice(relative.lastIndexOf('/') + 1);
+    return isDeliveredOwnFile(relative) && name !== LICENCE_NOTICE_NAME;
 }
 export function ownSourceRoot(patchesDir) {
     return join(patchesDir, ...OWN_SOURCE_DIR.split('/'));

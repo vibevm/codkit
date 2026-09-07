@@ -88,6 +88,9 @@ export function runSync(options) {
     const tree = resolution.path;
     const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
     let generatedBranch = options.generatedBranch === true;
+    // Only a release snapshot leaves the licence notice out; every other
+    // generated branch carries it (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
+    const omitLicenceNotice = options.omitLicenceNotice === true;
     let materializeOverlays = generatedBranch || options.materializeOverlays === true;
     let completedRebase = null;
     // 0. A live two-way sync leaves the tree half one state and half another;
@@ -179,7 +182,7 @@ export function runSync(options) {
     try {
         prebuiltConventions = loadConventions(patchesDir);
         prebuiltPlan = buildPlan(patchesDir, prebuiltConventions, overlays, warnFrom(out));
-        ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, config.ownDirName, layerTargets(prebuiltPlan));
+        ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, config.ownDirName, layerTargets(prebuiltPlan), omitLicenceNotice);
     }
     catch (error) {
         return reportBroken(out, error, branch);
@@ -191,7 +194,7 @@ export function runSync(options) {
     // ##TREE-MARK).
     const deltaState = deltaFiles(patchesDir, config.pin.sha);
     const delta = deltaState.fingerprint;
-    const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir) : delta;
+    const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, omitLicenceNotice) : delta;
     const id = treeId(tree);
     const warn = (text) => {
         out.warn(text);
@@ -681,6 +684,7 @@ function buildBranch(options, plan, context, id) {
                 patchSetCommit,
                 authorName: COMMIT_AUTHOR_NAME,
                 authorEmail: COMMIT_AUTHOR_EMAIL,
+                omitLicenceNotice: options.omitLicenceNotice === true,
                 ...(options.generatedModeSource === undefined ? {} : { modeSource: options.generatedModeSource })
             });
             ownCommitted = true;
@@ -749,6 +753,7 @@ export function buildAppliedTip(options) {
         verbose: options.verbose === true,
         materializeOverlays: options.materializeOverlays === true,
         generatedBranch: options.generatedBranch === true,
+        omitLicenceNotice: options.omitLicenceNotice === true,
         ...(options.patchSetCommit === undefined ? {} : { patchSetCommit: options.patchSetCommit }),
         ...(options.patchesRepositoryRoot === undefined || options.patchSetCommit === undefined
             ? {}
@@ -760,7 +765,7 @@ export function buildAppliedTip(options) {
     const conventions = loadConventions(options.patchesDir);
     const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir) : [];
     const plan = buildPlan(options.patchesDir, conventions, overlays, warn);
-    assertGeneratedTargetOwnership(options.patchesDir, options.config.ownDirName, layerTargets(plan));
+    assertGeneratedTargetOwnership(options.patchesDir, options.config.ownDirName, layerTargets(plan), options.omitLicenceNotice === true);
     const context = overlayVarContext(options.config, pinCommitDate(tree, options.config.pin.sha), options.patchSetCommit ?? patchSetCommitId(options.patchesDir));
     return buildBranch(engine, plan, context, treeId(tree)).top;
 }

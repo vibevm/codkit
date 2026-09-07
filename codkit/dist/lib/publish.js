@@ -50,7 +50,12 @@ export async function runPublish(options) {
             pinGuardBase: null,
             verbose: options.verbose,
             patchSetCommit: patchSetSha,
-            patchesRepositoryRoot: options.patchesDir
+            patchesRepositoryRoot: options.patchesDir,
+            // The release branch does not carry the codkit licence notice; the
+            // developer tree and the ci branch do (PROP-014
+            // ##STD-NOTICE-RELEASE-EXCLUSION). publish is the only caller that
+            // asks for this, and it asks here.
+            omitLicenceNotice: true
         });
         if (checks.exitCode !== EXIT_OK || checks.branchTip === null) {
             if (checks.exitCode === EXIT_OK) {

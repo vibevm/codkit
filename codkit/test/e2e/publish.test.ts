@@ -114,6 +114,34 @@ describe('publish generated branch', () => {
 		expect(remoteSha(remote, branch)).toBe(tip);
 	});
 
+	it('S38 - leaves the codkit licence notice out of the release branch', async () => {
+		// PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION: `standards load` puts the
+		// notice in delta/own/, from where every generated branch carries it into
+		// the tree - except the one `publish` builds, which is a release.
+		const fixture = makeCliFixture('publish-licence-notice');
+		excludeRuntime(fixture);
+		writeFileSync(fixture.patchesPath('delta/own/LICENSE-CODKIT.md'), '# Codkit licence notice\n', 'utf8');
+		fixtureCommit(fixture.patchesDir, 'fixture: codkit licence notice in own code', '2026-02-07T00:00:00Z');
+		const remote = makeRemote(fixture, 'publish-licence-notice');
+		configureRemote(fixture, remote, 'local/must-not-name-release/');
+
+		const published = await invoke(fixture, { bot: true });
+		expect(published.exitCode, JSON.stringify(published.envelope.errors)).toBe(0);
+		const sha = fixture.patchGit(['rev-parse', 'HEAD']).stdout.trim();
+		const tip = remoteSha(remote, releaseBranch(fixture, sha));
+		expect(tip, 'the release branch was not pushed').toMatch(/^[0-9a-f]{40}$/);
+		if (tip === null) return;
+
+		// The own commit is there, with the own code - and without the notice.
+		expect(remoteOut(remote, ['show', `${tip}:src/vs/patchset/hello.ts`]).length).toBeGreaterThan(0);
+		const listed = remoteOut(remote, ['ls-tree', '-r', '--name-only', tip]).split('\n');
+		expect(listed).not.toContain('src/vs/patchset/LICENSE-CODKIT.md');
+
+		// The developer tree, which `load` materialises, does carry it.
+		expect(fixture.run(['load']).status).toBe(0);
+		expect(readFileSync(fixture.treePath('src/vs/patchset/LICENSE-CODKIT.md'), 'utf8')).toBe('# Codkit licence notice\n');
+	});
+
 	it('runs the real build profile before publishing', async () => {
 		const fixture = makeCliFixture('publish-build');
 		excludeRuntime(fixture);

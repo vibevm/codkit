@@ -168,6 +168,12 @@ export type SyncEngineOptions = {
 	 * commit, overlay targets, then resources. A local load leaves this off.
 	 */
 	readonly generatedBranch?: boolean;
+	/**
+	 * Build a release snapshot: the codkit licence notice stays out of the own
+	 * commit and out of the history fingerprint (PROP-014
+	 * ##STD-NOTICE-RELEASE-EXCLUSION). Set by `publish` alone.
+	 */
+	readonly omitLicenceNotice?: boolean;
 	/** Exact immutable patchset commit represented by this materialization. */
 	readonly patchSetCommit?: string;
 	/** Internal source of Git modes for an object-only scratch patchset checkout. */
@@ -277,6 +283,9 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	const tree = resolution.path;
 	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
 	let generatedBranch = options.generatedBranch === true;
+	// Only a release snapshot leaves the licence notice out; every other
+	// generated branch carries it (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
+	const omitLicenceNotice = options.omitLicenceNotice === true;
 	let materializeOverlays = generatedBranch || options.materializeOverlays === true;
 	let completedRebase: ReturnType<typeof completedRebaseMoveForSync> = null;
 
@@ -368,7 +377,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	try {
 		prebuiltConventions = loadConventions(patchesDir);
 		prebuiltPlan = buildPlan(patchesDir, prebuiltConventions, overlays, warnFrom(out));
-		ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, config.ownDirName, layerTargets(prebuiltPlan));
+		ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, config.ownDirName, layerTargets(prebuiltPlan), omitLicenceNotice);
 	} catch (error) {
 		return reportBroken(out, error, branch);
 	}
@@ -380,7 +389,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// ##TREE-MARK).
 	const deltaState = deltaFiles(patchesDir, config.pin.sha);
 	const delta = deltaState.fingerprint;
-	const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir) : delta;
+	const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, omitLicenceNotice) : delta;
 	const id = treeId(tree);
 	const warn = (text: string): void => {
 		out.warn(text);
@@ -932,6 +941,7 @@ function buildBranch(options: SyncEngineOptions, plan: readonly Artifact[], cont
 				patchSetCommit,
 				authorName: COMMIT_AUTHOR_NAME,
 				authorEmail: COMMIT_AUTHOR_EMAIL,
+				omitLicenceNotice: options.omitLicenceNotice === true,
 				...(options.generatedModeSource === undefined ? {} : { modeSource: options.generatedModeSource })
 			});
 			ownCommitted = true;
@@ -996,6 +1006,13 @@ export type AppliedTipOptions = {
 	readonly patchSetCommit?: string;
 	/** Repository that owns patchSetCommit when patchesDir is a scratch export. */
 	readonly patchesRepositoryRoot?: string;
+	/**
+	 * Build a release snapshot: the codkit licence notice stays out of the own
+	 * commit and out of the history fingerprint. Only `publish` sets it
+	 * (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION); `ci`, `load` and the cycle carry
+	 * the notice like any other own file.
+	 */
+	readonly omitLicenceNotice?: boolean;
 };
 
 /**
@@ -1021,6 +1038,7 @@ export function buildAppliedTip(options: AppliedTipOptions): string {
 		verbose: options.verbose === true,
 		materializeOverlays: options.materializeOverlays === true,
 		generatedBranch: options.generatedBranch === true,
+		omitLicenceNotice: options.omitLicenceNotice === true,
 		...(options.patchSetCommit === undefined ? {} : { patchSetCommit: options.patchSetCommit }),
 		...(options.patchesRepositoryRoot === undefined || options.patchSetCommit === undefined
 			? {}
@@ -1032,7 +1050,7 @@ export function buildAppliedTip(options: AppliedTipOptions): string {
 	const conventions = loadConventions(options.patchesDir);
 	const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir) : [];
 	const plan = buildPlan(options.patchesDir, conventions, overlays, warn);
-	assertGeneratedTargetOwnership(options.patchesDir, options.config.ownDirName, layerTargets(plan));
+	assertGeneratedTargetOwnership(options.patchesDir, options.config.ownDirName, layerTargets(plan), options.omitLicenceNotice === true);
 	const context = overlayVarContext(
 		options.config,
 		pinCommitDate(tree, options.config.pin.sha),

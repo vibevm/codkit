@@ -197,6 +197,7 @@ export async function runCi(options) {
         dryRun: false,
         verbose: options.verbose,
         generatedBranch: profile !== 'build',
+        omitLicenceNotice: options.omitLicenceNotice === true,
         ...immutableSource
     });
     branchTip = applied.branchTip;
@@ -250,6 +251,7 @@ export async function runCi(options) {
             dryRun: false,
             verbose: options.verbose,
             generatedBranch: true,
+            omitLicenceNotice: options.omitLicenceNotice === true,
             ...immutableSource
         });
         branchTip = applied.branchTip;

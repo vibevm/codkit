@@ -121,6 +121,12 @@ export type CiOptions = {
 	readonly patchSetCommit?: string;
 	/** Repository owning patchSetCommit when patchesDir is a scratch export. */
 	readonly patchesRepositoryRoot?: string;
+	/**
+	 * Build a release snapshot: the codkit licence notice stays out of the
+	 * generated own commit (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION). `publish`
+	 * is the only caller that sets it; a plain `ci` run never does.
+	 */
+	readonly omitLicenceNotice?: boolean;
 	/** How long one compilation pass may take, in milliseconds. */
 	readonly passTimeoutMs?: number;
 	/** Injectable seam for the synchronous upstream checks; production uses spawnSync. */
@@ -311,6 +317,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		dryRun: false,
 		verbose: options.verbose,
 		generatedBranch: profile !== 'build',
+		omitLicenceNotice: options.omitLicenceNotice === true,
 		...immutableSource
 	});
 	branchTip = applied.branchTip;
@@ -371,6 +378,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 			dryRun: false,
 			verbose: options.verbose,
 			generatedBranch: true,
+			omitLicenceNotice: options.omitLicenceNotice === true,
 			...immutableSource
 		});
 		branchTip = applied.branchTip;

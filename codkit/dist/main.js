@@ -24,6 +24,7 @@ import { publishCommand } from './commands/publish.js';
 import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.js';
 import { reresolveCommand } from './commands/reresolve.js';
 import { saveCommand } from './commands/save.js';
+import { standardsCheckCommand, standardsCommand, standardsLicenseCommand, standardsLoadCommand } from './commands/standards.js';
 import { statusCommand } from './commands/status.js';
 import { syncCommand } from './commands/sync.js';
 import { verifyCommand } from './commands/verify.js';
@@ -37,10 +38,15 @@ import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocat
 import { loadSettings } from './lib/settingsFile.js';
 /** Longest command name in words; `marker new` and `overlay check` make this 2. */
 const MAX_COMMAND_WORDS = 2;
+/** Width of the name column in `codkit --help`; the longest name plus two. */
+const HELP_NAME_COLUMN = 19;
 /** The one command-scoped help flag; a namespace answers it instead of usage. */
 const GLOBAL_FLAG_HELP_NAME = '--help';
 /** Diagnosed domain verdicts: the command ran, but its requested check failed. */
-const CHECK_ERROR_CODES = new Set(['DIRTY-TREE']);
+// STANDARDS-DRIFT joins them: an installed copy that someone edited is a
+// verdict about the patch set, not a broken environment - `standards load`
+// ran, looked and refused (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL).
+const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT']);
 const COMMANDS = new Map([
     whereCommand,
     checkTreeCommand,
@@ -73,7 +79,11 @@ const COMMANDS = new Map([
     licenseCommand,
     licenseCheckCommand,
     licenseAnnotateCommand,
-    licenseNoticesCommand
+    licenseNoticesCommand,
+    standardsCommand,
+    standardsLoadCommand,
+    standardsCheckCommand,
+    standardsLicenseCommand
 ].map((definition) => [definition.name, definition]));
 /** Immutable Codkit install/source root; never discovered from cwd or settings. */
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -243,7 +253,9 @@ function printHelp() {
     for (const definition of COMMANDS.values()) {
         const own = definition.commandFlags ?? [];
         const suffix = own.length === 0 ? '' : ` (flags: ${own.join(', ')})`;
-        lines.push(`  ${definition.name.padEnd(18)}${definition.summary}${suffix}`);
+        // The column has to leave at least two spaces after the longest name, or
+        // the reference generator cannot tell the name from the summary.
+        lines.push(`  ${definition.name.padEnd(HELP_NAME_COLUMN)}${definition.summary}${suffix}`);
     }
     lines.push('', 'global flags:');
     for (const flag of GLOBAL_FLAG_HELP) {
