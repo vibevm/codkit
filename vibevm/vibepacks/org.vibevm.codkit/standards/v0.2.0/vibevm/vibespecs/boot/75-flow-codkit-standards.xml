@@ -8,10 +8,13 @@ SPDX-License-Identifier: UPL-1.0
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">Flow: Codkit standards</title>
   <status stage="impl" state="done"/>
-  <p><PROJECT-FOLLOWS-CODKIT-STANDARDS fact="true" status="impl/done">This repository is a patch set maintained by codkit, and it follows the **codkit standards**, edition 0.1.0; the one standard of this edition is minimal intervention in the fork: @spec://org.vibevm.codkit/standards/flows/standards/minimal-intervention#root.</PROJECT-FOLLOWS-CODKIT-STANDARDS></p>
+  <p><PROJECT-FOLLOWS-CODKIT-STANDARDS fact="true" status="impl/done">This repository is a patch set maintained by codkit, and it follows the **codkit standards**, edition 0.2.0: the standard of minimal intervention in the fork — the delta as a parallel system in upstream's own style, every feature one folder behind a flag: @spec://org.vibevm.codkit/standards/flows/standards/minimal-intervention#root — and the catalogue of upstream seams it picks from: @spec://org.vibevm.codkit/standards/flows/standards/seam-catalogue#root.</PROJECT-FOLLOWS-CODKIT-STANDARDS></p>
   <p><HOW-A-STANDARD-BINDS fact="true" status="impl/done">How a standard binds the project, how a deviation is recorded, who wins on conflict, and where the three licence scopes end: @spec://org.vibevm.codkit/standards/flows/standards/STANDARDS-PROTOCOL#root.</HOW-A-STANDARD-BINDS></p>
   <laws title="The laws, one line each">
     <facts ordered="false">
+      <LAW-PARALLEL-SYSTEM-FIRST fact="true" status="impl/done">The delta is a parallel system in upstream's own style, not a pile of patches: for every intervention the first question is how upstream itself would build it — a service through DI, a workbench contribution, a registry, an extension point, `product.json`, a built-in extension — and that answer is the shape of own code; the seam comes second, the patch last.</LAW-PARALLEL-SYSTEM-FIRST>
+      <LAW-PATCH-IS-A-GRAFT fact="true" status="impl/done">A patch is a graft: an import or one call that delegates into own code, three lines at most between the markers; logic never lives in a patch.</LAW-PATCH-IS-A-GRAFT>
+      <LAW-FEATURE-HAS-A-FLAG fact="true" status="impl/done">A new feature is one own folder behind a flag — a user setting, a policy-backed setting or a build value — and it toggles live where it can; a feature that cannot freezes at startup and asks for a restart.</LAW-FEATURE-HAS-A-FLAG>
       <LAW-HIGHEST-LAYER-WINS fact="true" status="impl/done">The layer chosen is the highest applicable one — the ladder and the decision tree come from the installed codkit (PROP-005 §1 `LAYER-CHOICE-RULE`, `docs/codkit/protocol/human/03-interventions.md`); the standard never restates them.</LAW-HIGHEST-LAYER-WINS>
       <LAW-NECESSITY-WINS fact="true" status="impl/done">A feature the product requires is implemented even where only an invasive layer can express it; minimality then means the least invasive form of that intervention, never its omission — and an existing intervention that can be made less invasive is.</LAW-NECESSITY-WINS>
       <LAW-CHOICE-IS-PRESENTED fact="true" status="impl/done">The choice of layer is presented: the `reason` of every artifact below own names the rejected upper leaf and why; an intervention with no home in the product's specs gets one before it is committed.</LAW-CHOICE-IS-PRESENTED>
@@ -24,6 +27,8 @@ SPDX-License-Identifier: UPL-1.0
   </laws>
   <never title="Never">
     <facts ordered="false">
+      <NEVER-PUT-LOGIC-IN-A-GRAFT fact="true" status="impl/done">Never put logic into a patch — a graft imports or calls own code and nothing more.</NEVER-PUT-LOGIC-IN-A-GRAFT>
+      <NEVER-COUNT-A-BUILD-FLAG-AS-OVERRIDABLE fact="true" status="impl/done">Never let a policy, a remote source or a user setting undo a build value of a flag: a build value is a property of the build.</NEVER-COUNT-A-BUILD-FLAG-AS-OVERRIDABLE>
       <NEVER-EDIT-THE-INSTALLED-STANDARDS fact="true" status="impl/done">Never edit the installed copy of the standards under `vibevm/vibepacks/org.vibevm.codkit/` — a deviation is recorded in the product's own specs, and `codkit standards load` refuses over edits.</NEVER-EDIT-THE-INSTALLED-STANDARDS>
       <NEVER-DESCEND-A-LAYER-SILENTLY fact="true" status="impl/done">Never descend a layer without a named reason in `reason` — the silent descent is exactly what the standard forbids.</NEVER-DESCEND-A-LAYER-SILENTLY>
       <NEVER-THROW-FROM-OWN-MODULE-EVALUATION fact="true" status="impl/done">Never bring the product down from own code because an upstream entry vanished — degrade to upstream, catch it with a guard.</NEVER-THROW-FROM-OWN-MODULE-EVALUATION>

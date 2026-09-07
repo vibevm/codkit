@@ -7,13 +7,13 @@
 name = "standards"
 group = "org.vibevm.codkit"
 kind = "flow"
-version = "0.1.0"
+version = "0.2.0"
 epoch = 1
 format = "normal"
 authors = ["Oleg Chirukhin"]
 license = "UPL-1.0"
-description = "The default codkit standards for a patch set over a VS Code fork: what a minimal intervention is, how a choice of layer is presented, and how a product keeps its seam map"
-keywords = ["codkit", "standards", "fork", "patch-set", "minimal-intervention"]
+description = "The default codkit standards for a patch set over a VS Code fork: the delta as a parallel system in upstream's own style, a feature as one folder behind a flag, what a minimal intervention is, how a choice of layer is presented, how a product keeps its seam map, and the catalogue of upstream seams"
+keywords = ["codkit", "standards", "fork", "patch-set", "minimal-intervention", "parallel-system", "feature-flags", "seam-catalogue"]
 
 [compatibility]
 min_vibe_version = "0.1.0"

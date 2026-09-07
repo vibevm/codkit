@@ -59,7 +59,7 @@ describe('the shipped standards package', () => {
 		const result = checkLicenseCarriers(shipped.directory, loadLicensePolicy(), loadSpdxLicenseIds());
 
 		expect(result.problems).toEqual([]);
-		expect(result.checked).toHaveLength(11);
+		expect(result.checked).toHaveLength(12);
 		expect(result.licences.own).toEqual(['UPL-1.0']);
 		expect(result.licences.thirdParty).toEqual(['MIT']);
 		expect(result.licences.notices).toBe('THIRD-PARTY-NOTICES.md');

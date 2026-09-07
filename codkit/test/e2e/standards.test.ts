@@ -18,9 +18,9 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 afterAll(cleanupTempRoots);
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const shippedPackage = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.1.0');
+const shippedPackage = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.2.0');
 const shippedNotice = join(repoRoot, 'codkit', 'config', 'LICENSE-CODKIT.md');
-const INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0';
+const INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0';
 
 /** A patch set with a vibevm manifest and nothing else. */
 function makePatchSet(label: string, manifest = '[project]\nname = "fixture"\nversion = "0.0.1"\n'): string {
@@ -73,17 +73,17 @@ describe('S30 - standards load into a fresh product', () => {
 		expect(sameTree(shippedPackage, join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
 		// ##STD-NOTICE-TARGETS: both copies are the template rendered with the components block.
 		const expectedNotice = renderNotice(readFileSync(shippedNotice, 'utf8'), [
-			{ name: 'standards', version: '0.1.0', path: `${INSTALLED}/` }
+			{ name: 'standards', version: '0.2.0', path: `${INSTALLED}/` }
 		]);
 		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
 		expect(readFileSync(join(patchesDir, 'delta', 'own', 'codkit', 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
-		expect(expectedNotice).toContain('standards  0.1.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/');
+		expect(expectedNotice).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
 
 		// The manifest keeps its own bytes and gains the block at the end.
 		const manifest = readFileSync(join(patchesDir, 'vibe.toml'), 'utf8');
 		expect(manifest.startsWith('[project]\nname = "fixture"\nversion = "0.0.1"\n')).toBe(true);
 		expect(manifest).toContain('[requires.packages."org.vibevm.codkit/standards"]');
-		expect(manifest).toContain('version = "=0.1.0"');
+		expect(manifest).toContain('version = "=0.2.0"');
 		expect(manifest).toContain('link = "static"');
 
 		// ##STD-LOAD-LICENCE-NOTE: four lines, verbatim, after the summary.
@@ -91,7 +91,7 @@ describe('S30 - standards load into a fresh product', () => {
 		expect(loaded.stdout).toContain('next: vibe install --offline');
 		expect(loaded.stdout).toContain('licence notice file: LICENSE-CODKIT.md');
 		expect(loaded.stdout).toContain('----- LICENSE-CODKIT.md (verbatim) -----');
-		expect(readdirSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards'))).toEqual(['v0.1.0']);
+		expect(readdirSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards'))).toEqual(['v0.2.0']);
 	});
 
 	it('materialises through vibe when vibe is on PATH', () => {
@@ -112,7 +112,7 @@ describe('S30 - standards load into a fresh product', () => {
 		expect(readFileSync(join(patchesDir, 'vibe.lock'), 'utf8')).toContain('source_kind = "local"');
 		// vibe copies the package byte for byte and adds its own slot file, so
 		// every shipped file must be present and identical - not more, not less.
-		const materialised = join(patchesDir, 'vibevm', 'vibedeps', 'org.vibevm.codkit.standards', '0.1.0');
+		const materialised = join(patchesDir, 'vibevm', 'vibedeps', 'org.vibevm.codkit.standards', '0.2.0');
 		for (const relative of ['LICENSE', 'vibe.toml', 'README.md', 'assets/codkit.png', 'assets/codkit.png.license']) {
 			expect(sha256(join(materialised, ...relative.split('/'))), relative).toBe(sha256(join(shippedPackage, ...relative.split('/'))));
 		}
@@ -143,7 +143,7 @@ describe('S31 - standards load is idempotent and survives an interruption', () =
 		const loaded = json(patchesDir, ['standards', 'load']);
 		expect(loaded.status).toBe(0);
 		expect((loaded.envelope.data as { removedScratch: readonly string[] }).removedScratch).toEqual(['.codkit-load-999-dead']);
-		expect(readdirSync(parent)).toEqual(['v0.1.0']);
+		expect(readdirSync(parent)).toEqual(['v0.2.0']);
 	});
 });
 
@@ -206,8 +206,8 @@ describe('S33 - a package that fails the licence check is never copied', () => {
 	it('reports the problem, writes nothing, and has no bypass flag', () => {
 		const patchesDir = makePatchSet('s33');
 		const source = makeTempRoot('s33-source');
-		cpSync(shippedPackage, join(source, 'v0.1.0'), { recursive: true });
-		rmSync(join(source, 'v0.1.0', 'assets', 'codkit.png.license'));
+		cpSync(shippedPackage, join(source, 'v0.2.0'), { recursive: true });
+		rmSync(join(source, 'v0.2.0', 'assets', 'codkit.png.license'));
 
 		const refused = runCli(patchesDir, ['--patches-dir', patchesDir, 'standards', 'load'], {
 			CODKIT_E2E_TEST_BUILD: '1',
@@ -257,7 +257,7 @@ describe('S34 - standards check names every state', () => {
 		const patchesDir = makePatchSet('s34-stale');
 		expect(run(patchesDir, ['standards', 'load']).status).toBe(0);
 		const manifest = join(patchesDir, 'vibe.toml');
-		writeFileSync(manifest, readFileSync(manifest, 'utf8').replace('version = "=0.1.0"', 'version = "=0.0.9"'), 'utf8');
+		writeFileSync(manifest, readFileSync(manifest, 'utf8').replace('version = "=0.2.0"', 'version = "=0.0.9"'), 'utf8');
 
 		const stale = json(patchesDir, ['standards', 'check']);
 		expect(stale.status).toBe(1);
@@ -342,7 +342,7 @@ describe('S51 - the notice of edition 3: paths, components block, legacy copy', 
 		expect((loaded.envelope.data as { legacyNoticeMoved: boolean }).legacyNoticeMoved).toBe(true);
 		const text = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
 		expect(text).toContain('<!-- codkit:begin components -->');
-		expect(text).toContain('standards  0.1.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/');
+		expect(text).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
 		expect(text).toContain('delta/own/codkit/**');
 
 		// A legacy copy put back by hand is a warning on check, not a finding.
@@ -360,6 +360,25 @@ describe('S51 - the notice of edition 3: paths, components block, legacy copy', 
 			{ path: 'LICENSE-CODKIT.md', action: 'updated' },
 			{ path: 'delta/own/codkit/LICENSE-CODKIT.md', action: 'unchanged' }
 		]);
+	});
+});
+
+describe('S53 - edition 0.2.0 lands beside an installed 0.1.0', () => {
+	it('keeps the old directory, moves the block and lists both versions in the notice', () => {
+		const patchesDir = makePatchSet('s53');
+		const old = join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.1.0');
+		mkdirSync(old, { recursive: true });
+		writeFileSync(join(old, 'vibe.toml'), '[package]\nname = "standards"\nversion = "0.1.0"\n', 'utf8');
+
+		const loaded = json(patchesDir, ['standards', 'load']);
+		expect(loaded.status).toBe(0);
+		expect((loaded.envelope.data as { otherVersions: readonly string[] }).otherVersions).toEqual(['v0.1.0']);
+		expect(readdirSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards')).sort()).toEqual(['v0.1.0', 'v0.2.0']);
+		expect(readFileSync(join(patchesDir, 'vibe.toml'), 'utf8')).toContain('version = "=0.2.0"');
+		const notice = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
+		expect(notice).toContain('standards  0.1.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/');
+		expect(notice).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
+		expect(existsSync(join(patchesDir, INSTALLED, 'vibevm', 'vibespecs', 'flows', 'standards', 'seam-catalogue.xml'))).toBe(true);
 	});
 });
 

@@ -73,10 +73,10 @@ describe('npm distribution', () => {
 			// identifier list are the data its check reads.
 			'codkit/config/license-policy.json',
 			'codkit/config/spdx-license-ids.json',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/LICENSE',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/vibe.toml',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/THIRD-PARTY-NOTICES.md',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/assets/codkit.png.license',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/LICENSE',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/vibe.toml',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/THIRD-PARTY-NOTICES.md',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/assets/codkit.png.license',
 			'codkit/runtime/v0.1.0/README.md',
 			'codkit/runtime/v0.1.0/common/version.ts',
 			'codkit/runtime/v0.1.0/browser/featureFlags.contribution.ts'

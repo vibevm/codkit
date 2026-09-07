@@ -7,10 +7,11 @@ SPDX-License-Identifier: UPL-1.0
 -->
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">The codkit standards protocol</title>
-  <status stage="spec" state="done" comment="edition 0.1.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab"/>
+  <status stage="spec" state="done" comment="edition 0.2.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab"/>
   <p><A-STANDARD-IS-A-BINDING-NORM-FOR-A-PATCH-SET fact="true" status="spec/done">A **standard** is a binding norm for a patch-set repository maintained by codkit: it says how the delta over the fork must be shaped, whatever product is made from the fork.</A-STANDARD-IS-A-BINDING-NORM-FOR-A-PATCH-SET></p>
   <p><THE-SET-IS-AN-EDITION fact="true" status="spec/done">The set of standards is an **edition**: the version of this package is the edition number; a product pins the edition to an exact version in `vibe.toml`, and the content of an edition never changes under one version — a change to a standard is always a new package version.</THE-SET-IS-AN-EDITION></p>
   <p><EDITION-0-1-0-ROSTER fact="true" status="spec/done">Edition 0.1.0 holds one standard: `minimal-intervention` — minimal intervention in the fork.</EDITION-0-1-0-ROSTER></p>
+  <p><EDITION-0-2-0-ROSTER fact="true" status="spec/done">Edition 0.2.0 holds one standard and one catalogue: `minimal-intervention` — minimal intervention in the fork, now with the parallel-system norms (§9), the feature-and-flag norms (§10) and the constant graft set (§11); and `seam-catalogue` — the catalogue of upstream seams a product picks from, ranked by how far upstream sanctions them, with example locations on one upstream tag. The catalogue is a menu, never a product's seam map: the map stays an instance in the product (`PRODUCT-SPECIFIC-INSTANCES-LIVE-IN-THE-PRODUCT`).</EDITION-0-2-0-ROSTER></p>
   <delivery title="How the standards reach a product">
     <facts ordered="true">
       <DELIVERY-CODKIT-LOADS-THE-PACKAGE fact="true" status="spec/done">The package comes from the codkit installation: `codkit standards load` copies it byte for byte into `vibevm/vibepacks/org.vibevm.codkit/standards/v&lt;version&gt;/` of the product repository and keeps a managed block in the product `vibe.toml` between the lines `# codkit:begin standards` and `# codkit:end standards`, declaring the dependency `org.vibevm.codkit/standards` at the exact version with `link = "static"`.</DELIVERY-CODKIT-LOADS-THE-PACKAGE>

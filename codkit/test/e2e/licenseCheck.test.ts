@@ -92,7 +92,7 @@ describe('codkit license check', () => {
 		const run = runCli(cwd, ['license', 'check']);
 
 		expect(run.status).toBe(0);
-		expect(run.stdout).toContain('11 files checked, 0 problems');
+		expect(run.stdout).toContain('12 files checked, 0 problems');
 	});
 
 	it('accepts a copyright-looking table row below the SPDX line (S29 s)', () => {

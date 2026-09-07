@@ -7,7 +7,7 @@ SPDX-License-Identifier: UPL-1.0
 -->
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">Standard: minimal intervention in the fork</title>
-  <status stage="spec" state="done" comment="edition 0.1.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab; distilled from a first rebranding pilot in 2026"/>
+  <status stage="spec" state="done" comment="edition 0.2.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab; distilled from a first rebranding pilot in 2026 and the parallel-system rulings of 2026-09-07"/>
   <p><MI-SCOPE fact="true" status="spec/done">The standard applies to every patch set maintained by codkit: to a delta artifact of any layer and to any own code delivered into the fork tree.</MI-SCOPE></p>
   <p><MI-THE-MEASURE fact="true" status="spec/done">The measure of an intervention is not the directory a file lives in but the number of upstream points that must stay unchanged for the intervention to keep working: an export name, the shape of a record, an id, a load order, the body of a method — each such point counts.</MI-THE-MEASURE></p>
   <source-norm title="1. Where the layer norm comes from">
@@ -84,8 +84,37 @@ SPDX-License-Identifier: UPL-1.0
       <CONF-PATCH-EQUIVALENT-OWN-HAS-A-GUARD fact="true" status="spec/done">Own code of degree (c) carries a non-empty `contractTests` and a seam-map row (§3).</CONF-PATCH-EQUIVALENT-OWN-HAS-A-GUARD>
       <CONF-NLS-CHANGES-HAVE-A-PACK-DECISION fact="true" status="spec/done">Every patch that changes an nls key cites a language-pack decision record (§5).</CONF-NLS-CHANGES-HAVE-A-PACK-DECISION>
       <CONF-SEAM-MAP-IS-DATED-TO-THE-PIN fact="true" status="spec/done">The seam map exists, is dated to the current pin and is not marked "needs re-validation" (§6).</CONF-SEAM-MAP-IS-DATED-TO-THE-PIN>
+      <CONF-PATCHES-ARE-GRAFTS fact="true" status="spec/done">Every patch of type `hook` carries at most three lines of code between its markers and at least one line that imports or calls own code (§9); `codkit verify` reports `CK-E-HOOK-TOO-LARGE` otherwise.</CONF-PATCHES-ARE-GRAFTS>
+      <CONF-OWN-PASSES-UPSTREAM-LINT fact="true" status="spec/done">Own code passes upstream's own lint and layering rules with the single authorship-header exemption; the exemption is one intervention with contract evidence (§9, §11).</CONF-OWN-PASSES-UPSTREAM-LINT>
+      <CONF-FEATURE-HAS-A-FLAG-OR-A-REASON fact="true" status="spec/done">Every feature folder declares a flag, or its decision record names why this feature has none (§10).</CONF-FEATURE-HAS-A-FLAG-OR-A-REASON>
+      <CONF-COLD-FEATURES-DECLARED fact="true" status="spec/done">Every feature that cannot toggle live is declared cold (`hotToggle: false`), so a change of its flag asks for a restart instead of half-applying (§10).</CONF-COLD-FEATURES-DECLARED>
     </facts>
   </conformance>
+  <parallel-system title="9. The delta is a parallel system">
+    <p><parallel-system-lead fact="true" status="spec/done">Upstream itself builds a second product on the same core as a top-level layer above the workbench, with its own entries, services, contributions and an enforced import graph. A product's delta follows that precedent: it is a parallel system in upstream's own style, connected to the fork by the fewest possible grafts — never a pile of patches with logic inside them.</parallel-system-lead></p>
+    <facts ordered="false">
+      <MI-PARALLEL-SYSTEM-FIRST fact="true" status="spec/done">For any intervention the first question is how upstream itself would build it — a service with a decorator through dependency injection, a workbench contribution, a registry, an extension point, a `product.json` field, a built-in extension; the answer is the shape of own code. The second question is which seam of the catalogue connects it. A patch is the answer only where no seam exists.</MI-PARALLEL-SYSTEM-FIRST>
+      <MI-PATCH-IS-A-GRAFT fact="true" status="spec/done">A patch carries an import or a single call that delegates into own code — at most three lines of code between the markers, comment lines aside — and never logic. The patch creates the seam; own code fills it. Codkit's `verify` enforces the budget on patches of type `hook`.</MI-PATCH-IS-A-GRAFT>
+      <MI-OWN-MIRRORS-UPSTREAM-TAXONOMY fact="true" status="spec/done">Own code keeps upstream's folder taxonomy (`common`, `browser`, `node`, `electron-main`; `services/*`, `contrib/*`), one composition root per process, upstream's naming (`*.contribution.ts`, `*Service.ts`), upstream's disposables and event discipline, and upstream's lint and layering rules with the single authorship-header exemption.</MI-OWN-MIRRORS-UPSTREAM-TAXONOMY>
+      <MI-SERVICE-OVERRIDE-REACH fact="true" status="spec/done">Replacing a service through a late `registerSingleton` reaches the renderer and the extension host only: the main process, the shared process, the server and the CLI assemble their services explicitly and never read the registry, and the product service is set explicitly everywhere. In those processes the channel is a graft into the service-assembly function, not a registry call.</MI-SERVICE-OVERRIDE-REACH>
+      <MI-UPSTREAM-HAS-A-PARALLEL-SYSTEM fact="true" status="spec/done">The upstream tree's own second product — a top-level directory above the workbench with its own entry files, `services/`, `contrib/`, a layers document and import-pattern targets of its own — is the precedent a product's own layer follows and cites in reviews.</MI-UPSTREAM-HAS-A-PARALLEL-SYSTEM>
+      <MI-NO-SLOP fact="true" status="spec/done">Literal minimality that produces one unreadable file is a violation, not a virtue. A pattern — bridge, adapter, decorator, state, command, registry — is welcome exactly where it matches an upstream idiom, and out of place where it does not.</MI-NO-SLOP>
+    </facts>
+  </parallel-system>
+  <features title="10. A feature is one folder behind a flag">
+    <facts ordered="false">
+      <MI-FEATURE-IS-A-FOLDER-WITH-A-FLAG fact="true" status="spec/done">A new feature of the product is one own folder (`contrib/&lt;feature&gt;/` or `services/&lt;name&gt;/`) and one flag declaration. Where the toggle can be live — everything the feature adds is registered as a disposable — it is live; a feature is created when its flag turns on and disposed when it turns off.</MI-FEATURE-IS-A-FOLDER-WITH-A-FLAG>
+      <MI-FLAG-LAYERS fact="true" status="spec/done">Flag sources form layers with a fixed precedence: a build value (from `product.json`, immutable at runtime) → a system policy → a remote-forced value → the user's setting → a remote default → the declaration's default. A build value cannot be undone by any other layer: that is what makes a security feature a property of the build.</MI-FLAG-LAYERS>
+      <MI-COLD-FEATURES-ASK-FOR-A-RESTART fact="true" status="spec/done">A feature that cannot toggle live — a service override registered at startup, a graft, main-process behaviour — is declared cold: it freezes its value at startup and, when the live value differs, asks for a restart the way upstream does.</MI-COLD-FEATURES-ASK-FOR-A-RESTART>
+      <MI-REMOTE-IS-A-SOURCE fact="true" status="spec/done">A server that switches flags centrally is one more source behind the same port as the user's setting; its snapshot applies as one transaction, and the same port drives an internal switching interface before any server exists.</MI-REMOTE-IS-A-SOURCE>
+    </facts>
+  </features>
+  <graft-set title="11. The constant graft set">
+    <facts ordered="false">
+      <MI-GRAFT-SET-CONTENTS fact="true" status="spec/done">The constant graft set of a fork consists of: the import-pattern block for the own directory, shaped like upstream's own top-level layer (several targets with their allowed imports, one per sub-layer); the authorship-header exemption; the indentation exclusions for extensions upstream's hygiene does not know (`.toml`, `.csv`, `.license`); one resource glob per bundling pipeline for own assets; and an XLF resource branch only when the product exports XLF. Its size does not grow with the volume of own code.</MI-GRAFT-SET-CONTENTS>
+      <MI-HEADER-EXEMPTION-FORM fact="true" status="spec/done">The authorship-header exemption is one data line in upstream's copyright filter; the formatting of own files is covered by the separate lint run, which reads its own filter.</MI-HEADER-EXEMPTION-FORM>
+    </facts>
+  </graft-set>
   <never title="Never">
     <facts ordered="false">
       <NEVER-DESCEND-A-LAYER-WITHOUT-A-NAMED-REASON fact="true" status="spec/done">Never descend a layer without a reason in `reason` named in the terms of the decision tree.</NEVER-DESCEND-A-LAYER-WITHOUT-A-NAMED-REASON>
@@ -95,6 +124,9 @@ SPDX-License-Identifier: UPL-1.0
       <NEVER-CHANGE-AN-NLS-KEY-WITHOUT-A-PACK-DECISION fact="true" status="spec/done">Never change an nls key in a patch without a recorded language-pack decision.</NEVER-CHANGE-AN-NLS-KEY-WITHOUT-A-PACK-DECISION>
       <NEVER-CARRY-THE-SEAM-MAP-ACROSS-A-PIN-UNCHECKED fact="true" status="spec/done">Never carry the seam map onto a new pin unchecked.</NEVER-CARRY-THE-SEAM-MAP-ACROSS-A-PIN-UNCHECKED>
       <NEVER-RESTATE-THE-LAYER-LADDER fact="true" status="spec/done">Never restate the codkit layer ladder in a product's specs — cite `LAYER-CHOICE-RULE`.</NEVER-RESTATE-THE-LAYER-LADDER>
+      <NEVER-PUT-LOGIC-IN-A-GRAFT fact="true" status="spec/done">Never put logic into a patch: a graft imports or calls own code and nothing more (§9).</NEVER-PUT-LOGIC-IN-A-GRAFT>
+      <NEVER-COUNT-A-BUILD-FLAG-AS-OVERRIDABLE fact="true" status="spec/done">Never let a lower layer undo a build value of a flag (§10).</NEVER-COUNT-A-BUILD-FLAG-AS-OVERRIDABLE>
+      <NEVER-DETECT-UPSTREAM-API-AT-RUNTIME fact="true" status="spec/done">Never probe the shape of an upstream API at runtime to survive its change: put the dependency behind an adapter and let the compiler and the contract tests fail loudly (§9).</NEVER-DETECT-UPSTREAM-API-AT-RUNTIME>
     </facts>
   </never>
 </spec>

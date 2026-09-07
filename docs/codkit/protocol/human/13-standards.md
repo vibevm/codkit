@@ -1,7 +1,7 @@
 # Стандарты Codkit в репозитории продукта
 
 Codkit поставляет пакет стандартов `org.vibevm.codkit/standards` — vibe-пакет
-вида `flow` с нормами для patch set (издание 0.1.0: стандарт о минимальном
+вида `flow` с нормами для patch set (издание 0.2.0: стандарт о минимальном
 вмешательстве в форк). Контракт — [PROP-014](../../../../vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml),
 команды — [PROP-007 §23–24](../../../../vibevm/vibespecs/modules/codkit/PROP-007-cli.xml).
 Все три команды ниже — команды человека или оркестратора: агентская сессия над

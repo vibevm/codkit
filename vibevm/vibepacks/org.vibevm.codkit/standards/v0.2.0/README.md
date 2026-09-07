@@ -12,12 +12,19 @@ SPDX-License-Identifier: UPL-1.0
 
 @fact:package-lead A vibe package of kind `flow` carrying the **default codkit standards** — the norms a patch-set repository over a VS Code fork follows when codkit maintains it. It is not installed from a registry: codkit itself delivers it. `codkit standards load` copies the package into `vibevm/vibepacks/org.vibevm.codkit/standards/v<version>/` of the product repository and declares it in the product `vibe.toml` as a statically linked dependency; the ordinary `vibe install` materialises it from there. @status:impl/done
 
-@fact:package-contents-lead Edition 0.1.0 ships: @status:impl/done
+@fact:package-contents-lead Edition 0.2.0 ships: @status:impl/done
 
 - @fact:CONTENT-THE-PROTOCOL `vibevm/vibespecs/flows/standards/STANDARDS-PROTOCOL.xml` — what a standard is, how the set is versioned, how a product adopts a standard and records a deviation, who wins on conflict, and where the three licence scopes end. @status:impl/done
-- @fact:CONTENT-MINIMAL-INTERVENTION `vibevm/vibespecs/flows/standards/minimal-intervention.xml` — the standard on minimal intervention in the fork: a choice of layer is presented, never made silently; necessity wins over minimality; the three degrees of own-code coupling; one channel per process; two channels per interface string; the seam map per pin. @status:impl/done
+- @fact:CONTENT-MINIMAL-INTERVENTION `vibevm/vibespecs/flows/standards/minimal-intervention.xml` — the standard on minimal intervention in the fork: a choice of layer is presented, never made silently; necessity wins over minimality; the three degrees of own-code coupling; one channel per process; two channels per interface string; the seam map per pin; and, since 0.2.0, the delta as a parallel system in upstream's own style (a patch is a graft, own code mirrors upstream's taxonomy), a feature as one folder behind a flag with layered sources, and the contents of the constant graft set. @status:impl/done
+- @fact:CONTENT-SEAM-CATALOGUE `vibevm/vibespecs/flows/standards/seam-catalogue.xml` — the catalogue of upstream seams, ranked from a pull request upstream down to a patch, with example locations on one upstream tag: the menu a product picks its seam map from, never the map itself. @status:impl/done
 - @fact:CONTENT-THE-BOOT-SNIPPET `vibevm/vibespecs/boot/75-flow-codkit-standards.xml` — the boot snippet: the laws in one line each and the never-do list. @status:impl/done
 - @fact:CONTENT-THE-ICON `assets/codkit.svg` (the icon), `assets/codkit-mark.svg` (the mark alone, for light backgrounds), `assets/codkit.png` (512 px) and `assets/codkit-128.png` — the codkit logo: a delta held inside its marker brackets, the patch set inside `codkit:begin`/`codkit:end` (own assets: the SVGs carry their licence header, the PNGs their `.license` sidecars), and `assets/third-party/feather/package.svg` — one third-party icon (Feather Icons, MIT) registered in `REUSE.toml` and listed in `THIRD-PARTY-NOTICES.md`: the package's own worked example of the third-party path the licence check enforces. @status:impl/done
+
+## What changed in 0.2.0 {#changes}
+
+- @fact:CHANGE-PARALLEL-SYSTEM Sections 9–11 of the standard: the parallel-system norms, the feature-and-flag norms, the constant graft set; five new conformance checks and three new never-rules. @status:impl/done
+- @fact:CHANGE-SEAM-CATALOGUE The seam catalogue as a second file of the edition. @status:impl/done
+- @fact:CHANGE-BOOT-LAWS Three new laws and two never-rules in the boot snippet. @status:impl/done
 
 ## How the package reaches a product {#install}
 
