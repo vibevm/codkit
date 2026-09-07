@@ -97,10 +97,8 @@ async function runCheck(ctx) {
             ...(drift ? { file: plan.targetPath } : {})
         });
     }
-    // REVIEW: PROP-015 ##RT-CHECK calls this field `notice`, PROP-007
-    // ##CMD-RUNTIME-CHECK calls it `noticeFiles`. The CLI contract wins here and
-    // `standards check` already ships `noticeFiles`, so the two commands answer
-    // the same question with the same key; the specs should be reconciled.
+    // `noticeFiles` is the key `standards check` already answers with, so the
+    // two commands answer the same question with the same shape (##RT-CHECK).
     ctx.out.setData({
         target: {
             state: report.targetState,

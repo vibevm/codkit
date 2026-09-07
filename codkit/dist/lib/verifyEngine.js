@@ -574,14 +574,10 @@ function checkHookBudget(config, patches, findings) {
             findings.push(finding('HOOK-TOO-LARGE', `${entry.artifact}: a hook patch carries ${graft.code.length} lines of code between its markers, and the budget is ${HOOK_CODE_LINE_BUDGET}`, `move the logic into ${OWN_SOURCE_DIR}/ and leave the patch a call into it`, entry.artifact));
             continue;
         }
-        // The own-path requirement is over every line between the markers, not
-        // only over the code ones: ##PATCH-HOOK-BUDGET excludes comments from the
-        // count of code lines and then says "at least one line" without repeating
-        // the exclusion.
-        // REVIEW: the parenthetical of ##PATCH-HOOK-BUDGET reads "an import or a
-        // call of own code", which would exclude comments. Read literally it does
-        // not, and a graft that only delegates is allowed to say so in a comment;
-        // the norm should say which of the two it means.
+        // The own-path requirement is over every line between the markers, the
+        // comment lines included: ##PATCH-HOOK-BUDGET excludes comments from the
+        // count of code lines only, and a graft that merely delegates is allowed
+        // to say so in a comment that names where.
         if (!graft.all.some((line) => line.includes(ownSegment))) {
             findings.push(finding('HOOK-TOO-LARGE', `${entry.artifact}: a hook patch names no path under ${ownSegment} between its markers, so it grafts nothing`, `a hook grafts own code into upstream: import or call something under ${OWN_SOURCE_DIR}/`, entry.artifact));
         }

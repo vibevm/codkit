@@ -3650,7 +3650,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:bff0650f25d38582aded3504f4c68e3fc387072b82ed4a7601453fd6dc24c8a1",
+      "content_hash": "sha256:e49033a32ab94add60d88d63ed4a9d707ce04b0746e57595e827bbda64301c8b",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Слои дельты — форматы, материализация, запреты",
@@ -4127,7 +4127,7 @@
     },
     {
       "anchor": "delivered",
-      "content_hash": "sha256:caa46d256a9f251135ba5987d9a53fcfa81f6d169d58840ea55864ef8e0af313",
+      "content_hash": "sha256:2309e282f04d59648755655e61fa6e7ebb55ea9bd113f598ebd8485e2d1baf79",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "12. Доставленные Codkit файлы в own и бюджет патча-крючка",
@@ -4154,10 +4154,10 @@
     },
     {
       "anchor": "PATCH-HOOK-BUDGET",
-      "content_hash": "sha256:3eff8b46083e4d49df1c6e7daa0423d0afb21d93db36999dceb48618d71ea7e9",
+      "content_hash": "sha256:4f990bcb12aa275fa2ca62783c5f8e18874a223de2a121d3cee82c5cdba0b8bb",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "Патч с `type = hook` в шапке `.ckpatch` — прививка: между маркерами не больше трёх строк кода (пустые строки и строки-комментарии `//` не считаются) и хотя бы одна строка содержит путь с сегментом `<ownDirName>/` (импорт или вызов own-кода); иначе `verify` — `CK-E-HOOK-TOO-LARGE` с именем патча и числом строк (стандарт `MI-PATCH-IS-A-GRAFT`: логика живёт в own, патч только создаёт шов). Бюджет — константа; расширить его можно только правкой этой нормы. @status:spec/done",
+      "heading": "Патч с `type = hook` в шапке `.ckpatch` — прививка: между маркерами не больше трёх строк кода (пустые строки и строки-комментарии `//` не считаются) и хотя бы одна строка между маркерами — любая, включая строку-комментарий — содержит путь с сегментом `<ownDirName>/` (обычно это импорт или вызов own-кода; комментарий, называющий own-путь, тоже считается: прививка вправе только сказать, куда делегирует); иначе `verify` — `CK-E-HOOK-TOO-LARGE` с именем патча и числом строк (стандарт `MI-PATCH-IS-A-GRAFT`: логика живёт в own, патч только создаёт шов). Бюджет — константа; расширить его можно только правкой этой нормы. @status:spec/done",
       "line": 119,
       "uri": "spec://codkit/modules/codkit/PROP-005#PATCH-HOOK-BUDGET"
     },
@@ -8402,7 +8402,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ec46344a79c241bf1e54677b7d63f18f7ff7ca3abe17dc14d8220997d00a5878",
+      "content_hash": "sha256:c422f004d865fc99e45e1bf3c91f4257c87edf4198add3448fb9d84116cb206f",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "codkit PROP-015: Рантайм Codkit — библиотека фич и флагов, доставляемая в own-слой продукта",
@@ -8708,7 +8708,7 @@
     },
     {
       "anchor": "commands",
-      "content_hash": "sha256:9f7df5310a9f0209c01d85cf7b52f0b01dae9b22902184222ce5fbec69aece81",
+      "content_hash": "sha256:3842ff2ca90dd7849521b5be899e1e70e8d78466a271b6f891d77b0e70fa3967",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "4. Команды `runtime load|check`; доставленные файлы в `verify`, `save`, `inventory`",
@@ -8735,10 +8735,10 @@
     },
     {
       "anchor": "RT-CHECK",
-      "content_hash": "sha256:15e426cb73ddf24a2478872728c6282a629ae82f387400edc5fa15e091d1bbf1",
+      "content_hash": "sha256:3ceaa9572413f4272f66fcef7d8ba562e4eccee6857cfe6a65d84494db841d93",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "`codkit runtime check` — только чтение: `identical` → 0; `absent` → 0 с текстом `runtime not installed`; `drift` → `CK-E-RUNTIME-DRIFT` с путями, выход 1; плюс состояние копий уведомления по PROP-014 §4a. `--json`: `data: {target:{state, version, paths}, notice}`. @status:spec/done",
+      "heading": "`codkit runtime check` — только чтение: `identical` → 0; `absent` → 0 с текстом `runtime not installed`; `drift` → `CK-E-RUNTIME-DRIFT` с путями, выход 1; плюс состояние копий уведомления по PROP-014 §4a. `--json`: `data: {target:{state, version, paths}, noticeFiles}` — тот же ключ, что у `standards check` (PROP-007 §25 `CMD-RUNTIME-CHECK`). @status:spec/done",
       "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-CHECK"
     },

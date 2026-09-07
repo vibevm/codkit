@@ -914,14 +914,10 @@ function checkHookBudget(config: CodkitConfig, patches: readonly PatchArtifact[]
 			);
 			continue;
 		}
-		// The own-path requirement is over every line between the markers, not
-		// only over the code ones: ##PATCH-HOOK-BUDGET excludes comments from the
-		// count of code lines and then says "at least one line" without repeating
-		// the exclusion.
-		// REVIEW: the parenthetical of ##PATCH-HOOK-BUDGET reads "an import or a
-		// call of own code", which would exclude comments. Read literally it does
-		// not, and a graft that only delegates is allowed to say so in a comment;
-		// the norm should say which of the two it means.
+		// The own-path requirement is over every line between the markers, the
+		// comment lines included: ##PATCH-HOOK-BUDGET excludes comments from the
+		// count of code lines only, and a graft that merely delegates is allowed
+		// to say so in a comment that names where.
 		if (!graft.all.some((line) => line.includes(ownSegment))) {
 			findings.push(
 				finding(
