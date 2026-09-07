@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Executable acceptance oracle for FEAT-002 S29 (edition 2): copies the shipped package into a
+# Executable acceptance oracle for FEAT-002 S29 (edition 2) and S52 (edition 3): copies the shipped package into a
 # temp dir, applies one defect per case, runs the reference check and compares the verdict with
 # the expected error code. Usage: license-fixtures.py <package-dir> <policy.json> <spdx-ids.json>
 import os, sys, shutil, subprocess, tempfile, re
@@ -10,6 +10,13 @@ def run(root):
     r=subprocess.run([sys.executable, os.path.join(HERE,'license-reference.py'), root, policy, spdx], capture_output=True, text=True)
     codes=re.findall(r'^error CK-E-([A-Z-]+): ([^:]+):', r.stdout, re.M)
     return r.returncode, codes
+def OWN_ANN(path):
+    return f'\n[[annotations]]\npath = "{path}"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2026 Oleg Chirukhin"\nSPDX-License-Identifier = "UPL-1.0"\n'
+def WRONG_LICENCE_ANN(path):
+    return f'\n[[annotations]]\npath = "{path}"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2026 Oleg Chirukhin"\nSPDX-License-Identifier = "MIT"\n'
+def FOREIGN_ANN(path, own=False):
+    comment='' if own else 'SPDX-FileComment = "third-party; https://example.invalid tag v1"\n'
+    return f'\n[[annotations]]\npath = "{path}"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2020 Somebody Else"\nSPDX-License-Identifier = "MIT"\n' + comment
 def edit(root, rel, fn):
     p=os.path.join(root, rel); s=open(p,encoding='utf-8').read(); open(p,'w',encoding='utf-8').write(fn(s))
 cases = {
@@ -33,6 +40,12 @@ cases = {
  'q stale notices': (lambda r: edit(r,'THIRD-PARTY-NOTICES.md', lambda s: s.replace('v4.29.1','v4.29.0')), 1, [('LICENSE-THIRD-PARTY','THIRD-PARTY-NOTICES.md')]),
  'r missing MIT text': (lambda r: os.remove(os.path.join(r,'LICENSES/MIT.txt')), 1, [('LICENSE-PACKAGE','LICENSES/MIT.txt')]),
  's copyright-looking table row after the SPDX line is content': (lambda r: edit(r,'README.md', lambda s: s + '\n| Path | Copyright | License |\n'), 0, []),
+ # edition 3 (LIC-CARRIER-ANNOTATION, LIC-REGISTRY-NESTED, LIC-ANNOTATION-OWN)
+ 't image carried by an own annotation alone': (lambda r: (open(os.path.join(r,'assets/x.png'),'wb').write(b'\x89PNG\x00\x01'), edit(r,'REUSE.toml', lambda s: s + OWN_ANN('assets/x.png'))), 0, []),
+ 'u source file under an annotation still needs a header': (lambda r: (os.makedirs(os.path.join(r,'src'),exist_ok=True), open(os.path.join(r,'src/a.ts'),'w').write('export const a = 1;\n'), edit(r,'REUSE.toml', lambda s: s + OWN_ANN('src/**'))), 1, [('LICENSE-HEADER','src/a.ts')]),
+ 'v nested registry covers its directory': (lambda r: (os.makedirs(os.path.join(r,'sub'),exist_ok=True), open(os.path.join(r,'sub/data.csv'),'w').write('a,b\n1,2\n'), open(os.path.join(r,'sub/REUSE.toml'),'w').write('version = 1\n' + OWN_ANN('data.csv'))), 0, []),
+ 'w the deepest registry wins': (lambda r: (os.makedirs(os.path.join(r,'sub'),exist_ok=True), open(os.path.join(r,'sub/data.csv'),'w').write('a,b\n'), edit(r,'REUSE.toml', lambda s: s + WRONG_LICENCE_ANN('sub/**')), open(os.path.join(r,'sub/REUSE.toml'),'w').write('version = 1\n' + OWN_ANN('data.csv'))), 0, []),
+ 'x own annotation naming a foreign holder': (lambda r: (open(os.path.join(r,'assets/x.png'),'wb').write(b'\x89PNG\x00\x01'), edit(r,'REUSE.toml', lambda s: s + FOREIGN_ANN('assets/x.png', own=True))), 1, [('LICENSE-HEADER','assets/x.png')]),
 }
 ok=True
 for name,(mut,exit_expected,codes_expected) in cases.items():

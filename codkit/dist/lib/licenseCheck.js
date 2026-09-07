@@ -16,7 +16,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { UPL_1_0_ID, UPL_1_0_TEXT, normalizeLicenseText, noticeLines } from './licenseTexts.js';
 import { renderThirdPartyNotices } from './licenseNotices.js';
-import { REUSE_REGISTRY_NAME, readReuseRegistry } from './reuseRegistry.js';
+import { commentStyleOf } from './licenseAnnotate.js';
+import { readReuseRegistries } from './reuseRegistry.js';
 import { LICENSE_REF_PREFIX, NO_ASSERTION, expressionIds, spdxIdHint, unknownIds } from './spdxIds.js';
 /** Bytes probed for a NUL when deciding whether a file is binary. */
 const BINARY_PROBE_BYTES = 8192;
@@ -94,9 +95,21 @@ function globMatches(pattern, relative) {
 function holderOf(match) {
     return (match.groups?.['holder'] ?? '').replace(TRAILING_MARKER, '').trim();
 }
+/** ##LIC-ANNOTATION-OWN: third-party annotations declare it in their comment; the rest are our own. */
+function isThirdPartyAnnotation(annotation) {
+    return annotation.comment.startsWith('third-party;');
+}
+/** A REUSE annotation states `2026 Holder`; the copyright regex wants the word, so it is supplied when absent. */
+function copyrightLineOf(copyright) {
+    return /copyright|©/iu.test(copyright) ? copyright : `Copyright (c) ${copyright}`;
+}
 function annotationCarrier(annotation) {
     return {
-        lines: [`SPDX-FileCopyrightText: ${annotation.copyright ?? ''}`, `SPDX-License-Identifier: ${annotation.license ?? ''}`],
+        registry: annotation.registry ?? 'REUSE.toml',
+        lines: [
+            `SPDX-FileCopyrightText: ${copyrightLineOf(annotation.copyright ?? '')}`,
+            `SPDX-License-Identifier: ${annotation.license ?? ''}`
+        ],
         kind: 'annotation'
     };
 }
@@ -117,7 +130,7 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
     const present = new Set(paths);
     // Step (3): the registry, read once. A caller may supply it instead, which is
     // how the unit tests exercise annotations without writing a TOML file.
-    const registry = options.registry ?? readReuseRegistry(dir, present.has(REUSE_REGISTRY_NAME));
+    const registry = options.registry ?? readReuseRegistries(dir, paths);
     problems.push(...registry.problems);
     const expectedNotices = options.expectedNotices !== undefined
         ? options.expectedNotices
@@ -128,7 +141,14 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
     const licencesInUse = new Set();
     const thirdPartyLicences = new Set();
     const checked = [];
-    const annotationsFor = (relative) => registry.annotations.filter((annotation) => annotation.paths.some((pattern) => globMatches(pattern, relative)));
+    // ##LIC-REGISTRY-NESTED: an annotation applies below its own registry, its
+    // paths relative to that directory; the deepest registry speaks first.
+    const annotationsFor = (relative) => registry.annotations
+        .filter((annotation) => {
+        const base = annotation.base ?? '';
+        return relative.startsWith(base) && annotation.paths.some((pattern) => globMatches(pattern, relative.slice(base.length)));
+    })
+        .sort((left, right) => (right.base ?? '').split('/').length - (left.base ?? '').split('/').length);
     for (const relative of paths) {
         if (isUnscanned(relative))
             continue;
@@ -136,6 +156,21 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
         const carrier = selectCarrier(dir, relative, present, annotations, problem);
         if (carrier === null)
             continue;
+        // ##LIC-ANNOTATION-OWN: an annotation without the third-party comment is
+        // ours, and must name a policy holder and the own licence.
+        const ownShaped = annotations.find((annotation) => !isThirdPartyAnnotation(annotation));
+        if (ownShaped !== undefined &&
+            (![...holders].some((holder) => (ownShaped.copyright ?? '').includes(holder)) || ownShaped.license !== policy.ownLicense)) {
+            problem('LICENSE-HEADER', relative, 'own annotation names a foreign holder or licence');
+            checked.push({
+                path: relative,
+                carrier: carrier.kind,
+                ...(carrier.registry === undefined ? {} : { registry: carrier.registry }),
+                kind: 'own',
+                license: ''
+            });
+            continue;
+        }
         // ##LIC-HEADER-BLOCK-ENDS-AT-SPDX: the block stops at the SPDX line.
         // Copyright-looking text below it is content - the header row of the
         // notices table is the case that found this rule.
@@ -166,8 +201,18 @@ export function checkLicenseCarriers(dir, policy, spdx, options = {}) {
         const ours = stated.filter((item) => holders.has(holderOf(item.match)));
         const foreign = stated.filter((item) => !holders.has(holderOf(item.match)));
         const kind = ours.length > 0 && foreign.length === 0 ? 'own' : 'third-party';
-        checked.push({ path: relative, carrier: carrier.kind, kind, license: expression });
+        checked.push({
+            path: relative,
+            carrier: carrier.kind,
+            ...(carrier.registry === undefined ? {} : { registry: carrier.registry }),
+            kind,
+            license: expression
+        });
         if (kind === 'own') {
+            // A header or sidecar under an own annotation agrees with it.
+            if (ownShaped !== undefined && carrier.kind !== 'annotation' && ownShaped.license !== expression) {
+                problem('LICENSE-HEADER', relative, `carrier says "${expression}" but the REUSE.toml annotation says "${ownShaped.license}"`);
+            }
             if (!ours.every((item) => item.match.groups?.['years'] !== undefined)) {
                 problem('LICENSE-HEADER', relative, 'own copyright line without a year');
             }
@@ -220,7 +265,12 @@ function packageNoticeYear(dir, present) {
     }
     return String(new Date().getUTCFullYear());
 }
-/** ##LIC-CARRIER-PRECEDENCE: sidecar, override annotation, header, annotation. */
+/**
+ * ##LIC-CARRIER-PRECEDENCE: sidecar, override annotation, header, annotation.
+ * ##LIC-CARRIER-ANNOTATION: an annotation carries a file that cannot hold a
+ * comment (binary, undecodable, or an extension without a comment style); a
+ * source file still needs its own header.
+ */
 function selectCarrier(dir, relative, present, annotations, problem) {
     const sidecar = `${relative}.license`;
     if (present.has(sidecar)) {
@@ -229,9 +279,12 @@ function selectCarrier(dir, relative, present, annotations, problem) {
     const override = annotations.find((annotation) => annotation.precedence === 'override');
     if (override !== undefined)
         return annotationCarrier(override);
+    const closest = annotations.find((annotation) => annotation.precedence !== 'override');
     const bytes = readFileSync(join(dir, relative));
     if (bytes.subarray(0, BINARY_PROBE_BYTES).includes(0)) {
-        problem('LICENSE-HEADER', relative, 'binary file without a .license sidecar');
+        if (closest !== undefined)
+            return annotationCarrier(closest);
+        problem('LICENSE-HEADER', relative, 'binary file without a .license sidecar or a REUSE.toml annotation');
         return null;
     }
     let text;
@@ -239,7 +292,9 @@ function selectCarrier(dir, relative, present, annotations, problem) {
         text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     }
     catch {
-        problem('LICENSE-HEADER', relative, 'not valid UTF-8 and no .license sidecar');
+        if (closest !== undefined)
+            return annotationCarrier(closest);
+        problem('LICENSE-HEADER', relative, 'not valid UTF-8 and no .license sidecar or REUSE.toml annotation');
         return null;
     }
     const window = text
@@ -249,7 +304,12 @@ function selectCarrier(dir, relative, present, annotations, problem) {
     if (window.some((line) => SPDX_LINE.test(line) || COPYRIGHT_LINE.test(line))) {
         return { lines: window, kind: 'header' };
     }
-    const closest = annotations.find((annotation) => annotation.precedence !== 'override');
+    if (commentStyleOf(relative) !== null) {
+        problem('LICENSE-HEADER', relative, closest === undefined
+            ? 'no licence carrier: no header in the first 20 non-empty lines, no sidecar, no REUSE.toml annotation'
+            : 'source file without a header: a REUSE.toml annotation does not replace the header of a file that can carry one');
+        return null;
+    }
     if (closest !== undefined)
         return annotationCarrier(closest);
     problem('LICENSE-HEADER', relative, 'no licence carrier: no header in the first 20 non-empty lines, no sidecar, no REUSE.toml annotation');
@@ -257,7 +317,8 @@ function selectCarrier(dir, relative, present, annotations, problem) {
 }
 /** ##LIC-FILE-CLASSIFICATION, third-party half: registry, agreement, allowlist. */
 function classifyThirdParty(relative, expression, annotations, policy, problem, accept) {
-    const declared = annotations.find((annotation) => annotation.copyright !== null && annotation.license !== null);
+    const declared = annotations.find((annotation) => annotation.copyright !== null && annotation.license !== null && isThirdPartyAnnotation(annotation)) ??
+        annotations.find((annotation) => annotation.copyright !== null && annotation.license !== null);
     if (declared === undefined) {
         problem('LICENSE-THIRD-PARTY', relative, 'holder not in policy and no REUSE.toml annotation covers the file (typo in the holder, or an undeclared third-party file)');
         return;

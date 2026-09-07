@@ -16,7 +16,7 @@
 
 import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { cpSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkLicenseCarriers } from '../../src/lib/licenseCheck.ts';
 import { loadLicensePolicy } from '../../src/lib/licensePolicy.ts';
@@ -110,8 +110,60 @@ const CASES: readonly (readonly [string, ((root: string) => void) | null])[] = [
 	],
 	['stale notices', (root) => edit(root, 'THIRD-PARTY-NOTICES.md', (text) => text.replace('v4.29.1', 'v4.29.0'))],
 	['a missing MIT text', (root) => rmSync(join(root, 'LICENSES', 'MIT.txt'))],
-	['a table row below the SPDX line', (root) => edit(root, 'README.md', (text) => `${text}\n| Path | Copyright | License |\n`)]
+	['a table row below the SPDX line', (root) => edit(root, 'README.md', (text) => `${text}\n| Path | Copyright | License |\n`)],
+	// Edition 3 (FEAT-002 ##S52): annotation carriers, nested registries, own annotations.
+	[
+		'(t) an image carried by an own annotation alone',
+		(root) => {
+			writeFileSync(join(root, 'assets', 'x.png'), new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]));
+			edit(root, 'REUSE.toml', (text) => text + ownAnnotation('assets/x.png'));
+		}
+	],
+	[
+		'(u) a source file under an annotation still needs a header',
+		(root) => {
+			mkdirSync(join(root, 'src'), { recursive: true });
+			writeFileSync(join(root, 'src', 'a.ts'), 'export const a = 1;\n', 'utf8');
+			edit(root, 'REUSE.toml', (text) => text + ownAnnotation('src/**'));
+		}
+	],
+	[
+		'(v) a nested registry covers its directory',
+		(root) => {
+			mkdirSync(join(root, 'sub'), { recursive: true });
+			writeFileSync(join(root, 'sub', 'data.csv'), 'a,b\n1,2\n', 'utf8');
+			writeFileSync(join(root, 'sub', 'REUSE.toml'), `version = 1\n${ownAnnotation('data.csv')}`, 'utf8');
+		}
+	],
+	[
+		'(w) the deepest registry wins',
+		(root) => {
+			mkdirSync(join(root, 'sub'), { recursive: true });
+			writeFileSync(join(root, 'sub', 'data.csv'), 'a,b\n', 'utf8');
+			edit(root, 'REUSE.toml', (text) => text + wrongLicenceAnnotation('sub/**'));
+			writeFileSync(join(root, 'sub', 'REUSE.toml'), `version = 1\n${ownAnnotation('data.csv')}`, 'utf8');
+		}
+	],
+	[
+		'(x) an own annotation naming a foreign holder',
+		(root) => {
+			writeFileSync(join(root, 'assets', 'x.png'), new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]));
+			edit(root, 'REUSE.toml', (text) => text + foreignOwnShapedAnnotation('assets/x.png'));
+		}
+	]
 ];
+
+function ownAnnotation(path: string): string {
+	return `\n[[annotations]]\npath = "${path}"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2026 Oleg Chirukhin"\nSPDX-License-Identifier = "UPL-1.0"\n`;
+}
+
+function wrongLicenceAnnotation(path: string): string {
+	return `\n[[annotations]]\npath = "${path}"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2026 Oleg Chirukhin"\nSPDX-License-Identifier = "MIT"\n`;
+}
+
+function foreignOwnShapedAnnotation(path: string): string {
+	return `\n[[annotations]]\npath = "${path}"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2020 Somebody Else"\nSPDX-License-Identifier = "MIT"\n`;
+}
 
 describe.skipIf(!available)('the TypeScript check agrees with the Python reference', () => {
 	if (!available && 'reason' in interpreter) {

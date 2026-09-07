@@ -5,7 +5,7 @@
 
 import { afterAll, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkLicenseCarriers } from '../../src/lib/licenseCheck.ts';
 import type { LicenseProblem } from '../../src/lib/licenseCheck.ts';
@@ -205,5 +205,81 @@ describe('licenseTexts', () => {
 		expect(normalizeLicenseText('a  “b”\n c')).toBe('a "b" c');
 		expect(normalizeLicenseText(' ‘x’ \n\n y ')).toBe("'x' y");
 		expect(normalizeLicenseText(UPL_1_0_TEXT)).toBe(normalizeLicenseText(UPL_1_0_TEXT.replace(/\n/gu, ' ')));
+	});
+});
+
+// PROP-014 edition 3 (FEAT-002 ##S52): ##LIC-CARRIER-ANNOTATION, ##LIC-REGISTRY-NESTED, ##LIC-ANNOTATION-OWN.
+describe('licenseCheck edition 3: annotations as carriers, nested registries, own annotations', () => {
+	const ownAnnotation = (path: string): string =>
+		`\n[[annotations]]\npath = "${path}"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2026 Oleg Chirukhin"\nSPDX-License-Identifier = "UPL-1.0"\n`;
+	const registry = (root: string, body: string): void => writeFileSync(join(root, 'REUSE.toml'), `version = 1\n${body}`, 'utf8');
+
+	it('an own annotation carries a file that cannot hold a comment, and the report names the registry', () => {
+		const root = makeLicensePackage(makeTempRoot('lic-t'));
+		writeFileSync(join(root, 'assets', 'x.png'), new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]));
+		writeFileSync(join(root, 'data.csv'), 'a,b\n1,2\n', 'utf8');
+		registry(root, ownAnnotation('assets/x.png') + ownAnnotation('data.csv'));
+
+		const result = checkLicenseCarriers(root, POLICY, spdx);
+		expect(result.problems).toEqual([]);
+		const png = result.checked.find((file) => file.path === 'assets/x.png');
+		expect(png).toMatchObject({ carrier: 'annotation', registry: 'REUSE.toml', kind: 'own', license: 'UPL-1.0' });
+		expect(result.checked.find((file) => file.path === 'data.csv')?.carrier).toBe('annotation');
+	});
+
+	it('a source file under an annotation still needs its header', () => {
+		const root = makeLicensePackage(makeTempRoot('lic-u'));
+		mkdirSync(join(root, 'src'), { recursive: true });
+		writeFileSync(join(root, 'src', 'a.ts'), 'export const a = 1;\n', 'utf8');
+		registry(root, ownAnnotation('src/**'));
+
+		const problems = checkLicenseCarriers(root, POLICY, spdx).problems;
+		expect(codesFor(problems, 'src/a.ts')).toEqual(['LICENSE-HEADER']);
+		expect(problems[0]?.message).toContain('does not replace the header');
+	});
+
+	it('a nested registry covers its own directory and the deepest registry wins', () => {
+		const root = makeLicensePackage(makeTempRoot('lic-v'));
+		mkdirSync(join(root, 'sub'), { recursive: true });
+		writeFileSync(join(root, 'sub', 'data.csv'), 'a,b\n', 'utf8');
+		registry(root, ownAnnotation('sub/**').replace('UPL-1.0', 'MIT'));
+		writeFileSync(join(root, 'sub', 'REUSE.toml'), `version = 1\n${ownAnnotation('data.csv')}`, 'utf8');
+
+		const result = checkLicenseCarriers(root, POLICY, spdx);
+		expect(result.problems).toEqual([]);
+		expect(result.checked.find((file) => file.path === 'sub/data.csv')).toMatchObject({
+			carrier: 'annotation',
+			registry: 'sub/REUSE.toml'
+		});
+	});
+
+	it('an own-shaped annotation naming a foreign holder is an error on every file it covers', () => {
+		const root = makeLicensePackage(makeTempRoot('lic-x'));
+		writeFileSync(join(root, 'assets', 'x.png'), new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]));
+		registry(root, ownAnnotation('assets/x.png').replace('2026 Oleg Chirukhin', '2020 Somebody Else').replace('UPL-1.0', 'MIT'));
+
+		const problems = checkLicenseCarriers(root, POLICY, spdx).problems;
+		expect(codesFor(problems, 'assets/x.png')).toEqual(['LICENSE-HEADER']);
+		expect(problems.find((problem) => problem.file === 'assets/x.png')?.message).toContain(
+			'own annotation names a foreign holder or licence'
+		);
+	});
+
+	it('a header under an own annotation must agree with it', () => {
+		const root = makeLicensePackage(makeTempRoot('lic-agree'));
+		registry(root, ownAnnotation('README.md').replace('UPL-1.0', 'MIT'));
+
+		const problems = checkLicenseCarriers(root, POLICY, spdx).problems;
+		// MIT is not the own licence, so the annotation itself is the defect, reported once.
+		expect(codesFor(problems, 'README.md')).toEqual(['LICENSE-HEADER']);
+	});
+
+	it('a registry that does not parse names its own path', () => {
+		const root = makeLicensePackage(makeTempRoot('lic-nested-bad'));
+		mkdirSync(join(root, 'sub'), { recursive: true });
+		writeFileSync(join(root, 'sub', 'REUSE.toml'), 'version = [\n', 'utf8');
+
+		const problems = checkLicenseCarriers(root, POLICY, spdx).problems;
+		expect(problems.map((problem) => [problem.code, problem.file])).toEqual([['LICENSE-PACKAGE', 'sub/REUSE.toml']]);
 	});
 });

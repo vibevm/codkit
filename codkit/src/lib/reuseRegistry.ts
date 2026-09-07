@@ -45,36 +45,61 @@ const registrySchema = z
 	})
 	.strict();
 
-function problem(message: string): LicenseProblem {
-	return { code: 'LICENSE-PACKAGE', file: REUSE_REGISTRY_NAME, message };
-}
-
 /**
  * The registry of `dir`, or the empty one when the package has no REUSE.toml.
  * A file that does not parse or does not validate yields no annotations and one
  * package-level problem, so the run still reports every other file.
  */
 export function readReuseRegistry(dir: string, present: boolean): LicenseRegistry {
-	if (!present) return { annotations: [], problems: [] };
+	return present ? readOneRegistry(dir, REUSE_REGISTRY_NAME) : { annotations: [], problems: [] };
+}
+
+/**
+ * ##LIC-REGISTRY-NESTED: every REUSE.toml of the tree, each annotation
+ * remembering the registry it came from and the directory its paths are
+ * relative to. `paths` are the POSIX-relative files of the tree.
+ */
+export function readReuseRegistries(dir: string, paths: readonly string[]): LicenseRegistry {
+	const annotations: ReuseAnnotation[] = [];
+	const problems: LicenseProblem[] = [];
+	for (const relative of paths) {
+		const name = relative.slice(relative.lastIndexOf('/') + 1);
+		if (name !== REUSE_REGISTRY_NAME) continue;
+		const registry = readOneRegistry(dir, relative);
+		annotations.push(...registry.annotations);
+		problems.push(...registry.problems);
+	}
+	return { annotations, problems };
+}
+
+/** The directory prefix of a registry path, with a trailing slash; `''` for the root registry. */
+export function registryBase(registryPath: string): string {
+	const slash = registryPath.lastIndexOf('/');
+	return slash === -1 ? '' : registryPath.slice(0, slash + 1);
+}
+
+function readOneRegistry(dir: string, registryPath: string): LicenseRegistry {
+	const fail = (message: string): LicenseProblem => ({ code: 'LICENSE-PACKAGE', file: registryPath, message });
 	let raw: unknown;
 	try {
-		raw = parseToml(readFileSync(join(dir, REUSE_REGISTRY_NAME), 'utf8'));
+		raw = parseToml(readFileSync(join(dir, ...registryPath.split('/')), 'utf8'));
 	} catch (error) {
-		return { annotations: [], problems: [problem(`cannot parse: ${error instanceof Error ? error.message : String(error)}`)] };
+		return { annotations: [], problems: [fail(`cannot parse: ${error instanceof Error ? error.message : String(error)}`)] };
 	}
 	const parsed = registrySchema.safeParse(raw);
 	if (!parsed.success) {
 		const issue = parsed.error.issues[0];
 		const where = issue === undefined ? 'document' : issue.path.map((segment) => String(segment)).join('.');
-		return { annotations: [], problems: [problem(`${where === '' ? 'document' : where}: ${issue?.message ?? 'failed validation'}`)] };
+		return { annotations: [], problems: [fail(`${where === '' ? 'document' : where}: ${issue?.message ?? 'failed validation'}`)] };
 	}
 	const problems: LicenseProblem[] = [];
 	const annotations: ReuseAnnotation[] = [];
+	const base = registryBase(registryPath);
 	for (const [index, annotation] of parsed.data.annotations.entries()) {
 		const copyright = annotation['SPDX-FileCopyrightText'] ?? null;
 		const license = annotation['SPDX-License-Identifier'] ?? null;
 		if (copyright === null || license === null) {
-			problems.push(problem(`annotations[${index}]: needs both SPDX-FileCopyrightText and SPDX-License-Identifier`));
+			problems.push(fail(`annotations[${index}]: needs both SPDX-FileCopyrightText and SPDX-License-Identifier`));
 			continue;
 		}
 		annotations.push({
@@ -82,7 +107,9 @@ export function readReuseRegistry(dir: string, present: boolean): LicenseRegistr
 			precedence: annotation.precedence,
 			copyright,
 			license,
-			comment: annotation['SPDX-FileComment']
+			comment: annotation['SPDX-FileComment'],
+			registry: registryPath,
+			base
 		});
 	}
 	return { annotations, problems };
