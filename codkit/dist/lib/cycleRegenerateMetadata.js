@@ -78,8 +78,12 @@ function updateOwn(options) {
     let changed = false;
     const units = options.inventory.own.units.map((entry) => metadataEntry(entry, 'own'));
     const serviceOverrides = options.inventory.own.serviceOverrides.map((entry) => metadataEntry(entry, 'service-override'));
+    // The `extensions` section carries no `cause` and no transition pin of its
+    // own to rewrite here; it is round-tripped so the regenerated manifest keeps
+    // every byte the layer put there (PROP-005 ##OWN-EXTENSION-UNIT).
+    const extensions = options.inventory.own.extensions;
     if (changed)
-        options.desired.set(OWN_MANIFEST_PATH, encodeUtf8(serializeOwnManifest({ units, serviceOverrides })));
+        options.desired.set(OWN_MANIFEST_PATH, encodeUtf8(serializeOwnManifest({ units, serviceOverrides, extensions })));
     function metadataEntry(entry, kind) {
         assertTransitionPin(entry.pin, options.sourcePin, options.targetPin, `${OWN_MANIFEST_PATH}#${entry.id}`);
         const cause = options.causes.get(causeKey(OWN_MANIFEST_PATH, entry.id)) ?? null;

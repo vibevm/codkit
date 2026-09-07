@@ -7,7 +7,7 @@ import type { CycleRegenerationAction } from './cycleRegenerate.ts';
 import { serializeOverlay } from './layers/overlay.ts';
 import type { Overlay } from './layers/overlay.ts';
 import { OWN_MANIFEST_PATH, serializeOwnManifest } from './layers/ownManifest.ts';
-import type { OwnUnit, ServiceOverride } from './layers/ownManifest.ts';
+import type { OwnExtension, OwnUnit, ServiceOverride } from './layers/ownManifest.ts';
 import { REMOVED_PATH, serializeRemoved } from './layers/removed.ts';
 import type { RemovedEntry } from './layers/removed.ts';
 import { RESOURCE_MAP_PATH, serializeResourceMap } from './layers/resource.ts';
@@ -20,7 +20,11 @@ export type CycleMetadataInventory = {
 	readonly rules: ReadonlyMap<string, Rule>;
 	readonly overlays: ReadonlyMap<string, Overlay>;
 	readonly resources: readonly ResourceEntry[];
-	readonly own: { readonly units: readonly OwnUnit[]; readonly serviceOverrides: readonly ServiceOverride[] } | null;
+	readonly own: {
+		readonly units: readonly OwnUnit[];
+		readonly serviceOverrides: readonly ServiceOverride[];
+		readonly extensions: readonly OwnExtension[];
+	} | null;
 	readonly removed: readonly RemovedEntry[] | null;
 };
 
@@ -113,7 +117,11 @@ function updateOwn(options: UpdateOptions): void {
 	let changed = false;
 	const units = options.inventory.own.units.map((entry) => metadataEntry(entry, 'own'));
 	const serviceOverrides = options.inventory.own.serviceOverrides.map((entry) => metadataEntry(entry, 'service-override'));
-	if (changed) options.desired.set(OWN_MANIFEST_PATH, encodeUtf8(serializeOwnManifest({ units, serviceOverrides })));
+	// The `extensions` section carries no `cause` and no transition pin of its
+	// own to rewrite here; it is round-tripped so the regenerated manifest keeps
+	// every byte the layer put there (PROP-005 ##OWN-EXTENSION-UNIT).
+	const extensions = options.inventory.own.extensions;
+	if (changed) options.desired.set(OWN_MANIFEST_PATH, encodeUtf8(serializeOwnManifest({ units, serviceOverrides, extensions })));
 	function metadataEntry<T extends OwnUnit | ServiceOverride>(entry: T, kind: 'own' | 'service-override'): T {
 		assertTransitionPin(entry.pin, options.sourcePin, options.targetPin, `${OWN_MANIFEST_PATH}#${entry.id}`);
 		const cause = options.causes.get(causeKey(OWN_MANIFEST_PATH, entry.id)) ?? null;

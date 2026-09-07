@@ -40,6 +40,10 @@
 // deliberately passes none (see the sync engine).
 
 import { runGit } from './gitx.ts';
+import { OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
+import type { OwnExtensionDivergence } from './layers/ownExtensions.ts';
+import { loadOwnManifest } from './layers/ownManifest.ts';
+import type { OwnExtension } from './layers/ownManifest.ts';
 import { ckError } from './messages.ts';
 import { OWN_SOURCE_DIR, compareOwn, ownTargetRelativeDir } from './ownCopy.ts';
 import type { OwnDivergence } from './ownCopy.ts';
@@ -57,6 +61,12 @@ export type DriftResult = {
 	readonly upstream: readonly string[];
 	/** Half (b) on its own, classified; includes the harmless class. */
 	readonly own: readonly OwnDivergence[];
+	/**
+	 * Half (b) for the own-extension layer (PROP-005 ##OWN-EXTENSION-UNIT):
+	 * `extensions/<name>/` is materialized from the delta exactly like own code,
+	 * so git says nothing about it either and only a byte comparison can.
+	 */
+	readonly extensions: readonly OwnExtensionDivergence[];
 	/** Half (c) on its own: commits that are not in patchset yet. */
 	readonly commits: readonly TreeCommit[];
 	/** The full D2 state behind half (c); `treeHeadError` reads it (decision D8). */
@@ -85,6 +95,13 @@ export type DriftBaseOptions = {
 	 * the one caller catches everything into a false answer.
 	 */
 	readonly isKnownMaterialization?: (path: string) => boolean;
+	/**
+	 * Tree prefixes (with a trailing slash) that another layer supplies and git
+	 * therefore may not judge - today the materialized own extensions
+	 * (PROP-005 ##OWN-EXTENSION-UNIT). They are filtered out for the same reason
+	 * the own directory is: their bytes come from the delta.
+	 */
+	readonly ownedPrefixes?: readonly string[];
 };
 
 export type DriftOptions = DriftBaseOptions & {
@@ -97,8 +114,10 @@ export type DriftOptions = DriftBaseOptions & {
 };
 
 export function driftDirty(treeDir: string, ownDirName: string, patchesDir: string, options: DriftOptions): DriftResult {
-	const upstream = upstreamDirt(treeDir, ownDirName, options);
+	const declared = declaredExtensions(patchesDir);
+	const upstream = upstreamDirt(treeDir, ownDirName, { ...options, ownedPrefixes: ownExtensionTreePrefixes(declared) });
 	const own = compareOwn(patchesDir, treeDir, ownDirName);
+	const extensions = compareOwnExtensions(patchesDir, treeDir, declared);
 	const treeCommits = foreignCommits(treeDir, options.generated.pinSha, options.generated.branch);
 	const ownPrefix = ownTargetRelativeDir(ownDirName);
 
@@ -113,10 +132,37 @@ export function driftDirty(treeDir: string, ownDirName: string, patchesDir: stri
 				: `${OWN_DIVERGENCE_NOTE} ${OWN_SOURCE_DIR}/${divergence.relative}`;
 		files.push(`${ownPrefix}/${divergence.relative} (${note})`);
 	}
+	for (const divergence of extensions) {
+		if (divergence.kind === 'patchset-only') {
+			continue;
+		}
+		const note =
+			divergence.kind === 'tree-only'
+				? `own extension file is not in ${OWN_EXTENSIONS_DIR}/${divergence.relative}`
+				: `${OWN_DIVERGENCE_NOTE} ${OWN_EXTENSIONS_DIR}/${divergence.relative}`;
+		files.push(`extensions/${divergence.relative} (${note})`);
+	}
 	for (const commit of treeCommits.commits) {
 		files.push(`commit ${commit.sha.slice(0, 8)} "${commit.subject}" (not in patchset)`);
 	}
-	return { dirty: files.length > 0, files, upstream, own, commits: treeCommits.commits, treeCommits };
+	return { dirty: files.length > 0, files, upstream, own, extensions, commits: treeCommits.commits, treeCommits };
+}
+
+/**
+ * The extensions the delta declares, or none when the manifest cannot be read.
+ *
+ * A manifest that does not parse is a failure of its own - `verify` names it,
+ * and every writing command stops on it before it touches the tree - and the
+ * guard has no verdict to add. What it must not do is throw here: the guard is
+ * the step that decides whether work is at risk, and it has to reach that
+ * decision even over a repository somebody left half-edited.
+ */
+function declaredExtensions(patchesDir: string): readonly OwnExtension[] {
+	try {
+		return loadOwnManifest(patchesDir).extensions;
+	} catch {
+		return [];
+	}
 }
 
 /**
@@ -135,16 +181,53 @@ export function upstreamDirt(treeDir: string, ownDirName: string, options: Drift
 	const untrackedIsDirt = options.untrackedIsDirt ?? true;
 	const classify = options.isKnownMaterialization;
 	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
+	const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
 	return (
-		porcelainEntries(status.stdout)
+		expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), options.ownedPrefixes ?? [])
 			.filter((entry) => untrackedIsDirt || entry.status !== '??')
 			// The known-state question is about tracked bytes only: an untracked
 			// path carries no HEAD to differ from (and with `--fresh` it is the
 			// whitelist, not an overlay, that speaks for it).
 			.filter((entry) => classify === undefined || entry.status === '??' || !classify(entry.path))
 			.map((entry) => entry.path)
-			.filter((path) => !path.startsWith(ownPrefix))
+			.filter((path) => !owned.some((prefix) => path.startsWith(prefix)))
 	);
+}
+
+/**
+ * Untracked paths git collapsed to a directory, opened up where they hide a
+ * path another layer owns.
+ *
+ * `git status --porcelain` reports one line for a wholly untracked directory -
+ * `extensions/` rather than `extensions/<name>/package.json` - and a prefix
+ * filter cannot see through that: the materialized own extension would read as
+ * unextracted work in the upstream zone (PROP-005 ##OWN-EXTENSION-UNIT). Only
+ * an entry that is an ancestor of an owned prefix is re-listed, so a tree with
+ * no own extensions gets exactly the listing it got before, and litter beside
+ * the owned path keeps its own name and stays dirt.
+ */
+export function expandCollapsedUntracked(
+	treeDir: string,
+	entries: readonly PorcelainEntry[],
+	ownedPrefixes: readonly string[]
+): readonly PorcelainEntry[] {
+	if (ownedPrefixes.length === 0) {
+		return entries;
+	}
+	const out: PorcelainEntry[] = [];
+	for (const entry of entries) {
+		if (entry.status !== '??' || !entry.path.endsWith('/') || !ownedPrefixes.some((prefix) => prefix.startsWith(entry.path))) {
+			out.push(entry);
+			continue;
+		}
+		const listed = runGit({ args: ['status', '--porcelain', '-z', '-uall', '--', entry.path], cwd: treeDir });
+		if (listed.status !== 0) {
+			out.push(entry);
+			continue;
+		}
+		out.push(...porcelainZEntries(listed.stdout));
+	}
+	return out;
 }
 
 export type PorcelainEntry = {

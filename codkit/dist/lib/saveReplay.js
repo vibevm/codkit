@@ -25,6 +25,8 @@ import { badCause } from './hooksPatchSet.js';
 import { ckError, isCkError } from './messages.js';
 import { readPendingHeader } from './pendingHeader.js';
 import { readRebasePending } from './rebaseOntoPinPending.js';
+import { ownExtensionTreePrefixes } from './layers/ownExtensions.js';
+import { loadOwnManifest } from './layers/ownManifest.js';
 import { changesSince } from './treeState.js';
 /** The trailer that ties a patchset commit to the tree commit it replays. */
 export const TREE_COMMIT_TRAILER = 'Codkit-Tree-Commit';
@@ -114,7 +116,11 @@ export function planStates(input) {
 }
 function planEntriesOf(input, state, store, commit, errors) {
     const plans = [];
-    for (const entry of changesSince(input.tree, input.base, state, input.ownDirName, input.forcedPaths)) {
+    // ##OWN-EXTENSION-UNIT: the replay selects upstream work exactly like the
+    // direct path, so the tree roots the own-extension layer supplies are not
+    // upstream files here either.
+    const ownedPrefixes = ownExtensionTreePrefixes(loadOwnManifest(input.patchesDir).extensions);
+    for (const entry of changesSince(input.tree, input.base, state, input.ownDirName, input.forcedPaths, ownedPrefixes)) {
         try {
             const plan = input.planFile(entry, state, store);
             if (plan !== null) {

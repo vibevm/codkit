@@ -101,7 +101,15 @@ export const ERROR_CODES = [
     'OWN-UNDER-CODKIT',
     'HOOK-TOO-LARGE',
     'GEN-EXISTS',
-    'GEN-ID'
+    'GEN-ID',
+    // The `extensions` section of the own manifest does not describe a
+    // materializable extension: a malformed or duplicated name, a directory
+    // without its package.json, a directory nobody declared, or a name the pin
+    // already ships as a built-in extension (PROP-005 ##OWN-EXTENSION-UNIT).
+    'OWN-EXTENSION-MANIFEST',
+    // The materialized `extensions/<name>/` of the fork tree no longer matches
+    // `delta/own-extensions/<name>/` (PROP-005 ##OWN-EXTENSION-UNIT).
+    'OWN-EXTENSION-DRIFT'
 ];
 export const publicErrorCodeSchema = z.templateLiteral(['CK-E-', z.enum(ERROR_CODES)]);
 export const WARNING_CODES = ['MARK-RO', 'PATCHSET-SIDE-EDIT', 'EMPTY-BLOCK'];

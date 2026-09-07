@@ -47,6 +47,14 @@ import {
 } from './layers/overlay.ts';
 import type { Overlay } from './layers/overlay.ts';
 import {
+	OWN_EXTENSIONS_DIR,
+	checkOwnExtensions,
+	compareOwnExtensions,
+	isSafeExtensionName,
+	ownExtensionTargetRelativeDir,
+	ownExtensionTreePrefixes
+} from './layers/ownExtensions.ts';
+import {
 	OWN_CODKIT_ROOT,
 	OWN_MANIFEST_PATH,
 	checkServiceOverrideModules,
@@ -166,6 +174,11 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	// PROP-005 ##OWN-CODKIT-PREFIX-RESERVED).
 	checkDeliveredRuntime(patchesDir, options.toolRoot ?? CODKIT_TOOL_ROOT, findings);
 	checkCodkitRootIsReserved(manifest, findings);
+
+	// (h4) The own-extension layer: the section describes materializable
+	// extensions, and what the tree carries is what the delta holds
+	// (PROP-005 ##OWN-EXTENSION-UNIT).
+	checkOwnExtensionLayer(patchesDir, tree, config, manifest, findings);
 
 	// (h3) The graft budget: a patch of type `hook` creates a seam and nothing
 	// more (PROP-005 ##PATCH-HOOK-BUDGET).
@@ -884,6 +897,60 @@ function checkCodkitRootIsReserved(manifest: OwnManifest, findings: Finding[]): 
 }
 
 // ---------------------------------------------------------------------------
+// (h4) The own-extension layer (PROP-005 sec. 13)
+// ---------------------------------------------------------------------------
+
+/**
+ * ##OWN-EXTENSION-UNIT: two questions, two codes.
+ *
+ * The manifest question is answered from patchset alone, plus one fact only the
+ * fork tree holds - whether the pin already ships an extension of that name.
+ * The drift question is the own layer's, asked of the second pair of roots: an
+ * extension the tree has not materialized yet says nothing, and one it has must
+ * match the delta byte for byte.
+ */
+function checkOwnExtensionLayer(
+	patchesDir: string,
+	treeDir: string,
+	config: CodkitConfig,
+	manifest: OwnManifest,
+	findings: Finding[]
+): void {
+	for (const problem of checkOwnExtensions(patchesDir, manifest.extensions, (name) =>
+		upstreamShipsExtension(treeDir, config.pin.sha, name)
+	)) {
+		findings.push(finding('OWN-EXTENSION-MANIFEST', problem.message, problem.hint, problem.file));
+	}
+	const hint = 'the delta is the source of truth: extract the tree-side edit with codkit save, or restore the tree with codkit load';
+	for (const divergence of compareOwnExtensions(patchesDir, treeDir, manifest.extensions)) {
+		const name = divergence.relative.slice(0, divergence.relative.indexOf('/'));
+		const inside = divergence.relative.slice(name.length + 1);
+		const target = `${ownExtensionTargetRelativeDir(name)}/${inside}`;
+		const message =
+			divergence.kind === 'tree-only'
+				? `${target} is not in ${OWN_EXTENSIONS_DIR}/${divergence.relative}`
+				: divergence.kind === 'patchset-only'
+					? `${target} is missing from the fork tree, and ${OWN_EXTENSIONS_DIR}/${divergence.relative} carries it`
+					: `${target} differs from ${OWN_EXTENSIONS_DIR}/${divergence.relative}`;
+		findings.push(finding('OWN-EXTENSION-DRIFT', message, hint, `${OWN_EXTENSIONS_DIR}/${divergence.relative}`));
+	}
+}
+
+/**
+ * Whether the pin already carries `extensions/<name>`. Read from git objects, so
+ * a dirty tree answers exactly like a clean one; a tree that cannot answer at
+ * all (no repository, unreachable pin) answers "no" and leaves that failure to
+ * the checks whose subject it is.
+ */
+function upstreamShipsExtension(treeDir: string, pinSha: string, name: string): boolean {
+	if (!isSafeExtensionName(name)) {
+		return false;
+	}
+	const shown = runGit({ args: ['cat-file', '-t', `${pinSha}:${ownExtensionTargetRelativeDir(name)}`], cwd: treeDir });
+	return shown.status === 0 && shown.stdout.trim() === 'tree';
+}
+
+// ---------------------------------------------------------------------------
 // (h3) The graft budget of a hook patch (PROP-005 ##PATCH-HOOK-BUDGET)
 // ---------------------------------------------------------------------------
 
@@ -1146,10 +1213,14 @@ function checkCompleteness(
 	const patchTargets = new Set(patches.map((entry) => toPosix(entry.patch.targetPath)));
 	const overlayTargets = new Set(overlays.map((overlay) => toPosix(overlay.target)));
 	const resourceTargets = new Set(resources.map((entry) => toPosix(entry.target)));
-	const ownPrefix = `${ownTargetRelativeDir(config.ownDirName)}/`;
+	// ##OWN-EXTENSION-UNIT: an own extension is committed on the generated branch
+	// with the own atom and only there, so it is judged by the same rule and
+	// reported in the same words - `ci`, which built the branch, recognises the
+	// finding as its own and drops it.
+	const ownPrefixes = [`${ownTargetRelativeDir(config.ownDirName)}/`, ...ownExtensionTreePrefixes(loadOwnManifest(patchesDir).extensions)];
 
 	for (const path of changed) {
-		if (path.startsWith(ownPrefix)) {
+		if (ownPrefixes.some((prefix) => path.startsWith(prefix))) {
 			// ##OWN-EXCLUDED-LOCALLY: own code is committed on the generated branch
 			// only in the ci/publish mode; locally it is copied in untracked, so a
 			// committed own file means the two modes were mixed in one tree.

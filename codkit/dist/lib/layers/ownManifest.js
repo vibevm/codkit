@@ -59,10 +59,21 @@ const serviceOverrideSchema = z.object({
     pin: z.string().min(1),
     contractTests: z.array(z.string().min(1))
 });
+const extensionSchema = z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    owner: z.string().min(1),
+    reason: z.string().min(1),
+    pin: z.string().min(1),
+    contractTests: z.array(z.string().min(1))
+});
 const manifestSchema = z.object({
     codkitOwnManifest: z.literal(OWN_MANIFEST_SCHEMA_VERSION),
     units: z.array(unitSchema).default([]),
-    serviceOverrides: z.array(serviceOverrideSchema).default([])
+    serviceOverrides: z.array(serviceOverrideSchema).default([]),
+    // ##OWN-EXTENSION-UNIT: a manifest written before the layer existed carries
+    // no `extensions`, and that is a legal manifest, not an old schema version.
+    extensions: z.array(extensionSchema).default([])
 });
 const FIELD_EXPECTATION = {
     codkitOwnManifest: `must be exactly ${OWN_MANIFEST_SCHEMA_VERSION}`,
@@ -80,7 +91,9 @@ const FIELD_EXPECTATION = {
     contractTests: 'must be a list of contract test names',
     roots: 'must be a non-empty list of paths inside delta/own/ (a directory ends with "/")',
     serviceId: 'must be the decorator id the override replaces',
-    module: 'must be the path of our module inside delta/own/'
+    module: 'must be the path of our module inside delta/own/',
+    extensions: 'must be a list of own extensions',
+    name: 'must be the directory name of the extension under delta/own-extensions/'
 };
 const HINT = 'see PROP-005 sec. 3 for the own manifest';
 /**
@@ -94,7 +107,7 @@ const HINT = 'see PROP-005 sec. 3 for the own manifest';
 export function loadOwnManifest(patchesDir) {
     const absolute = join(patchesDir, ...OWN_MANIFEST_PATH.split('/'));
     if (!existsSync(absolute)) {
-        return { units: [], serviceOverrides: [], present: false };
+        return { units: [], serviceOverrides: [], extensions: [], present: false };
     }
     let raw;
     try {
@@ -104,7 +117,7 @@ export function loadOwnManifest(patchesDir) {
         throw broken(`is not valid JSON: ${error instanceof Error ? error.message : String(error)}`, 'the manifest is plain JSON without comments');
     }
     const parsed = parseOwnManifest(raw);
-    return { units: parsed.units, serviceOverrides: parsed.serviceOverrides, present: true };
+    return { units: parsed.units, serviceOverrides: parsed.serviceOverrides, extensions: parsed.extensions, present: true };
 }
 /** Validate a decoded manifest document. Exposed so tests need no file. */
 export function parseOwnManifest(raw) {
@@ -112,7 +125,7 @@ export function parseOwnManifest(raw) {
     if (!parsed.success) {
         throw schemaError(parsed.error.issues, raw);
     }
-    return { units: parsed.data.units, serviceOverrides: parsed.data.serviceOverrides };
+    return { units: parsed.data.units, serviceOverrides: parsed.data.serviceOverrides, extensions: parsed.data.extensions };
 }
 /** Canonical manifest bytes: schema key order, two spaces, exactly one final LF. */
 export function serializeOwnManifest(manifest) {
@@ -140,7 +153,21 @@ export function serializeOwnManifest(manifest) {
         pin: override.pin,
         contractTests: [...override.contractTests]
     }));
-    return `${JSON.stringify({ codkitOwnManifest: OWN_MANIFEST_SCHEMA_VERSION, units, serviceOverrides }, null, 2)}\n`;
+    const extensions = manifest.extensions.map((extension) => ({
+        id: extension.id,
+        name: extension.name,
+        owner: extension.owner,
+        reason: extension.reason,
+        pin: extension.pin,
+        contractTests: [...extension.contractTests]
+    }));
+    // An empty `extensions` is written as an absent one: the section is optional
+    // (##OWN-EXTENSION-UNIT), so emitting `[]` would make every manifest written
+    // before this layer existed non-canonical without saying anything new.
+    const document = extensions.length === 0
+        ? { codkitOwnManifest: OWN_MANIFEST_SCHEMA_VERSION, units, serviceOverrides }
+        : { codkitOwnManifest: OWN_MANIFEST_SCHEMA_VERSION, units, serviceOverrides, extensions };
+    return `${JSON.stringify(document, null, 2)}\n`;
 }
 /**
  * ##OWN-MANIFEST: every own file falls into exactly one unit.

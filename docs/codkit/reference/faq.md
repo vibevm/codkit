@@ -66,6 +66,8 @@ Use `--json` and branch on `exitCode` plus `errors[].code`. Exit 1 is a red chec
 | `CK-E-HOOK-TOO-LARGE` | A patch declared `type = hook` carries more than three lines of code between its markers, or none of its lines imports or calls own code. | A hook is a graft: keep one import or one call that delegates into own code and move the logic into the own layer. |
 | `CK-E-GEN-EXISTS` | `codkit gen` would overwrite a file that already exists under `delta/own/`. | Nothing was written. Remove or rename the existing file, or pick another feature id. |
 | `CK-E-GEN-ID` | The feature id passed to `codkit gen feature` is not two or more dot-separated camelCase segments (for example `acme.smartPaste`). | Use a product prefix followed by camelCase segments; the first segment names the product. |
+| `CK-E-OWN-EXTENSION-MANIFEST` | The `extensions` section of `delta/own/patchset.delta.json` does not describe a materializable extension: the `name` is not of the form `[a-z0-9][a-z0-9-]*`, two records claim one name, `delta/own-extensions/<name>/package.json` is missing, a directory under `delta/own-extensions/` is declared by no record, or the name collides with an extension the pin already ships. | Fix the record named by the finding: rename the extension, add the `package.json` the upstream build looks for, declare the directory, or remove it. Nothing was materialized. |
+| `CK-E-OWN-EXTENSION-DRIFT` | A file under `extensions/<name>/` in the fork tree differs from `delta/own-extensions/<name>/`, or one side carries a file the other does not. | Extract the tree-side edit with `codkit save`, or bring the tree back to the delta with `codkit load`; the delta is the source of truth for an own extension. |
 
 ## Warning codes
 

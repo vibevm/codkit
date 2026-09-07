@@ -16,7 +16,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { porcelainZEntries } from './driftGuard.ts';
+import { expandCollapsedUntracked, porcelainZEntries } from './driftGuard.ts';
 import { runGit, runGitBytes } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { repoRelativePathProblem } from './pathSafety.ts';
@@ -41,10 +41,17 @@ export function changesSince(
 	base: string,
 	state: TreeState,
 	ownDirName: string,
-	forcedPaths: readonly string[] = []
+	forcedPaths: readonly string[] = [],
+	ownedPrefixes: readonly string[] = []
 ): readonly StateChange[] {
 	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
-	const changes: StateChange[] = diffEntries(treeDir, base, state).filter((entry) => !entry.path.startsWith(ownPrefix));
+	// ##OWN-EXTENSION-UNIT: `extensions/<name>/` of a declared own extension is
+	// supplied by the delta too, so it is no more an upstream file than the own
+	// directory is - and without this a materialized extension would be selected
+	// as a new file in the upstream zone.
+	const owned = [ownPrefix, ...ownedPrefixes];
+	const isOwned = (path: string): boolean => owned.some((prefix) => path.startsWith(prefix));
+	const changes: StateChange[] = diffEntries(treeDir, base, state).filter((entry) => !isOwned(entry.path));
 	if (state.kind === 'worktree') {
 		// A diff cannot see a path no commit carries yet; `??` is the only
 		// addition the porcelain union makes (S0.3).
@@ -56,15 +63,15 @@ export function changesSince(
 				'check that the fork tree is a healthy git work tree'
 			);
 		}
-		for (const entry of porcelainZEntries(status.stdout)) {
-			if (entry.status === '??' && !entry.path.startsWith(ownPrefix)) {
+		for (const entry of expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), ownedPrefixes)) {
+			if (entry.status === '??' && !isOwned(entry.path)) {
 				changes.push({ status: entry.status, path: entry.path });
 			}
 		}
 	}
 	const present = new Set(changes.map((entry) => entry.path));
 	for (const path of forcedPaths) {
-		if (repoRelativePathProblem(path) !== null || path.startsWith(ownPrefix)) {
+		if (repoRelativePathProblem(path) !== null || isOwned(path)) {
 			throw ckError('CONFIG', `invalid forced save path ${JSON.stringify(path)}`);
 		}
 		if (!present.has(path)) {

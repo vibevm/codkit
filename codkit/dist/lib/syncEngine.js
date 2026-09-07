@@ -26,6 +26,8 @@ import { loadConventions, matchesPatternList } from './conventionsFile.js';
 import { driftDirty, porcelainPaths } from './driftGuard.js';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.js';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.js';
+import { syncOwnExtensions } from './layers/ownExtensions.js';
+import { loadOwnManifest } from './layers/ownManifest.js';
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
 import { OVERLAYS_DIR, checkOverlay, isExactOverlayMaterialization, loadOverlays, overlayDriftErrors, renderOverlayTarget, writeProductOverridesDev } from './layers/overlay.js';
@@ -328,21 +330,24 @@ export function runSync(options) {
             return result('up-to-date', 0, {
                 branch,
                 branchTip: cache?.branchTip ?? null,
-                generatedOwnPaths: generatedBranch ? ownershipEvidence.ownTargets : []
+                generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : []
             });
         }
         // Own code is verified on every run: locally it is not part of the
-        // branch commits, so the branch cannot vouch for it.
+        // branch commits, so the branch cannot vouch for it. The own extensions
+        // are materialized on the same terms (##OWN-EXTENSION-UNIT).
         const own = syncOwnCode(patchesDir, tree, config.ownDirName);
+        const ownExtensions = syncOwnExtensions(patchesDir, tree, declaredOwnExtensions(patchesDir));
         writeExcludePlan(excludePlan);
         writeTreeHook(tree, branch, out);
         reportOwn(out, own);
+        reportOwnExtensions(out, ownExtensions);
         out.info('up to date');
         return result('up-to-date', 0, {
             branch,
             branchTip: cache?.branchTip ?? null,
             own,
-            generatedOwnPaths: generatedBranch ? ownershipEvidence.ownTargets : []
+            generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : []
         });
     }
     if (options.verbose) {
@@ -439,6 +444,10 @@ export function runSync(options) {
     }
     // 10. Own code, dev overlay, exclude, hook, mark, cache.
     const own = syncOwnCode(patchesDir, tree, config.ownDirName);
+    // ##OWN-EXTENSION-UNIT: the second pair of own roots, mirrored on the same
+    // terms and in the same step, so `extensions/<name>/` and `src/vs/<own>/`
+    // are never half a load apart.
+    reportOwnExtensions(out, syncOwnExtensions(patchesDir, tree, declaredOwnExtensions(patchesDir)));
     // The two channels of the config-overlay layer are alternatives, not layers
     // on top of each other: when the targets are materialized into the branch,
     // the dev-channel file has nothing left to say.
@@ -496,7 +505,7 @@ export function runSync(options) {
         cleaned,
         changedPaths,
         nonPatchTargets: saveMaterializationTargets(prebuiltPlan, ownershipEvidence.ownTargets),
-        generatedOwnPaths: generatedBranch ? ownershipEvidence.ownTargets : [],
+        generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : [],
         discarded: discard === null ? [] : discard.commits.map((commit) => commit.sha),
         discardedRef,
         fastPathReason: verdict.reason
@@ -1581,6 +1590,14 @@ function judgeOwnSides(drift, patchesDir, treeDir, ownDirName, mark, fingerprint
     if (drift.upstream.length > 0) {
         return { kind: 'unextracted' };
     }
+    // ##OWN-EXTENSION-UNIT: an extension file the tree carries and the delta does
+    // not, or one whose bytes moved apart, is unextracted work exactly like own
+    // code. There is no per-file map for it in the mark, so the two sides cannot
+    // be told apart and the conservative verdict is the only honest one: `save`
+    // mirrors the tree back, and this run does not overwrite it.
+    if (drift.extensions.some((divergence) => divergence.kind !== 'patchset-only')) {
+        return { kind: 'unextracted' };
+    }
     const map = mark?.ownFiles ?? null;
     const classes = classifyOwn(patchesDir, treeDir, ownDirName, map).filter((entry) => entry.kind !== 'same');
     const bothSides = classes.find((entry) => entry.kind === 'both-edited');
@@ -1614,7 +1631,9 @@ function judgeOwnSides(drift, patchesDir, treeDir, ownDirName, mark, fingerprint
  * answer the refusal, because everything it did not ask about is clean.
  */
 function commitsOnlyDirt(drift) {
-    return drift.upstream.length === 0 && drift.own.every((divergence) => divergence.kind === 'patchset-only');
+    return (drift.upstream.length === 0 &&
+        drift.own.every((divergence) => divergence.kind === 'patchset-only') &&
+        drift.extensions.every((divergence) => divergence.kind === 'patchset-only'));
 }
 /**
  * The discard's precondition (the D6 discipline, phrased for D11): the rebuild
@@ -1639,8 +1658,35 @@ function patchsetSideText(relatives) {
 export function bothSidesError(relative) {
     return ckError('BOTH-SIDES-EDITED', 'own code was edited in patchset and in the fork tree, in different ways', 'resolve manually: keep one side, then codkit load/save', `${OWN_SOURCE_DIR}/${relative}`);
 }
+/**
+ * The branch-relative paths this build supplies from the own layer, extensions
+ * included. `ci` uses them to recognise its own generated own-code findings
+ * (##OWN-EXTENSION-UNIT: an own extension is committed on the generated branch
+ * exactly like own code).
+ */
+function generatedOwnPathsOf(evidence) {
+    return [...evidence.ownTargets, ...evidence.extensionTargets];
+}
 function reportOwn(out, own) {
     out.info(`own code: ${own.total} file(s), ${own.copied} copied, ${own.removed} removed`);
+}
+/**
+ * ##OWN-EXTENSION-UNIT: said only when the layer is in use. A patchset without
+ * own extensions would otherwise get a line about nothing on every load.
+ */
+function reportOwnExtensions(out, report) {
+    if (report.total === 0 && report.removed === 0) {
+        return;
+    }
+    out.info(`own extensions: ${report.total} file(s), ${report.copied} copied, ${report.removed} removed`);
+}
+/**
+ * The extensions the manifest declares. Read at the point of use rather than
+ * carried through the option types: the manifest is already parsed by the
+ * ownership preflight of this run, so a broken one has stopped it long before.
+ */
+function declaredOwnExtensions(patchesDir) {
+    return loadOwnManifest(patchesDir).extensions;
 }
 /**
  * The variable context of the config-overlay layer (PROP-005 ##OVERLAY-VARS).

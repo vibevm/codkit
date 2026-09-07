@@ -31,6 +31,8 @@ import { readRebasePending } from './rebaseOntoPinPending.ts';
 import type { RebasePendingOverride } from './rebaseOntoPinPending.ts';
 import type { PlannedFile } from './saveEngine.ts';
 import type { TreeCommit } from './treeCommits.ts';
+import { ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
+import { loadOwnManifest } from './layers/ownManifest.ts';
 import { changesSince } from './treeState.ts';
 import type { StateChange, TreeState } from './treeState.ts';
 
@@ -181,7 +183,11 @@ function planEntriesOf(
 	errors: CkError[]
 ): PlannedFile[] {
 	const plans: PlannedFile[] = [];
-	for (const entry of changesSince(input.tree, input.base, state, input.ownDirName, input.forcedPaths)) {
+	// ##OWN-EXTENSION-UNIT: the replay selects upstream work exactly like the
+	// direct path, so the tree roots the own-extension layer supplies are not
+	// upstream files here either.
+	const ownedPrefixes = ownExtensionTreePrefixes(loadOwnManifest(input.patchesDir).extensions);
+	for (const entry of changesSince(input.tree, input.base, state, input.ownDirName, input.forcedPaths, ownedPrefixes)) {
 		try {
 			const plan = input.planFile(entry, state, store);
 			if (plan !== null) {

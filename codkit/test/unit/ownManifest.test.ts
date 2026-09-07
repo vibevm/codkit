@@ -68,7 +68,7 @@ function failureOf(run: () => unknown): { code: string; message: string; file?: 
 /** A manifest value from unit declarations, without touching the disk. */
 function manifest(units: readonly unknown[], serviceOverrides: readonly unknown[] = []): OwnManifest {
 	const parsed = parseOwnManifest({ codkitOwnManifest: 2, units, serviceOverrides });
-	return { units: parsed.units, serviceOverrides: parsed.serviceOverrides, present: true };
+	return { units: parsed.units, serviceOverrides: parsed.serviceOverrides, extensions: parsed.extensions, present: true };
 }
 
 let patchesDir: string;
@@ -230,7 +230,7 @@ describe('checkUnitCoverage', () => {
 	});
 
 	it('reports every own file as uncovered when there is no manifest at all', () => {
-		const empty: OwnManifest = { units: [], serviceOverrides: [], present: false };
+		const empty: OwnManifest = { units: [], serviceOverrides: [], extensions: [], present: false };
 
 		expect(checkUnitCoverage(empty, ['hello.ts']).uncovered).toEqual(['hello.ts']);
 	});

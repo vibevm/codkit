@@ -39,7 +39,7 @@ import { loadConventions } from './conventionsFile.ts';
 import { parseOverlay, OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, serializeOverlay } from './layers/overlay.ts';
 import type { Overlay } from './layers/overlay.ts';
 import { OWN_MANIFEST_PATH, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.ts';
-import type { OwnUnit, ServiceOverride } from './layers/ownManifest.ts';
+import type { OwnExtension, OwnUnit, ServiceOverride } from './layers/ownManifest.ts';
 import { REMOVED_PATH, parseRemoved, serializeRemoved } from './layers/removed.ts';
 import type { RemovedEntry } from './layers/removed.ts';
 import { parseResourceMap, RESOURCE_FILES_PREFIX, RESOURCE_MAP_PATH, serializeResourceMap } from './layers/resource.ts';
@@ -82,7 +82,11 @@ type Inventory = {
 	readonly rules: ReadonlyMap<string, Rule>;
 	readonly overlays: ReadonlyMap<string, Overlay>;
 	readonly resources: readonly ResourceEntry[];
-	readonly own: { readonly units: readonly OwnUnit[]; readonly serviceOverrides: readonly ServiceOverride[] } | null;
+	readonly own: {
+		readonly units: readonly OwnUnit[];
+		readonly serviceOverrides: readonly ServiceOverride[];
+		readonly extensions: readonly OwnExtension[];
+	} | null;
 	readonly removed: readonly RemovedEntry[] | null;
 };
 

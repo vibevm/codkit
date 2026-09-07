@@ -25,8 +25,9 @@ import { gitLocal, runGit } from './gitx.js';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.js';
 import { parseMarkers } from './markers.js';
 import { ckError, isCkError } from './messages.js';
+import { NO_OWN_EXTENSIONS, mirrorOwnExtensionsBack, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { classifyOwn, mirrorOwnBack, ownTargetRelativeDir } from './ownCopy.js';
-import { isDeliveredByCodkit } from './layers/ownManifest.js';
+import { isDeliveredByCodkit, loadOwnManifest } from './layers/ownManifest.js';
 import { encodePatchName, extractHeaderText, formatPatchHeader, parseCkpatch, serializeCkpatch } from './patchFormat.js';
 import { regeneratePatch } from './patchGenerate.js';
 import { repoRelativePathProblem } from './pathSafety.js';
@@ -161,6 +162,11 @@ export function runSave(options) {
         }
     }
     const conventions = loadConventions(patchesDir);
+    // ##OWN-EXTENSION-UNIT: the tree roots the own-extension layer supplies. Like
+    // the own directory they are never selected as upstream changes, and their
+    // tree side is mirrored back into the delta instead.
+    const declaredExtensions = loadOwnManifest(patchesDir).extensions;
+    const ownedPrefixes = ownExtensionTreePrefixes(declaredExtensions);
     const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
     const headerOverrides = validateHeaderOverrides(options);
     // Paths on the command line name files of the tree; they are read the same
@@ -171,7 +177,7 @@ export function runSave(options) {
         ...new Set([...(options.forcedPaths ?? []), ...listRebasePendingRecords(patchesDir).map((entry) => entry.targetPath)])
     ];
     if (headerOverrides.size > 0) {
-        const addressed = new Set(changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths)
+        const addressed = new Set(changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths, ownedPrefixes)
             .filter((entry) => matchesFilters(entry.path, filters))
             .map((entry) => entry.path));
         const unused = [...headerOverrides.keys()].filter((target) => !addressed.has(target));
@@ -215,9 +221,14 @@ export function runSave(options) {
         return result('blocked', 1, { branch });
     }
     const ownInScope = filterOwn(classes, filters, config.ownDirName);
+    // An addressed save mirrors only the extensions its paths name, the way it
+    // mirrors only the own files they name. An extension is mirrored as a whole
+    // directory, so naming one file inside it names the extension.
+    const extensionsInScope = filterOwnExtensions(declaredExtensions, filters);
     const store = new ArtifactStore(patchesDir);
     const planFor = (entry, state, planning) => planFile(entry, state, planning, options, conventions, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
     let own = NO_OWN;
+    let ownExtensions = NO_OWN_EXTENSIONS;
     let planned = [];
     let written = 0;
     let replayWrites = null;
@@ -257,7 +268,9 @@ export function runSave(options) {
             // worktree remainder writes below read a store that pass 2 has already
             // put on disk, so their 'unchanged' verdicts describe the real files.
             own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
+            ownExtensions = mirrorOwnExtensionsBack(patchesDir, tree, extensionsInScope);
             reportOwn(out, own);
+            reportOwnExtensions(out, ownExtensions);
         }
     }
     // The direct write path: the plain save, and `--squash` after its states were
@@ -268,11 +281,13 @@ export function runSave(options) {
     // the store's copy of the last state).
     if (!replayEligible || (squashing && errors.length === 0)) {
         own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
+        ownExtensions = mirrorOwnExtensionsBack(patchesDir, tree, extensionsInScope);
         reportOwn(out, own);
+        reportOwnExtensions(out, ownExtensions);
         // 3. Upstream files: everything the tree's final state holds outside the own
         // directory, relative to the last applied tip - not `git status`, which is
         // blind to everything a commit already carries (D4).
-        const changed = changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths);
+        const changed = changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths, ownedPrefixes);
         dirty = changed.filter((entry) => matchesFilters(entry.path, filters));
         if (options.verbose) {
             out.diag(`changed upstream file(s): ${dirty.length === 0 ? 'none' : dirty.map((entry) => entry.path).join(', ')}`);
@@ -315,7 +330,13 @@ export function runSave(options) {
     // behind the artifacts and step 5 has to put it back on top of them. A tree
     // with commits but without file changes is not this case either: the commits
     // are work, and consuming them is exactly what this run is for.
-    if (written === 0 && own.copied === 0 && own.removed === 0 && dirty.length === 0 && treeState.commits.length === 0) {
+    if (written === 0 &&
+        own.copied === 0 &&
+        own.removed === 0 &&
+        ownExtensions.copied === 0 &&
+        ownExtensions.removed === 0 &&
+        dirty.length === 0 &&
+        treeState.commits.length === 0) {
         out.info('nothing to save');
         return result('nothing', 0, { branch, files: planned.map(toReport), own });
     }
@@ -460,6 +481,20 @@ function matchesFilters(path, filters) {
         return true;
     }
     return filters.some((filter) => path === filter || path.startsWith(`${filter}/`));
+}
+/**
+ * ##OWN-EXTENSION-UNIT: the extensions the positional paths reach. An extension
+ * is mirrored whole, so a filter that names the directory, a path inside it, or
+ * a directory above it all select the same extension.
+ */
+function filterOwnExtensions(extensions, filters) {
+    if (filters.length === 0) {
+        return extensions;
+    }
+    return extensions.filter((extension) => {
+        const dir = ownExtensionTargetRelativeDir(extension.name);
+        return filters.some((filter) => filter === dir || filter.startsWith(`${dir}/`) || dir.startsWith(`${filter}/`));
+    });
 }
 /** Own divergences narrowed by the positional paths, which name tree paths. */
 function filterOwn(classes, filters, ownDirName) {
@@ -970,6 +1005,12 @@ function reportOwn(out, own) {
         return;
     }
     out.info(`own code: ${own.copied} extracted, ${own.removed} removed, ${own.kept} left as patchset has them`);
+}
+function reportOwnExtensions(out, report) {
+    if (report.copied === 0 && report.removed === 0) {
+        return;
+    }
+    out.info(`own extensions: ${report.copied} extracted, ${report.removed} removed`);
 }
 function toReport(plan) {
     return { target: plan.target, artifact: plan.artifact, action: plan.action };

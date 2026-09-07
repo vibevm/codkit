@@ -9,7 +9,10 @@
 
 ```text
 Можно выразить своим кодом в пути из own manifest?
-├─ да → own
+├─ да: это встроенное расширение продукта (Extension API — локализация, тема,
+│      product icon theme, walkthrough, configurationDefaults)?
+│  ├─ да → own-extension
+│  └─ нет → own
 └─ нет: нужно заменить реализацию сервиса?
    ├─ да, id не в forbiddenServiceIds → service-override
    └─ нет/запрещён: нужен только import собственного root-модуля?
@@ -27,6 +30,23 @@
 
 Если сервис есть в `forbiddenServiceIds`, лист `service-override` закрыт: перепроектируй own-композицию
 или эскалируй дизайн-решение владельцу; `verify` вернёт `CK-E-FORBIDDEN-SERVICE`.
+
+## Терминальный лист own-extension
+
+1. Положи каталог расширения в `delta/own-extensions/<name>/`; `package.json` обязателен —
+   без него апстримная сборка расширения не видит. Имя — по форме `^[a-z0-9][a-z0-9-]*$`,
+   уникально и не совпадает с апстримным каталогом `extensions/<name>` на пине.
+2. Объяви запись в секции `extensions` файла `delta/own/patchset.delta.json`:
+   `{id, name, owner, reason, pin, contractTests}`. Секция необязательна; отсутствует — значит
+   расширений нет.
+3. `codkit load` → exit `0`; каталог зеркалируется в `<tree>/extensions/<name>/**` побайтно.
+   Правку делай в дереве и извлекай `codkit save` → exit `0`, дельта получает правку.
+4. `codkit verify` → exit `0`; `codkit inventory` показывает запись слоя `own`,
+   категории `own-extension`.
+   `CK-E-OWN-EXTENSION-MANIFEST` возвращает к шагам 1–2, `CK-E-OWN-EXTENSION-DRIFT` — к шагу 3.
+
+Расширение с TypeScript дополнительно требует двух записей в списках сборки апстрима: это
+артефакты постоянного набора прививок, а не часть слоя.
 
 ## Терминальный лист own
 

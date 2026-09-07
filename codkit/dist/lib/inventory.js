@@ -25,6 +25,7 @@ import { loadConfig } from './configFile.js';
 import { loadConventions } from './conventionsFile.js';
 import { gitOk, runGit } from './gitx.js';
 import { loadOverlays } from './layers/overlay.js';
+import { ownExtensionSourceRoot, isSafeExtensionName, listExtensionFiles } from './layers/ownExtensions.js';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.js';
 import { loadRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap } from './layers/resource.js';
@@ -72,6 +73,13 @@ export const GUARDED_CATEGORY = 'hide';
  */
 const SERVICE_OVERRIDE_TYPE = 'modify';
 const SERVICE_OVERRIDE_CATEGORY = 'own';
+/**
+ * ##OWN-EXTENSION-UNIT: an own extension adds a built-in extension the pin does
+ * not ship, so its type is fixed at `extend`, and its category names the layer -
+ * the record carries neither field, exactly like a service override.
+ */
+const OWN_EXTENSION_TYPE = 'extend';
+export const OWN_EXTENSION_CATEGORY = 'own-extension';
 /** The literal an artifact writes when a field has no value. */
 const NONE = 'none';
 /** ##RT-INVENTORY-ENTRY: the one record that stands for the delivered library. */
@@ -518,6 +526,28 @@ function ownEntries(patchesDir, manifest) {
             cause: causeOf(unit.cause),
             pin: unit.pin,
             contractTests: unit.contractTests,
+            artifact: OWN_MANIFEST_PATH
+        });
+    }
+    // ##OWN-EXTENSION-UNIT: one record per extension, in the own layer, naming the
+    // files the directory holds today - the same rule the units follow.
+    for (const extension of manifest.extensions) {
+        const files = isSafeExtensionName(extension.name)
+            ? listExtensionFiles(ownExtensionSourceRoot(patchesDir, extension.name)).map((relative) => `${extension.name}/${relative}`)
+            : [];
+        entries.push({
+            id: extension.id,
+            layer: 'own',
+            type: OWN_EXTENSION_TYPE,
+            category: OWN_EXTENSION_CATEGORY,
+            subsystem: subsystemOf(extension.id),
+            files,
+            owner: extension.owner,
+            reason: extension.reason,
+            link: NONE,
+            cause: null,
+            pin: extension.pin,
+            contractTests: extension.contractTests,
             artifact: OWN_MANIFEST_PATH
         });
     }
