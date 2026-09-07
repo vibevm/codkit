@@ -406,3 +406,70 @@ describe('codkit marker new: the pending draft', () => {
 		expect(existsSync(`${target}.codkit-marker-new.tmp`)).toBe(false);
 	});
 });
+
+describe('codkit marker new --add-block: a second block of the same intervention (PROP-007 CMD-MARKER-NEW-ADD-BLOCK)', () => {
+	const ID = 'CK-base-941';
+	let own: CliFixture;
+
+	beforeAll(() => {
+		own = makeCliFixture('marker-new-add-block');
+		expect(own.run(['load']).status).toBe(0);
+	});
+
+	it('refuses an id that no artifact or draft of the file carries', () => {
+		const outcome = own.json(['marker', 'new', UTIL_PATH, '--id', ID, '--add-block']);
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-MARKER-DUP-ID');
+		expect(outcome.envelope.errors[0]?.message).toContain('is not the intervention of');
+	});
+
+	it("refuses header flags: the intervention has one header, the first block's", () => {
+		const outcome = own.json(['marker', 'new', UTIL_PATH, '--id', ID, '--add-block', '--type', 'hook']);
+		expect(outcome.run.status).toBe(2);
+		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-CONFIG');
+	});
+
+	it('opens another block of a saved intervention, and save folds both into one patch', () => {
+		const scaffold = own.json([
+			'marker',
+			'new',
+			UTIL_PATH,
+			'--id',
+			ID,
+			'--type',
+			'hook',
+			'--owner',
+			'workbench-core',
+			'--reason',
+			'import and call'
+		]);
+		expect(scaffold.run.status).toBe(0);
+		const target = own.treePath(UTIL_PATH);
+		const scaffolded = readFileSync(target, 'utf8');
+		writeFileSync(target, scaffolded.replace(`// codkit:begin ${ID}\n`, `// codkit:begin ${ID}\nhook(); // patchset/ own code\n`), 'utf8');
+		expect(own.run(['save', '--commit']).status).toBe(0);
+
+		const second = own.json(['marker', 'new', UTIL_PATH, '--id', ID, '--add-block', '--line', '1']);
+		expect(second.run.status).toBe(0);
+		expect(second.envelope.data).toMatchObject({ target: UTIL_PATH, id: ID, line: 1, block: 'added' });
+		const withTwo = readFileSync(target, 'utf8');
+		expect(withTwo.split(`// codkit:begin ${ID}`).length - 1).toBe(2);
+		writeFileSync(
+			target,
+			withTwo.replace(`// codkit:begin ${ID}\n`, `// codkit:begin ${ID}\nimport { hook } from './patchset/hook.js';\n`),
+			'utf8'
+		);
+
+		expect(own.run(['save', '--commit']).status).toBe(0);
+		const patch = readFileSync(own.patchesPath(`delta/patches/${UTIL_PATH.replaceAll('/', '__')}.ckpatch`), 'utf8');
+		expect(patch.split(`+// codkit:begin ${ID}`).length - 1).toBe(2);
+		const verify = own.json(['verify']);
+		expect(verify.run.status).toBe(0);
+	});
+
+	it('is not a way to reuse the id of another file', () => {
+		const outcome = own.json(['marker', 'new', LIFECYCLE_PATH, '--id', ID, '--add-block']);
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-MARKER-DUP-ID');
+	});
+});

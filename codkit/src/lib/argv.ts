@@ -93,6 +93,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--category', 'value'],
 	['--layer', 'value'],
 	['--line', 'value'],
+	['--add-block', 'boolean'],
 	// reresolve (PROP-007 sec. 9)
 	['--patch', 'value'],
 	// forecast (PROP-007 sec. 15)

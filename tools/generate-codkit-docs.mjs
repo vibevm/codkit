@@ -177,7 +177,7 @@ const commandGuidance = {
 		positional: '<tree-file>',
 		requiredFlags: ['--id', '--type', '--owner', '--reason'],
 		detail:
-			'Create an empty marker block and pending patch header. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`.'
+			'Create an empty marker block and pending patch header. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. With `--add-block`, only `--id` (and `--line`) are given: it opens another block of an intervention the file already carries, for a graft that is an import line and a call site.'
 	},
 	reresolve: {
 		positional: '<tree-file>',

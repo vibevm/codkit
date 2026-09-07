@@ -77,6 +77,7 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--category', 'value'],
     ['--layer', 'value'],
     ['--line', 'value'],
+    ['--add-block', 'boolean'],
     // reresolve (PROP-007 sec. 9)
     ['--patch', 'value'],
     // forecast (PROP-007 sec. 15)

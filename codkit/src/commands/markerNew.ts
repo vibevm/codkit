@@ -14,7 +14,7 @@
 import { chmodSync, existsSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { extname, isAbsolute, join, relative as relativePath, resolve, sep } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { loadConventions, matchesPatternList } from '../lib/conventionsFile.ts';
 import type { Conventions } from '../lib/conventionsFile.ts';
@@ -49,6 +49,7 @@ const REASON = '--reason';
 const CATEGORY = '--category';
 const LAYER = '--layer';
 const LINE = '--line';
+const ADD_BLOCK = '--add-block';
 
 /** PROP-007 sec. 8: `--category` defaults to `follow`. */
 const DEFAULT_CATEGORY = 'follow';
@@ -70,7 +71,11 @@ async function run(ctx: CommandContext): Promise<number> {
 			'usage: codkit marker new <file> --id CK-<subsystem>-<NNN> --type <type> --owner <owner> --reason <why> [--category <c>] [--line <n>]'
 		);
 	}
-	const fields = readFields(ctx);
+	// ##CMD-MARKER-NEW-ADD-BLOCK: a second block of an intervention this file
+	// already carries needs the id and the line, and nothing else - the header
+	// is the one the first block has.
+	const addBlock = commandFlagGiven(ctx.commandFlags, ADD_BLOCK);
+	const fields = addBlock ? readAddBlockFields(ctx) : readFields(ctx);
 
 	const identity = checkTree(resolution, config, { mode: 'write' });
 	if (identity.fatal !== null) {
@@ -84,7 +89,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		'marker new',
 		() => {
 			try {
-				return scaffold(ctx, resolution.path, config, given, fields);
+				return addBlock ? addBlockTo(ctx, resolution.path, config, given, fields) : scaffold(ctx, resolution.path, config, given, fields);
 			} catch (error) {
 				if (!isCkError(error)) {
 					throw error;
@@ -112,8 +117,10 @@ type MarkerFields = {
 	readonly line: number | null;
 };
 
-function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, given: string, fields: MarkerFields): number {
-	const conventions = loadConventions(ctx.patchesDir);
+type LocatedTarget = { readonly target: string; readonly absolute: string; readonly form: MarkerForm };
+
+/** Step 1 of both forms: the target exists, is upstream and can carry a marker. */
+function locateTarget(treeDir: string, config: CodkitConfig, given: string, conventions: Conventions): LocatedTarget {
 	const target = treeRelativePath(given, treeDir);
 	const absolute = join(treeDir, ...target.split('/'));
 
@@ -152,6 +159,13 @@ function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, gi
 			target
 		);
 	}
+
+	return { target, absolute, form };
+}
+
+function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, given: string, fields: MarkerFields): number {
+	const conventions = loadConventions(ctx.patchesDir);
+	const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
 
 	// 2. The metadata: id shape, owner, type and category vocabularies.
 	validateFields(ctx.patchesDir, fields, conventions);
@@ -270,6 +284,62 @@ function buildData(target: string, fields: MarkerFields, at: number, draft: stri
 // Flags
 // ---------------------------------------------------------------------------
 
+/**
+ * ##CMD-MARKER-NEW-ADD-BLOCK: another block of an intervention the file already
+ * carries (PROP-004 ##MR-SEVERAL-BLOCKS-ONE-ID). The id must be this file's own -
+ * the header of its patch artifact, or the draft waiting for it - so a block
+ * of a foreign intervention can never be opened here by mistake.
+ */
+function addBlockTo(ctx: CommandContext, treeDir: string, config: CodkitConfig, given: string, fields: MarkerFields): number {
+	const conventions = loadConventions(ctx.patchesDir);
+	const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
+	const artifact = `${PATCHES_DIR}/${encodePatchName(target)}`;
+	const pending = readPendingHeader(ctx.patchesDir, target);
+	const ownedByArtifact = patchIdOwner(ctx.patchesDir, fields.id) === artifact;
+	const ownedByDraft = pending !== null && pending.id === fields.id;
+	if (!ownedByArtifact && !ownedByDraft) {
+		throw ckError(
+			'MARKER-DUP-ID',
+			`${fields.id} is not the intervention of ${target}: no patch artifact or pending draft of this file carries it`,
+			'scaffold the first block with codkit marker new (without --add-block), or name the id this file already has',
+			target
+		);
+	}
+	const content = readFileSync(absolute, 'utf8');
+	const parsed = parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+	const parseError = parsed.errors[0];
+	if (parseError !== undefined) throw parseError;
+	if (!parsed.blocks.some((block) => block.id === fields.id)) {
+		throw ckError(
+			'MARKER-ARTIFACT-MISMATCH',
+			`${target} carries no block ${fields.id} yet`,
+			'run codkit load to materialize the intervention first, then add its second block',
+			target
+		);
+	}
+	const updated = insertBlock(content, form, fields, target);
+	writeMarkerFileAtomic(absolute, content, updated.text, target);
+	ctx.out.info(`${target}: inserted another block of ${fields.id} at line ${updated.at}`);
+	ctx.out.info('now edit inside the block, then: codkit save');
+	ctx.out.setData({ target, id: fields.id, line: updated.at, block: 'added' } satisfies JsonValue);
+	return EXIT_OK;
+}
+
+function readAddBlockFields(ctx: CommandContext): MarkerFields {
+	const id = requireFlag(ctx, ID);
+	for (const name of [TYPE, OWNER, REASON, CATEGORY, LAYER]) {
+		if (commandFlagValue(ctx.commandFlags, name) !== null) {
+			throw ckError(
+				'CONFIG',
+				`${ADD_BLOCK} takes only ${ID} and ${LINE}; ${name} belongs to the first block`,
+				'the header of the intervention is the one its first block already has'
+			);
+		}
+	}
+	const line = readLine(ctx);
+	return { id, type: '', owner: '', reason: '', category: DEFAULT_CATEGORY, layer: 'patch', line };
+}
+
 function readFields(ctx: CommandContext): MarkerFields {
 	const id = requireFlag(ctx, ID);
 	const type = requireFlag(ctx, TYPE);
@@ -284,19 +354,22 @@ function readFields(ctx: CommandContext): MarkerFields {
 			'rewrite-rule patches are generated by rule tooling and cannot be scaffolded by a person'
 		);
 	}
+	return { id, type, owner, reason, category, layer: rawLayer, line: readLine(ctx) };
+}
+
+function readLine(ctx: CommandContext): number | null {
 	const rawLine = commandFlagValue(ctx.commandFlags, LINE);
-	let line: number | null = null;
-	if (rawLine !== null) {
-		if (!/^[1-9][0-9]*$/.test(rawLine)) {
-			throw ckError(
-				'CONFIG',
-				`--line must be a positive line number, got "${rawLine}"`,
-				'lines are 1-based; omit --line to append at the end of the file'
-			);
-		}
-		line = Number.parseInt(rawLine, 10);
+	if (rawLine === null) {
+		return null;
 	}
-	return { id, type, owner, reason, category, layer: rawLayer, line };
+	if (!/^[1-9][0-9]*$/.test(rawLine)) {
+		throw ckError(
+			'CONFIG',
+			`--line must be a positive line number, got "${rawLine}"`,
+			'lines are 1-based; omit --line to append at the end of the file'
+		);
+	}
+	return Number.parseInt(rawLine, 10);
 }
 
 function requireFlag(ctx: CommandContext, name: string): string {
@@ -481,6 +554,6 @@ export const markerNewCommand: CommandDefinition = {
 	summary: 'scaffold a codkit marker block in an upstream file of the tree',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE],
+	commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE, ADD_BLOCK],
 	run
 };
