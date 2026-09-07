@@ -974,7 +974,7 @@ function checkHookBudget(config: CodkitConfig, patches: readonly PatchArtifact[]
 			findings.push(
 				finding(
 					'HOOK-TOO-LARGE',
-					`${entry.artifact}: a hook patch carries ${graft.code.length} lines of code between its markers, and the budget is ${HOOK_CODE_LINE_BUDGET}`,
+					`a hook patch carries ${graft.code.length} lines of code between its markers, and the budget is ${HOOK_CODE_LINE_BUDGET}`,
 					`move the logic into ${OWN_SOURCE_DIR}/ and leave the patch a call into it`,
 					entry.artifact
 				)
@@ -989,7 +989,7 @@ function checkHookBudget(config: CodkitConfig, patches: readonly PatchArtifact[]
 			findings.push(
 				finding(
 					'HOOK-TOO-LARGE',
-					`${entry.artifact}: a hook patch names no path under ${ownSegment} between its markers, so it grafts nothing`,
+					`a hook patch names no path under ${ownSegment} between its markers, so it grafts nothing`,
 					`a hook grafts own code into upstream: import or call something under ${OWN_SOURCE_DIR}/`,
 					entry.artifact
 				)
