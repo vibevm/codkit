@@ -6,11 +6,21 @@
 // literal `CODKIT_RUNTIME_VERSION` in `common/version.ts` states. Anything else
 // is a damaged installation (`CK-E-RUNTIME-PACKAGE`), not something a rerun fixes.
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { statIfPresent } from './containedPath.js';
 import { ckError } from './messages.js';
 /** Where the shipped library sits, relative to toolRoot. */
 export const RUNTIME_PACKAGE_PARENT = 'codkit/runtime';
+/**
+ * The immutable Codkit root, derived from this module the way main.ts derives
+ * it from its own location. `verify` needs the shipped library to compare the
+ * installed copy against it (##RT-DELIVERED-NOT-OWN) and is reached through
+ * call paths that carry no root of their own, so the derivation lives here
+ * rather than being threaded through five option types - the same rule
+ * `loadLicensePolicy` follows for the shipped policy.
+ */
+export const CODKIT_TOOL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 /** The file that carries the version literal, relative to the version directory. */
 export const RUNTIME_VERSION_FILE = 'common/version.ts';
 /** ##RT-VERSION-LITERAL */

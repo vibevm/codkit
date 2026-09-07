@@ -11,7 +11,9 @@ import {
 	LICENCE_NOTICE_NAME,
 	checkServiceOverrideModules,
 	checkUnitCoverage,
+	isDeliveredByCodkit,
 	isNotOwnCode,
+	isUnderCodkitRoot,
 	loadOwnManifest,
 	parseOwnManifest
 } from '../../src/lib/layers/ownManifest.ts';
@@ -144,6 +146,48 @@ describe('isNotOwnCode', () => {
 		expect(isNotOwnCode('modes/.gitkeep')).toBe(true);
 		expect(isNotOwnCode(LICENCE_NOTICE_NAME)).toBe(true);
 		expect(isNotOwnCode('patchset.contribution.ts')).toBe(false);
+	});
+});
+
+describe('isDeliveredByCodkit', () => {
+	it('claims the whole codkit root, not only the files it happens to hold today', () => {
+		// PROP-005 ##OWN-DELIVERED-BY-CODKIT: the runtime library arrives as a
+		// directory, so the predicate is about the root and not about a file list.
+		expect(isDeliveredByCodkit('codkit/common/version.ts')).toBe(true);
+		expect(isDeliveredByCodkit('codkit/browser/adapters/hostRestart.ts')).toBe(true);
+		expect(isDeliveredByCodkit(`codkit/${LICENCE_NOTICE_NAME}`)).toBe(true);
+		expect(isDeliveredByCodkit('./codkit/common/version.ts')).toBe(true);
+	});
+
+	it('keeps the older set as its special case, and claims nothing else', () => {
+		expect(isDeliveredByCodkit('patchset.delta.json')).toBe(true);
+		expect(isDeliveredByCodkit('modes/.gitkeep')).toBe(true);
+		expect(isDeliveredByCodkit(LICENCE_NOTICE_NAME)).toBe(true);
+		expect(isDeliveredByCodkit('codkitchen/common/thing.ts')).toBe(false);
+		expect(isDeliveredByCodkit('contrib/codkit/thing.ts')).toBe(false);
+		expect(isDeliveredByCodkit('patchset.contribution.ts')).toBe(false);
+	});
+
+	it('is what isNotOwnCode now answers with', () => {
+		for (const path of ['codkit/common/version.ts', 'patchset.delta.json', 'contrib/sample/browser/sample.ts']) {
+			expect(isNotOwnCode(path)).toBe(isDeliveredByCodkit(path));
+		}
+	});
+});
+
+describe('isUnderCodkitRoot', () => {
+	it('is true for the reserved root and for anything under it', () => {
+		// ##OWN-CODKIT-PREFIX-RESERVED: a unit root or an override module here
+		// would put product files inside the scope the licence notice claims.
+		expect(isUnderCodkitRoot('codkit/')).toBe(true);
+		expect(isUnderCodkitRoot('codkit/extra/')).toBe(true);
+		expect(isUnderCodkitRoot('./codkit/extra/thing.ts')).toBe(true);
+		expect(isUnderCodkitRoot('codkit')).toBe(true);
+	});
+
+	it('is false for a directory that merely starts with the same letters', () => {
+		expect(isUnderCodkitRoot('codkitchen/')).toBe(false);
+		expect(isUnderCodkitRoot('contrib/codkit/')).toBe(false);
 	});
 });
 

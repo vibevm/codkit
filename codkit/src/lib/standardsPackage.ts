@@ -138,18 +138,30 @@ function listTree(dir: string): { readonly files: readonly string[]; readonly sy
 	return { files, symlinks };
 }
 
+export type CompareOptions = {
+	/**
+	 * Relative paths the target is allowed to carry without the source having
+	 * them. The runtime library is delivered next to the licence notice, which
+	 * belongs to another command (PROP-014 sec. 4a), so the notice must not read
+	 * as an extra file (PROP-015 ##RT-LOAD-STEPS step 3).
+	 */
+	readonly ignoreInTarget?: readonly string[];
+};
+
 /**
  * ##STD-LOAD-STEP-TARGET-STATE: the same relative paths and the same bytes, or
  * the exact list of what differs. A symlink in the target is drift: codkit
  * wrote regular files, so a link is somebody's edit.
  */
-export function compareTrees(source: string, target: string): TreeComparison {
+export function compareTrees(source: string, target: string, options: CompareOptions = {}): TreeComparison {
 	const shape = statIfPresent(target);
 	if (shape === null) return { state: 'absent' };
 	if (!shape.isDirectory()) return { state: 'drift', modified: [], extra: [''], missing: [] };
 
+	const ignored = new Set(options.ignoreInTarget ?? []);
 	const from = listTree(source);
-	const to = listTree(target);
+	const listed = listTree(target);
+	const to = { files: listed.files.filter((relative) => !ignored.has(relative)), symlinks: listed.symlinks };
 	const targetFiles = new Set(to.files);
 	const modified: string[] = [];
 	const missing: string[] = [];
@@ -166,6 +178,11 @@ export function compareTrees(source: string, target: string): TreeComparison {
 	const extra = [...to.files.filter((relative) => !sourceFiles.has(relative)), ...to.symlinks].sort();
 	if (modified.length === 0 && extra.length === 0 && missing.length === 0) return { state: 'identical' };
 	return { state: 'drift', modified, extra, missing };
+}
+
+/** Every regular file under `dir`, POSIX-relative and sorted; empty when it does not exist. */
+export function listTreeFiles(dir: string): readonly string[] {
+	return statIfPresent(dir)?.isDirectory() === true ? listTree(dir).files : [];
 }
 
 /** Whether two files hold the same bytes; an absent target is not identical. */
@@ -195,12 +212,29 @@ export function listScratchDirs(parent: string): readonly string[] {
  * directories (a symlink component is refused by `ensureAdminDirectory`) and the
  * target must not exist.
  */
+export type WriteTreeOptions = {
+	readonly what: string;
+	/**
+	 * Replace a directory that is already there instead of refusing it: the
+	 * runtime library is upgraded in place by `runtime load --upgrade`, which
+	 * swaps the whole directory (PROP-015 ##RT-LOAD-UPGRADE). The old directory
+	 * is moved aside and removed only after the new one is in place.
+	 */
+	readonly replace?: boolean;
+	/**
+	 * Relative paths carried over from the directory being replaced. The licence
+	 * notice lives inside the runtime directory but belongs to another command,
+	 * so a replacement must not drop it (PROP-015 ##RT-LOAD-STEPS step 5).
+	 */
+	readonly preserve?: readonly string[];
+};
+
 export function writeTreeViaScratch(
 	source: string,
 	root: string,
 	parentSegments: readonly string[],
 	versionDirName: string,
-	options: { readonly what: string }
+	options: WriteTreeOptions
 ): string {
 	// The parent components are created here, each proven a real directory: a
 	// symlink component is refused rather than followed (PROP-002, the rule for
@@ -216,7 +250,8 @@ export function writeTreeViaScratch(
 		writeFileSync(join(directory, name), readFileSync(join(source, ...relative.split('/'))));
 	}
 	const target = join(parent, versionDirName);
-	if (statIfPresent(target) !== null) {
+	const standing = statIfPresent(target);
+	if (standing !== null && options.replace !== true) {
 		// The target appeared between the classification and the rename. Whoever
 		// wrote it owns it now: identical means our work is already done, anything
 		// else is drift for the caller to refuse.
@@ -228,6 +263,23 @@ export function writeTreeViaScratch(
 			versionDirName
 		);
 	}
+	for (const relative of standing === null ? [] : (options.preserve ?? [])) {
+		const from = join(target, ...relative.split('/'));
+		if (statIfPresent(from) === null) continue;
+		const segments = relative.split('/');
+		const name = segments.pop() ?? '';
+		writeFileSync(join(ensureAdminDirectory(scratchPath, segments, { what: options.what }), name), readFileSync(from));
+	}
+	if (standing === null) {
+		renameSync(scratchPath, target);
+		return scratch;
+	}
+	// Two renames rather than a delete and a rename: the old directory is only
+	// unlinked after the new one is fully in place, so an interruption leaves
+	// either the old library or the new one, never half of either.
+	const retired = join(parent, `${SCRATCH_PREFIX}old-${process.pid}-${randomBytes(4).toString('hex')}`);
+	renameSync(target, retired);
 	renameSync(scratchPath, target);
+	rmSync(retired, { recursive: true, force: true });
 	return scratch;
 }

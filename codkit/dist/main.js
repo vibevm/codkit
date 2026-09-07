@@ -23,6 +23,7 @@ import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.js'
 import { publishCommand } from './commands/publish.js';
 import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.js';
 import { reresolveCommand } from './commands/reresolve.js';
+import { runtimeCheckCommand, runtimeCommand, runtimeLoadCommand } from './commands/runtime.js';
 import { saveCommand } from './commands/save.js';
 import { standardsCheckCommand, standardsCommand, standardsLicenseCommand, standardsLoadCommand } from './commands/standards.js';
 import { statusCommand } from './commands/status.js';
@@ -45,8 +46,9 @@ const GLOBAL_FLAG_HELP_NAME = '--help';
 /** Diagnosed domain verdicts: the command ran, but its requested check failed. */
 // STANDARDS-DRIFT joins them: an installed copy that someone edited is a
 // verdict about the patch set, not a broken environment - `standards load`
-// ran, looked and refused (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL).
-const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT']);
+// ran, looked and refused (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL). RUNTIME-DRIFT
+// is the same verdict about the runtime library (PROP-015 ##RT-LOAD-STEPS).
+const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT', 'RUNTIME-DRIFT']);
 const COMMANDS = new Map([
     whereCommand,
     checkTreeCommand,
@@ -83,7 +85,10 @@ const COMMANDS = new Map([
     standardsCommand,
     standardsLoadCommand,
     standardsCheckCommand,
-    standardsLicenseCommand
+    standardsLicenseCommand,
+    runtimeCommand,
+    runtimeLoadCommand,
+    runtimeCheckCommand
 ].map((definition) => [definition.name, definition]));
 /** Immutable Codkit install/source root; never discovered from cwd or settings. */
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');

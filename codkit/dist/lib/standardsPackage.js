@@ -86,14 +86,16 @@ function listTree(dir) {
  * the exact list of what differs. A symlink in the target is drift: codkit
  * wrote regular files, so a link is somebody's edit.
  */
-export function compareTrees(source, target) {
+export function compareTrees(source, target, options = {}) {
     const shape = statIfPresent(target);
     if (shape === null)
         return { state: 'absent' };
     if (!shape.isDirectory())
         return { state: 'drift', modified: [], extra: [''], missing: [] };
+    const ignored = new Set(options.ignoreInTarget ?? []);
     const from = listTree(source);
-    const to = listTree(target);
+    const listed = listTree(target);
+    const to = { files: listed.files.filter((relative) => !ignored.has(relative)), symlinks: listed.symlinks };
     const targetFiles = new Set(to.files);
     const modified = [];
     const missing = [];
@@ -113,6 +115,10 @@ export function compareTrees(source, target) {
         return { state: 'identical' };
     return { state: 'drift', modified, extra, missing };
 }
+/** Every regular file under `dir`, POSIX-relative and sorted; empty when it does not exist. */
+export function listTreeFiles(dir) {
+    return statIfPresent(dir)?.isDirectory() === true ? listTree(dir).files : [];
+}
 /** Whether two files hold the same bytes; an absent target is not identical. */
 export function fileIsIdentical(source, target) {
     const shape = lstatIfPresent(target);
@@ -130,16 +136,6 @@ export function listScratchDirs(parent) {
         .map((entry) => entry.name)
         .sort();
 }
-/**
- * ##DECISION-STD-TEMP-DIR-RENAME: write every file into a scratch directory and
- * rename it into place in one step, so the classification above never sees a
- * half-written version directory. Returns the scratch name that was renamed.
- *
- * `renameContainedFile` refuses a non-regular source, so the directory rename is
- * done here, with the same shape proof: the parent components are real
- * directories (a symlink component is refused by `ensureAdminDirectory`) and the
- * target must not exist.
- */
 export function writeTreeViaScratch(source, root, parentSegments, versionDirName, options) {
     // The parent components are created here, each proven a real directory: a
     // symlink component is refused rather than followed (PROP-002, the rule for
@@ -155,13 +151,32 @@ export function writeTreeViaScratch(source, root, parentSegments, versionDirName
         writeFileSync(join(directory, name), readFileSync(join(source, ...relative.split('/'))));
     }
     const target = join(parent, versionDirName);
-    if (statIfPresent(target) !== null) {
+    const standing = statIfPresent(target);
+    if (standing !== null && options.replace !== true) {
         // The target appeared between the classification and the rename. Whoever
         // wrote it owns it now: identical means our work is already done, anything
         // else is drift for the caller to refuse.
         rmSync(scratchPath, { recursive: true, force: true });
         throw ckError('STANDARDS-DRIFT', `${versionDirName} appeared while the package was being written`, 'run codkit standards load again to classify the directory that is now there', versionDirName);
     }
+    for (const relative of standing === null ? [] : (options.preserve ?? [])) {
+        const from = join(target, ...relative.split('/'));
+        if (statIfPresent(from) === null)
+            continue;
+        const segments = relative.split('/');
+        const name = segments.pop() ?? '';
+        writeFileSync(join(ensureAdminDirectory(scratchPath, segments, { what: options.what }), name), readFileSync(from));
+    }
+    if (standing === null) {
+        renameSync(scratchPath, target);
+        return scratch;
+    }
+    // Two renames rather than a delete and a rename: the old directory is only
+    // unlinked after the new one is fully in place, so an interruption leaves
+    // either the old library or the new one, never half of either.
+    const retired = join(parent, `${SCRATCH_PREFIX}old-${process.pid}-${randomBytes(4).toString('hex')}`);
+    renameSync(target, retired);
     renameSync(scratchPath, target);
+    rmSync(retired, { recursive: true, force: true });
     return scratch;
 }

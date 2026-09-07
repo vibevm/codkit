@@ -29,8 +29,11 @@ import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.js';
 import { loadRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap } from './layers/resource.js';
 import { loadRules } from './layers/rule.js';
+import { statIfPresent } from './containedPath.js';
+import { RUNTIME_PREFIX } from './licenceNotice.js';
 import { ckError } from './messages.js';
-import { listOwnFiles, ownSourceRoot } from './ownCopy.js';
+import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.js';
+import { readVersionLiteral } from './runtimePackage.js';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
 import { PATCHES_DIR, patchSetCommitId } from './syncEngine.js';
 export const INVENTORY_SCHEMA_VERSION = 2;
@@ -71,6 +74,10 @@ const SERVICE_OVERRIDE_TYPE = 'modify';
 const SERVICE_OVERRIDE_CATEGORY = 'own';
 /** The literal an artifact writes when a field has no value. */
 const NONE = 'none';
+/** ##RT-INVENTORY-ENTRY: the one record that stands for the delivered library. */
+export const DELIVERED_RUNTIME_ID = 'CK-codkit-runtime';
+/** ##OWN-DELIVERED-BY-CODKIT: the category of a record nobody in the product wrote. */
+export const DELIVERED_CATEGORY = 'delivered';
 /**
  * Build the inventory of one patchset checkout.
  *
@@ -105,7 +112,8 @@ export function buildInventory(patchesDir, options = {}) {
             artifact: RESOURCE_MAP_PATH
         })),
         ...rules.map((rule) => ruleEntry(rule)),
-        ...ownEntries(patchesDir, manifest)
+        ...ownEntries(patchesDir, manifest),
+        ...deliveredRuntimeEntry(patchesDir)
     ];
     entries.sort((left, right) => compareBytes(left.id, right.id));
     const testIds = ownTestIds(patchesDir);
@@ -531,6 +539,45 @@ function ownEntries(patchesDir, manifest) {
         });
     }
     return entries;
+}
+/**
+ * ##RT-INVENTORY-ENTRY: the runtime library is one line of the inventory, not
+ * two hundred. It is a managed copy under codkit's control, so what a reader
+ * needs is that it is installed and which version - the files themselves are
+ * proven byte for byte by `verify` and `runtime check`.
+ */
+function deliveredRuntimeEntry(patchesDir) {
+    const root = join(patchesDir, ...RUNTIME_PREFIX.split('/'));
+    if (statIfPresent(join(root, 'common', 'version.ts')) === null) {
+        return [];
+    }
+    let version;
+    try {
+        version = readVersionLiteral(root).version;
+    }
+    catch {
+        // A copy without a readable literal is drift; `verify` says so, and the
+        // inventory does not invent a version for it.
+        return [];
+    }
+    return [
+        {
+            id: DELIVERED_RUNTIME_ID,
+            layer: 'own',
+            type: 'extend',
+            category: DELIVERED_CATEGORY,
+            subsystem: subsystemOf(DELIVERED_RUNTIME_ID),
+            files: [`${RUNTIME_PREFIX.slice(`${OWN_SOURCE_DIR}/`.length)}/`],
+            owner: 'codkit',
+            reason: `Codkit runtime ${version}`,
+            link: 'none',
+            cause: null,
+            pin: 'none',
+            contractTests: [],
+            artifact: RUNTIME_PREFIX,
+            synthetic: true
+        }
+    ];
 }
 /**
  * The files a unit's roots cover, sorted. A root ending in `/` is a directory

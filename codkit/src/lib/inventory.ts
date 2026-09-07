@@ -37,8 +37,11 @@ import type { RemovedEntry } from './layers/removed.ts';
 import { RESOURCE_MAP_PATH, loadResourceMap } from './layers/resource.ts';
 import { loadRules } from './layers/rule.ts';
 import type { Rule } from './layers/rule.ts';
+import { statIfPresent } from './containedPath.ts';
+import { RUNTIME_PREFIX } from './licenceNotice.ts';
 import { ckError } from './messages.ts';
-import { listOwnFiles, ownSourceRoot } from './ownCopy.ts';
+import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
+import { readVersionLiteral } from './runtimePackage.ts';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
 import { PATCHES_DIR, patchSetCommitId } from './syncEngine.ts';
@@ -91,6 +94,12 @@ const SERVICE_OVERRIDE_CATEGORY = 'own';
 /** The literal an artifact writes when a field has no value. */
 const NONE = 'none';
 
+/** ##RT-INVENTORY-ENTRY: the one record that stands for the delivered library. */
+export const DELIVERED_RUNTIME_ID = 'CK-codkit-runtime';
+
+/** ##OWN-DELIVERED-BY-CODKIT: the category of a record nobody in the product wrote. */
+export const DELIVERED_CATEGORY = 'delivered';
+
 export type InventoryEntry = {
 	readonly id: string;
 	readonly layer: InventoryLayer;
@@ -113,6 +122,13 @@ export type InventoryEntry = {
 	readonly contractTests: readonly string[];
 	/** Path of the artifact file carrying the record, from the patchset root. */
 	readonly artifact: string;
+	/**
+	 * ##RT-INVENTORY-ENTRY: a record codkit computes rather than one somebody
+	 * wrote. It stands for what codkit delivered into the product, so no artifact
+	 * declares it, no owner is named for it and `verify` does not ask it to have
+	 * either.
+	 */
+	readonly synthetic?: boolean;
 };
 
 export type ContractCoverage = {
@@ -193,7 +209,8 @@ export function buildInventory(patchesDir: string, options: BuildInventoryOption
 			artifact: RESOURCE_MAP_PATH
 		})),
 		...rules.map((rule) => ruleEntry(rule)),
-		...ownEntries(patchesDir, manifest)
+		...ownEntries(patchesDir, manifest),
+		...deliveredRuntimeEntry(patchesDir)
 	];
 	entries.sort((left, right) => compareBytes(left.id, right.id));
 
@@ -726,6 +743,45 @@ function ownEntries(patchesDir: string, manifest: OwnManifest): readonly Invento
 		});
 	}
 	return entries;
+}
+
+/**
+ * ##RT-INVENTORY-ENTRY: the runtime library is one line of the inventory, not
+ * two hundred. It is a managed copy under codkit's control, so what a reader
+ * needs is that it is installed and which version - the files themselves are
+ * proven byte for byte by `verify` and `runtime check`.
+ */
+function deliveredRuntimeEntry(patchesDir: string): readonly InventoryEntry[] {
+	const root = join(patchesDir, ...RUNTIME_PREFIX.split('/'));
+	if (statIfPresent(join(root, 'common', 'version.ts')) === null) {
+		return [];
+	}
+	let version: string;
+	try {
+		version = readVersionLiteral(root).version;
+	} catch {
+		// A copy without a readable literal is drift; `verify` says so, and the
+		// inventory does not invent a version for it.
+		return [];
+	}
+	return [
+		{
+			id: DELIVERED_RUNTIME_ID,
+			layer: 'own',
+			type: 'extend',
+			category: DELIVERED_CATEGORY,
+			subsystem: subsystemOf(DELIVERED_RUNTIME_ID),
+			files: [`${RUNTIME_PREFIX.slice(`${OWN_SOURCE_DIR}/`.length)}/`],
+			owner: 'codkit',
+			reason: `Codkit runtime ${version}`,
+			link: 'none',
+			cause: null,
+			pin: 'none',
+			contractTests: [],
+			artifact: RUNTIME_PREFIX,
+			synthetic: true
+		}
+	];
 }
 
 /**

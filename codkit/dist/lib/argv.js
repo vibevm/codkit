@@ -96,7 +96,9 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--holder', 'value'],
     ['--license', 'value'],
     ['--source', 'value'],
-    ['--third-party', 'boolean']
+    ['--third-party', 'boolean'],
+    // runtime load (PROP-007 sec. 25); --dry-run above is shared with the rest.
+    ['--upgrade', 'boolean']
 ]);
 export function parseArgv(argv) {
     let forkDir = null;

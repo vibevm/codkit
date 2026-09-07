@@ -114,7 +114,7 @@ describe('cycle resolve save rebuild guard', () => {
 		const artifact = fixture.patchesPath(`delta/patches/${PATCH_FILE_NAME}`);
 		const patch = readFileSync(artifact, 'utf8');
 		const changedPatch = patch.replace(
-			'// (hook body lives in patchset own code; this block only delegates)',
+			'// (hook body lives in patchset/ own code; this block only delegates)',
 			'// patchset-only patch movement that this save did not extract'
 		);
 		expect(changedPatch).not.toBe(patch);

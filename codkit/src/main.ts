@@ -24,6 +24,7 @@ import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.ts'
 import { publishCommand } from './commands/publish.ts';
 import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.ts';
 import { reresolveCommand } from './commands/reresolve.ts';
+import { runtimeCheckCommand, runtimeCommand, runtimeLoadCommand } from './commands/runtime.ts';
 import { saveCommand } from './commands/save.ts';
 import { standardsCheckCommand, standardsCommand, standardsLicenseCommand, standardsLoadCommand } from './commands/standards.ts';
 import { statusCommand } from './commands/status.ts';
@@ -52,8 +53,9 @@ const GLOBAL_FLAG_HELP_NAME = '--help';
 /** Diagnosed domain verdicts: the command ran, but its requested check failed. */
 // STANDARDS-DRIFT joins them: an installed copy that someone edited is a
 // verdict about the patch set, not a broken environment - `standards load`
-// ran, looked and refused (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL).
-const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT']);
+// ran, looked and refused (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL). RUNTIME-DRIFT
+// is the same verdict about the runtime library (PROP-015 ##RT-LOAD-STEPS).
+const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT', 'RUNTIME-DRIFT']);
 
 const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 	[
@@ -92,7 +94,10 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		standardsCommand,
 		standardsLoadCommand,
 		standardsCheckCommand,
-		standardsLicenseCommand
+		standardsLicenseCommand,
+		runtimeCommand,
+		runtimeLoadCommand,
+		runtimeCheckCommand
 	].map((definition) => [definition.name, definition])
 );
 

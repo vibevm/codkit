@@ -15,7 +15,7 @@
 //
 // The verdict is the caller's: this module returns findings, and `verify`,
 // `inventory` and the pre-commit hook each decide what to do with them.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { isCallExpression, isIdentifier, isImportDeclaration, isNamedImports } from 'typescript/unstable/ast';
 import { createVirtualFileSystem } from 'typescript/unstable/fs';
@@ -28,15 +28,19 @@ import { runGit } from './gitx.js';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.js';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.js';
 import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, PRODUCT_JSON_TARGET, checkOverlay, devChannelIgnoreWarning, loadOverlays, nonProductTargetViolations, overlayDriftErrors, parseOverlay, serializeOverlay } from './layers/overlay.js';
-import { OWN_MANIFEST_PATH, checkServiceOverrideModules, checkUnitCoverage, isNotOwnCode, loadOwnManifest, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.js';
+import { OWN_CODKIT_ROOT, OWN_MANIFEST_PATH, checkServiceOverrideModules, checkUnitCoverage, isNotOwnCode, isUnderCodkitRoot, loadOwnManifest, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.js';
 import { REMOVED_PATH, loadRemoved, parseRemoved, serializeRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap, parseResourceMap, resourceSourcePath, serializeResourceMap } from './layers/resource.js';
 import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, serializeRule } from './layers/rule.js';
-import { parseMarkers } from './markers.js';
+import { BEGIN_TOKEN, END_TOKEN, parseMarkers } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.js';
 import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot, ownTargetRelativeDir } from './ownCopy.js';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
+import { CODKIT_TOOL_ROOT, shippedRuntime } from './runtimePackage.js';
+import { RUNTIME_TARGET_PATH } from './runtimeLoad.js';
+import { NOTICE_NAME } from './licenceNotice.js';
+import { compareTrees } from './standardsPackage.js';
 import { PATCHES_DIR, generatedBranchName, toPosix } from './syncEngine.js';
 import { revParse } from './treeCache.js';
 import { checkTree } from './treeIdentity.js';
@@ -80,6 +84,15 @@ export function runVerify(options) {
     // (h) Own code: declared, not overlapping, and not overriding a bootstrap
     // service.
     checkOwn(patchesDir, conventions, manifest, findings);
+    // (h2) What codkit delivered into the own layer: the installed runtime
+    // library is byte-equal to the shipped one, and no record of the product
+    // claims a path inside the root that belongs to codkit (PROP-015 sec. 4,
+    // PROP-005 ##OWN-CODKIT-PREFIX-RESERVED).
+    checkDeliveredRuntime(patchesDir, options.toolRoot ?? CODKIT_TOOL_ROOT, findings);
+    checkCodkitRootIsReserved(manifest, findings);
+    // (h3) The graft budget: a patch of type `hook` creates a seam and nothing
+    // more (PROP-005 ##PATCH-HOOK-BUDGET).
+    checkHookBudget(config, patches, findings);
     // (i) "No intervention outside the inventory", against the generated branch.
     checkCompleteness(patchesDir, tree, config, patches, overlays, resources, findings, warnings);
     // (l) The dev channel has to stay invisible to the tree's git.
@@ -275,9 +288,16 @@ function decodeJson(path, bytes, code) {
         throw ckError(code, `is not valid JSON: ${error instanceof Error ? error.message : String(error)}`, 'the artifacts of the delta are plain JSON without comments', path);
     }
 }
+/**
+ * Every record a person wrote. The synthetic entry that stands for the runtime
+ * library codkit delivered (##RT-INVENTORY-ENTRY) is left out: no artifact
+ * declares it and no owner of this delta is responsible for it, so demanding a
+ * unique id or a declared owner from it would report codkit's own work as the
+ * product's mistake.
+ */
 function allRecords(entries, removed) {
     return [
-        ...entries.map((entry) => ({ id: entry.id, owner: entry.owner, artifact: entry.artifact })),
+        ...entries.filter((entry) => entry.synthetic !== true).map((entry) => ({ id: entry.id, owner: entry.owner, artifact: entry.artifact })),
         ...removed.map((entry) => ({ id: entry.id, owner: entry.owner, artifact: REMOVED_PATH }))
     ];
 }
@@ -466,6 +486,142 @@ function checkOwn(patchesDir, conventions, manifest, findings) {
         }
     }
     checkSingletonRegistrations(root, conventions, ownFiles, overrideModules, findings);
+}
+// ---------------------------------------------------------------------------
+// (h2) What codkit delivered into the own layer (PROP-015 sec. 4)
+// ---------------------------------------------------------------------------
+/**
+ * ##RT-DELIVERED-NOT-OWN: the installed runtime library is a managed copy, so
+ * the only correct state is "byte for byte what codkit ships". An absent
+ * directory is not a finding - a product that never ran `runtime load` is in a
+ * legal state - and the licence notice inside the directory belongs to another
+ * command (PROP-014 sec. 4a), so it is left out of the comparison.
+ */
+function checkDeliveredRuntime(patchesDir, toolRoot, findings) {
+    const target = join(patchesDir, ...RUNTIME_TARGET_PATH.split('/'));
+    if (!existsSync(target)) {
+        return;
+    }
+    let shipped;
+    try {
+        shipped = shippedRuntime(toolRoot).directory;
+    }
+    catch (error) {
+        if (!isCkError(error)) {
+            throw error;
+        }
+        findings.push(finding('RUNTIME-PACKAGE', error.message, error.hint ?? 'restore the codkit installation from the approved supply', RUNTIME_TARGET_PATH));
+        return;
+    }
+    const comparison = compareTrees(shipped, target, { ignoreInTarget: [NOTICE_NAME] });
+    if (comparison.state !== 'drift') {
+        return;
+    }
+    const hint = 'the library is codkit-owned: change it in codkit, then run codkit runtime load --upgrade';
+    for (const relative of comparison.modified) {
+        findings.push(finding('RUNTIME-DRIFT', `${RUNTIME_TARGET_PATH}/${relative} differs from the runtime library codkit ships`, hint, `${RUNTIME_TARGET_PATH}/${relative}`));
+    }
+    for (const relative of comparison.extra) {
+        findings.push(finding('RUNTIME-DRIFT', `${RUNTIME_TARGET_PATH}/${relative} is not part of the runtime library codkit ships`, hint, `${RUNTIME_TARGET_PATH}/${relative}`));
+    }
+    for (const relative of comparison.missing) {
+        findings.push(finding('RUNTIME-DRIFT', `${RUNTIME_TARGET_PATH}/${relative} is missing from the installed runtime library`, hint, `${RUNTIME_TARGET_PATH}/${relative}`));
+    }
+}
+/**
+ * ##OWN-CODKIT-PREFIX-RESERVED: the `codkit/` root inside the own layer is
+ * codkit's, and the licence notice claims it by path. A product record that
+ * points inside it would put product files under a licence that is not theirs,
+ * so the manifest may not name it - neither as a unit root nor as the module of
+ * a service override.
+ */
+function checkCodkitRootIsReserved(manifest, findings) {
+    const hint = `move the files out of ${OWN_SOURCE_DIR}/${OWN_CODKIT_ROOT}/, which codkit delivers into, and point the record at its own directory`;
+    for (const unit of manifest.units) {
+        for (const root of unit.roots) {
+            if (!isUnderCodkitRoot(root)) {
+                continue;
+            }
+            findings.push(finding('OWN-UNDER-CODKIT', `${unit.id}: root ${root} is inside ${OWN_CODKIT_ROOT}/, which belongs to codkit`, hint, OWN_MANIFEST_PATH));
+        }
+    }
+    for (const override of manifest.serviceOverrides) {
+        if (!isUnderCodkitRoot(override.module)) {
+            continue;
+        }
+        findings.push(finding('OWN-UNDER-CODKIT', `${override.id}: module ${override.module} is inside ${OWN_CODKIT_ROOT}/, which belongs to codkit`, hint, OWN_MANIFEST_PATH));
+    }
+}
+// ---------------------------------------------------------------------------
+// (h3) The graft budget of a hook patch (PROP-005 ##PATCH-HOOK-BUDGET)
+// ---------------------------------------------------------------------------
+/** ##PATCH-HOOK-BUDGET: the constant; widening it is an edit of the norm. */
+const HOOK_CODE_LINE_BUDGET = 3;
+/**
+ * A patch whose header says `type = hook` is a seam and nothing else: it hands
+ * control to own code and comes back. So at most three lines of code may sit
+ * between the markers - blank lines and `//` comments are not code - and at
+ * least one of them has to name own code, or the patch grafts nothing.
+ */
+function checkHookBudget(config, patches, findings) {
+    const ownSegment = `${config.ownDirName}/`;
+    for (const entry of patches) {
+        if (entry.patch.header.type !== 'hook') {
+            continue;
+        }
+        const graft = hookGraftLines(entry.patch);
+        if (graft.code.length > HOOK_CODE_LINE_BUDGET) {
+            findings.push(finding('HOOK-TOO-LARGE', `${entry.artifact}: a hook patch carries ${graft.code.length} lines of code between its markers, and the budget is ${HOOK_CODE_LINE_BUDGET}`, `move the logic into ${OWN_SOURCE_DIR}/ and leave the patch a call into it`, entry.artifact));
+            continue;
+        }
+        // The own-path requirement is over every line between the markers, not
+        // only over the code ones: ##PATCH-HOOK-BUDGET excludes comments from the
+        // count of code lines and then says "at least one line" without repeating
+        // the exclusion.
+        // REVIEW: the parenthetical of ##PATCH-HOOK-BUDGET reads "an import or a
+        // call of own code", which would exclude comments. Read literally it does
+        // not, and a graft that only delegates is allowed to say so in a comment;
+        // the norm should say which of the two it means.
+        if (!graft.all.some((line) => line.includes(ownSegment))) {
+            findings.push(finding('HOOK-TOO-LARGE', `${entry.artifact}: a hook patch names no path under ${ownSegment} between its markers, so it grafts nothing`, `a hook grafts own code into upstream: import or call something under ${OWN_SOURCE_DIR}/`, entry.artifact));
+        }
+    }
+}
+/**
+ * The lines the patch leaves between its markers: the new side of every hunk,
+ * which is the added and the kept text, read in file order. `all` is every one
+ * of them; `code` leaves out the blank lines and the whole-line `//` comments,
+ * which the budget does not count.
+ */
+function hookGraftLines(patch) {
+    const all = [];
+    const code = [];
+    let inside = false;
+    for (const hunk of patch.hunks) {
+        for (const line of hunk.lines) {
+            if (line.kind === '-' || line.kind === '\\') {
+                continue;
+            }
+            if (line.text.includes(BEGIN_TOKEN)) {
+                inside = true;
+                continue;
+            }
+            if (line.text.includes(END_TOKEN)) {
+                inside = false;
+                continue;
+            }
+            if (!inside) {
+                continue;
+            }
+            all.push(line.text);
+            const trimmed = line.text.trim();
+            if (trimmed === '' || trimmed.startsWith('//')) {
+                continue;
+            }
+            code.push(line.text);
+        }
+    }
+    return { all, code };
 }
 /**
  * ##SO-FORBIDDEN-IDS: the bootstrap services are set explicitly before the

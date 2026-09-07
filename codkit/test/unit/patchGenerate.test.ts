@@ -101,7 +101,7 @@ function withHookBlock(source: string): string {
 	const anchor = `${EXAMPLE_AREA_ANCHOR}\n`;
 	return source.replace(
 		anchor,
-		`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in patchset own code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
+		`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in patchset/ own code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
 	);
 }
 

@@ -89,7 +89,7 @@ describe('applyUnified on the fixture patch', () => {
 		const anchor = `${EXAMPLE_AREA_ANCHOR}\n`;
 		const expected = pin.replace(
 			anchor,
-			`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in patchset own code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
+			`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in patchset/ own code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
 		);
 
 		expect(apply(pin, patch)).toBe(expected);

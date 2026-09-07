@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runVerify } from '../../src/lib/verifyEngine.ts';
 import type { Finding } from '../../src/lib/verifyEngine.ts';
 import { APP_ICON } from '../fixtures/makeUpstream.ts';
-import { PATCH_FILE_NAME, PATCH_ID, REMOVED_ID, RESOURCE_ID, RULE_ID } from '../fixtures/makePatchSet.ts';
+import { OWN_UNIT_ID, PATCH_FILE_NAME, PATCH_ID, REMOVED_ID, RESOURCE_ID, RULE_ID } from '../fixtures/makePatchSet.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
@@ -353,6 +353,118 @@ describe('(h) own code', () => {
 
 		expect(uncovered).toHaveLength(1);
 		expect(uncovered[0]?.message).toContain('claimed by no own unit; exactly one is required');
+	});
+});
+
+describe('(h2) what codkit delivered into the own layer', () => {
+	const RUNTIME_FILE = 'delta/own/codkit/common/version.ts';
+
+	/** Put one file where the delivered library lives, then remove the whole root. */
+	function withRuntimeCopy<T>(body: () => T): T {
+		const root = join(fixture.patchesDir, 'delta', 'own', 'codkit');
+		const path = join(root, 'common', 'version.ts');
+		mkdirSync(dirname(path), { recursive: true });
+		try {
+			writeFileSync(path, "export const CODKIT_RUNTIME_VERSION = '0.0.1';\n", 'utf8');
+			return body();
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	}
+
+	it('reports an installed runtime library that is not what codkit ships', () => {
+		// PROP-015 ##RT-DELIVERED-NOT-OWN: the copy is managed, so anything but
+		// byte equality with the shipped library is drift.
+		const drift = withRuntimeCopy(verify).filter((item) => item.code === 'RUNTIME-DRIFT');
+
+		expect(drift.length).toBeGreaterThan(0);
+		expect(drift.some((item) => item.file === RUNTIME_FILE)).toBe(true);
+		expect(drift[0]?.hint).toContain('codkit runtime load --upgrade');
+	});
+
+	it('does not ask a unit to declare the files codkit delivered', () => {
+		expect(withRuntimeCopy(verify).filter((item) => item.code === 'OWN-UNCOVERED')).toEqual([]);
+	});
+
+	it('says nothing about the runtime library when the product has not installed it', () => {
+		expect(verify().filter((item) => item.code === 'RUNTIME-DRIFT')).toEqual([]);
+	});
+
+	it('refuses a unit whose root is inside the codkit root', () => {
+		// PROP-005 ##OWN-CODKIT-PREFIX-RESERVED: product files there would fall
+		// inside the scope the codkit licence notice claims by path.
+		const findings = withEdit(OWN_MANIFEST_ARTIFACT, (text) => text.replace('"roots": [', '"roots": [\n        "codkit/extra/",'), verify);
+		const under = findings.filter((item) => item.code === 'OWN-UNDER-CODKIT');
+
+		expect(under).toHaveLength(1);
+		expect(under[0]?.message).toContain(`${OWN_UNIT_ID}: root codkit/extra/ is inside codkit/`);
+		expect(under[0]?.file).toBe(OWN_MANIFEST_ARTIFACT);
+	});
+
+	it('refuses a service override whose module is inside the codkit root', () => {
+		const findings = withEdit(OWN_MANIFEST_ARTIFACT, (text) => addServiceOverride(text, 'codkit/browser/mine.ts'), verify);
+		const under = findings.filter((item) => item.code === 'OWN-UNDER-CODKIT');
+
+		expect(under).toHaveLength(1);
+		expect(under[0]?.message).toContain('module codkit/browser/mine.ts is inside codkit/');
+	});
+});
+
+describe('(h3) the graft budget of a hook patch', () => {
+	const COMMENT_LINE = '+\t\t// (hook body lives in patchset/ own code; this block only delegates)';
+
+	/** Replace the one line the fixture grafts, keeping the hunk counts honest. */
+	function withGraft<T>(lines: readonly string[], body: () => T): T {
+		return withEdit(
+			PATCH_ARTIFACT,
+			(text) =>
+				text
+					.replace(
+						/^@@ -(\d+),(\d+) \+(\d+),(\d+) @@(.*)$/mu,
+						(_match, oldStart, oldCount, newStart, newCount, rest) =>
+							`@@ -${oldStart},${oldCount} +${newStart},${Number(newCount) + lines.length - 1} @@${rest}`
+					)
+					.replace(COMMENT_LINE, lines.map((line) => `+\t\t${line}`).join('\n')),
+			body
+		);
+	}
+
+	it('says nothing about the fixture hook, which names own code and carries no logic', () => {
+		expect(verify().filter((item) => item.code === 'HOOK-TOO-LARGE')).toEqual([]);
+	});
+
+	it('reports a hook that carries more than three lines of code, with the number', () => {
+		// PROP-005 ##PATCH-HOOK-BUDGET: the logic belongs in own code, and the
+		// patch is only the seam that reaches it.
+		const findings = withGraft(
+			[
+				'const host = this.instantiationService.createInstance(PatchsetHost);',
+				'const two = host.first();',
+				'const three = host.second();',
+				'const four = host.third(); // patchset/ own code',
+				''
+			],
+			verify
+		);
+		const budget = findings.filter((item) => item.code === 'HOOK-TOO-LARGE');
+
+		expect(budget).toHaveLength(1);
+		expect(budget[0]?.message).toContain('4 lines of code');
+		expect(budget[0]?.file).toBe(PATCH_ARTIFACT);
+	});
+
+	it('reports a hook that names no own path at all, however small it is', () => {
+		const findings = withGraft(['this.doItRightHere();'], verify);
+		const budget = findings.filter((item) => item.code === 'HOOK-TOO-LARGE');
+
+		expect(budget).toHaveLength(1);
+		expect(budget[0]?.message).toContain('names no path under patchset/');
+	});
+
+	it('accepts three lines of code when one of them reaches own code', () => {
+		const findings = withGraft(["import { hook } from '../../../patchset/hook.js';", 'const done = hook(this);', 'void done;'], verify);
+
+		expect(findings.filter((item) => item.code === 'HOOK-TOO-LARGE')).toEqual([]);
 	});
 });
 

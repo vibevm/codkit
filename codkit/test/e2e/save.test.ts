@@ -366,7 +366,7 @@ describe('codkit save <paths>', () => {
 		// is about to get its first patch.
 		const example = fixture.treePath(EXAMPLE_PART_PATH);
 		const exampleText = readFileSync(example, 'utf8');
-		const at = exampleText.indexOf('// (hook body lives in patchset own code; this block only delegates)');
+		const at = exampleText.indexOf('// (hook body lives in patchset/ own code; this block only delegates)');
 		writeFileSync(example, `${exampleText.slice(0, at)}// one more line\n\t\t${exampleText.slice(at)}`, 'utf8');
 
 		expect(
@@ -659,7 +659,7 @@ describe('codkit save: a patchset that was dirty at load time (S23)', () => {
 function shiftExampleArtifact(fixture: CliFixture, suffix: string): void {
 	const artifact = fixture.patchesPath(EXAMPLE_PATCH);
 	const before = readFileSync(artifact, 'utf8');
-	const added = '+\t\t// (hook body lives in patchset own code; this block only delegates)';
+	const added = '+\t\t// (hook body lives in patchset/ own code; this block only delegates)';
 	if (!before.includes(added)) {
 		throw new Error('the fixture patch body does not carry the expected added line');
 	}

@@ -303,7 +303,7 @@ function insertHookBlock(source: string): string {
 	}
 	const block = [
 		`\t\t// codkit:begin ${PATCH_ID}`,
-		'\t\t// (hook body lives in patchset own code; this block only delegates)',
+		'\t\t// (hook body lives in patchset/ own code; this block only delegates)',
 		`\t\t// codkit:end ${PATCH_ID}`,
 		''
 	].join('\n');

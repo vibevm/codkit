@@ -9,11 +9,13 @@
 // declares the guard ids its artifacts name - the resolution PROP-010
 // ##CONTRACT-TESTS-MANDATE describes, done by finding the id in own code.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig } from '../../src/lib/configFile.ts';
 import {
+	DELIVERED_CATEGORY,
+	DELIVERED_RUNTIME_ID,
 	buildInventory,
 	declaredTestIds,
 	diffInventories,
@@ -39,6 +41,33 @@ beforeAll(() => {
 });
 
 afterAll(cleanupTempRoots);
+
+describe('the delivered runtime library', () => {
+	it('is one synthetic entry naming its version, not two hundred files', () => {
+		// PROP-015 ##RT-INVENTORY-ENTRY: the library is a managed copy, so what
+		// the inventory owes a reader is that it is installed and which version.
+		const root = join(patchesDir, 'delta', 'own', 'codkit', 'common');
+		mkdirSync(root, { recursive: true });
+		try {
+			writeFileSync(join(root, 'version.ts'), "export const CODKIT_RUNTIME_VERSION = '0.1.0';\n", 'utf8');
+			const built = buildInventory(patchesDir, { config: loadConfig(patchesDir) });
+			const delivered = built.entries.filter((entry) => entry.id === DELIVERED_RUNTIME_ID);
+
+			expect(delivered).toHaveLength(1);
+			expect(delivered[0]?.layer).toBe('own');
+			expect(delivered[0]?.category).toBe(DELIVERED_CATEGORY);
+			expect(delivered[0]?.reason).toBe('Codkit runtime 0.1.0');
+			expect(delivered[0]?.synthetic).toBe(true);
+			expect(delivered[0]?.files).toEqual(['codkit/']);
+		} finally {
+			rmSync(join(patchesDir, 'delta', 'own', 'codkit'), { recursive: true, force: true });
+		}
+	});
+
+	it('is absent from a product that never installed the library', () => {
+		expect(inventory.entries.filter((entry) => entry.id === DELIVERED_RUNTIME_ID)).toEqual([]);
+	});
+});
 
 describe('buildInventory', () => {
 	it('carries one entry per artifact of the fixture, sorted by id', () => {

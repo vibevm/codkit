@@ -305,6 +305,21 @@ const commandGuidance = {
 		positional: '',
 		detail:
 			'Print, needing no root: the full text of `LICENSE-CODKIT.md` - the notice a delivering command places in the repository root and in `delta/own/codkit/`, with an empty components block here - then the recommendations (where the copies live, that nobody edits them, that linking to them is the product owner\'s choice, where the three licence scopes end), the scrape-contract rows that `standards load` keeps in `vibevm/scrape/contract.toml` (paste them only into a contract kept elsewhere), and a `REUSE.toml` annotation naming the four paths the notice describes, for the product\'s own registry. `--json` returns `file`, `text`, `recommendations`, `scrapeContractRows` and `reuseAnnotation`.'
+	},
+	runtime: {
+		positional: '<load | check>',
+		detail:
+			'A namespace, not a command: bare `codkit runtime` and any unknown subcommand print the subcommand list and exit 2 before any root is resolved. Both subcommands need only the patch-set root - no fork tree, no `codkit.json` to run, no tree lock; the pin is read only for the compatibility warning.'
+	},
+	'runtime load': {
+		positional: '',
+		detail:
+			"Deliver the Codkit runtime library - the feature-flag service, the features host and the brand engine - into `delta/own/codkit/` of the patch set, from where `codkit load` carries it into `src/vs/<ownDirName>/codkit/` of the fork tree. It is a managed copy: the product never edits it, the copy is compared byte for byte with the shipped version, and drift refuses with `CK-E-RUNTIME-DRIFT` and the list of paths before anything is written. `--upgrade` replaces the directory as a whole and prints what it replaces and removes - Codkit keeps no older version, so there is nothing to merge; `--dry-run` prints the same plan and writes nothing. The library's own licence check runs first and a failing library is never copied (`CK-E-LICENSE-PACKAGE`, exit 2), and a shipped tree that is not exactly one version directory whose `common/version.ts` literal matches its name is `CK-E-RUNTIME-PACKAGE`. The `LICENSE-CODKIT.md` copy inside the target directory belongs to `standards load` and is carried across a replacement; both notice copies are rewritten with a components block that now lists the runtime. The run ends with three next steps: the single import for the product's composition root, the `code-import-patterns` block to take from the library's `LAYERS.md`, and `codkit gen feature`. A pin outside `CODKIT_RUNTIME_VERIFIED_UPSTREAM` is a warning, not a refusal. A repeat is `unchanged` with no byte written."
+	},
+	'runtime check': {
+		positional: '',
+		detail:
+			'Read-only report on the installed runtime library: `runtime not installed` when `delta/own/codkit/` is absent (exit 0), `identical` when it matches the shipped library, or `CK-E-RUNTIME-DRIFT` with every modified, extra and missing path and the hint `run codkit runtime load --upgrade` (exit 1). It also reports the state of both `LICENSE-CODKIT.md` copies - an edited copy is `CK-E-STANDARDS-DRIFT`, an out-of-date components block is reported without being a finding - and warns about a legacy copy at `delta/own/`.'
 	}
 };
 

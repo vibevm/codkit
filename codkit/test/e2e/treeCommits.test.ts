@@ -48,7 +48,7 @@ const IDENTITY: GitEnv = {
 	GIT_COMMITTER_DATE: '2026-09-06T10:20:00Z'
 };
 
-const MARKER_BLOCK_NOTE = '// (hook body lives in patchset own code; this block only delegates)';
+const MARKER_BLOCK_NOTE = '// (hook body lives in patchset/ own code; this block only delegates)';
 
 afterAll(() => {
 	cleanupTempRoots();

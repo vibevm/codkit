@@ -78,7 +78,7 @@ describe('codkit status: a tree with work in it', () => {
 		// tree: the two halves of the drift guard, seen from the other side.
 		const target = fixture.treePath(EXAMPLE_PART_PATH);
 		const text = readFileSync(target, 'utf8');
-		const at = text.indexOf('// (hook body lives in patchset own code; this block only delegates)');
+		const at = text.indexOf('// (hook body lives in patchset/ own code; this block only delegates)');
 		writeFileSync(target, `${text.slice(0, at)}// one more line of the hook\n\t\t${text.slice(at)}`, 'utf8');
 		writeFileSync(fixture.treePath(OWN_IN_TREE), '// edited in the tree\n', 'utf8');
 	});

@@ -232,7 +232,7 @@ describe('the installed pre-commit hook', () => {
  */
 function escapeTheBlock(patch: string): string {
 	const begin = `+\t\t// codkit:begin ${PATCH_ID}`;
-	const body = '+\t\t// (hook body lives in patchset own code; this block only delegates)';
+	const body = '+\t\t// (hook body lives in patchset/ own code; this block only delegates)';
 	if (!patch.includes(`${begin}\n${body}`)) {
 		throw new Error('the fixture patch no longer has the shape this test edits');
 	}

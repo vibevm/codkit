@@ -325,12 +325,12 @@ describe('S28: gc removes spent state and never a transaction', () => {
 		expect(fixture.run(['load']).status).toBe(0);
 
 		// Three saves with tree commits: three consumed refs (D6).
-		dirtyBlock(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the first tree commit');
+		dirtyBlock(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the first tree commit, delegating to patchset/ own code');
 		commitAll(fixture, 'work: tree commit 1');
 		expect(fixture.run(['save']).status).toBe(0);
-		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the second tree commit', 'work: tree commit 2');
+		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the second tree commit, delegating to patchset/ own code', 'work: tree commit 2');
 		expect(fixture.run(['save']).status).toBe(0);
-		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the third tree commit', 'work: tree commit 3');
+		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the third tree commit, delegating to patchset/ own code', 'work: tree commit 3');
 		expect(fixture.run(['save']).status).toBe(0);
 		expect(consumedRefs(fixture).length).toBe(3);
 

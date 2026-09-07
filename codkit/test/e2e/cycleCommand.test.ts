@@ -355,7 +355,9 @@ function addRenamePatch(fixture: ReturnType<typeof makeCliFixture>): string {
 		targetPath: STATUS_PART_PATH,
 		pinBytes: Buffer.from(source.stdout),
 		pinExists: true,
-		curBytes: Buffer.from(`${source.stdout}// codkit:begin CK-workbench-905\n// codkit status hook\n// codkit:end CK-workbench-905\n`),
+		curBytes: Buffer.from(
+			`${source.stdout}// codkit:begin CK-workbench-905\n// codkit status hook, delegating to patchset/ own code\n// codkit:end CK-workbench-905\n`
+		),
 		header,
 		existingBytes: null,
 		tmpDir: makeTempRoot('cycle-rename-patch')

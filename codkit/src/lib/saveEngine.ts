@@ -31,6 +31,7 @@ import { parseMarkers } from './markers.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkError } from './messages.ts';
 import { classifyOwn, mirrorOwnBack, ownTargetRelativeDir } from './ownCopy.ts';
+import { isDeliveredByCodkit } from './layers/ownManifest.ts';
 import type { OwnMirrorReport, OwnSideClass } from './ownCopy.ts';
 import { encodePatchName, extractHeaderText, formatPatchHeader, parseCkpatch, serializeCkpatch } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
@@ -329,6 +330,30 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// without new own bytes. The mark itself was read at 1d, before the
 	// moved-check needed it.
 	const classes = classifyOwn(patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+	// ##RT-SAVE-REFUSES-DELIVERED-EDITS: a file codkit delivered is not the
+	// product's to edit, and `save` extracts nothing at all over such an edit -
+	// not the delivered file and not the rest, so the refusal leaves one state to
+	// reason about instead of a half-extracted tree.
+	// `patchset-edited` is excluded on purpose: there the tree still matches the
+	// mark and the delta moved ahead, which is exactly what `runtime load
+	// --upgrade` does - codkit updating what it delivered, not the product
+	// editing it. The next `codkit load` carries the new bytes into the tree.
+	const deliveredEdits = classes.filter(
+		(entry) =>
+			entry.tree !== null && entry.tree !== entry.patchset && entry.kind !== 'patchset-edited' && isDeliveredByCodkit(entry.relative)
+	);
+	if (deliveredEdits.length > 0) {
+		const paths = deliveredEdits.map((entry) => `${ownTargetRelativeDir(config.ownDirName)}/${entry.relative}`);
+		out.addError(
+			ckError(
+				'DELIVERED-EDIT',
+				`${paths.length} file(s) delivered by codkit were changed in the fork tree:\n  ${paths.join('\n  ')}`,
+				'delivered by codkit; change it in codkit and run codkit runtime load --upgrade, then codkit load - nothing was extracted',
+				paths[0]
+			).toPayload()
+		);
+		return result('blocked', 1, { branch });
+	}
 	const conflict = classes.find((entry) => entry.kind === 'both-edited');
 	if (conflict !== undefined) {
 		out.addError(bothSidesError(conflict.relative).toPayload());

@@ -27,6 +27,14 @@ export const OWN_MANIFEST_PATH = `delta/own/${OWN_MANIFEST_NAME}`;
 export const LICENCE_NOTICE_NAME = 'LICENSE-CODKIT.md';
 /** Files under delta/own/ that are never part of a unit. */
 const NOT_OWN_CODE = [OWN_MANIFEST_NAME, '.gitkeep', LICENCE_NOTICE_NAME];
+/**
+ * The root inside delta/own/ that belongs to codkit: the runtime library it
+ * delivers (PROP-015 ##RT-DIRECTORY-IS-CODKIT) and the copy of the licence
+ * notice next to it. A product file must never be placed under it
+ * (##OWN-CODKIT-PREFIX-RESERVED), or it would fall inside the scope the notice
+ * claims by path.
+ */
+export const OWN_CODKIT_ROOT = 'codkit';
 const unitSchema = z.object({
     id: z.string().min(1),
     layer: z.literal('own'),
@@ -182,10 +190,36 @@ export function checkServiceOverrideModules(manifest, ownFiles) {
         return { override, module, delivered: deliveredFiles.has(module), units };
     });
 }
-/** The manifest, the placeholders git needs and the licence notice are not own code. */
-export function isNotOwnCode(file) {
+/**
+ * ##OWN-DELIVERED-BY-CODKIT: whether a file under delta/own/ was put there by
+ * codkit rather than written by the product. Three kinds qualify: the unit
+ * manifest, the placeholders git needs to carry an empty directory, the licence
+ * notice in any directory - and everything under the reserved `codkit/` root,
+ * which is the runtime library.
+ *
+ * Delivered files are not product code: no unit declares them, `save` refuses
+ * an edit of them in the fork tree, and only a codkit command updates them.
+ */
+export function isDeliveredByCodkit(relative) {
+    const file = cleanOwnPath(relative.replaceAll('\\', '/'));
     const name = file.slice(file.lastIndexOf('/') + 1);
-    return file === OWN_MANIFEST_NAME || NOT_OWN_CODE.includes(name);
+    if (file === OWN_MANIFEST_NAME || NOT_OWN_CODE.includes(name)) {
+        return true;
+    }
+    return file === OWN_CODKIT_ROOT || file.startsWith(`${OWN_CODKIT_ROOT}/`);
+}
+/**
+ * The former name of the predicate above, kept because the older set - the
+ * manifest, the placeholders and the notice - is the special case of it
+ * (##OWN-DELIVERED-BY-CODKIT).
+ */
+export function isNotOwnCode(file) {
+    return isDeliveredByCodkit(file);
+}
+/** ##OWN-CODKIT-PREFIX-RESERVED: a path a product unit or override may not claim. */
+export function isUnderCodkitRoot(path) {
+    const clean = cleanOwnPath(path.replaceAll('\\', '/'));
+    return clean === OWN_CODKIT_ROOT || clean.startsWith(`${OWN_CODKIT_ROOT}/`);
 }
 function covers(root, file) {
     const clean = cleanOwnPath(root);

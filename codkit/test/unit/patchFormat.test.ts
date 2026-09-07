@@ -45,7 +45,7 @@ const SPEC_SAMPLE_LINES = [
 	'',
 	' \tprotected createExampleArea(parent: HTMLElement): void {',
 	'+\t\t// codkit:begin CK-workbench-001',
-	'+\t\t// (hook body lives in patchset own code; this block only delegates)',
+	'+\t\t// (hook body lives in patchset/ own code; this block only delegates)',
 	'+\t\t// codkit:end CK-workbench-001',
 	' \t\tthis.doCreateExampleArea(parent);',
 	' \t}',

@@ -112,7 +112,9 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--holder', 'value'],
 	['--license', 'value'],
 	['--source', 'value'],
-	['--third-party', 'boolean']
+	['--third-party', 'boolean'],
+	// runtime load (PROP-007 sec. 25); --dry-run above is shared with the rest.
+	['--upgrade', 'boolean']
 ]);
 
 export function parseArgv(argv: readonly string[]): ArgvParseResult {
