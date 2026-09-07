@@ -4,11 +4,19 @@
 // SPDX-License-Identifier: UPL-1.0
 
 import type { IDisposable } from '../../../../base/common/lifecycle.js';
-import type { IConstructorSignature } from '../../../../platform/instantiation/common/instantiation.js';
+import type { BrandedService, IConstructorSignature } from '../../../../platform/instantiation/common/instantiation.js';
 import type { FeatureId, FeaturePhase, IFeatureDescriptor } from './featureDescriptor.js';
 
-/** A feature class: an ordinary disposable with its dependencies injected through the constructor. */
+/** A feature class as a declaration stores it: an ordinary disposable created through dependency injection. */
 export type FeatureConstructor = IConstructorSignature<IDisposable>;
+
+/**
+ * A feature class as a product writes it: a constructor whose parameters are
+ * all services. The public registration takes this shape and narrows it to
+ * `FeatureConstructor`, the same way upstream's `registerWorkbenchContribution2`
+ * takes its contribution signature.
+ */
+export type FeatureSignature<Services extends BrandedService[]> = new (...services: Services) => IDisposable;
 
 export interface IFeatureDeclaration {
 	readonly descriptor: IFeatureDescriptor;

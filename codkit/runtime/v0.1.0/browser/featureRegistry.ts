@@ -7,8 +7,9 @@ import type { IProductConfiguration } from '../../../base/common/product.js';
 import { ConfigurationScope, Extensions as ConfigurationExtensions, type IConfigurationRegistry } from '../../../platform/configuration/common/configurationRegistry.js';
 import product from '../../../platform/product/common/product.js';
 import { Registry } from '../../../platform/registry/common/platform.js';
+import type { BrandedService } from '../../../platform/instantiation/common/instantiation.js';
 import { FeaturePhase, validateFeatureDescriptor, type IFeatureDescriptor } from '../common/features/featureDescriptor.js';
-import { featureDeclarations, type FeatureConstructor, type FeatureDeclarations } from '../common/features/featureDeclarations.js';
+import { featureDeclarations, type FeatureConstructor, type FeatureDeclarations, type FeatureSignature } from '../common/features/featureDeclarations.js';
 
 /**
  * Declares a feature at module evaluation: records it, registers its setting
@@ -16,24 +17,26 @@ import { featureDeclarations, type FeatureConstructor, type FeatureDeclarations 
  * A descriptor that violates its shape throws here: that is an author error,
  * caught by the product's tests before any UI exists.
  */
-export function registerFeature(descriptor: IFeatureDescriptor, ctor: FeatureConstructor, phase: FeaturePhase = FeaturePhase.AfterRestored): void {
+export function registerFeature<Services extends BrandedService[]>(descriptor: IFeatureDescriptor, ctor: FeatureSignature<Services>, phase: FeaturePhase = FeaturePhase.AfterRestored): void {
 	declareFeatureWith(featureDeclarations, Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration), product, descriptor, ctor, phase);
 }
 
 /** The testable form of `registerFeature`: every collaborator is a parameter. */
-export function declareFeatureWith(
+export function declareFeatureWith<Services extends BrandedService[]>(
 	declarations: FeatureDeclarations,
 	configurationRegistry: IConfigurationRegistry,
 	productConfiguration: IProductConfiguration,
 	descriptor: IFeatureDescriptor,
-	ctor: FeatureConstructor,
+	ctor: FeatureSignature<Services>,
 	phase: FeaturePhase,
 ): void {
 	const problems = validateFeatureDescriptor(descriptor);
 	if (problems.length > 0) {
 		throw new Error(`codkit: invalid feature declaration: ${problems.join('; ')}`);
 	}
-	declarations.add({ descriptor, ctor, phase });
+	// The services a product's constructor names are a subset of what the
+	// instantiation service can supply, which is what the stored type says.
+	declarations.add({ descriptor, ctor: ctor as FeatureConstructor, phase });
 
 	const setting = descriptor.setting;
 	if (!setting) {
