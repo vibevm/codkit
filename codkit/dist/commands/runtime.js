@@ -45,9 +45,11 @@ async function runLoad(ctx) {
     ctx.out.info(`state: ${outcome.state}${dryRun ? ' (dry run: nothing written)' : ''}`);
     ctx.out.info(`files: ${outcome.filesWritten} written, ${outcome.filesRemoved} removed`);
     // ##RT-LOAD-UPGRADE: a replacement says which paths it takes over and which
-    // it drops, so the loss of a local edit is never silent.
+    // it drops, so the loss of a local edit is never silent. A first delivery
+    // replaces nothing, and says so.
+    const verb = plan.state === 'absent' ? 'write' : 'replace';
     for (const relative of plan.writes)
-        ctx.out.info(`  replace ${plan.targetPath}/${relative}`);
+        ctx.out.info(`  ${verb} ${plan.targetPath}/${relative}`);
     for (const relative of plan.removals)
         ctx.out.info(`  remove ${plan.targetPath}/${relative}`);
     for (const notice of plan.notices)

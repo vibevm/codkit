@@ -54,8 +54,10 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 	ctx.out.info(`state: ${outcome.state}${dryRun ? ' (dry run: nothing written)' : ''}`);
 	ctx.out.info(`files: ${outcome.filesWritten} written, ${outcome.filesRemoved} removed`);
 	// ##RT-LOAD-UPGRADE: a replacement says which paths it takes over and which
-	// it drops, so the loss of a local edit is never silent.
-	for (const relative of plan.writes) ctx.out.info(`  replace ${plan.targetPath}/${relative}`);
+	// it drops, so the loss of a local edit is never silent. A first delivery
+	// replaces nothing, and says so.
+	const verb = plan.state === 'absent' ? 'write' : 'replace';
+	for (const relative of plan.writes) ctx.out.info(`  ${verb} ${plan.targetPath}/${relative}`);
 	for (const relative of plan.removals) ctx.out.info(`  remove ${plan.targetPath}/${relative}`);
 	for (const notice of plan.notices) ctx.out.info(`notice: ${notice.path} ${noticeAction(outcome, notice.path)}`);
 	if (outcome.legacyNoticeRemoved) ctx.out.info(`notice: ${NOTICE_LEGACY_PATH} moved`);
