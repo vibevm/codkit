@@ -4505,7 +4505,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:a604e13baf994879f0d6a4624b4132b69873180270befa0bde642e92130bd8be",
+      "content_hash": "sha256:a8b4bdebe77493f0c100e7847792f4bccdbba172527ce70ac09aa77e562971d6",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -4676,7 +4676,7 @@
     },
     {
       "anchor": "cmd-status",
-      "content_hash": "sha256:8ac16cb53a1fc9a1cb608fd4b130100026a23a623c24ca09784bfe8471eac5f8",
+      "content_hash": "sha256:756db6de70790bb3363cb12c8d3db77381103ca48b70fc9d9e0590c5f2d0bc06",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "6. codkit status",
@@ -4685,10 +4685,10 @@
     },
     {
       "anchor": "CMD-STATUS",
-      "content_hash": "sha256:9b813f7adb3262ff3c878c086bb19bfbfceb2da207925de1c46fddab4ba206b0",
+      "content_hash": "sha256:5a7e73680cb6456342527e346127e47b91d7b98b4fbd1f3afaab51eabb700a58",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Показать: пин; вершину ветки; коммиты дерева вне patchset — строку `tree commits not in patchset: N` + до 20 строк `<short> <subject>` (`data.treeCommits: {base, count, commits}`); при N>0 строка `reload needed …` НЕ печатается — перемещение к patchset и есть то, что уничтожило бы эти коммиты, вопрос адресуется `save`; актуальность ветки (up to date / reload needed) — при N=0; **строку `loaded from patchset commit: <sha|dirty|none|unknown>`** и при сдвиге delta относительно метки — **`patchset moved since load: N artifact(s)`** с перечнем (данные ручного рецепта `CK-E-PATCHSET-MOVED`; `data.loadedFrom`, `data.patchsetMoved`; кампания TREE-COMMITS-SAVE, решение D10, Phase 7); own-код — N изменённых файлов (дерево против `delta/own/`); апстримные файлы — M изменённых (грязь против HEAD), K маркерных блоков в них, валидность маркеров (парность/id); незакоммиченные изменения `delta/` в patchset при чистом дереве (расхождение направления истины). Только чтение; работает и при захваченной блокировке. Коды: 0 чисто/консистентно; 1 есть незаизвлечённое (правки, own или коммиты дерева) или невалидные маркеры (информационная команда — код 1 позволяет использовать её в скриптах). Время — секунды на полном дереве. @status:spec/done",
+      "heading": "Показать: пин; вершину ветки; коммиты дерева вне patchset — строку `tree commits not in patchset: N` + до 20 строк `<short> <subject>` (`data.treeCommits: {base, count, commits}`); при N>0 строка `reload needed …` НЕ печатается — перемещение к patchset и есть то, что уничтожило бы эти коммиты, вопрос адресуется `save`; актуальность ветки (up to date / reload needed) — при N=0; **строку `loaded from patchset commit: <sha|dirty|none|unknown>`** и при сдвиге delta относительно метки — **`patchset moved since load: N artifact(s)`** с перечнем (данные ручного рецепта `CK-E-PATCHSET-MOVED`; `data.loadedFrom`, `data.patchsetMoved`; кампания TREE-COMMITS-SAVE, решение D10, Phase 7); own-код — N изменённых файлов (дерево против `delta/own/`); own-расширения — строка `own extensions: D declared, P path(s) differ between tree and patchset` с перечнем (PROP-005 `OWN-EXTENSION-UNIT`; `data.ownExtensions: {declared, differing}`), их каталоги `extensions/<name>/` в дереве — own, а не грязь апстрима; апстримные файлы — M изменённых (грязь против HEAD, вне own-каталога и вне объявленных расширений), K маркерных блоков в них, валидность маркеров (парность/id); незакоммиченные изменения `delta/` в patchset при чистом дереве (расхождение направления истины). Только чтение; работает и при захваченной блокировке. Коды: 0 чисто/консистентно; 1 есть незаизвлечённое (правки, own или коммиты дерева) или невалидные маркеры (информационная команда — код 1 позволяет использовать её в скриптах). Время — секунды на полном дереве. @status:spec/done",
       "line": 31,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-STATUS"
     },
