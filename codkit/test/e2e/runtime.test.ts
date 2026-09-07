@@ -14,12 +14,17 @@ import { fileURLToPath } from 'node:url';
 import type { Envelope } from '../support/cliFixture.ts';
 import { makeCliFixture, runCli } from '../support/cliFixture.ts';
 import { renderNotice } from '../../src/lib/licenceNotice.ts';
+import { shippedRuntime } from '../../src/lib/runtimePackage.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const shippedRuntimeDir = join(repoRoot, 'codkit', 'runtime', 'v0.1.0');
+// The version the tool ships right now: the scenarios describe the delivery,
+// not a number, so they read it the way `runtime load` does.
+const shipped = shippedRuntime(repoRoot);
+const SHIPPED_VERSION = shipped.version;
+const shippedRuntimeDir = shipped.directory;
 const shippedNotice = join(repoRoot, 'codkit', 'config', 'LICENSE-CODKIT.md');
 const INSTALLED = 'delta/own/codkit';
 const STANDARDS = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0';
@@ -95,7 +100,7 @@ function snapshot(root: string): string {
 
 function expectedNotice(): string {
 	return renderNotice(readFileSync(shippedNotice, 'utf8'), [
-		{ name: 'runtime', version: '0.1.0', path: `${INSTALLED}/` },
+		{ name: 'runtime', version: SHIPPED_VERSION, path: `${INSTALLED}/` },
 		{ name: 'standards', version: '0.2.0', path: `${STANDARDS}/` }
 	]);
 }
@@ -109,7 +114,7 @@ describe('S42 - runtime load delivers the library and rewrites the notice', () =
 		expect(loaded.status).toBe(0);
 		const data = loaded.envelope.data as { state: string; version: string; verifiedUpstream: boolean; files: { written: number } };
 		expect(data.state).toBe('created');
-		expect(data.version).toBe('0.1.0');
+		expect(data.version).toBe(SHIPPED_VERSION);
 		expect(data.verifiedUpstream).toBe(true);
 		expect(data.files.written).toBeGreaterThan(0);
 		expect(sameAsShipped(patchesDir)).toBe(true);
@@ -118,7 +123,7 @@ describe('S42 - runtime load delivers the library and rewrites the notice', () =
 		const notice = expectedNotice();
 		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);
 		expect(readFileSync(join(patchesDir, ...INSTALLED.split('/'), 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);
-		expect(notice).toContain('runtime  0.1.0  delta/own/codkit/');
+		expect(notice).toContain(`runtime  ${SHIPPED_VERSION}  delta/own/codkit/`);
 		expect(notice).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
 
 		// ##RT-LOAD-STEPS step 7: the three things to do next.
@@ -220,7 +225,7 @@ describe('S46 - runtime check names the three states', () => {
 		expect(outcome.status).toBe(0);
 		const target = outcome.envelope.data['target'] as { state: string; version: string };
 		expect(target.state).toBe('identical');
-		expect(target.version).toBe('0.1.0');
+		expect(target.version).toBe(SHIPPED_VERSION);
 	});
 
 	it('reports an edited file with its path and the recipe', () => {

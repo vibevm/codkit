@@ -4496,7 +4496,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:820467598d0db5bfec5b13c25f24d78fc4fbfda8c6484e56c6321c88b9b74611",
+      "content_hash": "sha256:37e80fe1dcce38511afbf758a3517de71ee478b0c011b627a3cb7cb9fdee3cbd",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -4946,7 +4946,7 @@
     },
     {
       "anchor": "cmd-ci",
-      "content_hash": "sha256:8d4180ba4d4c794d082c5f519029e3ceba6078656c6ad6764bd5eeb786390ac2",
+      "content_hash": "sha256:009a9f611c1c9b6650b51f7857dc28f212cd5f4dce5e67dfb7b1bc2eb6f98b62",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "17. codkit ci [--profile verify|build] [--effective-diff base-ref]",
@@ -4964,10 +4964,10 @@
     },
     {
       "anchor": "CMD-CI-IMPL",
-      "content_hash": "sha256:c7ac0a2c730c3b42b4482c014c0df6104add37b0ef871f4096c782b06f454349",
+      "content_hash": "sha256:8ea7262bc34ef205960306aa1d2b16a2ded708e4a503c47e7d4d4dcc07f859fd",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Реализация после post-M1 audit. Полная сигнатура: `ci [--profile verify|build] [--effective-diff <base-ref>] [--pin-guard-base <ref>] [--timeout <сек>]`; команда держит per-tree блокировку на весь прогон. Шаги verify (7, печатаются по порядку с прогрессом): источник пути → safe.directory-проба (PROP-011 §5) → check-tree (режим записи) → fresh-load с материализацией overlay-целей в ветку → verify → pin-guard (только при `--pin-guard-base`; иначе шаг явно skipped) → effective-diff (только при флаге). Build выполняет 12 шагов: источник → safe.directory → check-tree → fresh-load **без** overlay-целей → зависимости → реальные `npm run hygiene` и `npm run eslint` на нематериализованном overlay → повторный fresh-load с overlay apply → verify → pin-guard → effective-diff → один проход демонов `transpile,typecheck` → реальные product/contract tests через `npm run test-node -- --runGlob vs/<ownDirName>/test/**/*.test.js`. Красный hygiene/test завершает команду кодом 1; отсутствующий runner/скрипт — код 2 `CK-E-LOG-INCOMPLETE`; заглушек с exit 0 нет. Демоны останавливаются в finally; незавершённый проход — `CK-E-LOG-INCOMPLETE`. Коды: 0; 1 — проверки/pin-guard/компиляция/tests; 2 — окружение (`NET-FORBIDDEN`, `DEPS-MISSING`, отсутствующий обязательный runner). @status:impl/done",
+      "heading": "Реализация после post-M1 audit. Полная сигнатура: `ci [--profile verify|build] [--effective-diff <base-ref>] [--pin-guard-base <ref>] [--timeout <сек>]`; команда держит per-tree блокировку на весь прогон. Шаги verify (7, печатаются по порядку с прогрессом): источник пути → safe.directory-проба (PROP-011 §5) → check-tree (режим записи) → fresh-load с материализацией overlay-целей в ветку → verify → pin-guard (только при `--pin-guard-base`; иначе шаг явно skipped) → effective-diff (только при флаге). Build выполняет 12 шагов: источник → safe.directory → check-tree → fresh-load **без** overlay-целей → зависимости → реальные `npm run hygiene` и `npm run eslint` на нематериализованном overlay → повторный fresh-load с overlay apply → verify → pin-guard → effective-diff → один проход демонов `transpile,typecheck` → реальные product/contract tests через `npm run test-node -- --runGlob vs/<ownDirName>/**/test/**/*.test.js` (каждый каталог `test/` под own-каталогом: тесты продукта, доставленной библиотеки и каталогов фич). Красный hygiene/test завершает команду кодом 1; отсутствующий runner/скрипт — код 2 `CK-E-LOG-INCOMPLETE`; заглушек с exit 0 нет. Демоны останавливаются в finally; незавершённый проход — `CK-E-LOG-INCOMPLETE`. Коды: 0; 1 — проверки/pin-guard/компиляция/tests; 2 — окружение (`NET-FORBIDDEN`, `DEPS-MISSING`, отсутствующий обязательный runner). @status:impl/done",
       "line": 76,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-CI-IMPL"
     },
@@ -8402,7 +8402,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c422f004d865fc99e45e1bf3c91f4257c87edf4198add3448fb9d84116cb206f",
+      "content_hash": "sha256:bfd464a6d4aa9e203da1924e77d50ad471ea6a33ffac97b21d4b1078693718fc",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "codkit PROP-015: Рантайм Codkit — библиотека фич и флагов, доставляемая в own-слой продукта",
@@ -8663,7 +8663,7 @@
     },
     {
       "anchor": "testing",
-      "content_hash": "sha256:277034d81c1744fe4c6c538805e67ab34a4d5903e952c4c5e59d69017f72b16e",
+      "content_hash": "sha256:418ebc91b4db1d192fd2e0b84cb800334b51152d17ca3107d9304db2dfe1e0f3",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "3. Стенд типов и тесты",
@@ -8690,10 +8690,10 @@
     },
     {
       "anchor": "RT-TESTS-RUN-IN-THE-FORK",
-      "content_hash": "sha256:edb7dd23e1c3b68a9972078246b759eeef12bad44b2f037fa27fc977eeea14cf",
+      "content_hash": "sha256:4d2c6d221f8367cc71728498e2e375ac6008f14b96b1d21b98819eec09d7ae7f",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "Тесты библиотеки компилируются стендом, но **выполняются только в дереве форка** после `runtime load` и `load` (раннеры `test/unit/node` и electron апстрима находят `test/**/*.test.js` под own-каталогом сами). В vitest Codkit они не запускаются: заглушки апстрима были бы вторым, ложным апстримом. Ограничение записано в кампании как отложенное до второго прохода продукта. @status:spec/done",
+      "heading": "Тесты библиотеки компилируются стендом, но **выполняются только в дереве форка** после `runtime load` и `load` (раннеры `test/unit/node` и electron апстрима находят `test/**/*.test.js` под own-каталогом сами; `codkit ci --profile build` запускает node-раннер по глобу `vs/<own>/**/test/**/*.test.js`, который покрывает и `codkit/test/`). В vitest Codkit они не запускаются: заглушки апстрима были бы вторым, ложным апстримом. Ограничение записано в кампании как отложенное до второго прохода продукта. @status:spec/done",
       "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-TESTS-RUN-IN-THE-FORK"
     },

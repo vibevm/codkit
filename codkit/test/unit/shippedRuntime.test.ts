@@ -21,6 +21,7 @@ const shipped = shippedRuntime(toolRoot);
 const BANNER_TS = [
 	'// Copyright (c) 2026 Oleg Chirukhin',
 	'// Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/',
+	'// allow-any-unicode-next-line',
 	'// Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/',
 	'// SPDX-License-Identifier: UPL-1.0'
 ];
