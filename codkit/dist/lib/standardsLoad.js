@@ -22,10 +22,10 @@ import { applyBlock, refuseCarriageReturn, scanBlock } from './managedBlock.js';
 import { ckError } from './messages.js';
 import { loadSpdxLicenseIds } from './spdxIds.js';
 import { MANIFEST_MARKERS, MANIFEST_PATH, canonicalManifestBlock, requireProjectTable } from './standardsManifest.js';
-import { compareTrees, fileIsIdentical, listScratchDirs, shippedStandardsPackage, STANDARDS_PACKAGE_GROUP, STANDARDS_PACKAGE_NAME, STANDARDS_PACKAGE_PARENT, writeTreeViaScratch } from './standardsPackage.js';
-import { CANONICAL_SCRAPE_BLOCK, NOTICE_PATHS, SCRAPE_CONTRACT_PATH, SCRAPE_MARKERS } from './standardsScrape.js';
-/** The notice file codkit ships, relative to toolRoot. */
-export const NOTICE_SOURCE = 'codkit/config/LICENSE-CODKIT.md';
+import { compareTrees, listScratchDirs, shippedStandardsPackage, STANDARDS_PACKAGE_GROUP, STANDARDS_PACKAGE_NAME, STANDARDS_PACKAGE_PARENT, writeTreeViaScratch } from './standardsPackage.js';
+import { NOTICE_OWN_PATH, NOTICE_TARGET_PATHS, noticeTemplate, renderNotice, surveyNotice, writeNoticeCopies } from './licenceNotice.js';
+import { CANONICAL_SCRAPE_BLOCK, SCRAPE_CONTRACT_PATH, SCRAPE_MARKERS } from './standardsScrape.js';
+export { NOTICE_SOURCE } from './licenceNotice.js';
 /** ##STD-LOAD-STEP-SOURCE: the test seam that relocates the shipped package. */
 export const STANDARDS_SOURCE_ENV = 'CODKIT_TEST_STANDARDS_SOURCE';
 /** ##STD-LOAD-LICENCE-NOTE: printed after the summary on every successful run. */
@@ -38,21 +38,25 @@ export const LICENCE_NOTES = [
 /** ##STD-LOAD-NOTICE-PRINT: what a person needs to know about the notice file. */
 export const NOTICE_RECOMMENDATIONS = [
     'licence notice file: LICENSE-CODKIT.md',
-    '  placed in two roots of this repository: ./LICENSE-CODKIT.md and ./delta/own/LICENSE-CODKIT.md;',
+    '  placed in two roots of this repository: ./LICENSE-CODKIT.md and ./delta/own/codkit/LICENSE-CODKIT.md;',
     '  the second copy reaches the fork tree with the own code on the next `codkit load`.',
-    '  It states the licence of codkit and of its standards package - and of nothing around it.',
-    '  Do not edit either copy: `codkit standards load` refuses over an edited copy; to take a',
-    '  newer file from a newer codkit, delete both copies and run `codkit standards load` again.',
+    '  It states its scope by path: everything under vibevm/vibepacks/org.vibevm.codkit/** (and its',
+    '  vibevm/vibedeps/org.vibevm.codkit.*/** projection), under delta/own/codkit/**, and the file itself',
+    "  is codkit's and licensed under UPL-1.0; nothing else is. A components block inside it lists what is",
+    '  installed; codkit rewrites the block on every `standards load` and `runtime load`.',
+    '  Do not edit either copy: a delivering command refuses over an edited copy; to recover, delete',
+    '  the edited copy and run `codkit standards load` again.',
     "  Linking to it is your own deliberate choice: from this repository's README, and - through",
     "  an ordinary patch-set intervention - from the fork's README. Codkit edits neither.",
     '  The release branch built by `codkit publish` leaves it out; the developer tree, the `ci`',
     '  branch and the upgrade-cycle branch carry it. Never delete it in the fork tree by hand.',
-    '  A clean export made with `vibe scrape` removes it: codkit keeps the two contract rows in',
+    '  A clean export made with `vibe scrape` removes it: codkit keeps the contract rows in',
     '  vibevm/scrape/contract.toml itself (block `codkit:begin scrape`); without a contract, run',
     '  `vibe scrape contract init` and `codkit standards load` again; for a contract kept at another',
     '  path, paste the rows printed by `codkit standards license`.',
-    "  Where the licences end: the package and this notice describe codkit's own content; this",
-    "  repository's licence file governs this repository and is never copied; the fork's licence",
+    '  Your own REUSE.toml may name the same paths: `codkit standards license` prints the annotation.',
+    "  Where the licences end: the packages, the runtime and this notice describe codkit's own content;",
+    "  this repository's licence file governs this repository and is never copied; the fork's licence",
     '  files and product.json licence fields change only through a delta artifact.'
 ];
 /** The shipped package, honouring the test seam when the build allows it. */
@@ -61,11 +65,6 @@ export function resolveSource(toolRoot, override) {
 }
 function readIfPresent(path) {
     return statIfPresent(path) === null ? null : readFileSync(path, 'utf8');
-}
-function noticeState(source, target) {
-    if (statIfPresent(target) === null)
-        return 'absent';
-    return fileIsIdentical(source, target) ? 'identical' : 'drift';
 }
 /**
  * Classify a managed block. A malformed block and an entry outside it are
@@ -137,17 +136,19 @@ export function planStandardsLoad(options) {
         if (verdict.problem !== null)
             blockProblems.push(verdict.problem);
     }
-    const noticeSource = join(options.toolRoot, ...NOTICE_SOURCE.split('/'));
-    const notices = NOTICE_PATHS.map((relative) => ({
-        path: relative,
-        state: check.problems.length > 0 ? 'absent' : noticeState(noticeSource, join(options.patchesDir, ...relative.split('/')))
-    }));
+    // The rendered text depends on what is installed, which this run may change;
+    // the plan looks at the copies as they are, the writer renders again after
+    // the package landed (##STD-LOAD-STEP-WRITE-NOTICE).
+    const survey = check.problems.length > 0 ? null : surveyNotice(options.toolRoot, options.patchesDir);
+    const notices = survey === null ? NOTICE_TARGET_PATHS.map((path) => ({ path, state: 'absent' })) : survey.copies;
+    const legacyNotice = survey?.legacy ?? false;
     const otherVersions = statIfPresent(parent) === null ? [] : compareVersionDirs(parent, `v${shipped.version}`);
     return {
         package: shipped,
         target,
         comparison,
         notices,
+        legacyNotice,
         manifest: { path: MANIFEST_PATH, action: manifestAction },
         scrape: { path: SCRAPE_CONTRACT_PATH, action: scrapeAction },
         otherVersions,
@@ -194,7 +195,7 @@ export function refuseOnDrift(plan) {
 export function runStandardsLoad(options) {
     const plan = planStandardsLoad(options);
     if (plan.problems.length > 0 || plan.blockProblems.length > 0) {
-        return { plan, filesCreated: 0, filesUnchanged: 0, noticesWritten: [], removedScratch: [] };
+        return { plan, filesCreated: 0, filesUnchanged: 0, noticesWritten: [], legacyNoticeRemoved: false, removedScratch: [] };
     }
     refuseOnDrift(plan);
     const parent = join(options.patchesDir, ...STANDARDS_PACKAGE_PARENT.split('/'));
@@ -219,16 +220,8 @@ export function runStandardsLoad(options) {
             });
         }
     }
-    const noticeSource = join(options.toolRoot, ...NOTICE_SOURCE.split('/'));
-    const noticesWritten = [];
-    for (const notice of plan.notices) {
-        if (notice.state !== 'absent')
-            continue;
-        noticesWritten.push(notice.path);
-        if (options.dryRun)
-            continue;
-        writeContainedFileAtomic(options.patchesDir, notice.path, { what: notice.path, bytes: readFileSync(noticeSource) });
-    }
+    const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.dryRun);
+    const noticesWritten = noticeOutcome.written;
     if (!options.dryRun && plan.manifest.action !== 'unchanged') {
         const manifestPath = join(options.patchesDir, MANIFEST_PATH);
         const applied = applyBlock(readFileSync(manifestPath, 'utf8'), canonicalManifestBlock(plan.package.version), MANIFEST_MARKERS);
@@ -246,7 +239,14 @@ export function runStandardsLoad(options) {
             });
         }
     }
-    return { plan, filesCreated: created, filesUnchanged: unchanged, noticesWritten, removedScratch };
+    return {
+        plan,
+        filesCreated: created,
+        filesUnchanged: unchanged,
+        noticesWritten,
+        legacyNoticeRemoved: noticeOutcome.legacyRemoved,
+        removedScratch
+    };
 }
 function countFiles(dir) {
     let total = 0;
@@ -285,7 +285,7 @@ export function runStandardsCheck(options) {
     }
     if (scrapeState !== 'current' && scrapeState !== 'no-contract')
         findings.push(`${SCRAPE_CONTRACT_PATH}: block ${scrapeState}`);
-    return { plan, targetState, manifestState, scrapeState, findings };
+    return { plan, targetState, manifestState, scrapeState, findings, legacyNotice: plan.legacyNotice };
 }
 function blockStateOf(action) {
     switch (action) {
@@ -299,22 +299,16 @@ function blockStateOf(action) {
             return 'current';
     }
 }
-/** The verbatim text of the shipped notice file. */
-export function noticeText(toolRoot) {
-    const path = join(toolRoot, ...NOTICE_SOURCE.split('/'));
-    try {
-        return readFileSync(path, 'utf8');
-    }
-    catch (error) {
-        throw ckError('INTERNAL', `cannot read the shipped licence notice: ${error instanceof Error ? error.message : String(error)}`, 'restore the codkit installation from the approved supply', NOTICE_SOURCE);
-    }
+/** The shipped notice rendered with the given components (none: the template with an empty block). */
+export function noticeText(toolRoot, components = []) {
+    return renderNotice(noticeTemplate(toolRoot), components);
 }
-/** Where the notice would go, for the plan and the report. */
+/** Where the notice goes, for the plan and the report. */
 export function noticeTargets(patchesDir) {
-    return NOTICE_PATHS.map((relative) => join(patchesDir, ...relative.split('/')));
+    return NOTICE_TARGET_PATHS.map((relative) => join(patchesDir, ...relative.split('/')));
 }
 /** The parent of the own-code notice copy, created on demand by the writer. */
 export function noticeParent(patchesDir) {
-    return dirname(join(patchesDir, ...NOTICE_PATHS[1].split('/')));
+    return dirname(join(patchesDir, ...NOTICE_OWN_PATH.split('/')));
 }
 export { STANDARDS_PACKAGE_GROUP, STANDARDS_PACKAGE_NAME };

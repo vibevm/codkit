@@ -1,20 +1,62 @@
 # Codkit licence notice / Уведомление о лицензии Codkit
 
-This file was placed here by `codkit standards load`. It is the licence of
-Codkit — the tool that maintains this patch set — and of the standards package
-it installs. It covers those alone: it does not license the code, data or
-documentation around it, and the licence of this repository is stated
-elsewhere. Codkit rewrites this file on every `codkit standards load`; edits
-to it are refused, and links to it are the repository owner's own choice.
+This file was placed here by a Codkit command (`codkit standards load` or
+`codkit runtime load`). It is the licence of Codkit — the tool that maintains
+this patch set — and of every file Codkit delivered into this repository. Those
+files live only under the paths named below, and nowhere else:
 
-Этот файл положила сюда команда `codkit standards load`. Это лицензия
-Codkit — инструмента, который ведёт этот patch set, — и пакета стандартов,
-который он устанавливает. Она относится только к ним: код, данные и
-документация вокруг этого файла ею не лицензируются, а лицензия этого
-репозитория указана отдельно. Codkit переписывает этот файл при каждом
-`codkit standards load`; правки в нём отклоняются, а ссылки на него —
-осознанный выбор владельца репозитория. Текст лицензии существует только на
-английском языке; русские абзацы — уведомление.
+- `vibevm/vibepacks/org.vibevm.codkit/**` — packages Codkit installs, and their
+  projection `vibevm/vibedeps/org.vibevm.codkit.*/**` that `vibe install` builds;
+- `delta/own/codkit/**` — the Codkit runtime library and the own-layer copy of
+  this notice; `codkit load` materialises it at `src/vs/<own>/codkit/**` of the
+  fork tree;
+- this file at the repository root.
+
+Nothing outside these paths is licensed by this notice; the licence of this
+repository is stated elsewhere. Lines Codkit writes inside marked managed blocks
+of this repository's own files (`vibe.toml`, `vibevm/scrape/contract.toml`) are
+generated configuration, not licensed material. Codkit rewrites this file on
+every delivering command; edits to it are refused, and links to it are the
+repository owner's own choice.
+
+Этот файл положила сюда команда Codkit (`codkit standards load` или
+`codkit runtime load`). Это лицензия Codkit — инструмента, который ведёт этот
+patch set, — и каждого файла, который Codkit доставил в этот репозиторий. Такие
+файлы лежат только по путям, названным выше, и нигде больше: пакеты Codkit под
+`vibevm/vibepacks/org.vibevm.codkit/**` и их проекция
+`vibevm/vibedeps/org.vibevm.codkit.*/**`, которую строит `vibe install`;
+библиотека рантайма Codkit и own-копия этого уведомления под
+`delta/own/codkit/**` (в дереве форка — `src/vs/<own>/codkit/**`); этот файл в
+корне репозитория. Вне этих путей уведомление ничего не лицензирует; лицензия
+этого репозитория указана отдельно. Строки, которые Codkit пишет внутри
+помеченных управляемых блоков в файлах самого репозитория (`vibe.toml`,
+`vibevm/scrape/contract.toml`), — сгенерированная конфигурация, лицензии не
+подлежащая. Codkit переписывает этот файл при каждой доставляющей команде;
+правки в нём отклоняются, а ссылки на него — осознанный выбор владельца
+репозитория. Текст лицензии существует только на английском языке; русские
+абзацы — уведомление.
+
+Components installed in this repository (kept by Codkit) / Установленные
+компоненты (ведёт Codkit):
+
+<!-- codkit:begin components -->
+<!-- codkit:end components -->
+
+`vibe install` compiles snippets of the packages into generated boot files
+(`vibevm/vibespecs/boot/STATIC.*`, `INDEX.md`), materialises the packages under
+`vibevm/vibedeps/` and may convert files (`README.md` → `README.xml`). Those
+generated files are copies and derivative works of the packages that this
+licence permits; the reference to the UPL they carry is vibe's provenance
+comment naming the package together with this file. The repository owner owes
+nothing further for them.
+
+`vibe install` компилирует фрагменты пакетов в генерируемые файлы загрузочной
+полосы (`vibevm/vibespecs/boot/STATIC.*`, `INDEX.md`), строит проекцию пакетов
+под `vibevm/vibedeps/` и может преобразовывать файлы (`README.md` →
+`README.xml`). Эти файлы — разрешённые лицензией копии и производные работы
+пакетов; ссылкой на UPL для них служат комментарий происхождения vibe с именем
+пакета и настоящий файл. Никаких иных обязанностей у владельца репозитория в
+связи с ними нет.
 
 Copyright (c) 2026 Oleg Chirukhin
 Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/

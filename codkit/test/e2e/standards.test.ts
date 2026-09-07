@@ -7,11 +7,12 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Envelope } from '../support/cliFixture.ts';
 import { makeCliFixture, runCli } from '../support/cliFixture.ts';
+import { renderNotice } from '../../src/lib/licenceNotice.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
@@ -70,8 +71,13 @@ describe('S30 - standards load into a fresh product', () => {
 		const loaded = run(patchesDir, ['standards', 'load']);
 		expect(loaded.status).toBe(0);
 		expect(sameTree(shippedPackage, join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
-		expect(sha256(join(patchesDir, 'LICENSE-CODKIT.md'))).toBe(sha256(shippedNotice));
-		expect(sha256(join(patchesDir, 'delta', 'own', 'LICENSE-CODKIT.md'))).toBe(sha256(shippedNotice));
+		// ##STD-NOTICE-TARGETS: both copies are the template rendered with the components block.
+		const expectedNotice = renderNotice(readFileSync(shippedNotice, 'utf8'), [
+			{ name: 'standards', version: '0.1.0', path: `${INSTALLED}/` }
+		]);
+		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
+		expect(readFileSync(join(patchesDir, 'delta', 'own', 'codkit', 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
+		expect(expectedNotice).toContain('standards  0.1.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/');
 
 		// The manifest keeps its own bytes and gains the block at the end.
 		const manifest = readFileSync(join(patchesDir, 'vibe.toml'), 'utf8');
@@ -277,11 +283,17 @@ describe('S35 - standards license prints the file, the advice and the rows', () 
 			text: string;
 			scrapeContractRows: string;
 			recommendations: readonly string[];
+			reuseAnnotation: string;
 		};
 		expect(data.file).toBe('LICENSE-CODKIT.md');
 		expect(data.text).toBe(readFileSync(shippedNotice, 'utf8'));
 		expect(data.scrapeContractRows).toContain('remove-codkit-licence-notice');
+		expect(data.scrapeContractRows).toContain('"LICENSE-CODKIT.md", "delta/own/LICENSE-CODKIT.md", "delta/own/codkit/LICENSE-CODKIT.md"');
 		expect(data.recommendations.length).toBeGreaterThan(0);
+		// ##STD-LICENSE-PRINTS-REUSE-ROWS
+		expect(data.reuseAnnotation).toContain('[[annotations]]');
+		expect(data.reuseAnnotation).toContain('"delta/own/codkit/**"');
+		expect(data.reuseAnnotation).toContain('SPDX-License-Identifier = "UPL-1.0"');
 	});
 });
 
@@ -314,6 +326,40 @@ describe('S37 - the scrape contract block', () => {
 		expect(loaded.status).toBe(0);
 		expect(loaded.stdout).toContain('scrape contract: none - run vibe scrape contract init');
 		expect(readdirSync(join(patchesDir, 'vibevm')).sort()).toEqual(['vibepacks']);
+	});
+});
+
+describe('S51 - the notice of edition 3: paths, components block, legacy copy', () => {
+	it('moves an edition-2 copy under the codkit prefix and keeps the block current', () => {
+		const patchesDir = makePatchSet('s51');
+		mkdirSync(join(patchesDir, 'delta', 'own'), { recursive: true });
+		writeFileSync(join(patchesDir, 'delta', 'own', 'LICENSE-CODKIT.md'), 'edition 2 copy\n', 'utf8');
+
+		const loaded = json(patchesDir, ['standards', 'load']);
+		expect(loaded.status).toBe(0);
+		expect(existsSync(join(patchesDir, 'delta', 'own', 'LICENSE-CODKIT.md'))).toBe(false);
+		expect(existsSync(join(patchesDir, 'delta', 'own', 'codkit', 'LICENSE-CODKIT.md'))).toBe(true);
+		expect((loaded.envelope.data as { legacyNoticeMoved: boolean }).legacyNoticeMoved).toBe(true);
+		const text = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
+		expect(text).toContain('<!-- codkit:begin components -->');
+		expect(text).toContain('standards  0.1.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/');
+		expect(text).toContain('delta/own/codkit/**');
+
+		// A legacy copy put back by hand is a warning on check, not a finding.
+		writeFileSync(join(patchesDir, 'delta', 'own', 'LICENSE-CODKIT.md'), 'edition 2 copy\n', 'utf8');
+		const checked = run(patchesDir, ['standards', 'check']);
+		expect(checked.status).toBe(0);
+		expect(checked.stderr + checked.stdout).toContain('legacy-copy');
+
+		// A copy whose block is out of date is updated, not refused.
+		writeFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), readFileSync(shippedNotice, 'utf8'), 'utf8');
+		const again = json(patchesDir, ['standards', 'load']);
+		expect(again.status).toBe(0);
+		const actions = (again.envelope.data as { noticeFiles: readonly { path: string; action: string }[] }).noticeFiles;
+		expect(actions).toEqual([
+			{ path: 'LICENSE-CODKIT.md', action: 'updated' },
+			{ path: 'delta/own/codkit/LICENSE-CODKIT.md', action: 'unchanged' }
+		]);
 	});
 });
 

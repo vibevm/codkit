@@ -11,11 +11,14 @@ import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot } from '../lib/command.ts';
 import { isCycleTestBuild } from '../lib/cycleTestCrash.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
+import { NOTICE_LEGACY_PATH, renderedNotice, reuseAnnotationRows } from '../lib/licenceNotice.ts';
+import { loadLicensePolicy } from '../lib/licensePolicy.ts';
 import {
 	LICENCE_NOTES,
 	NOTICE_RECOMMENDATIONS,
 	STANDARDS_SOURCE_ENV,
 	noticeText,
+	type LoadOutcome,
 	runStandardsCheck,
 	runStandardsLoad
 } from '../lib/standardsLoad.ts';
@@ -85,8 +88,9 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 		outcome.filesCreated > 0 ? `files: ${outcome.filesCreated} created` : `files: ${outcome.filesUnchanged} unchanged (up to date)`
 	);
 	for (const notice of plan.notices) {
-		ctx.out.info(`notice: ${notice.path} ${outcome.noticesWritten.includes(notice.path) ? 'created' : 'unchanged'}`);
+		ctx.out.info(`notice: ${notice.path} ${noticeAction(outcome, notice.path)}`);
 	}
+	if (outcome.legacyNoticeRemoved) ctx.out.info(`notice: ${NOTICE_LEGACY_PATH} moved`);
 	ctx.out.info(`manifest: ${plan.manifest.path} ${plan.manifest.action}`);
 	ctx.out.info(plan.scrape.action === 'no-contract' ? NO_CONTRACT_LINE : `scrape contract: ${plan.scrape.path} ${plan.scrape.action}`);
 	if (plan.otherVersions.length > 0) ctx.out.info(`other versions kept: ${plan.otherVersions.join(', ')}`);
@@ -95,10 +99,10 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 	for (const note of LICENCE_NOTES) ctx.out.info(note);
 	for (const line of NOTICE_RECOMMENDATIONS) ctx.out.info(line);
 
-	const created = outcome.noticesWritten.length > 0;
+	const created = outcome.noticesWritten.some((notice) => notice.action === 'created');
 	if (created) {
 		ctx.out.info('----- LICENSE-CODKIT.md (verbatim) -----');
-		ctx.out.info(noticeText(ctx.toolRoot).replace(/\n$/u, ''));
+		ctx.out.info(renderedNotice(ctx.toolRoot, patchesDir).replace(/\n$/u, ''));
 		ctx.out.info('----- end of LICENSE-CODKIT.md -----');
 	}
 
@@ -107,10 +111,8 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 		source: plan.package.directory,
 		target: plan.target,
 		files: { created: outcome.filesCreated, unchanged: outcome.filesUnchanged },
-		noticeFiles: plan.notices.map((notice) => ({
-			path: notice.path,
-			action: outcome.noticesWritten.includes(notice.path) ? 'created' : 'unchanged'
-		})),
+		noticeFiles: plan.notices.map((notice) => ({ path: notice.path, action: noticeAction(outcome, notice.path) })),
+		legacyNoticeMoved: outcome.legacyNoticeRemoved,
 		manifest: { path: plan.manifest.path, action: plan.manifest.action },
 		scrape: { path: plan.scrape.path, action: plan.scrape.action },
 		otherVersions: [...plan.otherVersions],
@@ -119,9 +121,13 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 		next: 'vibe install --offline',
 		notes: [...LICENCE_NOTES],
 		recommendations: [...NOTICE_RECOMMENDATIONS],
-		...(created ? { noticeText: noticeText(ctx.toolRoot) } : {})
+		...(created ? { noticeText: renderedNotice(ctx.toolRoot, patchesDir) } : {})
 	} satisfies JsonValue);
 	return EXIT_OK;
+}
+
+function noticeAction(outcome: LoadOutcome, path: string): string {
+	return outcome.noticesWritten.find((notice) => notice.path === path)?.action ?? 'unchanged';
 }
 
 function packageData(plan: LoadPlan): JsonValue {
@@ -135,6 +141,7 @@ async function runCheck(ctx: CommandContext): Promise<number> {
 
 	ctx.out.info(`package: ${report.targetState}`);
 	for (const notice of plan.notices) ctx.out.info(`notice: ${notice.path} ${notice.state}`);
+	if (report.legacyNotice) ctx.out.warn(`notice: ${NOTICE_LEGACY_PATH} legacy-copy (moved by the next codkit standards load)`);
 	ctx.out.info(`manifest: ${report.manifestState}`);
 	ctx.out.info(`scrape contract: ${report.scrapeState}`);
 	if (plan.tailWarningLine !== null) {
@@ -145,15 +152,14 @@ async function runCheck(ctx: CommandContext): Promise<number> {
 		ctx.out.addError({
 			code: finding.includes(': block ') ? 'CONFIG' : 'STANDARDS-DRIFT',
 			message: finding,
-			hint: finding.includes('LICENSE-CODKIT.md')
-				? 'delete both LICENSE-CODKIT.md copies and run codkit standards load'
-				: 'run codkit standards load'
+			hint: finding.includes('LICENSE-CODKIT.md: drift') ? 'delete the copy and run codkit standards load' : 'run codkit standards load'
 		});
 	}
 	ctx.out.setData({
 		target: { state: report.targetState, paths: [...driftPaths(plan)] },
 		license: { problems: plan.problems.map((problem) => ({ code: `CK-E-${problem.code}`, file: problem.file, message: problem.message })) },
 		noticeFiles: plan.notices.map((notice) => ({ path: notice.path, state: notice.state })),
+		legacyNotice: report.legacyNotice,
 		manifest: { state: report.manifestState, path: plan.manifest.path },
 		scrape: { state: report.scrapeState, path: plan.scrape.path },
 		otherVersions: [...plan.otherVersions]
@@ -179,11 +185,18 @@ async function runLicense(ctx: CommandContext): Promise<number> {
 	ctx.out.info('');
 	ctx.out.info('# Codkit licence notice: removed from a scraped export together with the Vibe layer.');
 	ctx.out.info(SCRAPE_CONTRACT_ROWS);
+	const policy = loadLicensePolicy();
+	const reuseAnnotation = reuseAnnotationRows(policy.holders[0] ?? '', new Date().getUTCFullYear().toString());
+	ctx.out.info('REUSE.toml annotation for this repository (optional; the notice describes the same paths):');
+	ctx.out.info('');
+	ctx.out.info(reuseAnnotation);
+	ctx.out.info('components block: empty here; codkit standards load and codkit runtime load fill it for a repository.');
 	ctx.out.setData({
 		file: 'LICENSE-CODKIT.md',
 		text,
 		recommendations: [...NOTICE_RECOMMENDATIONS],
-		scrapeContractRows: SCRAPE_CONTRACT_ROWS
+		scrapeContractRows: SCRAPE_CONTRACT_ROWS,
+		reuseAnnotation
 	} satisfies JsonValue);
 	return EXIT_OK;
 }
