@@ -134,7 +134,8 @@ const valueLabels = {
 	'--year': 'YYYY',
 	'--holder': 'name',
 	'--license': 'spdx-id',
-	'--source': 'text'
+	'--source': 'text',
+	'--title': 'text'
 };
 
 const commandGuidance = {
@@ -320,6 +321,22 @@ const commandGuidance = {
 		positional: '',
 		detail:
 			'Read-only report on the installed runtime library: `runtime not installed` when `delta/own/codkit/` is absent (exit 0), `identical` when it matches the shipped library, or `CK-E-RUNTIME-DRIFT` with every modified, extra and missing path and the hint `run codkit runtime load --upgrade` (exit 1). It also reports the state of both `LICENSE-CODKIT.md` copies - an edited copy is `CK-E-STANDARDS-DRIFT`, an out-of-date components block is reported without being a finding - and warns about a legacy copy at `delta/own/`.'
+	},
+	gen: {
+		positional: '<feature | brand>',
+		detail:
+			'A namespace, not a command: bare `codkit gen` and any unknown subcommand print the subcommand list and exit 2 before any root is resolved. Both subcommands write into `delta/own/` of the patch set and need no fork tree.'
+	},
+	'gen feature': {
+		positional: '<id>',
+		requiredFlags: ['--title'],
+		detail:
+			"Write the skeleton of a flag-gated product feature: `delta/own/contrib/<name>/common/<name>.ts` with the feature id (and the setting id under `--setting`), `delta/own/contrib/<name>/browser/<name>.contribution.ts` with a `Disposable` subclass and the `registerFeature` call the runtime library reads, and `delta/own/test/browser/<name>.test.ts`. The id must be two or more dot-separated camelCase segments (`acme.smartPaste`) or the run is `CK-E-GEN-ID` (exit 2); its last segment names the directory. `--cold` declares `hotToggle: false`, so the flag is frozen at startup and a change asks for a restart. The files are product code: `--holder` and `--license` (with `--year`, defaulting to this year) put a four-line header on them, and without those flags they are written without one and the run warns `no header written` - Codkit's own notice is never placed in a product file. An existing target is `CK-E-GEN-EXISTS` (exit 1) and nothing is written at all. The run prints the import line for the product's composition root and the reminder to declare a unit in `delta/own/patchset.delta.json`."
+	},
+	'gen brand': {
+		positional: '',
+		detail:
+			"Write `delta/own/common/brand.ts` - the product's brand rules table with one worked example and the `except` explanation, exporting `brandMessage` built by the runtime library's `createBrandTransform` - and print the graft for `_format` in `src/vs/nls.ts`, which the product writes itself as a patch with `type = hook`. Two reminders come with it: the hook budget (at most three lines of code between the markers, one of them naming own code) and the `code-import-patterns` target for `src/vs/{monaco.d.ts,nls.ts}`, which has to allow `vs/<ownDirName>/common/~`. Headers follow the same rule as `gen feature`; an existing file is `CK-E-GEN-EXISTS` (exit 1)."
 	}
 };
 

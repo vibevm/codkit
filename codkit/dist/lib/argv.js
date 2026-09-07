@@ -98,7 +98,12 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--source', 'value'],
     ['--third-party', 'boolean'],
     // runtime load (PROP-007 sec. 25); --dry-run above is shared with the rest.
-    ['--upgrade', 'boolean']
+    ['--upgrade', 'boolean'],
+    // gen feature (PROP-007 sec. 26); --holder, --license and --year above are
+    // shared with license annotate.
+    ['--title', 'value'],
+    ['--setting', 'boolean'],
+    ['--cold', 'boolean']
 ]);
 export function parseArgv(argv) {
     let forkDir = null;

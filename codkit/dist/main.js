@@ -13,6 +13,7 @@ import { cloneCommand } from './commands/clone.js';
 import { cycleCommand } from './commands/cycle.js';
 import { forecastCommand } from './commands/forecast.js';
 import { gcCommand } from './commands/gc.js';
+import { genBrandCommand, genCommand, genFeatureCommand } from './commands/gen.js';
 import { hooksCommand } from './commands/hooks.js';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.js';
 import { inventoryCommand } from './commands/inventory.js';
@@ -88,7 +89,10 @@ const COMMANDS = new Map([
     standardsLicenseCommand,
     runtimeCommand,
     runtimeLoadCommand,
-    runtimeCheckCommand
+    runtimeCheckCommand,
+    genCommand,
+    genFeatureCommand,
+    genBrandCommand
 ].map((definition) => [definition.name, definition]));
 /** Immutable Codkit install/source root; never discovered from cwd or settings. */
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
