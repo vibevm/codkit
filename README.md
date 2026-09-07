@@ -46,3 +46,7 @@ evidence and open external risks are tracked in the
 Default standards for a patch set ship as the UPL-1.0 vibe package under
 `vibevm/vibepacks/org.vibevm.codkit/standards/`; `codkit standards load`
 delivers it into a product repository (human protocol page 13).
+The feature-flag runtime ships as the library under `codkit/runtime/`;
+`codkit runtime load` delivers it as a managed copy into the product's own
+layer and `codkit gen feature` scaffolds a feature behind a flag (human
+protocol page 14).

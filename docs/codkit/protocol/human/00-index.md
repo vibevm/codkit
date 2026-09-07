@@ -31,7 +31,7 @@ profile выбранного проекта: его strict channel schema тре
 
 | Роль | Обязательно | По событию |
 | --- | --- | --- |
-| Разработчик | [01](01-quickstart.md), [02](02-daily.md) | [03](03-interventions.md), [04](04-team.md), [13](13-standards.md) |
+| Разработчик | [01](01-quickstart.md), [02](02-daily.md) | [03](03-interventions.md), [04](04-team.md), [13](13-standards.md), [14](14-runtime.md) |
 | Ревьюер вмешательств | [03](03-interventions.md), [10](10-roles.md) | [11](11-metrics.md) |
 | DRI / команда апгрейда | [05](05-upgrade-cycle.md), [06](06-history.md), [07](07-upstream-watch.md), [09](09-incidents.md), [10](10-roles.md) | [08](08-release-ci.md), [11](11-metrics.md) |
 | Релиз-инженер | [08](08-release-ci.md), [10](10-roles.md) | [09](09-incidents.md) |
@@ -56,6 +56,8 @@ profile выбранного проекта: его strict channel schema тре
 | [10-roles](10-roles.md) | Кто принимает решение и в какой срок? |
 | [11-metrics](11-metrics.md) | Как читать стоимость дельты? |
 | [12-maintenance](12-maintenance.md) | Как менять сам протокол? |
+| [13-standards](13-standards.md) | Как продукт берёт пакет стандартов и уведомление о лицензии? |
+| [14-runtime](14-runtime.md) | Как продукт берёт рантайм фичефлагов и объявляет фичу? |
 
 ## Норма → механизм → текст
 
@@ -72,6 +74,7 @@ profile выбранного проекта: его strict channel schema тре
 | Metadata каноничны | `verify` проверяет schema, UTF-8/LF и канонические JSON bytes | [03: ревью](03-interventions.md#чек-лист-ревьюера) |
 | Цикл возобновляем | durable records + `cycle status/continue`; receipt нельзя редактировать | [05: восстановление](05-upgrade-cycle.md#возобновление-и-штатные-восстановления) |
 | Метрики связаны с финалом | terminal finalization связывает SHA256 JSONL, Markdown и CSV | [11](11-metrics.md) |
+| Доставленный код остаётся кодом Codkit | `runtime check`/`verify` — `CK-E-RUNTIME-DRIFT`; `save` — `CK-E-DELIVERED-EDIT`; прививка не больше трёх строк — `CK-E-HOOK-TOO-LARGE` | [14: что нельзя](14-runtime.md#что-нельзя) |
 | Ссылки и лимиты документации проверяются | `node docs/codkit/protocol/human/check.mjs` | [12](12-maintenance.md) |
 
 Если новая текстовая норма не имеет команды, хука или CI-проверки, это дефект механизации:
