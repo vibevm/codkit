@@ -65,7 +65,6 @@ export function parseMarkers(bytes, ext, conventions, file) {
     const idPattern = new RegExp(conventions.idPattern);
     const lines = text.split('\n');
     const open = [];
-    const started = new Set();
     const blocks = [];
     const errors = [];
     for (let index = 0; index < lines.length; index += 1) {
@@ -95,10 +94,8 @@ export function parseMarkers(bytes, ext, conventions, file) {
             if (open.length > 0) {
                 errors.push(ckError('MARKER-NESTED', `marker block "${id}" starts inside block "${open[open.length - 1]?.id ?? ''}"`, 'nested marker blocks are forbidden; close the outer block first (PROP-004 ##MR-NO-NESTING)', file, lineNumber));
             }
-            if (started.has(id)) {
-                errors.push(ckError('MARKER-DUP-ID', `marker id "${id}" opens a second block in this file`, 'one id covers at most one block per file; give the second intervention its own id', file, lineNumber));
-            }
-            started.add(id);
+            // The same id may open several blocks in one file: a graft is usually
+            // an import line and a call site (PROP-004 ##MR-SEVERAL-BLOCKS-ONE-ID).
             open.push({ id, line: lineNumber });
             continue;
         }

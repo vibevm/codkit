@@ -192,6 +192,52 @@ describe('codkit save: the round trip of one change (S04)', () => {
 	});
 });
 
+describe('codkit save: one graft, two blocks of one id in a file (PROP-004 MR-SEVERAL-BLOCKS-ONE-ID)', () => {
+	it('extracts an import block and a call-site block into one patch that verifies and reloads', () => {
+		const fixture = makeCliFixture('save-two-blocks');
+		expect(fixture.run(['load']).status).toBe(0);
+		const scaffold = fixture.run([
+			'marker',
+			'new',
+			UTIL_PATH,
+			'--id',
+			HOOK_ID,
+			'--type',
+			'hook',
+			'--owner',
+			'workbench-core',
+			'--reason',
+			'import and call'
+		]);
+		expect(scaffold.status).toBe(0);
+
+		// The scaffold left one block; a second block with the same id goes at the top.
+		const target = fixture.treePath(UTIL_PATH);
+		const filled = fillBlock(readFileSync(target, 'utf8'), HOOK_ID, '\thook(); // patchset/ own code');
+		const withImport = [
+			`// codkit:begin ${HOOK_ID}`,
+			"import { hook } from './patchset/hook.js';",
+			`// codkit:end ${HOOK_ID}`,
+			filled
+		].join('\n');
+		writeFileSync(target, withImport, 'utf8');
+
+		const saved = fixture.json(['save', '--commit']);
+		expect(saved.run.status).toBe(0);
+		const patch = readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8');
+		expect(patch.split(`+// codkit:begin ${HOOK_ID}`).length - 1).toBe(2);
+		expect(patch).toContain("import { hook } from './patchset/hook.js';");
+		expect(patch).toContain('hook(); // patchset/ own code');
+
+		// Both blocks belong to one artifact: verify is green, and a fresh load reproduces the file.
+		const verify = fixture.json(['verify']);
+		expect(verify.run.status).toBe(0);
+		expect(verify.envelope.errors.map((error) => error.code)).toEqual([]);
+		expect(fixture.run(['load']).status).toBe(0);
+		expect(readFileSync(target, 'utf8')).toBe(withImport);
+	});
+});
+
 describe('codkit save: entry-module attribution', () => {
 	it('carries the pending layer into the new patch header', () => {
 		const fixture = makeCliFixture('save-entry-module');

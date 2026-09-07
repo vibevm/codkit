@@ -112,22 +112,26 @@ describe('marker rules', () => {
 		expect(result.errors[0]?.line).toBe(1);
 	});
 
-	it('reports MARKER-DUP-ID for a second block with the same id', () => {
+	it('lets one id open several blocks in a file: an import line and a call site are one graft', () => {
 		const result = parse(
 			[
 				'// codkit:begin CK-workbench-001',
+				"import { hook } from './patchset/hook.js';",
 				'// codkit:end CK-workbench-001',
 				'const between = 1;',
 				'// codkit:begin CK-workbench-001',
+				'hook(between);',
 				'// codkit:end CK-workbench-001',
 				''
 			].join('\n'),
 			'.ts'
 		);
 
-		expect(codes(result)).toEqual(['MARKER-DUP-ID']);
-		expect(result.errors[0]?.line).toBe(4);
-		expect(result.blocks.length).toBe(2);
+		expect(codes(result)).toEqual([]);
+		expect(result.blocks.map((block) => [block.id, block.beginLine, block.endLine])).toEqual([
+			['CK-workbench-001', 1, 3],
+			['CK-workbench-001', 5, 7]
+		]);
 	});
 
 	it('reports MARKER-BAD-ID for a well-formed marker with an unknown subsystem', () => {

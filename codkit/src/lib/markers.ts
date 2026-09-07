@@ -114,7 +114,6 @@ export function parseMarkers(bytes: Uint8Array, ext: string, conventions: Marker
 	const idPattern = new RegExp(conventions.idPattern);
 	const lines = text.split('\n');
 	const open: { id: string; line: number }[] = [];
-	const started = new Set<string>();
 	const blocks: MarkerBlock[] = [];
 	const errors: CkError[] = [];
 
@@ -181,18 +180,8 @@ export function parseMarkers(bytes: Uint8Array, ext: string, conventions: Marker
 					)
 				);
 			}
-			if (started.has(id)) {
-				errors.push(
-					ckError(
-						'MARKER-DUP-ID',
-						`marker id "${id}" opens a second block in this file`,
-						'one id covers at most one block per file; give the second intervention its own id',
-						file,
-						lineNumber
-					)
-				);
-			}
-			started.add(id);
+			// The same id may open several blocks in one file: a graft is usually
+			// an import line and a call site (PROP-004 ##MR-SEVERAL-BLOCKS-ONE-ID).
 			open.push({ id, line: lineNumber });
 			continue;
 		}
