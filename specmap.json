@@ -3650,7 +3650,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e49033a32ab94add60d88d63ed4a9d707ce04b0746e57595e827bbda64301c8b",
+      "content_hash": "sha256:1c58e4c5a8e2ea74d40a00ec2bc746fd392b8fd2770d3e9e9d7b2cced4b911ec",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Слои дельты — форматы, материализация, запреты",
@@ -4163,7 +4163,7 @@
     },
     {
       "anchor": "own-extension",
-      "content_hash": "sha256:358e63be5d2f53260f75454a195b23b5df832d7795263aa109540d69baf4aa91",
+      "content_hash": "sha256:b6059288222dd5598458774d9ed8a92b959d68db5cd5e4c25af1aa60bcb9eaa1",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "13. own-extension — встроенное расширение как юнит own",
@@ -4172,10 +4172,10 @@
     },
     {
       "anchor": "OWN-EXTENSION-UNIT",
-      "content_hash": "sha256:76342775dce34b6aa585fd1225a113c9b06ccc0bfd0c40b0348ed064d66eb6a5",
+      "content_hash": "sha256:45c731a30f028cb29e442366c1da4caefb22e7d4313afdef3ce63f649e1ed864",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "Вид юнита `own-extension`: каталог `delta/own-extensions/<name>/**` зеркалируется в `<tree>/extensions/<name>/**` (rsync-семантика `OWN-SOURCE-OF-TRUTH`: `load` — в дерево, `save` — обратно, `ci` — в own-коммит сгенерированной ветки). Декларация — секция `extensions: [{ id, name, owner, reason, pin, contractTests }]` манифеста `patchset.delta.json` (схема `codkitOwnManifest: 2`, отсутствующая секция допустима); `name` по форме `^[a-z0-9][a-z0-9-]*$` и уникально; каталог обязан содержать `package.json` расширения; нарушение — `CK-E-OWN-EXTENSION-MANIFEST`; расширение с именем существующего апстримного каталога `extensions/<name>` на пине — тот же отказ с текстом `name collides with an upstream extension`. Дрейф дерева и дельты — `CK-E-OWN-EXTENSION-DRIFT` в `verify`. Инвентарь — запись layer `own`, category `own-extension`. @status:spec/done",
+      "heading": "Вид юнита `own-extension`: каталог `delta/own-extensions/<name>/**` зеркалируется в `<tree>/extensions/<name>/**` (rsync-семантика `OWN-SOURCE-OF-TRUTH`: `load` — в дерево, `save` — обратно, `ci` — в own-коммит сгенерированной ветки). Декларация — секция `extensions: [{ id, name, owner, reason, pin, contractTests }]` манифеста `patchset.delta.json` (схема `codkitOwnManifest: 2`, отсутствующая секция допустима); `name` по форме `^[a-z0-9][a-z0-9-]*$` и уникально; каталог обязан содержать `package.json` расширения; каталог под `delta/own-extensions/`, который не объявлен ни одной записью, — тоже нарушение (иначе он молча не материализуется, аналог `OWN-UNCOVERED`); нарушение — `CK-E-OWN-EXTENSION-MANIFEST`; расширение с именем существующего апстримного каталога `extensions/<name>` на пине — тот же отказ с текстом `name collides with an upstream extension`. Дрейф дерева и дельты — `CK-E-OWN-EXTENSION-DRIFT` в `verify`. Инвентарь — запись layer `own`, category `own-extension`. Пустая секция сериализуется как отсутствующая (канонические байты манифеста не меняются). Управляемый блок `info/exclude` (`OWN-EXCLUDED-LOCALLY`) расширений не покрывает: `git status` показывает `extensions/<name>/` как неотслеживаемый, а стражи грязи фильтруют его по префиксу; распространение блока на расширения — отдельная норма (отложено). @status:spec/done",
       "line": 122,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-EXTENSION-UNIT"
     },
