@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:578eac4d507e971cf6bac5ae11398ea08e9ac26a20b424979e1360f3a63d1c09",
+      "content_hash": "sha256:72bf218451d15c71cdedc7b87d11335a99b790cd19cb870ed171c9c6f7af1e44",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1937,6 +1937,24 @@
       "heading": "**Given**: продукт с установленным `standards/v0.2.0` прежних байтов, инструмент с тем же номером издания и расширенным содержимым. **When**: `codkit standards check`. **Then**: `CK-E-STANDARDS-DRIFT` с перечнем и подсказкой про `--upgrade`. **When**: `codkit standards load`. **Then**: отказ тем же кодом, ничего не записано. **When**: `codkit standards load --upgrade`. **Then**: план `replace`/`remove`, каталог равен поставляемому, блок манифеста `unchanged` (та же версия), `next: vibe install --offline --force`; после него `STATIC.md` содержит `LAW-OWN-IS-DOCUMENTED`, а материализованный поток под `vibevm/vibedeps/…` — `MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`. @status:spec/plan",
       "line": 188,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S60"
+    },
+    {
+      "anchor": "s61",
+      "content_hash": "sha256:dab0c0cd06e094fe392e54cadc20cc1cc1a64bc59f154e4ffbd1760a58181584",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S61 — gen feature пишет шапку формы продукта и кладёт тест в каталог фичи",
+      "line": 190,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s61"
+    },
+    {
+      "anchor": "S61",
+      "content_hash": "sha256:fb94f5b0b131c088c3b4a0ac74baba3534448e996a722e58f94e5024f14394b6",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: продукт с `delta/own/`. **When**: `codkit gen feature acme.sample --title Sample --holder Acme --license MIT --header-style block`. **Then**: выход 0; три файла под `delta/own/contrib/sample/` — `common/sample.ts`, `browser/sample.contribution.ts`, `test/browser/sample.test.ts`; каждый начинается блочной шапкой формы апстрима с `Copyright (c) <год> Acme. All rights reserved.` и `SPDX-License-Identifier: MIT` внутри блока; `--json` `data.headerStyle = \"block\"`, `data.files` — эти три пути; напоминание называет один юнит `delta/own/contrib/sample`. **When**: в другом продукте `codkit gen feature acme.sample --title Sample --header-file delta/own/HEADER.txt`, где файл — блочный комментарий продукта с переводом строки в конце. **Then**: шапка каждого файла байт-в-байт равна файлу, `data.headerStyle = \"file\"`. **When**: `--header-file … --holder Acme`. **Then**: выход 2, ничего не записано. **When**: `--header-style block` без `--holder`/`--license`. **Then**: выход 2, ничего не записано. @status:spec/plan",
+      "line": 191,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S61"
     },
     {
       "anchor": "root",
@@ -4595,7 +4613,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:7ae640852303dcfbdaaacfbb59d585a69567b9fc40b2b1442825d66bedd23012",
+      "content_hash": "sha256:5676e88f5ce83f1b0cbdf335e435e7890effcb0f7114539f9a75792b871cb21b",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -5594,7 +5612,7 @@
     },
     {
       "anchor": "cmd-gen",
-      "content_hash": "sha256:2ac0e6a1f07ed1541656600564798b52f3f616838d9dfa3a183fe1aeca8e6e97",
+      "content_hash": "sha256:c1fa7e8f9cd43ce825b7b978e725dad6229fb9610e72e25c2890103594b66bc2",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "26. codkit gen feature <id> | brand",
@@ -5603,19 +5621,19 @@
     },
     {
       "anchor": "GEN-NAMESPACE",
-      "content_hash": "sha256:e0cdaf293f4b6810b8d835a41efb3541ede608e532266dc914cd783756f32ed3",
+      "content_hash": "sha256:cb1a0fa66f7372f35f816d792edaeb6f43a8af8d84a1e315cbd63d3e18194658",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`gen` — пространство имён: голое `codkit gen` и неизвестная подкоманда — список подкоманд и выход 2; подкоманды `feature` и `brand`; нужен только patchesDir (`configMode: 'none'`). Флаги: `--title <text>` (значение), `--setting`, `--cold` (булевы), `--holder`, `--license`, `--year` (значения, как у `license annotate`). @status:spec/done",
+      "heading": "`gen` — пространство имён: голое `codkit gen` и неизвестная подкоманда — список подкоманд и выход 2; подкоманды `feature` и `brand`; нужен только patchesDir (`configMode: 'none'`). Флаги: `--title <text>` (значение), `--setting`, `--cold` (булевы), `--holder`, `--license`, `--year` (значения, как у `license annotate`), `--header-style line|block`, `--header-file <path>` (значения; PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`). @status:spec/done",
       "line": 309,
       "uri": "spec://codkit/modules/codkit/PROP-007#GEN-NAMESPACE"
     },
     {
       "anchor": "CMD-GEN-FEATURE",
-      "content_hash": "sha256:6e8da42215cbfaca213bc9efe1810c1d76e8b9300a16d1183e95eb4eb5249c77",
+      "content_hash": "sha256:6aa49e1837dd4b40ec7f10002f8321464f1ea90d27c4d5d1365ef7d669ac4627",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit gen feature <id> --title <text> [--setting] [--cold] [--holder …] [--license …] [--year …]` — скелет фичи продукта (PROP-015 §5 `GEN-FEATURE`, `GEN-HEADER-IS-THE-PRODUCTS`, `GEN-REFUSES-EXISTING`): три файла под `delta/own/`, строка импорта для корня композиции и напоминание о юните. Коды: 0; 1 — `CK-E-GEN-EXISTS`; 2 — `CK-E-GEN-ID`, отсутствие `--title`, окружение. `--json`: `data: {id, files:[…], importLine, headerWritten:boolean}`. @status:spec/done",
+      "heading": "`codkit gen feature <id> --title <text> [--setting] [--cold] [--holder …] [--license …] [--year …] [--header-style line|block] [--header-file <path>]` — скелет фичи продукта (PROP-015 §5 `GEN-FEATURE`, `GEN-HEADER-IS-THE-PRODUCTS`, `GEN-TEST-LIVES-WITH-THE-FEATURE`, `GEN-REFUSES-EXISTING`): три файла под `delta/own/contrib/<name>/` (тест — в `test/browser/` фичи), строка импорта для корня композиции и напоминание о юните. Коды: 0; 1 — `CK-E-GEN-EXISTS`; 2 — `CK-E-GEN-ID`, отсутствие `--title`, несочетаемые флаги шапки, нечитаемый `--header-file`, окружение. `--json`: `data: {id, files:[…], importLine, headerWritten:boolean, headerStyle: \"line\"|\"block\"|\"file\"|null}`. @status:spec/done",
       "line": 310,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-GEN-FEATURE"
     },
@@ -8636,7 +8654,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:bfd464a6d4aa9e203da1924e77d50ad471ea6a33ffac97b21d4b1078693718fc",
+      "content_hash": "sha256:02d4d02400b59c938703f0670b960a39883855ce8afdd1f943b10726c4c52eef",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "codkit PROP-015: Рантайм Codkit — библиотека фич и флагов, доставляемая в own-слой продукта",
@@ -9014,7 +9032,7 @@
     },
     {
       "anchor": "gen",
-      "content_hash": "sha256:1736d16577429edf49d791042d875ff642934f0dbb47cfda1cc45cceb5a7e1d5",
+      "content_hash": "sha256:2ef6d4fa8d4bdd89bbfb29022d3134f32b26ffc6bac61d6474e18f2b8faeda7a",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "5. Генератор скелетов `codkit gen feature|brand`",
@@ -9023,10 +9041,10 @@
     },
     {
       "anchor": "GEN-FEATURE",
-      "content_hash": "sha256:a92bf3160d03fde40ae1be4868f6c22ada011c693fd769cbefb03f4a8d616979",
+      "content_hash": "sha256:4a7ee4c561a48b19191b2dcb55effb381aa3ed0ccec49cd4aa8c06f4ed451500",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "`codkit gen feature <id> --title <text> [--setting] [--cold] [--holder <h>] [--license <spdx>] [--year <y>]`: id по форме `RT-DESCRIPTOR` (иначе `CK-E-GEN-ID`, выход 2); каталог фичи — последний сегмент id; пишет `delta/own/contrib/<name>/common/<name>.ts` (константы id и, при `--setting`, id настройки), `delta/own/contrib/<name>/browser/<name>.contribution.ts` (класс `extends Disposable` с DI-конструктором и вызов `registerFeature({...}, <Class>)`; при `--cold` — `hotToggle: false`; описание настройки — через `localize`), `delta/own/test/browser/<name>.test.ts` (скелет с `ensureNoDisposablesAreLeakedInTestSuite`); в конце печатает строку импорта для корня композиции продукта и напоминание объявить юнит в `patchset.delta.json`. @status:spec/done",
+      "heading": "`codkit gen feature <id> --title <text> [--setting] [--cold] [--holder <h>] [--license <spdx>] [--year <y>] [--header-style line|block] [--header-file <path>]`: id по форме `RT-DESCRIPTOR` (иначе `CK-E-GEN-ID`, выход 2); каталог фичи — последний сегмент id; пишет `delta/own/contrib/<name>/common/<name>.ts` (константы id и, при `--setting`, id настройки), `delta/own/contrib/<name>/browser/<name>.contribution.ts` (класс `extends Disposable` с DI-конструктором и вызов `registerFeature({...}, <Class>)`; при `--cold` — `hotToggle: false`; описание настройки — через `localize`), `delta/own/contrib/<name>/test/browser/<name>.test.ts` (скелет с `ensureNoDisposablesAreLeakedInTestSuite`; тест лежит в каталоге фичи — `GEN-TEST-LIVES-WITH-THE-FEATURE`); в конце печатает строку импорта для корня композиции продукта и напоминание объявить юнит в `patchset.delta.json`. @status:spec/done",
       "line": 80,
       "uri": "spec://codkit/modules/codkit/PROP-015#GEN-FEATURE"
     },
@@ -9041,12 +9059,21 @@
     },
     {
       "anchor": "GEN-HEADER-IS-THE-PRODUCTS",
-      "content_hash": "sha256:3e11d29a8fff1e5bd26b7244692fe9bed228000cb6573c0156ed95d037866862",
+      "content_hash": "sha256:2e1dd1dbf6d1cd33552e7621d53d705fb5b3b1c2d2e680dbb207b8df500cf60b",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "Сгенерированные файлы — код продукта: шапка пишется из `--holder`/`--license` (год — `--year` или текущий) в стиле `//`; без этих флагов файлы пишутся без шапки с предупреждением `no header written; pass --holder and --license`. Шапка Codkit в файлы продукта не пишется никогда. @status:spec/done",
+      "heading": "Сгенерированные файлы — код продукта: шапка пишется из `--holder`/`--license` (год — `--year` или текущий) в одном из двух стилей. `--header-style line` (по умолчанию) — четыре строки `//`: copyright первой, SPDX последней. `--header-style block` — блочный комментарий формы апстрима: строка `/*---…---`, ` *  Copyright (c) <year> <holder>. All rights reserved.`, ` *  Licensed under the <license> licence. The full licence text is the licence file of this repository.`, ` *  SPDX-License-Identifier: <license>`, строка ` *---…---*/` — чтобы собственный код продукта выглядел как код апстрима рядом с ним (`MI-SAME-SHAPE-AS-UPSTREAMS-PARALLEL-SYSTEM`). `--header-file <path>` (путь относительно patchesDir) пишет шапку дословно из файла продукта — для форм, которые полями не выражаются; файл обязан оканчиваться переводом строки; вместе с `--holder`/`--license`/`--year`/`--header-style` не сочетается — выход 2, ничего не записано. `--header-style` без `--holder`/`--license` — выход 2 (нечего оформлять). Без флагов шапки файлы пишутся без шапки с предупреждением `no header written; pass --holder and --license, or --header-file`. Шапка Codkit в файлы продукта не пишется никогда. @status:spec/done",
       "line": 82,
       "uri": "spec://codkit/modules/codkit/PROP-015#GEN-HEADER-IS-THE-PRODUCTS"
+    },
+    {
+      "anchor": "GEN-TEST-LIVES-WITH-THE-FEATURE",
+      "content_hash": "sha256:27718e1e0833f5ca3a02e0201c11b3d2ed944657b9837dfdd37ddf1a1cbfb4b7",
+      "doc_path": "modules/codkit/PROP-015",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
+      "heading": "Тест скелета лежит внутри каталога фичи (`delta/own/contrib/<name>/test/browser/`), а не в общем `delta/own/test/`: юнит own-манифеста владеет своими тестами, и объявление одного юнита `delta/own/contrib/<name>` покрывает и код, и тест; раннеры форка находят его по глобу `vs/<ownDirName>/**/test/browser/**` (PROP-010 `TESTS-LAYER-SPLIT`). Напоминание в конце команды называет только этот юнит. @status:spec/done",
+      "line": 83,
+      "uri": "spec://codkit/modules/codkit/PROP-015#GEN-TEST-LIVES-WITH-THE-FEATURE"
     },
     {
       "anchor": "GEN-REFUSES-EXISTING",
@@ -9054,7 +9081,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "Если хотя бы один целевой файл существует — `CK-E-GEN-EXISTS` с путём, выход 1, ничего не записано. @status:spec/done",
-      "line": 83,
+      "line": 84,
       "uri": "spec://codkit/modules/codkit/PROP-015#GEN-REFUSES-EXISTING"
     },
     {
@@ -9063,7 +9090,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "6. Совместимость и версии",
-      "line": 86,
+      "line": 87,
       "uri": "spec://codkit/modules/codkit/PROP-015#compat"
     },
     {
@@ -9072,7 +9099,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "`CODKIT_RUNTIME_VERIFIED_UPSTREAM` перечисляет теги апстрима, на которых текущая версия библиотеки скомпилирована стендом и прошла свои тесты; `runtime load` печатает предупреждение, если пин продукта (`codkit.json` `pin.tag`) не входит в список. @status:spec/done",
-      "line": 88,
+      "line": 89,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-COMPAT-DECLARATION"
     },
     {
@@ -9081,7 +9108,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "API библиотеки к фичам продукта (`registerFeature`, `IFeatureFlagsService`, `IFeatureDescriptor`, `createBrandTransform`) версионируется семантически; ломающее изменение — новая мажорная версия, и `runtime load --upgrade` через мажор печатает предупреждение с перечнем изменений из `README.md` библиотеки. @status:spec/done",
-      "line": 89,
+      "line": 90,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-SEMVER"
     },
     {
@@ -9090,7 +9117,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "Цикл апгрейда (`codkit cycle`) на новом пине первым делом компилирует установленную библиотеку и гоняет её тесты в дереве форка; красный результат называет файл адаптера и допущение. Норма записана, реализация — следующая кампания. @status:spec/plan",
-      "line": 90,
+      "line": 91,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-CYCLE-GATE"
     },
     {
@@ -9099,7 +9126,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "7. Компоненты",
-      "line": 93,
+      "line": 94,
       "uri": "spec://codkit/modules/codkit/PROP-015#components"
     },
     {
@@ -9108,7 +9135,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "8. Решения",
-      "line": 104,
+      "line": 105,
       "uri": "spec://codkit/modules/codkit/PROP-015#decisions"
     },
     {
@@ -9117,7 +9144,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** библиотека доставляется сопровождаемой копией под управлением Codkit, а не генерируется один раз.\n\n**Почему:** три продукта с тремя разошедшимися редакциями сервиса флагов — то, чего владелец хотел избежать; механизм доставляемых own-файлов уже есть (`LICENSE-CODKIT.md`).\n\n**Рассмотрено и отвергнуто:**\n- «сгенерировать и забыть» (`flags gen` буквально) — исправления не доходят до продуктов;\n- vibe-пакет — не доставляет TypeScript в `src/`;\n- писать сервис в каждом продукте — дублирование и расхождение.\n\n**Когда пересматривать:** если продукты начнут править доставленные файлы чаще раза в цикл — тогда часть библиотеки переезжает в генерируемые скелеты. @status:spec/done",
-      "line": 105,
+      "line": 106,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-MANAGED-COPY"
     },
     {
@@ -9126,7 +9153,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** каталог `codkit/`, идентификаторы библиотеки в пространстве имён `codkit`.\n\n**Почему:** `kit` — общее слово, возможна коллизия с каталогом продукта; `codkit` называет владельца и совпадает с префиксом области лицензии.\n\n**Рассмотрено и отвергнуто:** `kit/`, `lib/`, `vendor/`.\n\n**Когда пересматривать:** не планируется. @status:spec/done",
-      "line": 115,
+      "line": 116,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-NAME-CODKIT"
     },
     {
@@ -9135,7 +9162,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** ядро на собственных портах, адаптеры к апстриму в одном каталоге, узкая поверхность импортов, навязанная линтером; никакого определения формы API апстрима в рантайме.\n\n**Почему:** за 814 коммитов с пина реестры DI, контрибуций и конфигурации не менялись, но история знает замену API (`registerWorkbenchContribution` → `registerWorkbenchContribution2`); адаптер делает такую замену правкой одного файла; поломка должна быть громкой на компиляции, не тихой в рантайме.\n\n**Рассмотрено и отвергнуто:** `if ('x' in service)` и утиная типизация — тихая деградация; `any` — запрещён правилами апстрима; копии апстримных классов «для устойчивости» — второй апстрим.\n\n**Когда пересматривать:** при переписывании апстримом DI или модели конфигурации — новый набор адаптеров при неизменном API к фичам. @status:spec/done",
-      "line": 122,
+      "line": 123,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-PORTS-AND-ADAPTERS"
     },
     {
@@ -9144,7 +9171,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** фича — экземпляр `Disposable`, который хост создаёт через DI при включении флага и уничтожает при выключении; одна контрибуция-хост на все фичи, фазы — через `ILifecycleService.when`.\n\n**Почему:** это жизненный цикл самого апстрима; базовый класс с `activate()` из `autorun` в своём конструкторе вызывал бы метод подкласса до присвоения его параметров-свойств (они присваиваются после `super()`), то есть падал бы на первой фиче с инъекцией.\n\n**Рассмотрено и отвергнуто:** `abstract class FeatureContribution` с `activate(store)` — ловушка порядка конструирования; `queueMicrotask` — скрывает порядок; `registerWorkbenchContribution2` на каждую фичу с динамическим подклассом — декораторы параметров недопустимы на class expression, а реестр принимает только конструктор.\n\n**Когда пересматривать:** если апстрим даст реестру контрибуций фабрику с аргументами. @status:spec/done",
-      "line": 129,
+      "line": 130,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-FEATURE-IS-AN-INSTANCE"
     },
     {
@@ -9153,7 +9180,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** состояние флага — observable; событие остаётся адаптером.\n\n**Почему:** норма апстрима (инструкция `observables.instructions.md`, `autorun`/`derived` в сотнях файлов); `transaction()` даёт снимок без промежуточных состояний; апстрим не рекомендует события для управления потоком.\n\n**Рассмотрено и отвергнуто:** только `Emitter`/`Event` — нет транзакций и деривации.\n\n**Когда пересматривать:** при смене реактивного примитива апстрима. @status:spec/done",
-      "line": 136,
+      "line": 137,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-OBSERVABLES"
     },
     {
@@ -9162,7 +9189,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** удалённый источник даёт два слоя — принудительный (kill switch) над пользователем и дефолтный под ним; сборка старше всех.\n\n**Почему:** у сервера два разных намерения — выключить сломанную фичу у всех и задать дефолт раскатки; у апстрима есть слой «дефолт настройки приходит с сервера» (`experiment` в схеме настройки → `IWorkbenchAssignmentService.getTreatment` → `registerDefaultConfigurations(source: 'experiments')`), что подтверждает форму дефолтного слоя; принудительного у апстрима нет, кроме политики.\n\n**Рассмотрено и отвергнуто:** один удалённый слой без режима — либо ломает пользовательский выбор, либо не умеет гасить фичу.\n\n**Когда пересматривать:** при появлении реального сервера — решить, идёт ли дефолтный слой через собственную реализацию апстримного сервиса назначений. @status:spec/done",
-      "line": 143,
+      "line": 144,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-REMOTE-LAYERS"
     },
     {
@@ -9171,7 +9198,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** имитатор удалённого источника хранит снимок в `IStorageService` и редактируется инспектором.\n\n**Почему:** работает в desktop и web, не требует watcher'а и файлового пути, проходит тот же порт, что будущий сервер.\n\n**Рассмотрено и отвергнуто:** файл под user data с коррелированным watcher'ом — нет в web, лишний код.\n\n**Когда пересматривать:** если понадобится подменять снимок извне процесса (тогда — канал shared process, как у сервера). @status:spec/done",
-      "line": 150,
+      "line": 151,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-SIMULATOR-IN-STORAGE"
     },
     {
@@ -9180,7 +9207,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** форсирование сборкой проверяется при вычислении модуля статическим импортом продукта; настройка либо регистрируется, либо нет.\n\n**Почему:** регистрация схемы настроек — действие момента вычисления модуля (идиома апстрима); DI в этот момент недоступен; статический `product` в этот момент читают и `src/main.ts`, и `server.main.ts` апстрима.\n\n**Рассмотрено и отвергнуто:** `included: false` — пустая запись в реестре; `configure({ prefix })` перед импортами — импорты поднимаются, порядок не гарантирован.\n\n**Когда пересматривать:** если апстрим перестанет экспортировать статический `product`. @status:spec/done",
-      "line": 157,
+      "line": 158,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-STATIC-PRODUCT-AT-REGISTRATION"
     },
     {
@@ -9189,7 +9216,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** обновление версии — `--upgrade`, заменяющий каталог целиком; без флага любой дрейф — отказ.\n\n**Почему:** Codkit не хранит прошлые версии, поэтому отличить «правка продукта» от «старая версия» нельзя; явный флаг делает потерю правок осознанной.\n\n**Рассмотрено и отвергнуто:** трёхстороннее слияние — нет базы; автоматическая замена — теряет правки молча.\n\n**Когда пересматривать:** если Codkit начнёт хранить манифест хешей прошлых версий. @status:spec/done",
-      "line": 164,
+      "line": 165,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-UPGRADE-FLAG"
     },
     {
@@ -9198,7 +9225,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** тесты библиотеки компилируются стендом, выполняются в дереве форка.\n\n**Почему:** в репозитории Codkit нет исходников апстрима; заглушки были бы вторым, ложным апстримом.\n\n**Рассмотрено и отвергнуто:** vitest с моками `vs/*`; сборка мини-апстрима в фикстуре.\n\n**Когда пересматривать:** если у Codkit появится полигон с деревом форка в CI. @status:spec/done",
-      "line": 171,
+      "line": 172,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-TESTS-IN-FORK"
     },
     {
@@ -9207,7 +9234,7 @@
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "**Решение:** в библиотеке нет ресурсов и данных вне TypeScript и Markdown.\n\n**Почему:** гигиена форка: неизвестные расширения попадают под проверки отступов и заголовка; ресурсы требуют записей в двух allow-list сборки; спутники `.license` — ещё одно неизвестное расширение; данные в TS — идиома апстрима (`codiconsLibrary.ts`).\n\n**Рассмотрено и отвергнуто:** `compat.json`/`RUNTIME.toml` для версии — не нужны, версия читается из литерала.\n\n**Когда пересматривать:** если библиотеке потребуется бинарный ресурс. @status:spec/done",
-      "line": 178,
+      "line": 179,
       "uri": "spec://codkit/modules/codkit/PROP-015#DECISION-RT-ONLY-TS-AND-MD"
     }
   ],
