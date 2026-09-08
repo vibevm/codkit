@@ -1,5 +1,5 @@
 // PROP-013 ##E2E-STANDARDS-SURFACE: `codkit standards` through the real
-// launcher. FEAT-002 ##S30-##S37 and ##S41.
+// launcher. FEAT-002 ##S30-##S37, ##S41 and ##S60.
 //
 // The fixture is a patch-set root with a vibevm manifest and no fork tree at
 // all: these commands must not need one (##STD-LOAD-ROOTS).
@@ -21,6 +21,9 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '.
 const shippedPackage = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.2.0');
 const shippedNotice = join(repoRoot, 'codkit', 'config', 'LICENSE-CODKIT.md');
 const INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0';
+
+/** ##STD-NOTICE-COMPONENTS-BLOCK: the whole shipped set, by name. */
+const COMPONENTS = [{ name: 'standards', version: '0.2.0', path: `${INSTALLED}/` }];
 
 /** A patch set with a vibevm manifest and nothing else. */
 function makePatchSet(label: string, manifest = '[project]\nname = "fixture"\nversion = "0.0.1"\n'): string {
@@ -72,9 +75,7 @@ describe('S30 - standards load into a fresh product', () => {
 		expect(loaded.status).toBe(0);
 		expect(sameTree(shippedPackage, join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
 		// ##STD-NOTICE-TARGETS: both copies are the template rendered with the components block.
-		const expectedNotice = renderNotice(readFileSync(shippedNotice, 'utf8'), [
-			{ name: 'standards', version: '0.2.0', path: `${INSTALLED}/` }
-		]);
+		const expectedNotice = renderNotice(readFileSync(shippedNotice, 'utf8'), COMPONENTS);
 		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
 		expect(readFileSync(join(patchesDir, 'delta', 'own', 'codkit', 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
 		expect(expectedNotice).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
@@ -418,5 +419,71 @@ describe('S41 - the report names the licences it loaded', () => {
 		expect(sha256(join(patchesDir, ...INSTALLED.split('/'), 'assets', 'codkit.png.license'))).toBe(
 			sha256(join(shippedPackage, 'assets', 'codkit.png.license'))
 		);
+	});
+});
+
+describe('S60 - the same edition number, extended in place', () => {
+	it('is drift, refuses without the flag, and is replaced by standards load --upgrade', () => {
+		const patchesDir = makePatchSet('s60');
+		expect(run(patchesDir, ['standards', 'load']).status).toBe(0);
+
+		// A tool whose edition 0.2.0 carries new bytes (##DECISION-STD-MUTABLE-EDITION).
+		const source = makeTempRoot('s60-source');
+		cpSync(shippedPackage, join(source, 'v0.2.0'), { recursive: true });
+		const readme = join(source, 'v0.2.0', 'README.md');
+		writeFileSync(readme, `${readFileSync(readme, 'utf8')}\nOne more norm.\n`, 'utf8');
+		const added = join(source, 'v0.2.0', 'vibevm', 'vibespecs', 'flows', 'standards', 'extra.xml');
+		writeFileSync(added, readFileSync(join(source, 'v0.2.0', 'vibevm', 'vibespecs', 'flows', 'standards', 'minimal-intervention.xml')));
+		const seam = { CODKIT_E2E_TEST_BUILD: '1', CODKIT_TEST_STANDARDS_SOURCE: source };
+		const withSeam = (args: readonly string[]) => runCli(patchesDir, ['--patches-dir', patchesDir, ...args], seam);
+
+		const checked = withSeam(['standards', 'check']);
+		expect(checked.status).toBe(1);
+		expect(checked.stderr).toContain('standards: modified README.md');
+		expect(checked.stderr).toContain('standards: missing vibevm/vibespecs/flows/standards/extra.xml');
+		expect(checked.stderr).toContain('run codkit standards load --upgrade to take the shipped copy');
+
+		const refused = withSeam(['standards', 'load']);
+		expect(refused.status).toBe(1);
+		expect(refused.stderr).toContain('CK-E-STANDARDS-DRIFT');
+		expect(sha256(join(patchesDir, ...INSTALLED.split('/'), 'README.md'))).toBe(sha256(join(shippedPackage, 'README.md')));
+
+		const planned = withSeam(['standards', 'load', '--upgrade', '--dry-run']);
+		expect(planned.status, planned.stderr).toBe(0);
+		expect(planned.stdout).toContain('replace README.md');
+		expect(planned.stdout).toContain('replace vibevm/vibespecs/flows/standards/extra.xml');
+		expect(sha256(join(patchesDir, ...INSTALLED.split('/'), 'README.md'))).toBe(sha256(join(shippedPackage, 'README.md')));
+
+		const upgraded = withSeam(['--json', 'standards', 'load', '--upgrade']);
+		expect(upgraded.status, upgraded.stderr).toBe(0);
+		expect(sameTree(join(source, 'v0.2.0'), join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
+		const data = (JSON.parse(upgraded.stdout) as Envelope).data as {
+			packages: readonly { name: string; state: string }[];
+			manifest: { action: string };
+			nextSteps: readonly string[];
+		};
+		expect(data.packages.find((entry) => entry.name === 'standards')?.state).toBe('upgraded');
+		expect(data.manifest.action).toBe('unchanged');
+		expect(data.nextSteps).toEqual(['vibe install --offline --force']);
+		expect(withSeam(['standards', 'check']).status).toBe(0);
+	});
+
+	it('drops a superseded version directory only when the flag says so', () => {
+		const patchesDir = makePatchSet('s60-old');
+		const old = join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.1.0');
+		mkdirSync(old, { recursive: true });
+		writeFileSync(join(old, 'vibe.toml'), '[package]\nname = "standards"\nversion = "0.1.0"\n', 'utf8');
+
+		expect(run(patchesDir, ['standards', 'load']).status).toBe(0);
+		expect(existsSync(old)).toBe(true);
+
+		const upgraded = json(patchesDir, ['standards', 'load', '--upgrade']);
+		expect(upgraded.status).toBe(0);
+		expect(existsSync(old)).toBe(false);
+		expect(
+			(upgraded.envelope.data as { packages: readonly { name: string; removedVersions: readonly string[] }[] }).packages.find(
+				(entry) => entry.name === 'standards'
+			)?.removedVersions
+		).toEqual(['v0.1.0']);
 	});
 });

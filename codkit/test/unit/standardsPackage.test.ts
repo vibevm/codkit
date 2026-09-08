@@ -1,5 +1,5 @@
-// PROP-013 ##UT-STANDARDS-PACKAGE: locating the shipped package, comparing the
-// installed copy with it, and the scratch-then-rename write.
+// PROP-013 ##UT-STANDARDS-PACKAGE: locating the packages codkit ships,
+// comparing an installed copy with one, and the scratch-then-rename write.
 
 import { afterAll, describe, expect, it } from 'vitest';
 import { cpSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -7,9 +7,11 @@ import { join } from 'node:path';
 import { isCkError } from '../../src/lib/messages.ts';
 import {
 	SCRATCH_PREFIX,
+	SHIPPED_PACKAGES_PARENT,
 	compareTrees,
 	fileIsIdentical,
 	listScratchDirs,
+	shippedPackages,
 	shippedStandardsPackage,
 	writeTreeViaScratch
 } from '../../src/lib/standardsPackage.ts';
@@ -36,6 +38,18 @@ function makeSource(label: string, version = '0.1.0'): { readonly parent: string
 	return { parent, dir };
 }
 
+/** A stand-in tool root carrying a set of packages under the group directory. */
+function makeToolRoot(label: string, packages: readonly { name: string; version: string; skills?: boolean }[]): string {
+	const root = makeTempRoot(`tool-${label}`);
+	for (const entry of packages) {
+		const dir = join(root, ...SHIPPED_PACKAGES_PARENT.split('/'), entry.name, `v${entry.version}`);
+		mkdirSync(dir, { recursive: true });
+		const skills = entry.skills === true ? '\n[[skill]]\nname = "ck-orient"\npath = "vibevm/vibespecs/skills/ck-orient"\n' : '';
+		writeFileSync(join(dir, 'vibe.toml'), `[package]\nname = "${entry.name}"\nversion = "${entry.version}"\n${skills}`, 'utf8');
+	}
+	return root;
+}
+
 describe('shippedStandardsPackage', () => {
 	it('reads the version from the manifest and checks it against the directory', () => {
 		const source = makeSource('good');
@@ -56,6 +70,46 @@ describe('shippedStandardsPackage', () => {
 		const mismatched = makeSource('mismatch');
 		writeFileSync(join(mismatched.dir, 'vibe.toml'), '[package]\nversion = "9.9.9"\n', 'utf8');
 		expect(codeOf(() => shippedStandardsPackage('unused', mismatched.parent))).toBe('INTERNAL');
+	});
+});
+
+describe('shippedPackages', () => {
+	it('lists the whole set with standards first and the rest by name', () => {
+		const root = makeToolRoot('set', [
+			{ name: 'standards', version: '0.2.0' },
+			{ name: 'agent-skills', version: '0.1.0', skills: true },
+			{ name: 'zeta', version: '1.0.0' }
+		]);
+
+		const found = shippedPackages(root);
+
+		expect(found.map((entry) => entry.name)).toEqual(['standards', 'agent-skills', 'zeta']);
+		expect(found.map((entry) => entry.version)).toEqual(['0.2.0', '0.1.0', '1.0.0']);
+		expect(found.map((entry) => entry.kind)).toEqual(['standards', 'agent-skills', 'other']);
+		// ##STD-SKILLS-DECLARATION: only a manifest with `[[skill]]` needs projecting.
+		expect(found.map((entry) => entry.declaresSkills)).toEqual([false, true, false]);
+	});
+
+	it('refuses a damaged installation rather than guessing', () => {
+		expect(codeOf(() => shippedPackages(makeTempRoot('set-none')))).toBe('INTERNAL');
+
+		const two = makeToolRoot('set-two', [{ name: 'standards', version: '0.2.0' }]);
+		mkdirSync(join(two, ...SHIPPED_PACKAGES_PARENT.split('/'), 'standards', 'v0.3.0'));
+		expect(codeOf(() => shippedPackages(two))).toBe('INTERNAL');
+	});
+
+	it('relocates the standards package alone through the test seam', () => {
+		const root = makeToolRoot('set-seam', [
+			{ name: 'standards', version: '0.2.0' },
+			{ name: 'agent-skills', version: '0.1.0', skills: true }
+		]);
+		const elsewhere = makeSource('set-seam-source');
+
+		const found = shippedPackages(root, elsewhere.parent);
+
+		expect(found[0]?.name).toBe('standards');
+		expect(found[0]?.directory).toBe(elsewhere.dir);
+		expect(found[1]?.directory).toBe(join(root, ...SHIPPED_PACKAGES_PARENT.split('/'), 'agent-skills', 'v0.1.0'));
 	});
 });
 

@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { applyBlock, refuseCarriageReturn, scanBlock } from '../../src/lib/managedBlock.ts';
 import type { BlockMarkers } from '../../src/lib/managedBlock.ts';
 import { isCkError } from '../../src/lib/messages.ts';
-import { MANIFEST_MARKERS, canonicalManifestBlock, requireProjectTable } from '../../src/lib/standardsManifest.ts';
+import { canonicalManifestBlock, manifestMarkers, requireProjectTable } from '../../src/lib/standardsManifest.ts';
 import { CANONICAL_SCRAPE_BLOCK, SCRAPE_MARKERS } from '../../src/lib/standardsScrape.ts';
 
 const MARKERS: BlockMarkers = { begin: '# begin', end: '# end', needles: ['NEEDLE'] };
@@ -101,8 +101,11 @@ describe('applyBlock', () => {
 });
 
 describe('the manifest instance', () => {
-	it('renders the canonical block for a version', () => {
-		const block = canonicalManifestBlock('0.1.0');
+	it('renders one table per shipped package inside one block', () => {
+		const block = canonicalManifestBlock([
+			{ name: 'standards', version: '0.1.0' },
+			{ name: 'agent-skills', version: '0.2.0' }
+		]);
 
 		expect(block.split('\n')).toEqual([
 			'# codkit:begin standards',
@@ -110,13 +113,20 @@ describe('the manifest instance', () => {
 			'[requires.packages."org.vibevm.codkit/standards"]',
 			'version = "=0.1.0"',
 			'link = "static"',
+			'[requires.packages."org.vibevm.codkit/agent-skills"]',
+			'version = "=0.2.0"',
+			'link = "static"',
 			'# codkit:end standards'
 		]);
 	});
 
-	it('sees a dependency entry written outside the block', () => {
-		const text = `[project]\nname = "x"\n\n[requires.packages]\n"org.vibevm.codkit/standards" = "0.1.0"\n`;
-		expect(scanBlock(text, MANIFEST_MARKERS).outsideEntryLine).toBe(5);
+	it('sees a dependency entry written outside the block, for either package', () => {
+		const markers = manifestMarkers(['standards', 'agent-skills']);
+		const standards = `[project]\nname = "x"\n\n[requires.packages]\n"org.vibevm.codkit/standards" = "0.1.0"\n`;
+		expect(scanBlock(standards, markers).outsideEntryLine).toBe(5);
+
+		const skills = `[project]\nname = "x"\n\n[requires.packages."org.vibevm.codkit/agent-skills"]\nversion = "=0.1.0"\n`;
+		expect(scanBlock(skills, markers).outsideEntryLine).toBe(4);
 	});
 
 	it('requires a [project] table before it will write anything', () => {
