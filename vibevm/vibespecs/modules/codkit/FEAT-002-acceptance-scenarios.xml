@@ -184,7 +184,7 @@
   <s59 title="S59 — load --fresh --discard отбрасывает правки рабочего дерева по имени">
     <p><S59 fact="true" status="spec/plan">**Given**: отслеживаемый апстримный файл дерева изменён вне маркеров (артефакт сборки). **When**: `codkit load --fresh`. **Then**: `CK-E-DIRTY-TREE` с путём. **When**: `codkit load --fresh --discard`. **Then**: план содержит `discard &lt;path&gt;`, файл возвращён к пину плюс дельта, own-файлы не тронуты, выход 0. (Статус — после подтверждения решения D-S3-5 владельцем.)</S59></p>
   </s59>
-  <s60 title="S60 — издание 0.3.0 приезжает рядом с 0.2.0">
-    <p><S60 fact="true" status="spec/plan">**Given**: продукт с установленным `standards/v0.2.0`. **When**: `codkit standards load` инструментом с 0.3.0. **Then**: появляется `v0.3.0`, блок манифеста переведён на `=0.3.0`, `otherVersions` называет `v0.2.0`, блок компонентов перечисляет обе; после `vibe install --offline` `STATIC.md` содержит якоря §12 (`MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`).</S60></p>
+  <s60 title="S60 — расширенное на месте издание приходит по --upgrade">
+    <p><S60 fact="true" status="spec/plan">**Given**: продукт с установленным `standards/v0.2.0` прежних байтов, инструмент с тем же номером издания и расширенным содержимым. **When**: `codkit standards check`. **Then**: `CK-E-STANDARDS-DRIFT` с перечнем и подсказкой про `--upgrade`. **When**: `codkit standards load`. **Then**: отказ тем же кодом, ничего не записано. **When**: `codkit standards load --upgrade`. **Then**: план `replace`/`remove`, каталог равен поставляемому, блок манифеста `unchanged` (та же версия), `next: vibe install --offline --force`; после него `STATIC.md` содержит `MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`.</S60></p>
   </s60>
 </spec>

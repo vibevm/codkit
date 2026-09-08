@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:0a7da7af1e7fa7fd014d51c471306de21aed5d26636ea31c4f8e40344f281b12",
+      "content_hash": "sha256:ee64de5a0c5ef7e79bb88faf8333e2e28393821218ad3f950924c3bcb4b6aebf",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1922,19 +1922,19 @@
     },
     {
       "anchor": "s60",
-      "content_hash": "sha256:d643f83ee958d864d1a5db4b43cef6b0f15c63d70cbd793202a2890b81818779",
+      "content_hash": "sha256:95debdc7c9cc2882c359b8093d86222b0f9d46f554ec67c487075f6fb9d8734f",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "S60 — издание 0.3.0 приезжает рядом с 0.2.0",
+      "heading": "S60 — расширенное на месте издание приходит по --upgrade",
       "line": 187,
       "uri": "spec://codkit/modules/codkit/FEAT-002#s60"
     },
     {
       "anchor": "S60",
-      "content_hash": "sha256:52a34f9312ea7064995783f2a7eca775999239b44cac4249a3cf8f1ad0e6e7a3",
+      "content_hash": "sha256:904b584fbb43c1d73c86aa9bde29977bac25c7f6d99f6f2c3876157b18e93f9d",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: продукт с установленным `standards/v0.2.0`. **When**: `codkit standards load` инструментом с 0.3.0. **Then**: появляется `v0.3.0`, блок манифеста переведён на `=0.3.0`, `otherVersions` называет `v0.2.0`, блок компонентов перечисляет обе; после `vibe install --offline` `STATIC.md` содержит якоря §12 (`MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`). @status:spec/plan",
+      "heading": "**Given**: продукт с установленным `standards/v0.2.0` прежних байтов, инструмент с тем же номером издания и расширенным содержимым. **When**: `codkit standards check`. **Then**: `CK-E-STANDARDS-DRIFT` с перечнем и подсказкой про `--upgrade`. **When**: `codkit standards load`. **Then**: отказ тем же кодом, ничего не записано. **When**: `codkit standards load --upgrade`. **Then**: план `replace`/`remove`, каталог равен поставляемому, блок манифеста `unchanged` (та же версия), `next: vibe install --offline --force`; после него `STATIC.md` содержит `MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`. @status:spec/plan",
       "line": 188,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S60"
     },
@@ -4595,7 +4595,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:04aaed105fcc84ebf2d7e34b95e8c424976a7bc790c4389f38bad4835b570424",
+      "content_hash": "sha256:c24140f3bdb909104144ac92416817ef129951dffb1fb17c4000b933f9f94e4b",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -5513,7 +5513,7 @@
     },
     {
       "anchor": "cmd-standards",
-      "content_hash": "sha256:7adc906092d366a9dd6df79c66a715bafecdfe01fb52c3e39c23cbe386a81938",
+      "content_hash": "sha256:dc6160fc3b0c78da8d35182a2fdff04b89269ca43f556b892865cef80e78f339",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "24. codkit standards load [--dry-run] | check | license",
@@ -5531,10 +5531,10 @@
     },
     {
       "anchor": "CMD-STANDARDS-LOAD",
-      "content_hash": "sha256:5e6351970b78aa499edbd07d6e193edbdf2dde7497acbac28b67fb1119bdb875",
+      "content_hash": "sha256:ac25d612274a586911469b91e0bdd6b38b73c4416027bf07f1b9417b36b8c834",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit standards load [--dry-run]` — доставить **все поставляемые пакеты** (`standards`, `agent-skills`; PROP-014 `STD-SHIPPED-PACKAGES`, `STD-LOAD-ALL-PACKAGES`) в репозиторий продукта (алгоритм — PROP-014 §5); в конце — строки `next: vibe install --offline` и, при пакете с навыками, `next: vibe skill install`. Порядок: пакет в toolRoot → лицензионная проверка пакета (провал — отчёт, выход 1, ни одной записи; флага обхода нет) → предусловия манифеста (`vibe.toml` с `[project]`, без CR) и классификация блока → классификация цели `vibevm/vibepacks/org.vibevm.codkit/standards/v<версия>/` (`absent` / `identical` / `drift`) → `--dry-run` печатает план и выходит с тем же кодом без записи → запись файлов во временный каталог и переименование → две копии `LICENSE-CODKIT.md` (корень продукта и `delta/own/`, PROP-014 §4a) → блок манифеста → блок строк в `vibevm/scrape/contract.toml`, если контракт существует (PROP-014 §4a `STD-SCRAPE-STATE-MACHINE`; отсутствие — информация `no-contract`) → сводка с `next: vibe install --offline`, примечание о лицензиях (`STD-LOAD-LICENCE-NOTE`) и рекомендации по файлу уведомления (`STD-LOAD-NOTICE-PRINT`). Побочные эффекты: каталог версии в `vibevm/vibepacks/` продукта (побайтовая копия), две копии `LICENSE-CODKIT.md`, блок в `vibe.toml`, блок в существующем `vibevm/scrape/contract.toml`; ничего больше — `vibe` не вызывается, `vibe.lock` и `vibedeps` не трогаются. Повтор — `up to date`, выход 0, ни одного изменённого байта. Коды: 0; 1 (`CK-E-LICENSE-*` пакета; `CK-E-STANDARDS-DRIFT` — установленная копия пакета или копия `LICENSE-CODKIT.md` отличается, перечень `modified`/`extra`/`missing`; `CK-E-CONFIG` — блок манифеста или блок контракта scrape malformed, запись о пакете или строка об уведомлении вне своего блока; `CK-E-CRLF`); 2 (нет `vibe.toml` или в нём нет `[project]` — `CK-E-CONFIG` с hint про `vibe init`; нет прав; испорченная установка — `CK-E-INTERNAL`). `--json`: `data` по PROP-014 `STD-LOAD-STEP-REPORT`. @status:spec/done",
+      "heading": "`codkit standards load [--dry-run] [--upgrade]` — доставить **все поставляемые пакеты** (`standards`, `agent-skills`; PROP-014 `STD-SHIPPED-PACKAGES`, `STD-LOAD-ALL-PACKAGES`) в репозиторий продукта (алгоритм — PROP-014 §5); в конце — строки `next: vibe install --offline` (после `--upgrade` — `vibe install --offline --force`) и, при пакете с навыками, `next: vibe skill install`. `--upgrade` — замена дрейфующей или устаревшей копии целиком (PROP-014 `STD-LOAD-UPGRADE`, `DECISION-STD-MUTABLE-EDITION`). Порядок: пакет в toolRoot → лицензионная проверка пакета (провал — отчёт, выход 1, ни одной записи; флага обхода нет) → предусловия манифеста (`vibe.toml` с `[project]`, без CR) и классификация блока → классификация цели `vibevm/vibepacks/org.vibevm.codkit/standards/v<версия>/` (`absent` / `identical` / `drift`) → `--dry-run` печатает план и выходит с тем же кодом без записи → запись файлов во временный каталог и переименование → две копии `LICENSE-CODKIT.md` (корень продукта и `delta/own/`, PROP-014 §4a) → блок манифеста → блок строк в `vibevm/scrape/contract.toml`, если контракт существует (PROP-014 §4a `STD-SCRAPE-STATE-MACHINE`; отсутствие — информация `no-contract`) → сводка с `next: vibe install --offline`, примечание о лицензиях (`STD-LOAD-LICENCE-NOTE`) и рекомендации по файлу уведомления (`STD-LOAD-NOTICE-PRINT`). Побочные эффекты: каталог версии в `vibevm/vibepacks/` продукта (побайтовая копия), две копии `LICENSE-CODKIT.md`, блок в `vibe.toml`, блок в существующем `vibevm/scrape/contract.toml`; ничего больше — `vibe` не вызывается, `vibe.lock` и `vibedeps` не трогаются. Повтор — `up to date`, выход 0, ни одного изменённого байта. Коды: 0; 1 (`CK-E-LICENSE-*` пакета; `CK-E-STANDARDS-DRIFT` — установленная копия пакета или копия `LICENSE-CODKIT.md` отличается, перечень `modified`/`extra`/`missing`; `CK-E-CONFIG` — блок манифеста или блок контракта scrape malformed, запись о пакете или строка об уведомлении вне своего блока; `CK-E-CRLF`); 2 (нет `vibe.toml` или в нём нет `[project]` — `CK-E-CONFIG` с hint про `vibe init`; нет прав; испорченная установка — `CK-E-INTERNAL`). `--json`: `data` по PROP-014 `STD-LOAD-STEP-REPORT`. @status:spec/done",
       "line": 299,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-STANDARDS-LOAD"
     },
@@ -7430,7 +7430,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:af7737f735227a058fb2ac79c38b014f80f3662fe6bb7753ea1d7c602fbbd472",
+      "content_hash": "sha256:b45fb10a2274d29388171a49eae8373e8f35b183d40f88cd8747bc5794878d26",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: Пакет стандартов и лицензионная разметка",
@@ -8249,7 +8249,7 @@
     },
     {
       "anchor": "load",
-      "content_hash": "sha256:87935b946c6afcc8d8a36fe73cc77890ebe6505364bf33fb7f76ba696fee0972",
+      "content_hash": "sha256:e4cde476322d00bae5c571a250cfa71b97eb6987b47404c30b883325e5e914fe",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "5. Алгоритм `standards load`",
@@ -8374,12 +8374,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-ALL-PACKAGES"
     },
     {
+      "anchor": "STD-LOAD-UPGRADE",
+      "content_hash": "sha256:104313196b1b61a0ef950d3fbb5fb35914f127a550e9d0a3ed73c0286c7d3ac7",
+      "doc_path": "modules/codkit/PROP-014",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
+      "heading": "`codkit standards load --upgrade` — при цели в состоянии `drift` (или при другой установленной версии того же пакета) заменяет каталог пакета целиком по явному флагу: план перечисляет `replace`/`remove` пути, запись — через временный каталог и переименование, копии уведомления и блок манифеста обновляются как при обычной доставке; без флага `drift` остаётся отказом `CK-E-STANDARDS-DRIFT` с подсказкой «run codkit standards load --upgrade to take the shipped copy, or move your edits out». Форма и семантика — те же, что у `runtime load --upgrade` (PROP-015 `RT-LOAD-UPGRADE`). @status:spec/plan",
+      "line": 210,
+      "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-UPGRADE"
+    },
+    {
       "anchor": "STD-LOAD-IDEMPOTENT",
       "content_hash": "sha256:8fb16aa32ca9ff04bbaa0cf13270414f5fc4f822e204015cbbf97cce8eb19f80",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Повторный запуск после успеха — no-op: `identical` + блок `unchanged`, печать `up to date`, выход 0, ни одного изменённого байта (сверяется sha256 файлов до и после). Прерывание оставляет либо временный каталог `.codkit-load-*` (убирается следующим прогоном), либо готовый `v<версия>` без блока (следующий прогон допишет блок) — оба состояния следующая команда распознаёт. @status:spec/done",
-      "line": 210,
+      "line": 211,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-IDEMPOTENT"
     },
     {
@@ -8388,7 +8397,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Команде нужен только patchesDir; дерево форка не требуется и не читается, `codkit.json` не требуется (`configMode: 'none'`), замок дерева не берётся. Под `--ci` команда разрешена (сети нет). @status:spec/done",
-      "line": 211,
+      "line": 212,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-ROOTS"
     },
     {
@@ -8397,7 +8406,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "6. Алгоритм `standards check`",
-      "line": 213,
+      "line": 214,
       "uri": "spec://codkit/modules/codkit/PROP-014#std-check"
     },
     {
@@ -8406,7 +8415,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Только чтение, **для каждого поставляемого пакета** (`STD-SHIPPED-PACKAGES`): (1) состояние цели по `STD-LOAD-STEP-TARGET-STATE` — `absent` / `identical` / `drift` с перечнем; (2) `LIC-CHECK-ALGORITHM` на установленной копии, если она есть; (3) состояние обеих копий `LICENSE-CODKIT.md` против рендера с текущим блоком компонентов (`STD-NOTICE-TARGETS`), плюс `legacy-copy` для устаревшего пути; (4) состояние блока манифеста — `absent` / `current` (равен каноническому для версии пакета) / `stale` (present, но отличается — например, другая версия) / `malformed` / `entry-outside-block`; (5) состояние блока контракта scrape — `no-contract` (информация, не находка) / `absent` / `current` / `stale` / `malformed` / `entry-outside-block`; (6) `STD-MANIFEST-TAIL-CAVEAT`; (7) `otherVersions`. Выход 0 только при `identical` пакета и обеих копий + чистая лицензионная проверка + `current` манифеста + блок scrape `current` или `no-contract`; 1 — иначе, каждая находка отдельной строкой (`CK-E-STANDARDS-DRIFT` для цели и копий, `CK-E-LICENSE-*` для копии пакета, `CK-E-CONFIG` для обоих блоков, hint «run codkit standards load»; для копий уведомления в состоянии drift hint — «delete the copy and run codkit standards load»); 2 — окружение. `--json`: `data: {target:{state, paths}, license:{problems}, noticeFiles:[{path, state}], manifest:{state, path}, scrape:{state, path}, otherVersions}`. @status:spec/done",
-      "line": 214,
+      "line": 215,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-CHECK-ALGORITHM"
     },
     {
@@ -8415,7 +8424,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "7. Компоненты",
-      "line": 216,
+      "line": 217,
       "uri": "spec://codkit/modules/codkit/PROP-014#components"
     },
     {
@@ -8424,17 +8433,26 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`CommandDefinition` получает поле `roots?: 'patches' | 'none'` (умолчание `'patches'`): `main.ts` требует patchesDir только при `'patches'`; `where` и `license check` объявляют `'none'` — прежняя проверка по имени `'where'` заменяется этим полем. @status:spec/done",
-      "line": 236,
+      "line": 237,
       "uri": "spec://codkit/modules/codkit/PROP-014#COMP-ROOTS-NONE"
     },
     {
       "anchor": "decisions",
-      "content_hash": "sha256:e0e62c76f51888abafcb88207738f794304a8368e472f5aaec9d641e27b35afc",
+      "content_hash": "sha256:ba2f57ae44dec1859d51ebdc5aa454856642d41a3371ffa68867a4e77dee6148",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "8. Решения",
-      "line": 238,
+      "line": 239,
       "uri": "spec://codkit/modules/codkit/PROP-014#decisions"
+    },
+    {
+      "anchor": "DECISION-STD-MUTABLE-EDITION",
+      "content_hash": "sha256:13b052e4d453e0e0b40990473dc8a427c10f599091aef301c86b11d425f07bdf",
+      "doc_path": "modules/codkit/PROP-014",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
+      "heading": "**Решение:** до явного слова владельца издание стандартов и версия библиотеки рантайма **мутабельны**: содержимое расширяется на месте под тем же номером версии, как это делает сам менеджер пакетов со своими пакетами версии 1.0.0 во время разработки. **Почему:** рулинг владельца 2026-09-07 («пока также следовать этой практике; когда нужно будет вернуться к честному перевыпуску — скажу явно»); перевыпуск на каждое изменение молодых стандартов — шум версий без пользы. **Механика:** установленная копия, чьи байты отличаются от поставляемых, по-прежнему `drift` для `standards check` (инструмент не различает правку продукта и обновление инструмента по байтам); `codkit standards load --upgrade` заменяет каталог пакета целиком по явному флагу, как `runtime load --upgrade` (`STD-LOAD-UPGRADE`); затем `vibe install --offline --force` пересобирает проекцию. **Рассмотрено и отвергнуто:** молчаливая замена при `load` (теряет правки продукта без слова); принудительный бамп версии (противоречит рулингу). **Когда пересматривать:** явное указание владельца вернуть перевыпуск — тогда `THE-SET-IS-AN-EDITION` действует буквально и `--upgrade` остаётся только для смены версии. @status:spec/plan",
+      "line": 240,
+      "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-MUTABLE-EDITION"
     },
     {
       "anchor": "DECISION-STD-SKILLS-PACKAGE",
@@ -8442,7 +8460,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** навыки агентов — отдельный пакет `agent-skills` с `[[skill]]`, доставляемый тем же `standards load` и проецируемый `vibe skill install`; `codkit/claude/skills/` упраздняется. **Почему:** VibeVM уже умеет проецировать навыки во все харнессы (PROP-018 §2.6, `vibe skill list|install`), а рукописный профиль под один харнесс — второй источник той же процедуры; версия норм не должна меняться от правки процедуры. **Рассмотрено и отвергнуто:** навыки внутри пакета стандартов; отдельная команда `codkit skills load`; оставить `codkit/claude/skills/` как источник и генерировать пакет из него (источник должен быть там, где его читает `vibe`). **Когда пересматривать:** VibeVM научится проецировать subagents/hooks (тогда и `agents/`, `rules/` переезжают в пакет), или фаза `package` жизненного цикла станет `impl`. @status:spec/plan",
-      "line": 239,
+      "line": 241,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-SKILLS-PACKAGE"
     },
     {
@@ -8451,7 +8469,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** стандарты — обычный vibe-пакет вида `flow`, который лежит в `vibevm/vibepacks/` toolRoot и в `vibevm/vibepacks/` продукта, а материализует его сам `vibe install`.\n\n**Почему:** спайк 2026-09-06 в scratch-проекте: `vibe install --offline --assume-yes` нашёл пакет в `vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/` без поля `path`, записал в `vibe.lock` `source_kind = \"local\"`, скопировал файлы в `vibevm/vibedeps/org.vibevm.codkit.standards/0.1.0/` побайтово (включая `LICENSE` без расширения и комментарий-шапку XML), скомпилировал врезку в `STATIC.md`, `vibe check` — чисто, повторная установка — «re-copy skipped». Ни одной строки новой машинерии со стороны vibe.\n\n**Рассмотрено и отвергнуто:**\n- копировать спеки прямо в `vibevm/vibespecs/` продукта — становятся «своими» файлами продукта, редактируются и расходятся, а якоря теряют происхождение;\n- публиковать пакет в реестр и ставить `vibe install org.vibevm.codkit/standards` — требует реестра и сети; Codkit работает без сети, а издание должно совпадать с установленной версией Codkit;\n- git-source зависимость — сеть и отдельный репозиторий ради одного каталога.\n\n**Когда пересматривать:** если у пакета появится потребитель без Codkit (наблюдается запросом установки из реестра) — тогда публикация в реестр становится вторым каналом доставки. @status:spec/done",
-      "line": 240,
+      "line": 242,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-PACKAGE-IS-A-VIBE-FLOW"
     },
     {
@@ -8460,7 +8478,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** зависимость прописывается управляемым блоком между комментариями-маркерами в конце `vibe.toml`, байтовым сканом, без TOML-парсера.\n\n**Почему:** тот же закон, что у `info/exclude` дерева (`# codkit:begin managed`) и у практики managed-blocks: один блок, ни байта снаружи, детерминированный поиск, авто-починки нет. Форма проверена `tomllib`: блок, дописанный в конец манифеста потребителя, кончающегося таблицей `[requires.packages]`, и в конец манифеста самого Codkit, кончающегося элементом `[[registry]]`, в обоих случаях даёт валидный документ с `requires.packages[\"org.vibevm.codkit/standards\"] = {version: \"=0.1.0\", link: \"static\"}`.\n\n**Рассмотрено и отвергнуто:**\n- разобрать TOML и пересериализовать — теряет комментарии и порядок пользователя (`LIC-NEVER-REWRITE-THROUGH-A-PARSER`), тянет зависимость;\n- вызвать `vibe install org.vibevm.codkit/standards` — `DECISION-STD-NO-VIBE-INVOCATION`;\n- inline-ключ внутри существующей `[requires.packages]` — не найти конец таблицы без парсера.\n\n**Когда пересматривать:** если vibe начнёт отвергать таблицу зависимости после `[[registry]]` или потребует иной формы записи (наблюдается красным `vibe install` на манифесте с блоком). @status:spec/done",
-      "line": 250,
+      "line": 252,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-MANIFEST-BLOCK"
     },
     {
@@ -8469,7 +8487,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** Codkit не вызывает `vibe`; `standards load` печатает следующую команду `vibe install --offline`.\n\n**Почему:** НФТ `NFR-SECURITY` — Codkit не исполняет посторонний код кроме npm-скриптов сборки; `vibe` может отсутствовать в CI-контейнере (PROP-011), а `--ci` запрещает сеть, которую `vibe install` без `--offline` может задействовать. Две команды подряд — цена одной строки в отчёте.\n\n**Рассмотрено и отвергнуто:**\n- флаг `--install`, запускающий vibe — вторая дорога с тем же результатом и новыми отказами (нет vibe, версия vibe, сеть);\n- писать `vibe.lock` и `vibedeps` самим — дублирование vibe, гарантированное расхождение.\n\n**Когда пересматривать:** если у операторов накопятся инциденты «забыли `vibe install`» (наблюдается по `standards check`, где копия есть, а `vibedeps`-слота нет — тогда `check` должен научиться это называть). @status:spec/done",
-      "line": 260,
+      "line": 262,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NO-VIBE-INVOCATION"
     },
     {
@@ -8478,7 +8496,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** сторонние файлы поддерживаются с первой редакции целиком по документу владельца о лицензиях: allowlist и исключения в политике, реестр `REUSE.toml`, приоритет носителей REUSE, `LICENSES/<ID>.txt` на каждую лицензию, генерируемый `THIRD-PARTY-NOTICES.md` с проверкой устаревания, команды `license annotate` и `license notices`, список SPDX.\n\n**Почему:** рулинг владельца 2026-09-06 на RP-4 плана кампании, дословно: «реализовать все сразу по документу. для теста сгенерить какую-нибудь иконку для codkit и запиллтировать на ней». Пилот — постоянная фикстура в поставляемом пакете (`STD-PACKAGE-PILOT-ASSETS`): собственный бинарный файл с sidecar и настоящий сторонний файл под MIT с реестром и notices; эталонная реализация на Python и оракул из 19 фикстур (`LIC-REFERENCE-IMPLEMENTATION`) дают исполнителю проверяемое поведение до первой строки TypeScript.\n\n**Рассмотрено и отвергнуто:**\n- редакция 1 только для собственных файлов (прежнее решение этого якоря) — отменена рулингом;\n- полумера «чужой файл по заголовку без реестра» — без реестра нет происхождения и notices, проверка перестаёт быть строгой.\n\n**Когда пересматривать:** первый инцидент, когда `reuse lint` и `codkit license check` разошлись в вердикте на одном пакете (наблюдается ручной сверкой по `LIC-CHECK-CALLSITES`) — тогда расхождение разбирается как дефект одной из сторон. @status:spec/done",
-      "line": 269,
+      "line": 271,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-THIRD-PARTY-NOW"
     },
     {
@@ -8487,7 +8505,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** `REUSE.toml` читается библиотекой `smol-toml` (BSD-3-Clause, без зависимостей; версия 1.8.0 — лицензия уточнена по установленному пакету 2026-09-07) — новой runtime-зависимостью Codkit; собственный парсер не пишется; `vibe.toml` и контракт scrape по-прежнему не разбираются (управляемые блоки — байтовый скан).\n\n**Почему:** реестр — чужой формат (спецификация REUSE), и файлы приходят не только от нас (`annotate` дописывает, человек правит); строгий парсер полной грамматики TOML за 200 строк не пишется без дефектов, а слабому исполнителю такой дефект не по силам найти. Зависимости разрешены, permissive-only (`DEPENDENCIES-PERMISSIVE`); лицензионный скан замыкания — как у `imageset` (`DECISION-IMAGESET-PERMISSIVE-LICENCES`): вывод в отчёте кампании.\n\n**Рассмотрено и отвергнуто:**\n- подмножество TOML своими силами — отказ на любом непредусмотренном конструкте чужого файла и скрытые дефекты разбора строк/экранирования;\n- разбирать `REUSE.toml` регулярными выражениями — тот же риск без честного имени;\n- применить парсер и к `vibe.toml`/контракту — пересериализация теряет комментарии и порядок (`LIC-NEVER-REWRITE-THROUGH-A-PARSER`), а байтового скана достаточно.\n\n**Когда пересматривать:** если `smol-toml` не выпускает релиз 24 месяца или меняет лицензию (наблюдается `npm-shrinkwrap.json`). @status:spec/done",
-      "line": 278,
+      "line": 280,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-TOML-PARSER"
     },
     {
@@ -8496,7 +8514,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** список идентификаторов SPDX — файл данных `codkit/config/spdx-license-ids.json` (739 идентификаторов, версия списка `01b8052` от 2026-09-03) с sidecar `CC0-1.0`, регенерируемый скриптом из `json/licenses.json` SPDX; не константа в коде и не сетевой запрос.\n\n**Почему:** список меняется несколько раз в год и его должен обновлять человек осознанно; файл данных диффуется и ревьюится, константа в коде — нет; сеть в `--ci` запрещена (`NFR-NETWORK`).\n\n**Рассмотрено и отвергнуто:**\n- npm-пакет `spdx-license-ids` — ещё одна зависимость ради одного массива, и её версия отстаёт от списка;\n- скачивать при проверке — сеть в CI запрещена.\n\n**Когда пересматривать:** когда в пакете появится идентификатор, отсутствующий в списке (наблюдается `not an SPDX identifier` на валидном свежем идентификаторе) — тогда регенерация. @status:spec/done",
-      "line": 288,
+      "line": 290,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-SPDX-LIST-AS-DATA"
     },
     {
@@ -8505,7 +8523,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** copyright-строки читаются только из блока до строки `SPDX-License-Identifier` включительно (`LIC-HEADER-BLOCK-ENDS-AT-SPDX`).\n\n**Почему:** эталонный прогон 2026-09-06 на поставляемом пакете: строка заголовка таблицы `| Path | Copyright | License | Source |` файла `THIRD-PARTY-NOTICES.md` (девятая непустая строка) совпала с регулярным выражением copyright-строки как «правообладатель `| License | Source |`», и собственный файл стал «сторонним без аннотации». Тот же образец §7.7 документа владельца упал бы так же в любой реализации без правила границы блока.\n\n**Рассмотрено и отвергнуто:**\n- сделать год обязательным для всех copyright-строк — сторонние строки без года легитимны по REUSE;\n- сузить окно до N строк — двадцать строк нужны для прелюдий и длинных шапок;\n- требовать слово `Copyright` в начале строки — заголовок таблицы тоже начинается с него после `| Path | `.\n\n**Когда пересматривать:** носитель, в котором copyright-строка стоит **после** SPDX-строки (наблюдается ложным `no copyright line`) — тогда правило меняется на «блок = непрерывная группа строк, содержащая SPDX-строку». @status:spec/done",
-      "line": 297,
+      "line": 299,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-HEADER-BLOCK"
     },
     {
@@ -8514,7 +8532,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** пилот-активы — логотип Codkit (иконка и знак без фона в SVG с заголовком, растры 512 и 128 в PNG с sidecar, все из одной геометрии скриптом `tools/make-logo.py`) и одна сторонняя иконка Feather Icons (`package`, тег `v4.29.1`, MIT) с реестром и notices.\n\n**Почему:** рулинги владельца 2026-09-06 («сгенерить какую-нибудь иконку для codkit и запилотировать на ней»; «иконку сгенери прямо сейчас сама… нарисуй сразу хорошую, это будет логотип нашего продукта»). Знак несёт смысл инструмента — дельта, удерживаемая маркерами, — и читается от 512 до 32 px (осмотрено на контактном листе 512/128/64/32/16). Собственные PNG доказывают путь «бинарник + sidecar» и копирование пары при `standards load`; сторонняя иконка — путь «реестр + allowlist + notices + `LICENSES/MIT.txt`» на настоящем чужом файле; Feather — пример из документа владельца. Растры сделаны Pillow с суперсэмплингом из тех же чисел, что и SVG: `@resvg/resvg-js` в чекауте Codkit не установлен, а ImageMagick этой машины потерял контуры (`fill=\"none\"` + `stroke`); одна геометрия на SVG и PNG исключает расхождение между ними.\n\n**Рассмотрено и отвергнуто:**\n- только собственные активы — сторонний путь остался бы без настоящих байтов и настоящего чужого правообладателя;\n- составить знак из глифа Feather — файл с двумя правообладателями и выражением `UPL-1.0 AND MIT` усложняет классификацию ради картинки;\n- растеризовать SVG внешним инструментом — на этой машине ни один не отрисовал контуры верно, а версия инструмента делала бы байты невоспроизводимыми.\n\n**Когда пересматривать:** если владелец заменит логотип — активы и sha256 в этом якоре меняются одним коммитом, скрипт перерисовки — вместе с ними. @status:spec/done",
-      "line": 307,
+      "line": 309,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-PILOT-ASSETS"
     },
     {
@@ -8523,7 +8541,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** пакет стандартов — английский (проза, врезка, README); лицензионное уведомление — двуязычное, английский и русский; текст UPL — только английский; спеки Codkit остаются русскими до отдельного полного перевода на английский; язык спек продукта Codkit не определяет.\n\n**Почему:** рулинг владельца 2026-09-06, дословно: «Включить предупреждение о лицензии два раза - на русском и английском языке. Оригинальная лицензия UPL лежит в репозитории на английском языке. Пакет на английском языке.» и «Спеки Codkit мы в будущем переведем на английский язык целиком.» Пакет — та поверхность, которую продукт получает и может передать дальше; его лицензия английская, и второй нормативный язык был бы второй копией каждой нормы без гейта, доказывающего совпадение копий.\n\n**Рассмотрено и отвергнуто:**\n- русская проза пакета (первый черновик кампании) — отменена рулингом: пакет распространяется, а не только читается владельцем;\n- двуязычные спеки — две расходящиеся копии;\n- писать PROP-014 сразу по-английски — один английский документ среди тринадцати русских ломает соглашение репозитория; перевод делается целиком отдельной работой.\n\n**Когда пересматривать:** при полном переводе спек Codkit на английский (тогда PROP-014 переезжает вместе со всеми) и при появлении потребителя пакета, для которого английского недостаточно. @status:spec/done",
-      "line": 317,
+      "line": 319,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-LANGUAGE"
     },
     {
@@ -8532,7 +8550,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** три новых кода — `LICENSE-HEADER` (пофайловая проблема носителя), `LICENSE-PACKAGE` (консистентность пакета), `STANDARDS-DRIFT` (установленная копия отличается); проблемы блока манифеста — существующий `CONFIG`.\n\n**Почему:** реестр кодов — единица покрытия тестами (`COVERAGE-ERROR-CODES`) и строка FAQ; один код на класс отказа держит оба списка читаемыми, а причина каждой проблемы живёт в тексте сообщения, как у `OVERLAY-SCHEMA`.\n\n**Рассмотрено и отвергнуто:**\n- код на каждую причину (нет copyright, нет SPDX, holder, orphan…) — семь кодов без машинного потребителя, который их различал бы;\n- один код `LICENSE` на всё — смешивает «поправь файл» и «поправь пакет».\n\n**Когда пересматривать:** появление машинного потребителя, ветвящегося на конкретной причине (например, `annotate`, чинящий только «нет заголовка»). @status:spec/done",
-      "line": 327,
+      "line": 329,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-ERROR-CODES"
     },
     {
@@ -8541,7 +8559,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** файлы пишутся во временный каталог `.codkit-load-*` и переименовываются в `v<версия>` одним `rename`.\n\n**Почему:** классификация цели «identical/drift» не должна видеть половину записанных файлов: прерванный прогон, оставивший `v0.1.0` с половиной файлов, иначе навсегда отказывал бы `CK-E-STANDARDS-DRIFT` сам себе.\n\n**Рассмотрено и отвергнуто:**\n- писать прямо в `v<версия>` с файлом-маркером незавершённости — маркер нужно удалять последним, и окно между удалением маркера и последней записью всё равно есть;\n- считать частичный каталог drift'ом и просить удалить руками — инструмент не должен просить чинить то, что сам оставил.\n\n**Когда пересматривать:** если на какой-либо поддерживаемой ОС переименование каталога внутри родителя перестанет быть атомарным (наблюдается флейком e2e `standards.test.ts`). @status:spec/done",
-      "line": 336,
+      "line": 338,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-TEMP-DIR-RENAME"
     },
     {
@@ -8550,7 +8568,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** уведомление о лицензии Codkit — файл `LICENSE-CODKIT.md`, который `standards load` кладёт в корень репозитория продукта и в корень own-кода дельты; в дерево форка он попадает как обычный доставляемый own-файл, освобождённый от покрытия юнитами.\n\n**Почему:** рулинг владельца 2026-09-06, дословно: «я бы сделал чтобы файл с лицензией codkit копировался в корень <репозитория продукта>, и в корень \"собственного кода\" в дельте. Тогда он скопируется и в VSCode тоже автоматически. Назывался как-то типа LICENSE-CODKIT.md» (в цитате владелец назвал продукт по имени; здесь имя заменено плейсхолдером — репозиторий инструмента не несёт имён продуктов, замена отмечена, а не сделана молча). Доставка через own-корень не требует ни одной новой машинерии: `load` уже зеркалирует own в дерево, `ci`/`publish` уже коммитят own; единственная правка — одно имя в множестве «не own-код» манифеста, чтобы `verify` не требовал юнита.\n\n**Рассмотрено и отвергнуто:**\n- слой resource-file — требует записи в карте с guard-тестом и цели, существующей на пине; уведомления на пине нет;\n- add-file патч в корень дерева — патч ради одного файла и ханк, который надо переносить при каждом пине;\n- только корень продукта без own-корня — файл не доехал бы до форка, а владелец хочет именно этого.\n\n**Когда пересматривать:** если гигиена форка (`hygiene`/lint пина) начнёт отвергать `.md` в own-каталоге — наблюдается красным `ci --profile build` на шаге hygiene с этим путём. @status:spec/done",
-      "line": 345,
+      "line": 347,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-FILE"
     },
     {
@@ -8559,7 +8577,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** рекомендации печатаются при каждом `standards load`; полный текст файла — только в прогоне, где копия создана или обновлена, и всегда — командой `codkit standards license`.\n\n**Почему:** рулинг владельца: «шаблон этого файла лучше 1) выдавать при выполнении установки пакета в консоли и 2) сделать команду codkit standards license которая печатает этот шаблон и рекомендации». Полный текст — почти два килобайта UPL; на повторном `up to date` он бы заслонял сводку, а команда даёт его по требованию в любой момент.\n\n**Рассмотрено и отвергнуто:**\n- печатать полный текст всегда — шум при каждом повторе; владелец может вернуть это одним флагом-решением, если сочтёт нужным;\n- не печатать при установке вовсе — противоречит рулингу.\n\n**Когда пересматривать:** первый инцидент «файл положили, а ссылку не поставили, потому что не заметили» — тогда полный текст печатается всегда. @status:spec/done",
-      "line": 355,
+      "line": 357,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-PRINT"
     },
     {
@@ -8568,7 +8586,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** строки контракта `vibe scrape`, снимающие `LICENSE-CODKIT.md` с чистого экспорта, Codkit ведёт в `vibevm/scrape/contract.toml` продукта сам — управляемым блоком при каждом `standards load`; контракт с нуля не создаёт; для контракта по нестандартному пути строки печатает `standards license`.\n\n**Почему:** рулинг владельца 2026-09-06, дословно: «у продукта <продукта> может быть собственный контракт scrape, так что наше правило туда лучше вписывать алгоритмически» (имя продукта заменено плейсхолдером — репозиторий инструмента имён продуктов не несёт). Проверено живьём (`STD-SCRAPE-VERIFIED`): блок в конце контракта, созданного `vibe scrape contract init`, разбирается, `contract check` показывает обе копии под нашим правилом и не выдаёт ни одной находки к нашим строкам. Автомат блока тот же, что у манифеста, — один модуль на два файла.\n\n**Рассмотрено и отвергнуто:**\n- только печатать строки (первая редакция решения) — продукт с собственным контрактом правит его руками, и строки забываются; отменено рулингом;\n- создавать контракт при его отсутствии — схема 1 требует `[health]` и хотя бы одну обязательную health-проверку продукта, которых Codkit не знает; без контракта экспорта всё равно нет;\n- `proof = \"sha256-v1\"` с `[[baseline]]` на обе копии и `modified = \"refuse\"` — строже (scrape отказал бы удалять правленую копию), но схема требует ровно одну baseline на каждый выбранный существующий файл, а поведение при отсутствующей копии не проверено; отложено (DEF в плане) с триггером ниже.\n\n**Когда пересматривать:** первый реальный `vibe scrape --in-place`/`--output` продукта (наблюдается отчётом scrape): если экспорт унёс правленую копию уведомления или отказал на наших строках — переход на `sha256-v1`; либо появление в схеме контракта открытой таблицы расширения для пакетов. @status:spec/done",
-      "line": 364,
+      "line": 366,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-SCRAPE-ROWS"
     },
     {
@@ -8577,7 +8595,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** релизная ветка `publish` не несёт `LICENSE-CODKIT.md`; чистый экспорт репозитория продукта через `vibe scrape` снимает его строками контракта — оба механизма, каждый на своей стороне.\n\n**Почему:** рулинг владельца 2026-09-06 на вопрос «релизная ветка форка или экспорт продукта»: «сделать оба». Дерево форка — материализация patch set: файл, удалённый в дереве чужим инструментом, `status`/`save` прочли бы как работу, а `load` отказал бы над ней; релизную ветку строит `publish` из неизменяемого коммита patch set, поэтому единственное честное место исключения — own-снимок публикации. Экспорт репозитория продукта — область `vibe scrape`, и там файл снимает контракт (`STD-SCRAPE-CONTRACT-ROWS`).\n\n**Рассмотрено и отвергнуто:**\n- исключать и в `ci` — `ci` проверяет дерево разработчика; `publish --profile build` сам повторяет профиль проверок на релизной сборке (PROP-007 §18), так что релизные байты проверяются там, где они рождаются;\n- удалять файл из дерева форка запуском `vibe scrape --in-place` по дереву — конфликт с владением деревом (`DRIFT-GUARD-PREDICATE`), плюс мутирующий scrape вне Windows сегодня отказывает (RP-10 плана);\n- не класть файл в `delta/own/` вовсе — отменяет рулинг о доставке уведомления в форк.\n\n**Когда пересматривать:** если `ci --profile build` начнёт считаться релизной сборкой (появится профиль, публикующий артефакты) — тогда опция включается и там; или если апстримная гигиена отвергнет `.md` в own-каталоге (триггер `DECISION-STD-NOTICE-FILE`). @status:spec/done",
-      "line": 374,
+      "line": 376,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-RELEASE-EXCLUSION"
     },
     {
@@ -8586,7 +8604,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** область действия уведомления задаётся путями плюс генерируемым блоком компонентов и абзацем о копиях vibe (`STD-NOTICE-SCOPE-BY-PATHS`, `STD-NOTICE-COMPONENTS-BLOCK`, `STD-NOTICE-VIBE-COPIES`).\n\n**Почему:** путь покрывает файлы любого типа без спутников, проверяется машинно и понятен человеку; статическое перечисление компонентов лжёт, как только компоненты становятся необязательными (продукт с одной библиотекой, продукт с одними стандартами); скомпилированная полоса vibe лежит вне каталога пакета и без явной оговорки противоречила бы правилу по путям (решение владельца 2026-09-07).\n\n**Рассмотрено и отвергнуто:**\n- оговорка «лицензия действует, только если файлы существуют» — лицензия и так относится лишь к тому, что есть в копии, оговорка ничего не добавляет;\n- опознание файлов только по шапке — невозможно для картинок и данных;\n- перечисление компонентов текстом — устаревает при первом необязательном компоненте.\n\n**Когда пересматривать:** при появлении четвёртого корня доставки. @status:spec/done",
-      "line": 384,
+      "line": 386,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-SCOPE-BY-PATHS"
     },
     {
@@ -8595,7 +8613,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** копия уведомления в дельте лежит под префиксом `delta/own/codkit/`, корневая копия остаётся; устаревшая копия издания 2 удаляется доставляющими командами.\n\n**Почему:** один префикс — одна правда о том, что принадлежит Codkit; экспорт `vibe scrape` удаляет `vibevm/**` целиком, поэтому в экспорте из материалов Codkit остаётся только `delta/own/codkit/**` с шапками, и исключение уведомления из релиза и экспорта остаётся законным.\n\n**Рассмотрено и отвергнуто:** убрать корневую копию — она нужна читателю репозитория; оставить копию в корне own — второй путь для одной вещи.\n\n**Когда пересматривать:** вместе с `DECISION-STD-NOTICE-SCOPE-BY-PATHS`. @status:spec/done",
-      "line": 394,
+      "line": 396,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-UNDER-PREFIX"
     },
     {
@@ -8604,7 +8622,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Решение:** аннотация `REUSE.toml` (в том числе вложенного) — полноправный носитель для файлов без стиля комментария; для исходников шапка обязательна (`LIC-CARRIER-ANNOTATION`, `LIC-REGISTRY-NESTED`, `LIC-ANNOTATION-OWN`).\n\n**Почему:** дистрибутив несёт сотни картинок и таблиц (новый интерфейс продукта), спутник на каждую — не форма; корень дерева форка принадлежит апстриму, поэтому реестр own-каталога обязан быть вложенным; исходник без шапки перестаёт быть самодостаточным при копировании одного файла.\n\n**Рассмотрено и отвергнуто:** спутник на каждый файл как единственный путь; аннотация вместо шапки в исходниках.\n\n**Когда пересматривать:** при смене спецификации REUSE. @status:spec/done",
-      "line": 401,
+      "line": 403,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-ANNOTATION-CARRIER"
     },
     {
@@ -9201,8 +9219,8 @@
     {
       "code": "long-section",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "line": 238,
-      "message": "section `8. Решения` spans 171 lines (threshold 120) — long sections read poorly and churn often; split into smaller leaves"
+      "line": 239,
+      "message": "section `8. Решения` spans 172 lines (threshold 120) — long sections read poorly and churn often; split into smaller leaves"
     }
   ]
 }
