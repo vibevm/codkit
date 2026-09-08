@@ -23,10 +23,13 @@ SPDX-License-Identifier: UPL-1.0
       <LAW-ONE-CHANNEL-PER-PROCESS fact="true" status="impl/done">One channel per process, and bootstrap has none: a graft in the renderer gives own code no road into main, the shared process, the server or the CLI, and code that runs before DI is patched and called a patch.</LAW-ONE-CHANNEL-PER-PROCESS>
       <LAW-STRING-HAS-TWO-CHANNELS fact="true" status="impl/done">An interface string has two channels — the source and the language pack; an intervention that closes one names the fate of the other, and an nls key changes in a patch only together with a recorded language-pack decision.</LAW-STRING-HAS-TWO-CHANNELS>
       <LAW-SEAM-MAP-PER-PIN fact="true" status="impl/done">The product keeps a seam map per pin — layer, what breaks when the pin moves, what catches it — and re-validates it on every upgrade cycle.</LAW-SEAM-MAP-PER-PIN>
+      <LAW-OWN-IS-DOCUMENTED fact="true" status="impl/done">The own catalogue documents itself the way it enforces itself: its README routes every area to the owning specification and tests, its layers document equals the lint, its state machines are numbered rules that tests cite, and a router skill takes an agent there in one hop.</LAW-OWN-IS-DOCUMENTED>
+      <LAW-PART-NEVER-ACQUIRES-ITS-MODEL fact="true" status="impl/done">A class that replaces an upstream part or service never acquires, in its constructor, an own service that depends on it — the own service attaches afterwards.</LAW-PART-NEVER-ACQUIRES-ITS-MODEL>
     </facts>
   </laws>
   <never title="Never">
     <facts ordered="false">
+      <NEVER-IMPORT-AN-EXPERIMENTAL-UPSTREAM-LAYER fact="true" status="impl/done">Never import from an upstream layer outside its public contract — repeat its approach, keep a guard that proves it on every pin.</NEVER-IMPORT-AN-EXPERIMENTAL-UPSTREAM-LAYER>
       <NEVER-PUT-LOGIC-IN-A-GRAFT fact="true" status="impl/done">Never put logic into a patch — a graft imports or calls own code and nothing more.</NEVER-PUT-LOGIC-IN-A-GRAFT>
       <NEVER-COUNT-A-BUILD-FLAG-AS-OVERRIDABLE fact="true" status="impl/done">Never let a policy, a remote source or a user setting undo a build value of a flag: a build value is a property of the build.</NEVER-COUNT-A-BUILD-FLAG-AS-OVERRIDABLE>
       <NEVER-EDIT-THE-INSTALLED-STANDARDS fact="true" status="impl/done">Never edit the installed copy of the standards under `vibevm/vibepacks/org.vibevm.codkit/` — a deviation is recorded in the product's own specs, and `codkit standards load` refuses over edits.</NEVER-EDIT-THE-INSTALLED-STANDARDS>

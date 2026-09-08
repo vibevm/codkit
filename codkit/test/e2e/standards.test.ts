@@ -363,7 +363,7 @@ describe('S51 - the notice of edition 3: paths, components block, legacy copy', 
 	});
 });
 
-describe('S53 - edition 0.2.0 lands beside an installed 0.1.0', () => {
+describe('S53 - a new edition lands beside an installed older one', () => {
 	it('keeps the old directory, moves the block and lists both versions in the notice', () => {
 		const patchesDir = makePatchSet('s53');
 		const old = join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.1.0');
