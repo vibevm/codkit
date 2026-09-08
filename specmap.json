@@ -437,7 +437,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:388f5e79dbc1bbf7cd9d1045f464903750885827c983bbca75d38349ad10d53a",
+      "content_hash": "sha256:e252e0b5eaa0d9ec05b3b12137227aa54b255720ee38bd9006c03b08cb64ccc6",
       "doc_path": "common/PROP-003",
       "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
       "heading": "PROP-003: Codkit conventions",
@@ -526,12 +526,30 @@
       "uri": "spec://codkit/common/PROP-003#TERM-INTERVENTION"
     },
     {
+      "anchor": "language",
+      "content_hash": "sha256:38c1bce7dd489530284d4733b3b9dc81157860a745166f13772b7eee01d38d39",
+      "doc_path": "common/PROP-003",
+      "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
+      "heading": "Language",
+      "line": 20,
+      "uri": "spec://codkit/common/PROP-003#language"
+    },
+    {
+      "anchor": "SPEC-LANGUAGE-IS-ENGLISH",
+      "content_hash": "sha256:eaec0d3f35f463963f5ec3a3ff61c212ad5c1e36f12ca55fea8bce1f912711c0",
+      "doc_path": "common/PROP-003",
+      "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
+      "heading": "The specifications of this repository - `vibevm/vibespecs/common/*` and `vibevm/vibespecs/modules/codkit/*` - are written in English: prose, decision records, acceptance scenarios, status comments and section titles alike. Identifiers, anchors, file names, command names, flags, settings, keys, error codes and code stay as they are, and a quotation from upstream, from a log or from a user-facing string keeps the language of its source. Commit messages are English as well (the attribution policy and Conventional Commits). A consumer product keeps its own rule for its own specifications and is not bound by this one. Owner ruling of 2026-09-08; the earlier Russian text of the module specifications was translated under it. @status:spec/done",
+      "line": 22,
+      "uri": "spec://codkit/common/PROP-003#SPEC-LANGUAGE-IS-ENGLISH"
+    },
+    {
       "anchor": "history",
       "content_hash": "sha256:61126126a3a0b910c9c0e6f738e203495d7ea840dcddd24bafb924faf03798fb",
       "doc_path": "common/PROP-003",
       "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
       "heading": "History",
-      "line": 20,
+      "line": 25,
       "uri": "spec://codkit/common/PROP-003#history"
     },
     {
@@ -540,7 +558,7 @@
       "doc_path": "common/PROP-003",
       "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
       "heading": "Published patch-set history is not rewritten; generated fork refs are derived and replaceable under their guarded workflow. @status:spec/done",
-      "line": 21,
+      "line": 26,
       "uri": "spec://codkit/common/PROP-003#PATCHSET-HISTORY-IMMUTABLE"
     },
     {
@@ -549,7 +567,7 @@
       "doc_path": "common/PROP-003",
       "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
       "heading": "The current checked-out Codkit tree has zero occurrences of the retired consumer-product identifier in tracked paths or tracked content. Preserved Git object history is intentionally outside this current-tree gate. @status:spec/done",
-      "line": 22,
+      "line": 27,
       "uri": "spec://codkit/common/PROP-003#CURRENT-TREE-ZERO-RETIRED-NAME"
     },
     {

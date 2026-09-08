@@ -17,6 +17,11 @@
       <TERM-INTERVENTION fact="true" status="spec/done">An intervention is one attributable downstream change represented by a Codkit layer.</TERM-INTERVENTION>
     </facts>
   </terms>
+  <language title="Language">
+    <facts ordered="false">
+      <SPEC-LANGUAGE-IS-ENGLISH fact="true" status="spec/done">The specifications of this repository - `vibevm/vibespecs/common/*` and `vibevm/vibespecs/modules/codkit/*` - are written in English: prose, decision records, acceptance scenarios, status comments and section titles alike. Identifiers, anchors, file names, command names, flags, settings, keys, error codes and code stay as they are, and a quotation from upstream, from a log or from a user-facing string keeps the language of its source. Commit messages are English as well (the attribution policy and Conventional Commits). A consumer product keeps its own rule for its own specifications and is not bound by this one. Owner ruling of 2026-09-08; the earlier Russian text of the module specifications was translated under it.</SPEC-LANGUAGE-IS-ENGLISH>
+    </facts>
+  </language>
   <history title="History">
     <p><PATCHSET-HISTORY-IMMUTABLE fact="true" status="spec/done">Published patch-set history is not rewritten; generated fork refs are derived and replaceable under their guarded workflow.</PATCHSET-HISTORY-IMMUTABLE></p>
     <p><CURRENT-TREE-ZERO-RETIRED-NAME fact="true" status="spec/done">The current checked-out Codkit tree has zero occurrences of the retired consumer-product identifier in tracked paths or tracked content. Preserved Git object history is intentionally outside this current-tree gate.</CURRENT-TREE-ZERO-RETIRED-NAME></p>
