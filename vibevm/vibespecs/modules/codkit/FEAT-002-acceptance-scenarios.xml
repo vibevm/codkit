@@ -172,4 +172,19 @@
   <s55 title="S55 — own-extension: verify красен на манифесте и дрейфе">
     <p><S55 fact="true" status="spec/plan">**Given**: расширение без `package.json`. **When**: `codkit verify`. **Then**: `CK-E-OWN-EXTENSION-MANIFEST`. **Given**: имя, совпадающее с апстримным каталогом `extensions/&lt;name&gt;` на пине. **Then**: тот же код с текстом `name collides with an upstream extension`. **Given**: файл расширения в дереве отличается от дельты. **Then**: `CK-E-OWN-EXTENSION-DRIFT` с путём.</S55></p>
   </s55>
+  <s56 title="S56 — standards load доставляет все поставляемые пакеты">
+    <p><S56 fact="true" status="spec/plan">**Given**: инструмент с пакетами `standards` и `agent-skills`, продукт с `vibe.toml`. **When**: `codkit standards load`. **Then**: оба каталога `vibevm/vibepacks/org.vibevm.codkit/&lt;name&gt;/v&lt;версия&gt;/` побайтно равны поставляемым; в блоке `# codkit:begin standards … end` две таблицы `[requires.packages."org.vibevm.codkit/&lt;name&gt;"]`; блок компонентов уведомления перечисляет оба; печатаются `next: vibe install --offline` и `next: vibe skill install`; повтор — `up to date`.</S56></p>
+  </s56>
+  <s57 title="S57 — навыки проецируются в харнессы">
+    <p><S57 fact="true" status="spec/plan">**Given**: продукт после S56 и `vibe install --offline`. **When**: `vibe skill list`. **Then**: перечислены `ck-resolve`, `ck-orient`, `ck-intervene`, `ck-review-intervention` из `flow:agent-skills`. **When**: `vibe skill install`. **Then**: `.claude/skills/ck-*/SKILL.md` (и каталоги других харнессов) появились; повтор — `unchanged`; `vibe check --quiet` — 0 ошибок.</S57></p>
+  </s57>
+  <s58 title="S58 — standards check видит дрейф любого пакета">
+    <p><S58 fact="true" status="spec/plan">**Given**: правка файла внутри `vibevm/vibepacks/org.vibevm.codkit/agent-skills/v…/`. **When**: `codkit standards check`. **Then**: `CK-E-STANDARDS-DRIFT` с путём и именем пакета, выход 1; `standards load` откажет тем же кодом; удаление каталога и повторный `load` — чисто.</S58></p>
+  </s58>
+  <s59 title="S59 — load --fresh --discard отбрасывает правки рабочего дерева по имени">
+    <p><S59 fact="true" status="spec/plan">**Given**: отслеживаемый апстримный файл дерева изменён вне маркеров (артефакт сборки). **When**: `codkit load --fresh`. **Then**: `CK-E-DIRTY-TREE` с путём. **When**: `codkit load --fresh --discard`. **Then**: план содержит `discard &lt;path&gt;`, файл возвращён к пину плюс дельта, own-файлы не тронуты, выход 0. (Статус — после подтверждения решения D-S3-5 владельцем.)</S59></p>
+  </s59>
+  <s60 title="S60 — издание 0.3.0 приезжает рядом с 0.2.0">
+    <p><S60 fact="true" status="spec/plan">**Given**: продукт с установленным `standards/v0.2.0`. **When**: `codkit standards load` инструментом с 0.3.0. **Then**: появляется `v0.3.0`, блок манифеста переведён на `=0.3.0`, `otherVersions` называет `v0.2.0`, блок компонентов перечисляет обе; после `vibe install --offline` `STATIC.md` содержит якоря §12 (`MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`).</S60></p>
+  </s60>
 </spec>
