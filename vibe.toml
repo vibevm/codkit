@@ -1,6 +1,6 @@
 [project]
 name = "codkit"
-version = "0.1.0"
+version = "1.0.0"
 spec_format = "xml"
 authors = ["Oleg Chirukhin"]
 
