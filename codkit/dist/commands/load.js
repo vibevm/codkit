@@ -10,7 +10,12 @@
 // fast path of PROP-006 sec. 1). `--discard` (D11) is the one sanctioned way to
 // give up the commit half of that guarantee: the loss is named in advance, the
 // dropped line stays reachable under refs/codkit/consumed/, and a non-interactive
-// run may not make the decision at all.
+// run may not make the decision at all. Together with `--fresh` the same flag
+// gives up the working-tree edits of tracked upstream files that carry no marker
+// block (PROP-007 ##CMD-LOAD-DISCARD-WORKTREE): building the tree writes an
+// artifact over such a file, and returning to dev mode must not require a git
+// command typed by hand inside a managed tree. Every dropped path is printed as
+// `discard <path>` before the first write.
 //
 // Cloning is not a side effect of a typo: a missing tree is an error unless
 // --clone-if-missing says otherwise, and even then --ci refuses, because a
@@ -63,7 +68,8 @@ async function run(ctx) {
             fresh,
             dryRun,
             verbose: ctx.flags.verbose,
-            discardTreeCommits: discard
+            discardTreeCommits: discard,
+            discardWorktreeEdits: discard && fresh
         });
         report(ctx, result, { fresh, dryRun, discard });
         return result.exitCode;
@@ -121,6 +127,7 @@ function buildData(result, flags) {
     if (flags.discard) {
         data['discarded'] = [...result.discarded];
         data['discardedRef'] = result.discardedRef;
+        data['discardedPaths'] = [...result.discardedPaths];
     }
     if (result.dirtyFiles.length > 0) {
         data['dirtyFiles'] = [...result.dirtyFiles];

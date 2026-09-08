@@ -96,6 +96,20 @@ export type DriftBaseOptions = {
 	 */
 	readonly isKnownMaterialization?: (path: string) => boolean;
 	/**
+	 * ##CMD-LOAD-DISCARD-WORKTREE: a tracked path the operator named as a loss in
+	 * advance, so this run may throw the edit away instead of refusing over it.
+	 * `load --fresh --discard` is the only caller, and the answer is not a
+	 * verdict about the bytes but a decision about them - which is why it is a
+	 * second hook rather than a second meaning of the one above: a known
+	 * materialization is a state codkit wrote, this is a state somebody is
+	 * giving up.
+	 *
+	 * Asked on the same terms: tracked, changed entries outside the own
+	 * directory and outside the prefixes another layer supplies. A false answer
+	 * leaves the path dirt, so the flag can only ever narrow the guard.
+	 */
+	readonly isDiscardable?: (entry: PorcelainEntry) => boolean;
+	/**
 	 * Tree prefixes (with a trailing slash) that another layer supplies and git
 	 * therefore may not judge - today the materialized own extensions
 	 * (PROP-005 ##OWN-EXTENSION-UNIT). They are filtered out for the same reason
@@ -167,7 +181,8 @@ function declaredExtensions(patchesDir: string): readonly OwnExtension[] {
 
 /**
  * Half (a): what git sees, minus the own directory it is not allowed to judge,
- * minus the tracked paths the caller certified as its own known materialization.
+ * minus the tracked paths the caller certified as its own known materialization,
+ * minus the tracked paths the caller was told by name to throw away.
  */
 export function upstreamDirt(treeDir: string, ownDirName: string, options: DriftBaseOptions = {}): readonly string[] {
 	const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
@@ -180,6 +195,7 @@ export function upstreamDirt(treeDir: string, ownDirName: string, options: Drift
 	}
 	const untrackedIsDirt = options.untrackedIsDirt ?? true;
 	const classify = options.isKnownMaterialization;
+	const discardable = options.isDiscardable;
 	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
 	const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
 	return (
@@ -189,8 +205,12 @@ export function upstreamDirt(treeDir: string, ownDirName: string, options: Drift
 			// path carries no HEAD to differ from (and with `--fresh` it is the
 			// whitelist, not an overlay, that speaks for it).
 			.filter((entry) => classify === undefined || entry.status === '??' || !classify(entry.path))
+			.filter((entry) => !owned.some((prefix) => entry.path.startsWith(prefix)))
+			// The discard question comes last, and over what is left: a path the
+			// own layer supplies is never the operator's to give up here, and an
+			// untracked one has no tip version to be returned to.
+			.filter((entry) => discardable === undefined || entry.status === '??' || !discardable(entry))
 			.map((entry) => entry.path)
-			.filter((path) => !owned.some((prefix) => path.startsWith(prefix)))
 	);
 }
 

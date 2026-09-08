@@ -155,7 +155,7 @@ const commandGuidance = {
 	load: {
 		positional: '',
 		detail:
-			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`; `--discard` drops fork-tree commits on purpose (kept reachable under `refs/codkit/consumed/`) and is likewise refused under `--ci`.'
+			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`; `--discard` drops fork-tree commits on purpose (kept reachable under `refs/codkit/consumed/`) and is likewise refused under `--ci`. With `--fresh`, `--discard` also drops the working-tree edits of tracked upstream files that carry no marker block - a build artifact in a dev tree - printing `discard <path>` for each before the first write and reporting them in `data.discardedPaths`; a file with a marker block, own code, own extensions and untracked paths are never dropped.'
 	},
 	status: { positional: '', detail: 'Show the pin/generated branch and work in the fork tree that has not been extracted.' },
 	save: {
@@ -505,7 +505,7 @@ const faqEntries = {
 	],
 	'DIRTY-TREE': [
 		'Unextracted or otherwise disallowed work makes the requested transition unsafe.',
-		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. Fork-tree commits can also be dropped on purpose with `codkit load --discard` (they stay reachable under `refs/codkit/consumed/`, where `codkit gc` eventually spends them; the flag is refused under `--ci`). A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
+		'Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. Fork-tree commits can also be dropped on purpose with `codkit load --discard` (they stay reachable under `refs/codkit/consumed/`, where `codkit gc` eventually spends them; the flag is refused under `--ci`). A tracked upstream file a build rewrote is dropped by name with `codkit load --fresh --discard`, which announces every path it drops and never touches a file carrying a marker block - extract that one with `codkit save`, or move the edit out of the file. A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree.'
 	],
 	'TREE-READONLY': [
 		'Codkit cannot write the fork tree or its required runtime state.',

@@ -92,6 +92,10 @@ Generated commits несут `Codkit-Patchset-Commit` и `Codkit-Upstream-Pin`. 
 electron-раннер апстрима отдельным шагом релиза (`scripts/test.sh --runGlob
 'vs/<own>/**/test/browser/**/*.test.js'`, без дисплея — под `xvfb-run`).
 
+Упаковка предпочтительно идёт в одноразовом клоне, как `publish`, чтобы dev-дерево
+не получало артефактов сборки; уже полученный артефакт снимается
+`codkit load --fresh --discard` ([ежедневная работа](02-daily.md)).
+
 ## Release checklist
 
 - [ ] `git status --short` в patchset пуст.

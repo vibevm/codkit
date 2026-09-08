@@ -28,6 +28,12 @@ import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { driftDirty, porcelainPaths } from './driftGuard.ts';
 import type { DriftResult } from './driftGuard.ts';
+import {
+	MARKER_BLOCK_DISCARD_HINT,
+	emptyWorktreeDiscardPlan,
+	markerBlockDirtMessage,
+	worktreeDiscardClassifier
+} from './discardWorktree.ts';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.ts';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.ts';
 import { syncOwnExtensions } from './layers/ownExtensions.ts';
@@ -200,6 +206,20 @@ export type SyncEngineOptions = {
 	 * branch is a position to correct, not a thing to bury.
 	 */
 	readonly discardTreeCommits?: boolean;
+	/**
+	 * Only `load --fresh --discard` sets this (PROP-007
+	 * ##CMD-LOAD-DISCARD-WORKTREE). It widens the sacrifice by name from the
+	 * commits to the working-tree edits of tracked upstream files that carry no
+	 * marker block: the run plans them before its first write, restores exactly
+	 * those paths to the tip, and then does its ordinary `--fresh` pass over
+	 * them. It is a separate option rather than a second meaning of
+	 * `discardTreeCommits`, because the two-way `sync` sets that one on a run
+	 * whose whole purpose is to extract the working-tree edits first: there the
+	 * flag speaks about commits and must go on speaking about commits alone.
+	 * Ignored without `--fresh` - a plain `load --discard` keeps refusing over
+	 * edits.
+	 */
+	readonly discardWorktreeEdits?: boolean;
 	/** Internal crash recovery: rebuild even when cache/mark would take the fast path. */
 	readonly forceApply?: boolean;
 	/** Test seam around the only two post-checkout durable metadata windows. */
@@ -245,6 +265,13 @@ export type SyncResult = {
 	readonly discarded: readonly string[];
 	/** The consumed ref that keeps the dropped commits reachable; null when none. */
 	readonly discardedRef: string | null;
+	/**
+	 * Working-tree paths this run dropped by name (`load --fresh --discard`),
+	 * in plan order and one for one with the `discard <path>` lines it printed
+	 * (##CMD-LOAD-DISCARD-WORKTREE). A dry run plans but discards nothing, so
+	 * this stays empty there.
+	 */
+	readonly discardedPaths: readonly string[];
 	/** Why the fast path was refused; null when it was taken. */
 	readonly fastPathReason: string | null;
 };
@@ -411,6 +438,14 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// ref that the rebuild writes before it makes the commits unreachable. Null
 	// until the guard sees both the flag and the commits.
 	let discard: { readonly head: string; readonly commits: readonly TreeCommit[] } | null = null;
+	// The working-tree half of the same sacrifice (##CMD-LOAD-DISCARD-WORKTREE):
+	// the tracked upstream paths this run may return to the tip. Planned by the
+	// guard below, printed before the first write, restored in step 9 - and only
+	// with `--fresh`, which is the pass that has an answer for the rest of the
+	// tree.
+	const discardWorktreeEdits = options.fresh && options.discardWorktreeEdits === true;
+	const worktreePlan = emptyWorktreeDiscardPlan();
+	let discardedPaths: readonly string[] = [];
 
 	// 4. Drift guard: never overwrite work that was not extracted back to patchset.
 	if (!dryRun && options.skipDriftGuard !== true && completedRebase === null) {
@@ -429,7 +464,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			generated: { pinSha: config.pin.sha, branch },
 			...(options.fresh
 				? { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, materialized) }
-				: {})
+				: {}),
+			...(discardWorktreeEdits ? { isDiscardable: worktreeDiscardClassifier(tree, prebuiltConventions, worktreePlan) } : {})
 		});
 		// The D8 refusals come before the dirt verdict: a rewritten line below
 		// the generated tip, or a HEAD carrying work outside the generated
@@ -446,7 +482,12 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// says so instead of pretending it discarded anything.
 		if (options.discardTreeCommits === true) {
 			if (drift.treeCommits.commits.length === 0) {
-				out.info('discard: no fork-tree commits above the generated tip; nothing to drop');
+				// Silent when the working-tree half found something: the flag was
+				// asked to do a job and did one, and the plan lines below say
+				// which. Only a run with nothing at all to drop says so.
+				if (worktreePlan.discard.length === 0) {
+					out.info('discard: no fork-tree commits above the generated tip; nothing to drop');
+				}
 			} else {
 				discard = { head: drift.treeCommits.head, commits: drift.treeCommits.commits };
 			}
@@ -454,7 +495,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// The dirt refusal itself, shared by the halves that fire it: the listing
 		// is the same whichever half carries the work, only the message names
 		// which one.
-		const refuseDrift = (message: string): SyncResult => {
+		const refuseDrift = (message: string, hint?: string): SyncResult => {
 			for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
 				out.info(`  dirty: ${path}`);
 			}
@@ -464,7 +505,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			out.addError({
 				code: 'DIRTY-TREE',
 				message,
-				hint: 'run codkit save, or codkit status; codkit load --discard drops tree commits deliberately'
+				hint: hint ?? 'run codkit save, or codkit status; codkit load --discard drops tree commits deliberately'
 			});
 			return result('dirty', 1, { branch, dirtyFiles: drift.files });
 		};
@@ -495,6 +536,14 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 				// fired), and the message still names them: they are the dirt the
 				// listing shows, even though the edits are what stops this run.
 				if (discard === null || !commitsOnlyDirt(drift)) {
+					// A block is what `--discard` may never bury
+					// (##CMD-LOAD-DISCARD-WORKTREE): the file may hold an
+					// intervention nobody extracted yet, so the refusal names
+					// those paths and sends the operator to `save` rather than
+					// repeating the generic recipe.
+					if (worktreePlan.markerCarrying.length > 0) {
+						return refuseDrift(markerBlockDirtMessage(worktreePlan.markerCarrying), MARKER_BLOCK_DISCARD_HINT);
+					}
 					return refuseDrift(
 						drift.commits.length > 0
 							? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
@@ -512,6 +561,29 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// them (a --fresh run never takes the fast path, so it always does).
 		if (materialized.length > 0) {
 			out.info(`fresh: ${materialized.join(', ')} carries the exact overlay materialization; this run replaces it`);
+		}
+		// The plan, printed once the guard has let the run through and still
+		// before its first write (R14): what step 9 restores is this list and
+		// nothing besides it, so a refusal above never leaves a plan standing
+		// that nobody executed.
+		discardedPaths = [...worktreePlan.discard];
+		for (const path of discardedPaths) {
+			out.info(`discard ${path}`);
+		}
+	}
+	// A dry run does not arm the guard (##DRIFT-GUARD-PREDICATE), so the forecast
+	// classifies the same tracked dirt on its own. It prints the same plan and
+	// writes nothing - and reports nothing as discarded either, because nothing
+	// was.
+	if (dryRun && discardWorktreeEdits) {
+		driftDirty(tree, config.ownDirName, patchesDir, {
+			untrackedIsDirt: false,
+			generated: { pinSha: config.pin.sha, branch },
+			isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, []),
+			isDiscardable: worktreeDiscardClassifier(tree, prebuiltConventions, worktreePlan)
+		});
+		for (const path of worktreePlan.discard) {
+			out.info(`discard ${path}`);
 		}
 	}
 
@@ -624,6 +696,16 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			// not finish" - which loses nothing and names itself.
 			discardedRef = writeConsumedRef(tree, discard.head);
 		}
+		// The working-tree half of the sacrifice (##CMD-LOAD-DISCARD-WORKTREE),
+		// by name and only by name: every planned path goes back to the tip this
+		// tree stands on, before the delta of this run is laid over it, so the
+		// file ends at the pin plus the delta. Doing it here rather than leaving
+		// it to the rebuild is what makes the discard match the plan one for
+		// one - the rebuild rewrites whatever else differs from the new tip, and
+		// no path it touches was ever announced as dropped.
+		if (discardedPaths.length > 0) {
+			restoreToTip(tree, discardedPaths);
+		}
 		// No worktree byte changes before the exclusivity proof. In particular,
 		// --fresh cleanup used to delete user untracked files and only then learn
 		// that a sibling held the generated branch.
@@ -650,6 +732,11 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		const first = discard.commits[0]?.sha.slice(0, 8) ?? discard.head.slice(0, 8);
 		const last = discard.commits[discard.commits.length - 1]?.sha.slice(0, 8) ?? first;
 		out.info(`discarded ${discard.commits.length} commit(s): ${first}..${last}; kept as ${discardedRef}`);
+	}
+	// The working-tree half has no keeper and needs none: the bytes were an
+	// artifact of a build, and the summary counts what the plan named.
+	if (discardedPaths.length > 0) {
+		out.info(`discarded ${discardedPaths.length} working-tree edit(s)`);
 	}
 
 	// 10. Own code, dev overlay, exclude, hook, mark, cache.
@@ -723,6 +810,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : [],
 		discarded: discard === null ? [] : discard.commits.map((commit) => commit.sha),
 		discardedRef,
+		discardedPaths,
 		fastPathReason: verdict.reason
 	});
 }
@@ -1259,6 +1347,28 @@ function moveWorkTree(treeDir: string, branch: string): readonly string[] {
 		);
 	}
 	return [...restore, ...drop];
+}
+
+/**
+ * Return named tracked paths to the tree's current tip, index and working file
+ * together (##CMD-LOAD-DISCARD-WORKTREE).
+ *
+ * `git checkout HEAD -- <path>` and not `git checkout -- <path>`: the second
+ * restores from the index, which would keep a staged build artifact exactly
+ * where it was. Only the paths of the plan are passed, so nothing else in the
+ * tree can be reached from here.
+ */
+function restoreToTip(treeDir: string, paths: readonly string[]): void {
+	for (const batch of batches(paths)) {
+		gitOk(
+			{ args: ['checkout', 'HEAD', '--', ...batch], cwd: treeDir },
+			{
+				code: 'ARTIFACT-BROKEN',
+				message: `cannot discard the working-tree edit of ${batch.length} path(s)`,
+				hint: 're-run with --verbose'
+			}
+		);
+	}
 }
 
 type DiffEntry = { readonly status: string; readonly path: string };
@@ -2227,6 +2337,7 @@ type ResultParts = {
 	readonly broken?: readonly string[];
 	readonly discarded?: readonly string[];
 	readonly discardedRef?: string | null;
+	readonly discardedPaths?: readonly string[];
 	readonly fastPathReason?: string;
 };
 
@@ -2248,6 +2359,7 @@ function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncR
 		broken: parts.broken ?? [],
 		discarded: parts.discarded ?? [],
 		discardedRef: parts.discardedRef ?? null,
+		discardedPaths: parts.discardedPaths ?? [],
 		fastPathReason: parts.fastPathReason ?? null
 	};
 }

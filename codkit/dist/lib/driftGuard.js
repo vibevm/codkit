@@ -96,7 +96,8 @@ function declaredExtensions(patchesDir) {
 }
 /**
  * Half (a): what git sees, minus the own directory it is not allowed to judge,
- * minus the tracked paths the caller certified as its own known materialization.
+ * minus the tracked paths the caller certified as its own known materialization,
+ * minus the tracked paths the caller was told by name to throw away.
  */
 export function upstreamDirt(treeDir, ownDirName, options = {}) {
     const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
@@ -105,6 +106,7 @@ export function upstreamDirt(treeDir, ownDirName, options = {}) {
     }
     const untrackedIsDirt = options.untrackedIsDirt ?? true;
     const classify = options.isKnownMaterialization;
+    const discardable = options.isDiscardable;
     const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
     const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
     return (expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), options.ownedPrefixes ?? [])
@@ -113,8 +115,12 @@ export function upstreamDirt(treeDir, ownDirName, options = {}) {
         // path carries no HEAD to differ from (and with `--fresh` it is the
         // whitelist, not an overlay, that speaks for it).
         .filter((entry) => classify === undefined || entry.status === '??' || !classify(entry.path))
-        .map((entry) => entry.path)
-        .filter((path) => !owned.some((prefix) => path.startsWith(prefix))));
+        .filter((entry) => !owned.some((prefix) => entry.path.startsWith(prefix)))
+        // The discard question comes last, and over what is left: a path the
+        // own layer supplies is never the operator's to give up here, and an
+        // untracked one has no tip version to be returned to.
+        .filter((entry) => discardable === undefined || entry.status === '??' || !discardable(entry))
+        .map((entry) => entry.path));
 }
 /**
  * Untracked paths git collapsed to a directory, opened up where they hide a
