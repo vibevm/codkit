@@ -71,7 +71,8 @@ function reportPackage(ctx: CommandContext, entry: PackagePlan, outcome: LoadOut
 		ctx.out.info(`other versions kept: ${entry.otherVersions.join(', ')}`);
 	}
 	// A dry run plans the removal and removes nothing; its line says so (##STD-LOAD-UPGRADE).
-	for (const name of done?.removedVersions ?? []) ctx.out.info(dryRun ? `would remove superseded version: ${name}` : `removed superseded version: ${name}`);
+	for (const name of done?.removedVersions ?? [])
+		ctx.out.info(dryRun ? `would remove superseded version: ${name}` : `removed superseded version: ${name}`);
 }
 
 function packagesData(plan: LoadPlan, outcome: LoadOutcome): JsonValue {
