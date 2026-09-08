@@ -2,28 +2,64 @@
 // The text `codkit gen` writes into a product (PROP-015 sec. 5).
 //
 // Everything here is product code, not codkit's: ##GEN-HEADER-IS-THE-PRODUCTS
-// says the header comes from `--holder`/`--license` and that codkit's own
-// four-line notice is never written into a product file. So this module knows
-// only two things - the shape of a skeleton and how to put a header the caller
-// supplied in front of it.
+// says the header is built from what the product passed - its fields, or its
+// own text - and that codkit's own four-line notice is never written into a
+// product file. So this module knows only two things - the shape of a skeleton
+// and how to put a header the caller supplied in front of it.
 //
 // The relative specifiers are counted from the materialized location, not from
 // the patch set: `delta/own/**` becomes `src/vs/<ownDirName>/**` in the fork
 // tree (PROP-005 ##OWN-UNDER-SRC-VS), so a file in
 // `delta/own/contrib/<name>/browser/` reaches upstream with four `..` segments
-// and the runtime library with three.
-/**
- * ##GEN-HEADER-IS-THE-PRODUCTS: the copyright line first and the SPDX line
- * last, which is the shape every licence scanner reads; the two lines between
- * them say where the full text lives. The identifier is the product's, and
- * codkit never substitutes its own.
- */
+// and the runtime library with three; the test sits two directories deeper
+// (##GEN-TEST-LIVES-WITH-THE-FEATURE) and reaches upstream with five.
+// The rules of the block form. The widths are the ones upstream files carry,
+// so a product file lines up with the upstream file next to it rather than
+// almost lining up, which is the one thing a reader would notice.
+const BLOCK_RULE_OPEN = `/*${'-'.repeat(93)}`;
+const BLOCK_RULE_CLOSE = ` *${'-'.repeat(92)}*/`;
+/** ##GEN-HEADER-IS-THE-PRODUCTS: the product's header, ending in one newline. */
 export function productHeader(header) {
+    if (header.form === 'text') {
+        // Byte for byte: the caller has already proved the file ends in a newline.
+        return header.text;
+    }
+    return header.style === 'block' ? blockHeader(header) : lineHeader(header);
+}
+/** ##CMD-GEN-FEATURE: the name `--json` gives the header a run wrote. */
+export function headerStyleName(header) {
+    if (header === null)
+        return null;
+    return header.form === 'text' ? 'file' : header.style;
+}
+/**
+ * The `line` shape: the copyright line first and the SPDX line last, which is
+ * the shape every licence scanner reads; the two lines between them say where
+ * the full text lives. The identifier is the product's, and codkit never
+ * substitutes its own.
+ */
+function lineHeader(header) {
     return [
         `// Copyright (c) ${header.year} ${header.holder}`,
         `// Licensed under the ${header.license} licence.`,
         '// The full licence text is the licence file of this repository.',
         `// SPDX-License-Identifier: ${header.license}`,
+        ''
+    ].join('\n');
+}
+/**
+ * The `block` shape: the same four statements inside the ruled comment the
+ * upstream sources carry, so own code reads as one system with the code it
+ * sits beside - the standard ##GEN-HEADER-IS-THE-PRODUCTS cites as
+ * `MI-SAME-SHAPE-AS-UPSTREAMS-PARALLEL-SYSTEM`.
+ */
+function blockHeader(header) {
+    return [
+        BLOCK_RULE_OPEN,
+        ` *  Copyright (c) ${header.year} ${header.holder}. All rights reserved.`,
+        ` *  Licensed under the ${header.license} licence. The full licence text is the licence file of this repository.`,
+        ` *  SPDX-License-Identifier: ${header.license}`,
+        BLOCK_RULE_CLOSE,
         ''
     ].join('\n');
 }
@@ -104,12 +140,17 @@ export function contributionModule(options) {
         ');'
     ].join('\n')}\n`;
 }
-/** `delta/own/test/browser/<name>.test.ts`: the skeleton the fork's runners find. */
+/**
+ * `delta/own/contrib/<name>/test/browser/<name>.test.ts`: the skeleton the
+ * fork's runners find. ##GEN-TEST-LIVES-WITH-THE-FEATURE: it belongs to the
+ * feature, not to a shared test directory that no unit of the own manifest
+ * owns, so its specifiers are counted from inside the feature.
+ */
 export function testModule(options) {
     return `${[
         `import assert from 'assert';`,
-        `import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';`,
-        `import { FEATURE_ID } from '../../contrib/${options.name}/common/${options.name}.js';`,
+        `import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';`,
+        `import { FEATURE_ID } from '../../common/${options.name}.js';`,
         '',
         `suite('${options.id}', () => {`,
         '\tensureNoDisposablesAreLeakedInTestSuite();',

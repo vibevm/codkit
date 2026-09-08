@@ -34,13 +34,22 @@ observable, ключ контекста `<id>.enabled` для `when`. Холод
    месте → exit `0`; библиотека не установлена → exit `0` с текстом
    `runtime not installed`; отличие → `CK-E-RUNTIME-DRIFT`, exit `1`.
 3. `codkit gen feature <id> --title <text> [--setting] [--cold] [--holder <h>]
-   [--license <spdx>] [--year <y>]` — скелет фичи: `delta/own/contrib/<name>/`
+   [--license <spdx>] [--year <y>] [--header-style line|block]
+   [--header-file <path>]` — скелет фичи: `delta/own/contrib/<name>/`
    с `common/<name>.ts`, `browser/<name>.contribution.ts` (класс с
    DI-конструктором и вызов `registerFeature`) и тестом
-   `delta/own/test/browser/<name>.test.ts`. Существующий файл —
-   `CK-E-GEN-EXISTS`, ничего не записано; id не по форме `a.b` —
-   `CK-E-GEN-ID`. Без `--holder` и `--license` файлы пишутся без шапки, с
-   предупреждением: шапку Codkit в файлы продукта команда не ставит никогда.
+   `test/browser/<name>.test.ts` — тест лежит в каталоге самой фичи, поэтому
+   в манифесте own объявляется один юнит `delta/own/contrib/<name>`, и он
+   покрывает код вместе с тестом. Существующий файл — `CK-E-GEN-EXISTS`,
+   ничего не записано; id не по форме `a.b` — `CK-E-GEN-ID`. Шапка —
+   продукта: `--header-style line` (по умолчанию) даёт четыре строки `//`,
+   `block` — блочный комментарий формы апстрима, чтобы собственный код стоял
+   вровень с соседним. `--header-file <path>` (путь внутри patchesDir) пишет
+   шапку дословно из файла продукта; файл обязан оканчиваться переводом
+   строки, с полями шапки не сочетается, а `--header-style` без `--holder` и
+   `--license` нечего оформлять — оба случая exit `2`, ничего не записано.
+   Без флагов шапки файлы пишутся без шапки, с предупреждением: шапку Codkit
+   в файлы продукта команда не ставит никогда.
    `codkit gen brand` пишет заготовку таблицы правил `delta/own/common/brand.ts`
    и печатает текст крючка для строкового фаннела апстрима.
 
@@ -60,8 +69,9 @@ observable, ключ контекста `<id>.enabled` для `when`. Холод
    ресурсов сборки — того же вида; их содержание задаёт стандарт
    `MI-GRAFT-SET-CONTENTS`.
 3. Декларация фичи: `codkit gen feature acme.sample --title "Sample" --setting`
-   и юнит `delta/own/contrib/sample` в манифесте own продукта. Без `--setting`
-   флаг читается только из сборки (`product.json`) и удалённого источника.
+   и один юнит `delta/own/contrib/sample` в манифесте own продукта — код и
+   тест фичи лежат под ним. Без `--setting` флаг читается только из сборки
+   (`product.json`) и удалённого источника.
 4. Сборка сама форсирует флаг через статическое поле `product`: такая
    настройка не регистрируется и не переопределяется ни политикой, ни
    пользователем (`NEVER-COUNT-A-BUILD-FLAG-AS-OVERRIDABLE`).

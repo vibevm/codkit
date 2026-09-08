@@ -10,7 +10,7 @@
 
 import { join } from 'node:path';
 import { statIfPresent } from './containedPath.ts';
-import { writeContainedFileAtomic } from './containedFile.ts';
+import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts';
 import { ckError } from './messages.ts';
 import {
 	brandHookText,
@@ -18,11 +18,12 @@ import {
 	brandReminders,
 	commonModule,
 	contributionModule,
+	headerStyleName,
 	productHeader,
 	settingId,
 	testModule
 } from './genTemplates.ts';
-import type { FeatureTemplateOptions, ProductHeader } from './genTemplates.ts';
+import type { FeatureTemplateOptions, HeaderStyleName, ProductHeader } from './genTemplates.ts';
 
 /** ##RT-DESCRIPTOR: two or more dot-separated camelCase segments. */
 export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/u;
@@ -35,7 +36,7 @@ export type GeneratedFile = { readonly path: string; readonly text: string };
 
 export type GenOptions = {
 	readonly patchesDir: string;
-	/** The product's header, or null when `--holder`/`--license` were not given. */
+	/** The product's header, or null when no header flag was given. */
 	readonly header: ProductHeader | null;
 };
 
@@ -49,6 +50,8 @@ export type FeatureOptions = GenOptions & {
 export type GenOutcome = {
 	readonly files: readonly GeneratedFile[];
 	readonly headerWritten: boolean;
+	/** ##CMD-GEN-FEATURE: which form was written, `null` when none was. */
+	readonly headerStyle: HeaderStyleName;
 };
 
 /** ##GEN-FEATURE: the id decides the directory, so it is validated first. */
@@ -77,7 +80,7 @@ export function planFeature(options: FeatureOptions): GenOutcome {
 	const files: GeneratedFile[] = [
 		{ path: `delta/own/contrib/${name}/common/${name}.ts`, text: commonModule(template) },
 		{ path: `delta/own/contrib/${name}/browser/${name}.contribution.ts`, text: contributionModule(template) },
-		{ path: `delta/own/test/browser/${name}.test.ts`, text: testModule(template) }
+		{ path: `delta/own/contrib/${name}/test/browser/${name}.test.ts`, text: testModule(template) }
 	];
 	return withHeader(files, options.header);
 }
@@ -88,9 +91,41 @@ export function planBrand(options: GenOptions): GenOutcome {
 }
 
 function withHeader(files: readonly GeneratedFile[], header: ProductHeader | null): GenOutcome {
-	if (header === null) return { files, headerWritten: false };
+	if (header === null) return { files, headerWritten: false, headerStyle: null };
 	const prefix = productHeader(header);
-	return { files: files.map((file) => ({ path: file.path, text: `${prefix}\n${file.text}` })), headerWritten: true };
+	return {
+		files: files.map((file) => ({ path: file.path, text: `${prefix}\n${file.text}` })),
+		headerWritten: true,
+		headerStyle: headerStyleName(header)
+	};
+}
+
+/**
+ * ##GEN-HEADER-IS-THE-PRODUCTS: the text of `--header-file`, read from inside
+ * the patch set and copied byte for byte. The final newline is a requirement,
+ * not a courtesy: the generator puts one blank line between the header and the
+ * module, and a file that ends mid-line would run the header into the code.
+ */
+export function readHeaderText(patchesDir: string, relativePath: string): string {
+	const read = readContainedFile(patchesDir, relativePath, { what: `header file ${relativePath}` });
+	if (read.state === 'absent') {
+		throw ckError(
+			'CONFIG',
+			'the header file is not in the patch set',
+			'pass --header-file as a path relative to the patch-set root',
+			relativePath
+		);
+	}
+	const text = Buffer.from(read.bytes).toString('utf8');
+	if (!text.endsWith('\n')) {
+		throw ckError(
+			'CONFIG',
+			'the header file does not end with a newline',
+			'end the header file with a newline; codkit writes it verbatim and adds one blank line after it',
+			relativePath
+		);
+	}
+	return text;
 }
 
 /**
@@ -120,9 +155,13 @@ export function featureImportLine(name: string): string {
 	return `import '../contrib/${name}/browser/${name}.contribution.js';`;
 }
 
-/** ##GEN-FEATURE: own code needs a unit, and the generator does not write one. */
+/**
+ * ##GEN-TEST-LIVES-WITH-THE-FEATURE: own code needs a unit, and the generator
+ * does not write one. The test lives inside the feature, so one unit covers
+ * the whole skeleton and the reminder names exactly that one.
+ */
 export function unitReminder(name: string): string {
-	return `declare a unit for delta/own/contrib/${name}/ and delta/own/test/browser/${name}.test.ts in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED`;
+	return `declare a unit for delta/own/contrib/${name} in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED`;
 }
 
 export { brandHookText, brandReminders, settingId };

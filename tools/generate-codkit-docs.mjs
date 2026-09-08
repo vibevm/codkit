@@ -135,7 +135,9 @@ const valueLabels = {
 	'--holder': 'name',
 	'--license': 'spdx-id',
 	'--source': 'text',
-	'--title': 'text'
+	'--title': 'text',
+	'--header-style': 'line|block',
+	'--header-file': 'path'
 };
 
 const commandGuidance = {
@@ -331,7 +333,7 @@ const commandGuidance = {
 		positional: '<id>',
 		requiredFlags: ['--title'],
 		detail:
-			"Write the skeleton of a flag-gated product feature: `delta/own/contrib/<name>/common/<name>.ts` with the feature id (and the setting id under `--setting`), `delta/own/contrib/<name>/browser/<name>.contribution.ts` with a `Disposable` subclass and the `registerFeature` call the runtime library reads, and `delta/own/test/browser/<name>.test.ts`. The id must be two or more dot-separated camelCase segments (`acme.smartPaste`) or the run is `CK-E-GEN-ID` (exit 2); its last segment names the directory. `--cold` declares `hotToggle: false`, so the flag is frozen at startup and a change asks for a restart. The files are product code: `--holder` and `--license` (with `--year`, defaulting to this year) put a four-line header on them, and without those flags they are written without one and the run warns `no header written` - Codkit's own notice is never placed in a product file. An existing target is `CK-E-GEN-EXISTS` (exit 1) and nothing is written at all. The run prints the import line for the product's composition root and the reminder to declare a unit in `delta/own/patchset.delta.json`."
+			"Write the skeleton of a flag-gated product feature: `delta/own/contrib/<name>/common/<name>.ts` with the feature id (and the setting id under `--setting`), `delta/own/contrib/<name>/browser/<name>.contribution.ts` with a `Disposable` subclass and the `registerFeature` call the runtime library reads, and `delta/own/contrib/<name>/test/browser/<name>.test.ts` - the test lives inside the feature, so one unit covers the code and the test alike. The id must be two or more dot-separated camelCase segments (`acme.smartPaste`) or the run is `CK-E-GEN-ID` (exit 2); its last segment names the directory. `--cold` declares `hotToggle: false`, so the flag is frozen at startup and a change asks for a restart. The files are product code: `--holder` and `--license` (with `--year`, defaulting to this year) head them in the style `--header-style` names - `line`, four `//` lines, or `block`, the ruled comment upstream files carry, so own code sits flush with the code beside it. `--header-file <path>`, a path inside the patch set, writes a header the fields cannot express verbatim instead, and the file must end with a newline; it does not combine with `--holder`, `--license`, `--year` or `--header-style`, and `--header-style` without `--holder` and `--license` has nothing to shape - either combination is exit 2 with nothing written. Without any header flag the files are written without a header and the run warns `no header written` - Codkit's own notice is never placed in a product file. An existing target is `CK-E-GEN-EXISTS` (exit 1) and nothing is written at all. The run prints the import line for the product's composition root and the reminder to declare the one unit in `delta/own/patchset.delta.json`."
 	},
 	'gen brand': {
 		positional: '',

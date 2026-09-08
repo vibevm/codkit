@@ -1,12 +1,12 @@
 // PROP-013 ##E2E-GEN-SURFACE: `codkit gen` through the real launcher.
-// FEAT-002 ##S49-##S50.
+// FEAT-002 ##S49-##S50, ##S61.
 //
 // The fixture is a patch-set root with `delta/own/` and nothing else: the
 // generator writes into the delta and needs no fork tree (##GEN-NAMESPACE).
 
 import { afterAll, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Envelope } from '../support/cliFixture.ts';
 import { runCli } from '../support/cliFixture.ts';
@@ -16,8 +16,11 @@ afterAll(cleanupTempRoots);
 
 const COMMON = 'delta/own/contrib/sample/common/sample.ts';
 const CONTRIBUTION = 'delta/own/contrib/sample/browser/sample.contribution.ts';
-const TEST = 'delta/own/test/browser/sample.test.ts';
+// ##GEN-TEST-LIVES-WITH-THE-FEATURE: inside the feature, not in a shared
+// directory that belongs to no unit of the own manifest.
+const TEST = 'delta/own/contrib/sample/test/browser/sample.test.ts';
 const BRAND = 'delta/own/common/brand.ts';
+const HEADER_FILE = 'delta/own/HEADER.txt';
 
 function makePatchSet(label: string): string {
 	const root = makeTempRoot(`gen-${label}`);
@@ -44,6 +47,16 @@ function walk(root: string, prefix = ''): readonly string[] {
 		return entry.isDirectory() ? walk(join(root, entry.name), relative) : [relative];
 	});
 }
+
+// The block form, pinned to the character: the width is what makes an own file
+// sit flush with the upstream file beside it.
+const BLOCK_LINES: readonly string[] = [
+	'/*---------------------------------------------------------------------------------------------',
+	' *  Copyright (c) 2026 Acme. All rights reserved.',
+	' *  Licensed under the MIT licence. The full licence text is the licence file of this repository.',
+	' *  SPDX-License-Identifier: MIT',
+	' *--------------------------------------------------------------------------------------------*/'
+];
 
 function snapshot(root: string): string {
 	return [...walk(root)]
@@ -76,9 +89,10 @@ describe('S49 - gen feature writes the skeleton with the product header', () => 
 		]);
 
 		expect(outcome.status).toBe(0);
-		const data = outcome.envelope.data as { files: string[]; importLine: string; headerWritten: boolean };
+		const data = outcome.envelope.data as { files: string[]; importLine: string; headerWritten: boolean; headerStyle: string };
 		expect(data.files).toEqual([COMMON, CONTRIBUTION, TEST]);
 		expect(data.headerWritten).toBe(true);
+		expect(data.headerStyle).toBe('line');
 		expect(data.importLine).toBe("import '../contrib/sample/browser/sample.contribution.js';");
 
 		for (const relative of data.files) {
@@ -116,9 +130,116 @@ describe('S49 - gen feature writes the skeleton with the product header', () => 
 		const outcome = run(patchesDir, ['gen', 'feature', 'acme.sample', '--title', 'Sample']);
 
 		expect(outcome.status).toBe(0);
-		expect(outcome.stderr).toContain('no header written; pass --holder and --license');
+		expect(outcome.stderr).toContain('no header written; pass --holder and --license, or --header-file');
 		expect(read(patchesDir, COMMON).startsWith('// Identifiers of the Sample feature.')).toBe(true);
 		expect(read(patchesDir, COMMON)).not.toContain('SPDX-License-Identifier');
+	});
+});
+
+describe('S61 - gen feature writes the header form of the product and keeps the test with it', () => {
+	it('writes the block form into all three files of the feature directory', () => {
+		const patchesDir = makePatchSet('s61-block');
+		const outcome = json(patchesDir, [
+			'gen',
+			'feature',
+			'acme.sample',
+			'--title',
+			'Sample',
+			'--holder',
+			'Acme',
+			'--license',
+			'MIT',
+			'--year',
+			'2026',
+			'--header-style',
+			'block'
+		]);
+
+		expect(outcome.status).toBe(0);
+		const data = outcome.envelope.data as { files: string[]; headerStyle: string; reminders: string[] };
+		expect(data.files).toEqual([COMMON, CONTRIBUTION, TEST]);
+		expect(data.headerStyle).toBe('block');
+		for (const relative of data.files) {
+			expect(read(patchesDir, relative).split('\n').slice(0, 5)).toEqual(BLOCK_LINES);
+		}
+		// One unit covers the code and the test alike, so the reminder names one.
+		expect(data.reminders).toEqual([
+			'declare a unit for delta/own/contrib/sample in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED'
+		]);
+	});
+
+	it('copies the header file of another product byte for byte', () => {
+		const patchesDir = makePatchSet('s61-file');
+		const house = `${['/* the house header of this product', ' * kept exactly as the product wrote it', ' */'].join('\n')}\n`;
+		writeFileSync(join(patchesDir, 'delta', 'own', 'HEADER.txt'), house, 'utf8');
+
+		const outcome = json(patchesDir, ['gen', 'feature', 'acme.sample', '--title', 'Sample', '--header-file', HEADER_FILE]);
+
+		expect(outcome.status).toBe(0);
+		const data = outcome.envelope.data as { files: string[]; headerStyle: string };
+		expect(data.headerStyle).toBe('file');
+		for (const relative of data.files) {
+			expect(read(patchesDir, relative).startsWith(`${house}\n`)).toBe(true);
+		}
+	});
+
+	it('refuses --header-file together with a field of the header, writing nothing', () => {
+		const patchesDir = makePatchSet('s61-both');
+		writeFileSync(join(patchesDir, 'delta', 'own', 'HEADER.txt'), '// house\n', 'utf8');
+		const before = snapshot(join(patchesDir, 'delta', 'own'));
+
+		const outcome = json(patchesDir, [
+			'gen',
+			'feature',
+			'acme.sample',
+			'--title',
+			'Sample',
+			'--header-file',
+			HEADER_FILE,
+			'--holder',
+			'Acme'
+		]);
+
+		expect(outcome.status).toBe(2);
+		expect(snapshot(join(patchesDir, 'delta', 'own'))).toBe(before);
+		expect(existsSync(join(patchesDir, 'delta', 'own', 'contrib'))).toBe(false);
+	});
+
+	it('refuses a header style with no holder and licence to shape, writing nothing', () => {
+		const patchesDir = makePatchSet('s61-style-alone');
+		const outcome = json(patchesDir, ['gen', 'feature', 'acme.sample', '--title', 'Sample', '--header-style', 'block']);
+
+		expect(outcome.status).toBe(2);
+		expect(existsSync(join(patchesDir, 'delta', 'own', 'contrib'))).toBe(false);
+	});
+
+	it('refuses a header file it cannot read and names the path', () => {
+		const patchesDir = makePatchSet('s61-missing');
+		const outcome = json(patchesDir, ['gen', 'feature', 'acme.sample', '--title', 'Sample', '--header-file', HEADER_FILE]);
+
+		expect(outcome.status).toBe(2);
+		expect(outcome.envelope.errors[0]?.file).toBe(HEADER_FILE);
+		expect(existsSync(join(patchesDir, 'delta', 'own', 'contrib'))).toBe(false);
+	});
+
+	it('refuses a header style that is neither line nor block', () => {
+		const patchesDir = makePatchSet('s61-style-unknown');
+		const outcome = json(patchesDir, [
+			'gen',
+			'feature',
+			'acme.sample',
+			'--title',
+			'Sample',
+			'--holder',
+			'Acme',
+			'--license',
+			'MIT',
+			'--header-style',
+			'banner'
+		]);
+
+		expect(outcome.status).toBe(2);
+		expect(existsSync(join(patchesDir, 'delta', 'own', 'contrib'))).toBe(false);
 	});
 });
 

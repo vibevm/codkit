@@ -1,8 +1,9 @@
 // PROP-013 ##UT-GEN-FEATURE: the skeletons `codkit gen` writes (PROP-015 sec. 5).
 //
-// Three properties are what the tests are about: the id decides everything
+// Four properties are what the tests are about: the id decides everything
 // (##GEN-FEATURE), the header is the product's or there is none
-// (##GEN-HEADER-IS-THE-PRODUCTS), and a refusal writes nothing at all
+// (##GEN-HEADER-IS-THE-PRODUCTS), the test belongs to the feature
+// (##GEN-TEST-LIVES-WITH-THE-FEATURE), and a refusal writes nothing at all
 // (##GEN-REFUSES-EXISTING).
 
 import { afterAll, describe, expect, it } from 'vitest';
@@ -17,6 +18,7 @@ import {
 	planBrand,
 	planFeature,
 	refuseExisting,
+	unitReminder,
 	writeGenerated
 } from '../../src/lib/genFeature.ts';
 import { isCkError } from '../../src/lib/messages.ts';
@@ -24,7 +26,19 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
 
-const HEADER = { holder: 'Acme', license: 'MIT', year: '2026' } as const;
+const HEADER = { form: 'fields', holder: 'Acme', license: 'MIT', year: '2026', style: 'line' } as const;
+const BLOCK_HEADER = { ...HEADER, style: 'block' } as const;
+
+// The block form is pinned line by line: its width is what makes an own file
+// sit flush with the upstream file next to it, and a silent change of width is
+// exactly the regression the fields alone would not catch.
+const BLOCK_LINES: readonly string[] = [
+	'/*---------------------------------------------------------------------------------------------',
+	' *  Copyright (c) 2026 Acme. All rights reserved.',
+	' *  Licensed under the MIT licence. The full licence text is the licence file of this repository.',
+	' *  SPDX-License-Identifier: MIT',
+	' *--------------------------------------------------------------------------------------------*/'
+];
 
 function codeOf(run: () => unknown): string | null {
 	try {
@@ -71,7 +85,7 @@ describe('planFeature', () => {
 		expect(outcome.files.map((file) => file.path)).toEqual([
 			'delta/own/contrib/sample/common/sample.ts',
 			'delta/own/contrib/sample/browser/sample.contribution.ts',
-			'delta/own/test/browser/sample.test.ts'
+			'delta/own/contrib/sample/test/browser/sample.test.ts'
 		]);
 		expect(read(patchesDir, 'delta/own/contrib/sample/common/sample.ts')).toContain("export const FEATURE_ID = 'acme.sample';");
 		expect(read(patchesDir, 'delta/own/contrib/sample/common/sample.ts')).toContain("export const SETTING_ID = 'acme.sample.enabled';");
@@ -105,6 +119,18 @@ describe('planFeature', () => {
 		expect(outcome.files[2]?.text).toContain('ensureNoDisposablesAreLeakedInTestSuite();');
 		expect(outcome.files[2]?.text).toContain("suite('acme.sample', () => {");
 	});
+
+	it('counts the specifiers of that test from inside the feature directory', () => {
+		// ##GEN-TEST-LIVES-WITH-THE-FEATURE: `test/browser/` sits two levels below
+		// the feature, so upstream is five `..` away and own code is two.
+		const patchesDir = makeProduct('test-imports');
+		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+
+		expect(outcome.files[2]?.text).toContain(
+			"import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';"
+		);
+		expect(outcome.files[2]?.text).toContain("import { FEATURE_ID } from '../../common/sample.js';");
+	});
 });
 
 describe('the header of a generated file', () => {
@@ -113,6 +139,7 @@ describe('the header of a generated file', () => {
 		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
 
 		expect(outcome.headerWritten).toBe(true);
+		expect(outcome.headerStyle).toBe('line');
 		for (const file of outcome.files) {
 			const lines = file.text.split('\n');
 			expect(lines.slice(0, 4)).toEqual([
@@ -121,6 +148,38 @@ describe('the header of a generated file', () => {
 				'// The full licence text is the licence file of this repository.',
 				'// SPDX-License-Identifier: MIT'
 			]);
+		}
+	});
+
+	it('is the ruled block of the upstream form under the block style, to the character', () => {
+		const patchesDir = makeProduct('header-block');
+		const outcome = planFeature({ patchesDir, header: BLOCK_HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+
+		expect(outcome.headerStyle).toBe('block');
+		for (const file of outcome.files) {
+			const lines = file.text.split('\n');
+			expect(lines.slice(0, 5)).toEqual(BLOCK_LINES);
+			// One blank line between the header and the module, as with `line`.
+			expect(lines[5]).toBe('');
+		}
+	});
+
+	it('copies the text of a header file byte for byte and calls it the file style', () => {
+		const patchesDir = makeProduct('header-file');
+		const text = `${['/* the house header of this product', ' * second line, exactly as written', ' */'].join('\n')}\n`;
+		const outcome = planFeature({
+			patchesDir,
+			header: { form: 'text', text },
+			id: 'acme.sample',
+			title: 'Sample',
+			setting: false,
+			cold: false
+		});
+
+		expect(outcome.headerWritten).toBe(true);
+		expect(outcome.headerStyle).toBe('file');
+		for (const file of outcome.files) {
+			expect(file.text.startsWith(`${text}\n`)).toBe(true);
 		}
 	});
 
@@ -139,6 +198,7 @@ describe('the header of a generated file', () => {
 		const outcome = planFeature({ patchesDir, header: null, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
 
 		expect(outcome.headerWritten).toBe(false);
+		expect(outcome.headerStyle).toBeNull();
 		expect(outcome.files[0]?.text.startsWith('// Identifiers of the Sample feature.')).toBe(true);
 	});
 });
@@ -190,6 +250,13 @@ describe('planBrand', () => {
 describe('what the generator prints', () => {
 	it('offers the import line the composition root needs', () => {
 		expect(featureImportLine('sample')).toBe("import '../contrib/sample/browser/sample.contribution.js';");
+	});
+
+	it('names one unit, the feature directory that now holds the test too', () => {
+		// ##GEN-TEST-LIVES-WITH-THE-FEATURE: one declaration covers code and test.
+		expect(unitReminder('sample')).toBe(
+			'declare a unit for delta/own/contrib/sample in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED'
+		);
 	});
 
 	it('offers the graft for nls.ts and the two reminders that go with it', () => {
