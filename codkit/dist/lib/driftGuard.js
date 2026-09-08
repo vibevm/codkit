@@ -38,8 +38,18 @@
 // caller (an ordinary `load` may answer the fast path "up to date" and leave the
 // bytes in place, which is exactly what a silent exemption must not do); `ci`
 // deliberately passes none (see the sync engine).
+//
+// A third refinement, the other way round (##OWN-EXTENSION-STRANDED): an
+// *untracked* top-level directory under `extensions/` that no manifest record
+// declares and the pin does not ship is the materialization of an own extension
+// somebody withdrew. A plain `load` neither writes into it nor removes it, so
+// refusing over it guarded nothing and locked the daily command after a legal
+// change of the patch set; `status` names the directory instead, with the
+// `--fresh` pass that removes it. Again a predicate, again supplied by exactly
+// one caller: every other guarded command keeps the rule about a new file in
+// the upstream zone.
 import { runGit } from './gitx.js';
-import { OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
+import { EXTENSIONS_TREE_DIR, OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
 import { OWN_SOURCE_DIR, compareOwn, ownTargetRelativeDir } from './ownCopy.js';
@@ -107,15 +117,25 @@ export function upstreamDirt(treeDir, ownDirName, options = {}) {
     const untrackedIsDirt = options.untrackedIsDirt ?? true;
     const classify = options.isKnownMaterialization;
     const discardable = options.isDiscardable;
+    const stranded = options.isStrandedExtension;
     const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
     const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
-    return (expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), options.ownedPrefixes ?? [])
+    // The stranded question is asked per top-level directory of `extensions/`,
+    // and a wholly untracked `extensions/` is one collapsed entry that hides
+    // exactly those names - so the caller that can answer them gets the listing
+    // opened up, the way a declared extension opens up its own prefix.
+    const opened = [...(options.ownedPrefixes ?? []), ...(stranded === undefined ? [] : [`${EXTENSIONS_TREE_DIR}/`])];
+    return (expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), opened)
         .filter((entry) => untrackedIsDirt || entry.status !== '??')
         // The known-state question is about tracked bytes only: an untracked
         // path carries no HEAD to differ from (and with `--fresh` it is the
         // whitelist, not an overlay, that speaks for it).
         .filter((entry) => classify === undefined || entry.status === '??' || !classify(entry.path))
         .filter((entry) => !owned.some((prefix) => entry.path.startsWith(prefix)))
+        // The stranded question, over what the prefixes above left: a
+        // declared extension is never asked about, and only an untracked
+        // entry can be a materialization nobody owns any more.
+        .filter((entry) => stranded === undefined || entry.status !== '??' || !stranded(entry))
         // The discard question comes last, and over what is left: a path the
         // own layer supplies is never the operator's to give up here, and an
         // untracked one has no tip version to be returned to.

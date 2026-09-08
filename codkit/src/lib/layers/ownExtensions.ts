@@ -289,6 +289,29 @@ export function strandedMaterializations(
 	return stranded;
 }
 
+/**
+ * The same verdict for one path at a time, as the drift guard asks it
+ * (PROP-008 ##DRIFT-GUARD-PREDICATE, the stranded exception).
+ *
+ * It is the classification above and not a second copy of the rule: the command
+ * that passes over the directory and the command that names it must never be
+ * able to disagree about which directory that is. The pin is asked once per
+ * name for the life of the returned predicate, which is one run of the guard.
+ */
+export function strandedExtensionClassifier(treeDir: string, pinSha: string, declared: readonly OwnExtension[]): (path: string) => boolean {
+	const answered = new Map<string, boolean>();
+	const pinShips = (name: string): boolean => {
+		const known = answered.get(name);
+		if (known !== undefined) {
+			return known;
+		}
+		const ships = pinShipsExtension(treeDir, pinSha, name);
+		answered.set(name, ships);
+		return ships;
+	};
+	return (path) => strandedMaterializations([path], declared, pinShips).length > 0;
+}
+
 // ---------------------------------------------------------------------------
 // Mirroring
 // ---------------------------------------------------------------------------

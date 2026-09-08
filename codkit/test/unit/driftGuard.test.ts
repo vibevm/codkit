@@ -11,6 +11,8 @@ import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { driftDirty, porcelainEntries, upstreamDirt } from '../../src/lib/driftGuard.ts';
 import type { DriftOptions } from '../../src/lib/driftGuard.ts';
+import { strandedExtensionClassifier } from '../../src/lib/layers/ownExtensions.ts';
+import { loadOwnManifest } from '../../src/lib/layers/ownManifest.ts';
 import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
@@ -175,6 +177,97 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 		} finally {
 			rmSync(litter, { force: true });
 		}
+	});
+});
+
+describe('driftDirty: the stranded-materialization exception (##DRIFT-GUARD-PREDICATE)', () => {
+	// The exception belongs to one command, so the guard only carries the hook:
+	// these tests pin what the hook may and may not remove from the dirt.
+	const PACKAGE_JSON = '{\n\t"name": "acme-pack"\n}\n';
+
+	/** The guard as a plain `load` arms it, recording every path the hook saw. */
+	function guardPassingStranded(asked: string[]): ReturnType<typeof driftDirty> {
+		const classify = strandedExtensionClassifier(fixture.treeDir, fixture.config.pin.sha, loadOwnManifest(fixture.patchesDir).extensions);
+		return driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+			generated: generated(),
+			isStrandedExtension: (entry) => {
+				asked.push(entry.path);
+				return classify(entry.path);
+			}
+		});
+	}
+
+	/** Put something untracked in the tree, look, take it away again. */
+	function withTreePath<T>(relative: string, content: string, look: () => T): T {
+		const absolute = join(fixture.treeDir, relative);
+		mkdirSync(dirname(absolute), { recursive: true });
+		writeFileSync(absolute, content, 'utf8');
+		try {
+			return look();
+		} finally {
+			rmSync(join(fixture.treeDir, 'extensions'), { recursive: true, force: true });
+			rmSync(absolute, { force: true });
+		}
+	}
+
+	it('passes over a directory no record declares and the pin does not ship', () => {
+		const asked: string[] = [];
+		const result = withTreePath('extensions/sample/package.json', PACKAGE_JSON, () => guardPassingStranded(asked));
+
+		expect(result.dirty).toBe(false);
+		expect(result.upstream).toEqual([]);
+		// The collapsed `extensions/` entry was opened up, or the hook could
+		// never have been asked about the directory inside it.
+		expect(asked).toContain('extensions/sample/package.json');
+	});
+
+	it('leaves the same directory dirt for a command that arms no hook', () => {
+		const result = withTreePath('extensions/sample/package.json', PACKAGE_JSON, guard);
+
+		expect(result.dirty).toBe(true);
+		expect(result.upstream.some((path) => path.startsWith('extensions/'))).toBe(true);
+	});
+
+	it('is never asked about a declared extension, which stays out of the dirt as before', () => {
+		const manifestPath = join(fixture.patchesDir, 'delta', 'own', 'patchset.delta.json');
+		const saved = readFileSync(manifestPath, 'utf8');
+		const manifest = JSON.parse(saved) as Record<string, unknown>;
+		manifest['extensions'] = [
+			{
+				id: 'CK-product-905',
+				name: 'acme-pack',
+				owner: 'product',
+				reason: 'fixture own extension',
+				pin: `${fixture.config.pin.tag}@${fixture.config.pin.sha}`,
+				contractTests: []
+			}
+		];
+		writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+		const delta = join(fixture.patchesDir, 'delta', 'own-extensions', 'acme-pack', 'package.json');
+		mkdirSync(dirname(delta), { recursive: true });
+		writeFileSync(delta, PACKAGE_JSON, 'utf8');
+		const asked: string[] = [];
+		try {
+			// Both sides carry the same bytes: the extension is materialized, not drifted.
+			const result = withTreePath('extensions/acme-pack/package.json', PACKAGE_JSON, () => guardPassingStranded(asked));
+
+			expect(result.dirty).toBe(false);
+			expect(asked.some((path) => path.startsWith('extensions/acme-pack/'))).toBe(false);
+		} finally {
+			writeFileSync(manifestPath, saved, 'utf8');
+			rmSync(join(fixture.patchesDir, 'delta', 'own-extensions'), { recursive: true, force: true });
+		}
+	});
+
+	it('keeps a new file outside extensions/ dirt, and a loose file straight under it', () => {
+		const asked: string[] = [];
+		const result = withTreePath('extensions/README.md', '# not a materialization\n', () =>
+			whileChanged('left-behind.txt', 'junk\n', () => guardPassingStranded(asked))
+		);
+
+		expect(result.dirty).toBe(true);
+		expect(result.upstream).toContain('left-behind.txt');
+		expect(result.upstream).toContain('extensions/README.md');
 	});
 });
 

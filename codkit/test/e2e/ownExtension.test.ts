@@ -263,43 +263,52 @@ describe('S55 - a name the pin already ships is refused in the words the spec fi
 	});
 });
 
-describe('S62 - status names a materialized own extension nobody declares any more', () => {
+describe('S62 - a stranded own extension: load passes over it, status names it', () => {
 	const STRANDED_NAME = 'sample';
 	let stray: CliFixture;
 
 	beforeAll(() => {
 		// A fixture of its own: the one above is edited by S54 and S55, and this
 		// scenario needs a delta whose extension record is taken away again.
-		stray = makeCliFixture('own-extension-stranded');
-		writeStrayDelta(`${STRANDED_NAME}/package.json`, PACKAGE_JSON);
-		declareStray([
+		stray = makeStrandedFixture('own-extension-stranded');
+	});
+
+	/**
+	 * A patch set that declared one own extension, loaded it into the tree and
+	 * then withdrew the record: `extensions/<name>/` stands in the tree,
+	 * untracked, and nothing in the delta claims it any more.
+	 */
+	function makeStrandedFixture(label: string): CliFixture {
+		const fixture = makeCliFixture(label);
+		writeExtensionDelta(fixture, `${STRANDED_NAME}/package.json`, PACKAGE_JSON);
+		declareExtensions(fixture, [
 			{
 				id: EXTENSION_ID,
 				name: STRANDED_NAME,
 				owner: 'product',
 				reason: 'fixture own extension whose record is taken away again',
-				pin: `${stray.upstream.t1.tag}@${stray.upstream.t1.sha}`,
+				pin: `${fixture.upstream.t1.tag}@${fixture.upstream.t1.sha}`,
 				contractTests: []
 			}
 		]);
-		fixtureCommit(stray.patchesDir, 'fixture patchset: one own extension', '2026-01-02T00:05:00Z');
-		expect(stray.run(['load']).status).toBe(0);
-		expect(existsSync(stray.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
+		fixtureCommit(fixture.patchesDir, 'fixture patchset: one own extension', '2026-01-02T00:05:00Z');
+		expect(fixture.run(['load']).status).toBe(0);
+		expect(existsSync(fixture.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
 
-		// The record goes away, and the delta directory with it.
-		declareStray([]);
-		rmSync(stray.patchesPath(`delta/own-extensions/${STRANDED_NAME}`), { recursive: true, force: true });
-		fixtureCommit(stray.patchesDir, 'fixture patchset: the extension record is withdrawn', '2026-01-02T00:06:00Z');
-	});
+		declareExtensions(fixture, []);
+		rmSync(fixture.patchesPath(`delta/own-extensions/${STRANDED_NAME}`), { recursive: true, force: true });
+		fixtureCommit(fixture.patchesDir, 'fixture patchset: the extension record is withdrawn', '2026-01-02T00:06:00Z');
+		return fixture;
+	}
 
-	function writeStrayDelta(relative: string, text: string): void {
-		const absolute = stray.patchesPath(`delta/own-extensions/${relative}`);
+	function writeExtensionDelta(fixture: CliFixture, relative: string, text: string): void {
+		const absolute = fixture.patchesPath(`delta/own-extensions/${relative}`);
 		mkdirSync(dirname(absolute), { recursive: true });
 		writeFileSync(absolute, text, 'utf8');
 	}
 
-	function declareStray(records: readonly Record<string, unknown>[]): void {
-		const path = stray.patchesPath('delta/own/patchset.delta.json');
+	function declareExtensions(fixture: CliFixture, records: readonly Record<string, unknown>[]): void {
+		const path = fixture.patchesPath('delta/own/patchset.delta.json');
 		const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
 		manifest['extensions'] = records;
 		writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
@@ -311,14 +320,12 @@ describe('S62 - status names a materialized own extension nobody declares any mo
 		return { status: outcome.run.status, stdout: outcome.run.stdout, stranded: data.stranded };
 	}
 
-	it('leaves the directory where it is: load mirrors the declared extensions and nothing else', () => {
-		// Only the half of S62 that today's drift guard allows to be asserted:
-		// an untracked directory in the upstream zone is dirt to that guard, so
-		// this `load` refuses instead of exiting 0 as S62 says. The refusal is a
-		// read-only one - the directory is untouched either way.
-		stray.run(['load']);
+	it('lets a plain load through and does not touch the directory', () => {
+		const outcome = stray.run(['load']);
 
-		expect(existsSync(stray.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
+		expect(outcome.status, outcome.stderr).toBe(0);
+		expect(outcome.stderr).not.toContain('CK-E-DIRTY-TREE');
+		expect(readFileSync(stray.treePath(`extensions/${STRANDED_NAME}/package.json`), 'utf8')).toBe(PACKAGE_JSON);
 	});
 
 	it('counts it, names it with the recipe that removes it, and exits 1', () => {
@@ -342,6 +349,35 @@ describe('S62 - status names a materialized own extension nobody declares any mo
 		} finally {
 			rmSync(dirname(note), { recursive: true, force: true });
 		}
+	});
+
+	it('is still unextracted work for a guarded command that gets no exception', () => {
+		// The exception belongs to a plain `load` alone. `cycle` is the witness
+		// here because it reaches the tree with the untracked rule armed; `ci`
+		// and `publish` get there through a fresh apply, where no untracked path
+		// is dirt for any command, so neither could show the difference.
+		const guarded = makeStrandedFixture('own-extension-stranded-guarded');
+		// A real patch set excludes codkit runtime state; the fixture has no
+		// tracked .gitignore, and `cycle start` refuses over a dirty patch set
+		// before it ever looks at the tree.
+		writeFileSync(guarded.patchesPath('.git/info/exclude'), '.codkit/\ncodkit.local.json\n', 'utf8');
+
+		const outcome = guarded.json(['cycle', 'start', guarded.upstream.t2.tag]);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-DIRTY-TREE');
+		expect(outcome.envelope.errors[0]?.message).toContain(`extensions/${STRANDED_NAME}`);
+	}, 60_000);
+
+	it('is still a new file in the upstream zone for the two-way sync', () => {
+		const guarded = makeStrandedFixture('own-extension-stranded-sync');
+
+		const outcome = guarded.json(['sync']);
+
+		expect(outcome.run.status).toBe(1);
+		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-NEW-FILE-IN-UPSTREAM-ZONE']);
+		expect(outcome.envelope.errors[0]?.file).toContain('extensions/');
+		expect(existsSync(guarded.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
 	});
 
 	it('is gone after load --fresh, and status is quiet and green again', () => {

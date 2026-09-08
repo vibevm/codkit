@@ -27,7 +27,7 @@ import { driftDirty, porcelainPaths } from './driftGuard.js';
 import { MARKER_BLOCK_DISCARD_HINT, emptyWorktreeDiscardPlan, markerBlockDirtMessage, worktreeDiscardClassifier } from './discardWorktree.js';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.js';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.js';
-import { syncOwnExtensions } from './layers/ownExtensions.js';
+import { strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
@@ -232,13 +232,22 @@ export function runSync(options) {
         // return it. Every other byte of the target stays dirt, and an ordinary
         // `load` gets no exemption at all - it may answer the fast path "up to
         // date" and leave the materialization standing as if it were dev state.
+        //
+        // The one exemption a plain `load` does get is the other way round
+        // (##DRIFT-GUARD-PREDICATE, the stranded exception): a directory under
+        // `extensions/` that no record declares is a materialization this run
+        // neither writes into nor removes, so refusing over it would guard
+        // nothing and lock the daily command after a legal change of the patch
+        // set. `--fresh` does not need it, and no other caller sets the option.
         const materialized = [];
+        const passStranded = options.passStrandedExtensions === true && !options.fresh;
         const drift = driftDirty(tree, config.ownDirName, patchesDir, {
             untrackedIsDirt: !options.fresh,
             generated: { pinSha: config.pin.sha, branch },
             ...(options.fresh
                 ? { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, materialized) }
                 : {}),
+            ...(passStranded ? { isStrandedExtension: strandedExtensionHook(patchesDir, tree, config.pin.sha) } : {}),
             ...(discardWorktreeEdits ? { isDiscardable: worktreeDiscardClassifier(tree, prebuiltConventions, worktreePlan) } : {})
         });
         // The D8 refusals come before the dirt verdict: a rewritten line below
@@ -1767,6 +1776,27 @@ function reportOwnExtensions(out, report) {
  */
 function declaredOwnExtensions(patchesDir) {
     return loadOwnManifest(patchesDir).extensions;
+}
+/**
+ * The `isStrandedExtension` predicate of the guard, in the shape the guard asks
+ * in (##DRIFT-GUARD-PREDICATE, the stranded exception).
+ *
+ * A manifest that does not parse declares nothing here rather than throwing:
+ * the guard runs before the plan is built and has to reach a verdict even over
+ * a repository somebody left half-edited, exactly as the rest of the predicate
+ * does; the parse failure is named a few steps later by the code whose subject
+ * it is.
+ */
+function strandedExtensionHook(patchesDir, treeDir, pinSha) {
+    let declared = [];
+    try {
+        declared = declaredOwnExtensions(patchesDir);
+    }
+    catch {
+        declared = [];
+    }
+    const classify = strandedExtensionClassifier(treeDir, pinSha, declared);
+    return (entry) => classify(entry.path);
 }
 /**
  * The variable context of the config-overlay layer (PROP-005 ##OVERLAY-VARS).

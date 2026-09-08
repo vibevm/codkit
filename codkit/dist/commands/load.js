@@ -69,7 +69,14 @@ async function run(ctx) {
             dryRun,
             verbose: ctx.flags.verbose,
             discardTreeCommits: discard,
-            discardWorktreeEdits: discard && fresh
+            discardWorktreeEdits: discard && fresh,
+            // PROP-008 ##DRIFT-GUARD-PREDICATE: `load` is the one command
+            // that passes over a materialization nobody declares any more
+            // (PROP-005 ##OWN-EXTENSION-STRANDED). It is set here rather
+            // than inside the engine because it is a property of the
+            // command, not of the run: every other caller of the engine
+            // keeps the rule about a new file in the upstream zone.
+            passStrandedExtensions: true
         });
         report(ctx, result, { fresh, dryRun, discard });
         return result.exitCode;

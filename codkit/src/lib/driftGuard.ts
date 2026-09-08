@@ -38,9 +38,19 @@
 // caller (an ordinary `load` may answer the fast path "up to date" and leave the
 // bytes in place, which is exactly what a silent exemption must not do); `ci`
 // deliberately passes none (see the sync engine).
+//
+// A third refinement, the other way round (##OWN-EXTENSION-STRANDED): an
+// *untracked* top-level directory under `extensions/` that no manifest record
+// declares and the pin does not ship is the materialization of an own extension
+// somebody withdrew. A plain `load` neither writes into it nor removes it, so
+// refusing over it guarded nothing and locked the daily command after a legal
+// change of the patch set; `status` names the directory instead, with the
+// `--fresh` pass that removes it. Again a predicate, again supplied by exactly
+// one caller: every other guarded command keeps the rule about a new file in
+// the upstream zone.
 
 import { runGit } from './gitx.ts';
-import { OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
+import { EXTENSIONS_TREE_DIR, OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
 import type { OwnExtensionDivergence } from './layers/ownExtensions.ts';
 import { loadOwnManifest } from './layers/ownManifest.ts';
 import type { OwnExtension } from './layers/ownManifest.ts';
@@ -109,6 +119,26 @@ export type DriftBaseOptions = {
 	 * leaves the path dirt, so the flag can only ever narrow the guard.
 	 */
 	readonly isDiscardable?: (entry: PorcelainEntry) => boolean;
+	/**
+	 * ##DRIFT-GUARD-PREDICATE, the stranded exception (PROP-005
+	 * ##OWN-EXTENSION-STRANDED): an untracked top-level directory under
+	 * `extensions/` that no manifest record declares and the pin does not ship
+	 * is not unextracted work for the one command that neither writes into it
+	 * nor removes it - a plain `load`. Withdrawing a record is a legal change of
+	 * the patch set, and the directory it leaves behind used to lock the daily
+	 * command until a `--fresh` pass; `status` is what names the directory now.
+	 *
+	 * The mirror image of the two hooks above: asked about *untracked* entries
+	 * only, and only about those outside the own directory and the prefixes
+	 * another layer supplies. A false answer leaves the path dirt, so this can
+	 * only ever narrow the guard, and a caller that passes nothing gets the
+	 * predicate exactly as it was. `load --fresh`, `ci`, `publish`, `cycle` and
+	 * the two-way `sync` pass nothing.
+	 *
+	 * Passing it also opens up a wholly untracked `extensions/`, which git
+	 * reports as one entry that hides the directory names inside it.
+	 */
+	readonly isStrandedExtension?: (entry: PorcelainEntry) => boolean;
 	/**
 	 * Tree prefixes (with a trailing slash) that another layer supplies and git
 	 * therefore may not judge - today the materialized own extensions
@@ -196,16 +226,26 @@ export function upstreamDirt(treeDir: string, ownDirName: string, options: Drift
 	const untrackedIsDirt = options.untrackedIsDirt ?? true;
 	const classify = options.isKnownMaterialization;
 	const discardable = options.isDiscardable;
+	const stranded = options.isStrandedExtension;
 	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
 	const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
+	// The stranded question is asked per top-level directory of `extensions/`,
+	// and a wholly untracked `extensions/` is one collapsed entry that hides
+	// exactly those names - so the caller that can answer them gets the listing
+	// opened up, the way a declared extension opens up its own prefix.
+	const opened = [...(options.ownedPrefixes ?? []), ...(stranded === undefined ? [] : [`${EXTENSIONS_TREE_DIR}/`])];
 	return (
-		expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), options.ownedPrefixes ?? [])
+		expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), opened)
 			.filter((entry) => untrackedIsDirt || entry.status !== '??')
 			// The known-state question is about tracked bytes only: an untracked
 			// path carries no HEAD to differ from (and with `--fresh` it is the
 			// whitelist, not an overlay, that speaks for it).
 			.filter((entry) => classify === undefined || entry.status === '??' || !classify(entry.path))
 			.filter((entry) => !owned.some((prefix) => entry.path.startsWith(prefix)))
+			// The stranded question, over what the prefixes above left: a
+			// declared extension is never asked about, and only an untracked
+			// entry can be a materialization nobody owns any more.
+			.filter((entry) => stranded === undefined || entry.status !== '??' || !stranded(entry))
 			// The discard question comes last, and over what is left: a path the
 			// own layer supplies is never the operator's to give up here, and an
 			// untracked one has no tip version to be returned to.

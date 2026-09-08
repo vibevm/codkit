@@ -27,7 +27,7 @@ import type { CodkitConfig } from './configFile.ts';
 import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { driftDirty, porcelainPaths } from './driftGuard.ts';
-import type { DriftResult } from './driftGuard.ts';
+import type { DriftResult, PorcelainEntry } from './driftGuard.ts';
 import {
 	MARKER_BLOCK_DISCARD_HINT,
 	emptyWorktreeDiscardPlan,
@@ -36,7 +36,7 @@ import {
 } from './discardWorktree.ts';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.ts';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.ts';
-import { syncOwnExtensions } from './layers/ownExtensions.ts';
+import { strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.ts';
 import type { OwnExtensionDivergence, OwnExtensionSyncReport } from './layers/ownExtensions.ts';
 import { loadOwnManifest } from './layers/ownManifest.ts';
 import type { OwnExtension } from './layers/ownManifest.ts';
@@ -220,6 +220,19 @@ export type SyncEngineOptions = {
 	 * edits.
 	 */
 	readonly discardWorktreeEdits?: boolean;
+	/**
+	 * Only the `load` command sets this (PROP-008 ##DRIFT-GUARD-PREDICATE, the
+	 * stranded exception of PROP-005 ##OWN-EXTENSION-STRANDED). It hands the
+	 * guard the one predicate that says which untracked directory under
+	 * `extensions/` is a materialization nobody declares any more, so a plain
+	 * `load` passes over it instead of refusing over a directory it neither
+	 * writes into nor removes. It takes effect without `--fresh` only: a fresh
+	 * run counts no untracked path as dirt to begin with, and every other caller
+	 * of the engine - `ci`, `publish`, `cycle`, the two-way `sync`, the rebuild
+	 * of `save` - leaves the predicate off and keeps the rule about a new file
+	 * in the upstream zone exactly as it was.
+	 */
+	readonly passStrandedExtensions?: boolean;
 	/** Internal crash recovery: rebuild even when cache/mark would take the fast path. */
 	readonly forceApply?: boolean;
 	/** Test seam around the only two post-checkout durable metadata windows. */
@@ -458,13 +471,22 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// return it. Every other byte of the target stays dirt, and an ordinary
 		// `load` gets no exemption at all - it may answer the fast path "up to
 		// date" and leave the materialization standing as if it were dev state.
+		//
+		// The one exemption a plain `load` does get is the other way round
+		// (##DRIFT-GUARD-PREDICATE, the stranded exception): a directory under
+		// `extensions/` that no record declares is a materialization this run
+		// neither writes into nor removes, so refusing over it would guard
+		// nothing and lock the daily command after a legal change of the patch
+		// set. `--fresh` does not need it, and no other caller sets the option.
 		const materialized: string[] = [];
+		const passStranded = options.passStrandedExtensions === true && !options.fresh;
 		const drift = driftDirty(tree, config.ownDirName, patchesDir, {
 			untrackedIsDirt: !options.fresh,
 			generated: { pinSha: config.pin.sha, branch },
 			...(options.fresh
 				? { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, materialized) }
 				: {}),
+			...(passStranded ? { isStrandedExtension: strandedExtensionHook(patchesDir, tree, config.pin.sha) } : {}),
 			...(discardWorktreeEdits ? { isDiscardable: worktreeDiscardClassifier(tree, prebuiltConventions, worktreePlan) } : {})
 		});
 		// The D8 refusals come before the dirt verdict: a rewritten line below
@@ -2305,6 +2327,27 @@ function reportOwnExtensions(out: Output, report: OwnExtensionSyncReport): void 
  */
 function declaredOwnExtensions(patchesDir: string): readonly OwnExtension[] {
 	return loadOwnManifest(patchesDir).extensions;
+}
+
+/**
+ * The `isStrandedExtension` predicate of the guard, in the shape the guard asks
+ * in (##DRIFT-GUARD-PREDICATE, the stranded exception).
+ *
+ * A manifest that does not parse declares nothing here rather than throwing:
+ * the guard runs before the plan is built and has to reach a verdict even over
+ * a repository somebody left half-edited, exactly as the rest of the predicate
+ * does; the parse failure is named a few steps later by the code whose subject
+ * it is.
+ */
+function strandedExtensionHook(patchesDir: string, treeDir: string, pinSha: string): (entry: PorcelainEntry) => boolean {
+	let declared: readonly OwnExtension[] = [];
+	try {
+		declared = declaredOwnExtensions(patchesDir);
+	} catch {
+		declared = [];
+	}
+	const classify = strandedExtensionClassifier(treeDir, pinSha, declared);
+	return (entry) => classify(entry.path);
 }
 
 /**
