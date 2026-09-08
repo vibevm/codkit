@@ -437,7 +437,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:4c1b9e3918b6559272eddc085c6776e76f77773214cd949a064931a1649abdac",
+      "content_hash": "sha256:8b28ea57cf2ca2c9645102fe5360c1a964ed075beeaf4199da585f8d99ee9769",
       "doc_path": "common/PROP-003",
       "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
       "heading": "PROP-003: Codkit conventions",
@@ -545,7 +545,7 @@
     },
     {
       "anchor": "versions",
-      "content_hash": "sha256:29175724501babddae93cf7578aafadd9d1697d8fa03ce1b6142f2f462bb58fa",
+      "content_hash": "sha256:86aaef1168786f40db89f3625ec34420bfba35b6ca9f2b41ea7b6446124b33bb",
       "doc_path": "common/PROP-003",
       "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
       "heading": "Versions",
@@ -554,10 +554,10 @@
     },
     {
       "anchor": "DEV-VERSION-IS-1-0-0",
-      "content_hash": "sha256:8aac7a2a490a501e3946ce6dacaa1937380cd32c05332a8c2c77c4d85af349ea",
+      "content_hash": "sha256:d7f2107ebd048975fab236941eccfbbb1198efc20a729921ae91513a8f7960b6",
       "doc_path": "common/PROP-003",
       "file": "vibevm/vibespecs/common/PROP-003-conventions.xml",
-      "heading": "**1.0.0 is the development version.** Every package this repository ships - the standards package, the agent-skills package and the runtime library - carries version 1.0.0 and is changed in place under that number: a product takes the changed copy with `codkit standards load --upgrade` and `codkit runtime load --upgrade`, and no change bumps the number. This is how the internal packages of the package manager live during development (30 of the 31 installed here are at 1.0.0), and the owner applied the same rule to this tool and to the product on 2026-09-08. Honest re-releases - a new number for every change - return only when the owner says so explicitly; `EDITION-IS-MUTABLE-FOR-NOW` in the standards protocol and `DECISION-STD-MUTABLE-EDITION` in PROP-014 say the same for the standards edition. A version directory named after an older number is a tombstone: its content moves to `v1.0.0`, and the anchors that carried the old number stay as tombstones pointing at the new ones. @status:spec/done",
+      "heading": "**1.0.0 is the development version.** Every package this repository ships - the standards package, the agent-skills package and the runtime library - and the tool's own npm package (`package.json`, owner's word of 2026-09-09) carry version 1.0.0 and is changed in place under that number: a product takes the changed copy with `codkit standards load --upgrade` and `codkit runtime load --upgrade`, and no change bumps the number. This is how the internal packages of the package manager live during development (30 of the 31 installed here are at 1.0.0), and the owner applied the same rule to this tool and to the product on 2026-09-08. Honest re-releases - a new number for every change - return only when the owner says so explicitly; `EDITION-IS-MUTABLE-FOR-NOW` in the standards protocol and `DECISION-STD-MUTABLE-EDITION` in PROP-014 say the same for the standards edition. A version directory named after an older number is a tombstone: its content moves to `v1.0.0`, and the anchors that carried the old number stay as tombstones pointing at the new ones. @status:spec/done",
       "line": 27,
       "uri": "spec://codkit/common/PROP-003#DEV-VERSION-IS-1-0-0"
     },
