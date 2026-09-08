@@ -27,7 +27,7 @@ const SHIPPED_VERSION = shipped.version;
 const shippedRuntimeDir = shipped.directory;
 const shippedNotice = join(repoRoot, 'codkit', 'config', 'LICENSE-CODKIT.md');
 const INSTALLED = 'delta/own/codkit';
-const STANDARDS = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0';
+const STANDARDS = 'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0';
 /** ##RT-COMPAT-DECLARATION: the tag `common/version.ts` declares as verified. */
 const VERIFIED_TAG = '1.135.0';
 
@@ -102,9 +102,9 @@ function expectedNotice(): string {
 	// ##STD-NOTICE-COMPONENTS-BLOCK: every installed component, sorted by name -
 	// both packages `standards load` delivers, and the runtime library.
 	return renderNotice(readFileSync(shippedNotice, 'utf8'), [
-		{ name: 'agent-skills', version: '0.1.0', path: 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/' },
+		{ name: 'agent-skills', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/' },
 		{ name: 'runtime', version: SHIPPED_VERSION, path: `${INSTALLED}/` },
-		{ name: 'standards', version: '0.2.0', path: `${STANDARDS}/` }
+		{ name: 'standards', version: '1.0.0', path: `${STANDARDS}/` }
 	]);
 }
 
@@ -127,7 +127,7 @@ describe('S42 - runtime load delivers the library and rewrites the notice', () =
 		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);
 		expect(readFileSync(join(patchesDir, ...INSTALLED.split('/'), 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);
 		expect(notice).toContain(`runtime  ${SHIPPED_VERSION}  delta/own/codkit/`);
-		expect(notice).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
+		expect(notice).toContain('standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/');
 
 		// ##RT-LOAD-STEPS step 7: the three things to do next.
 		const text = run(patchesDir, ['runtime', 'check']).stdout;

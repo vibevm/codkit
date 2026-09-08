@@ -37,7 +37,7 @@ const ASSET_HASHES: ReadonlyMap<string, string> = new Map([
 const ENGLISH_REFERENCE = 'Licensed under the Universal Permissive License v 1.0';
 const RUSSIAN_REFERENCE = 'Лицензировано на условиях Universal Permissive License версии 1.0';
 
-/** ##STD-SKILLS-ROSTER-0-1-0 */
+/** ##STD-SKILLS-ROSTER-1-0-0 */
 const SKILL_NAMES = ['ck-orient', 'ck-intervene', 'ck-review-intervention', 'ck-resolve'];
 
 function read(relative: string): string {
@@ -167,13 +167,13 @@ function expectNoProductName(directory: string): void {
 }
 
 /**
- * ##STD-SKILLS-PACKAGE-IDENTITY and ##STD-SKILLS-ROSTER-0-1-0: the second
+ * ##STD-SKILLS-PACKAGE-IDENTITY and ##STD-SKILLS-ROSTER-1-0-0: the second
  * package codkit ships, on the same terms as the first - every file carries its
  * own licence banner, and the bodies name no product.
  */
 describe('the shipped agent-skills package', () => {
 	it('is one version directory whose manifest declares the roster', () => {
-		expect(skills?.version).toBe('0.1.0');
+		expect(skills?.version).toBe('1.0.0');
 		expect(skills?.declaresSkills).toBe(true);
 		expect(skills?.kind).toBe('agent-skills');
 

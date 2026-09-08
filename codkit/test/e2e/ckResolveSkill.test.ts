@@ -20,7 +20,7 @@ import { cleanupTempRoots } from '../support/tmp.ts';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const helper = join(
 	repoRoot,
-	'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs'
+	'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs'
 );
 const launcherDir = join(repoRoot, 'bin');
 const artifact = 'delta/patches/src__vs__base__common__util.ts.ckpatch';

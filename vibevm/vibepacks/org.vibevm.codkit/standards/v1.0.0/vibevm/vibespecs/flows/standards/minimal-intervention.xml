@@ -7,7 +7,7 @@ SPDX-License-Identifier: UPL-1.0
 -->
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">Standard: minimal intervention in the fork</title>
-  <status stage="spec" state="done" comment="edition 0.2.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab; distilled from a first rebranding pilot in 2026 and the parallel-system rulings of 2026-09-07"/>
+  <status stage="spec" state="done" comment="edition 1.0.0; norms are UPPER-KEBAB anchors, rationale is lower-kebab; distilled from a first rebranding pilot in 2026 and the parallel-system rulings of 2026-09-07"/>
   <p><MI-SCOPE fact="true" status="spec/done">The standard applies to every patch set maintained by codkit: to a delta artifact of any layer and to any own code delivered into the fork tree.</MI-SCOPE></p>
   <p><MI-THE-MEASURE fact="true" status="spec/done">The measure of an intervention is not the directory a file lives in but the number of upstream points that must stay unchanged for the intervention to keep working: an export name, the shape of a record, an id, a load order, the body of a method — each such point counts.</MI-THE-MEASURE></p>
   <source-norm title="1. Where the layer norm comes from">

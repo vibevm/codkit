@@ -17,7 +17,7 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 afterAll(cleanupTempRoots);
 
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SKILL = 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-orient/SKILL.md';
+const SKILL = 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibevm/vibespecs/skills/ck-orient/SKILL.md';
 
 function makePatchSet(label: string): string {
 	const root = makeTempRoot(`load-${label}`);

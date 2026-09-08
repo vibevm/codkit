@@ -5,7 +5,7 @@ Licensed under the Universal Permissive License v 1.0 as shown at https://oss.or
 SPDX-License-Identifier: UPL-1.0
 -->
 
-# Codkit runtime 0.1.1
+# Codkit runtime 1.0.0
 
 This directory is delivered into a product's own layer by `codkit runtime load`
 and kept there as a managed copy: Codkit compares it byte for byte with the

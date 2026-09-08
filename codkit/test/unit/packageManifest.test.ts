@@ -73,19 +73,19 @@ describe('npm distribution', () => {
 			// identifier list are the data its check reads.
 			'codkit/config/license-policy.json',
 			'codkit/config/spdx-license-ids.json',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/LICENSE',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/vibe.toml',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/THIRD-PARTY-NOTICES.md',
-			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/assets/codkit.png.license',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/LICENSE',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/vibe.toml',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/THIRD-PARTY-NOTICES.md',
+			'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/assets/codkit.png.license',
 			// The agent skills ship as a package of their own (PROP-014 sec. 1a);
 			// the resolver's journal helper travels inside it.
-			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/LICENSE',
-			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibe.toml',
-			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-orient/SKILL.md',
-			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs',
-			'codkit/runtime/v0.1.1/README.md',
-			'codkit/runtime/v0.1.1/common/version.ts',
-			'codkit/runtime/v0.1.1/browser/featureFlags.contribution.ts'
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/LICENSE',
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibe.toml',
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibevm/vibespecs/skills/ck-orient/SKILL.md',
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs',
+			'codkit/runtime/v1.0.0/README.md',
+			'codkit/runtime/v1.0.0/common/version.ts',
+			'codkit/runtime/v1.0.0/browser/featureFlags.contribution.ts'
 		]) {
 			expect(files.has(path), path).toBe(true);
 		}

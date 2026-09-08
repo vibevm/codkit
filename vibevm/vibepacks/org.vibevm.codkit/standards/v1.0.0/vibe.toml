@@ -7,7 +7,7 @@
 name = "standards"
 group = "org.vibevm.codkit"
 kind = "flow"
-version = "0.2.0"
+version = "1.0.0"
 epoch = 1
 format = "normal"
 authors = ["Oleg Chirukhin"]

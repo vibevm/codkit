@@ -60,7 +60,7 @@ describe('the licence notice', () => {
 
 	it('discovers every installed package version and the runtime, sorted by name', () => {
 		const root = product('discover');
-		installStandards(root, '0.2.0');
+		installStandards(root, '1.0.0');
 		installStandards(root, '0.1.0');
 		installRuntime(root, '0.1.0');
 		mkdirSync(join(root, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'notes'), { recursive: true });
@@ -68,17 +68,17 @@ describe('the licence notice', () => {
 		expect(discoverComponents(root)).toEqual([
 			{ name: 'runtime', version: '0.1.0', path: 'delta/own/codkit/' },
 			{ name: 'standards', version: '0.1.0', path: 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/' },
-			{ name: 'standards', version: '0.2.0', path: 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/' }
+			{ name: 'standards', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/' }
 		]);
 	});
 
 	it('renders the block as one line per component, between the markers', () => {
 		const rendered = renderNotice(noticeTemplate(toolRoot), [
-			{ name: 'standards', version: '0.2.0', path: 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/' }
+			{ name: 'standards', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/' }
 		]);
 		const lines = rendered.split('\n');
 		const begin = lines.indexOf(COMPONENTS_BEGIN);
-		expect(lines[begin + 1]).toBe('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
+		expect(lines[begin + 1]).toBe('standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/');
 		expect(lines[begin + 2]).toBe(COMPONENTS_END);
 	});
 

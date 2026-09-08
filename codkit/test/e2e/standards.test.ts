@@ -18,17 +18,17 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 afterAll(cleanupTempRoots);
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const shippedPackage = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.2.0');
-const shippedSkills = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'agent-skills', 'v0.1.0');
+const shippedPackage = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v1.0.0');
+const shippedSkills = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'agent-skills', 'v1.0.0');
 const shippedNotice = join(repoRoot, 'codkit', 'config', 'LICENSE-CODKIT.md');
-const INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0';
-const SKILLS_INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0';
+const INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0';
+const SKILLS_INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0';
 const SKILL_NAMES = ['ck-orient', 'ck-intervene', 'ck-review-intervention', 'ck-resolve'];
 
 /** ##STD-NOTICE-COMPONENTS-BLOCK: the whole shipped set, by name. */
 const COMPONENTS = [
-	{ name: 'agent-skills', version: '0.1.0', path: `${SKILLS_INSTALLED}/` },
-	{ name: 'standards', version: '0.2.0', path: `${INSTALLED}/` }
+	{ name: 'agent-skills', version: '1.0.0', path: `${SKILLS_INSTALLED}/` },
+	{ name: 'standards', version: '1.0.0', path: `${INSTALLED}/` }
 ];
 
 /** A patch set with a vibevm manifest and nothing else. */
@@ -84,13 +84,13 @@ describe('S30 - standards load into a fresh product', () => {
 		const expectedNotice = renderNotice(readFileSync(shippedNotice, 'utf8'), COMPONENTS);
 		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
 		expect(readFileSync(join(patchesDir, 'delta', 'own', 'codkit', 'LICENSE-CODKIT.md'), 'utf8')).toBe(expectedNotice);
-		expect(expectedNotice).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
+		expect(expectedNotice).toContain('standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/');
 
 		// The manifest keeps its own bytes and gains the block at the end.
 		const manifest = readFileSync(join(patchesDir, 'vibe.toml'), 'utf8');
 		expect(manifest.startsWith('[project]\nname = "fixture"\nversion = "0.0.1"\n')).toBe(true);
 		expect(manifest).toContain('[requires.packages."org.vibevm.codkit/standards"]');
-		expect(manifest).toContain('version = "=0.2.0"');
+		expect(manifest).toContain('version = "=1.0.0"');
 		expect(manifest).toContain('link = "static"');
 
 		// ##STD-LOAD-LICENCE-NOTE: four lines, verbatim, after the summary.
@@ -98,7 +98,7 @@ describe('S30 - standards load into a fresh product', () => {
 		expect(loaded.stdout).toContain('next: vibe install --offline');
 		expect(loaded.stdout).toContain('licence notice file: LICENSE-CODKIT.md');
 		expect(loaded.stdout).toContain('----- LICENSE-CODKIT.md (verbatim) -----');
-		expect(readdirSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards'))).toEqual(['v0.2.0']);
+		expect(readdirSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards'))).toEqual(['v1.0.0']);
 	});
 
 	it('materialises through vibe when vibe is on PATH', () => {
@@ -119,7 +119,7 @@ describe('S30 - standards load into a fresh product', () => {
 		expect(readFileSync(join(patchesDir, 'vibe.lock'), 'utf8')).toContain('source_kind = "local"');
 		// vibe copies the package byte for byte and adds its own slot file, so
 		// every shipped file must be present and identical - not more, not less.
-		const materialised = join(patchesDir, 'vibevm', 'vibedeps', 'org.vibevm.codkit.standards', '0.2.0');
+		const materialised = join(patchesDir, 'vibevm', 'vibedeps', 'org.vibevm.codkit.standards', '1.0.0');
 		for (const relative of ['LICENSE', 'vibe.toml', 'README.md', 'assets/codkit.png', 'assets/codkit.png.license']) {
 			expect(sha256(join(materialised, ...relative.split('/'))), relative).toBe(sha256(join(shippedPackage, ...relative.split('/'))));
 		}
@@ -167,15 +167,15 @@ describe('S56 - one run delivers every package codkit ships', () => {
 		const manifest = readFileSync(join(patchesDir, 'vibe.toml'), 'utf8');
 		const block = manifest.slice(manifest.indexOf('# codkit:begin standards'), manifest.indexOf('# codkit:end standards'));
 		expect(block).toContain('[requires.packages."org.vibevm.codkit/standards"]');
-		expect(block).toContain('version = "=0.2.0"');
+		expect(block).toContain('version = "=1.0.0"');
 		expect(block).toContain('[requires.packages."org.vibevm.codkit/agent-skills"]');
-		expect(block).toContain('version = "=0.1.0"');
+		expect(block).toContain('version = "=1.0.0"');
 		expect(manifest.split('# codkit:begin standards')).toHaveLength(2);
 
 		// ##STD-NOTICE-COMPONENTS-BLOCK: the notice names both installed packages.
 		const notice = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
-		expect(notice).toContain(`agent-skills  0.1.0  ${SKILLS_INSTALLED}/`);
-		expect(notice).toContain(`standards  0.2.0  ${INSTALLED}/`);
+		expect(notice).toContain(`agent-skills  1.0.0  ${SKILLS_INSTALLED}/`);
+		expect(notice).toContain(`standards  1.0.0  ${INSTALLED}/`);
 
 		const human = run(patchesDir, ['standards', 'load']);
 		expect(human.status).toBe(0);
@@ -184,9 +184,9 @@ describe('S56 - one run delivers every package codkit ships', () => {
 		// One summary per package, in the delivery order (##STD-LOAD-ALL-PACKAGES).
 		const summaries = human.stdout.split('\n').filter((line) => line.startsWith('package: ') || line.startsWith('files: '));
 		expect(summaries).toHaveLength(4);
-		expect(summaries[0]).toBe(`package: standards 0.2.0 -> ${INSTALLED}`);
+		expect(summaries[0]).toBe(`package: standards 1.0.0 -> ${INSTALLED}`);
 		expect(summaries[1]).toMatch(/^files: \d+ unchanged \(up to date\)$/u);
-		expect(summaries[2]).toBe(`package: agent-skills 0.1.0 -> ${SKILLS_INSTALLED}`);
+		expect(summaries[2]).toBe(`package: agent-skills 1.0.0 -> ${SKILLS_INSTALLED}`);
 		expect(summaries[3]).toMatch(/^files: \d+ unchanged \(up to date\)$/u);
 		expect((json(patchesDir, ['standards', 'load']).envelope.data as { files: { created: number } }).files.created).toBe(0);
 	});
@@ -246,7 +246,7 @@ describe('S31 - standards load is idempotent and survives an interruption', () =
 		const loaded = json(patchesDir, ['standards', 'load']);
 		expect(loaded.status).toBe(0);
 		expect((loaded.envelope.data as { removedScratch: readonly string[] }).removedScratch).toEqual(['.codkit-load-999-dead']);
-		expect(readdirSync(parent)).toEqual(['v0.2.0']);
+		expect(readdirSync(parent)).toEqual(['v1.0.0']);
 	});
 });
 
@@ -309,8 +309,8 @@ describe('S33 - a package that fails the licence check is never copied', () => {
 	it('reports the problem, writes nothing, and has no bypass flag', () => {
 		const patchesDir = makePatchSet('s33');
 		const source = makeTempRoot('s33-source');
-		cpSync(shippedPackage, join(source, 'v0.2.0'), { recursive: true });
-		rmSync(join(source, 'v0.2.0', 'assets', 'codkit.png.license'));
+		cpSync(shippedPackage, join(source, 'v1.0.0'), { recursive: true });
+		rmSync(join(source, 'v1.0.0', 'assets', 'codkit.png.license'));
 
 		const refused = runCli(patchesDir, ['--patches-dir', patchesDir, 'standards', 'load'], {
 			CODKIT_E2E_TEST_BUILD: '1',
@@ -360,7 +360,7 @@ describe('S34 - standards check names every state', () => {
 		const patchesDir = makePatchSet('s34-stale');
 		expect(run(patchesDir, ['standards', 'load']).status).toBe(0);
 		const manifest = join(patchesDir, 'vibe.toml');
-		writeFileSync(manifest, readFileSync(manifest, 'utf8').replace('version = "=0.2.0"', 'version = "=0.0.9"'), 'utf8');
+		writeFileSync(manifest, readFileSync(manifest, 'utf8').replace('version = "=1.0.0"', 'version = "=0.0.9"'), 'utf8');
 
 		const stale = json(patchesDir, ['standards', 'check']);
 		expect(stale.status).toBe(1);
@@ -445,7 +445,7 @@ describe('S51 - the notice of edition 3: paths, components block, legacy copy', 
 		expect((loaded.envelope.data as { legacyNoticeMoved: boolean }).legacyNoticeMoved).toBe(true);
 		const text = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
 		expect(text).toContain('<!-- codkit:begin components -->');
-		expect(text).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
+		expect(text).toContain('standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/');
 		expect(text).toContain('delta/own/codkit/**');
 
 		// A legacy copy put back by hand is a warning on check, not a finding.
@@ -476,11 +476,11 @@ describe('S53 - a new edition lands beside an installed older one', () => {
 		const loaded = json(patchesDir, ['standards', 'load']);
 		expect(loaded.status).toBe(0);
 		expect((loaded.envelope.data as { otherVersions: readonly string[] }).otherVersions).toEqual(['v0.1.0']);
-		expect(readdirSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards')).sort()).toEqual(['v0.1.0', 'v0.2.0']);
-		expect(readFileSync(join(patchesDir, 'vibe.toml'), 'utf8')).toContain('version = "=0.2.0"');
+		expect(readdirSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards')).sort()).toEqual(['v0.1.0', 'v1.0.0']);
+		expect(readFileSync(join(patchesDir, 'vibe.toml'), 'utf8')).toContain('version = "=1.0.0"');
 		const notice = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
 		expect(notice).toContain('standards  0.1.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/');
-		expect(notice).toContain('standards  0.2.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/');
+		expect(notice).toContain('standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/');
 		expect(existsSync(join(patchesDir, INSTALLED, 'vibevm', 'vibespecs', 'flows', 'standards', 'seam-catalogue.xml'))).toBe(true);
 	});
 });
@@ -529,13 +529,13 @@ describe('S60 - the same edition number, extended in place', () => {
 		const patchesDir = makePatchSet('s60');
 		expect(run(patchesDir, ['standards', 'load']).status).toBe(0);
 
-		// A tool whose edition 0.2.0 carries new bytes (##DECISION-STD-MUTABLE-EDITION).
+		// A tool whose edition 1.0.0 carries new bytes (##DECISION-STD-MUTABLE-EDITION).
 		const source = makeTempRoot('s60-source');
-		cpSync(shippedPackage, join(source, 'v0.2.0'), { recursive: true });
-		const readme = join(source, 'v0.2.0', 'README.md');
+		cpSync(shippedPackage, join(source, 'v1.0.0'), { recursive: true });
+		const readme = join(source, 'v1.0.0', 'README.md');
 		writeFileSync(readme, `${readFileSync(readme, 'utf8')}\nOne more norm.\n`, 'utf8');
-		const added = join(source, 'v0.2.0', 'vibevm', 'vibespecs', 'flows', 'standards', 'extra.xml');
-		writeFileSync(added, readFileSync(join(source, 'v0.2.0', 'vibevm', 'vibespecs', 'flows', 'standards', 'minimal-intervention.xml')));
+		const added = join(source, 'v1.0.0', 'vibevm', 'vibespecs', 'flows', 'standards', 'extra.xml');
+		writeFileSync(added, readFileSync(join(source, 'v1.0.0', 'vibevm', 'vibespecs', 'flows', 'standards', 'minimal-intervention.xml')));
 		const seam = { CODKIT_E2E_TEST_BUILD: '1', CODKIT_TEST_STANDARDS_SOURCE: source };
 		const withSeam = (args: readonly string[]) => runCli(patchesDir, ['--patches-dir', patchesDir, ...args], seam);
 
@@ -558,7 +558,7 @@ describe('S60 - the same edition number, extended in place', () => {
 
 		const upgraded = withSeam(['--json', 'standards', 'load', '--upgrade']);
 		expect(upgraded.status, upgraded.stderr).toBe(0);
-		expect(sameTree(join(source, 'v0.2.0'), join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
+		expect(sameTree(join(source, 'v1.0.0'), join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
 		const data = (JSON.parse(upgraded.stdout) as Envelope).data as {
 			packages: readonly { name: string; state: string }[];
 			manifest: { action: string };

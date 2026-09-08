@@ -9,7 +9,7 @@
  * directory the library ships in (`codkit/runtime/v<version>`); `codkit runtime
  * load` refuses a library whose literal and directory disagree.
  */
-export const CODKIT_RUNTIME_VERSION = '0.1.1';
+export const CODKIT_RUNTIME_VERSION = '1.0.0';
 
 /**
  * Upstream tags on which this version of the library was typechecked against

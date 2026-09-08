@@ -8,7 +8,7 @@ SPDX-License-Identifier: UPL-1.0
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">Flow: Codkit standards</title>
   <status stage="impl" state="done"/>
-  <p><PROJECT-FOLLOWS-CODKIT-STANDARDS fact="true" status="impl/done">This repository is a patch set maintained by codkit, and it follows the **codkit standards**, edition 0.2.0: the standard of minimal intervention in the fork — the delta as a parallel system in upstream's own style, every feature one folder behind a flag: @spec://org.vibevm.codkit/standards/flows/standards/minimal-intervention#root — and the catalogue of upstream seams it picks from: @spec://org.vibevm.codkit/standards/flows/standards/seam-catalogue#root.</PROJECT-FOLLOWS-CODKIT-STANDARDS></p>
+  <p><PROJECT-FOLLOWS-CODKIT-STANDARDS fact="true" status="impl/done">This repository is a patch set maintained by codkit, and it follows the **codkit standards**, edition 1.0.0: the standard of minimal intervention in the fork — the delta as a parallel system in upstream's own style, every feature one folder behind a flag: @spec://org.vibevm.codkit/standards/flows/standards/minimal-intervention#root — and the catalogue of upstream seams it picks from: @spec://org.vibevm.codkit/standards/flows/standards/seam-catalogue#root.</PROJECT-FOLLOWS-CODKIT-STANDARDS></p>
   <p><HOW-A-STANDARD-BINDS fact="true" status="impl/done">How a standard binds the project, how a deviation is recorded, who wins on conflict, and where the three licence scopes end: @spec://org.vibevm.codkit/standards/flows/standards/STANDARDS-PROTOCOL#root.</HOW-A-STANDARD-BINDS></p>
   <laws title="The laws, one line each">
     <facts ordered="false">
