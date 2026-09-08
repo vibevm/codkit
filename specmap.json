@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:fe1d316486d93208b3d9bbf544f5c73ed8cab3365b38ccba62967ac272604bf3",
+      "content_hash": "sha256:712aca90a7627cc4c26e592f59e0241e06e765ab06788073aef8f04188d12fa7",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1904,7 +1904,7 @@
     },
     {
       "anchor": "s59",
-      "content_hash": "sha256:4ed9cd6e56dee383166ee4a29ea41623c650718e409bc22db9a974f9317065eb",
+      "content_hash": "sha256:647fe35a637474a251ee278a1b2393dd853c8a9799c64837e18bf1f9502b3140",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S59 — load --fresh --discard отбрасывает правки рабочего дерева по имени",
@@ -1913,10 +1913,10 @@
     },
     {
       "anchor": "S59",
-      "content_hash": "sha256:d9c236e4421929a42a151c19b235ac278a8d88511a4e6003ac555ec860f9218d",
+      "content_hash": "sha256:210648f8877e99947717ebd2f11fe90e8cab42a35708549bd8f0c2d9857b2537",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: отслеживаемый апстримный файл дерева изменён вне маркеров (артефакт сборки). **When**: `codkit load --fresh`. **Then**: `CK-E-DIRTY-TREE` с путём. **When**: `codkit load --fresh --discard`. **Then**: план содержит `discard <path>`, файл возвращён к пину плюс дельта, own-файлы не тронуты, выход 0. (Статус — после подтверждения решения D-S3-5 владельцем.) @status:spec/plan",
+      "heading": "**Given**: отслеживаемый апстримный файл дерева без маркерных блоков изменён (артефакт сборки). **When**: `codkit load --fresh`. **Then**: `CK-E-DIRTY-TREE` с путём. **When**: `codkit load --fresh --discard`. **Then**: план содержит `discard <path>`, файл возвращён к пину плюс дельта, own-файлы не тронуты, выход 0; `--json`: `data.discardedPaths`. **Given**: файл с маркерным блоком изменён вне блока. **When**: `codkit load --fresh --discard`. **Then**: отказ `CK-E-DIRTY-TREE` с путём и подсказкой про `save`, ничего не отброшено. **Given**: `codkit load --discard` без `--fresh` при грязном файле. **Then**: отказ `CK-E-DIRTY-TREE` — флаг без `--fresh` касается только коммитов. @status:spec/plan",
       "line": 185,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S59"
     },
@@ -4595,7 +4595,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:52ddae32fbaad580c52c9c0d07bc000e38c2f542a43e9f8a6c016eb30f4eeeb9",
+      "content_hash": "sha256:38c49e24a248dfcd1635361e11b8f1073e021045335230de0706503231faeb94",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -4730,7 +4730,7 @@
     },
     {
       "anchor": "cmd-sync",
-      "content_hash": "sha256:4575fdc3eaacf08692bc63439d9c85a6c619388d45e26f5e0ff1ca546cfec561",
+      "content_hash": "sha256:674cdd09c257bedf42653e5e767a69981baadf322094e9e5ea8201475a70b338",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "5. codkit load […] и двусторонний codkit sync […]",
@@ -4766,10 +4766,10 @@
     },
     {
       "anchor": "CMD-LOAD-DISCARD-WORKTREE",
-      "content_hash": "sha256:0d4d92e39ae2c0bd80f0620b8be8a6c422d7a5cde2ff604b98d712e441de50d4",
+      "content_hash": "sha256:08d76d86f3ec596b484b4c8f51b6f13732ea4bb9d30873fbd2d50d2312b5ac4f",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "**Расширение `--discard` (решение D-S3-5, ожидает подтверждения владельца):** вместе с `--fresh` флаг `--discard` отбрасывает не только коммиты дерева, но и правки рабочего дерева в отслеживаемых апстримных файлах (сегодня — `CK-E-DIRTY-TREE`, ручной `git checkout`): план печатает каждый такой путь строкой `discard <path>` до первой записи, реальное отбрасывание совпадает с планом один в один (R14), own-файлы и незаизвлечённые маркерные блоки этим не затрагиваются — для них по-прежнему `save`. Причина: сборка дерева может переписать отслеживаемый файл артефактом сборки, и возврат в dev-режим не должен требовать ручной команды git в управляемом дереве. @status:spec/plan",
+      "heading": "**Расширение `--discard` (решение D-S3-5, подтверждено владельцем 2026-09-08, вариант 2):** только вместе с `--fresh` флаг `--discard` отбрасывает, кроме коммитов дерева, и правки рабочего дерева в **отслеживаемых апстримных файлах без маркерных блоков** (сегодня — `CK-E-DIRTY-TREE`, ручной `git checkout` в управляемом дереве): план печатает каждый такой путь строкой `discard <path>` до первой записи, реальное отбрасывание совпадает с планом один в один (R14), файл возвращается к пину плюс дельта. Не отбрасываются никогда: файлы с маркерными блоками (там может быть незаизвлечённое вмешательство — для него `save`; такой файл остаётся отказом `CK-E-DIRTY-TREE` даже с `--discard`), собственный код и own-расширения (их сторона истины — `save`/`load` по PROP-008), неотслеживаемые файлы вне списков очистки. Без `--fresh` флаг `--discard` по-прежнему касается только коммитов дерева. Причина: сборка дерева переписывает отслеживаемый файл артефактом сборки, по байтам неотличимым от правки человека, и возврат в dev-режим не должен требовать команды git руками в управляемом дереве. Отвергнуто: отдельный флаг (второе имя для того же жеста «жертва по имени»), список известных побочных эффектов сборки (нельзя держать актуальным по пинам). Норма протокола релиза: упаковка предпочтительно идёт в одноразовом клоне, как `publish`, чтобы dev-дерево не получало артефактов сборки. @status:spec/plan",
       "line": 29,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LOAD-DISCARD-WORKTREE"
     },
