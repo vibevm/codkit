@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ee64de5a0c5ef7e79bb88faf8333e2e28393821218ad3f950924c3bcb4b6aebf",
+      "content_hash": "sha256:fe1d316486d93208b3d9bbf544f5c73ed8cab3365b38ccba62967ac272604bf3",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1922,7 +1922,7 @@
     },
     {
       "anchor": "s60",
-      "content_hash": "sha256:95debdc7c9cc2882c359b8093d86222b0f9d46f554ec67c487075f6fb9d8734f",
+      "content_hash": "sha256:0378e14f12b3d8acb096d8fa94a3fb96f885950380722e5ee3d7e41fdf461099",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S60 — расширенное на месте издание приходит по --upgrade",
@@ -1931,10 +1931,10 @@
     },
     {
       "anchor": "S60",
-      "content_hash": "sha256:904b584fbb43c1d73c86aa9bde29977bac25c7f6d99f6f2c3876157b18e93f9d",
+      "content_hash": "sha256:21ad0829342c035ea89737a01a9efa33de09686b15bbb1b944ebe5b9e24cc0df",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: продукт с установленным `standards/v0.2.0` прежних байтов, инструмент с тем же номером издания и расширенным содержимым. **When**: `codkit standards check`. **Then**: `CK-E-STANDARDS-DRIFT` с перечнем и подсказкой про `--upgrade`. **When**: `codkit standards load`. **Then**: отказ тем же кодом, ничего не записано. **When**: `codkit standards load --upgrade`. **Then**: план `replace`/`remove`, каталог равен поставляемому, блок манифеста `unchanged` (та же версия), `next: vibe install --offline --force`; после него `STATIC.md` содержит `MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`. @status:spec/plan",
+      "heading": "**Given**: продукт с установленным `standards/v0.2.0` прежних байтов, инструмент с тем же номером издания и расширенным содержимым. **When**: `codkit standards check`. **Then**: `CK-E-STANDARDS-DRIFT` с перечнем и подсказкой про `--upgrade`. **When**: `codkit standards load`. **Then**: отказ тем же кодом, ничего не записано. **When**: `codkit standards load --upgrade`. **Then**: план `replace`/`remove`, каталог равен поставляемому, блок манифеста `unchanged` (та же версия), `next: vibe install --offline --force`; после него `STATIC.md` содержит `LAW-OWN-IS-DOCUMENTED`, а материализованный поток под `vibevm/vibedeps/…` — `MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`. @status:spec/plan",
       "line": 188,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S60"
     },
@@ -7430,7 +7430,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b45fb10a2274d29388171a49eae8373e8f35b183d40f88cd8747bc5794878d26",
+      "content_hash": "sha256:47632be4c68f5c0bf3ba35e909df284ab0e32fba20a0a2170318d757db300c84",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: Пакет стандартов и лицензионная разметка",
@@ -7565,7 +7565,7 @@
     },
     {
       "anchor": "skills",
-      "content_hash": "sha256:cba6a0227870ae17add827b592aefa9d6ccbffc053dc332a1d2b8b8512ea6d80",
+      "content_hash": "sha256:a9b2f55f1675cc93cd3cc6fcd09df03058237f5618e695c8444cbf275afdca38",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "1a. Пакет навыков агентов `org.vibevm.codkit/agent-skills`",
@@ -7574,19 +7574,19 @@
     },
     {
       "anchor": "STD-SKILLS-PACKAGE-IDENTITY",
-      "content_hash": "sha256:2b935c5e64577dae01596594c0b1f3c9bf50f480429b225521dd194ee9d87c57",
+      "content_hash": "sha256:8718832bcc38941439cc2751c5bc2534d000d9c27766ba81cae9bd1ad418cb03",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Идентичность `(org.vibevm.codkit, agent-skills, <версия>)`; манифест `vibe.toml`: `kind = \"flow\"`, `license = \"UPL-1.0\"`, без `[boot_snippet]` (навык — проекция, не врезка: PROP-018 §2.5 VibeVM), секции `[[skill]]` по одной на навык. Обязательные файлы — как у пакета стандартов (`STD-PACKAGE-REQUIRED-FILES`) без активов; каждый носитель — с уведомлением; область уведомления `LICENSE-CODKIT.md` покрывает пакет путём `vibevm/vibepacks/org.vibevm.codkit/**` без правок. @status:spec/plan",
+      "heading": "Идентичность `(org.vibevm.codkit, agent-skills, <версия>)`; манифест `vibe.toml`: `kind = \"flow\"`, `license = \"UPL-1.0\"`, минимальный `[boot_snippet]` (две строки: навыки спроецированы, они маршрутизируют и ничего не пересказывают — проекция навыков сама по себе врезкой не является, PROP-018 §2.5 VibeVM, но пакет `flow` несёт врезку по форме), секции `[[skill]]` по одной на навык. Обязательные файлы — как у пакета стандартов (`STD-PACKAGE-REQUIRED-FILES`) без активов; каждый носитель — с уведомлением; область уведомления `LICENSE-CODKIT.md` покрывает пакет путём `vibevm/vibepacks/org.vibevm.codkit/**` без правок. @status:spec/plan",
       "line": 43,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-PACKAGE-IDENTITY"
     },
     {
       "anchor": "STD-SKILLS-DECLARATION",
-      "content_hash": "sha256:ac1e3ca2b6bdd8ae4b67790c74b8bf10749b76bb6caa9d35237e0511b52153a7",
+      "content_hash": "sha256:9da28e42f4163247b0423acbd914a04ddbf74ef58c6917099c638338480c18fd",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Форма записи — `SKILL-TABLE-SHAPE` VibeVM: `[[skill]] name = \"<имя>\"` (имя каталога в харнессе), `path = \"skills/<имя>\"` (каталог с `SKILL.md` и вложенными `scripts/`, `agents/`), `description` (обязательно у нас: триггер lazy-push, одно предложение по-английски), `agents` не задаётся (все харнессы). Тело навыка обращается к своим скриптам по пути проекции (`.<agent>/skills/<имя>/scripts/…`), а не по `<codkit-tool-root>`. @status:spec/plan",
+      "heading": "Форма записи — `SKILL-TABLE-SHAPE` VibeVM: `[[skill]] name = \"<имя>\"` (имя каталога в харнессе), `path = \"vibevm/vibespecs/skills/<имя>\"` (каталог с `SKILL.md` и вложенными `scripts/`, `agents/`; путь пишется явно — алиас `spec/` менеджер пакетов при проекции не разрешает, проверено 2026-09-07), `description` (обязательно у нас: триггер lazy-push, одно предложение по-английски), `agents` не задаётся (все харнессы). Тело навыка обращается к своим скриптам по пути проекции (`.<agent>/skills/<имя>/scripts/…`), а не по `<codkit-tool-root>`. @status:spec/plan",
       "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-DECLARATION"
     },
