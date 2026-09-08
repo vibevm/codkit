@@ -1,78 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec xmlns="https://vibevm.org/spec/1">
-  <title id="root">codkit PROP-004: Маркеры и формат патча .ckpatch</title>
+  <title id="root">codkit PROP-004: Markers and the .ckpatch patch format</title>
   <status stage="spec" state="done" comment="standalone marker and deterministic patch format contract"/>
-  <marker-forms title="1. Формы маркеров по языкам">
-    <p><MARKER-CARRIES-ONLY-ID fact="true" status="spec/done">Маркер несёт только идентификатор; полные метаданные — в артефакте дельты в patchset (шапка патча и т.п.). Так маркер не раздувает патч и контекст диффа и надёжно переносится при переименованиях вместе с метаданными по идентификатору.</MARKER-CARRIES-ONLY-ID></p>
+  <marker-forms title="1. Marker forms by language">
+    <p><MARKER-CARRIES-ONLY-ID fact="true" status="spec/done">A marker carries the identifier and nothing else; the full metadata live in the delta artifact in the patch set (the patch header and the like). This way the marker does not inflate the patch or the context of the diff, and it is carried over renames reliably, together with the metadata, by the identifier.</MARKER-CARRIES-ONLY-ID></p>
     <table>
-      <tr><td>Языки (расширения)</td><td>Начало</td><td>Конец</td></tr>
+      <tr><td>Languages (extensions)</td><td>Begin</td><td>End</td></tr>
       <tr><td><MF-TS fact="true" status="spec/done">`.ts .js .mjs .cjs .jsonc`</MF-TS></td><td>`// codkit:begin CK-&lt;subsys&gt;-&lt;NNN&gt;`</td><td>`// codkit:end CK-&lt;subsys&gt;-&lt;NNN&gt;`</td></tr>
       <tr><td><MF-CSS fact="true" status="spec/done">`.css`</MF-CSS></td><td>`/* codkit:begin CK-&lt;subsys&gt;-&lt;NNN&gt; */`</td><td>`/* codkit:end CK-&lt;subsys&gt;-&lt;NNN&gt; */`</td></tr>
       <tr><td><MF-HTML fact="true" status="spec/done">`.html .md .svg`</MF-HTML></td><td>`&lt;!-- codkit:begin CK-&lt;subsys&gt;-&lt;NNN&gt; --&gt;`</td><td>`&lt;!-- codkit:end CK-&lt;subsys&gt;-&lt;NNN&gt; --&gt;`</td></tr>
-      <tr><td><MF-SH fact="true" status="spec/done">`.sh .ps1 .yml .yaml` (сборка/CI апстрима)</MF-SH></td><td>`# codkit:begin CK-&lt;subsys&gt;-&lt;NNN&gt;`</td><td>`# codkit:end CK-&lt;subsys&gt;-&lt;NNN&gt;`</td></tr>
+      <tr><td><MF-SH fact="true" status="spec/done">`.sh .ps1 .yml .yaml` (the upstream build and CI)</MF-SH></td><td>`# codkit:begin CK-&lt;subsys&gt;-&lt;NNN&gt;`</td><td>`# codkit:end CK-&lt;subsys&gt;-&lt;NNN&gt;`</td></tr>
     </table>
   </marker-forms>
-  <marker-rules title="2. Правила маркеров (нормативные, проверяются verify)">
+  <marker-rules title="2. Marker rules (normative, checked by verify)">
     <facts ordered="false">
-      <MR-LINE-SHAPE fact="true" status="spec/done">Маркерная строка: необязательный отступ, форма комментария, слово `codkit:begin|end`, один пробел, id по `idPattern`. Ничего больше на строке (кроме закрытия комментария для CSS/HTML).</MR-LINE-SHAPE>
-      <MR-ASCII-ONLY fact="true" status="spec/done">Маркерные строки и служебные комментарии внутри блока используют ASCII, чтобы не вводить зависимость от fork-specific Unicode hygiene policy.</MR-ASCII-ONLY>
-      <MR-FUNCTIONAL-ONLY fact="true" status="spec/done">Внутри блока: только функциональное изменение; апстримные строки при нейтрализации **комментируются, не удаляются**; правки форматирования вне своего блока запрещены; многострочная логика не пишется там, где хватает однострочного крючка — логика живёт в own-коде.</MR-FUNCTIONAL-ONLY>
-      <MR-STABLE-ANCHOR fact="true" status="spec/done">Крючок ставится в устойчивую точку конкретного пина: предпочтительно начало существующего `create*`-метода, не сигнатура конструктора; DI — через уже доступный accessor/instantiation service, а не новым параметром конструктора.</MR-STABLE-ANCHOR>
-      <MR-NO-NESTING fact="true" status="spec/done">Вложенность маркеров запрещена; один id может покрывать блоки в нескольких файлах только для слоя `entry-module` (PROP-005 §4), иначе — один файл.</MR-NO-NESTING>
-      <MR-SEVERAL-BLOCKS-ONE-ID fact="true" status="spec/done">Один id может открывать **несколько блоков в одном файле**: прививка обычно состоит из строки импорта и места вызова, и это одно вмешательство, а не два. Блоки одного id не вкладываются друг в друга; все блоки файла с этим id принадлежат одному артефакту (`save` собирает их в один патч, `verify` считает бюджет прививки по всем блокам вместе — PROP-005 `PATCH-HOOK-BUDGET`). `CK-E-MARKER-DUP-ID` остаётся ошибкой двух *записей* с одним id и повторного `marker new` с занятым id. Решение 2026-09-07: до него правило «один блок на файл» заставляло либо ставить импорт и вызов под разными id (две записи об одном вмешательстве), либо растягивать блок на весь промежуток; отвергнуто — оба варианта лгут инвентарю.</MR-SEVERAL-BLOCKS-ONE-ID>
-      <MR-BLIND-ZONES fact="true" status="spec/done">JSON без комментариев и бинарные файлы маркера не имеют по построению — их вмешательства живут в overlay / resource-map / removed-registry и обязаны иметь guard-тест.</MR-BLIND-ZONES>
+      <MR-LINE-SHAPE fact="true" status="spec/done">A marker line: an optional indent, the comment form, the word `codkit:begin|end`, one space, an id matching `idPattern`. Nothing else on the line (except the comment terminator for CSS/HTML).</MR-LINE-SHAPE>
+      <MR-ASCII-ONLY fact="true" status="spec/done">Marker lines and the service comments inside a block use ASCII, so as not to introduce a dependency on a fork-specific Unicode hygiene policy.</MR-ASCII-ONLY>
+      <MR-FUNCTIONAL-ONLY fact="true" status="spec/done">Inside a block: a functional change only; upstream lines that are neutralized are **commented out, not deleted**; formatting edits outside one's own block are forbidden; multi-line logic is not written where a one-line hook is enough - the logic lives in own code.</MR-FUNCTIONAL-ONLY>
+      <MR-STABLE-ANCHOR fact="true" status="spec/done">A hook is placed at a point of the particular pin that is stable: preferably the beginning of an existing `create*` method, not a constructor signature; DI goes through an accessor or instantiation service that is already available, not through a new constructor parameter.</MR-STABLE-ANCHOR>
+      <MR-NO-NESTING fact="true" status="spec/done">Nesting of markers is forbidden; one id may cover blocks in several files only for the `entry-module` layer (PROP-005 §4), otherwise it is one file.</MR-NO-NESTING>
+      <MR-SEVERAL-BLOCKS-ONE-ID fact="true" status="spec/done">One id may open **several blocks in one file**: a graft usually consists of an import line and a call site, and that is one intervention, not two. The blocks of one id are not nested inside each other; every block of the file with that id belongs to one artifact (`save` collects them into one patch, `verify` counts the graft budget over all the blocks together - PROP-005 `PATCH-HOOK-BUDGET`). `CK-E-MARKER-DUP-ID` remains the error of two *records* with one id and of a repeated `marker new` with an id already taken. Decision of 2026-09-07: before it the rule «one block per file» forced one either to put the import and the call site under different ids (two records about one intervention) or to stretch the block over the whole span between them; rejected - both variants lie to the inventory.</MR-SEVERAL-BLOCKS-ONE-ID>
+      <MR-BLIND-ZONES fact="true" status="spec/done">JSON without comments and binary files have no marker by construction - their interventions live in the overlay, the resource map or the removed registry, and must have a guard test.</MR-BLIND-ZONES>
     </facts>
   </marker-rules>
-  <marker-parser title="3. Разбор маркеров (алгоритм)">
-    <p><parser-io fact="true" status="spec/done">Вход: содержимое файла (байты), расширение. Выход: список блоков `{id, beginLine, endLine}` (строки 1-based, включая маркерные) + список ошибок.</parser-io></p>
+  <marker-parser title="3. Marker parsing (the algorithm)">
+    <p><parser-io fact="true" status="spec/done">Input: the content of the file (bytes), the extension. Output: a list of blocks `{id, beginLine, endLine}` (1-based lines, the marker lines included) plus a list of errors.</parser-io></p>
     <fence>parseMarkers(bytes, ext):
-  form = conventions.markerComment[ext]        # нет формы -> файл не маркируемый: ошибка на попытке
-  text = decodeUtf8Strict(bytes)               # невалидный UTF-8 -> ошибка CK-E-ENCODING
-  открытые = стек; блоки = []; ошибки = []
-  для каждой строки i (split по \n; \r в конце строки -> ошибка CK-E-CRLF):
-    m = строка соответствует ^\s*&lt;form.open&gt;(begin|end)\s+(CK-[a-z]+-[0-9]{3})\s*&lt;form.close&gt;\s*$
-        # form.open уже ЗАКАНЧИВАЕТСЯ на "codkit:" (форма ##CONV-MARKER-FORMS) — слово не дублируется
-    если строка содержит "codkit:begin"|"codkit:end", но m не совпал -> ошибка CK-E-MARKER-MALFORMED(i)
-    если m.kind == begin:
-      если стек не пуст -> ошибка CK-E-MARKER-NESTED(i)         # вложенность запрещена
-      # id, уже встречавшийся в файле, открывает ещё один блок того же вмешательства (##MR-SEVERAL-BLOCKS-ONE-ID)
+  form = conventions.markerComment[ext]        # no form -> the file cannot be marked: an error on the attempt
+  text = decodeUtf8Strict(bytes)               # invalid UTF-8 -> error CK-E-ENCODING
+  opened = stack; blocks = []; errors = []
+  for every line i (split on \n; a \r at the end of a line -> error CK-E-CRLF):
+    m = the line matches ^\s*&lt;form.open&gt;(begin|end)\s+(CK-[a-z]+-[0-9]{3})\s*&lt;form.close&gt;\s*$
+        # form.open already ENDS with "codkit:" (the form of ##CONV-MARKER-FORMS) - the word is not duplicated
+    if the line contains "codkit:begin"|"codkit:end" but m did not match -> error CK-E-MARKER-MALFORMED(i)
+    if m.kind == begin:
+      if the stack is not empty -> error CK-E-MARKER-NESTED(i)   # nesting is forbidden
+      # an id already seen in the file opens one more block of the same intervention (##MR-SEVERAL-BLOCKS-ONE-ID)
       push {id, i}
-    если m.kind == end:
-      если стек пуст или top.id != id -> CK-E-MARKER-UNBALANCED(i)
-      блоки += {id, top.line, i}; pop
-  если стек не пуст -> CK-E-MARKER-UNCLOSED(top.line)
-  id не по idPattern -> CK-E-MARKER-BAD-ID
-  вернуть {блоки, ошибки}</fence>
-    <p><PARSER-PERFORMANCE fact="true" status="spec/done">Производительность: линейный проход; требование pre-commit — доли секунды на файл (PROP-012 §3).</PARSER-PERFORMANCE></p>
+    if m.kind == end:
+      if the stack is empty or top.id != id -> CK-E-MARKER-UNBALANCED(i)
+      blocks += {id, top.line, i}; pop
+  if the stack is not empty -> CK-E-MARKER-UNCLOSED(top.line)
+  an id that does not match idPattern -> CK-E-MARKER-BAD-ID
+  return {blocks, errors}</fence>
+    <p><PARSER-PERFORMANCE fact="true" status="spec/done">Performance: a linear pass; the pre-commit requirement is a fraction of a second per file (PROP-012 §3).</PARSER-PERFORMANCE></p>
   </marker-parser>
-  <patch-file title="4. Патч — файл delta/patches/*.ckpatch">
-    <p><PATCH-NAME-ENCODING fact="true" status="spec/done">**Имя файла** кодирует путь апстримного файла: разделитель `/` заменяется на `__` (двойное подчёркивание), расширение `.ckpatch` добавляется к полному имени. Пример: `src/vs/workbench/browser/parts/titlebar/titlebarPart.ts` → `delta/patches/src__vs__workbench__browser__parts__titlebar__titlebarPart.ts.ckpatch`. Обратное декодирование: отрезать `.ckpatch`, заменить `__` на `/`. Кодер перед заменой проверяет, что путь не содержит `__`, и при коллизии падает с кодом 2 (на пине таких путей нет; проверка — на будущее).</PATCH-NAME-ENCODING></p>
-    <p><PATCH-STRUCTURE fact="true" status="spec/done">**Структура файла**: шапка метаданных, затем unified diff. Шапка — строки, начинающиеся с `# `, до первой строки `--- `; `git apply` такие строки игнорирует (мусор до заголовков диффа), поэтому файл применим как обычный патч.</PATCH-STRUCTURE></p>
-    <p><patch-header-lead fact="true" status="spec/done">Поля шапки (порядок фиксирован, все обязательны):</patch-header-lead></p>
+  <patch-file title="4. A patch - the file delta/patches/*.ckpatch">
+    <p><PATCH-NAME-ENCODING fact="true" status="spec/done">**The file name** encodes the path of the upstream file: the separator `/` is replaced by `__` (a double underscore), and the extension `.ckpatch` is appended to the full name. Example: `src/vs/workbench/browser/parts/titlebar/titlebarPart.ts` → `delta/patches/src__vs__workbench__browser__parts__titlebar__titlebarPart.ts.ckpatch`. Decoding back: cut off `.ckpatch`, replace `__` with `/`. Before the replacement the encoder checks that the path contains no `__`, and on a collision it fails with code 2 (there are no such paths at the pin; the check is for the future).</PATCH-NAME-ENCODING></p>
+    <p><PATCH-STRUCTURE fact="true" status="spec/done">**The structure of the file**: the metadata header, then the unified diff. The header is the lines that start with `# `, up to the first `--- ` line; `git apply` ignores such lines (garbage before the diff headers), so the file is applicable as an ordinary patch.</PATCH-STRUCTURE></p>
+    <p><patch-header-lead fact="true" status="spec/done">The header fields (the order is fixed, all of them are mandatory):</patch-header-lead></p>
     <table>
-      <tr><td>Строка</td><td>Значение / пример</td></tr>
-      <tr><td><PH-SCHEMA fact="true" status="spec/done">`# codkit-patch: 2`</PH-SCHEMA></td><td>версия схемы</td></tr>
-      <tr><td><PH-ID fact="true" status="spec/done">`# id: &lt;id&gt;`</PH-ID></td><td>id вмешательства по `idPattern`, напр. `# id: CK-workbench-001`</td></tr>
-      <tr><td><PH-LAYER fact="true" status="spec/done">`# layer: patch|entry-module`</PH-LAYER></td><td>ОПЦИОНАЛЬНО (дефолт `patch`; добавлено M1 — до заморозки формата): носитель слоя для патчей entry-module, которого прежняя шапка не имела; допустимые значения: `patch`, `entry-module`, `rewrite-rule` (последнее — только у патчей, СГЕНЕРИРОВАННЫХ движком правил, пост-MVP: инвентарь атрибутирует их слою rewrite-rule)</td></tr>
-      <tr><td><PH-TYPE fact="true" status="spec/done">`# type: &lt;t&gt;`</PH-TYPE></td><td>из `interventionTypes`, напр. `# type: hook`</td></tr>
-      <tr><td><PH-CATEGORY fact="true" status="spec/done">`# category: &lt;c&gt;`</PH-CATEGORY></td><td>из `categories`</td></tr>
-      <tr><td><PH-OWNER fact="true" status="spec/done">`# owner: &lt;key&gt;`</PH-OWNER></td><td>ключ из `delta/owners.json`</td></tr>
-      <tr><td><PH-REASON fact="true" status="spec/done">`# reason: &lt;текст&gt;`</PH-REASON></td><td>одна строка: зачем вмешательство</td></tr>
-      <tr><td><PH-LINK fact="true" status="spec/done">`# link: &lt;ref&gt;`</PH-LINK></td><td>ссылка на issue; `none` если нет</td></tr>
-      <tr><td><PH-CAUSE fact="true" status="spec/done">`# cause: &lt;sha|none&gt;`</PH-CAUSE></td><td>апстримный коммит последней адаптации</td></tr>
-      <tr><td><PH-PIN fact="true" status="spec/done">`# pin: &lt;tag&gt;@&lt;sha&gt;`</PH-PIN></td><td>пин, на котором патч актуален, напр. `# pin: 1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`</td></tr>
-      <tr><td><PH-CONTRACT-TESTS fact="true" status="spec/done">`# contract-tests: &lt;csv|none&gt;`</PH-CONTRACT-TESTS></td><td>id покрывающих тестов через запятую</td></tr>
+      <tr><td>Line</td><td>Meaning / example</td></tr>
+      <tr><td><PH-SCHEMA fact="true" status="spec/done">`# codkit-patch: 2`</PH-SCHEMA></td><td>the schema version</td></tr>
+      <tr><td><PH-ID fact="true" status="spec/done">`# id: &lt;id&gt;`</PH-ID></td><td>the intervention id matching `idPattern`, e.g. `# id: CK-workbench-001`</td></tr>
+      <tr><td><PH-LAYER fact="true" status="spec/done">`# layer: patch|entry-module`</PH-LAYER></td><td>OPTIONAL (the default is `patch`; added in M1 - before the format was frozen): the carrier of the layer for entry-module patches, which the former header did not have; the allowed values are `patch`, `entry-module`, `rewrite-rule` (the last one only on patches GENERATED by the rule engine, post-MVP: the inventory attributes them to the rewrite-rule layer)</td></tr>
+      <tr><td><PH-TYPE fact="true" status="spec/done">`# type: &lt;t&gt;`</PH-TYPE></td><td>one of `interventionTypes`, e.g. `# type: hook`</td></tr>
+      <tr><td><PH-CATEGORY fact="true" status="spec/done">`# category: &lt;c&gt;`</PH-CATEGORY></td><td>one of `categories`</td></tr>
+      <tr><td><PH-OWNER fact="true" status="spec/done">`# owner: &lt;key&gt;`</PH-OWNER></td><td>a key from `delta/owners.json`</td></tr>
+      <tr><td><PH-REASON fact="true" status="spec/done">`# reason: &lt;text&gt;`</PH-REASON></td><td>one line: what the intervention is for</td></tr>
+      <tr><td><PH-LINK fact="true" status="spec/done">`# link: &lt;ref&gt;`</PH-LINK></td><td>a link to an issue; `none` when there is none</td></tr>
+      <tr><td><PH-CAUSE fact="true" status="spec/done">`# cause: &lt;sha|none&gt;`</PH-CAUSE></td><td>the upstream commit of the last adaptation</td></tr>
+      <tr><td><PH-PIN fact="true" status="spec/done">`# pin: &lt;tag&gt;@&lt;sha&gt;`</PH-PIN></td><td>the pin at which the patch is current, e.g. `# pin: 1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`</td></tr>
+      <tr><td><PH-CONTRACT-TESTS fact="true" status="spec/done">`# contract-tests: &lt;csv|none&gt;`</PH-CONTRACT-TESTS></td><td>the ids of the covering tests, comma-separated</td></tr>
     </table>
-    <p><patch-body-lead fact="true" status="spec/done">**Тело** — нормализованный unified diff ровно одного файла:</patch-body-lead></p>
+    <p><patch-body-lead fact="true" status="spec/done">**The body** is a normalized unified diff of exactly one file:</patch-body-lead></p>
     <facts ordered="false">
-      <PB-ONE-FILE-HEADERS fact="true" status="spec/done">ровно одна пара заголовков `--- a/&lt;path&gt;` и `+++ b/&lt;path&gt;` с одинаковым `&lt;path&gt;` (LF-переводы, без табов и кавычек; пути с пробелами не экранируются — в дереве апстрима их нет, наличие — ошибка кодера);</PB-ONE-FILE-HEADERS>
-      <PB-U3-HUNKS fact="true" status="impl/done">далее ханки `@@ -l,c +l,c @@` с контекстом ровно 3 строки (`-U3`); уточнено реализацией M0: git опускает `,1` у однострочных диапазонов и добавляет после второго `@@` заголовок секции — обе формы принимаются и сохраняются байт-в-байт (иначе двойная регенерация недостижима); пустая контекстная строка может приходить без ведущего пробела — принимается и воспроизводится дословно;</PB-U3-HUNKS>
-      <PB-NO-VOLATILE-HEADERS fact="true" status="spec/done">никаких строк `diff --git`, `index`, `mode`, дат, авторов, номеров серии: они не нужны для применения и содержат недетерминированные данные;</PB-NO-VOLATILE-HEADERS>
-      <PB-BYTES-VERBATIM fact="true" status="spec/done">содержимое строк — байт-в-байт как в файлах (LF; хвостовые пробелы сохраняются); файл заканчивается LF; маркер `\ No newline at end of file` допустим по правилам unified diff.</PB-BYTES-VERBATIM>
+      <PB-ONE-FILE-HEADERS fact="true" status="spec/done">exactly one pair of headers `--- a/&lt;path&gt;` and `+++ b/&lt;path&gt;` with the same `&lt;path&gt;` (LF line endings, no tabs and no quotes; paths with spaces are not escaped - there are none in the upstream tree, and their presence is an encoder error);</PB-ONE-FILE-HEADERS>
+      <PB-U3-HUNKS fact="true" status="impl/done">then the hunks `@@ -l,c +l,c @@` with a context of exactly 3 lines (`-U3`); refined by the M0 implementation: git omits the `,1` of single-line ranges and adds a section heading after the second `@@` - both forms are accepted and preserved byte for byte (otherwise double regeneration is unreachable); an empty context line may arrive without the leading space - it is accepted and reproduced verbatim;</PB-U3-HUNKS>
+      <PB-NO-VOLATILE-HEADERS fact="true" status="spec/done">no `diff --git`, `index` or `mode` lines, no dates, authors or series numbers: they are not needed for applying and they carry non-deterministic data;</PB-NO-VOLATILE-HEADERS>
+      <PB-BYTES-VERBATIM fact="true" status="spec/done">the content of the lines is byte for byte as in the files (LF; trailing spaces are preserved); the file ends with an LF; the marker `\ No newline at end of file` is allowed by the rules of unified diff.</PB-BYTES-VERBATIM>
     </facts>
-    <p><PATCH-IS-STATE-NOT-INCREMENT fact="true" status="spec/done">Патч всегда описывает **состояние** «файл на пине → наше состояние файла», не инкремент. Между патчами нет порядка и зависимостей (один файл — один патч по построению); порядок наложения при `load` — лексикографическая сортировка имён патч-файлов по байтам UTF-8 (нужен только детерминизму ветки).</PATCH-IS-STATE-NOT-INCREMENT></p>
-    <p><ADD-FILE-PATCH fact="true" status="spec/done">**Add-file патч** (новый файл в апстримной зоне — допустим только как исключение, PROP-005 §9): `--- /dev/null`, `+++ b/&lt;path&gt;`, один ханк `@@ -0,0 +1,N @@`. **Удаление апстримного файла патчем запрещено** (`--- a/… +++ /dev/null` — ошибка валидации; вместо этого hide + removed-registry).</ADD-FILE-PATCH></p>
-    <p><patch-valid-sample fact="true" status="spec/done">Валидный образец целиком (наш, с нуля; путь и контекстные строки — условные, показывают только форму; настоящий патч несёт байты реального апстримного файла):</patch-valid-sample></p>
+    <p><PATCH-IS-STATE-NOT-INCREMENT fact="true" status="spec/done">A patch always describes a **state**, «the file at the pin → our state of the file», not an increment. There is no order and no dependency between patches (one file is one patch by construction); the order of applying under `load` is the lexicographic sort of the patch file names by UTF-8 bytes (it is needed only for the determinism of the branch).</PATCH-IS-STATE-NOT-INCREMENT></p>
+    <p><ADD-FILE-PATCH fact="true" status="spec/done">**An add-file patch** (a new file in the upstream zone - allowed only as an exception, PROP-005 §9): `--- /dev/null`, `+++ b/&lt;path&gt;`, one hunk `@@ -0,0 +1,N @@`. **Deleting an upstream file by a patch is forbidden** (`--- a/… +++ /dev/null` is a validation error; hide plus the removed registry are used instead).</ADD-FILE-PATCH></p>
+    <p><patch-valid-sample fact="true" status="spec/done">A valid sample in full (ours, written from scratch; the path and the context lines are notional and show the form only; a real patch carries the bytes of a real upstream file):</patch-valid-sample></p>
     <fence># codkit-patch: 2
 # id: CK-workbench-001
 # type: hook
@@ -95,17 +95,17 @@
  		this.doCreateExampleArea(parent);
  	}
  </fence>
-    <p><PATCH-INVALID-SAMPLE fact="true" status="spec/done">Невалидный образец: тот же файл, но добавленные строки стоят **вне** пары `codkit:begin`/`codkit:end`. Ожидаемая диагностика `codkit verify` (выход 1): `CK-E-HUNK-OUTSIDE-MARKER: delta/patches/…ckpatch: hunk at target line 113 adds lines outside any codkit marker block. Wrap the change in "// codkit:begin CK-workbench-001" … "// codkit:end CK-workbench-001".`</PATCH-INVALID-SAMPLE></p>
+    <p><PATCH-INVALID-SAMPLE fact="true" status="spec/done">An invalid sample: the same file, but the added lines stand **outside** the `codkit:begin`/`codkit:end` pair. The expected diagnostics of `codkit verify` (exit 1): `CK-E-HUNK-OUTSIDE-MARKER: delta/patches/…ckpatch: hunk at target line 113 adds lines outside any codkit marker block. Wrap the change in "// codkit:begin CK-workbench-001" … "// codkit:end CK-workbench-001".`</PATCH-INVALID-SAMPLE></p>
   </patch-file>
-  <patch-generation title="5. Детерминированная генерация патча «пин → файл»">
-    <p><gen-io fact="true" status="spec/done">Вход: путь F, байты пина `pinBytes` (git-объект: `git show &lt;pin.sha&gt;:&lt;путь&gt;` — без сети и checkout), байты цели `curBytes` (рабочий файл дерева). Выход: байты `.ckpatch` (шапка сохранена/обновлена + новое тело) либо «без изменений».</gen-io></p>
+  <patch-generation title="5. Deterministic patch generation, «pin → file»">
+    <p><gen-io fact="true" status="spec/done">Input: the path F, the pin bytes `pinBytes` (the git object: `git show &lt;pin.sha&gt;:&lt;path&gt;` - with no network and no checkout), the target bytes `curBytes` (the working file of the tree). Output: the bytes of the `.ckpatch` (the header preserved or updated + the new body) or «no changes».</gen-io></p>
     <facts ordered="true">
-      <GEN-BYTE-PREDICATES fact="true" status="spec/done">**Предикаты байтовости** (до диффа): `curBytes` валидный UTF-8; переводы строк LF (найден CR → отказ `CK-E-CRLF`, hint про `core.autocrlf=false`); завершающий LF присутствует, если был на пине (потерян → отказ `CK-E-EOF-NEWLINE`); файл не бинарный (NUL-байт → отказ: бинарные цели — слой resource-file). Хвостовые пробелы НЕ подчищаются — байты сохраняются.</GEN-BYTE-PREDICATES>
-      <GEN-DIFF-INVOCATION fact="true" status="spec/done">Дифф: `git diff --no-index -U3 --no-color --no-ext-diff --no-textconv -- &lt;tmpPin&gt; &lt;tmpCur&gt;` в изолированном окружении (PROP-002 §2), с явными `-c diff.algorithm=myers -c core.autocrlf=false -c diff.renames=false -c diff.mnemonicPrefix=false -c diff.noprefix=false`. Временные файлы создаются в `.codkit/tmp/` с фиксированными именами `a`/`b` (не зависящими от абсолютных путей); из вывода удаляются строки `diff --git`/`index`/`old mode`/`new mode`; заголовки `---`/`+++` переписываются на канонический путь F. (Хэши в `index`-строках выбрасываются: их сокращённая длина зависит от числа объектов репозитория — источник недетерминизма.)</GEN-DIFF-INVOCATION>
-      <GEN-EMPTY-DIFF fact="true" status="spec/done">Пустой дифф → патч-файл не пишется вообще; существующий патч, если цель вернулась к пину, удаляется командой `save` с сообщением.</GEN-EMPTY-DIFF>
-      <GEN-HEADER-PRESERVED fact="true" status="spec/done">Сборка `.ckpatch`: существующая шапка сохраняется (id и метаданные не меняются регенерацией; поле `pin` обновляется только шагом регенерации цикла апгрейда); для нового файла шапка — из ответа `marker new`/флагов.</GEN-HEADER-PRESERVED>
-      <GEN-BYTE-COMPARE fact="true" status="spec/done">Сравнение со старым `.ckpatch` **байтово**: совпало → не записывать (mtime не трогать).</GEN-BYTE-COMPARE>
+      <GEN-BYTE-PREDICATES fact="true" status="spec/done">**The byte predicates** (before the diff): `curBytes` is valid UTF-8; the line endings are LF (a CR found → refusal `CK-E-CRLF`, with a hint about `core.autocrlf=false`); the trailing LF is present if it was present at the pin (lost → refusal `CK-E-EOF-NEWLINE`); the file is not binary (a NUL byte → refusal: binary targets belong to the resource-file layer). Trailing spaces are NOT cleaned up - the bytes are preserved.</GEN-BYTE-PREDICATES>
+      <GEN-DIFF-INVOCATION fact="true" status="spec/done">The diff: `git diff --no-index -U3 --no-color --no-ext-diff --no-textconv -- &lt;tmpPin&gt; &lt;tmpCur&gt;` in the isolated environment (PROP-002 §2), with the explicit `-c diff.algorithm=myers -c core.autocrlf=false -c diff.renames=false -c diff.mnemonicPrefix=false -c diff.noprefix=false`. The temporary files are created in `.codkit/tmp/` under the fixed names `a`/`b` (which do not depend on absolute paths); the `diff --git`/`index`/`old mode`/`new mode` lines are removed from the output; the `---`/`+++` headers are rewritten to the canonical path F. (The hashes of the `index` lines are thrown away: their abbreviated length depends on the number of objects in the repository - a source of non-determinism.)</GEN-DIFF-INVOCATION>
+      <GEN-EMPTY-DIFF fact="true" status="spec/done">An empty diff → the patch file is not written at all; an existing patch, once the target has returned to the pin, is deleted by the `save` command with a message.</GEN-EMPTY-DIFF>
+      <GEN-HEADER-PRESERVED fact="true" status="spec/done">Assembling the `.ckpatch`: an existing header is preserved (regeneration changes neither the id nor the metadata; the `pin` field is updated only by the regeneration step of an upgrade cycle); for a new file the header comes from the answer of `marker new` or from the flags.</GEN-HEADER-PRESERVED>
+      <GEN-BYTE-COMPARE fact="true" status="spec/done">The comparison with the old `.ckpatch` is **byte-wise**: on a match → do not write (do not touch the mtime).</GEN-BYTE-COMPARE>
     </facts>
-    <p><DOUBLE-REGEN-INVARIANT fact="true" status="spec/done">Формат требует, чтобы двойная регенерация давала пустой дифф. Linux-проверка входит в текущий floor; нативные macOS/Windows доказательства — отдельные незакрытые строки матрицы S16/PROP-013, а не подразумеваемый результат.</DOUBLE-REGEN-INVARIANT></p>
+    <p><DOUBLE-REGEN-INVARIANT fact="true" status="spec/done">The format requires a double regeneration to produce an empty diff. The Linux check is part of the current floor; native macOS/Windows proofs are separate open rows of the S16/PROP-013 matrix, not an implied result.</DOUBLE-REGEN-INVARIANT></p>
   </patch-generation>
 </spec>
