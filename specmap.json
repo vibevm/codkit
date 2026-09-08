@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:72bf218451d15c71cdedc7b87d11335a99b790cd19cb870ed171c9c6f7af1e44",
+      "content_hash": "sha256:175309aa60cd19f2e43e7ce5a589c7d355ae198b52dce7d578507b6fbc1d89f0",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1724,7 +1724,7 @@
     },
     {
       "anchor": "s49",
-      "content_hash": "sha256:e6a45fc6d89f0013dbe9d68b304d1f45b6748e131db256b294263d30cc83699b",
+      "content_hash": "sha256:ef8bdb39255e213450db9fc0cda336c9d5c1fa468744ff4c89fd71fa39fc9651",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S49 — gen feature пишет скелет с шапкой продукта и отказывает на существующем",
@@ -1733,10 +1733,10 @@
     },
     {
       "anchor": "S49",
-      "content_hash": "sha256:7fa133b96b6382e104669dc319958436530e9506cdce435da5c738b01969e575",
+      "content_hash": "sha256:adf75bfb6e487a2432219932644f89f653a16e8b8b5f4780afd12d4fffb52b41",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: patchesDir с `delta/own/`. **When**: `codkit --json gen feature acme.sample --title \"Sample\" --setting --holder \"Acme\" --license MIT --year 2026`. **Then**: выход 0; созданы `delta/own/contrib/sample/common/sample.ts`, `delta/own/contrib/sample/browser/sample.contribution.ts`, `delta/own/test/browser/sample.test.ts`; каждый начинается четырьмя строками шапки с `Acme` и `SPDX-License-Identifier: MIT`; контрибуция содержит `registerFeature(` и `hotToggle: true`; `data.importLine` — строка импорта. **When**: повтор. **Then**: выход 1, `CK-E-GEN-EXISTS`, файлы не тронуты. **When**: `codkit gen feature Sample --title x`. **Then**: выход 2, `CK-E-GEN-ID`. **When**: без `--holder`/`--license`. **Then**: файлы без шапки и предупреждение `no header written`. @status:spec/plan",
+      "heading": "**Given**: patchesDir с `delta/own/`. **When**: `codkit --json gen feature acme.sample --title \"Sample\" --setting --holder \"Acme\" --license MIT --year 2026`. **Then**: выход 0; созданы `delta/own/contrib/sample/common/sample.ts`, `delta/own/contrib/sample/browser/sample.contribution.ts`, `delta/own/contrib/sample/test/browser/sample.test.ts`; каждый начинается четырьмя строками шапки с `Acme` и `SPDX-License-Identifier: MIT`; контрибуция содержит `registerFeature(` и `hotToggle: true`; `data.importLine` — строка импорта. **When**: повтор. **Then**: выход 1, `CK-E-GEN-EXISTS`, файлы не тронуты. **When**: `codkit gen feature Sample --title x`. **Then**: выход 2, `CK-E-GEN-ID`. **When**: без `--holder`/`--license`. **Then**: файлы без шапки и предупреждение `no header written`. @status:spec/plan",
       "line": 155,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S49"
     },
@@ -1940,7 +1940,7 @@
     },
     {
       "anchor": "s61",
-      "content_hash": "sha256:dab0c0cd06e094fe392e54cadc20cc1cc1a64bc59f154e4ffbd1760a58181584",
+      "content_hash": "sha256:d978c048e52f172d49c564a6047420cfcb5710f16616e4d295e8aa2ff8577831",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S61 — gen feature пишет шапку формы продукта и кладёт тест в каталог фичи",
@@ -1949,10 +1949,10 @@
     },
     {
       "anchor": "S61",
-      "content_hash": "sha256:fb94f5b0b131c088c3b4a0ac74baba3534448e996a722e58f94e5024f14394b6",
+      "content_hash": "sha256:2c4260f25f44c4c265af29bc293bd4aeff46bec7d56b8eb419dca7330c376e54",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: продукт с `delta/own/`. **When**: `codkit gen feature acme.sample --title Sample --holder Acme --license MIT --header-style block`. **Then**: выход 0; три файла под `delta/own/contrib/sample/` — `common/sample.ts`, `browser/sample.contribution.ts`, `test/browser/sample.test.ts`; каждый начинается блочной шапкой формы апстрима с `Copyright (c) <год> Acme. All rights reserved.` и `SPDX-License-Identifier: MIT` внутри блока; `--json` `data.headerStyle = \"block\"`, `data.files` — эти три пути; напоминание называет один юнит `delta/own/contrib/sample`. **When**: в другом продукте `codkit gen feature acme.sample --title Sample --header-file delta/own/HEADER.txt`, где файл — блочный комментарий продукта с переводом строки в конце. **Then**: шапка каждого файла байт-в-байт равна файлу, `data.headerStyle = \"file\"`. **When**: `--header-file … --holder Acme`. **Then**: выход 2, ничего не записано. **When**: `--header-style block` без `--holder`/`--license`. **Then**: выход 2, ничего не записано. @status:spec/plan",
+      "heading": "**Given**: продукт с `delta/own/`. **When**: `codkit gen feature acme.sample --title Sample --holder Acme --license MIT --header-style block`. **Then**: выход 0; три файла под `delta/own/contrib/sample/` — `common/sample.ts`, `browser/sample.contribution.ts`, `test/browser/sample.test.ts`; каждый начинается блочной шапкой формы апстрима с `Copyright (c) <год> Acme. All rights reserved.` и `SPDX-License-Identifier: MIT` внутри блока; `--json` `data.headerStyle = \"block\"`, `data.files` — эти три пути; напоминание называет один юнит `delta/own/contrib/sample`. **When**: в другом продукте `codkit gen feature acme.sample --title Sample --header-file delta/own/HEADER.txt`, где файл — блочный комментарий продукта с переводом строки в конце. **Then**: шапка каждого файла байт-в-байт равна файлу, `data.headerStyle = \"file\"`. **When**: `--header-file … --holder Acme`. **Then**: выход 2, ничего не записано. **When**: `--header-style block` без `--holder`/`--license`. **Then**: выход 2, ничего не записано. @status:spec/done",
       "line": 191,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S61"
     },
@@ -4613,7 +4613,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:5676e88f5ce83f1b0cbdf335e435e7890effcb0f7114539f9a75792b871cb21b",
+      "content_hash": "sha256:b4e919ae70adfd31a7ba7b51f7d311fc604803e27de1f477852ac62574a93722",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -5612,7 +5612,7 @@
     },
     {
       "anchor": "cmd-gen",
-      "content_hash": "sha256:c1fa7e8f9cd43ce825b7b978e725dad6229fb9610e72e25c2890103594b66bc2",
+      "content_hash": "sha256:978a64d389912ea40b5bea78a2f04fc1b8125e1b215f608bcc0ddc30044db974",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "26. codkit gen feature <id> | brand",
@@ -5639,10 +5639,10 @@
     },
     {
       "anchor": "CMD-GEN-BRAND",
-      "content_hash": "sha256:292104e87cdaca66268d2837acc1c957ed5fc0b818cb358f5c4e63fbb222c4c7",
+      "content_hash": "sha256:b03d2d4b250c9e892ac7eeba56e6d3b9c6407432dcca8721b54b4028eebf8453",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit gen brand [--holder …] [--license …] [--year …]` — заготовка таблицы бренда `delta/own/common/brand.ts` и печать текста крючка для `_format` с напоминаниями (PROP-015 `GEN-BRAND`). Коды: 0; 1 — `CK-E-GEN-EXISTS`; 2 — окружение. `--json`: `data: {file, hookText, reminders:[…]}`. @status:spec/done",
+      "heading": "`codkit gen brand [--holder …] [--license …] [--year …] [--header-style line|block] [--header-file <path>]` — заготовка таблицы бренда (флаги шапки — те же, что у `gen feature`, PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`) `delta/own/common/brand.ts` и печать текста крючка для `_format` с напоминаниями (PROP-015 `GEN-BRAND`). Коды: 0; 1 — `CK-E-GEN-EXISTS`; 2 — окружение. `--json`: `data: {file, hookText, reminders:[…]}`. @status:spec/done",
       "line": 311,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-GEN-BRAND"
     },
@@ -8654,7 +8654,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:02d4d02400b59c938703f0670b960a39883855ce8afdd1f943b10726c4c52eef",
+      "content_hash": "sha256:51b31c40a0c54e1db97a45c80ff16849693b4ad5330bd8281ce19f943ab84d45",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "codkit PROP-015: Рантайм Codkit — библиотека фич и флагов, доставляемая в own-слой продукта",
@@ -9032,7 +9032,7 @@
     },
     {
       "anchor": "gen",
-      "content_hash": "sha256:2ef6d4fa8d4bdd89bbfb29022d3134f32b26ffc6bac61d6474e18f2b8faeda7a",
+      "content_hash": "sha256:b34913571246a2fb14300cc171164f5d4ae1b35b0cd876596de8eaeb5f8abcfd",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "5. Генератор скелетов `codkit gen feature|brand`",
@@ -9050,10 +9050,10 @@
     },
     {
       "anchor": "GEN-BRAND",
-      "content_hash": "sha256:b3f57c1cb4377b29eb74200895f145565f5076124b064194b906ebe98219a520",
+      "content_hash": "sha256:b0a777221f25918e20952d5ffbeee7ad4abda3c326a49dffd0043509040632f7",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "`codkit gen brand [--holder …] [--license …] [--year …]` пишет `delta/own/common/brand.ts` — таблицу правил-заготовку с одним примером и комментарием об исключениях, экспортирующую `brandMessage = createBrandTransform(RULES)`, — и печатает текст крючка для `_format` в `nls.ts` с двумя напоминаниями: крючок — патч продукта типа `hook`; цель `src/vs/{monaco.d.ts,nls.ts}` в `code-import-patterns` должна разрешать `vs/<ownDirName>/common/~`. @status:spec/done",
+      "heading": "`codkit gen brand [--holder …] [--license …] [--year …] [--header-style line|block] [--header-file <path>]` (шапка — как у `gen feature`, `GEN-HEADER-IS-THE-PRODUCTS`) пишет `delta/own/common/brand.ts` — таблицу правил-заготовку с одним примером и комментарием об исключениях, экспортирующую `brandMessage = createBrandTransform(RULES)`, — и печатает текст крючка для `_format` в `nls.ts` с двумя напоминаниями: крючок — патч продукта типа `hook`; цель `src/vs/{monaco.d.ts,nls.ts}` в `code-import-patterns` должна разрешать `vs/<ownDirName>/common/~`. @status:spec/done",
       "line": 81,
       "uri": "spec://codkit/modules/codkit/PROP-015#GEN-BRAND"
     },
