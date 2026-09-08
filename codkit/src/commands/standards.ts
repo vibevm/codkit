@@ -54,7 +54,7 @@ function reportLicences(ctx: CommandContext, plan: LoadPlan): void {
 }
 
 /** ##STD-LOAD-ALL-PACKAGES: one summary per package, in the order they are delivered. */
-function reportPackage(ctx: CommandContext, entry: PackagePlan, outcome: LoadOutcome, upgrade: boolean): void {
+function reportPackage(ctx: CommandContext, entry: PackagePlan, outcome: LoadOutcome, upgrade: boolean, dryRun: boolean): void {
 	const done = outcome.packages.find((item) => item.name === entry.package.name);
 	for (const name of done?.removedScratch ?? []) ctx.out.info(`${entry.package.name}: removed interrupted run ${name}`);
 	ctx.out.info(`package: ${entry.package.name} ${entry.package.version} -> ${entry.targetPath}`);
@@ -70,7 +70,8 @@ function reportPackage(ctx: CommandContext, entry: PackagePlan, outcome: LoadOut
 	if (entry.otherVersions.length > 0 && (done?.removedVersions.length ?? 0) === 0) {
 		ctx.out.info(`other versions kept: ${entry.otherVersions.join(', ')}`);
 	}
-	for (const name of done?.removedVersions ?? []) ctx.out.info(`removed superseded version: ${name}`);
+	// A dry run plans the removal and removes nothing; its line says so (##STD-LOAD-UPGRADE).
+	for (const name of done?.removedVersions ?? []) ctx.out.info(dryRun ? `would remove superseded version: ${name}` : `removed superseded version: ${name}`);
 }
 
 function packagesData(plan: LoadPlan, outcome: LoadOutcome): JsonValue {
@@ -130,7 +131,7 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 		return EXIT_CHECK_FAILED;
 	}
 
-	for (const entry of plan.packages) reportPackage(ctx, entry, outcome, upgrade);
+	for (const entry of plan.packages) reportPackage(ctx, entry, outcome, upgrade, dryRun);
 	for (const notice of plan.notices) {
 		ctx.out.info(`notice: ${notice.path} ${noticeAction(outcome, notice.path)}`);
 	}

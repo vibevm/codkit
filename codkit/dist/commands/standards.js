@@ -38,7 +38,7 @@ function reportLicences(ctx, plan) {
     ctx.out.info(`licences loaded: ${[...own, ...third].join('; ')}${notices}`);
 }
 /** ##STD-LOAD-ALL-PACKAGES: one summary per package, in the order they are delivered. */
-function reportPackage(ctx, entry, outcome, upgrade) {
+function reportPackage(ctx, entry, outcome, upgrade, dryRun) {
     const done = outcome.packages.find((item) => item.name === entry.package.name);
     for (const name of done?.removedScratch ?? [])
         ctx.out.info(`${entry.package.name}: removed interrupted run ${name}`);
@@ -55,8 +55,9 @@ function reportPackage(ctx, entry, outcome, upgrade) {
     if (entry.otherVersions.length > 0 && (done?.removedVersions.length ?? 0) === 0) {
         ctx.out.info(`other versions kept: ${entry.otherVersions.join(', ')}`);
     }
+    // A dry run plans the removal and removes nothing; its line says so (##STD-LOAD-UPGRADE).
     for (const name of done?.removedVersions ?? [])
-        ctx.out.info(`removed superseded version: ${name}`);
+        ctx.out.info(dryRun ? `would remove superseded version: ${name}` : `removed superseded version: ${name}`);
 }
 function packagesData(plan, outcome) {
     return plan.packages.map((entry) => {
@@ -112,7 +113,7 @@ async function runLoad(ctx) {
         return EXIT_CHECK_FAILED;
     }
     for (const entry of plan.packages)
-        reportPackage(ctx, entry, outcome, upgrade);
+        reportPackage(ctx, entry, outcome, upgrade, dryRun);
     for (const notice of plan.notices) {
         ctx.out.info(`notice: ${notice.path} ${noticeAction(outcome, notice.path)}`);
     }
