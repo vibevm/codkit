@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e67ec7583845e5b7efc36253268ec12a881e4350970502b2a95890fe0d4c3257",
+      "content_hash": "sha256:29cc0980ecec03f41f2b47ade78c78c27e602c43e002598a48d4bdda6b26d4eb",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1958,7 +1958,7 @@
     },
     {
       "anchor": "s62",
-      "content_hash": "sha256:e5818dfa9cf844e8742ea6b760ea0212aa47b6edccd7cf4bd95cd97e45da8da7",
+      "content_hash": "sha256:0ca26f10ad6ed416f98ce2d3d2e80f61aaaec5585b9d2eac58606685b7e38f41",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S62 — status называет брошенную материализацию own-расширения",
@@ -1967,10 +1967,10 @@
     },
     {
       "anchor": "S62",
-      "content_hash": "sha256:73a2770b96b14c509382b537b3fc00d133748c2d1aff4cc273ac81a33df24e22",
+      "content_hash": "sha256:687470105ada5a0cc6b8643dadda2b2a41f68b55b34a81108eaaa694e5b872be",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: продукт с объявленным own-расширением `sample`, дерево после `codkit load` (каталог `extensions/sample/` материализован, неотслеживаем). **When**: декларация `sample` снята из `patchset.delta.json` вместе с `delta/own-extensions/sample/`, затем `codkit load` (без `--fresh`) и `codkit status`. **Then**: `load` выходит 0 и каталога не трогает (исключение стража для брошенной материализации, PROP-008 `DRIFT-GUARD-PREDICATE`; тот же каталог для `ci`/`publish`/`sync` остаётся грязью — проверить одной командой из них: отказ `CK-E-DIRTY-TREE` с этим путём); `status` печатает `own extensions: 0 declared, 0 path(s) differ between tree and patchset, 1 stranded materialization(s)`, строку `  extensions/sample/ - codkit load --fresh removes it`, выходит 1; `--json` `data.ownExtensions.stranded = [\"extensions/sample/\"]`. **When**: `codkit load --fresh`. **Then**: каталога нет, `status` печатает `0 stranded`, выходит 0. **Given** дополнительно: неотслеживаемый каталог `extensions/local-experiment/` без `package.json` — **Then** он тоже назван брошенным (правило про декларацию и пин, не про содержимое), а каталог апстрима с пина брошенным не считается никогда. @status:spec/plan",
+      "heading": "**Given**: продукт с объявленным own-расширением `sample`, дерево после `codkit load` (каталог `extensions/sample/` материализован, неотслеживаем). **When**: декларация `sample` снята из `patchset.delta.json` вместе с `delta/own-extensions/sample/`, затем `codkit load` (без `--fresh`) и `codkit status`. **Then**: `load` выходит 0 и каталога не трогает (исключение стража для брошенной материализации, PROP-008 `DRIFT-GUARD-PREDICATE`; тот же каталог для прочих команд остаётся тем, чем был: `cycle start` отказывает `CK-E-DIRTY-TREE` с этим путём, двусторонний `sync` — `CK-E-NEW-FILE-IN-UPSTREAM-ZONE` (извлекающая половина срабатывает раньше стража), а `ci` и `publish` идут свежим проходом, где неотслеживаемое убирается чисткой, и не отказывают — так было и до исключения); `status` печатает `own extensions: 0 declared, 0 path(s) differ between tree and patchset, 1 stranded materialization(s)`, строку `  extensions/sample/ - codkit load --fresh removes it`, выходит 1; `--json` `data.ownExtensions.stranded = [\"extensions/sample/\"]`. **When**: `codkit load --fresh`. **Then**: каталога нет, `status` печатает `0 stranded`, выходит 0. **Given** дополнительно: неотслеживаемый каталог `extensions/local-experiment/` без `package.json` — **Then** он тоже назван брошенным (правило про декларацию и пин, не про содержимое), а каталог апстрима с пина брошенным не считается никогда. @status:spec/done",
       "line": 194,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S62"
     },
@@ -3785,7 +3785,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e8df3c3813fa9747d268f0a830178b5eb5cbc1759422d2c611a4be5063f1afbb",
+      "content_hash": "sha256:759b497ad1ae51310a6cdc2d675b7445d52c61cb493676eb1886024247bf6e89",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Слои дельты — форматы, материализация, запреты",
@@ -4298,7 +4298,7 @@
     },
     {
       "anchor": "own-extension",
-      "content_hash": "sha256:ca9e640f87e6cf7365455e140ab45412c0cdaeef42279b257683021f774f8944",
+      "content_hash": "sha256:6161bf44e38ed7e9d71056decf302c7fd652c9b781a2528cf65e4b21863d3be7",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "13. own-extension — встроенное расширение как юнит own",
@@ -4316,10 +4316,10 @@
     },
     {
       "anchor": "OWN-EXTENSION-STRANDED",
-      "content_hash": "sha256:c5bf33cfc27815454eb72e499190126f8cb27d514fd0d76d1a8152ee1cf8e335",
+      "content_hash": "sha256:0829902b20228af5a3ff5e74acce8e55f7302f0dac99bd6602529b4fdf85a68b",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "Снятие декларации не убирает материализацию: `load` зеркалирует только объявленные расширения, а каталог `<tree>/extensions/<name>/` снятого расширения остаётся в дереве неотслеживаемым — его убирает `load --fresh` (чистка неотслеживаемых путей, PROP-011 §4), и никакая другая команда его не удаляет (неотслеживаемый каталог под `extensions/` может быть и локальным экспериментом человека); обычный `load` над таким деревом проходит и каталога не касается — страж дрейфа считает брошенную материализацию не грязью (PROP-008 `DRIFT-GUARD-PREDICATE`, исключение 2026-09-08: в этот каталог `load` не пишет и его не удаляет, отказ ничего не охранял бы), а для `publish`, `ci`, `cycle` и `sync` правило о новом файле в апстримной зоне действует как прежде. Чтобы это не было молчаливым, `status` называет такие каталоги брошенными материализациями (PROP-007 `CMD-STATUS`): неотслеживаемый каталог под `extensions/`, не покрытый декларацией и не существующий на пине. Наблюдено кампанией продукта 2026-09-08. @status:spec/done",
+      "heading": "Снятие декларации не убирает материализацию: `load` зеркалирует только объявленные расширения, а каталог `<tree>/extensions/<name>/` снятого расширения остаётся в дереве неотслеживаемым — его убирает `load --fresh` (чистка неотслеживаемых путей, PROP-011 §4), и никакая другая команда его не удаляет (неотслеживаемый каталог под `extensions/` может быть и локальным экспериментом человека); обычный `load` над таким деревом проходит и каталога не касается — страж дрейфа считает брошенную материализацию не грязью (PROP-008 `DRIFT-GUARD-PREDICATE`, исключение 2026-09-08: в этот каталог `load` не пишет и его не удаляет, отказ ничего не охранял бы), а для остальных команд ничего не меняется: `cycle start` отказывает `CK-E-DIRTY-TREE`, `sync` — `CK-E-NEW-FILE-IN-UPSTREAM-ZONE`, `ci` и `publish` убирают неотслеживаемое свежим проходом. Чтобы это не было молчаливым, `status` называет такие каталоги брошенными материализациями (PROP-007 `CMD-STATUS`): неотслеживаемый каталог под `extensions/`, не покрытый декларацией и не существующий на пине. Наблюдено кампанией продукта 2026-09-08. @status:spec/done",
       "line": 123,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-EXTENSION-STRANDED"
     },
@@ -5693,7 +5693,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:90bf69b1682fa4740b79b70fd518b30bdd269ede56314f24099d0a8e598da8a4",
+      "content_hash": "sha256:d6d001b13f452f32809fb03ff5f20f49a33e37784ac0c230aaf7a867aa842b57",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: Движки — резолвер, идентичность, load, save, 3-way, переименования, причина",
@@ -5891,7 +5891,7 @@
     },
     {
       "anchor": "save",
-      "content_hash": "sha256:b404f91772d16d857645799770523b1d8b07c741d5f3bb0926d91b2f89adbe6e",
+      "content_hash": "sha256:e342d67cacf10a0753d4d8b292d998d73f12145672680c7928369d72de2a63ec",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "4. save/extract и страж дрейфа",
@@ -5927,10 +5927,10 @@
     },
     {
       "anchor": "DRIFT-GUARD-PREDICATE",
-      "content_hash": "sha256:f5447e55aa1980322e1cea6fc20979a19e07a706a860416338510d1955bf3c6d",
+      "content_hash": "sha256:617249edc01af4627111f33f2cc8169c70f1d1506bde8b1bb5f6cf66a2fa14d0",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "**Страж дрейфа**: `dirty(tree)` = (`git status --porcelain` непуст вне own-каталога) ∨ (own-расхождение классов `both` — байты различаются — или `tree-only` — файл есть только в дереве) ∨ (**третья половина**, кампания TREE-COMMITS-SAVE, решение D7) foreign-коммиты дерева непусты (`##TREE-COMMITS-ARE-WORK`): коммиты first-parent линии выше последней сгенерированной вершины, которых обе другие половины не видят — `git status` по коммиту даёт чистое дерево. Список для человека включает строки `commit <short> \"<subject>\" (not in patchset)`; отказ — выход 1 `CK-E-DIRTY-TREE`: для правок «N path(s) … not in patchset yet», для коммитов «N commit(s) in the fork tree since the last codkit apply are not in patchset yet», hint («codkit save» или «codkit status»). **Порядок отказов (рулинг владельца 2026-09-06, спайк S0.12)**: преflight разделённого сгенерированного ref (`##GENERATED-REF-WORKTREE-PREFLIGHT`) выполняется ПЕРЕД любой грязевой проверкой, безусловно, во всех стражащих командах: коммит соседнего worktree на общей ветке сдвигает общий ref и делает индекс ЭТОГО дерева «staged-dirty» — фантомная грязь, чья причина — разделение ref, а не локальная работа; отказ `CK-E-WORKTREE-REF-SHARED` (выход 2) называет оба дерева и не советует `save` — подсказка «run codkit save» здесь втянула бы чужую работу в этот patch set как собственную правку. Причина диагностируется раньше симптома; тому же порядку подчинён `CK-E-TREE-HEAD` (D8: аномалия линии или HEAD вне ветки при foreign — выход 1, тем же кодом из `##TREE-COMMITS-ARE-WORK`). Файл, существующий ТОЛЬКО в `delta/own/` patchset (`patchset-only`), — НЕ грязь: иначе первый load любого дерева был бы невозможен (уточнение реализации M0). `--fresh` подавляет fast-path и не считает untracked-пути грязью (иначе fresh никогда ничего не чистил бы), но отказ по коммитам НЕ снимает: `--fresh` про untracked, а коммит — та же неизвлечённая работа, что и правка. `--dry-run` страж не запускает; `skipDriftGuard` — единственный обход, только для `save`/будущего двустороннего `sync` после извлечения. Уточнение REPAIR-005 (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`): перед отказом `load --fresh` классифицирует каждую tracked overlay-цель, отличную от HEAD, — байты, в точности равные строгой композиции настроенных overlay на пине в контексте прогона, суть известная материализация codkit, которую этот прогон заменяет (и объявляет это в выводе), а не грязь; всё остальное остаётся грязью, `--fresh` не бланкетный reset. Обычный `load` исключения не получает: fast-path мог бы ответить «up to date» и оставить упаковочные байты. `ci` сознательно классификатор не передаёт: ci материализует overlay-цели только коммитами сгенерированной ветки, собственные прогоны ci это состояние не создают, а единственный источник таких байтов в ci-дереве — внеочередной `overlay apply`, то есть переиспользованное дерево разработчика, которое страж обязан назвать вслух; выход и там — codkit-команда (`load --fresh` того дерева) или одноразовое свежее дерево, не прямой git-restore. **Исключение для брошенной материализации own-расширения (2026-09-08, PROP-005 `OWN-EXTENSION-STRANDED`):** для обычного `load` (без `--fresh`; не для `publish`, `ci`, `cycle` и двустороннего `sync`) неотслеживаемый каталог первого уровня под `extensions/`, не объявленный ни одной записью секции `extensions` манифеста и отсутствующий на пине, — не грязь: в такой каталог `load` не пишет ни байта и не удаляет его, поэтому отказ ничего не охранял бы, а запирал ежедневную команду после легального шага в patchset (снятия декларации); напоминание о каталоге берёт на себя `status` (PROP-007 `CMD-STATUS`, строка о брошенных материализациях с рецептом `load --fresh`). Предикат получает крючок той же чистой классификации, что и `status` (`isStrandedExtension` рядом с `isKnownMaterialization` и `isDiscardable`); правило о новом файле в апстримной зоне для всего остального не меняется. @status:impl/done",
+      "heading": "**Страж дрейфа**: `dirty(tree)` = (`git status --porcelain` непуст вне own-каталога) ∨ (own-расхождение классов `both` — байты различаются — или `tree-only` — файл есть только в дереве) ∨ (**третья половина**, кампания TREE-COMMITS-SAVE, решение D7) foreign-коммиты дерева непусты (`##TREE-COMMITS-ARE-WORK`): коммиты first-parent линии выше последней сгенерированной вершины, которых обе другие половины не видят — `git status` по коммиту даёт чистое дерево. Список для человека включает строки `commit <short> \"<subject>\" (not in patchset)`; отказ — выход 1 `CK-E-DIRTY-TREE`: для правок «N path(s) … not in patchset yet», для коммитов «N commit(s) in the fork tree since the last codkit apply are not in patchset yet», hint («codkit save» или «codkit status»). **Порядок отказов (рулинг владельца 2026-09-06, спайк S0.12)**: преflight разделённого сгенерированного ref (`##GENERATED-REF-WORKTREE-PREFLIGHT`) выполняется ПЕРЕД любой грязевой проверкой, безусловно, во всех стражащих командах: коммит соседнего worktree на общей ветке сдвигает общий ref и делает индекс ЭТОГО дерева «staged-dirty» — фантомная грязь, чья причина — разделение ref, а не локальная работа; отказ `CK-E-WORKTREE-REF-SHARED` (выход 2) называет оба дерева и не советует `save` — подсказка «run codkit save» здесь втянула бы чужую работу в этот patch set как собственную правку. Причина диагностируется раньше симптома; тому же порядку подчинён `CK-E-TREE-HEAD` (D8: аномалия линии или HEAD вне ветки при foreign — выход 1, тем же кодом из `##TREE-COMMITS-ARE-WORK`). Файл, существующий ТОЛЬКО в `delta/own/` patchset (`patchset-only`), — НЕ грязь: иначе первый load любого дерева был бы невозможен (уточнение реализации M0). `--fresh` подавляет fast-path и не считает untracked-пути грязью (иначе fresh никогда ничего не чистил бы), но отказ по коммитам НЕ снимает: `--fresh` про untracked, а коммит — та же неизвлечённая работа, что и правка. `--dry-run` страж не запускает; `skipDriftGuard` — единственный обход, только для `save`/будущего двустороннего `sync` после извлечения. Уточнение REPAIR-005 (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`): перед отказом `load --fresh` классифицирует каждую tracked overlay-цель, отличную от HEAD, — байты, в точности равные строгой композиции настроенных overlay на пине в контексте прогона, суть известная материализация codkit, которую этот прогон заменяет (и объявляет это в выводе), а не грязь; всё остальное остаётся грязью, `--fresh` не бланкетный reset. Обычный `load` исключения не получает: fast-path мог бы ответить «up to date» и оставить упаковочные байты. `ci` сознательно классификатор не передаёт: ci материализует overlay-цели только коммитами сгенерированной ветки, собственные прогоны ci это состояние не создают, а единственный источник таких байтов в ci-дереве — внеочередной `overlay apply`, то есть переиспользованное дерево разработчика, которое страж обязан назвать вслух; выход и там — codkit-команда (`load --fresh` того дерева) или одноразовое свежее дерево, не прямой git-restore. **Исключение для брошенной материализации own-расширения (2026-09-08, PROP-005 `OWN-EXTENSION-STRANDED`):** для обычного `load` (без `--fresh`; не для `cycle start`, который над таким деревом отказывает `CK-E-DIRTY-TREE`, и не для двустороннего `sync`, где раньше стража срабатывает извлекающая половина с `CK-E-NEW-FILE-IN-UPSTREAM-ZONE`; `ci` и `publish` идут свежим проходом, где неотслеживаемое убирается чисткой, и стража этим путём не встречают — измерено 2026-09-08) неотслеживаемый каталог первого уровня под `extensions/`, не объявленный ни одной записью секции `extensions` манифеста и отсутствующий на пине, — не грязь: в такой каталог `load` не пишет ни байта и не удаляет его, поэтому отказ ничего не охранял бы, а запирал ежедневную команду после легального шага в patchset (снятия декларации); напоминание о каталоге берёт на себя `status` (PROP-007 `CMD-STATUS`, строка о брошенных материализациях с рецептом `load --fresh`). Предикат получает крючок той же чистой классификации, что и `status` (`isStrandedExtension` рядом с `isKnownMaterialization` и `isDiscardable`); правило о новом файле в апстримной зоне для всего остального не меняется. @status:impl/done",
       "line": 146,
       "uri": "spec://codkit/modules/codkit/PROP-008#DRIFT-GUARD-PREDICATE"
     },
