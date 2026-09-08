@@ -815,7 +815,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:707278f388549c86b42f18eacff598a6c5c336727422b0cbd052735188112a80",
+      "content_hash": "sha256:5de92786e4b9c5855e9dfc6c7864a7c8617ad845e79849eac5dac3a20b148f5a",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: Сквозные приёмочные сценарии S01–S28 (Given/When/Then)",
@@ -1958,7 +1958,7 @@
     },
     {
       "anchor": "s62",
-      "content_hash": "sha256:81dab326a40e61ad7b79e4f9a93ed401a612111d2e01671bc2169691aa4d3cb2",
+      "content_hash": "sha256:e521e16cfe2ca4dcd28c2b6e6e731fa77e47170f5be76c1f4e465135f4487d9e",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S62 — status называет брошенную материализацию own-расширения",
@@ -1967,10 +1967,10 @@
     },
     {
       "anchor": "S62",
-      "content_hash": "sha256:90a8b1417026338bd1223f7a4417e34a3a99facaa38541000989681e0b6eedf4",
+      "content_hash": "sha256:0d2098c33c1e79d2bfa51a3934855d3e422d159e7e1d4e61f3005cf32113798c",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: продукт с объявленным own-расширением `sample`, дерево после `codkit load` (каталог `extensions/sample/` материализован, неотслеживаем). **When**: декларация `sample` снята из `patchset.delta.json` вместе с `delta/own-extensions/sample/`, затем `codkit load` (без `--fresh`) и `codkit status`. **Then**: `load` выходит 0 и каталога не трогает; `status` печатает `own extensions: 0 declared, 0 path(s) differ between tree and patchset, 1 stranded materialization(s)`, строку `  extensions/sample/ - codkit load --fresh removes it`, выходит 1; `--json` `data.ownExtensions.stranded = [\"extensions/sample/\"]`. **When**: `codkit load --fresh`. **Then**: каталога нет, `status` печатает `0 stranded`, выходит 0. **Given** дополнительно: неотслеживаемый каталог `extensions/local-experiment/` без `package.json` — **Then** он тоже назван брошенным (правило про декларацию и пин, не про содержимое), а каталог апстрима с пина брошенным не считается никогда. @status:spec/plan",
+      "heading": "**Given**: продукт с объявленным own-расширением `sample`, дерево после `codkit load` (каталог `extensions/sample/` материализован, неотслеживаем). **When**: декларация `sample` снята из `patchset.delta.json` вместе с `delta/own-extensions/sample/`, затем `codkit load` (без `--fresh`) и `codkit status`. **Then**: `load` каталога не трогает и **отказывает** — `CK-E-DIRTY-TREE`: неотслеживаемый путь в зоне апстрима остаётся грязью для стража (норма `CK-E-NEW-FILE-IN-UPSTREAM-ZONE` не ослабляется ради `extensions/`: такой каталог может быть чьим-то локальным экспериментом), подсказка отсылает к `status`; `status` печатает `own extensions: 0 declared, 0 path(s) differ between tree and patchset, 1 stranded materialization(s)`, строку `  extensions/sample/ - codkit load --fresh removes it`, выходит 1; `--json` `data.ownExtensions.stranded = [\"extensions/sample/\"]`. **When**: `codkit load --fresh`. **Then**: каталога нет, `status` печатает `0 stranded`, выходит 0. **Given** дополнительно: неотслеживаемый каталог `extensions/local-experiment/` без `package.json` — **Then** он тоже назван брошенным (правило про декларацию и пин, не про содержимое), а каталог апстрима с пина брошенным не считается никогда. @status:spec/done",
       "line": 194,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S62"
     },
@@ -3785,7 +3785,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:40de6b0df75b71666c10f19b39bb0fb223e2550b1c9f0057e714145f627afb83",
+      "content_hash": "sha256:6e13770cebe1cf6533fcb79c8c2c6ecb59eef8b102e55d13183b0fb87af045ba",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Слои дельты — форматы, материализация, запреты",
@@ -4298,7 +4298,7 @@
     },
     {
       "anchor": "own-extension",
-      "content_hash": "sha256:b8135c42b54460df1a8820bc182b146be9a864000539c6693cb0f338f27eab8b",
+      "content_hash": "sha256:9ff73923f43c3da7a75011bc0a6e25f54fe25118b0f151cdd2be1eed82b84f12",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "13. own-extension — встроенное расширение как юнит own",
@@ -4316,10 +4316,10 @@
     },
     {
       "anchor": "OWN-EXTENSION-STRANDED",
-      "content_hash": "sha256:7bf40abd6e662a11ec0cc70c3c82ccfeca66bae470a0c3bdaf5f87cd61d551df",
+      "content_hash": "sha256:4f2d28dec1ea9b9da5fa13af842b4f26a0b0dcab97966021db8e20634550cf43",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "Снятие декларации не убирает материализацию: `load` зеркалирует только объявленные расширения, а каталог `<tree>/extensions/<name>/` снятого расширения остаётся в дереве неотслеживаемым — его убирает `load --fresh` (чистка неотслеживаемых путей, PROP-011 §4), и никакая другая команда его не удаляет (неотслеживаемый каталог под `extensions/` может быть и локальным экспериментом человека). Чтобы это не было молчаливым, `status` называет такие каталоги брошенными материализациями (PROP-007 `CMD-STATUS`): неотслеживаемый каталог под `extensions/`, не покрытый декларацией и не существующий на пине. Наблюдено кампанией продукта 2026-09-08. @status:spec/done",
+      "heading": "Снятие декларации не убирает материализацию: `load` зеркалирует только объявленные расширения, а каталог `<tree>/extensions/<name>/` снятого расширения остаётся в дереве неотслеживаемым — его убирает `load --fresh` (чистка неотслеживаемых путей, PROP-011 §4), и никакая другая команда его не удаляет (неотслеживаемый каталог под `extensions/` может быть и локальным экспериментом человека); обычный `load` над таким деревом отказывает как над грязным (`CK-E-DIRTY-TREE`), и это намеренно — предохранитель разрушающей команды не ослабляется ради одного каталога. Чтобы это не было молчаливым, `status` называет такие каталоги брошенными материализациями (PROP-007 `CMD-STATUS`): неотслеживаемый каталог под `extensions/`, не покрытый декларацией и не существующий на пине. Наблюдено кампанией продукта 2026-09-08. @status:spec/done",
       "line": 123,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-EXTENSION-STRANDED"
     },
