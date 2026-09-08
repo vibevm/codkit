@@ -21,6 +21,7 @@ Use this skill before adding or changing an intervention in a patch set maintain
 - A patch is a graft: an import or one call into own code, three lines of code at most between the markers, logic never in a patch. `codkit verify` enforces it.
 - A new feature is one own folder behind a flag declared through the delivered runtime; a feature that cannot toggle live is declared cold.
 - Own code is not free: what leans on upstream internals is a patch equivalent with a contract test and a seam-map row.
+- An own extension is own code that upstream's full-repository lint and hygiene see and the own-directory lint does not: its gate is the full run (or the tool's build profile), and the exemptions it needs are data in the existing lint graft.
 - The choice is presented: the `reason` of every artifact below own names the rejected upper leaf and why.
 
 ## Procedure

@@ -22,7 +22,8 @@ Use this skill to review one or more interventions — a pull request, a phase r
 4. For every check marked `not done`, name the smallest change that would make it `done`, and whether it is a change of the artifact, of the specification or of a test.
 5. Where the change adds a patch, confirm the graft budget and the own path in the marker block from the patch artifact itself, and confirm the entry in the seam map of the current pin.
 6. Where the change adds a feature folder, confirm the flag declaration through the delivered runtime, or the decision record that says why there is none.
-7. Write the review: the table `intervention × check → verdict, evidence`, the list of `not done` with the smallest fix, and the numbered rules of the owning specification that the tests cite (or the rules no test cites).
+7. Where the change adds or changes an own extension, take the evidence for `CONF-OWN-EXTENSION-PASSES-THE-FULL-LINT` from a full-repository lint and hygiene run of the fork (or from the tool's build profile, which runs both), never from the lint of the own directory: that run does not look at `extensions/`.
+8. Write the review: the table `intervention × check → verdict, evidence`, the list of `not done` with the smallest fix, and the numbered rules of the owning specification that the tests cite (or the rules no test cites).
 
 ## What this skill does not do
 
