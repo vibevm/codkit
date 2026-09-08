@@ -4595,7 +4595,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c24140f3bdb909104144ac92416817ef129951dffb1fb17c4000b933f9f94e4b",
+      "content_hash": "sha256:52ddae32fbaad580c52c9c0d07bc000e38c2f542a43e9f8a6c016eb30f4eeeb9",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: Команды CLI — контракты",
@@ -5063,7 +5063,7 @@
     },
     {
       "anchor": "cmd-ci",
-      "content_hash": "sha256:009a9f611c1c9b6650b51f7857dc28f212cd5f4dce5e67dfb7b1bc2eb6f98b62",
+      "content_hash": "sha256:69b105b9fde87a67fbbc10a11881093e152c494f1fd736887a0709ec468bf24e",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "17. codkit ci [--profile verify|build] [--effective-diff base-ref]",
@@ -5081,10 +5081,10 @@
     },
     {
       "anchor": "CMD-CI-IMPL",
-      "content_hash": "sha256:8ea7262bc34ef205960306aa1d2b16a2ded708e4a503c47e7d4d4dcc07f859fd",
+      "content_hash": "sha256:a93e23f157c2919c72d24bef7fb80c005a9dc4e0af5e92d0c6539fab2107b6bf",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Реализация после post-M1 audit. Полная сигнатура: `ci [--profile verify|build] [--effective-diff <base-ref>] [--pin-guard-base <ref>] [--timeout <сек>]`; команда держит per-tree блокировку на весь прогон. Шаги verify (7, печатаются по порядку с прогрессом): источник пути → safe.directory-проба (PROP-011 §5) → check-tree (режим записи) → fresh-load с материализацией overlay-целей в ветку → verify → pin-guard (только при `--pin-guard-base`; иначе шаг явно skipped) → effective-diff (только при флаге). Build выполняет 12 шагов: источник → safe.directory → check-tree → fresh-load **без** overlay-целей → зависимости → реальные `npm run hygiene` и `npm run eslint` на нематериализованном overlay → повторный fresh-load с overlay apply → verify → pin-guard → effective-diff → один проход демонов `transpile,typecheck` → реальные product/contract tests через `npm run test-node -- --runGlob vs/<ownDirName>/**/test/**/*.test.js` (каждый каталог `test/` под own-каталогом: тесты продукта, доставленной библиотеки и каталогов фич). Красный hygiene/test завершает команду кодом 1; отсутствующий runner/скрипт — код 2 `CK-E-LOG-INCOMPLETE`; заглушек с exit 0 нет. Демоны останавливаются в finally; незавершённый проход — `CK-E-LOG-INCOMPLETE`. Коды: 0; 1 — проверки/pin-guard/компиляция/tests; 2 — окружение (`NET-FORBIDDEN`, `DEPS-MISSING`, отсутствующий обязательный runner). @status:impl/done",
+      "heading": "Реализация после post-M1 audit. Полная сигнатура: `ci [--profile verify|build] [--effective-diff <base-ref>] [--pin-guard-base <ref>] [--timeout <сек>]`; команда держит per-tree блокировку на весь прогон. Шаги verify (7, печатаются по порядку с прогрессом): источник пути → safe.directory-проба (PROP-011 §5) → check-tree (режим записи) → fresh-load с материализацией overlay-целей в ветку → verify → pin-guard (только при `--pin-guard-base`; иначе шаг явно skipped) → effective-diff (только при флаге). Build выполняет 12 шагов: источник → safe.directory → check-tree → fresh-load **без** overlay-целей → зависимости → реальные `npm run hygiene` и `npm run eslint` на нематериализованном overlay → повторный fresh-load с overlay apply → verify → pin-guard → effective-diff → один проход демонов `transpile,typecheck` → реальные product/contract tests через `npm run test-node -- --runGlob vs/<ownDirName>/**/test/{common,node}/**/*.test.js` (слои `common` и `node` каждого каталога `test/` под own-каталогом: тесты продукта, доставленной библиотеки и каталогов фич; `--runGlob` обходит штатное исключение слоёв node-раннера, а наборы слоя `browser` идут под electron-раннером вне `ci` — PROP-010 §4). Красный hygiene/test завершает команду кодом 1; отсутствующий runner/скрипт — код 2 `CK-E-LOG-INCOMPLETE`; заглушек с exit 0 нет. Демоны останавливаются в finally; незавершённый проход — `CK-E-LOG-INCOMPLETE`. Коды: 0; 1 — проверки/pin-guard/компиляция/tests; 2 — окружение (`NET-FORBIDDEN`, `DEPS-MISSING`, отсутствующий обязательный runner). @status:impl/done",
       "line": 78,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-CI-IMPL"
     },
@@ -6350,7 +6350,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:0870eff95e13a87e848401511181c6d867abacf287aa8781dd92cdb987bcb525",
+      "content_hash": "sha256:b8d2bbe3f4b4d3600f82f24f66653c0d89199cd3efa0e1d8369e864d414fcd63",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "codkit PROP-010: Интеграция со сборкой VS Code — доставка кода, демоны, тесты",
@@ -6611,7 +6611,7 @@
     },
     {
       "anchor": "tests",
-      "content_hash": "sha256:8d36570fa6ce2281082a9b67c14290fba0b2f4c43de861ec2d8fcef65273b032",
+      "content_hash": "sha256:04eab637431e300c309ba910be636a67fa094764c7296eda5bb659f4e1b0e481",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "4. Тесты продукта",
@@ -6619,12 +6619,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-010#tests"
     },
     {
+      "anchor": "TESTS-LAYER-SPLIT",
+      "content_hash": "sha256:841ba7ce841f82ad7224335813533f07417b3755f21338faa03a1488f8e95d0a",
+      "doc_path": "modules/codkit/PROP-010",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
+      "heading": "**Разделение по раннерам.** `--runGlob` обходит штатное исключение слоёв node-раннера апстрима, а набор, поднимающий workbench, тянет таблицы стилей, которые node не загружает; поэтому `ci --profile build` запускает node-раннер по глобу `vs/<own>/**/test/{common,node}/**/*.test.js`, а наборы `test/browser` продукта, библиотеки и фич — обязательный шаг протокола вне `ci`: electron-раннер апстрима (`scripts/test.sh --runGlob 'vs/<own>/**/test/browser/**/*.test.js'`, на машине без дисплея — под `xvfb-run`), потому что контейнер CI без дисплея не может считать его обязательным для профиля. @status:spec/plan",
+      "line": 55,
+      "uri": "spec://codkit/modules/codkit/PROP-010#TESTS-LAYER-SPLIT"
+    },
+    {
       "anchor": "TESTS-TWO-RUNNERS",
       "content_hash": "sha256:424972af22abc18540d273bb812fe98c05afb0f19b6e533d986b4c89281367dd",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "**Свой быстрый раннер**: тесты codkit — vitest в patchset (PROP-013). **Тесты продукта** (contract/guard) — файлы `*.test.ts` в own-каталоге под `src/vs/patchset/test/**`, исполняются апстримными раннерами из `out/vs/patchset/test/**` автоматически (юнит-раннеры собирают `**/test/**/*.test.js` из `out/`). Запуск адресно: `--run src/vs/patchset/test/...` (раннер сам маппит src→out). @status:spec/done",
-      "line": 56,
+      "line": 57,
       "uri": "spec://codkit/modules/codkit/PROP-010#TESTS-TWO-RUNNERS"
     },
     {
@@ -6633,7 +6642,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Контрактные тесты обязательны для вмешательств вне зоны маркеров и компилятора: resource, overlay, изменённый default, hide, service seam. Id теста берётся из `contractTests` артефакта; verify подтверждает его объявление в own tests. @status:spec/done",
-      "line": 57,
+      "line": 58,
       "uri": "spec://codkit/modules/codkit/PROP-010#CONTRACT-TESTS-MANDATE"
     },
     {
@@ -6642,7 +6651,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Апстримные тесты запускаются без правок. Любой фильтр требует отдельного доказательства на чистом пине и адресуемого решения; зелёный узкий раннер не заменяет полный baseline выбранного upstream/Electron runner. @status:spec/done",
-      "line": 58,
+      "line": 59,
       "uri": "spec://codkit/modules/codkit/PROP-010#UPSTREAM-TESTS-POLICY"
     },
     {
@@ -6651,7 +6660,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "5. Что меняется в package.json дерева",
-      "line": 61,
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/PROP-010#package-json"
     },
     {
@@ -6660,7 +6669,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Только **добавление** npm-скриптов при необходимости (overlay-цель `package.json`, PROP-005 §5); MVP не добавляет ничего (обёртка вызывает существующие скрипты). Любое будущее добавление — overlay-артефакт с записью инвентаря. @status:spec/done",
-      "line": 62,
+      "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-010#TREE-PACKAGE-JSON-RULE"
     },
     {

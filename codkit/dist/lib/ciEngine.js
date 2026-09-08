@@ -798,12 +798,12 @@ export function upstreamHygieneStep(treeDir, out, run = defaultCiCommandRunner) 
     ], run, 'hygiene and eslint passed');
 }
 /**
- * Product tests live below `src/vs/<own>/test/` and run through the upstream
+ * Product tests live below `src/vs/<own>/**\/test/` and run through the upstream
  * node runner over compiled `out/` files (PROP-010 sec. 4). The selector takes
- * every `test/` directory under the own directory, so the suites of a delivered
- * library (`<own>/codkit/test/`) and of a feature folder run with the product's
- * own; using the tree's `test-node` script preserves the upstream runner's own
- * mandatory flags.
+ * the `common` and `node` layers of every `test/` directory under the own
+ * directory, so the suites of a delivered library (`<own>/codkit/test/`) and of
+ * a feature folder run with the product's own; using the tree's `test-node`
+ * script preserves the upstream runner's own mandatory flags.
  */
 export function productTestsStep(patchesDir, treeDir, ownDirName, out, run = defaultCiCommandRunner) {
     const root = ownSourceRoot(patchesDir);
@@ -820,7 +820,11 @@ export function productTestsStep(patchesDir, treeDir, ownDirName, out, run = def
             exitCode: EXIT_ENVIRONMENT
         };
     }
-    const glob = `vs/${ownDirName}/**/test/**/*.test.js`;
+    // `--runGlob` bypasses the node runner's own exclusion of the browser layers,
+    // and a suite that drives the workbench pulls stylesheets node cannot load;
+    // the node runner therefore takes the common and node layers only, and the
+    // browser suites are the electron runner's (PROP-010 sec. 4).
+    const glob = `vs/${ownDirName}/**/test/{common,node}/**/*.test.js`;
     const result = runCommandSequence(out, [
         {
             label: 'product tests',
