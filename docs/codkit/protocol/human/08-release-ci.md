@@ -80,6 +80,18 @@ mount остаётся контрактом runner.
 
 Generated commits несут `Codkit-Patchset-Commit` и `Codkit-Upstream-Pin`. Порядок: patch, own, overlays, resources.
 
+## Коммит сборки
+
+Сборка пакета апстримными задачами (`gulp vscode-*`) записывает `commit` в `product.json`
+из переменной `BUILD_SOURCEVERSION`, а без неё — чтением `.git/HEAD` как каталога. Управляемое
+дерево — linked worktree, его `.git` — файл, поэтому пакет остаётся без `commit`, а без
+`commit` загрузчик локализации не читает языковые пакеты (PROP-010 §1). Перед упаковкой
+экспортируйте `BUILD_SOURCEVERSION` с HEAD дерева (`codkit --json status` печатает вершину
+ветки) и `VSCODE_QUALITY` продукта; проверка — поле `commit` в `product.json` собранного пакета.
+Наборы слоя `browser` собственного кода `ci --profile build` не запускает: их гонит
+electron-раннер апстрима отдельным шагом релиза (`scripts/test.sh --runGlob
+'vs/<own>/**/test/browser/**/*.test.js'`, без дисплея — под `xvfb-run`).
+
 ## Release checklist
 
 - [ ] `git status --short` в patchset пуст.
