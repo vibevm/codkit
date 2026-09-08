@@ -99,7 +99,10 @@ function snapshot(root: string): string {
 }
 
 function expectedNotice(): string {
+	// ##STD-NOTICE-COMPONENTS-BLOCK: every installed component, sorted by name -
+	// both packages `standards load` delivers, and the runtime library.
 	return renderNotice(readFileSync(shippedNotice, 'utf8'), [
+		{ name: 'agent-skills', version: '0.1.0', path: 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/' },
 		{ name: 'runtime', version: SHIPPED_VERSION, path: `${INSTALLED}/` },
 		{ name: 'standards', version: '0.2.0', path: `${STANDARDS}/` }
 	]);
@@ -119,7 +122,7 @@ describe('S42 - runtime load delivers the library and rewrites the notice', () =
 		expect(data.files.written).toBeGreaterThan(0);
 		expect(sameAsShipped(patchesDir)).toBe(true);
 
-		// ##STD-NOTICE-COMPONENTS-BLOCK: both copies now list standards and runtime.
+		// ##STD-NOTICE-COMPONENTS-BLOCK: both copies list every installed component.
 		const notice = expectedNotice();
 		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);
 		expect(readFileSync(join(patchesDir, ...INSTALLED.split('/'), 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);

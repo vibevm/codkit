@@ -17,7 +17,7 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 afterAll(cleanupTempRoots);
 
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const README = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/README.md';
+const SKILL = 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-orient/SKILL.md';
 
 function makePatchSet(label: string): string {
 	const root = makeTempRoot(`load-${label}`);
@@ -45,13 +45,12 @@ describe('one run over the whole shipped set', () => {
 
 		const outcome = runStandardsLoad(options(patchesDir));
 
-		expect(outcome.packages[0]?.name).toBe('standards');
+		expect(outcome.packages.map((entry) => entry.name)).toEqual(['standards', 'agent-skills']);
 		expect(outcome.packages.every((entry) => entry.state === 'created')).toBe(true);
 		expect(outcome.filesCreated).toBe(outcome.plan.packages.reduce((total, entry) => total + entry.fileCount, 0));
-		// ##STD-LOAD-ALL-PACKAGES: the projection step only when a package declares skills.
-		expect(outcome.plan.packages.some((entry) => entry.package.declaresSkills)).toBe(false);
-		expect(nextSteps(outcome.plan, false)).toEqual(['vibe install --offline']);
-		expect(nextSteps(outcome.plan, true)).toEqual(['vibe install --offline --force']);
+		// ##STD-LOAD-ALL-PACKAGES: the projection step, because a package declares skills.
+		expect(nextSteps(outcome.plan, false)).toEqual(['vibe install --offline', 'vibe skill install']);
+		expect(nextSteps(outcome.plan, true)).toEqual(['vibe install --offline --force', 'vibe skill install']);
 		expect(runStandardsCheck(options(patchesDir)).findings).toEqual([]);
 	});
 });
@@ -60,17 +59,19 @@ describe('an installed copy that disagrees', () => {
 	it('refuses without the flag and replaces the directory with it', () => {
 		const patchesDir = makePatchSet('upgrade');
 		runStandardsLoad(options(patchesDir));
-		const installed = join(patchesDir, ...README.split('/'));
+		const installed = join(patchesDir, ...SKILL.split('/'));
 		writeFileSync(installed, `${readFileSync(installed, 'utf8')}mine\n`, 'utf8');
 
 		const plan = planStandardsLoad(options(patchesDir));
-		expect(plan.packages.find((entry) => entry.package.name === 'standards')?.replace).toEqual(['README.md']);
+		expect(plan.packages.find((entry) => entry.package.name === 'agent-skills')?.replace).toEqual([
+			'vibevm/vibespecs/skills/ck-orient/SKILL.md'
+		]);
 		expect(codeOf(() => refuseOnDrift(plan, false))).toBe('STANDARDS-DRIFT');
 		// ##STD-LOAD-UPGRADE: the flag is the word that turns drift into a replacement.
 		expect(codeOf(() => refuseOnDrift(plan, true))).toBeNull();
 
 		const upgraded = runStandardsLoad(options(patchesDir, true));
-		expect(upgraded.packages.find((entry) => entry.name === 'standards')?.state).toBe('upgraded');
+		expect(upgraded.packages.find((entry) => entry.name === 'agent-skills')?.state).toBe('upgraded');
 		expect(readFileSync(installed, 'utf8').endsWith('mine\n')).toBe(false);
 		expect(runStandardsCheck(options(patchesDir)).findings).toEqual([]);
 	});

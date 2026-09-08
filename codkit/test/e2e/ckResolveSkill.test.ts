@@ -1,9 +1,14 @@
 // e2e: ck-resolve's deterministic journal helper uses the real tree lock and
 // the canonical cycle journal writer without committing or continuing a cycle.
+//
+// The helper ships inside the `agent-skills` package and is run from the copy
+// `vibe skill install` projects, so it resolves the three roots through the
+// installed launcher on `PATH` (PROP-014 ##STD-SKILLS-SOURCE-OF-TRUTH). The
+// fixture puts this repository's own `bin/` on `PATH` for exactly that.
 
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readCycleJournal } from '../../src/lib/cycleJournal.ts';
@@ -13,7 +18,11 @@ import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const helper = join(repoRoot, 'codkit/claude/skills/ck-resolve/scripts/append-journal.mjs');
+const helper = join(
+	repoRoot,
+	'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs'
+);
+const launcherDir = join(repoRoot, 'bin');
 const artifact = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
 
 afterAll(cleanupTempRoots);
@@ -91,7 +100,12 @@ describe('ck-resolve journal helper', () => {
 function invoke(patchesDir: string, treeDir: string, entry: string) {
 	return spawnSync(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', helper, '--entry', entry], {
 		cwd: patchesDir,
-		env: { ...process.env, CODKIT_PATCHES_DIR: patchesDir, CODKIT_FORK_DIR: treeDir },
+		env: {
+			...process.env,
+			PATH: `${launcherDir}${delimiter}${process.env['PATH'] ?? ''}`,
+			CODKIT_PATCHES_DIR: patchesDir,
+			CODKIT_FORK_DIR: treeDir
+		},
 		encoding: 'utf8'
 	});
 }

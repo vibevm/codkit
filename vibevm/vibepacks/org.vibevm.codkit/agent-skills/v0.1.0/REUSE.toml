@@ -1,0 +1,10 @@
+# Copyright (c) 2026 Oleg Chirukhin
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+# SPDX-License-Identifier: UPL-1.0
+version = 1
+SPDX-PackageName = "org.vibevm.codkit/agent-skills"
+SPDX-PackageSupplier = "Person: Oleg Chirukhin"
+
+# This package carries no third-party files; every file is codkit's own under UPL-1.0
+# and carries its notice in a comment (PROP-014 §2, LIC-THIRD-PARTY-REGISTRY).

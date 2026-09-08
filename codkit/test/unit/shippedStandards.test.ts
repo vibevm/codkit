@@ -1,4 +1,4 @@
-// PROP-013 ##UT-SHIPPED-STANDARDS: the package codkit ships, checked on its
+// PROP-013 ##UT-SHIPPED-STANDARDS: the packages codkit ships, checked on their
 // real bytes.
 //
 // The synthetic fixture proves the algorithm; this proves the artifact. It is
@@ -17,10 +17,11 @@ import { checkLicenseCarriers } from '../../src/lib/licenseCheck.ts';
 import { loadLicensePolicy } from '../../src/lib/licensePolicy.ts';
 import { UPL_1_0_TEXT, normalizeLicenseText, upl10BodyWithoutPlaceholder } from '../../src/lib/licenseTexts.ts';
 import { loadSpdxLicenseIds } from '../../src/lib/spdxIds.ts';
-import { STANDARDS_PACKAGE_PARENT, shippedStandardsPackage } from '../../src/lib/standardsPackage.ts';
+import { STANDARDS_PACKAGE_PARENT, shippedPackages, shippedStandardsPackage } from '../../src/lib/standardsPackage.ts';
 
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const shipped = shippedStandardsPackage(toolRoot);
+const skills = shippedPackages(toolRoot).find((entry) => entry.name === 'agent-skills');
 
 /** ##STD-PACKAGE-PILOT-ASSETS: the bytes of the logo and the third-party icon. */
 const ASSET_HASHES: ReadonlyMap<string, string> = new Map([
@@ -35,6 +36,9 @@ const ASSET_HASHES: ReadonlyMap<string, string> = new Map([
 /** ##LIC-NOTICE-BILINGUAL: both references, and the English one governs. */
 const ENGLISH_REFERENCE = 'Licensed under the Universal Permissive License v 1.0';
 const RUSSIAN_REFERENCE = 'Лицензировано на условиях Universal Permissive License версии 1.0';
+
+/** ##STD-SKILLS-ROSTER-0-1-0 */
+const SKILL_NAMES = ['ck-orient', 'ck-intervene', 'ck-review-intervention', 'ck-resolve'];
 
 function read(relative: string): string {
 	return readFileSync(join(shipped.directory, ...relative.split('/')), 'utf8');
@@ -136,22 +140,77 @@ describe('the shipped standards package', () => {
 	});
 
 	it('names no product', () => {
-		// The tool repository carries no downstream product name anywhere
-		// (PROP-003 ##CURRENT-TREE-ZERO-RETIRED-NAME). The needles are written as
-		// concatenations so that this test does not itself put one in the tree.
-		const forbidden = ['v' + 'code', 'V' + 'Code'];
-		const walk = (directory: string, prefix: string): readonly string[] =>
-			readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-				const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
-				return entry.isDirectory() ? walk(join(directory, entry.name), relative) : [relative];
-			});
+		expectNoProductName(shipped.directory);
+	});
+});
 
-		for (const relative of walk(shipped.directory, '')) {
-			const bytes = readFileSync(join(shipped.directory, ...relative.split('/')));
-			const text = bytes.includes(0) ? '' : bytes.toString('utf8');
-			for (const needle of forbidden) {
-				expect(text.includes(needle), `${relative} names ${needle}`).toBe(false);
-			}
+/**
+ * The tool repository carries no downstream product name anywhere (PROP-003
+ * ##CURRENT-TREE-ZERO-RETIRED-NAME). The needles are written as concatenations
+ * so that this test does not itself put one in the tree.
+ */
+function expectNoProductName(directory: string): void {
+	const forbidden = ['v' + 'code', 'V' + 'Code'];
+	const walk = (from: string, prefix: string): readonly string[] =>
+		readdirSync(from, { withFileTypes: true }).flatMap((entry) => {
+			const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+			return entry.isDirectory() ? walk(join(from, entry.name), relative) : [relative];
+		});
+
+	for (const relative of walk(directory, '')) {
+		const bytes = readFileSync(join(directory, ...relative.split('/')));
+		const text = bytes.includes(0) ? '' : bytes.toString('utf8');
+		for (const needle of forbidden) {
+			expect(text.includes(needle), `${relative} names ${needle}`).toBe(false);
 		}
+	}
+}
+
+/**
+ * ##STD-SKILLS-PACKAGE-IDENTITY and ##STD-SKILLS-ROSTER-0-1-0: the second
+ * package codkit ships, on the same terms as the first - every file carries its
+ * own licence banner, and the bodies name no product.
+ */
+describe('the shipped agent-skills package', () => {
+	it('is one version directory whose manifest declares the roster', () => {
+		expect(skills?.version).toBe('0.1.0');
+		expect(skills?.declaresSkills).toBe(true);
+		expect(skills?.kind).toBe('agent-skills');
+
+		const manifest = readFileSync(join(skills?.directory ?? '', 'vibe.toml'), 'utf8');
+		for (const name of SKILL_NAMES) {
+			expect(manifest, name).toContain(`name = "${name}"`);
+			// The projection resolves the path against the package root, so it is
+			// written out in full rather than through an alias.
+			expect(manifest, name).toContain(`path = "vibevm/vibespecs/skills/${name}"`);
+		}
+	});
+
+	it('passes the licence check with no problems at all', () => {
+		const result = checkLicenseCarriers(skills?.directory ?? '', loadLicensePolicy(), loadSpdxLicenseIds());
+
+		expect(result.problems).toEqual([]);
+		expect(result.licences.own).toEqual(['UPL-1.0']);
+		expect(result.licences.thirdParty).toEqual([]);
+		expect(result.checked.filter((file) => file.carrier !== 'header')).toEqual([]);
+	});
+
+	it('states the licence in both languages in every carrier, after the frontmatter', () => {
+		const result = checkLicenseCarriers(skills?.directory ?? '', loadLicensePolicy(), loadSpdxLicenseIds());
+		for (const file of result.checked) {
+			const text = readFileSync(join(skills?.directory ?? '', ...file.path.split('/')), 'utf8');
+			expect(text, file.path).toContain(ENGLISH_REFERENCE);
+			expect(text, file.path).toContain(RUSSIAN_REFERENCE);
+		}
+		// A harness reads the frontmatter from the first bytes, so the licence
+		// comment of a skill body comes after it, never before.
+		for (const name of SKILL_NAMES) {
+			const body = readFileSync(join(skills?.directory ?? '', 'vibevm', 'vibespecs', 'skills', name, 'SKILL.md'), 'utf8');
+			expect(body.startsWith(`---\nname: ${name}\n`), name).toBe(true);
+		}
+	});
+
+	it('names no product', () => {
+		expectNoProductName(skills?.directory ?? '');
 	});
 });

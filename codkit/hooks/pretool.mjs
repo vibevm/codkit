@@ -40,7 +40,7 @@ export function evaluatePreTool(input, options) {
 		} catch (error) {
 			return deny(`Shell cwd cannot be resolved safely: ${safeMessage(error)}`);
 		}
-		const violation = shellCommandProblem(command, trustedToolRoot, commandCwd);
+		const violation = shellCommandProblem(command, trustedToolRoot, projectRoot, commandCwd);
 		return violation === null ? null : deny(violation);
 	}
 
@@ -232,7 +232,7 @@ function allowedPatchSetOutputs(projectRoot, task) {
 	return { paths, error: null };
 }
 
-function shellCommandProblem(command, trustedToolRoot, commandCwd) {
+function shellCommandProblem(command, trustedToolRoot, projectRoot, commandCwd) {
 	if (command.trim() === '') return 'Empty shell commands are denied.';
 	if (/[\r\n;&|<>`]/.test(command) || command.includes('$') || command.includes('\0')) {
 		return 'Shell operators, redirection, variables, and command substitution are denied; use one static allowed command.';
@@ -249,9 +249,9 @@ function shellCommandProblem(command, trustedToolRoot, commandCwd) {
 			? null
 			: 'Codkit command is not in the agent read-only allowlist.';
 	if (name === 'node')
-		return executable === 'node' && allowedNodeHelper(tokens.slice(1), trustedToolRoot, commandCwd)
+		return executable === 'node' && allowedNodeHelper(tokens.slice(1), projectRoot, commandCwd)
 			? null
-			: 'Node may run only the installed ck-resolve journal helper.';
+			: 'Node may run only the projected ck-resolve journal helper.';
 	return `Shell executable ${name || '<dynamic>'} is not in the agent allowlist.`;
 }
 
@@ -320,11 +320,16 @@ function allowedCodkit(tokens) {
 	return false;
 }
 
-function allowedNodeHelper(tokens, trustedToolRoot, commandCwd) {
+// The skill ships in the `agent-skills` vibe package and reaches a repository
+// through `vibe skill install`, so the only helper the guard trusts is the
+// projection inside this patch set. Nothing may write there: `.claude/` is
+// outside every task perimeter, so a projected copy cannot be forged by an
+// agent under this guard.
+function allowedNodeHelper(tokens, projectRoot, commandCwd) {
 	const scriptIndex = tokens.findIndex((token) => token.endsWith('append-journal.mjs'));
 	if (scriptIndex === -1) return false;
 	const normalized = (tokens[scriptIndex] ?? '').replaceAll('\\', '/');
-	const expected = canonicalCommandPath(join(trustedToolRoot, 'codkit/claude/skills/ck-resolve/scripts/append-journal.mjs'), commandCwd);
+	const expected = canonicalCommandPath(join(projectRoot, '.claude/skills/ck-resolve/scripts/append-journal.mjs'), commandCwd);
 	const actual = canonicalCommandPath(tokens[scriptIndex] ?? '', commandCwd);
 	if (actual !== expected || normalized.includes('/../')) return false;
 	const allowedFlags = new Set(['--experimental-strip-types', '--disable-warning=ExperimentalWarning']);

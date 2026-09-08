@@ -1,6 +1,0 @@
-interface:
-  display_name: "Ck Resolve"
-  short_description: "Resolve one assigned codkit cycle blocker"
-  default_prompt: "Resolve only the explicitly assigned codkit cycle blocker, append a validated journal entry, and do not commit or continue the cycle."
-policy:
-  allow_implicit_invocation: false

@@ -65,7 +65,7 @@ describe('npm distribution', () => {
 			'codkit/hooks/pretool.mjs',
 			'bin/codkit',
 			'bin/codkit.ps1',
-			'codkit/claude/skills/ck-resolve/scripts/append-journal.mjs',
+			'codkit/claude/settings.json',
 			'vibevm/vibespecs/common/PROP-000-foundations.xml',
 			'vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml',
 			// The standards package ships in the tarball, licence carriers and all
@@ -77,6 +77,12 @@ describe('npm distribution', () => {
 			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/vibe.toml',
 			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/THIRD-PARTY-NOTICES.md',
 			'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0/assets/codkit.png.license',
+			// The agent skills ship as a package of their own (PROP-014 sec. 1a);
+			// the resolver's journal helper travels inside it.
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/LICENSE',
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibe.toml',
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-orient/SKILL.md',
+			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs',
 			'codkit/runtime/v0.1.1/README.md',
 			'codkit/runtime/v0.1.1/common/version.ts',
 			'codkit/runtime/v0.1.1/browser/featureFlags.contribution.ts'

@@ -1,35 +1,50 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 Oleg Chirukhin
+// Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+// Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+// SPDX-License-Identifier: UPL-1.0
+
+// The skill is projected into the agent's skill directory by `vibe skill
+// install`, so this file no longer sits at a fixed depth below the tool root
+// and may not compute one from its own location. The three roots come from the
+// installed launcher, exactly as the skill's preconditions require of the
+// agent: `codkit --json where`, schema 2, `roots.tool`, `roots.patches`,
+// `roots.fork`.
 
 import { spawnSync } from 'node:child_process';
 import { lstatSync, readFileSync } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const blockerOutcomes = new Set(['conflict', 'target-deleted', 'rule-broken', 'contract-failed']);
 const args = values(process.argv.slice(2));
 const entryArg = args.get('--entry');
 if (entryArg === undefined || entryArg === '') fail('usage: append-journal.mjs --entry <repository-relative.json>');
 if (entryArg !== '.codkit/agent-journal-entry.json') fail('entry file must be .codkit/agent-journal-entry.json');
 
-const whereArgs = [resolve(toolRoot, 'codkit/bin/codkit.mjs'), 'where', '--json'];
+const whereArgs = ['--json', 'where'];
 const explicitPatches = args.get('--patches-dir');
 if (explicitPatches !== undefined) whereArgs.push('--patches-dir', explicitPatches);
-const where = spawnSync(process.execPath, whereArgs, {
+const where = spawnSync('codkit', whereArgs, {
 	cwd: process.cwd(),
 	env: process.env,
-	encoding: 'utf8'
+	encoding: 'utf8',
+	shell: process.platform === 'win32'
 });
-if (where.status !== 0) fail(`codkit where failed: ${where.stderr.trim()}`);
-let root;
-let tree;
+if (where.error !== undefined || where.status !== 0) {
+	fail(`codkit where failed: ${(where.stderr ?? '').trim() || where.error?.message || 'the codkit launcher is not on PATH'}`);
+}
+let envelope;
 try {
-	const envelope = JSON.parse(where.stdout);
-	root = envelope?.roots?.patches?.path;
-	tree = envelope?.roots?.fork?.path;
+	envelope = JSON.parse(where.stdout);
 } catch {
 	fail('codkit where returned malformed JSON');
 }
+if (envelope?.codkit?.schema !== 2) fail('codkit where returned an envelope schema this helper does not know');
+const toolRoot = envelope?.roots?.tool?.path;
+const root = envelope?.roots?.patches?.path;
+const tree = envelope?.roots?.fork?.path;
+if (typeof toolRoot !== 'string' || toolRoot === '') fail('codkit where returned no tool path');
 if (typeof root !== 'string' || root === '') fail('codkit where returned no patch-set path');
 if (typeof tree !== 'string' || tree === '') fail('codkit where returned no fork path');
 const entryPath = resolve(root, entryArg);

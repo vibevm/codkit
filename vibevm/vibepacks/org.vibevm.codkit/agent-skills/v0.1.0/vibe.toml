@@ -1,0 +1,45 @@
+# Copyright (c) 2026 Oleg Chirukhin
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+# SPDX-License-Identifier: UPL-1.0
+
+[package]
+name = "agent-skills"
+group = "org.vibevm.codkit"
+kind = "flow"
+version = "0.1.0"
+epoch = 1
+format = "normal"
+authors = ["Oleg Chirukhin"]
+license = "UPL-1.0"
+description = "The agent skills of codkit, projected into every coding agent by vibe skill install: orient in a patch set without editing, choose the layer of an intervention, review an intervention against the standard, and resolve one assigned upgrade-cycle blocker"
+keywords = ["codkit", "skills", "agents", "patch-set", "fork", "upgrade-cycle"]
+
+[compatibility]
+min_vibe_version = "0.1.0"
+requires_kinds = []
+
+[boot_snippet]
+source = "vibevm/vibespecs/boot/76-flow-codkit-agent-skills.xml"
+category = "flow"
+concepts = ["agent skills", "intervention layer", "cycle blocker"]
+
+[[skill]]
+name = "ck-orient"
+path = "vibevm/vibespecs/skills/ck-orient"
+description = "Orient in a codkit patch set without editing anything: roots, tree state, verify, inventory, and the owning specification of each area"
+
+[[skill]]
+name = "ck-intervene"
+path = "vibevm/vibespecs/skills/ck-intervene"
+description = "Choose the layer of a new intervention in a codkit patch set: the ladder, the hook budget, the feature-and-flag form, and the owning specification, presented as a proposal before any edit"
+
+[[skill]]
+name = "ck-review-intervention"
+path = "vibevm/vibespecs/skills/ck-review-intervention"
+description = "Review an intervention of a codkit patch set against the minimal-intervention standard: the conformance checks as a table, with the evidence for each"
+
+[[skill]]
+name = "ck-resolve"
+path = "vibevm/vibespecs/skills/ck-resolve"
+description = "Resolve one explicitly assigned codkit upgrade-cycle blocker without committing, widening the task, or bypassing the journal and verification gates"

@@ -37,6 +37,10 @@ describe('agent protocol structural sources', () => {
 	});
 
 	it('ships the deny-only agent settings template with the tool-root hook and keeps the tool repository free of it', () => {
+		// ##STD-SKILLS-SOURCE-OF-TRUTH: the profile keeps only what vibe does not
+		// project; the skills live in the agent-skills package.
+		expect(existsSync(join(repoRoot, 'codkit', 'claude', 'skills'))).toBe(false);
+		expect(readdirSync(join(repoRoot, 'codkit', 'claude')).sort()).toEqual(['AGENTS.md', 'CLAUDE.md', 'agents', 'rules', 'settings.json']);
 		const settings = JSON.parse(readFileSync(join(repoRoot, 'codkit', 'claude', 'settings.json'), 'utf8')) as {
 			permissions: { allow?: unknown; deny: string[] };
 			hooks: { PreToolUse: { matcher: string; hooks: { command: string; args: string[] }[] }[] };
@@ -136,35 +140,32 @@ describe('PreToolUse policy', () => {
 		['$(printf git) commit -m x', 'variables'],
 		['echo `git status`', 'operators'],
 		[
-			'node -e "process.exit()" codkit/claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json',
-			'installed ck-resolve'
+			'node -e "process.exit()" .claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json',
+			'projected ck-resolve'
 		]
 	] as const)('denies shell policy: %s', (command, expected) => {
 		const roots = fixtureRoots('shell-deny');
 		expect(reason(decision(shell(command), roots))).toContain(expected);
 	});
 
-	it('rejects patch-set-local launcher and installed-copy helper lookalikes', () => {
+	it('rejects a patch-set-local launcher and a journal helper outside the projection', () => {
 		const roots = fixtureRoots('shell-spoof');
 		const launcher = join(roots.project, 'bin', 'codkit');
-		const helper = join(roots.project, '.claude', 'skills', 'ck-resolve', 'scripts', 'append-journal.mjs');
+		const elsewhere = join(roots.project, 'scripts', 'append-journal.mjs');
 		mkdirSync(dirname(launcher), { recursive: true });
-		mkdirSync(dirname(helper), { recursive: true });
+		mkdirSync(dirname(elsewhere), { recursive: true });
 		writeFileSync(launcher, '#!/bin/sh\n');
-		writeFileSync(helper, '// lookalike\n');
+		writeFileSync(elsewhere, '// lookalike\n');
 		chmodSync(launcher, 0o755);
 		expect(reason(decision(shell('bin/codkit --json where', roots.project), roots))).toContain('agent read-only allowlist');
 		expect(
 			reason(
 				decision(
-					shell(
-						'node --experimental-strip-types .claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json',
-						roots.project
-					),
+					shell('node --experimental-strip-types scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json', roots.project),
 					roots
 				)
 			)
-		).toContain('installed ck-resolve');
+		).toContain('projected ck-resolve');
 	});
 
 	it('allows only static read-only shell inspection and approved Codkit commands', () => {
@@ -175,10 +176,16 @@ describe('PreToolUse policy', () => {
 		expect(decision(shell('rg --line-number marker src'), roots)).toBeNull();
 		expect(decision(shell('bin/codkit --json cycle status'), roots)).toBeNull();
 		expect(decision(shell('bin/codkit build errors --json'), roots)).toBeNull();
+		// The only helper the guard trusts is the one `vibe skill install`
+		// projected into this patch set (PROP-014 ##STD-SKILLS-SOURCE-OF-TRUTH).
+		const projected = join(roots.project, '.claude', 'skills', 'ck-resolve', 'scripts', 'append-journal.mjs');
+		mkdirSync(dirname(projected), { recursive: true });
+		writeFileSync(projected, '// projected\n');
 		expect(
 			decision(
 				shell(
-					'node --experimental-strip-types --disable-warning=ExperimentalWarning codkit/claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json'
+					'node --experimental-strip-types --disable-warning=ExperimentalWarning .claude/skills/ck-resolve/scripts/append-journal.mjs --entry .codkit/agent-journal-entry.json',
+					roots.project
 				),
 				roots
 			)

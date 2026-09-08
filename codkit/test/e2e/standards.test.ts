@@ -1,5 +1,5 @@
 // PROP-013 ##E2E-STANDARDS-SURFACE: `codkit standards` through the real
-// launcher. FEAT-002 ##S30-##S37, ##S41 and ##S60.
+// launcher. FEAT-002 ##S30-##S37, ##S41, ##S56-##S58 and ##S60.
 //
 // The fixture is a patch-set root with a vibevm manifest and no fork tree at
 // all: these commands must not need one (##STD-LOAD-ROOTS).
@@ -19,11 +19,17 @@ afterAll(cleanupTempRoots);
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const shippedPackage = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v0.2.0');
+const shippedSkills = join(repoRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'agent-skills', 'v0.1.0');
 const shippedNotice = join(repoRoot, 'codkit', 'config', 'LICENSE-CODKIT.md');
 const INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.2.0';
+const SKILLS_INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v0.1.0';
+const SKILL_NAMES = ['ck-orient', 'ck-intervene', 'ck-review-intervention', 'ck-resolve'];
 
 /** ##STD-NOTICE-COMPONENTS-BLOCK: the whole shipped set, by name. */
-const COMPONENTS = [{ name: 'standards', version: '0.2.0', path: `${INSTALLED}/` }];
+const COMPONENTS = [
+	{ name: 'agent-skills', version: '0.1.0', path: `${SKILLS_INSTALLED}/` },
+	{ name: 'standards', version: '0.2.0', path: `${INSTALLED}/` }
+];
 
 /** A patch set with a vibevm manifest and nothing else. */
 function makePatchSet(label: string, manifest = '[project]\nname = "fixture"\nversion = "0.0.1"\n'): string {
@@ -119,6 +125,102 @@ describe('S30 - standards load into a fresh product', () => {
 		}
 		const check = spawnSync('vibe', ['check', '--quiet'], { cwd: patchesDir, encoding: 'utf8' });
 		expect(check.status, check.stdout + check.stderr).toBe(0);
+
+		// ##S57: the skills package is projected into the harness directories,
+		// each skill body copied as it is.
+		const listed = spawnSync('vibe', ['skill', 'list'], { cwd: patchesDir, encoding: 'utf8' });
+		expect(listed.status, listed.stderr).toBe(0);
+		for (const name of SKILL_NAMES) expect(listed.stdout, name).toContain(name);
+
+		const projected = spawnSync('vibe', ['skill', 'install', '--assume-yes'], { cwd: patchesDir, encoding: 'utf8' });
+		expect(projected.status, projected.stderr).toBe(0);
+		for (const name of SKILL_NAMES) {
+			const body = join(patchesDir, '.claude', 'skills', name, 'SKILL.md');
+			expect(sha256(body), name).toBe(sha256(join(shippedSkills, 'vibevm', 'vibespecs', 'skills', name, 'SKILL.md')));
+			// The harness reads the frontmatter from the first bytes of the file.
+			expect(readFileSync(body, 'utf8').startsWith('---\n'), name).toBe(true);
+		}
+		expect(existsSync(join(patchesDir, '.claude', 'skills', 'ck-resolve', 'scripts', 'append-journal.mjs'))).toBe(true);
+	});
+});
+
+describe('S56 - one run delivers every package codkit ships', () => {
+	it('writes both directories, one block with two tables and both next steps', () => {
+		const patchesDir = makePatchSet('s56');
+
+		const loaded = json(patchesDir, ['standards', 'load']);
+		expect(loaded.status).toBe(0);
+		expect(sameTree(shippedPackage, join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
+		expect(sameTree(shippedSkills, join(patchesDir, ...SKILLS_INSTALLED.split('/')))).toBe(true);
+
+		// ##STD-LOAD-ALL-PACKAGES: `standards` first, then the rest by name.
+		const data = loaded.envelope.data as {
+			packages: readonly { name: string; version: string; state: string; declaresSkills: boolean }[];
+			nextSteps: readonly string[];
+		};
+		expect(data.packages.map((entry) => entry.name)).toEqual(['standards', 'agent-skills']);
+		expect(data.packages.map((entry) => entry.state)).toEqual(['created', 'created']);
+		expect(data.packages.map((entry) => entry.declaresSkills)).toEqual([false, true]);
+		expect(data.nextSteps).toEqual(['vibe install --offline', 'vibe skill install']);
+
+		// One block, one table per package, in the same order.
+		const manifest = readFileSync(join(patchesDir, 'vibe.toml'), 'utf8');
+		const block = manifest.slice(manifest.indexOf('# codkit:begin standards'), manifest.indexOf('# codkit:end standards'));
+		expect(block).toContain('[requires.packages."org.vibevm.codkit/standards"]');
+		expect(block).toContain('version = "=0.2.0"');
+		expect(block).toContain('[requires.packages."org.vibevm.codkit/agent-skills"]');
+		expect(block).toContain('version = "=0.1.0"');
+		expect(manifest.split('# codkit:begin standards')).toHaveLength(2);
+
+		// ##STD-NOTICE-COMPONENTS-BLOCK: the notice names both installed packages.
+		const notice = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
+		expect(notice).toContain(`agent-skills  0.1.0  ${SKILLS_INSTALLED}/`);
+		expect(notice).toContain(`standards  0.2.0  ${INSTALLED}/`);
+
+		const human = run(patchesDir, ['standards', 'load']);
+		expect(human.status).toBe(0);
+		expect(human.stdout).toContain('next: vibe install --offline');
+		expect(human.stdout).toContain('next: vibe skill install');
+		// One summary per package, in the delivery order (##STD-LOAD-ALL-PACKAGES).
+		const summaries = human.stdout.split('\n').filter((line) => line.startsWith('package: ') || line.startsWith('files: '));
+		expect(summaries).toHaveLength(4);
+		expect(summaries[0]).toBe(`package: standards 0.2.0 -> ${INSTALLED}`);
+		expect(summaries[1]).toMatch(/^files: \d+ unchanged \(up to date\)$/u);
+		expect(summaries[2]).toBe(`package: agent-skills 0.1.0 -> ${SKILLS_INSTALLED}`);
+		expect(summaries[3]).toMatch(/^files: \d+ unchanged \(up to date\)$/u);
+		expect((json(patchesDir, ['standards', 'load']).envelope.data as { files: { created: number } }).files.created).toBe(0);
+	});
+});
+
+describe('S58 - the second package drifts like the first', () => {
+	it('names the package and the path, refuses the load and recovers on deletion', () => {
+		const patchesDir = makePatchSet('s58');
+		expect(run(patchesDir, ['standards', 'load']).status).toBe(0);
+		const skill = join(patchesDir, ...SKILLS_INSTALLED.split('/'), 'vibevm', 'vibespecs', 'skills', 'ck-orient', 'SKILL.md');
+		writeFileSync(skill, `${readFileSync(skill, 'utf8')}mine\n`, 'utf8');
+
+		const checked = json(patchesDir, ['standards', 'check']);
+		expect(checked.status).toBe(1);
+		const packages = (checked.envelope.data as { packages: readonly { name: string; target: { state: string; paths: string[] } }[] })
+			.packages;
+		expect(packages.find((entry) => entry.name === 'standards')?.target.state).toBe('identical');
+		expect(packages.find((entry) => entry.name === 'agent-skills')?.target.state).toBe('drift');
+		expect(packages.find((entry) => entry.name === 'agent-skills')?.target.paths).toEqual(['vibevm/vibespecs/skills/ck-orient/SKILL.md']);
+
+		const refused = run(patchesDir, ['standards', 'check']);
+		expect(refused.stderr).toContain('CK-E-STANDARDS-DRIFT');
+		expect(refused.stderr).toContain('agent-skills: modified vibevm/vibespecs/skills/ck-orient/SKILL.md');
+
+		const load = run(patchesDir, ['standards', 'load']);
+		expect(load.status).toBe(1);
+		expect(load.stderr).toContain('CK-E-STANDARDS-DRIFT');
+		expect(load.stderr).toContain('agent-skills: modified');
+
+		rmSync(join(patchesDir, ...SKILLS_INSTALLED.split('/')), { recursive: true });
+		const again = run(patchesDir, ['standards', 'load']);
+		expect(again.status, again.stderr).toBe(0);
+		expect(sameTree(shippedSkills, join(patchesDir, ...SKILLS_INSTALLED.split('/')))).toBe(true);
+		expect(run(patchesDir, ['standards', 'check']).status).toBe(0);
 	});
 });
 
@@ -464,7 +566,7 @@ describe('S60 - the same edition number, extended in place', () => {
 		};
 		expect(data.packages.find((entry) => entry.name === 'standards')?.state).toBe('upgraded');
 		expect(data.manifest.action).toBe('unchanged');
-		expect(data.nextSteps).toEqual(['vibe install --offline --force']);
+		expect(data.nextSteps).toEqual(['vibe install --offline --force', 'vibe skill install']);
 		expect(withSeam(['standards', 'check']).status).toBe(0);
 	});
 

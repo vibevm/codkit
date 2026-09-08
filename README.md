@@ -35,17 +35,20 @@ the three resolved roots must be pairwise disjoint.
 
 See [Codkit usage](codkit/README.md), the
 [human protocol](docs/codkit/protocol/human/00-index.md), and the
-[command reference](docs/codkit/reference/commands.md). The agent-session
-profile for a product repository (Claude Code settings, rules, agents, skills)
-ships under `codkit/claude/`; see the
+[command reference](docs/codkit/reference/commands.md). The harness-specific
+part of the agent-session profile for a product repository (Claude Code
+settings, rules, agents) ships under `codkit/claude/`; see the
 [agent protocol](docs/codkit/protocol/agent/00-index.md). The Codkit tool
 repository itself carries no agent perimeter. Current accepted
 evidence and open external risks are tracked in the
 [risk register](docs/codkit/proofs/RISK-REGISTER.md).
 
-Default standards for a patch set ship as the UPL-1.0 vibe package under
-`vibevm/vibepacks/org.vibevm.codkit/standards/`; `codkit standards load`
-delivers it into a product repository (human protocol page 13).
+Two UPL-1.0 vibe packages ship under `vibevm/vibepacks/org.vibevm.codkit/`:
+`standards`, the default norms for a patch set, and `agent-skills`, the agent
+skills `vibe skill install` projects into every coding agent.
+`codkit standards load` delivers both into a product repository in one run, and
+`--upgrade` takes an edition that was extended in place (human protocol
+page 13).
 The feature-flag runtime ships as the library under `codkit/runtime/`;
 `codkit runtime load` delivers it as a managed copy into the product's own
 layer and `codkit gen feature` scaffolds a feature behind a flag (human

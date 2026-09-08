@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2026 Oleg Chirukhin
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+SPDX-License-Identifier: UPL-1.0
+-->
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">Flow: codkit agent skills</title>
+  <status stage="impl" state="done"/>
+  <p><PROJECT-HAS-CODKIT-SKILLS fact="true" status="impl/done">This repository carries the **codkit agent skills** — `ck-orient`, `ck-intervene`, `ck-review-intervention`, `ck-resolve` — projected into the agent's skill directory by `vibe skill install`. They are procedures over a patch set; the norms they cite live in the codkit standards package and in the product's own specifications.</PROJECT-HAS-CODKIT-SKILLS></p>
+  <p><SKILLS-ROUTE-THEY-DO-NOT-RESTATE fact="true" status="impl/done">A skill routes to the owning document and to the tool's commands; it never restates a standard, a specification or a decision. When a skill and a specification disagree, the specification wins and the skill is the defect.</SKILLS-ROUTE-THEY-DO-NOT-RESTATE></p>
+</spec>

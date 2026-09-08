@@ -1,0 +1,10 @@
+# Copyright (c) 2026 Oleg Chirukhin
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+# SPDX-License-Identifier: UPL-1.0
+interface:
+  display_name: "Ck Resolve"
+  short_description: "Resolve one assigned codkit cycle blocker"
+  default_prompt: "Resolve only the explicitly assigned codkit cycle blocker, append a validated journal entry, and do not commit or continue the cycle."
+policy:
+  allow_implicit_invocation: false

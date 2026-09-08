@@ -16,10 +16,12 @@
 
 Исходники пяти профилей находятся в [`docs/codkit/agents`](../../agents/).
 Поставляемый профиль [`codkit/claude/`](../../../../codkit/claude/) —
-`settings.json`, `rules/`, `agents/`, `skills/` и `CLAUDE.md`/`AGENTS.md` с
-управляемым ядром — синхронизированная копия. Обновление:
+`settings.json`, `rules/`, `agents/` и `CLAUDE.md`/`AGENTS.md` с управляемым
+ядром — синхронизированная копия. Обновление:
 `node tools/sync-codkit-agents.mjs`; проверка:
-`node tools/sync-codkit-agents.mjs --check`.
+`node tools/sync-codkit-agents.mjs --check`. Навыки в профиле не лежат: они
+поставляются пакетом `org.vibevm.codkit/agent-skills` и попадают в репозиторий
+продукта через `vibe skill install` (PROP-014 §1a).
 
 ## Где действует периметр
 
@@ -32,20 +34,46 @@
 `.claude/rules/ck-codkit-dev.md`. Нарушение ловят
 [`check.mjs`](check.mjs) и `agentProtocol.test.ts`.
 
-Установка профиля в репозиторий продукта (пока ручная, mechanism gap: команды
-установки нет):
+Установка профиля в репозиторий продукта — четыре шага; первые три
+машинные, четвёртый пока ручной (mechanism gap: команды копирования нет):
 
-1. Скопируй `codkit/claude/{settings.json,rules,agents,skills}` в `.claude/`
-   репозитория продукта.
-2. В `settings.json` замени `<codkit-tool-root>` на абсолютный путь установки
-   Codkit; hook `codkit/hooks/pretool.mjs` остаётся в установке и сам находит
-   tool root по своему расположению.
-3. Управляемый блок из `codkit/claude/CLAUDE.md` и `codkit/claude/AGENTS.md`
-   добавь в корневые `CLAUDE.md`/`AGENTS.md` продукта между маркерами
+1. `codkit standards load` — кладёт в продукт оба поставляемых пакета:
+   `standards` (нормы) и `agent-skills` (навыки), плюс блок зависимостей в
+   `vibe.toml` (человеческий протокол — [13](../human/13-standards.md)).
+2. `vibe install --offline` — материализует пакеты в `vibevm/vibedeps/` и
+   пересобирает загрузочную полосу. После `codkit standards load --upgrade`
+   нужен `vibe install --offline --force`: номер издания тот же, байты другие.
+3. `vibe skill install` — проецирует навыки пакета в каталоги навыков всех
+   харнессов, которые знает менеджер пакетов: `.claude/skills/<имя>/`,
+   `.opencode/skills/<имя>/`, `.agents/skills/<имя>/`. Каталог навыка копируется
+   как есть, вместе с `scripts/` и `agents/`.
+4. Скопируй `codkit/claude/{settings.json,rules,agents}` в `.claude/`
+   репозитория продукта; в `settings.json` замени `<codkit-tool-root>` на
+   абсолютный путь установки Codkit (hook `codkit/hooks/pretool.mjs` остаётся в
+   установке и сам находит tool root по своему расположению); управляемый блок
+   из `codkit/claude/CLAUDE.md` и `codkit/claude/AGENTS.md` добавь в корневые
+   `CLAUDE.md`/`AGENTS.md` продукта между маркерами
    `codkit-agent-core:begin/end`.
-4. Skill `ck-resolve` вызывает journal helper только по tool-root пути
-   `<codkit-tool-root>/codkit/claude/skills/ck-resolve/scripts/append-journal.mjs`;
-   hook отклоняет установленную копию helper'а как lookalike.
+
+Что откуда берётся:
+
+| Часть периметра | Источник | Как попадает в продукт |
+| --- | --- | --- |
+| Навыки `ck-orient`, `ck-intervene`, `ck-review-intervention`, `ck-resolve` | пакет `org.vibevm.codkit/agent-skills` | `codkit standards load` → `vibe install --offline` → `vibe skill install` |
+| Journal helper `ck-resolve` | тот же пакет, `scripts/` навыка | той же проекцией, рядом с `SKILL.md` |
+| Нормы patch set | пакет `org.vibevm.codkit/standards` | `codkit standards load` → `vibe install --offline` |
+| `settings.json` (deny + hook), `rules/`, `agents/` | `codkit/claude/` установки Codkit | копированием вручную (шаг 4) |
+| Ядро `CLAUDE.md`/`AGENTS.md` | `codkit/claude/CLAUDE.md`, `AGENTS.md` | вставкой управляемого блока (шаг 4) |
+| Hook `pretool.mjs` | установка Codkit | не копируется: `settings.json` ссылается на tool root |
+
+Journal helper `ck-resolve` вызывается только по пути проекции —
+`<skill-dir>/scripts/append-journal.mjs`, для Claude Code
+`.claude/skills/ck-resolve/scripts/append-journal.mjs`. Hook разрешает ровно
+эту копию внутри patch set и отклоняет любой другой путь: писать в `.claude/`
+не разрешено ни одному заданию, поэтому подделать проекцию агент не может.
+Свой tool root helper не вычисляет из своего расположения — проекция лежит на
+произвольной глубине; три корня он берёт у установленного launcher'а
+(`codkit --json where`, schema 2).
 
 Во всех командах `codkit` означает установленный launcher из `PATH`; эквивалент
 для явной установки — `<codkit-tool-root>/bin/codkit` (PowerShell:
@@ -69,6 +97,7 @@
 | Маркеры/дельта/state | scoped rules + `save`/`verify`/`cycle` | соответствующий `CK-E-*` |
 | Clean room `codkit/**` | path-rule + локальный deny-профиль | доступ к reference не выдаётся |
 | Периметр не действует в репозитории инструмента | `codkit/claude/` вместо `.claude/` инструмента; `check.mjs` и `agentProtocol.test.ts` красные при hook/agents/skills в `.claude/` инструмента | check/test red |
+| Навыки — из пакета, не из профиля | `check.mjs` требует ростер в пакете и запрещает `codkit/claude/skills` | check red |
 
 Hook выводит актуальный `hookSpecificOutput.permissionDecision:"deny"`. Пустой
 успешный вывод означает только «hook не возражает»; обычные permissions всё ещё

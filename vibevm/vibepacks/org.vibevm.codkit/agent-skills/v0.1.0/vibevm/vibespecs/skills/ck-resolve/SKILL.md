@@ -3,6 +3,12 @@ name: ck-resolve
 description: Resolve an active codkit cycle blocker only when explicitly asked, without committing, widening the task, or bypassing journal and verification gates.
 allowed-tools: Read, Grep, Glob, Edit, Bash
 ---
+<!--
+Copyright (c) 2026 Oleg Chirukhin
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+SPDX-License-Identifier: UPL-1.0
+-->
 
 # Resolve a codkit cycle blocker
 
@@ -49,10 +55,9 @@ Changing the intervention layer, adding/removing an artifact, changing own behav
 7. Prepare one canonical journal entry per handled blocker in `.codkit/agent-journal-entry.json`. Include the exact artifact, outcome, concrete resolution, recorded `{sha, approx}` cause, `by: "agent:<name>"`, and the same verification list as the result.
 8. Append it only through:
 
-   `node --experimental-strip-types --disable-warning=ExperimentalWarning <codkit-tool-root>/codkit/claude/skills/ck-resolve/scripts/append-journal.mjs --entry <patchesDir>/.codkit/agent-journal-entry.json`
+   `node --experimental-strip-types --disable-warning=ExperimentalWarning <skill-dir>/scripts/append-journal.mjs --entry <patchesDir>/.codkit/agent-journal-entry.json`
 
-   The helper resolves the active schema-2 roots through the installed
-   launcher; it does not default the patch-set root to its own tool checkout.
+   `<skill-dir>` is the directory this skill was projected into (for Claude Code `.claude/skills/ck-resolve`). The helper resolves the active schema-2 roots through the installed `codkit` launcher on `PATH`; it does not default the patch-set root to its own location.
 
 9. Re-run `codkit --json cycle status`. Confirm that no commit was created in patchset or the fork and that only assigned files plus the canonical journal changed.
 
@@ -65,7 +70,7 @@ Changing the intervention layer, adding/removing an artifact, changing own behav
 Do not call `save`, `cycle continue`, `git commit`, `git push`, network commands, dependency installation, or direct compilers. Uncertainty is a stop with a recorded reason, never a guess.
 
 Human procedure and shared templates:
-`<codkit-tool-root>/docs/codkit/protocol/human/05-upgrade-cycle.md` and
-`<codkit-tool-root>/docs/codkit/protocol/human/templates/decision-journal.md`.
+`<roots.tool.path>/docs/codkit/protocol/human/05-upgrade-cycle.md` and
+`<roots.tool.path>/docs/codkit/protocol/human/templates/decision-journal.md` (`roots.tool.path` from `codkit --json where`).
 Journal format:
-`<codkit-tool-root>/docs/codkit/protocol/agent/01-journal-format.md`.
+`<roots.tool.path>/docs/codkit/protocol/agent/01-journal-format.md`.

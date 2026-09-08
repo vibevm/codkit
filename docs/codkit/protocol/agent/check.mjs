@@ -45,7 +45,7 @@ for (const name of ['CLAUDE.md', 'AGENTS.md']) {
 checkSettings();
 checkToolRepositoryIsFree();
 for (const path of ['codkit/hooks/pretool.mjs', 'codkit/hooks/pretool.sh', 'codkit/hooks/pretool.ps1']) checkText(join(root, path), false);
-checkResolverSkill();
+checkSkillsPackage();
 
 const sync = spawnSync(process.execPath, [join(root, 'tools', 'sync-codkit-agents.mjs'), '--check'], {
 	cwd: root,
@@ -169,23 +169,62 @@ function checkToolRepositoryIsFree() {
 	}
 }
 
-function checkResolverSkill() {
-	const skillRoot = join(profileRoot, 'skills', 'ck-resolve');
+// The skills are no longer part of the hand-written profile: they ship in the
+// `agent-skills` vibe package and reach a repository through `codkit standards
+// load`, `vibe install --offline` and `vibe skill install` (PROP-014 §1a).
+function skillsPackageRoot() {
+	const parent = join(root, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'agent-skills');
+	const versions = existsSync(parent) ? readdirSync(parent).filter((name) => name.startsWith('v')).sort() : [];
+	if (versions.length !== 1) {
+		failures.push(`the agent-skills package must have exactly one version directory: found ${versions.length}`);
+		return null;
+	}
+	return join(parent, versions[0], 'vibevm', 'vibespecs', 'skills');
+}
+
+function checkSkillsPackage() {
+	const skills = skillsPackageRoot();
+	if (skills === null) return;
+	if (existsSync(join(profileRoot, 'skills'))) {
+		failures.push('codkit/claude/skills must not exist; the skills ship in the agent-skills package');
+	}
+	for (const name of ['ck-orient', 'ck-intervene', 'ck-review-intervention', 'ck-resolve']) {
+		const body = checkText(join(skills, name, 'SKILL.md'), false);
+		if (body === null) continue;
+		const frontmatter = frontmatterOf(body);
+		// The harness reads the frontmatter from the first bytes of the file, so
+		// the licence comment has to come after it.
+		if (!body.startsWith('---\n')) failures.push(`skill frontmatter must be the first bytes: ${name}`);
+		for (const field of [`name: ${name}`, 'description:', 'allowed-tools:']) {
+			if (!frontmatter?.includes(field)) failures.push(`skill frontmatter missing ${field}: ${name}`);
+		}
+		if (body.includes('TODO')) failures.push(`skill is unfinished: ${name}`);
+	}
+	checkResolverSkill(join(skills, 'ck-resolve'));
+}
+
+function checkResolverSkill(skillRoot) {
 	const skill = checkText(join(skillRoot, 'SKILL.md'), false);
 	const helper = checkText(join(skillRoot, 'scripts', 'append-journal.mjs'), false);
 	const openai = checkText(join(skillRoot, 'agents', 'openai.yaml'), false);
 	if (skill !== null) {
-		const frontmatter = frontmatterOf(skill);
-		for (const field of ['name: ck-resolve', 'description:', 'allowed-tools:']) {
-			if (!frontmatter?.includes(field)) failures.push(`resolver skill frontmatter missing ${field}`);
+		if (!skill.includes('.codkit/agent-task-result.json')) failures.push('resolver skill lacks result binding');
+		// The projection is the only copy that exists in a product, so the skill
+		// names its own directory and never a path inside the tool checkout.
+		if (!skill.includes('<skill-dir>/scripts/append-journal.mjs')) {
+			failures.push('resolver skill must call the journal helper beside itself in the projection');
 		}
-		if (skill.includes('TODO') || !skill.includes('.codkit/agent-task-result.json')) failures.push('resolver skill is unfinished or lacks result binding');
-		if (!skill.includes('<codkit-tool-root>/codkit/claude/skills/ck-resolve/scripts/append-journal.mjs')) {
-			failures.push('resolver skill must call the tool-root journal helper, never an installed copy');
+		if (skill.includes('<codkit-tool-root>/codkit/claude/skills/')) {
+			failures.push('resolver skill still names the retired profile path of the journal helper');
 		}
 	}
-	if (helper !== null && (!helper.includes('agent-task-result.json') || !helper.includes('withLock'))) {
-		failures.push('resolver journal helper lacks result/lock binding');
+	if (helper !== null) {
+		if (!helper.includes('agent-task-result.json') || !helper.includes('withLock')) {
+			failures.push('resolver journal helper lacks result/lock binding');
+		}
+		// A projected copy sits at no fixed depth below the tool root.
+		if (helper.includes('../../../../..')) failures.push('resolver journal helper still resolves the tool root by relative depth');
+		if (!helper.includes("spawnSync('codkit'")) failures.push('resolver journal helper must resolve its roots through the installed launcher');
 	}
 	if (openai !== null && (!openai.includes('allow_implicit_invocation: false') || !openai.includes('default_prompt:'))) {
 		failures.push('resolver skill must remain explicit-only with a default prompt');
