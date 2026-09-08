@@ -159,7 +159,11 @@ const commandGuidance = {
 		detail:
 			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`; `--discard` drops fork-tree commits on purpose (kept reachable under `refs/codkit/consumed/`) and is likewise refused under `--ci`. With `--fresh`, `--discard` also drops the working-tree edits of tracked upstream files that carry no marker block - a build artifact in a dev tree - printing `discard <path>` for each before the first write and reporting them in `data.discardedPaths`; a file with a marker block, own code, own extensions and untracked paths are never dropped.'
 	},
-	status: { positional: '', detail: 'Show the pin/generated branch and work in the fork tree that has not been extracted.' },
+	status: {
+		positional: '',
+		detail:
+			'Show the pin/generated branch and work in the fork tree that has not been extracted. The own-extension line also counts the stranded materializations - untracked `extensions/<name>/` directories that no record of the manifest declares and the pin does not ship, which only `codkit load --fresh` removes; each is listed with that recipe and raises the exit code to 1.'
+	},
 	save: {
 		positional: '[path ...]',
 		detail:

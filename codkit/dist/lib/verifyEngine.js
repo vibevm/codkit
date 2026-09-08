@@ -28,7 +28,7 @@ import { runGit } from './gitx.js';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.js';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.js';
 import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, PRODUCT_JSON_TARGET, checkOverlay, devChannelIgnoreWarning, loadOverlays, nonProductTargetViolations, overlayDriftErrors, parseOverlay, serializeOverlay } from './layers/overlay.js';
-import { OWN_EXTENSIONS_DIR, checkOwnExtensions, compareOwnExtensions, isSafeExtensionName, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
+import { OWN_EXTENSIONS_DIR, checkOwnExtensions, compareOwnExtensions, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes, pinShipsExtension } from './layers/ownExtensions.js';
 import { OWN_CODKIT_ROOT, OWN_MANIFEST_PATH, checkServiceOverrideModules, checkUnitCoverage, isNotOwnCode, isUnderCodkitRoot, loadOwnManifest, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.js';
 import { REMOVED_PATH, loadRemoved, parseRemoved, serializeRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap, parseResourceMap, resourceSourcePath, serializeResourceMap } from './layers/resource.js';
@@ -570,7 +570,7 @@ function checkCodkitRootIsReserved(manifest, findings) {
  * match the delta byte for byte.
  */
 function checkOwnExtensionLayer(patchesDir, treeDir, config, manifest, findings) {
-    for (const problem of checkOwnExtensions(patchesDir, manifest.extensions, (name) => upstreamShipsExtension(treeDir, config.pin.sha, name))) {
+    for (const problem of checkOwnExtensions(patchesDir, manifest.extensions, (name) => pinShipsExtension(treeDir, config.pin.sha, name))) {
         findings.push(finding('OWN-EXTENSION-MANIFEST', problem.message, problem.hint, problem.file));
     }
     const hint = 'the delta is the source of truth: extract the tree-side edit with codkit save, or restore the tree with codkit load';
@@ -585,19 +585,6 @@ function checkOwnExtensionLayer(patchesDir, treeDir, config, manifest, findings)
                 : `${target} differs from ${OWN_EXTENSIONS_DIR}/${divergence.relative}`;
         findings.push(finding('OWN-EXTENSION-DRIFT', message, hint, `${OWN_EXTENSIONS_DIR}/${divergence.relative}`));
     }
-}
-/**
- * Whether the pin already carries `extensions/<name>`. Read from git objects, so
- * a dirty tree answers exactly like a clean one; a tree that cannot answer at
- * all (no repository, unreachable pin) answers "no" and leaves that failure to
- * the checks whose subject it is.
- */
-function upstreamShipsExtension(treeDir, pinSha, name) {
-    if (!isSafeExtensionName(name)) {
-        return false;
-    }
-    const shown = runGit({ args: ['cat-file', '-t', `${pinSha}:${ownExtensionTargetRelativeDir(name)}`], cwd: treeDir });
-    return shown.status === 0 && shown.stdout.trim() === 'tree';
 }
 // ---------------------------------------------------------------------------
 // (h3) The graft budget of a hook patch (PROP-005 ##PATCH-HOOK-BUDGET)

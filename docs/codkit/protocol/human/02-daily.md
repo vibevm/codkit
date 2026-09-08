@@ -36,6 +36,22 @@ fork roots должны быть попарно непересекающимис
 8. `git add <expected-patchset-paths>` → exit `0`; затем `git commit` → exit `0` и новый commit в patchset.
    Для одного шага допустимо `codkit save --commit --message "<message>"` → commit и exit `0`.
 
+## Снятая декларация own-расширения
+
+`codkit status` печатает строку `own extensions: D declared, P path(s) differ between tree and
+patchset, S stranded materialization(s)`. Третье число — брошенные материализации: неотслеживаемые
+каталоги `extensions/<name>/` дерева, которые не объявлены ни одной записью секции `extensions`
+манифеста `delta/own/patchset.delta.json` и не существуют на пине.
+
+Снятие декларации каталог не убирает: `load` зеркалирует только объявленные расширения, а
+неотслеживаемый каталог остаётся в дереве — удаляет его единственная команда `codkit load --fresh`
+(чистка неотслеживаемых путей). Поэтому при `S > 0` `status` называет каждый путь строкой
+`  extensions/<name>/ - codkit load --fresh removes it`, перечисляет пути в `--json` как
+`data.ownExtensions.stranded` и выходит `1`. Правило смотрит на декларацию и на пин, а не на
+содержимое: каталог без `package.json` назван так же, а каталог расширения с пина не назван никогда.
+Проверь каждый названный путь до `load --fresh`: неотслеживаемый каталог под `extensions/` может
+быть и локальным экспериментом, который эта команда сотрёт вместе с брошенной материализацией.
+
 ## Сборка и запуск
 
 1. `codkit build up` → `transpile` и `typecheck` started/already living, exit `0`.

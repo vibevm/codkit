@@ -19,6 +19,7 @@
 // CK-E-OWN-EXTENSION-DRIFT.
 import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { runGit } from '../gitx.js';
 import { ckError } from '../messages.js';
 import { fileContentEqual } from '../ownCopy.js';
 import { resolveContainedPath } from '../pathSafety.js';
@@ -95,10 +96,10 @@ export function ownExtensionFiles(patchesDir, extensions) {
  * ##OWN-EXTENSION-UNIT: everything the `extensions` section has to satisfy.
  *
  * `upstreamHas` answers "does the pin already ship `extensions/<name>`". It is
- * a callback rather than a path because the answer comes from git objects of
- * the fork tree, which this module has no business reaching into; a caller with
- * no tree to ask passes one that always answers false and keeps the other three
- * checks.
+ * a callback rather than a path because the check itself is answered from
+ * patchset alone; a caller with no tree to ask passes one that always answers
+ * false and keeps the other three checks. The probe that reads the answer out
+ * of a real tree is `pinShipsExtension` below.
  *
  * Every problem is returned rather than raised: `verify` prints them all in one
  * pass, like every other layer.
@@ -170,6 +171,73 @@ function undeclaredDirectories(patchesDir, declared) {
         .filter((entry) => entry.isDirectory() && !declared.has(entry.name))
         .map((entry) => entry.name)
         .sort((left, right) => Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8')));
+}
+// ---------------------------------------------------------------------------
+// The materializations nobody declares any more (##OWN-EXTENSION-STRANDED)
+// ---------------------------------------------------------------------------
+/**
+ * Whether the pin already carries `extensions/<name>`. Read from git objects, so
+ * a dirty tree answers exactly like a clean one; a tree that cannot answer at
+ * all (no repository, unreachable pin) answers "no" and leaves that failure to
+ * the checks whose subject it is.
+ *
+ * A name that is not an extension name is answered "no" without asking git: it
+ * would go into a rev-spec, where `extensions/../x` resolves to `x` at the root
+ * and the answer would be about a different path entirely.
+ */
+export function pinShipsExtension(treeDir, pinSha, name) {
+    if (!isSafeExtensionName(name)) {
+        return false;
+    }
+    const shown = runGit({ args: ['cat-file', '-t', `${pinSha}:${ownExtensionTargetRelativeDir(name)}`], cwd: treeDir });
+    return shown.status === 0 && shown.stdout.trim() === 'tree';
+}
+/**
+ * ##OWN-EXTENSION-STRANDED: the first-level directories of `extensions/` that
+ * are a materialization nobody owns any more, as `extensions/<name>/`.
+ *
+ * Taking the declaration away does not take the directory away: `load`
+ * mirrors the declared extensions and nothing else, so the retired one simply
+ * stays in the tree, untracked, until `load --fresh` sweeps it. Two facts
+ * decide, and neither of them is the content of the directory: no record of
+ * the manifest claims the name, and the pin does not ship an extension of that
+ * name. A directory without a `package.json` is therefore stranded exactly like
+ * a complete extension - it may be somebody's local experiment, which is
+ * precisely why no command but `load --fresh` removes it.
+ *
+ * `untracked` is what git reports as untracked under `extensions/`, either as
+ * whole directories or as single files; the order of that report is kept, so
+ * the caller lists the paths in the order `git status` names them. `pinShips`
+ * is asked at most once per name.
+ */
+export function strandedMaterializations(untracked, declared, pinShips) {
+    const prefix = `${EXTENSIONS_TREE_DIR}/`;
+    // Every name a record mentions, well formed or not: a declared extension is
+    // somebody's, and a broken record is a problem `verify` names on its own.
+    const claimed = new Set(declared.map((extension) => extension.name));
+    const decided = new Set();
+    const stranded = [];
+    for (const path of untracked) {
+        if (!path.startsWith(prefix)) {
+            continue;
+        }
+        const rest = path.slice(prefix.length);
+        const slash = rest.indexOf('/');
+        // A loose file straight under `extensions/` is litter in the upstream
+        // zone, not a materialization: only a directory can be one.
+        if (slash <= 0) {
+            continue;
+        }
+        const name = rest.slice(0, slash);
+        if (decided.has(name) || claimed.has(name)) {
+            continue;
+        }
+        decided.add(name);
+        if (!pinShips(name)) {
+            stranded.push(`${ownExtensionTargetRelativeDir(name)}/`);
+        }
+    }
+    return stranded;
 }
 export const NO_OWN_EXTENSIONS = { copied: 0, removed: 0, total: 0 };
 /**

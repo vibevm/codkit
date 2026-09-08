@@ -1,4 +1,4 @@
-// e2e: the own-extension layer through the real CLI (FEAT-002 S54, S55).
+// e2e: the own-extension layer through the real CLI (FEAT-002 S54, S55, S62).
 //
 // S54 is the round trip the layer exists for: `load` materializes
 // `delta/own-extensions/<name>/**` into `extensions/<name>/**` of the fork tree,
@@ -8,6 +8,10 @@
 // S55 is the pair of refusals: a directory without the `package.json` the
 // upstream build looks for is CK-E-OWN-EXTENSION-MANIFEST, and a tree that
 // stopped matching the delta is CK-E-OWN-EXTENSION-DRIFT with the path.
+//
+// S62 is the state after the record goes away: the directory stays in the tree
+// until `load --fresh` sweeps it, and `status` says so instead of leaving it to
+// be discovered (PROP-005 ##OWN-EXTENSION-STRANDED).
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -256,5 +260,121 @@ describe('S55 - a name the pin already ships is refused in the words the spec fi
 		expect(outcome.run.status).toBe(1);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]?.message).toContain('name collides with an upstream extension');
+	});
+});
+
+describe('S62 - status names a materialized own extension nobody declares any more', () => {
+	const STRANDED_NAME = 'sample';
+	let stray: CliFixture;
+
+	beforeAll(() => {
+		// A fixture of its own: the one above is edited by S54 and S55, and this
+		// scenario needs a delta whose extension record is taken away again.
+		stray = makeCliFixture('own-extension-stranded');
+		writeStrayDelta(`${STRANDED_NAME}/package.json`, PACKAGE_JSON);
+		declareStray([
+			{
+				id: EXTENSION_ID,
+				name: STRANDED_NAME,
+				owner: 'product',
+				reason: 'fixture own extension whose record is taken away again',
+				pin: `${stray.upstream.t1.tag}@${stray.upstream.t1.sha}`,
+				contractTests: []
+			}
+		]);
+		fixtureCommit(stray.patchesDir, 'fixture patchset: one own extension', '2026-01-02T00:05:00Z');
+		expect(stray.run(['load']).status).toBe(0);
+		expect(existsSync(stray.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
+
+		// The record goes away, and the delta directory with it.
+		declareStray([]);
+		rmSync(stray.patchesPath(`delta/own-extensions/${STRANDED_NAME}`), { recursive: true, force: true });
+		fixtureCommit(stray.patchesDir, 'fixture patchset: the extension record is withdrawn', '2026-01-02T00:06:00Z');
+	});
+
+	function writeStrayDelta(relative: string, text: string): void {
+		const absolute = stray.patchesPath(`delta/own-extensions/${relative}`);
+		mkdirSync(dirname(absolute), { recursive: true });
+		writeFileSync(absolute, text, 'utf8');
+	}
+
+	function declareStray(records: readonly Record<string, unknown>[]): void {
+		const path = stray.patchesPath('delta/own/patchset.delta.json');
+		const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+		manifest['extensions'] = records;
+		writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+	}
+
+	function strandedOf(fixture: CliFixture): { status: number; stdout: string; stranded: string[] } {
+		const outcome = fixture.json(['status']);
+		const data = outcome.envelope.data['ownExtensions'] as { stranded: string[] };
+		return { status: outcome.run.status, stdout: outcome.run.stdout, stranded: data.stranded };
+	}
+
+	it('leaves the directory where it is: load mirrors the declared extensions and nothing else', () => {
+		// Only the half of S62 that today's drift guard allows to be asserted:
+		// an untracked directory in the upstream zone is dirt to that guard, so
+		// this `load` refuses instead of exiting 0 as S62 says. The refusal is a
+		// read-only one - the directory is untouched either way.
+		stray.run(['load']);
+
+		expect(existsSync(stray.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
+	});
+
+	it('counts it, names it with the recipe that removes it, and exits 1', () => {
+		const outcome = stray.run(['status']);
+
+		expect(outcome.status).toBe(1);
+		expect(outcome.stdout).toContain(
+			'own extensions: 0 declared, 0 path(s) differ between tree and patchset, 1 stranded materialization(s)'
+		);
+		expect(outcome.stdout).toContain(`  extensions/${STRANDED_NAME}/ - codkit load --fresh removes it`);
+		expect(strandedOf(stray).stranded).toEqual([`extensions/${STRANDED_NAME}/`]);
+	});
+
+	it('names an untracked directory without a package.json too, in the order git reports', () => {
+		const note = stray.treePath('extensions/local-experiment/note.txt');
+		try {
+			mkdirSync(dirname(note), { recursive: true });
+			writeFileSync(note, 'a local experiment nobody declared\n', 'utf8');
+
+			expect(strandedOf(stray).stranded).toEqual(['extensions/local-experiment/', `extensions/${STRANDED_NAME}/`]);
+		} finally {
+			rmSync(dirname(note), { recursive: true, force: true });
+		}
+	});
+
+	it('is gone after load --fresh, and status is quiet and green again', () => {
+		expect(stray.run(['load', '--fresh']).status).toBe(0);
+		const outcome = strandedOf(stray);
+
+		expect(existsSync(stray.treePath(`extensions/${STRANDED_NAME}`))).toBe(false);
+		expect(outcome.stranded).toEqual([]);
+		expect(outcome.stdout).toContain(
+			'own extensions: 0 declared, 0 path(s) differ between tree and patchset, 0 stranded materialization(s)'
+		);
+		expect(outcome.status).toBe(0);
+	});
+
+	it('never calls an extension of the pin stranded, whatever is untracked inside it', () => {
+		// A pin that ships `extensions/<name>` of its own, as in the collision
+		// case above: an untracked file inside it is litter, never a stranded
+		// materialization, because the rule asks the pin and not the tree.
+		const shipped = makeCliFixture('own-extension-stranded-upstream');
+		const upstreamExtension = shipped.treePath('extensions/builtin-thing/package.json');
+		mkdirSync(dirname(upstreamExtension), { recursive: true });
+		writeFileSync(upstreamExtension, '{\n\t"name": "builtin-thing"\n}\n', 'utf8');
+		const pinSha = fixtureCommit(shipped.treeDir, 'upstream ships a built-in extension', '2026-01-02T00:07:00Z');
+		const configPath = shipped.patchesPath('codkit.json');
+		writeFileSync(configPath, readFileSync(configPath, 'utf8').replace(shipped.upstream.t1.sha, pinSha), 'utf8');
+		writeFileSync(shipped.treePath('extensions/builtin-thing/scratch.json'), '{}\n', 'utf8');
+
+		const outcome = shipped.json(['status']);
+		const data = outcome.envelope.data as { upstream: { files: { path: string }[] }; ownExtensions: { stranded: string[] } };
+
+		// The untracked file does reach the report, so the empty verdict is the
+		// pin's answer and not an entry nobody ever classified.
+		expect(data.upstream.files.some((file) => file.path === 'extensions/builtin-thing/scratch.json')).toBe(true);
+		expect(data.ownExtensions.stranded).toEqual([]);
 	});
 });

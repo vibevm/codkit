@@ -22,7 +22,14 @@ import { runGit } from '../lib/gitx.ts';
 import type { JsonValue, Output } from '../lib/jsonOut.ts';
 import { markerFormFor, parseMarkers } from '../lib/markers.ts';
 import { ckError } from '../lib/messages.ts';
-import { OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from '../lib/layers/ownExtensions.ts';
+import {
+	EXTENSIONS_TREE_DIR,
+	OWN_EXTENSIONS_DIR,
+	compareOwnExtensions,
+	ownExtensionTreePrefixes,
+	pinShipsExtension,
+	strandedMaterializations
+} from '../lib/layers/ownExtensions.ts';
 import type { OwnExtension } from '../lib/layers/ownManifest.ts';
 import { loadOwnManifest } from '../lib/layers/ownManifest.ts';
 import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.ts';
@@ -148,13 +155,29 @@ async function run(ctx: CommandContext): Promise<number> {
 	// 2a. Own extensions (PROP-005 ##OWN-EXTENSION-UNIT): materialized under
 	// `extensions/<name>/`, they are own code in the upstream zone - drift is
 	// reported here, and their paths never count as upstream dirt below.
+	//
+	// The third count is the one nobody owns any more (##OWN-EXTENSION-STRANDED):
+	// a directory `load` stopped mirroring when its record went away and no
+	// command but `load --fresh` removes. The line is printed even when all
+	// three counts are zero, like the own-code line above it: "no stranded
+	// materialization" is an answer, and silence would not be one.
 	const declared = declaredExtensionsOf(ctx.patchesDir);
 	const extensionDrift = compareOwnExtensions(ctx.patchesDir, tree, declared);
-	if (declared.length > 0) {
-		ctx.out.info(`own extensions: ${declared.length} declared, ${extensionDrift.length} path(s) differ between tree and patchset`);
-		for (const entry of extensionDrift.slice(0, LIST_LIMIT)) {
-			ctx.out.info(`  ${entry.kind.padEnd(13)} ${OWN_EXTENSIONS_DIR}/${entry.relative}`);
-		}
+	const stranded = strandedMaterializations(untrackedUnderExtensions(tree), declared, (name) =>
+		pinShipsExtension(tree, config.pin.sha, name)
+	);
+	ctx.out.info(
+		`own extensions: ${declared.length} declared, ${extensionDrift.length} path(s) differ between tree and patchset, ` +
+			`${stranded.length} stranded materialization(s)`
+	);
+	for (const entry of extensionDrift.slice(0, LIST_LIMIT)) {
+		ctx.out.info(`  ${entry.kind.padEnd(13)} ${OWN_EXTENSIONS_DIR}/${entry.relative}`);
+	}
+	for (const path of stranded.slice(0, LIST_LIMIT)) {
+		ctx.out.info(`  ${path} - codkit load --fresh removes it`);
+	}
+	if (stranded.length > LIST_LIMIT) {
+		ctx.out.info(`  ... and ${stranded.length - LIST_LIMIT} more`);
 	}
 
 	// 3. Upstream files: what git sees outside the own directory and outside
@@ -203,7 +226,8 @@ async function run(ctx: CommandContext): Promise<number> {
 		own: ownData(own),
 		ownExtensions: {
 			declared: declared.length,
-			differing: extensionDrift.map((entry) => ({ path: `${OWN_EXTENSIONS_DIR}/${entry.relative}`, kind: entry.kind }))
+			differing: extensionDrift.map((entry) => ({ path: `${OWN_EXTENSIONS_DIR}/${entry.relative}`, kind: entry.kind })),
+			stranded: [...stranded]
 		},
 		upstream: {
 			changed: upstream.length,
@@ -218,7 +242,10 @@ async function run(ctx: CommandContext): Promise<number> {
 	if (unextracted > 0) {
 		ctx.out.info('run codkit save to extract the changes of the fork tree into patchset');
 	}
-	return unextracted > 0 || markerErrors > 0 ? EXIT_CHECK_FAILED : EXIT_OK;
+	// A stranded materialization raises the code without joining `unextracted`:
+	// there is something to remove, but `save` is not what removes it, and the
+	// recipe stands beside the path itself.
+	return unextracted > 0 || stranded.length > 0 || markerErrors > 0 ? EXIT_CHECK_FAILED : EXIT_OK;
 }
 
 function requireConfig(config: CodkitConfig | null): CodkitConfig {
@@ -313,6 +340,27 @@ function upstreamFiles(
 		files.push({ path: entry.path, status: entry.status, blocks: parsed.blocks.length, markerErrors: parsed.errors.length });
 	}
 	return files;
+}
+
+/**
+ * What git reports as untracked under `extensions/`, in its own order.
+ *
+ * The pathspec keeps the walk to the one directory the question is about. A
+ * wholly untracked `extensions/` is reported as that one directory and hides
+ * the names inside it, so the same expansion the drift guard uses opens it up;
+ * a tree whose `extensions/` carries tracked files gets the collapsed
+ * `extensions/<name>/` entries and no second git call. A failing git status is
+ * left silent here: the upstream half below runs the same command over the
+ * whole tree and raises the real failure.
+ */
+function untrackedUnderExtensions(treeDir: string): readonly string[] {
+	const status = runGit({ args: ['status', '--porcelain', '-z', '--', EXTENSIONS_TREE_DIR], cwd: treeDir });
+	if (status.status !== 0) {
+		return [];
+	}
+	return expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), [`${EXTENSIONS_TREE_DIR}/`])
+		.filter((entry) => entry.status === '??')
+		.map((entry) => entry.path);
 }
 
 /** The own extensions the manifest declares; a manifest that does not parse declares none. */

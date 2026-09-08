@@ -50,9 +50,9 @@ import {
 	OWN_EXTENSIONS_DIR,
 	checkOwnExtensions,
 	compareOwnExtensions,
-	isSafeExtensionName,
 	ownExtensionTargetRelativeDir,
-	ownExtensionTreePrefixes
+	ownExtensionTreePrefixes,
+	pinShipsExtension
 } from './layers/ownExtensions.ts';
 import {
 	OWN_CODKIT_ROOT,
@@ -916,9 +916,7 @@ function checkOwnExtensionLayer(
 	manifest: OwnManifest,
 	findings: Finding[]
 ): void {
-	for (const problem of checkOwnExtensions(patchesDir, manifest.extensions, (name) =>
-		upstreamShipsExtension(treeDir, config.pin.sha, name)
-	)) {
+	for (const problem of checkOwnExtensions(patchesDir, manifest.extensions, (name) => pinShipsExtension(treeDir, config.pin.sha, name))) {
 		findings.push(finding('OWN-EXTENSION-MANIFEST', problem.message, problem.hint, problem.file));
 	}
 	const hint = 'the delta is the source of truth: extract the tree-side edit with codkit save, or restore the tree with codkit load';
@@ -934,20 +932,6 @@ function checkOwnExtensionLayer(
 					: `${target} differs from ${OWN_EXTENSIONS_DIR}/${divergence.relative}`;
 		findings.push(finding('OWN-EXTENSION-DRIFT', message, hint, `${OWN_EXTENSIONS_DIR}/${divergence.relative}`));
 	}
-}
-
-/**
- * Whether the pin already carries `extensions/<name>`. Read from git objects, so
- * a dirty tree answers exactly like a clean one; a tree that cannot answer at
- * all (no repository, unreachable pin) answers "no" and leaves that failure to
- * the checks whose subject it is.
- */
-function upstreamShipsExtension(treeDir: string, pinSha: string, name: string): boolean {
-	if (!isSafeExtensionName(name)) {
-		return false;
-	}
-	const shown = runGit({ args: ['cat-file', '-t', `${pinSha}:${ownExtensionTargetRelativeDir(name)}`], cwd: treeDir });
-	return shown.status === 0 && shown.stdout.trim() === 'tree';
 }
 
 // ---------------------------------------------------------------------------

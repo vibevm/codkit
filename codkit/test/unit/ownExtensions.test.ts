@@ -20,6 +20,7 @@ import {
 	ownExtensionSourceRoot,
 	ownExtensionTargetRoot,
 	ownExtensionTreePrefixes,
+	strandedMaterializations,
 	syncOwnExtensions
 } from '../../src/lib/layers/ownExtensions.ts';
 import { parseOwnManifest } from '../../src/lib/layers/ownManifest.ts';
@@ -239,6 +240,49 @@ describe('mirrorOwnExtensionsBack: tree -> patchset, the direction save uses', (
 
 		expect(report).toEqual({ copied: 0, removed: 0, total: 2 });
 		expect(listExtensionFiles(ownExtensionSourceRoot(patchesDir, 'acme-pack'))).toEqual(['package.json', 'package.nls.json']);
+	});
+});
+
+describe('strandedMaterializations (##OWN-EXTENSION-STRANDED)', () => {
+	const nothingAtPin = (): boolean => false;
+
+	it('says nothing about a directory a record still declares', () => {
+		expect(strandedMaterializations(['extensions/acme-pack/package.json'], [PACK], nothingAtPin)).toEqual([]);
+	});
+
+	it('says nothing about an extension the pin ships, whatever is untracked inside it', () => {
+		expect(strandedMaterializations(['extensions/markdown-basics/scratch.ts'], [], (name) => name === 'markdown-basics')).toEqual([]);
+	});
+
+	it('names a directory that no record declares and the pin does not ship', () => {
+		expect(strandedMaterializations(['extensions/acme-pack/package.json'], [], nothingAtPin)).toEqual(['extensions/acme-pack/']);
+	});
+
+	it('names a collapsed directory entry the same way as the files inside it', () => {
+		expect(strandedMaterializations(['extensions/acme-pack/'], [], nothingAtPin)).toEqual(['extensions/acme-pack/']);
+	});
+
+	it('names a directory without a package.json too: the rule is the record and the pin, not the content', () => {
+		expect(strandedMaterializations(['extensions/local-experiment/note.txt'], [], nothingAtPin)).toEqual(['extensions/local-experiment/']);
+	});
+
+	it('names each directory once, in the order git reported it, and asks the pin once per name', () => {
+		const asked: string[] = [];
+		const stranded = strandedMaterializations(
+			['extensions/second/package.json', 'extensions/first/a.txt', 'extensions/first/b.txt', 'extensions/second/themes/dark.json'],
+			[],
+			(name) => {
+				asked.push(name);
+				return false;
+			}
+		);
+
+		expect(stranded).toEqual(['extensions/second/', 'extensions/first/']);
+		expect(asked).toEqual(['second', 'first']);
+	});
+
+	it('ignores a loose file straight under extensions/ and everything outside it', () => {
+		expect(strandedMaterializations(['extensions/README.md', 'extensions/', 'src/vs/patchset/hello.ts'], [], nothingAtPin)).toEqual([]);
 	});
 });
 
