@@ -34,5 +34,5 @@ Codkit: здесь нет агентского периметра (hook, deny-п
 skills), работа идёт свободно по обычному permission flow и правилам boot-ленты.
 Единственное локальное правило — clean room в `.claude/rules/ck-codkit-dev.md`.
 Профиль для сессий над репозиторием продукта и форком поставляется под
-`codkit/claude/`; проверки и порядок установки — `DEVELOPMENT.md` и
+`packages/codkit/claude/`; проверки и порядок установки — `DEVELOPMENT.md` и
 `docs/codkit/protocol/agent/00-index.md`.
