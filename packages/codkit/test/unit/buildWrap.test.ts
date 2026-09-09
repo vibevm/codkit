@@ -7,6 +7,8 @@
 
 import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { projectType as genericType } from '@codkit/type-generic';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
 	BUILD_WATCH_RELATIVE_PATH,
@@ -40,8 +42,8 @@ import {
 } from '../../src/lib/buildWrap.ts';
 import type { ChannelConfig, ProcessRunner } from '../../src/lib/buildWrap.ts';
 import { readRecordState } from '../../src/lib/buildRuntime.ts';
+import { configureProjectType } from '../../src/types/configure.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
 
@@ -154,6 +156,35 @@ describe('build-watch.json', () => {
 		const custom = loadBuildWatch(vscodeType, root);
 		expect(custom.channels.map((entry) => entry.name)).toEqual(['custom']);
 		expect(custom.channels[0]?.script).toBe('watch-custom');
+	});
+
+	it('reads the profile a configured type answers as data, and lets the patch set override it', () => {
+		const configured = configureProjectType(genericType, {
+			ownRoot: 'own',
+			commands: {
+				compile: [{ script: 'watch', passStart: ['^Starting$'], passEnd: ['^Done$'], errorLine: ['^(.+?):(\\d+): error (.+)$'] }]
+			}
+		});
+		const fromType = loadBuildWatch(configured);
+		expect(fromType.channels.map((entry) => entry.name)).toEqual(['watch']);
+		expect(fromType.channels[0]?.script).toBe('watch');
+
+		const root = rootWith(
+			'build-watch-generic-override',
+			JSON.stringify({
+				codkitBuildWatch: 1,
+				channels: {
+					custom: { script: 'watch-custom', passStart: ['^start$'], passEnd: ['^end$'], errorLine: ['^(.+?): ERROR: (.+)$'] }
+				}
+			})
+		);
+		declareBuildWatch(root);
+		expect(loadBuildWatch(configured, root).channels.map((entry) => entry.name)).toEqual(['custom']);
+	});
+
+	it('refuses when the type has neither a shipped profile nor one of its own', () => {
+		const bare = configureProjectType(genericType, { ownRoot: 'own' });
+		expect(() => loadBuildWatch(bare)).toThrow(/declares no pass-boundary profile/);
 	});
 
 	it('rejects a custom channel with no error detector or with an unknown field', () => {

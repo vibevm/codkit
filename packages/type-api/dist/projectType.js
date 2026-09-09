@@ -58,6 +58,15 @@ export function projectTypeProblems(type) {
     if (type.advisory.readers.length > 0 !== type.capabilities.has('upgrade-advisory')) {
         problems.push(`${type.id}: advisory readers and the capability upgrade-advisory must agree`);
     }
+    // A capability named as configurable is a promise that `configure` can
+    // declare it; the configured type keeps the list, so a name appearing in
+    // both is the normal state of a type after configuration and is not a
+    // problem. What is a problem is promising it with nothing to keep the
+    // promise (##TYPE-CONFIGURED).
+    const configurable = type.configurableCapabilities;
+    if (configurable !== undefined && configurable.size > 0 && type.configure === undefined) {
+        problems.push(`${type.id}: capabilities are named as configurable, and the type answers no configure`);
+    }
     const images = type.brandImages;
     if (images !== undefined) {
         const kinds = new Set(images.codecs.map((codec) => codec.kind));

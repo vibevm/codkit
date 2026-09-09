@@ -34,10 +34,19 @@ export type BuildArea = {
 	readonly packageStamps: readonly BuildStamp[];
 	/**
 	 * The default pass-boundary profile of the watch channels, as a path inside
-	 * the type package. The engine reads and validates it exactly as it reads a
-	 * profile a patch set declares for itself.
+	 * the type package, or null when this family ships no file of its own. The
+	 * engine reads and validates it exactly as it reads a profile a patch set
+	 * declares for itself.
 	 */
-	readonly watchProfilePath: string;
+	readonly watchProfilePath: string | null;
+	/**
+	 * The same profile as data, for a type whose channels come from its own
+	 * section of the configuration and can therefore not be a file it ships. The
+	 * engine validates it with the same schema it applies to a file, and a
+	 * refusal names the type rather than a path. A patch set's own profile still
+	 * wins over both answers.
+	 */
+	readonly watchProfile?: unknown;
 	/**
 	 * Argv words that mean "somebody else's watcher is already running over this
 	 * tree"; compared word by word, never as substrings.

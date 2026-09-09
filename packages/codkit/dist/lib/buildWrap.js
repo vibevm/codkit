@@ -74,26 +74,37 @@ const watchCache = new Map();
  */
 export function loadBuildWatch(type, patchesDir) {
     const location = buildWatchLocation(type, patchesDir);
-    const path = join(location.root, ...location.relative.split('/'));
+    // A type whose channels come from `typeConfig` answers the profile as data
+    // instead of a path (##TYPE-CONFIGURED); it is cached under the type's
+    // identifier, which is what such a profile varies with.
+    const path = location === null ? `type:${type.id}` : join(location.root, ...location.relative.split('/'));
     const cached = watchCache.get(path);
     if (cached !== undefined)
         return cached;
+    // Which document a refusal names: the shipped profile, or the section of
+    // `codkit.json` a configured type built its channels from.
+    const document = location === null ? 'codkit.json' : BUILD_WATCH_RELATIVE_PATH;
     let raw;
-    try {
-        const read = readContainedFile(location.root, location.relative, { what: BUILD_WATCH_RELATIVE_PATH });
-        if (read.state === 'absent') {
-            throw new Error('the file does not exist');
-        }
-        raw = JSON.parse(Buffer.from(read.bytes).toString('utf8'));
+    if (location === null) {
+        raw = type.build.watchProfile;
     }
-    catch (error) {
-        throw ckError('CONFIG', `cannot be read: ${messageOf(error)}`, 'build-watch.json ships with codkit; restore it from the repository', BUILD_WATCH_RELATIVE_PATH);
+    else {
+        try {
+            const read = readContainedFile(location.root, location.relative, { what: BUILD_WATCH_RELATIVE_PATH });
+            if (read.state === 'absent') {
+                throw new Error('the file does not exist');
+            }
+            raw = JSON.parse(Buffer.from(read.bytes).toString('utf8'));
+        }
+        catch (error) {
+            throw ckError('CONFIG', `cannot be read: ${messageOf(error)}`, 'build-watch.json ships with codkit; restore it from the repository', BUILD_WATCH_RELATIVE_PATH);
+        }
     }
     const parsed = buildWatchSchema.safeParse(raw);
     if (!parsed.success) {
         const issue = parsed.error.issues[0];
         const where = issue === undefined ? 'document' : issue.path.map((segment) => String(segment)).join('.');
-        throw ckError('CONFIG', `${where === '' ? 'document' : where}: ${issue?.message ?? 'failed validation'}`, 'see PROP-010 section 2 for the pass-boundary data', BUILD_WATCH_RELATIVE_PATH);
+        throw ckError('CONFIG', `${where === '' ? 'document' : where}: ${issue?.message ?? 'failed validation'}`, 'see PROP-010 section 2 for the pass-boundary data', document);
     }
     validateChannelSet(Object.keys(parsed.data.channels));
     // A count detector is validated before any log is read: a pattern that
@@ -105,7 +116,7 @@ export function loadBuildWatch(type, patchesDir) {
         for (const pattern of channel.errorCountLine) {
             const problem = countPatternProblem(pattern);
             if (problem !== null) {
-                throw ckError('CONFIG', `channels.${name}.errorCountLine: ${JSON.stringify(pattern)} ${problem}`, 'capture the error count in group 1, e.g. "Found (\\\\d+) errors"', BUILD_WATCH_RELATIVE_PATH);
+                throw ckError('CONFIG', `channels.${name}.errorCountLine: ${JSON.stringify(pattern)} ${problem}`, 'capture the error count in group 1, e.g. "Found (\\\\d+) errors"', document);
             }
         }
     }
@@ -122,18 +133,25 @@ export function loadBuildWatch(type, patchesDir) {
         });
     }
     if (channels.length === 0) {
-        throw ckError('CONFIG', 'channels: at least one channel is required', 'see PROP-010 section 2', BUILD_WATCH_RELATIVE_PATH);
+        throw ckError('CONFIG', 'channels: at least one channel is required', 'see PROP-010 section 2', document);
     }
     const watch = { channels };
     watchCache.set(path, watch);
     return watch;
 }
-/** Where the profile is read from, as root plus contained relative path. */
+/**
+ * Where the profile is read from, as root plus contained relative path, or null
+ * when the type answers the profile as data instead of a file.
+ */
 function buildWatchLocation(type, patchesDir) {
     // The default profile is the type's: the channels and their pass boundaries
     // are facts about one family of upstreams, and the engine only reads them
     // (##TYPE-AREA-BUILD). A patch set may declare a stricter profile of its own.
-    const shipped = { root: dirname(type.build.watchProfilePath), relative: basename(type.build.watchProfilePath) };
+    const shippedPath = type.build.watchProfilePath;
+    const shipped = shippedPath === null ? null : { root: dirname(shippedPath), relative: basename(shippedPath) };
+    if (shipped === null && type.build.watchProfile === undefined) {
+        throw ckError('CONFIG', `the project type ${type.id} declares no pass-boundary profile for its watch channels`, `declare buildWatchFile in codkit.json, or run a verb this type answers (run: codkit types)`, BUILD_WATCH_RELATIVE_PATH);
+    }
     if (patchesDir === undefined)
         return shipped;
     const configured = loadBaseConfig(patchesDir)?.buildWatchFile ?? null;

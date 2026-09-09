@@ -39,6 +39,7 @@ import { Output, readCodkitVersion } from './lib/jsonOut.js';
 import { isCkError } from './lib/messages.js';
 import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocations } from './lib/paths.js';
 import { loadSettings } from './lib/settingsFile.js';
+import { configureProjectType } from './types/configure.js';
 import { resolveProjectType } from './types/registry.js';
 import { assertTypeConfig } from './types/typeConfig.js';
 /** Longest command name in words; `marker new` and `overlay check` make this 2. */
@@ -171,9 +172,13 @@ async function main(argv) {
         // the command with everything else it needs. A configuration always names
         // one - schema 2 requires it - so a resolved config means a resolved type,
         // and every engine below asks the type instead of stating its facts.
-        const type = config === null ? null : await resolveProjectType(config.type);
-        if (config !== null && type !== null) {
-            assertTypeConfig(type, config);
+        const registered = config === null ? null : await resolveProjectType(config.type);
+        let type = registered;
+        if (config !== null && registered !== null) {
+            assertTypeConfig(registered, config);
+            // ##TYPE-CONFIGURED: a type whose answers live in `typeConfig` is
+            // specialized here, once, and every engine below asks the result.
+            type = configureProjectType(registered, config.typeConfig);
         }
         out.setProjectType(type?.id ?? null);
         const exitCode = await matched.definition.run({

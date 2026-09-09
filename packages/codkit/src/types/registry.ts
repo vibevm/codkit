@@ -15,7 +15,10 @@ import { projectTypeProblems } from '@codkit/type-api';
 import { ckError } from '../lib/messages.ts';
 
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
-export const TYPE_REGISTRY: ReadonlyMap<string, string> = new Map([['vscode', '@codkit/type-vscode']]);
+export const TYPE_REGISTRY: ReadonlyMap<string, string> = new Map([
+	['vscode', '@codkit/type-vscode'],
+	['generic', '@codkit/type-generic']
+]);
 
 /** One row of `codkit types` (##CMD-TYPES). */
 export type RegisteredType = {
@@ -25,6 +28,12 @@ export type RegisteredType = {
 	readonly version: string | null;
 	readonly installed: boolean;
 	readonly capabilities: readonly Capability[];
+	/**
+	 * The abilities this type declares only when a patch set's `typeConfig` asks
+	 * for them (##TYPE-CONFIGURED). Empty for a type that answers the same thing
+	 * for every patch set.
+	 */
+	readonly configurableCapabilities: readonly Capability[];
 };
 
 const loaded = new Map<string, ProjectType>();
@@ -79,7 +88,8 @@ export async function registeredTypes(): Promise<readonly RegisteredType[]> {
 			package: packageName,
 			version: type === null ? null : packageVersion(packageName),
 			installed: type !== null,
-			capabilities: type === null ? [] : [...type.capabilities].sort()
+			capabilities: type === null ? [] : [...type.capabilities].sort(),
+			configurableCapabilities: type === null ? [] : [...(type.configurableCapabilities ?? [])].sort()
 		});
 	}
 	return rows;

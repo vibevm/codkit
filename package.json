@@ -13,10 +13,10 @@
 	"scripts": {
 		"codkit": "node packages/codkit/bin/codkit.mjs",
 		"kit": "node tools/build-supply-kit.mjs",
-		"runtime:build": "tsc -p packages/codkit/tsconfig.runtime.json && tsc -p packages/type-api/tsconfig.runtime.json && tsc -p packages/type-vscode/tsconfig.runtime.json",
+		"runtime:build": "tsc -p packages/codkit/tsconfig.runtime.json && tsc -p packages/type-api/tsconfig.runtime.json && tsc -p packages/type-vscode/tsconfig.runtime.json && tsc -p packages/type-generic/tsconfig.runtime.json",
 		"runtime:check": "node tools/check-codkit-runtime.mjs",
 		"format:check": "prettier --check packages/*/src packages/*/test",
-		"typecheck": "tsc -p packages/codkit/tsconfig.json && tsc -p packages/type-api/tsconfig.json && tsc -p packages/type-vscode/tsconfig.json",
+		"typecheck": "tsc -p packages/codkit/tsconfig.json && tsc -p packages/type-api/tsconfig.json && tsc -p packages/type-vscode/tsconfig.json && tsc -p packages/type-generic/tsconfig.json",
 		"trace:check": "node tools/check-ts-scopes.mjs",
 		"docs:check": "node tools/generate-codkit-docs.mjs --check && node tools/sync-codkit-agents.mjs --check && node docs/codkit/protocol/human/check.mjs && node docs/codkit/protocol/agent/check.mjs",
 		"test": "vitest run --maxWorkers=4",

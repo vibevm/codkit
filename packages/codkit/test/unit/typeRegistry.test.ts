@@ -10,6 +10,7 @@ import { projectType as vscodeType } from '@codkit/type-vscode';
 import { describe, expect, it } from 'vitest';
 import { isCkError } from '../../src/lib/messages.ts';
 import { requireCapability } from '../../src/types/capability.ts';
+import { configureProjectType } from '../../src/types/configure.ts';
 import { registeredTypes, resolveProjectType, TYPE_REGISTRY } from '../../src/types/registry.ts';
 
 /** A type that answers nothing optional, for the refusals. */
@@ -39,18 +40,62 @@ describe('the registry', () => {
 	});
 
 	it('refuses an identifier it does not know, naming what it does know', async () => {
-		const outcome = await refusal('theia');
+		const outcome = await refusal('kettle');
 		expect(outcome.code).toBe('TYPE-UNKNOWN');
-		expect(outcome.message).toContain('"theia"');
+		expect(outcome.message).toContain('"kettle"');
 		expect(outcome.hint).toContain('vscode');
+		expect(outcome.hint).toContain('generic');
 	});
 
 	it('prints one row per registered type, with its package, version and capabilities', async () => {
 		const rows = await registeredTypes();
-		expect(rows.map((row) => row.id)).toEqual(['vscode']);
-		expect(rows[0]?.installed).toBe(true);
-		expect(rows[0]?.version).toBe('1.0.0');
+		expect(rows.map((row) => row.id)).toEqual(['vscode', 'generic']);
+		expect(rows.every((row) => row.installed)).toBe(true);
+		expect(rows.every((row) => row.version === '1.0.0')).toBe(true);
 		expect(rows[0]?.capabilities).toContain('brand-images');
+	});
+
+	it('says which abilities a type declares only for a patch set that asks for them', async () => {
+		const rows = await registeredTypes();
+		const generic = rows.find((row) => row.id === 'generic');
+		expect(generic?.capabilities).toEqual([]);
+		expect(generic?.configurableCapabilities).toEqual(['build-channels', 'config-overlay']);
+		expect(rows.find((row) => row.id === 'vscode')?.configurableCapabilities).toEqual([]);
+	});
+});
+
+describe('the configured type', () => {
+	it('is the type a section of typeConfig makes, and every engine below asks that one', async () => {
+		const generic = await resolveProjectType('generic');
+		const configured = configureProjectType(generic, { ownRoot: 'own', overlayTargets: ['app.json'] });
+		expect(configured.id).toBe('generic');
+		expect(configured.capabilities.has('config-overlay')).toBe(true);
+		expect(configured.layers.overlayTargets.map((target) => target.path)).toEqual(['app.json']);
+	});
+
+	it('returns a type without a configure step unchanged', async () => {
+		const vscode = await resolveProjectType('vscode');
+		expect(configureProjectType(vscode, { ownRoot: 'src/vs/patchset' })).toBe(vscode);
+	});
+
+	it('refuses a configure that declares a capability the type never announced', () => {
+		const rogue: ProjectType = {
+			...vscodeType,
+			id: 'rogue',
+			capabilities: new Set<Capability>(),
+			configurableCapabilities: new Set<Capability>(['config-overlay']),
+			configure: () => ({ ...vscodeType, id: 'rogue', capabilities: new Set<Capability>(['gen-brand']) })
+		};
+		let thrown: unknown;
+		try {
+			configureProjectType(rogue, {});
+		} catch (error) {
+			thrown = error;
+		}
+		expect(isCkError(thrown)).toBe(true);
+		if (!isCkError(thrown)) return;
+		expect(thrown.code).toBe('TYPE-UNKNOWN');
+		expect(thrown.message).toContain('gen-brand');
 	});
 });
 

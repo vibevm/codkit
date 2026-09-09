@@ -16,6 +16,9 @@ async function run(ctx) {
         const version = row.installed ? (row.version ?? 'installed') : 'not installed';
         ctx.out.info(`${row.id.padEnd(ID_COLUMN)}${row.package} ${version}`);
         ctx.out.info(`${''.padEnd(ID_COLUMN)}capabilities: ${row.capabilities.length === 0 ? 'none' : row.capabilities.join(', ')}`);
+        if (row.configurableCapabilities.length > 0) {
+            ctx.out.info(`${''.padEnd(ID_COLUMN)}from typeConfig: ${row.configurableCapabilities.join(', ')}`);
+        }
     }
     ctx.out.info(`the capability names of the contract: ${CAPABILITIES.join(', ')}`);
     ctx.out.setData({
@@ -24,7 +27,8 @@ async function run(ctx) {
             package: row.package,
             version: row.version,
             installed: row.installed,
-            capabilities: [...row.capabilities]
+            capabilities: [...row.capabilities],
+            configurableCapabilities: [...row.configurableCapabilities]
         }))
     });
     return EXIT_OK;

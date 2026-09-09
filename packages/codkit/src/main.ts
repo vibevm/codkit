@@ -42,6 +42,7 @@ import { Output, readCodkitVersion } from './lib/jsonOut.ts';
 import { isCkError } from './lib/messages.ts';
 import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocations } from './lib/paths.ts';
 import { loadSettings } from './lib/settingsFile.ts';
+import { configureProjectType } from './types/configure.ts';
 import { resolveProjectType } from './types/registry.ts';
 import { assertTypeConfig } from './types/typeConfig.ts';
 
@@ -189,9 +190,13 @@ async function main(argv: readonly string[]): Promise<number> {
 		// the command with everything else it needs. A configuration always names
 		// one - schema 2 requires it - so a resolved config means a resolved type,
 		// and every engine below asks the type instead of stating its facts.
-		const type = config === null ? null : await resolveProjectType(config.type);
-		if (config !== null && type !== null) {
-			assertTypeConfig(type, config);
+		const registered = config === null ? null : await resolveProjectType(config.type);
+		let type = registered;
+		if (config !== null && registered !== null) {
+			assertTypeConfig(registered, config);
+			// ##TYPE-CONFIGURED: a type whose answers live in `typeConfig` is
+			// specialized here, once, and every engine below asks the result.
+			type = configureProjectType(registered, config.typeConfig);
 		}
 		out.setProjectType(type?.id ?? null);
 		const exitCode = await matched.definition.run({

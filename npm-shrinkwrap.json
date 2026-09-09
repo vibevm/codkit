@@ -25,6 +25,10 @@
 			"resolved": "packages/type-api",
 			"link": true
 		},
+		"node_modules/@codkit/type-generic": {
+			"resolved": "packages/type-generic",
+			"link": true
+		},
 		"node_modules/@codkit/type-vscode": {
 			"resolved": "packages/type-vscode",
 			"link": true
@@ -1878,6 +1882,7 @@
 			"license": "UPL-1.0",
 			"dependencies": {
 				"@codkit/type-api": "1.0.0",
+				"@codkit/type-generic": "1.0.0",
 				"@codkit/type-vscode": "1.0.0",
 				"@resvg/resvg-js": "2.6.2",
 				"smol-toml": "1.8.0",
@@ -1896,6 +1901,18 @@
 			"version": "1.0.0",
 			"license": "UPL-1.0",
 			"dependencies": {
+				"zod": "^4.5.4"
+			},
+			"engines": {
+				"node": ">=22.6.0"
+			}
+		},
+		"packages/type-generic": {
+			"name": "@codkit/type-generic",
+			"version": "1.0.0",
+			"license": "UPL-1.0",
+			"dependencies": {
+				"@codkit/type-api": "1.0.0",
 				"zod": "^4.5.4"
 			},
 			"engines": {

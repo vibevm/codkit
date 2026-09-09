@@ -45,6 +45,9 @@ const REQUIRED: ReadonlyMap<string, readonly string[]> = new Map([
 	// ##TYPE-AREA-BUILD).
 	['@codkit/type-vscode', ['package.json', 'LICENSE.md', 'README.md', 'src/index.ts', 'dist/index.js', 'config/build-watch.json']],
 	['@codkit/type-api', ['package.json', 'LICENSE.md', 'README.md', 'src/index.ts', 'dist/index.js']],
+	// The generic type ships no data file of its own: every answer of it comes
+	// from the patch set's `typeConfig` (PROP-016 ##TYPE-GENERIC).
+	['@codkit/type-generic', ['package.json', 'LICENSE.md', 'README.md', 'src/index.ts', 'dist/index.js']],
 	[
 		'codkit',
 		[

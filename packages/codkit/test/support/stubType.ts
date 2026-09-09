@@ -39,7 +39,7 @@ const base: ProjectType = {
 		ownTests: () => null,
 		packageBuild: [],
 		packageStamps: [],
-		watchProfilePath: '',
+		watchProfilePath: null,
 		foreignWatcherMarkers: []
 	},
 	advisory: { readers: [] },

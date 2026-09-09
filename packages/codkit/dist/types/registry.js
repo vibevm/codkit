@@ -20,7 +20,10 @@ import { createRequire } from 'node:module';
 import { projectTypeProblems } from '@codkit/type-api';
 import { ckError } from '../lib/messages.js';
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
-export const TYPE_REGISTRY = new Map([['vscode', '@codkit/type-vscode']]);
+export const TYPE_REGISTRY = new Map([
+    ['vscode', '@codkit/type-vscode'],
+    ['generic', '@codkit/type-generic']
+]);
 const loaded = new Map();
 /**
  * ##TYPE-UNKNOWN: a `type` the registry does not know, or whose package is not
@@ -62,7 +65,8 @@ export async function registeredTypes() {
             package: packageName,
             version: type === null ? null : packageVersion(packageName),
             installed: type !== null,
-            capabilities: type === null ? [] : [...type.capabilities].sort()
+            capabilities: type === null ? [] : [...type.capabilities].sort(),
+            configurableCapabilities: type === null ? [] : [...(type.configurableCapabilities ?? [])].sort()
         });
     }
     return rows;

@@ -28,6 +28,14 @@ export type ProjectType = {
 	/** The optional abilities this type declares (##TYPE-TERM-CAPABILITY). */
 	readonly capabilities: ReadonlySet<Capability>;
 	/**
+	 * The abilities this type declares only for a patch set whose `typeConfig`
+	 * asks for them (##TYPE-CONFIGURED). They are what `codkit types` prints
+	 * next to the declared ones, so a person reads what the type could answer
+	 * before writing a configuration; `configure` is what actually declares
+	 * them, and it may declare no other.
+	 */
+	readonly configurableCapabilities?: ReadonlySet<Capability>;
+	/**
 	 * The schema of `typeConfig`. The engine validates the universal fields of
 	 * the configuration and hands this the rest; a refusal becomes `CK-E-CONFIG`
 	 * naming the field (##TYPE-CONFIG-FIELD).
@@ -45,6 +53,17 @@ export type ProjectType = {
 	readonly standards: StandardsArea;
 	readonly conventions: ConventionsArea;
 	readonly generators: GeneratorsArea;
+	/**
+	 * ##TYPE-CONFIGURED: a type whose answers depend on its own section of the
+	 * configuration returns the specialized type here, once, after the section
+	 * has passed `configSchema`; the engine asks the result everything
+	 * afterwards. A type whose answers are the same for every patch set - the
+	 * usual case - does not answer this at all. The result is a project type in
+	 * its own right: it is checked by `projectTypeProblems` like any other, and
+	 * it may declare only capabilities the unconfigured type named in
+	 * `capabilities` or `configurableCapabilities`.
+	 */
+	configure?(typeConfig: unknown): ProjectType;
 };
 
 /**
@@ -93,6 +112,15 @@ export function projectTypeProblems(type: ProjectType): readonly string[] {
 	}
 	if (type.advisory.readers.length > 0 !== type.capabilities.has('upgrade-advisory')) {
 		problems.push(`${type.id}: advisory readers and the capability upgrade-advisory must agree`);
+	}
+	// A capability named as configurable is a promise that `configure` can
+	// declare it; the configured type keeps the list, so a name appearing in
+	// both is the normal state of a type after configuration and is not a
+	// problem. What is a problem is promising it with nothing to keep the
+	// promise (##TYPE-CONFIGURED).
+	const configurable = type.configurableCapabilities;
+	if (configurable !== undefined && configurable.size > 0 && type.configure === undefined) {
+		problems.push(`${type.id}: capabilities are named as configurable, and the type answers no configure`);
 	}
 	const images = type.brandImages;
 	if (images !== undefined) {
