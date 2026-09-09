@@ -7,27 +7,20 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { encodeBmp24 } from './imagesetBmp.ts';
-import { encodeIcns } from './imagesetIcns.ts';
-import { encodeIco } from './imagesetIco.ts';
+import { codecFor, readingImage } from './imagesetCodec.ts';
 import { chooseMaster, ignoredMasterFiles, inBranding, seedMasters } from './imagesetMasters.ts';
 import type { SeededMaster } from './imagesetMasters.ts';
-import { decodePng, encodePng } from './imagesetPng.ts';
-import type { Rgba } from './imagesetPng.ts';
+import { decodePng, encodePng } from '@codkit/type-api';
+import type { ImageCodec, Rgba } from '@codkit/type-api';
 import { renderSvgToRgba } from './imagesetRender.ts';
-import { parseSvg } from './imagesetSvg.ts';
 import { resizeRgba } from './imagesetRaster.ts';
 import type { DiscoveredTarget, TargetFrame } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
-import { encodeXpm } from './imagesetXpm.ts';
 import { ckError } from './messages.ts';
 import { ownTestIds } from './inventory.ts';
 import { RESOURCE_FILES_PREFIX, RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, serializeResourceMap } from './layers/resource.ts';
 import type { ResourceEntry, ResourceMapDocument } from './layers/resource.ts';
 import type { ProjectType } from '@codkit/type-api';
-
-/** Installer art has no alpha channel; the backdrop is part of the design. */
-const BMP_BACKGROUND = { r: 255, g: 255, b: 255 };
 
 /** The guard-test id convention: one suite per family, declared in own code. */
 export function guardTestId(family: string): string {
@@ -72,7 +65,7 @@ export function runImageset(options: ImagesetOptions): { exitCode: number; repor
 	const { patchesDir, treeDir, brandingDir, dryRun, onInfo, onWarn } = options;
 	onInfo(`branding: ${brandingDir}`);
 	const targets = discoverTargets(options.type, treeDir, onInfo);
-	const seeded = seedMasters(brandingDir, treeDir, targets, dryRun);
+	const seeded = seedMasters(options.type, brandingDir, treeDir, targets, dryRun);
 	for (const seed of seeded) {
 		onInfo(`${dryRun ? 'would seed' : 'seeded'} branding/${seed.file} from ${seed.from} (${seed.width}x${seed.height})`);
 	}
@@ -93,7 +86,7 @@ export function runImageset(options: ImagesetOptions): { exitCode: number; repor
 	const renders: { target: DiscoveredTarget; bytes: Uint8Array; frames: { width: number; height: number; source: string }[] }[] = [];
 	const skipReport: { target: DiscoveredTarget; reason: string }[] = [];
 	for (const target of targets) {
-		const rendered = renderTarget(brandingDir, target, virtualMasters, dryRun);
+		const rendered = renderTarget(options.type, brandingDir, target, virtualMasters, dryRun);
 		if (rendered.skipped !== null) {
 			skipReport.push({ target, reason: rendered.skipped });
 			continue;
@@ -208,10 +201,17 @@ export function runImageset(options: ImagesetOptions): { exitCode: number; repor
 
 type RenderOutcome = { bytes: Uint8Array; frames: { width: number; height: number; source: string }[]; skipped: string | null };
 
-function renderTarget(brandingDir: string, target: DiscoveredTarget, virtualMasters: ReadonlySet<string>, dryRun: boolean): RenderOutcome {
+function renderTarget(
+	type: ProjectType,
+	brandingDir: string,
+	target: DiscoveredTarget,
+	virtualMasters: ReadonlySet<string>,
+	dryRun: boolean
+): RenderOutcome {
+	const codec = codecFor(type, target.kind);
 	const key = artworkKey(target);
-	if (target.kind === 'svg') {
-		return emitVectorTarget(brandingDir, target, key, virtualMasters, dryRun);
+	if (codec.vector) {
+		return emitVectorTarget(codec, brandingDir, target, key, virtualMasters, dryRun);
 	}
 	const frames: { width: number; height: number; source: string }[] = [];
 	const rendered: { frame: TargetFrame; image: Rgba }[] = [];
@@ -239,32 +239,15 @@ function renderTarget(brandingDir: string, target: DiscoveredTarget, virtualMast
 	if (dryRun) {
 		return { bytes: new Uint8Array(0), frames, skipped: null };
 	}
-	if (target.kind === 'ico') {
-		return {
-			bytes: encodeIco(rendered.map((item) => ({ width: item.frame.width, height: item.frame.height, png: encodePng(item.image) }))),
-			frames,
-			skipped: null
-		};
-	}
-	if (target.kind === 'icns') {
-		return {
-			bytes: encodeIcns(rendered.map((item) => ({ type: item.frame.type ?? 'ic07', png: encodePng(item.image) }))),
-			frames,
-			skipped: null
-		};
-	}
-	if (target.kind === 'png') {
-		return { bytes: encodePng(rendered[0]?.image ?? { width: 0, height: 0, data: new Uint8Array(0) }), frames, skipped: null };
-	}
-	if (target.kind === 'bmp') {
-		return {
-			bytes: encodeBmp24(rendered[0]?.image ?? { width: 0, height: 0, data: new Uint8Array(0) }, BMP_BACKGROUND),
-			frames,
-			skipped: null
-		};
-	}
-	const text = encodeXpm(rendered[0]?.image ?? { width: 0, height: 0, data: new Uint8Array(0) }, target.stem);
-	return { bytes: new TextEncoder().encode(text), frames, skipped: null };
+	// The container is written by its own codec, from the PNG payloads the
+	// pipeline rendered: the engine never names one (##TYPE-ENGINE-IS-BLIND).
+	const bytes = readingImage(target.target, () =>
+		codec.encode(
+			rendered.map((item) => ({ frame: item.frame, png: encodePng(item.image) })),
+			target.stem
+		)
+	);
+	return { bytes, frames, skipped: null };
 }
 
 /**
@@ -275,6 +258,7 @@ function renderTarget(brandingDir: string, target: DiscoveredTarget, virtualMast
  * the size the distribution ships the image at.
  */
 function emitVectorTarget(
+	codec: ImageCodec,
 	brandingDir: string,
 	target: DiscoveredTarget,
 	key: string,
@@ -291,7 +275,7 @@ function emitVectorTarget(
 		return nothing(`no ${key} master in ${brandingDir}`);
 	}
 	if (master.origin !== 'vector') {
-		return nothing(`${target.target} is a vector target and needs ${key}.svg; ${master.file} is a raster master`);
+		return nothing(`${target.target} is a vector target and needs ${key}${codec.extension}; ${master.file} is a raster master`);
 	}
 	const frames = [
 		{ width: frame.width, height: frame.height, source: `emitted ${master.file} unchanged at ${frame.width}x${frame.height}` }
@@ -299,15 +283,23 @@ function emitVectorTarget(
 	if (dryRun) {
 		return { bytes: new Uint8Array(0), frames, skipped: null };
 	}
-	const text = readFileSync(inBranding(brandingDir, master.file), 'utf8');
-	const size = parseSvg(text);
-	if (size === null) {
-		return nothing(`${master.file} is not an SVG document with usable dimensions`);
+	const bytes = Uint8Array.from(readFileSync(inBranding(brandingDir, master.file)));
+	let size: TargetFrame;
+	try {
+		const parsed = codec.parse(bytes)[0];
+		if (parsed === undefined) {
+			return nothing(`${master.file} carries no readable size`);
+		}
+		size = parsed;
+	} catch (error) {
+		// A master that is not a document of this container is a skip with a
+		// reason, not a broken artifact: the operator replaces the file.
+		return nothing(`${master.file} is ${error instanceof Error ? error.message : String(error)}`);
 	}
 	if (size.width !== frame.width || size.height !== frame.height) {
 		return nothing(`${master.file} is ${size.width}x${size.height} but ${target.target} ships ${frame.width}x${frame.height}`);
 	}
-	return { bytes: new TextEncoder().encode(text), frames, skipped: null };
+	return { bytes, frames, skipped: null };
 }
 
 /** Render one frame from its master: verbatim override, vector, or resample. */
@@ -315,7 +307,7 @@ function masterAt(brandingDir: string, master: { origin: string; file: string },
 	if (master.origin === 'vector') {
 		return renderSvgToRgba(readFileSync(inBranding(brandingDir, master.file), 'utf8'), frame.width, frame.height).image;
 	}
-	const image = decodePng(readFileSync(inBranding(brandingDir, master.file)));
+	const image = readingImage(master.file, () => decodePng(readFileSync(inBranding(brandingDir, master.file))));
 	if (master.origin === 'override') {
 		if (image.width !== frame.width || image.height !== frame.height) {
 			return null;
@@ -335,9 +327,14 @@ function describeMaster(master: { origin: string; file: string }, frame: TargetF
 	return `resampled ${master.file} to ${frame.width}x${frame.height}`;
 }
 
-/** The C identifier the XPM array carries: the shipped file's stem. */
+/**
+ * What a dry run says the target is made of. A container whose frames carry
+ * names is described by those names; one whose frames are told apart by size
+ * is described by the sizes.
+ */
 function describeFrames(target: DiscoveredTarget): string {
-	if (target.kind === 'icns') {
+	const named = target.frames.length > 0 && target.frames.every((frame) => frame.type !== null);
+	if (named) {
 		return `${target.frames.length} element(s) ${target.frames.map((frame) => frame.type).join(',')}`;
 	}
 	return `${target.frames.length} frame(s) ${target.frames.map((frame) => `${frame.width}x${frame.height}`).join(',')}`;

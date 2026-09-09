@@ -6,8 +6,14 @@
 // gray/RGB/RGBA, palette images at depths 1/2/4/8, tRNS transparency, no
 // interlacing. Anything else is refused with a diagnosable message instead of
 // decoded wrongly.
+//
+// It lives in the contract package because PNG is the language the contract
+// speaks: a codec of a project type hands the engine `ImagePayload.png` and
+// takes it back, so the engine and every type must encode and decode the
+// interchange the same way, byte for byte. Duplicating it per package would
+// make "the same picture" a matter of luck (##TYPE-API-STABILITY).
 import { deflateSync, inflateSync } from 'node:zlib';
-import { ckError } from './messages.js';
+import { brokenArtifact } from './refusal.js';
 export function rgba(width, height, fill) {
     const data = new Uint8Array(width * height * 4);
     if (fill !== undefined) {
@@ -21,7 +27,7 @@ export function rgba(width, height, fill) {
     return { width, height, data };
 }
 function broken(message, hint) {
-    return ckError('ARTIFACT-BROKEN', `PNG: ${message}`, hint);
+    return brokenArtifact(`PNG: ${message}`, hint);
 }
 /** The PNG signature every payload is checked against. */
 const PNG_SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

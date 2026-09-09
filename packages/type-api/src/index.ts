@@ -10,6 +10,10 @@ export type { EntryModuleLocator, ExtensionMaterializer, LayersArea, OverlayTarg
 export type { BuildArea, BuildCommand, BuildStamp } from './build.ts';
 export type { AdvisoryArea, AdvisoryFiles, AdvisoryReader, AdvisoryValue } from './advisory.ts';
 export type { BrandImagesArea, ImageCodec, ImageFrame, ImagePayload, ImageTargetPattern } from './brandImages.ts';
+export { brokenArtifact, isBrokenArtifact } from './refusal.ts';
+export type { BrokenArtifact } from './refusal.ts';
+export { decodePng, encodePng, isPng, pngSize, rgba } from './png.ts';
+export type { Rgba } from './png.ts';
 export type { RuntimeArea } from './runtime.ts';
 export type { StandardsArea } from './standards.ts';
 export type { ConventionsArea } from './conventions.ts';

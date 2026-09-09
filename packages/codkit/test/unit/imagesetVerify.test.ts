@@ -1,29 +1,23 @@
-// The imageset verification: the ICO frame decoder it needed, the metric, the
-// bands, and the round trip itself (PROP-007 ##IMAGESET-VERIFY,
-// ##DECISION-IMAGESET-ACCEPTANCE-CRITERION, ##IMAGESET-ROUND-TRIP).
+// The imageset verification: the metric, the bands, and the round trip itself
+// (PROP-007 ##IMAGESET-VERIFY, ##DECISION-IMAGESET-ACCEPTANCE-CRITERION,
+// ##IMAGESET-ROUND-TRIP).
 //
-// The frame decoder is checked against the committed fixture binaries, which
-// test/fixtures/imageset/generate.mjs writes with an implementation sharing no
-// code with codkit: its .ico frames are raw BGRA DIBs with AND masks and its
-// .icns elements are RGBA PNGs, both drawn from the same artwork. Decoding one
-// into the other is therefore a comparison against a foreign encoder, not a
-// read-back of what codkit just wrote.
+// The containers are reached only through the codecs of the project type, the
+// way the verifier itself reaches them; what a container does with the bytes is
+// proved in the suite of the package that answers for it.
 //
 // The round-trip tests build trees whose layers are DIFFERENT drawings on
 // purpose: a comparison that read back its own regenerated pixels, or that
 // took its master from another file, would measure zero where these expect a
 // large number, and would go red here.
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { decodeIcnsElements, encodeIcns } from '../../src/lib/imagesetIcns.ts';
-import { decodeIcoFrames, encodeIco } from '../../src/lib/imagesetIco.ts';
-import { encodePng, rgba } from '../../src/lib/imagesetPng.ts';
-import type { Rgba } from '../../src/lib/imagesetPng.ts';
+import { encodePng, rgba } from '@codkit/type-api';
+import type { Rgba } from '@codkit/type-api';
+import { containerOf, namedFrame, sizedFrame } from '../support/imagesetCodecs.ts';
 import { resizeRgba } from '../../src/lib/imagesetRaster.ts';
-import { isCkError } from '../../src/lib/messages.ts';
 import {
 	bandFor,
 	meanAbsoluteRgbDifference,
@@ -36,9 +30,6 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
-
-const fixtureRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'imageset');
-const shipped = (name: string) => readFileSync(join(fixtureRoot, name));
 
 /** A flat drawing: a filled square of one colour on a transparent ground. */
 function block(size: number, color: readonly [number, number, number]): Rgba {
@@ -63,11 +54,17 @@ function writeTarget(treeDir: string, relative: string, bytes: Uint8Array): void
 }
 
 function icns(elements: readonly { type: string; image: Rgba }[]): Uint8Array {
-	return encodeIcns(elements.map((element) => ({ type: element.type, png: encodePng(element.image) })));
+	return containerOf(
+		'icns',
+		elements.map((element) => ({ frame: namedFrame(element.type, element.image), image: element.image }))
+	);
 }
 
 function ico(frames: readonly Rgba[]): Uint8Array {
-	return encodeIco(frames.map((image) => ({ width: image.width, height: image.height, png: encodePng(image) })));
+	return containerOf(
+		'ico',
+		frames.map((image) => ({ frame: sizedFrame(image), image }))
+	);
 }
 
 function verify(treeDir: string) {
@@ -77,48 +74,6 @@ function verify(treeDir: string) {
 
 const targetOf = (verification: ReturnType<typeof verify>['verification'], target: string) =>
 	verification.targets.find((candidate) => candidate.target === target);
-
-describe('decodeIcoFrames', () => {
-	it('decodes a raw DIB frame into the pixels a foreign encoder drew', () => {
-		const frames = decodeIcoFrames(shipped('code.ico'));
-		const elements = decodeIcnsElements(shipped('code.icns'));
-		const frame32 = frames.find((frame) => frame.width === 32);
-		const element32 = elements.find((element) => element.type === 'ic11');
-
-		// Same artwork, two unrelated encodings: a bottom-up BGRA DIB with an
-		// AND mask, and a top-down RGBA PNG. Decoded, they must be identical.
-		expect(frame32?.image.width).toBe(32);
-		expect(Buffer.from(frame32?.image.data ?? new Uint8Array())).toEqual(Buffer.from(element32?.image.data ?? new Uint8Array()));
-	});
-
-	it('halves the doubled DIB height instead of reading the AND mask as pixels', () => {
-		const frames = decodeIcoFrames(shipped('code.ico'));
-		expect(frames.map((frame) => `${frame.width}x${frame.height}`)).toEqual(['16x16', '32x32']);
-		for (const frame of frames) {
-			expect(frame.image.height).toBe(frame.height);
-			expect(frame.image.data.length).toBe(frame.width * frame.height * 4);
-		}
-	});
-
-	it('reads a PNG frame through the same door', () => {
-		const drawing = block(64, [10, 20, 30]);
-		const frames = decodeIcoFrames(ico([drawing]));
-		expect(Buffer.from(frames[0]?.image.data ?? new Uint8Array())).toEqual(Buffer.from(drawing.data));
-	});
-
-	it('refuses a frame whose DIB height is neither its own nor twice it', () => {
-		const bytes = Buffer.from(shipped('code.ico'));
-		const offset = bytes.readUInt32LE(6 + 12);
-		bytes.writeInt32LE(17, offset + 8);
-		let code = 'none';
-		try {
-			decodeIcoFrames(bytes);
-		} catch (error) {
-			code = isCkError(error) ? error.code : 'other';
-		}
-		expect(code).toBe('ARTIFACT-BROKEN');
-	});
-});
 
 describe('the metric', () => {
 	it('averages the three RGB channels and leaves alpha out of it', () => {

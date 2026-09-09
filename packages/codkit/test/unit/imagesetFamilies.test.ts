@@ -131,7 +131,7 @@ describe('seeding the whole surface', () => {
 	it('seeds one master per drawing, into the family directory', () => {
 		const { tree, targets } = extendedTree('families-seed');
 		const brandingDir = join(makeTempRoot('families-seed-branding'), 'branding');
-		const seeded = seedMasters(brandingDir, tree.dir, targets);
+		const seeded = seedMasters(vscodeType, brandingDir, tree.dir, targets);
 		const files = seeded.map((seed) => seed.file).sort();
 		expect(files).toContain('filetype/json.png');
 		expect(files).toContain('filetype/yaml.png');
@@ -146,7 +146,7 @@ describe('seeding the whole surface', () => {
 	it('seeds a vector family as a vector, verbatim', () => {
 		const { tree, targets } = extendedTree('families-seed-vector');
 		const brandingDir = join(makeTempRoot('families-seed-vector-branding'), 'branding');
-		const seeded = seedMasters(brandingDir, tree.dir, targets);
+		const seeded = seedMasters(vscodeType, brandingDir, tree.dir, targets);
 		expect(seeded.map((seed) => seed.file)).toContain('letterpress/dark.svg');
 		expect(readFileSync(inBranding(brandingDir, 'letterpress/dark.svg'))).toEqual(
 			readFileSync(join(tree.dir, 'src', 'vs', 'workbench', 'browser', 'parts', 'editor', 'media', 'letterpress-dark.svg'))

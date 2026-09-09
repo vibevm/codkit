@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildImagesetIndex, indexData, renderImagesetIndex } from '../../src/lib/imagesetIndex.ts';
 import type { ImagesetIndex } from '../../src/lib/imagesetIndex.ts';
-import { encodePng } from '../../src/lib/imagesetPng.ts';
+import { encodePng } from '@codkit/type-api';
 import { seedMasters } from '../../src/lib/imagesetMasters.ts';
 import { discoverTargets } from '../../src/lib/imagesetTargets.ts';
 import { makeImagesetTree } from '../support/imagesetFixture.ts';
@@ -61,6 +61,7 @@ describe('imageset index after seeding', () => {
 	it('reports every size as generated from the seeded base master', () => {
 		const index = indexOf('index-seeded', (brandingDir, treeDir) => {
 			seedMasters(
+				vscodeType,
 				brandingDir,
 				treeDir,
 				discoverTargets(vscodeType, treeDir, () => {})
@@ -83,6 +84,7 @@ describe('imageset index with a hand-made per-size master', () => {
 	it('flips exactly the one size that gained a master, and no other line', () => {
 		const seed = (brandingDir: string, treeDir: string) => {
 			seedMasters(
+				vscodeType,
 				brandingDir,
 				treeDir,
 				discoverTargets(vscodeType, treeDir, () => {})
@@ -104,6 +106,7 @@ describe('imageset index with a hand-made per-size master', () => {
 	it('names a file the convention does not know instead of silently ignoring it', () => {
 		const index = indexOf('index-ignored', (brandingDir, treeDir) => {
 			seedMasters(
+				vscodeType,
 				brandingDir,
 				treeDir,
 				discoverTargets(vscodeType, treeDir, () => {})
@@ -119,6 +122,7 @@ describe('one model, two renderings', () => {
 	it('carries the same per-size source in the envelope and in the Markdown table', () => {
 		const index = indexOf('index-model', (brandingDir, treeDir) => {
 			seedMasters(
+				vscodeType,
 				brandingDir,
 				treeDir,
 				discoverTargets(vscodeType, treeDir, () => {})

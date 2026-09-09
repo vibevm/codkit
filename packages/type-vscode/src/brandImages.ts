@@ -12,13 +12,11 @@
 // and the masters folder, the ARTWORK is which drawing inside that family the
 // target wants.
 //
-// The codecs below carry their data half only; the container behaviour still
-// lives in the engine's `imageset*.ts` and moves in phase P2-3 (`deferred.ts`).
+// The containers themselves live in `imageset/`: the engine looks a codec up by
+// the `kind` of a target and never names a container of its own accord.
 
-import type { BrandImagesArea, ImageCodec, ImageTargetPattern } from '@codkit/type-api';
-import { notAnsweredHereYet } from './deferred.ts';
-
-const ENGINE_MODULE = 'lib/imageset*.ts';
+import type { BrandImagesArea, ImageTargetPattern } from '@codkit/type-api';
+import { codecs } from './imageset/codecs.ts';
 
 /**
  * ##DECISION-IMAGESET-ROLE-TABLE: the role of every target - where a person
@@ -125,34 +123,6 @@ export const targets: readonly ImageTargetPattern[] = [
 	}
 ];
 
-/**
- * The containers this family stores its brand images in. `layered` is the one
- * question the engine already asks a codec: such a container holds several
- * drawings of one image at several sizes, so a guard compares it frame by frame
- * rather than as one picture.
- */
-function dataOnlyCodec(kind: string, extension: string, layered: boolean): ImageCodec {
-	const what = `the ${kind} codec`;
-	return {
-		kind,
-		extension,
-		layered,
-		parse: () => notAnsweredHereYet(what, ENGINE_MODULE),
-		legacyTypes: () => notAnsweredHereYet(what, ENGINE_MODULE),
-		extract: () => notAnsweredHereYet(what, ENGINE_MODULE),
-		encode: () => notAnsweredHereYet(what, ENGINE_MODULE)
-	};
-}
-
-export const codecs: readonly ImageCodec[] = [
-	dataOnlyCodec('ico', '.ico', true),
-	dataOnlyCodec('icns', '.icns', true),
-	dataOnlyCodec('png', '.png', false),
-	dataOnlyCodec('bmp', '.bmp', false),
-	dataOnlyCodec('xpm', '.xpm', false),
-	dataOnlyCodec('svg', '.svg', false)
-];
-
 /** ##IMAGESET-ARTWORK: one line per family, for the help of the `imageset` verbs. */
 export const familyNotes: readonly string[] = [
 	'icon: the application icon in .ico, .icns, .png and .xpm, the Start tiles and the web client icons',
@@ -162,3 +132,5 @@ export const familyNotes: readonly string[] = [
 ];
 
 export const brandImages: BrandImagesArea = { targets, codecs, familyNotes };
+
+export { codecs };

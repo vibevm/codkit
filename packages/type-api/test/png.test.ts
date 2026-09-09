@@ -1,21 +1,25 @@
-// imageset PNG codec: round trip, the palette path of the distribution's own
-// linux icon, and the refusals (PROP-007 ##IMAGESET-CONTAINERS).
+// The PNG interchange of the contract: round trip, the palette path a real
+// distribution icon takes, and the refusals (PROP-007 ##IMAGESET-CONTAINERS).
+//
+// Both fixtures are icon files of the shape a distribution ships - a
+// palette-with-tRNS one and a plain one - so the decoder is proved against
+// bytes written by an encoder that shares no code with it.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { decodePng, encodePng, isPng, pngSize, rgba } from '../../src/lib/imagesetPng.ts';
-import { isCkError } from '../../src/lib/messages.ts';
+import { decodePng, encodePng, isPng, pngSize, rgba } from '../src/png.ts';
+import { isBrokenArtifact } from '../src/refusal.ts';
 
-const fixtureRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'imageset');
+const fixtureRoot = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 
-function failure(run: () => unknown): { code: string } {
+function refusal(run: () => unknown): { message: string; hint: string } {
 	try {
 		run();
 	} catch (error) {
-		if (isCkError(error)) {
-			return { code: error.code };
+		if (isBrokenArtifact(error)) {
+			return { message: error.message, hint: error.hint };
 		}
 		throw error;
 	}
@@ -42,8 +46,8 @@ describe('encodePng and decodePng', () => {
 		expect(Buffer.from(encodePng(image)).equals(Buffer.from(encodePng(image)))).toBe(true);
 	});
 
-	it('decodes the palette PNG the fixture ships as the distribution linux icon', () => {
-		const image = decodePng(readFileSync(join(fixtureRoot, 'code.png')));
+	it('decodes a palette PNG of the shape a distribution ships as its linux icon', () => {
+		const image = decodePng(readFileSync(join(fixtureRoot, 'palette.png')));
 		expect(image.width).toBe(64);
 		expect(image.height).toBe(64);
 		expect(image.data.length).toBe(64 * 64 * 4);
@@ -51,7 +55,7 @@ describe('encodePng and decodePng', () => {
 	});
 
 	it('decodes tRNS transparency of a palette image', () => {
-		const image = decodePng(readFileSync(join(fixtureRoot, 'code.png')));
+		const image = decodePng(readFileSync(join(fixtureRoot, 'palette.png')));
 		let transparent = 0;
 		for (let at = 3; at < image.data.length; at += 4) {
 			if (image.data[at] === 0) {
@@ -63,7 +67,7 @@ describe('encodePng and decodePng', () => {
 	});
 
 	it('reads header dimensions without decoding pixels', () => {
-		const size = pngSize(readFileSync(join(fixtureRoot, 'code_70x70.png')));
+		const size = pngSize(readFileSync(join(fixtureRoot, 'tile-70x70.png')));
 		expect(size).toEqual({ width: 70, height: 70 });
 	});
 
@@ -71,12 +75,13 @@ describe('encodePng and decodePng', () => {
 		const image = rgba(2, 2, [1, 2, 3, 255]);
 		const png = encodePng(image);
 		png[28] = 1; // interlace byte of IHDR
-		const verdict = failure(() => decodePng(png));
-		expect(verdict.code).toBe('ARTIFACT-BROKEN');
+		const verdict = refusal(() => decodePng(png));
+		expect(verdict.message).toMatch(/interlac/i);
+		expect(verdict.hint.length).toBeGreaterThan(0);
 	});
 
 	it('recognises the signature', () => {
-		expect(isPng(readFileSync(join(fixtureRoot, 'code.png')))).toBe(true);
+		expect(isPng(readFileSync(join(fixtureRoot, 'palette.png')))).toBe(true);
 		expect(isPng(new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8]))).toBe(false);
 	});
 });

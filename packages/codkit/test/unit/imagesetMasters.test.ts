@@ -63,7 +63,7 @@ describe('seedMasters', () => {
 		const tree = makeImagesetTree('masters-seed');
 		const targets = discoverTargets(vscodeType, tree.dir, () => {});
 		const brandingDir = join(makeTempRoot('masters-seed-branding'), 'branding');
-		const seeded = seedMasters(brandingDir, tree.dir, targets);
+		const seeded = seedMasters(vscodeType, brandingDir, tree.dir, targets);
 		expect(existsSync(brandingDir)).toBe(true);
 		const byFile = new Map(seeded.map((seed) => [seed.file, seed]));
 		// The largest icon raster the fixture tree offers is the 128x128 ic07
@@ -83,7 +83,7 @@ describe('seedMasters', () => {
 		const brandingDir = join(makeTempRoot('masters-exists-branding'), 'branding');
 		mkdirSync(brandingDir, { recursive: true });
 		writeFileSync(join(brandingDir, 'keep-me'), 'operator content');
-		expect(seedMasters(brandingDir, tree.dir, targets)).toEqual([]);
+		expect(seedMasters(vscodeType, brandingDir, tree.dir, targets)).toEqual([]);
 		expect(readFileSync(join(brandingDir, 'keep-me'), 'utf8')).toBe('operator content');
 	});
 
@@ -91,7 +91,7 @@ describe('seedMasters', () => {
 		const tree = makeImagesetTree('masters-dry');
 		const targets = discoverTargets(vscodeType, tree.dir, () => {});
 		const brandingDir = join(makeTempRoot('masters-dry-branding'), 'branding');
-		const seeded = seedMasters(brandingDir, tree.dir, targets, true);
+		const seeded = seedMasters(vscodeType, brandingDir, tree.dir, targets, true);
 		expect(seeded.length).toBeGreaterThan(0);
 		expect(existsSync(brandingDir)).toBe(false);
 	});

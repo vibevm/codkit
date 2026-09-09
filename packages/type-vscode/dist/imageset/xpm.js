@@ -6,12 +6,12 @@
 // keeps the small palette it deserves; quantisation fills in only when the
 // master really has more colours. Parsing reads the header - the RPM icon's
 // dimensions and palette size are discovered from the shipped file.
-import { ckError } from './messages.js';
-import { nearestPaletteIndex, quantisePalette } from './imagesetRaster.js';
+import { brokenArtifact } from '@codkit/type-api';
+import { nearestPaletteIndex, quantisePalette } from './palette.js';
 /** Printable ASCII minus the two characters XPM strings cannot carry. */
 const CODE_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_{|}~';
 function broken(message, hint) {
-    return ckError('ARTIFACT-BROKEN', `XPM: ${message}`, hint);
+    return brokenArtifact(`XPM: ${message}`, hint);
 }
 /** Read the header of an XPM3 file: dimensions, palette size, code width. */
 export function parseXpm(text) {

@@ -11,10 +11,9 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
-import { encodeIcns } from '../../src/lib/imagesetIcns.ts';
-import { encodeIco } from '../../src/lib/imagesetIco.ts';
-import { encodePng, rgba } from '../../src/lib/imagesetPng.ts';
-import type { Rgba } from '../../src/lib/imagesetPng.ts';
+import { rgba } from '@codkit/type-api';
+import type { Rgba } from '@codkit/type-api';
+import { containerOf, namedFrame, sizedFrame } from '../support/imagesetCodecs.ts';
 import { resizeRgba } from '../../src/lib/imagesetRaster.ts';
 import { runCli } from '../support/cliFixture.ts';
 import { makeImagesetPatchSet, makeImagesetTree } from '../support/imagesetFixture.ts';
@@ -58,27 +57,35 @@ const master = block(512, [20, 120, 190]);
 
 /** An .icns whose 128 element is a downsize of its own 512 one. */
 function faithfulIcns(): Uint8Array {
-	return encodeIcns([
-		{ type: 'ic09', png: encodePng(master) },
-		{ type: 'ic13', png: encodePng(resizeRgba(master, 256, 256)) },
-		{ type: 'ic07', png: encodePng(resizeRgba(master, 128, 128)) }
+	return icnsOf([
+		['ic09', master],
+		['ic13', resizeRgba(master, 256, 256)],
+		['ic07', resizeRgba(master, 128, 128)]
 	]);
 }
 
 /** The same file with a different drawing at 128: what the gate is for. */
 function wrongIcns(): Uint8Array {
-	return encodeIcns([
-		{ type: 'ic09', png: encodePng(master) },
-		{ type: 'ic13', png: encodePng(resizeRgba(master, 256, 256)) },
-		{ type: 'ic07', png: encodePng(block(128, [240, 30, 10])) }
+	return icnsOf([
+		['ic09', master],
+		['ic13', resizeRgba(master, 256, 256)],
+		['ic07', block(128, [240, 30, 10])]
 	]);
 }
 
+function icnsOf(elements: readonly (readonly [string, Rgba])[]): Uint8Array {
+	return containerOf(
+		'icns',
+		elements.map(([type, image]) => ({ frame: namedFrame(type, image), image }))
+	);
+}
+
 function faithfulIco(): Uint8Array {
-	const frame = block(256, [20, 120, 190]);
-	return encodeIco([
-		{ width: 256, height: 256, png: encodePng(frame) },
-		{ width: 128, height: 128, png: encodePng(resizeRgba(frame, 128, 128)) }
+	const drawing = block(256, [20, 120, 190]);
+	const small = resizeRgba(drawing, 128, 128);
+	return containerOf('ico', [
+		{ frame: sizedFrame(drawing), image: drawing },
+		{ frame: sizedFrame(small), image: small }
 	]);
 }
 

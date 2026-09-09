@@ -1,8 +1,8 @@
 // Fixture pair for the imageset tests: a miniature fork tree whose commits
-// carry a "shipped icon set" of a distribution (the committed binaries under
-// test/fixtures/imageset, produced by generate.mjs), and a patchset that could
-// not be smaller: config, owners, one own unit whose test file declares the
-// guard suites new resource entries need.
+// carry a "shipped icon set" of a distribution (the committed binaries of the
+// type package, under its test/fixtures/imageset and produced by its
+// generate.mjs), and a patchset that could not be smaller: config, owners, one
+// own unit whose test file declares the guard suites new resource entries need.
 
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { makeTempRoot } from './tmp.ts';
 
-const fixtureRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'imageset');
+const fixtureRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'type-vscode', 'test', 'fixtures', 'imageset');
 
 /** Tree-relative path -> fixture file name of every shipped icon. */
 export const SHIPPED_ICONS: ReadonlyMap<string, string> = new Map([

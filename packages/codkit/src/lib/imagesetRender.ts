@@ -6,8 +6,8 @@
 
 import { createRequire } from 'node:module';
 import { ckError } from './messages.ts';
-import type { Rgba } from './imagesetPng.ts';
-import { decodePng, encodePng } from './imagesetPng.ts';
+import { decodePng, encodePng, isBrokenArtifact } from '@codkit/type-api';
+import type { Rgba } from '@codkit/type-api';
 import { resizeRgba } from './imagesetRaster.ts';
 
 /** The module is a native optional dependency; one resolution is enough. */
@@ -53,7 +53,7 @@ export function renderSvgToRgba(svg: string, width: number, height: number): { i
 		const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: width } });
 		rendered = decodePng(resvg.render().asPng());
 	} catch (error) {
-		if (!(error instanceof Error) || error.name !== 'CkError') {
+		if (!(error instanceof Error) || (error.name !== 'CkError' && !isBrokenArtifact(error))) {
 			throw ckError(
 				'ARTIFACT-BROKEN',
 				`the SVG master does not rasterise: ${error instanceof Error ? error.message : String(error)}`,

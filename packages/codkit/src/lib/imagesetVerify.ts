@@ -23,19 +23,14 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { decodeIcnsElements, encodeIcns } from './imagesetIcns.ts';
-import { decodeIcoFrames, encodeIco } from './imagesetIco.ts';
-import { encodePng } from './imagesetPng.ts';
-import type { Rgba } from './imagesetPng.ts';
+import { decodePng, encodePng } from '@codkit/type-api';
+import type { ImageCodec, ImageFrame, ProjectType, Rgba } from '@codkit/type-api';
+import { articleFor, codecFor, readingImage } from './imagesetCodec.ts';
 import { resizeRgba } from './imagesetRaster.ts';
 import type { DiscoveredTarget, TargetKind } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
 import type { JsonValue } from './jsonOut.ts';
 import { ckError } from './messages.ts';
-import type { ProjectType } from '@codkit/type-api';
-
-/** The two containers that carry more than one layer, and so a round trip. */
-const LAYERED: ReadonlySet<TargetKind> = new Set<TargetKind>(['ico', 'icns']);
 
 /**
  * The acceptance bands, in the words of the decision that set them: at 256
@@ -135,7 +130,9 @@ export function verifyImageset(options: {
 	readonly brandingDir: string;
 	readonly onReport: (text: string) => void;
 }): ImagesetVerification {
-	const targets = discoverTargets(options.type, options.treeDir, options.onReport).map((target) => verifyTarget(options.treeDir, target));
+	const targets = discoverTargets(options.type, options.treeDir, options.onReport).map((target) =>
+		verifyTarget(options.type, options.treeDir, target)
+	);
 	return { treeDir: options.treeDir, brandingDir: options.brandingDir, targets, totals: totalsOf(targets) };
 }
 
@@ -182,17 +179,29 @@ function totalsOf(targets: readonly VerifiedTarget[]): VerificationTotals {
 }
 
 /** One layer of one container file, decoded. This is the only way in. */
-type Layer = { readonly label: string; readonly type: string | null; readonly image: Rgba };
+type Layer = { readonly label: string; readonly frame: ImageFrame; readonly type: string | null; readonly image: Rgba };
 
 /**
- * The layers of one file. The bytes are the only input, so nothing outside
- * this file can become the master of its round trip.
+ * The layers of one file, through the codec of its container. The bytes are the
+ * only input, so nothing outside this file can become the master of its round
+ * trip - and the engine learns what a layer is without naming the container.
  */
-function layersOf(kind: TargetKind, bytes: Uint8Array): readonly Layer[] {
-	if (kind === 'ico') {
-		return decodeIcoFrames(bytes).map((frame) => ({ label: `${frame.width}x${frame.height}`, type: null, image: frame.image }));
-	}
-	return decodeIcnsElements(bytes).map((element) => ({ label: element.type, type: element.type, image: element.image }));
+function layersOf(codec: ImageCodec, file: string, bytes: Uint8Array): readonly Layer[] {
+	return readingImage(file, () => {
+		const frames = codec.parse(bytes);
+		const payloads = codec.extract(bytes);
+		return frames.map((frame, index) => {
+			const png = payloads[index] ?? null;
+			if (png === null) {
+				throw ckError(
+					'ARTIFACT-BROKEN',
+					`${file}: the container carries a layer it cannot give back as a picture`,
+					'a layered container must return the payload of every frame it declares'
+				);
+			}
+			return { label: frame.type ?? `${frame.width}x${frame.height}`, frame, type: frame.type, image: decodePng(png) };
+		});
+	});
 }
 
 /** The structural signature of a container: layers, sizes, in file order. */
@@ -201,7 +210,8 @@ function signatureOf(kind: TargetKind, layers: readonly Layer[]): string {
 	return `${kind.toUpperCase()} ${parts.join(' ')}`;
 }
 
-function verifyTarget(treeDir: string, target: DiscoveredTarget): VerifiedTarget {
+function verifyTarget(type: ProjectType, treeDir: string, target: DiscoveredTarget): VerifiedTarget {
+	const codec = codecFor(type, target.kind);
 	const base = {
 		target: target.target,
 		family: target.family,
@@ -218,13 +228,13 @@ function verifyTarget(treeDir: string, target: DiscoveredTarget): VerifiedTarget
 		structure: null,
 		layers: []
 	});
-	if (!LAYERED.has(target.kind)) {
+	if (!codec.layered) {
 		return unverifiable(
-			`${article(target.kind)} ${target.kind.toUpperCase()} target carries exactly one layer, so no layer of it can be regenerated from another`
+			`${articleFor(target.kind)} ${target.kind.toUpperCase()} target carries exactly one layer, so no layer of it can be regenerated from another`
 		);
 	}
 	const bytes = readFileSync(join(treeDir, ...target.target.split('/')));
-	const shipped = layersOf(target.kind, bytes);
+	const shipped = layersOf(codec, target.target, bytes);
 	if (shipped.length < 2) {
 		return unverifiable(
 			`the shipped file carries a single layer (${shipped[0]?.label ?? 'none'}), so there is nothing to regenerate it from`
@@ -238,7 +248,7 @@ function verifyTarget(treeDir: string, target: DiscoveredTarget): VerifiedTarget
 	// The regenerated container is decoded back out of its own bytes, so the
 	// comparison runs against what the encoder really wrote and not against the
 	// buffer that went into it.
-	const regenerated = layersOf(target.kind, regenerate(target.kind, shipped, master));
+	const regenerated = layersOf(codec, target.target, regenerate(codec, target, shipped, master));
 	const shippedSignature = signatureOf(target.kind, shipped);
 	const regeneratedSignature = signatureOf(target.kind, regenerated);
 	const structure: VerifiedStructure = {
@@ -257,26 +267,12 @@ function verifyTarget(treeDir: string, target: DiscoveredTarget): VerifiedTarget
  * container encoder. The master layer keeps its own pixels - it is the source
  * of the round trip, not a result of it.
  */
-function regenerate(kind: TargetKind, shipped: readonly Layer[], master: Layer): Uint8Array {
-	const images = shipped.map((layer) =>
-		layer === master ? master.image : resizeRgba(master.image, layer.image.width, layer.image.height)
-	);
-	if (kind === 'ico') {
-		return encodeIco(images.map((image) => ({ width: image.width, height: image.height, png: encodePng(image) })));
-	}
-	return encodeIcns(
-		images.map((image, index) => {
-			const type = shipped[index]?.type;
-			if (type === undefined || type === null) {
-				throw ckError(
-					'ARTIFACT-BROKEN',
-					'ICNS: an element reached regeneration without its type',
-					'the target must be an intact .icns file'
-				);
-			}
-			return { type, png: encodePng(image) };
-		})
-	);
+function regenerate(codec: ImageCodec, target: DiscoveredTarget, shipped: readonly Layer[], master: Layer): Uint8Array {
+	const payloads = shipped.map((layer) => ({
+		frame: layer.frame,
+		png: encodePng(layer === master ? master.image : resizeRgba(master.image, layer.image.width, layer.image.height))
+	}));
+	return readingImage(target.target, () => codec.encode(payloads, target.stem));
 }
 
 function compareLayer(shipped: Layer, regenerated: Layer | null, structureMatches: boolean): VerifiedLayer {
@@ -320,11 +316,6 @@ export function meanAbsoluteRgbDifference(left: Rgba, right: Rgba): number {
 		sum += Math.abs((left.data[at + 2] ?? 0) - (right.data[at + 2] ?? 0));
 	}
 	return sum / (left.width * left.height * 3);
-}
-
-/** The article a container name takes when it is read out letter by letter. */
-function article(kind: TargetKind): string {
-	return kind === 'png' || kind === 'bmp' ? 'a' : 'an';
 }
 
 function area(image: Rgba): number {

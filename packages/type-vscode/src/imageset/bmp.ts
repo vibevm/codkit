@@ -5,9 +5,8 @@
 // only the header - the width and height the distribution ships at every scale
 // step are the target, and they are discovered from the files.
 
-import { ckError } from './messages.ts';
-import type { Rgba } from './imagesetPng.ts';
-import { rgba } from './imagesetPng.ts';
+import { brokenArtifact, rgba } from '@codkit/type-api';
+import type { Rgba } from '@codkit/type-api';
 
 export type BmpStructure = {
 	readonly width: number;
@@ -16,7 +15,7 @@ export type BmpStructure = {
 };
 
 function broken(message: string, hint: string): Error {
-	return ckError('ARTIFACT-BROKEN', `BMP: ${message}`, hint);
+	return brokenArtifact(`BMP: ${message}`, hint);
 }
 
 /** Read width, height and depth from a 'BM' file with a BITMAPINFOHEADER. */

@@ -10,8 +10,7 @@
 // list, the pre-OS-X families) cannot hold a PNG and are reported as legacy
 // rather than silently dropped: the honest structure of a regenerated file is
 // the ordered list of PNG-capable elements the distribution shipped.
-import { decodePng, isPng } from './imagesetPng.js';
-import { ckError } from './messages.js';
+import { brokenArtifact, decodePng, isPng } from '@codkit/type-api';
 /** The eight element types whose payload is a PNG, at their fixed dimensions. */
 export const ICNS_PNG_TYPES = new Map([
     ['ic07', { width: 128, height: 128 }],
@@ -30,7 +29,7 @@ const ICNS_LEGACY_DIMENSIONS = new Map([
 ]);
 const ICNS_HEADER = 8;
 function broken(message, hint) {
-    return ckError('ARTIFACT-BROKEN', `ICNS: ${message}`, hint);
+    return brokenArtifact(`ICNS: ${message}`, hint);
 }
 /** Read the element list of an .icns in file order, with sizes when known. */
 export function parseIcns(bytes) {
@@ -49,12 +48,14 @@ export function parseIcns(bytes) {
     };
 }
 /**
- * Decode the PNG-capable elements to RGBA, in file order. The legacy elements
+ * The payload of every PNG-capable element, in file order. The legacy elements
  * are skipped for the same reason the encoder does not write them: they are
- * not PNG payloads and codkit does not reproduce them (##IMAGESET-CONTAINERS).
+ * not PNG payloads and this codec does not reproduce them
+ * (##IMAGESET-CONTAINERS). Nothing is re-encoded: the bytes are the ones the
+ * distribution shipped.
  */
-export function decodeIcnsElements(bytes) {
-    const images = [];
+export function icnsElementPayloads(bytes) {
+    const found = [];
     for (const { type, payload } of payloads(bytes)) {
         if (!ICNS_PNG_TYPES.has(type)) {
             continue;
@@ -62,9 +63,9 @@ export function decodeIcnsElements(bytes) {
         if (!isPng(payload)) {
             throw broken(`element ${type} is a PNG-capable type carrying something that is not a PNG`, 'the target must be an intact .icns file');
         }
-        images.push({ type, image: decodePng(payload) });
+        found.push({ type, png: Uint8Array.from(payload) });
     }
-    return images;
+    return found;
 }
 /** Walk the elements once, validating the file: both readers go through here. */
 function payloads(bytes) {

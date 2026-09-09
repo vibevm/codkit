@@ -7,10 +7,10 @@
 // master really has more colours. Parsing reads the header - the RPM icon's
 // dimensions and palette size are discovered from the shipped file.
 
-import { ckError } from './messages.ts';
-import type { Rgba } from './imagesetPng.ts';
-import { nearestPaletteIndex, quantisePalette } from './imagesetRaster.ts';
-import type { PaletteColor } from './imagesetRaster.ts';
+import { brokenArtifact } from '@codkit/type-api';
+import type { Rgba } from '@codkit/type-api';
+import { nearestPaletteIndex, quantisePalette } from './palette.ts';
+import type { PaletteColor } from './palette.ts';
 
 export type XpmStructure = {
 	readonly width: number;
@@ -23,7 +23,7 @@ export type XpmStructure = {
 const CODE_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_{|}~';
 
 function broken(message: string, hint: string): Error {
-	return ckError('ARTIFACT-BROKEN', `XPM: ${message}`, hint);
+	return brokenArtifact(`XPM: ${message}`, hint);
 }
 
 /** Read the header of an XPM3 file: dimensions, palette size, code width. */

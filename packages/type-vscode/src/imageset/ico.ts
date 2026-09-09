@@ -16,10 +16,9 @@
 // payload. decodeIcoFrames covers both, so the round trip of ##IMAGESET-VERIFY
 // can compare a regenerated layer against the layer the distribution ships.
 
-import { decodeBmp } from './imagesetBmp.ts';
-import { decodePng, isPng } from './imagesetPng.ts';
-import type { Rgba } from './imagesetPng.ts';
-import { ckError } from './messages.ts';
+import { decodeBmp } from './bmp.ts';
+import { brokenArtifact, decodePng, encodePng, isPng } from '@codkit/type-api';
+import type { Rgba } from '@codkit/type-api';
 
 export type IcoFrame = {
 	/** Frame size in pixels; 256 is the value the directory stores as zero. */
@@ -31,11 +30,16 @@ export type IcoStructure = {
 	readonly frames: readonly IcoFrame[];
 };
 
-/** One decoded frame: its directory size and the pixels it actually carries. */
-export type IcoFrameImage = {
+/** One frame given back as a picture: its directory size and its PNG bytes. */
+export type IcoFramePayload = {
 	readonly width: number;
 	readonly height: number;
-	readonly image: Rgba;
+	/**
+	 * The frame as PNG bytes. A frame the distribution already stores as a PNG
+	 * is handed back verbatim; a raw DIB frame is encoded into one, because the
+	 * engine and every other codec speak PNG and nothing else.
+	 */
+	readonly png: Uint8Array;
 };
 
 /** The DIB header a raw frame carries in place of a PNG signature. */
@@ -48,7 +52,7 @@ const ICO_DIRECTORY_ENTRY = 16;
 const ICO_HEADER = 6;
 
 function broken(message: string, hint: string): Error {
-	return ckError('ARTIFACT-BROKEN', `ICO: ${message}`, hint);
+	return brokenArtifact(`ICO: ${message}`, hint);
 }
 
 /** Read the frame list of an .ico: sizes in directory order, 0 meaning 256. */
@@ -57,22 +61,23 @@ export function parseIco(bytes: Uint8Array): IcoStructure {
 }
 
 /**
- * Decode every frame to RGBA, in directory order. Both payload forms are
- * covered because the distribution ships both in one file, and a comparison
- * that could only read the PNG one would silently skip the small frames -
- * exactly the sizes where a regenerated layer differs most.
+ * Every frame as PNG bytes, in directory order. Both payload forms are covered
+ * because the distribution ships both in one file, and a reader that could only
+ * take the PNG one would silently skip the small frames - exactly the sizes
+ * where a regenerated layer differs most.
  */
-export function decodeIcoFrames(bytes: Uint8Array): readonly IcoFrameImage[] {
+export function icoFramePayloads(bytes: Uint8Array): readonly IcoFramePayload[] {
 	return directory(bytes).map((entry) => {
 		const payload = bytes.subarray(entry.offset, entry.offset + entry.length);
-		const image = isPng(payload) ? decodePng(payload) : decodeIcoDib(payload, entry.width, entry.height);
+		const stored = isPng(payload);
+		const image = stored ? decodePng(payload) : decodeIcoDib(payload, entry.width, entry.height);
 		if (image.width !== entry.width || image.height !== entry.height) {
 			throw broken(
 				`the directory announces a ${entry.width}x${entry.height} frame whose payload is ${image.width}x${image.height}`,
 				'the target must be an intact .ico file'
 			);
 		}
-		return { width: entry.width, height: entry.height, image };
+		return { width: entry.width, height: entry.height, png: stored ? Uint8Array.from(payload) : encodePng(image) };
 	});
 }
 

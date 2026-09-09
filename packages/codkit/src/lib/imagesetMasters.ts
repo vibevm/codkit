@@ -20,12 +20,10 @@
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { decodeBmp } from './imagesetBmp.ts';
-import { encodePng, isPng } from './imagesetPng.ts';
+import type { ProjectType } from '@codkit/type-api';
+import { codecFor, readingImage } from './imagesetCodec.ts';
 import type { DiscoveredTarget } from './imagesetTargets.ts';
 import { artworkKey } from './imagesetTargets.ts';
-
-type RasterSource = { width: number; height: number; bytes: Uint8Array };
 
 /** Where masters live when the operator did not say otherwise. */
 export function defaultBrandingDir(patchesDir: string): string {
@@ -134,7 +132,7 @@ type SeedCandidate = {
 	readonly width: number;
 	readonly height: number;
 	/** File extension the seed is written with: a vector stays a vector. */
-	readonly extension: 'png' | 'svg';
+	readonly extension: string;
 };
 
 /**
@@ -144,6 +142,7 @@ type SeedCandidate = {
  * the plan is computed and reported, but nothing is created.
  */
 export function seedMasters(
+	type: ProjectType,
 	brandingDir: string,
 	treeDir: string,
 	targets: readonly DiscoveredTarget[],
@@ -159,7 +158,7 @@ export function seedMasters(
 	}
 	const seeds: { file: string; seed: SeedCandidate }[] = [];
 	for (const key of [...byKey.keys()].sort()) {
-		const candidates = (byKey.get(key) ?? []).flatMap((target) => seedCandidatesOf(treeDir, target));
+		const candidates = (byKey.get(key) ?? []).flatMap((target) => seedCandidatesOf(type, treeDir, target));
 		// Largest wins: the master is downsampled to every other size, so the
 		// most detail available in the tree is the honest starting point.
 		candidates.sort((left, right) => right.width * right.height - left.width * left.height);
@@ -183,72 +182,39 @@ export function seedMasters(
 }
 
 /**
- * What one target can contribute as a seed. A container codkit can only write
- * and not read back - .ico frames and .xpm palettes - contributes nothing,
- * which is why the icon family seeds from the PNG and ICNS targets it also
- * carries rather than from the .ico.
+ * What one target can contribute as a seed: the picture of each of its frames,
+ * as the codec of its container gives it back. A container that does not give
+ * the drawing back the way it was drawn contributes nothing, which is why the
+ * icon family seeds from the targets that hold its largest faithful copy rather
+ * than from every file that carries the mark.
  */
-function seedCandidatesOf(treeDir: string, target: DiscoveredTarget): SeedCandidate[] {
-	const absolute = join(treeDir, ...target.target.split('/'));
-	const frame = target.frames[0];
-	if (target.kind === 'png' && frame !== undefined) {
-		return [
-			{ from: target.target, bytes: Uint8Array.from(readFileSync(absolute)), width: frame.width, height: frame.height, extension: 'png' }
-		];
+function seedCandidatesOf(type: ProjectType, treeDir: string, target: DiscoveredTarget): SeedCandidate[] {
+	const codec = codecFor(type, target.kind);
+	if (!codec.seedsMasters) {
+		return [];
 	}
-	if (target.kind === 'svg' && frame !== undefined) {
-		return [
-			{ from: target.target, bytes: Uint8Array.from(readFileSync(absolute)), width: frame.width, height: frame.height, extension: 'svg' }
-		];
+	const bytes = Uint8Array.from(readFileSync(join(treeDir, ...target.target.split('/'))));
+	const extension = codec.extension.replace(/^\./u, '');
+	if (codec.vector) {
+		// The master of a vector target IS the artifact, so the seed is the file.
+		const frame = target.frames[0];
+		return frame === undefined ? [] : [{ from: target.target, bytes, width: frame.width, height: frame.height, extension }];
 	}
-	if (target.kind === 'bmp' && frame !== undefined) {
-		const image = decodeBmp(readFileSync(absolute));
-		return [{ from: target.target, bytes: encodePng(image), width: image.width, height: image.height, extension: 'png' }];
-	}
-	if (target.kind === 'icns') {
-		const largest = largestIcnsPng(treeDir, target);
-		return largest === null
-			? []
-			: [
-					{
-						from: `${target.target} (${largest.width}x${largest.height} element)`,
-						bytes: largest.bytes,
-						width: largest.width,
-						height: largest.height,
-						extension: 'png'
-					}
-				];
-	}
-	return [];
-}
-
-/**
- * Extract the largest PNG payload of an .icns target, or null when the file
- * carries none. The payload is already a PNG; it is written out verbatim.
- */
-export function largestIcnsPng(treeDir: string, target: DiscoveredTarget): RasterSource | null {
-	const bytes = readFileSync(join(treeDir, ...target.target.split('/')));
-	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-	let at = 8;
-	let best: RasterSource | null = null;
-	while (at + 8 <= bytes.length) {
-		const length = view.getUint32(at + 4);
-		const payload = bytes.subarray(at + 8, at + length);
-		if (isPng(payload)) {
-			const size = pngDimensionsOf(payload);
-			if (size !== null && (best === null || size.width * size.height > best.width * best.height)) {
-				best = { width: size.width, height: size.height, bytes: Uint8Array.from(payload) };
-			}
+	const payloads = readingImage(target.target, () => codec.extract(bytes));
+	const candidates: SeedCandidate[] = [];
+	target.frames.forEach((frame, index) => {
+		const png = payloads[index] ?? null;
+		if (png === null) {
+			return;
 		}
-		at += length;
-	}
-	return best;
-}
-
-function pngDimensionsOf(bytes: Uint8Array): { width: number; height: number } | null {
-	if (bytes.length < 24) {
-		return null;
-	}
-	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-	return { width: view.getUint32(16), height: view.getUint32(20) };
+		candidates.push({
+			// A container that carries several frames says which one was taken.
+			from: codec.layered ? `${target.target} (${frame.width}x${frame.height} element)` : target.target,
+			bytes: png,
+			width: frame.width,
+			height: frame.height,
+			extension: 'png'
+		});
+	});
+	return candidates;
 }

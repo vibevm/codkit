@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
-import { encodePng } from '../../src/lib/imagesetPng.ts';
+import { encodePng } from '@codkit/type-api';
 import { runCli } from '../support/cliFixture.ts';
 import { makeImagesetPatchSet, makeImagesetTree } from '../support/imagesetFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';

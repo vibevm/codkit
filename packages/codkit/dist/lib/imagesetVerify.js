@@ -22,14 +22,11 @@
 // a measured number.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { decodeIcnsElements, encodeIcns } from './imagesetIcns.js';
-import { decodeIcoFrames, encodeIco } from './imagesetIco.js';
-import { encodePng } from './imagesetPng.js';
+import { decodePng, encodePng } from '@codkit/type-api';
+import { articleFor, codecFor, readingImage } from './imagesetCodec.js';
 import { resizeRgba } from './imagesetRaster.js';
 import { artworkKey, discoverTargets } from './imagesetTargets.js';
 import { ckError } from './messages.js';
-/** The two containers that carry more than one layer, and so a round trip. */
-const LAYERED = new Set(['ico', 'icns']);
 const BAND_LARGE = { ceiling: 10, label: '256 px and up: mean abs RGB difference at most 10/255' };
 const BAND_MEDIUM = { ceiling: 25, label: '64-255 px: mean abs RGB difference at most 25/255' };
 const BAND_SMALL = { ceiling: null, label: 'below 64 px: no pixel criterion is asserted, structure only' };
@@ -50,7 +47,7 @@ export function bandFor(size) {
  * every round trip is a layer of the shipped file itself.
  */
 export function verifyImageset(options) {
-    const targets = discoverTargets(options.type, options.treeDir, options.onReport).map((target) => verifyTarget(options.treeDir, target));
+    const targets = discoverTargets(options.type, options.treeDir, options.onReport).map((target) => verifyTarget(options.type, options.treeDir, target));
     return { treeDir: options.treeDir, brandingDir: options.brandingDir, targets, totals: totalsOf(targets) };
 }
 /** 0 when every asserted comparison is inside its band, 1 when one is not. */
@@ -96,21 +93,30 @@ function totalsOf(targets) {
     return totals;
 }
 /**
- * The layers of one file. The bytes are the only input, so nothing outside
- * this file can become the master of its round trip.
+ * The layers of one file, through the codec of its container. The bytes are the
+ * only input, so nothing outside this file can become the master of its round
+ * trip - and the engine learns what a layer is without naming the container.
  */
-function layersOf(kind, bytes) {
-    if (kind === 'ico') {
-        return decodeIcoFrames(bytes).map((frame) => ({ label: `${frame.width}x${frame.height}`, type: null, image: frame.image }));
-    }
-    return decodeIcnsElements(bytes).map((element) => ({ label: element.type, type: element.type, image: element.image }));
+function layersOf(codec, file, bytes) {
+    return readingImage(file, () => {
+        const frames = codec.parse(bytes);
+        const payloads = codec.extract(bytes);
+        return frames.map((frame, index) => {
+            const png = payloads[index] ?? null;
+            if (png === null) {
+                throw ckError('ARTIFACT-BROKEN', `${file}: the container carries a layer it cannot give back as a picture`, 'a layered container must return the payload of every frame it declares');
+            }
+            return { label: frame.type ?? `${frame.width}x${frame.height}`, frame, type: frame.type, image: decodePng(png) };
+        });
+    });
 }
 /** The structural signature of a container: layers, sizes, in file order. */
 function signatureOf(kind, layers) {
     const parts = layers.map((layer) => `${layer.type === null ? '' : `${layer.type}:`}${layer.image.width}x${layer.image.height}`);
     return `${kind.toUpperCase()} ${parts.join(' ')}`;
 }
-function verifyTarget(treeDir, target) {
+function verifyTarget(type, treeDir, target) {
+    const codec = codecFor(type, target.kind);
     const base = {
         target: target.target,
         family: target.family,
@@ -127,11 +133,11 @@ function verifyTarget(treeDir, target) {
         structure: null,
         layers: []
     });
-    if (!LAYERED.has(target.kind)) {
-        return unverifiable(`${article(target.kind)} ${target.kind.toUpperCase()} target carries exactly one layer, so no layer of it can be regenerated from another`);
+    if (!codec.layered) {
+        return unverifiable(`${articleFor(target.kind)} ${target.kind.toUpperCase()} target carries exactly one layer, so no layer of it can be regenerated from another`);
     }
     const bytes = readFileSync(join(treeDir, ...target.target.split('/')));
-    const shipped = layersOf(target.kind, bytes);
+    const shipped = layersOf(codec, target.target, bytes);
     if (shipped.length < 2) {
         return unverifiable(`the shipped file carries a single layer (${shipped[0]?.label ?? 'none'}), so there is nothing to regenerate it from`);
     }
@@ -142,7 +148,7 @@ function verifyTarget(treeDir, target) {
     // The regenerated container is decoded back out of its own bytes, so the
     // comparison runs against what the encoder really wrote and not against the
     // buffer that went into it.
-    const regenerated = layersOf(target.kind, regenerate(target.kind, shipped, master));
+    const regenerated = layersOf(codec, target.target, regenerate(codec, target, shipped, master));
     const shippedSignature = signatureOf(target.kind, shipped);
     const regeneratedSignature = signatureOf(target.kind, regenerated);
     const structure = {
@@ -158,18 +164,12 @@ function verifyTarget(treeDir, target) {
  * container encoder. The master layer keeps its own pixels - it is the source
  * of the round trip, not a result of it.
  */
-function regenerate(kind, shipped, master) {
-    const images = shipped.map((layer) => layer === master ? master.image : resizeRgba(master.image, layer.image.width, layer.image.height));
-    if (kind === 'ico') {
-        return encodeIco(images.map((image) => ({ width: image.width, height: image.height, png: encodePng(image) })));
-    }
-    return encodeIcns(images.map((image, index) => {
-        const type = shipped[index]?.type;
-        if (type === undefined || type === null) {
-            throw ckError('ARTIFACT-BROKEN', 'ICNS: an element reached regeneration without its type', 'the target must be an intact .icns file');
-        }
-        return { type, png: encodePng(image) };
+function regenerate(codec, target, shipped, master) {
+    const payloads = shipped.map((layer) => ({
+        frame: layer.frame,
+        png: encodePng(layer === master ? master.image : resizeRgba(master.image, layer.image.width, layer.image.height))
     }));
+    return readingImage(target.target, () => codec.encode(payloads, target.stem));
 }
 function compareLayer(shipped, regenerated, structureMatches) {
     const { width, height } = shipped.image;
@@ -207,10 +207,6 @@ export function meanAbsoluteRgbDifference(left, right) {
         sum += Math.abs((left.data[at + 2] ?? 0) - (right.data[at + 2] ?? 0));
     }
     return sum / (left.width * left.height * 3);
-}
-/** The article a container name takes when it is read out letter by letter. */
-function article(kind) {
-    return kind === 'png' || kind === 'bmp' ? 'a' : 'an';
 }
 function area(image) {
     return image.width * image.height;

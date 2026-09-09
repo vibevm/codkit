@@ -9,6 +9,7 @@
 // ImagesetIndex value, so the prose and the JSON cannot disagree about which
 // size comes from a hand-made master and which one is generated.
 import { existsSync } from 'node:fs';
+import { codecFor } from './imagesetCodec.js';
 import { chooseMaster, ignoredMasterFiles, knownMasterFiles } from './imagesetMasters.js';
 import { artworkKey, discoverTargets } from './imagesetTargets.js';
 /**
@@ -20,7 +21,7 @@ export function buildImagesetIndex(options) {
     const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
     const brandingDirExists = existsSync(options.brandingDir);
     const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
-    const targets = discovered.map((target) => indexTarget(options.brandingDir, target));
+    const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target));
     const totals = { master: 0, generated: 0, missing: 0 };
     const perFamily = new Map();
     const artworksOf = new Map();
@@ -49,8 +50,9 @@ export function buildImagesetIndex(options) {
         }))
     };
 }
-function indexTarget(brandingDir, target) {
+function indexTarget(type, brandingDir, target) {
     const key = artworkKey(target);
+    const codec = codecFor(type, target.kind);
     return {
         target: target.target,
         family: target.family,
@@ -64,28 +66,21 @@ function indexTarget(brandingDir, target) {
             return { width: frame.width, height: frame.height, type: frame.type, source, from: master?.file ?? null };
         }),
         legacyTypes: target.legacyTypes,
-        constraints: constraintsOf(target)
+        constraints: constraintsOf(codec, target)
     };
 }
-/** What someone drawing this target has to know before they start. */
-function constraintsOf(target) {
-    const constraints = [];
-    if (target.kind === 'svg') {
-        return [
-            'a vector target: the master is emitted unchanged, nothing is rasterised',
-            `the master must be \`${target.family}/${target.artwork ?? ''}.svg\` and must carry the size the distribution ships`
-        ];
+/**
+ * What someone drawing this target has to know before they start: what the
+ * container costs them, which the codec states, then what the masters
+ * convention and the discovered file add, which is the engine's.
+ */
+function constraintsOf(codec, target) {
+    const constraints = [...codec.constraints];
+    if (codec.vector) {
+        constraints.push(`the master must be \`${target.family}/${target.artwork ?? ''}${codec.extension}\` and must carry the size the distribution ships`);
+        return constraints;
     }
-    if (target.kind === 'bmp') {
-        constraints.push('no alpha channel: transparent pixels of the master are composited onto an explicit white background');
-    }
-    else if (target.kind === 'xpm') {
-        constraints.push('palette-quantised on write; transparent pixels become the XPM `None` colour');
-    }
-    else {
-        constraints.push('transparency is expected and preserved end to end');
-    }
-    if (target.kind === 'icns' && target.legacyTypes.length > 0) {
+    if (target.legacyTypes.length > 0) {
         constraints.push(`legacy elements present in the shipped file and not reproduced: ${target.legacyTypes.join(', ')}`);
     }
     constraints.push('the master fills the frame edge to edge: any margin or safe area has to be drawn into the master itself');

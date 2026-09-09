@@ -137,9 +137,12 @@ describe('the shape gate of a type', () => {
 						kind: 'png',
 						extension: '.png',
 						layered: false,
+						vector: false,
+						seedsMasters: true,
+						constraints: [],
 						parse: () => [],
 						legacyTypes: () => [],
-						extract: () => null,
+						extract: () => [],
 						encode: () => new Uint8Array()
 					}
 				],

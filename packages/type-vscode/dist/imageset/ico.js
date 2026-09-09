@@ -15,9 +15,8 @@
 // followed by an AND mask - which is the .ico form that predates the PNG
 // payload. decodeIcoFrames covers both, so the round trip of ##IMAGESET-VERIFY
 // can compare a regenerated layer against the layer the distribution ships.
-import { decodeBmp } from './imagesetBmp.js';
-import { decodePng, isPng } from './imagesetPng.js';
-import { ckError } from './messages.js';
+import { decodeBmp } from './bmp.js';
+import { brokenArtifact, decodePng, encodePng, isPng } from '@codkit/type-api';
 /** The DIB header a raw frame carries in place of a PNG signature. */
 const BITMAPINFOHEADER = 40;
 /** The 'BM' file header decodeBmp expects in front of that DIB. */
@@ -25,26 +24,27 @@ const BMP_FILE_HEADER = 14;
 const ICO_DIRECTORY_ENTRY = 16;
 const ICO_HEADER = 6;
 function broken(message, hint) {
-    return ckError('ARTIFACT-BROKEN', `ICO: ${message}`, hint);
+    return brokenArtifact(`ICO: ${message}`, hint);
 }
 /** Read the frame list of an .ico: sizes in directory order, 0 meaning 256. */
 export function parseIco(bytes) {
     return { frames: directory(bytes).map((entry) => ({ width: entry.width, height: entry.height })) };
 }
 /**
- * Decode every frame to RGBA, in directory order. Both payload forms are
- * covered because the distribution ships both in one file, and a comparison
- * that could only read the PNG one would silently skip the small frames -
- * exactly the sizes where a regenerated layer differs most.
+ * Every frame as PNG bytes, in directory order. Both payload forms are covered
+ * because the distribution ships both in one file, and a reader that could only
+ * take the PNG one would silently skip the small frames - exactly the sizes
+ * where a regenerated layer differs most.
  */
-export function decodeIcoFrames(bytes) {
+export function icoFramePayloads(bytes) {
     return directory(bytes).map((entry) => {
         const payload = bytes.subarray(entry.offset, entry.offset + entry.length);
-        const image = isPng(payload) ? decodePng(payload) : decodeIcoDib(payload, entry.width, entry.height);
+        const stored = isPng(payload);
+        const image = stored ? decodePng(payload) : decodeIcoDib(payload, entry.width, entry.height);
         if (image.width !== entry.width || image.height !== entry.height) {
             throw broken(`the directory announces a ${entry.width}x${entry.height} frame whose payload is ${image.width}x${image.height}`, 'the target must be an intact .ico file');
         }
-        return { width: entry.width, height: entry.height, image };
+        return { width: entry.width, height: entry.height, png: stored ? Uint8Array.from(payload) : encodePng(image) };
     });
 }
 /** The directory, validated once: both readers walk the file through this. */

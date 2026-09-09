@@ -11,9 +11,7 @@
 // rather than silently dropped: the honest structure of a regenerated file is
 // the ordered list of PNG-capable elements the distribution shipped.
 
-import { decodePng, isPng } from './imagesetPng.ts';
-import type { Rgba } from './imagesetPng.ts';
-import { ckError } from './messages.ts';
+import { brokenArtifact, decodePng, isPng } from '@codkit/type-api';
 
 export type IcnsElement = {
 	readonly type: string;
@@ -23,10 +21,11 @@ export type IcnsElement = {
 	readonly pngCapable: boolean;
 };
 
-/** One decoded element: its type and the pixels its PNG payload carries. */
-export type IcnsElementImage = {
+/** One element that carries a picture: its type and the PNG bytes it stores. */
+export type IcnsElementPayload = {
 	readonly type: string;
-	readonly image: Rgba;
+	/** The stored bytes, verbatim: the element's payload already is a PNG. */
+	readonly png: Uint8Array;
 };
 
 export type IcnsStructure = {
@@ -56,7 +55,7 @@ const ICNS_LEGACY_DIMENSIONS: ReadonlyMap<string, { width: number; height: numbe
 const ICNS_HEADER = 8;
 
 function broken(message: string, hint: string): Error {
-	return ckError('ARTIFACT-BROKEN', `ICNS: ${message}`, hint);
+	return brokenArtifact(`ICNS: ${message}`, hint);
 }
 
 /** Read the element list of an .icns in file order, with sizes when known. */
@@ -77,12 +76,14 @@ export function parseIcns(bytes: Uint8Array): IcnsStructure {
 }
 
 /**
- * Decode the PNG-capable elements to RGBA, in file order. The legacy elements
+ * The payload of every PNG-capable element, in file order. The legacy elements
  * are skipped for the same reason the encoder does not write them: they are
- * not PNG payloads and codkit does not reproduce them (##IMAGESET-CONTAINERS).
+ * not PNG payloads and this codec does not reproduce them
+ * (##IMAGESET-CONTAINERS). Nothing is re-encoded: the bytes are the ones the
+ * distribution shipped.
  */
-export function decodeIcnsElements(bytes: Uint8Array): readonly IcnsElementImage[] {
-	const images: IcnsElementImage[] = [];
+export function icnsElementPayloads(bytes: Uint8Array): readonly IcnsElementPayload[] {
+	const found: IcnsElementPayload[] = [];
 	for (const { type, payload } of payloads(bytes)) {
 		if (!ICNS_PNG_TYPES.has(type)) {
 			continue;
@@ -90,9 +91,9 @@ export function decodeIcnsElements(bytes: Uint8Array): readonly IcnsElementImage
 		if (!isPng(payload)) {
 			throw broken(`element ${type} is a PNG-capable type carrying something that is not a PNG`, 'the target must be an intact .icns file');
 		}
-		images.push({ type, image: decodePng(payload) });
+		found.push({ type, png: Uint8Array.from(payload) });
 	}
-	return images;
+	return found;
 }
 
 /** Walk the elements once, validating the file: both readers go through here. */

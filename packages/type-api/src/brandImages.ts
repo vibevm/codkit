@@ -24,7 +24,16 @@ export type ImagePayload = {
 	readonly png: Uint8Array;
 };
 
-/** How one container of this family is read and written. */
+/**
+ * How one container of this family is read and written.
+ *
+ * The engine never names a container: it looks the codec up by the `kind` of
+ * the target it is working on and asks it everything - the frames, the payload
+ * of a frame, the bytes of a regenerated file, and the sentences a report says
+ * about the container. A function here refuses a file it cannot read with
+ * `brokenArtifact`, and the engine turns that into `CK-E-ARTIFACT-BROKEN`
+ * naming the file.
+ */
 export type ImageCodec = {
 	/** The container name, also the value of a target's `kind`. */
 	readonly kind: string;
@@ -35,14 +44,38 @@ export type ImageCodec = {
 	 * guard compares it frame by frame rather than as one picture.
 	 */
 	readonly layered: boolean;
-	/** The frames the file carries, in file order. */
+	/**
+	 * The container is a vector document: the master IS the artifact, so nothing
+	 * is rasterised and the master's bytes are emitted unchanged. Such a target
+	 * needs a master of this same container, drawn at the size the distribution
+	 * ships (##IMAGESET-SVG-PASSTHROUGH).
+	 */
+	readonly vector: boolean;
+	/**
+	 * A first run may seed a master from a file of this container. False for a
+	 * container that does not give the drawing back the way it was drawn - a
+	 * palette-quantised one - or that only repeats artwork another target of the
+	 * same family carries in a better form.
+	 */
+	readonly seedsMasters: boolean;
+	/** What someone drawing for this container has to know, one line each. */
+	readonly constraints: readonly string[];
+	/** The frames the file carries and a write reproduces, in file order. */
 	parse(bytes: Uint8Array): readonly ImageFrame[];
 	/** Element types found in a file and not reproduced on a write. */
 	legacyTypes(bytes: Uint8Array): readonly string[];
-	/** The PNG payload of one frame, or null when the frame is not PNG-capable. */
-	extract(bytes: Uint8Array, frame: ImageFrame): Uint8Array | null;
-	/** Write a container carrying these payloads, in the given order. */
-	encode(payloads: readonly ImagePayload[]): Uint8Array;
+	/**
+	 * The picture of every frame as PNG bytes, in the order `parse` returns the
+	 * frames; null where a frame carries no picture this container gives back.
+	 * Frames are addressed by position and not by their size, because a
+	 * container may carry two frames of one size.
+	 */
+	extract(bytes: Uint8Array): readonly (Uint8Array | null)[];
+	/**
+	 * Write a container carrying these payloads, in the given order. `stem` is
+	 * the file stem of the target, for a container that names its own content.
+	 */
+	encode(payloads: readonly ImagePayload[], stem: string): Uint8Array;
 };
 
 /** One file - or one glob of files - of the distribution's image set. */

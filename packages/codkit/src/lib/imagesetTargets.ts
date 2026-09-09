@@ -16,27 +16,16 @@
 // file-type icons are one family with dozens.
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import type { ImageTargetPattern, ProjectType } from '@codkit/type-api';
+import type { ImageFrame, ImageTargetPattern, ProjectType } from '@codkit/type-api';
 import { basename, extname, join } from 'node:path';
-import { parseBmp } from './imagesetBmp.ts';
-import { parseIcns } from './imagesetIcns.ts';
-import { parseIco } from './imagesetIco.ts';
+import { codecFor, readingImage } from './imagesetCodec.ts';
 import { ckError } from './messages.ts';
-import { pngSize } from './imagesetPng.ts';
-import { parseSvg } from './imagesetSvg.ts';
-import { parseXpm } from './imagesetXpm.ts';
 
 /** The container of a target; the type names the ones its family uses. */
 export type TargetKind = string;
 
-export type TargetFrame = {
-	readonly width: number;
-	readonly height: number;
-	/** ICNS element type; null for the other containers. */
-	readonly type: string | null;
-	/** ICNS: the element is one of the eight PNG-capable types. */
-	readonly pngCapable: boolean;
-};
+/** One frame of a target, exactly as the codec of its container reads it. */
+export type TargetFrame = ImageFrame;
 
 export type DiscoveredTarget = {
 	/** Guard group and masters folder, e.g. 'icon', 'installer-big', 'filetype'. */
@@ -49,7 +38,7 @@ export type DiscoveredTarget = {
 	readonly target: string;
 	readonly kind: TargetKind;
 	readonly frames: readonly TargetFrame[];
-	/** ICNS only: legacy element types found and not reproduced. */
+	/** Element types the shipped file carries and a write does not reproduce. */
 	readonly legacyTypes: readonly string[];
 	/** File stem; the XPM encoder names its C array after it. */
 	readonly stem: string;
@@ -85,53 +74,31 @@ export function discoverTargets(type: ProjectType, treeDir: string, onReport: (t
 				);
 			}
 			claimed.set(file, pattern.path);
-			targets.push(discoverOne(treeDir, file, pattern));
+			targets.push(discoverOne(type, treeDir, file, pattern));
 		}
 	}
 	targets.sort((left, right) => compareBytes(left.target, right.target));
 	return targets;
 }
 
-function discoverOne(treeDir: string, file: string, pattern: ImageTargetPattern): DiscoveredTarget {
+function discoverOne(type: ProjectType, treeDir: string, file: string, pattern: ImageTargetPattern): DiscoveredTarget {
 	const bytes = readFileSync(joinTree(treeDir, file));
 	const stem = basename(file, extname(file));
 	const { family, kind, role } = pattern;
-	const artwork = artworkOf(stem, pattern);
-	const common = { family, artwork, role, target: file, kind, stem };
-	if (kind === 'ico') {
-		const structure = parseIco(bytes);
-		return { ...common, frames: structure.frames.map((frame) => toFrame(frame)), legacyTypes: [] };
-	}
-	if (kind === 'icns') {
-		const structure = parseIcns(bytes);
-		return {
-			...common,
-			frames: structure.elements
-				.filter((element) => element.pngCapable)
-				.map((element) => toFrame({ width: element.width, height: element.height }, element.type, true)),
-			legacyTypes: structure.legacyTypes
-		};
-	}
-	if (kind === 'png') {
-		const size = pngSize(bytes);
-		if (size === null) {
-			throw unreadable(file, 'not a PNG');
-		}
-		return { ...common, frames: [toFrame(size)], legacyTypes: [] };
-	}
-	if (kind === 'bmp') {
-		const structure = parseBmp(bytes);
-		return { ...common, frames: [toFrame(structure)], legacyTypes: [] };
-	}
-	if (kind === 'svg') {
-		const structure = parseSvg(bytes.toString('utf8'));
-		if (structure === null) {
-			throw unreadable(file, 'not an SVG document with usable dimensions');
-		}
-		return { ...common, frames: [toFrame(structure)], legacyTypes: [] };
-	}
-	const structure = parseXpm(bytes.toString('utf8'));
-	return { ...common, frames: [toFrame(structure)], legacyTypes: [] };
+	const codec = codecFor(type, kind);
+	// One door, whatever the container: the frame list, the element types and
+	// the exact sizes all come out of the bytes the distribution ships.
+	const read = readingImage(file, () => ({ frames: codec.parse(bytes), legacyTypes: codec.legacyTypes(bytes) }));
+	return {
+		family,
+		artwork: artworkOf(stem, pattern),
+		role,
+		target: file,
+		kind,
+		frames: read.frames,
+		legacyTypes: read.legacyTypes,
+		stem
+	};
 }
 
 /** The artwork name of a target: the stem minus the pattern's prefix, or null. */
@@ -146,10 +113,6 @@ function artworkOf(stem: string, pattern: ImageTargetPattern): string | null {
 /** The masters base name of a target: 'icon', or 'filetype/json'. */
 export function artworkKey(target: { readonly family: string; readonly artwork: string | null }): string {
 	return target.artwork === null ? target.family : `${target.family}/${target.artwork}`;
-}
-
-function toFrame(size: { width: number; height: number }, type: string | null = null, pngCapable = false): TargetFrame {
-	return { width: size.width, height: size.height, type, pngCapable };
 }
 
 function globFiles(treeDir: string, pattern: string, exclude: readonly string[]): string[] {
@@ -179,8 +142,4 @@ function joinTree(treeDir: string, relative: string): string {
 
 function compareBytes(left: string, right: string): number {
 	return Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8'));
-}
-
-function unreadable(file: string, reason: string): Error {
-	return ckError('ARTIFACT-BROKEN', `${file}: ${reason}`, 'the fork tree target must be an intact file of its declared kind');
 }

@@ -5,7 +5,7 @@
 // the SVG at that exact size; the vector path never resamples raster pixels.
 import { createRequire } from 'node:module';
 import { ckError } from './messages.js';
-import { decodePng, encodePng } from './imagesetPng.js';
+import { decodePng, encodePng, isBrokenArtifact } from '@codkit/type-api';
 import { resizeRgba } from './imagesetRaster.js';
 let resvgConstructor;
 function loadResvg() {
@@ -38,7 +38,7 @@ export function renderSvgToRgba(svg, width, height) {
         rendered = decodePng(resvg.render().asPng());
     }
     catch (error) {
-        if (!(error instanceof Error) || error.name !== 'CkError') {
+        if (!(error instanceof Error) || (error.name !== 'CkError' && !isBrokenArtifact(error))) {
             throw ckError('ARTIFACT-BROKEN', `the SVG master does not rasterise: ${error instanceof Error ? error.message : String(error)}`, 'fix the master, or replace it with a raster master');
         }
         throw error;

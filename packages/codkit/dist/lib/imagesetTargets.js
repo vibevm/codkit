@@ -16,13 +16,8 @@
 // file-type icons are one family with dozens.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
-import { parseBmp } from './imagesetBmp.js';
-import { parseIcns } from './imagesetIcns.js';
-import { parseIco } from './imagesetIco.js';
+import { codecFor, readingImage } from './imagesetCodec.js';
 import { ckError } from './messages.js';
-import { pngSize } from './imagesetPng.js';
-import { parseSvg } from './imagesetSvg.js';
-import { parseXpm } from './imagesetXpm.js';
 /**
  * Discover the image set of a fork tree. Missing fixed paths are reported per
  * file (they are the distribution's own layout, so their absence is news),
@@ -49,52 +44,30 @@ export function discoverTargets(type, treeDir, onReport) {
                 throw ckError('ARTIFACT-BROKEN', `${file} is claimed by two target patterns (${owner} and ${pattern.path})`, 'the built-in pattern table must assign every discovered file to exactly one family');
             }
             claimed.set(file, pattern.path);
-            targets.push(discoverOne(treeDir, file, pattern));
+            targets.push(discoverOne(type, treeDir, file, pattern));
         }
     }
     targets.sort((left, right) => compareBytes(left.target, right.target));
     return targets;
 }
-function discoverOne(treeDir, file, pattern) {
+function discoverOne(type, treeDir, file, pattern) {
     const bytes = readFileSync(joinTree(treeDir, file));
     const stem = basename(file, extname(file));
     const { family, kind, role } = pattern;
-    const artwork = artworkOf(stem, pattern);
-    const common = { family, artwork, role, target: file, kind, stem };
-    if (kind === 'ico') {
-        const structure = parseIco(bytes);
-        return { ...common, frames: structure.frames.map((frame) => toFrame(frame)), legacyTypes: [] };
-    }
-    if (kind === 'icns') {
-        const structure = parseIcns(bytes);
-        return {
-            ...common,
-            frames: structure.elements
-                .filter((element) => element.pngCapable)
-                .map((element) => toFrame({ width: element.width, height: element.height }, element.type, true)),
-            legacyTypes: structure.legacyTypes
-        };
-    }
-    if (kind === 'png') {
-        const size = pngSize(bytes);
-        if (size === null) {
-            throw unreadable(file, 'not a PNG');
-        }
-        return { ...common, frames: [toFrame(size)], legacyTypes: [] };
-    }
-    if (kind === 'bmp') {
-        const structure = parseBmp(bytes);
-        return { ...common, frames: [toFrame(structure)], legacyTypes: [] };
-    }
-    if (kind === 'svg') {
-        const structure = parseSvg(bytes.toString('utf8'));
-        if (structure === null) {
-            throw unreadable(file, 'not an SVG document with usable dimensions');
-        }
-        return { ...common, frames: [toFrame(structure)], legacyTypes: [] };
-    }
-    const structure = parseXpm(bytes.toString('utf8'));
-    return { ...common, frames: [toFrame(structure)], legacyTypes: [] };
+    const codec = codecFor(type, kind);
+    // One door, whatever the container: the frame list, the element types and
+    // the exact sizes all come out of the bytes the distribution ships.
+    const read = readingImage(file, () => ({ frames: codec.parse(bytes), legacyTypes: codec.legacyTypes(bytes) }));
+    return {
+        family,
+        artwork: artworkOf(stem, pattern),
+        role,
+        target: file,
+        kind,
+        frames: read.frames,
+        legacyTypes: read.legacyTypes,
+        stem
+    };
 }
 /** The artwork name of a target: the stem minus the pattern's prefix, or null. */
 function artworkOf(stem, pattern) {
@@ -107,9 +80,6 @@ function artworkOf(stem, pattern) {
 /** The masters base name of a target: 'icon', or 'filetype/json'. */
 export function artworkKey(target) {
     return target.artwork === null ? target.family : `${target.family}/${target.artwork}`;
-}
-function toFrame(size, type = null, pngCapable = false) {
-    return { width: size.width, height: size.height, type, pngCapable };
 }
 function globFiles(treeDir, pattern, exclude) {
     const separator = pattern.lastIndexOf('/');
@@ -136,7 +106,4 @@ function joinTree(treeDir, relative) {
 }
 function compareBytes(left, right) {
     return Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8'));
-}
-function unreadable(file, reason) {
-    return ckError('ARTIFACT-BROKEN', `${file}: ${reason}`, 'the fork tree target must be an intact file of its declared kind');
 }

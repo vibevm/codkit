@@ -13,11 +13,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { brandArtifactId, guardTestId, runImageset } from '../../src/lib/imagesetEngine.ts';
-import { decodeBmp, parseBmp } from '../../src/lib/imagesetBmp.ts';
-import { parseIcns } from '../../src/lib/imagesetIcns.ts';
-import { parseIco } from '../../src/lib/imagesetIco.ts';
-import { decodePng, encodePng, rgba } from '../../src/lib/imagesetPng.ts';
-import { parseXpm } from '../../src/lib/imagesetXpm.ts';
+import { decodePng, encodePng, rgba } from '@codkit/type-api';
+import { codecOf, framesOf, imagesOf } from '../support/imagesetCodecs.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { loadResourceMap } from '../../src/lib/layers/resource.ts';
 import { makeImagesetPatchSet, makeImagesetTree, shippedIconBytes } from '../support/imagesetFixture.ts';
@@ -247,26 +244,25 @@ describe('round trip against the shipped binaries (IMAGESET-ROUND-TRIP)', () => 
 	it('reproduces each container structure exactly, frame for frame', () => {
 		const { patchset } = run('engine-roundtrip');
 		// ICO: same frame count, same sizes, same order as the shipped file.
-		const shippedIco = parseIco(shippedIconBytes('code.ico'));
-		const oursIco = parseIco(readFileSync(artifactOf(patchset.dir, 'resources/win32/code.ico')));
-		expect(oursIco.frames).toEqual(shippedIco.frames);
+		const shippedIco = framesOf('ico', shippedIconBytes('code.ico'));
+		const oursIco = framesOf('ico', readFileSync(artifactOf(patchset.dir, 'resources/win32/code.ico')));
+		expect(oursIco).toEqual(shippedIco);
 		// ICNS: the PNG-capable elements at the same types and sizes, in order;
 		// the legacy chunk is carried in the report, not in the file.
-		const shippedIcns = parseIcns(shippedIconBytes('code.icns'));
-		const oursIcns = parseIcns(readFileSync(artifactOf(patchset.dir, 'resources/darwin/code.icns')));
-		expect(oursIcns.elements.map((element) => [element.type, element.width, element.height])).toEqual(
-			shippedIcns.elements.filter((element) => element.pngCapable).map((element) => [element.type, element.width, element.height])
+		const oursIcnsBytes = readFileSync(artifactOf(patchset.dir, 'resources/darwin/code.icns'));
+		expect(framesOf('icns', oursIcnsBytes).map((element) => [element.type, element.width, element.height])).toEqual(
+			framesOf('icns', shippedIconBytes('code.icns')).map((element) => [element.type, element.width, element.height])
 		);
-		expect(oursIcns.legacyTypes).toEqual([]);
+		expect(codecOf('icns').legacyTypes(oursIcnsBytes)).toEqual([]);
 		// XPM, PNG, BMP: same dimensions as shipped.
-		expect(parseXpm(readFileSync(artifactOf(patchset.dir, 'resources/linux/rpm/code.xpm'), 'utf8')).width).toBe(
-			parseXpm(shippedIconBytes('code.xpm').toString('utf8')).width
+		expect(framesOf('xpm', readFileSync(artifactOf(patchset.dir, 'resources/linux/rpm/code.xpm')))[0]?.width).toBe(
+			framesOf('xpm', shippedIconBytes('code.xpm'))[0]?.width
 		);
 		expect(decodePng(readFileSync(artifactOf(patchset.dir, 'resources/linux/code.png'))).width).toBe(
 			decodePng(shippedIconBytes('code.png')).width
 		);
-		expect(parseBmp(readFileSync(artifactOf(patchset.dir, 'resources/win32/inno-big-100.bmp')))).toEqual(
-			parseBmp(shippedIconBytes('inno-big-100.bmp'))
+		expect(framesOf('bmp', readFileSync(artifactOf(patchset.dir, 'resources/win32/inno-big-100.bmp')))).toEqual(
+			framesOf('bmp', shippedIconBytes('inno-big-100.bmp'))
 		);
 	});
 
@@ -274,12 +270,12 @@ describe('round trip against the shipped binaries (IMAGESET-ROUND-TRIP)', () => 
 		const { patchset } = run('engine-pixels');
 		// Every reference below is a committed fixture binary written by the
 		// foreign generator, at the same size as the regenerated image.
-		const oursIcns = parseIcns(readFileSync(artifactOf(patchset.dir, 'resources/darwin/code.icns')));
-		const shippedIcns = parseIcns(shippedIconBytes('code.icns'));
+		const oursIcns = framesOf('icns', readFileSync(artifactOf(patchset.dir, 'resources/darwin/code.icns')));
+		const shippedIcns = framesOf('icns', shippedIconBytes('code.icns'));
 		const ours32 = icnsPayload(readFileSync(artifactOf(patchset.dir, 'resources/darwin/code.icns')), 'ic11');
 		const shipped32 = icnsPayload(shippedIconBytes('code.icns'), 'ic11');
-		expect(oursIcns.elements.map((element) => element.type)).toContain('ic11');
-		expect(shippedIcns.elements.map((element) => element.type)).toContain('ic11');
+		expect(oursIcns.map((element) => element.type)).toContain('ic11');
+		expect(shippedIcns.map((element) => element.type)).toContain('ic11');
 		// 32x32 band: the shipped layer and the resampled master differ by
 		// resampling only; the measured round trip on the real distribution
 		// gives ~15/255 in this band, the fixture stays well under it.
@@ -342,5 +338,9 @@ function icnsPayload(bytes: Uint8Array, type: string): Uint8Array {
 
 /** 24-bit BMP to RGBA through the production decoder (seeding path). */
 function decodeBmpBytes(bytes: Uint8Array): { width: number; height: number; data: Uint8Array } {
-	return decodeBmp(bytes);
+	const [image] = imagesOf('bmp', bytes);
+	if (image === undefined) {
+		throw new Error('the bmp codec gave back no picture');
+	}
+	return image;
 }

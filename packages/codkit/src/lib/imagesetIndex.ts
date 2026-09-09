@@ -10,11 +10,12 @@
 // size comes from a hand-made master and which one is generated.
 
 import { existsSync } from 'node:fs';
+import { codecFor } from './imagesetCodec.ts';
 import { chooseMaster, ignoredMasterFiles, knownMasterFiles } from './imagesetMasters.ts';
 import type { DiscoveredTarget, TargetKind } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
 import type { JsonValue } from './jsonOut.ts';
-import type { ProjectType } from '@codkit/type-api';
+import type { ImageCodec, ProjectType } from '@codkit/type-api';
 
 /** Where one required size comes from on the next generation run. */
 export type SizeSource = 'master' | 'generated' | 'missing';
@@ -22,7 +23,7 @@ export type SizeSource = 'master' | 'generated' | 'missing';
 export type IndexSize = {
 	readonly width: number;
 	readonly height: number;
-	/** ICNS element type; null for the other containers. */
+	/** Element type of a container that names its elements; null otherwise. */
 	readonly type: string | null;
 	readonly source: SizeSource;
 	/** Master file that serves this size, or null when none can. */
@@ -39,7 +40,7 @@ export type IndexTarget = {
 	readonly role: string;
 	readonly container: TargetKind;
 	readonly sizes: readonly IndexSize[];
-	/** ICNS elements found in the shipped file and not reproduced. */
+	/** Elements found in the shipped file and not reproduced. */
 	readonly legacyTypes: readonly string[];
 	readonly constraints: readonly string[];
 };
@@ -79,7 +80,7 @@ export function buildImagesetIndex(options: {
 	const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
 	const brandingDirExists = existsSync(options.brandingDir);
 	const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
-	const targets = discovered.map((target) => indexTarget(options.brandingDir, target));
+	const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target));
 	const totals = { master: 0, generated: 0, missing: 0 };
 	const perFamily = new Map<string, { master: number; generated: number; missing: number }>();
 	const artworksOf = new Map<string, Set<string>>();
@@ -109,8 +110,9 @@ export function buildImagesetIndex(options: {
 	};
 }
 
-function indexTarget(brandingDir: string, target: DiscoveredTarget): IndexTarget {
+function indexTarget(type: ProjectType, brandingDir: string, target: DiscoveredTarget): IndexTarget {
 	const key = artworkKey(target);
+	const codec = codecFor(type, target.kind);
 	return {
 		target: target.target,
 		family: target.family,
@@ -124,27 +126,24 @@ function indexTarget(brandingDir: string, target: DiscoveredTarget): IndexTarget
 			return { width: frame.width, height: frame.height, type: frame.type, source, from: master?.file ?? null };
 		}),
 		legacyTypes: target.legacyTypes,
-		constraints: constraintsOf(target)
+		constraints: constraintsOf(codec, target)
 	};
 }
 
-/** What someone drawing this target has to know before they start. */
-function constraintsOf(target: DiscoveredTarget): readonly string[] {
-	const constraints: string[] = [];
-	if (target.kind === 'svg') {
-		return [
-			'a vector target: the master is emitted unchanged, nothing is rasterised',
-			`the master must be \`${target.family}/${target.artwork ?? ''}.svg\` and must carry the size the distribution ships`
-		];
+/**
+ * What someone drawing this target has to know before they start: what the
+ * container costs them, which the codec states, then what the masters
+ * convention and the discovered file add, which is the engine's.
+ */
+function constraintsOf(codec: ImageCodec, target: DiscoveredTarget): readonly string[] {
+	const constraints: string[] = [...codec.constraints];
+	if (codec.vector) {
+		constraints.push(
+			`the master must be \`${target.family}/${target.artwork ?? ''}${codec.extension}\` and must carry the size the distribution ships`
+		);
+		return constraints;
 	}
-	if (target.kind === 'bmp') {
-		constraints.push('no alpha channel: transparent pixels of the master are composited onto an explicit white background');
-	} else if (target.kind === 'xpm') {
-		constraints.push('palette-quantised on write; transparent pixels become the XPM `None` colour');
-	} else {
-		constraints.push('transparency is expected and preserved end to end');
-	}
-	if (target.kind === 'icns' && target.legacyTypes.length > 0) {
+	if (target.legacyTypes.length > 0) {
 		constraints.push(`legacy elements present in the shipped file and not reproduced: ${target.legacyTypes.join(', ')}`);
 	}
 	constraints.push('the master fills the frame edge to edge: any margin or safe area has to be drawn into the master itself');
