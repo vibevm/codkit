@@ -96,9 +96,9 @@ contract holds). Brave and GitLab Web IDE come later; see §7.
 
 ## 3. Configuration: one type per patch set, forks are patch sets
 
-- `codkit.json` gains `"type": "vscode" | "generic" | "theia" | ...` (schema 2). A schema-1 file
-  without the field reads as `vscode`, so the existing product changes nothing on the day the
-  field appears. The type validates its own section, `"typeConfig": { ... }`: for VS Code the
+- `codkit.json` gains `"type": "vscode" | "generic" | "theia" | ...` (schema 2). Schema 2 is the only
+  schema (owner ruling: no compatibility layer for one consumer); the existing product is migrated
+  inside the campaign and its gates prove the migration. The type validates its own section, `"typeConfig": { ... }`: for VS Code the
   own directory name and the overlay target it already has; for Theia the own package name and
   the application directory; for `generic` the install, lint, build and test commands.
 - **Several forks** need nothing new: a fork is a patch set with its own fork tree, bound per
@@ -172,7 +172,7 @@ contract holds). Brave and GitLab Web IDE come later; see §7.
 |---|---|---|
 | P0 | this design reviewed; owner rulings on §8 | rulings recorded |
 | P1 | `PROP-016` contract; `modules/vscode` created by moving facts with tombstones; vision reworded | specmap, trace:check, floor green; unit counts accounted for |
-| P2 | `ProjectType` interface; the `vscode` type extracted; `type` in the configuration (schema 2, schema 1 reads as vscode); `codkit types`, `where` and the envelope report it | floor green; the product's own gates unchanged: `verify`, `status`, `ci --profile build`, static proof, dev and package UI proofs |
+| P2 | `ProjectType` interface; the `vscode` type extracted; `type` in the configuration (schema 2 only; the product's `codkit.json` migrated in the same phase); `codkit types`, `where` and the envelope report it | floor green; the product's own gates unchanged: `verify`, `status`, `ci --profile build`, static proof, dev and package UI proofs |
 | P3 | the `generic` type and the generic polygon; capability refusals | FEAT-002 scenarios for the generic polygon end to end |
 | P4 | packages split (standards core, `seams-vscode`, `runtime-vscode`); skills type-neutral; delivery to the product | product `vibe check` 0, standards and runtime checks current |
 | P5 | Theia spike on master (`research/theia-facts-<version>`: layout, DI, build, test, packaging, application model), then `@codkit/type-theia`, then the owner's Theia-based product (named only in its own repository): its patch set repository, managed tree on a pinned master commit, identity, boot lane, steward context, proofs - the same way the VS Code product was started | the second real type passes the same scenarios as the first; `the owner's Theia-based product` loads, verifies, builds and runs |
