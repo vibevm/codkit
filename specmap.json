@@ -4172,7 +4172,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:4be7bd88cc5b02a290faf7fcf9910c192ff1de8f068b2dcbed5175a28b4c7b18",
+      "content_hash": "sha256:f597ff2965bae91f1fccca6bf42b7b97851e756cf3500ad6a3776b98791c0998",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Delta layers - formats, materialization, prohibitions",
@@ -4244,7 +4244,7 @@
     },
     {
       "anchor": "own",
-      "content_hash": "sha256:411591817993811c4c29c07a13ef1635dba3b1aa473a4b9205c5f3a09b0aa0c2",
+      "content_hash": "sha256:e494b7b36d942fad4b914ec07d60f03b43ef3a8de508f0d0ba0e7b31e81dc5ea",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "3. own - own code",
@@ -4262,10 +4262,10 @@
     },
     {
       "anchor": "OWN-ROOTS-IN-THE-DELTA",
-      "content_hash": "sha256:a34e3434b7b7825fbe8c0aaddc6f26468f533b666cc97484bd4ca69151342ca5",
+      "content_hash": "sha256:dbb50e42662ef2e28a576549803533325832008e71d86cee1248ca1b5ba86e01",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "**Where the delta keeps several owned directories** (2026-09-09, after the second real type; PROP-016 `##TYPE-AREA-LAYOUT`, `##DECISION-OWNED-DIRECTORIES-AND-BUILD-OUTPUTS`). The own root keeps `delta/own/**` - it is the layer with the unit manifest, the licence notice and the runtime library, and moving it would rewrite every patch set for nothing. Every other owned directory the type names lives under `delta/own-roots/<role>/**` (Theia's application: `delta/own-roots/application/**`), where `<role>` is the role of the contract, unique by construction. Each of them carries its own manifest `patchset.delta.json` of the same shape, and every file inside it falls into exactly one unit of **that** manifest (`CK-E-OWN-UNCOVERED` otherwise); the service overrides and the own extensions belong to the own root and to it alone. All of them are mirrored, guarded, inventoried, excluded from the tree's git and committed to the generated branch on the same terms as the own root (`##OWN-SOURCE-OF-TRUTH`, `##OWN-EXCLUDED-LOCALLY` - the managed block carries one line per owned directory), and the mark keeps one per-file map per directory (`ownFiles` for the own root, `ownRootFiles[<role>]` for the rest, PROP-006 `##TREE-MARK`). The **build outputs** the type names inside an owned directory are not own code at all: the mirror never copies them in either direction, `load` never removes them, `status` never counts them as changed own code, and `load --fresh` removes them like any other build output. @status:spec/done",
+      "heading": "**Where the delta keeps several owned directories** (2026-09-09, after the second real type; PROP-016 `##TYPE-AREA-LAYOUT`, `##DECISION-OWNED-DIRECTORIES-AND-BUILD-OUTPUTS`). The own root keeps `delta/own/**` - it is the layer with the unit manifest, the licence notice and the runtime library, and moving it would rewrite every patch set for nothing. Every other owned directory the type names lives under `delta/own-roots/<role>/**` (Theia's application: `delta/own-roots/application/**`), where `<role>` is the role of the contract, unique by construction. Each of them carries its own manifest `patchset.delta.json` of the same shape, and every file inside it falls into exactly one unit of **that** manifest (`CK-E-OWN-UNCOVERED` otherwise); the service overrides and the own extensions belong to the own root and to it alone. All of them are mirrored, guarded, inventoried, excluded from the tree's git and committed to the generated branch on the same terms as the own root (`##OWN-SOURCE-OF-TRUTH`, `##OWN-EXCLUDED-LOCALLY` - the managed block carries one line per owned directory), and the mark keeps one per-file map per directory (`ownFiles` for the own root, `ownRootFiles[<role>]` for the rest, PROP-006 `##TREE-MARK`). **Open, measured on the real clone in P5-2:** a config-overlay target that lives *inside* an owned directory (the application manifest of a forked example) is no longer judged by the drift guard, because the guard delegates that directory to the byte comparison of the delta and the comparison passes over what the pin ships; a materialized target therefore survives a plain `load` instead of stopping it. Nothing is lost by it - the bytes are the composition `overlay apply` wrote - but the invariant \"the upstream gates see an unmaterialized tree\" is weaker inside an owned directory than outside it, and the phase that packages a Theia product has to look at it. The **build outputs** the type names inside an owned directory are not own code at all: the mirror never copies them in either direction, `load` never removes them, `status` never counts them as changed own code, and `load --fresh` removes them like any other build output. @status:spec/done",
       "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-ROOTS-IN-THE-DELTA"
     },
@@ -10535,7 +10535,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b588d2c5aaceea902fb31b0e043986aa238dd6cbe0ead552d74eca4761bd37c1",
+      "content_hash": "sha256:ed7138e530e5653727341441f960f3178f8dc953dac4fc98e3af0289a9b42485",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "theia PROP-004: Build, watch, lint, test, packaging",
@@ -10607,10 +10607,10 @@
     },
     {
       "anchor": "THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT",
-      "content_hash": "sha256:c1231447fdfa08e63195c13c4bfd5eac6ae1466fea28a6826b6f3b118373bac4",
+      "content_hash": "sha256:d3b372d47d881e4f0b1259cca2da8bff05b938728196ef58e38e1544a3f4bdd0",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
-      "heading": "**Measured on a real clone in P5 as a defect of the engine; answered in P5-2.** The own root of this family is a *compiled npm package*, so its build output lands **inside** it - `packages/<own>/lib/`, `.eslintcache`, `*.tsbuildinfo`. The engine treats every file under the own root as own code, and the fresh pass deliberately never cleans inside it (own code is not litter), so after one compile `status` reports the compiled `lib/` as own code the tree has and the delta does not, and `load` refuses over it as a dirty tree. The contract now lets a type say which paths inside an owned directory a build writes (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYOUT`), and this type says it: inside the own package `lib/**`, `node_modules/**`, `.eslintcache`, `*.tsbuildinfo`; inside the application `lib/**`, `src-gen/**`, `node_modules/**`, `plugins/**`, the generated bundler entries, `.eslintcache` and `*.tsbuildinfo`. The engine never copies them into the delta, never counts them as changed own code, never removes them on a load, and removes them on `load --fresh`; the hand protocol of P5 (delete them before every command) is retired. The first type never met this because its own code compiles into `out/` outside the own root. @status:impl/done",
+      "heading": "**Measured on a real clone in P5 as a defect of the engine; answered in P5-2.** The own root of this family is a *compiled npm package*, so its build output lands **inside** it - `packages/<own>/lib/`, `.eslintcache`, `*.tsbuildinfo`. The engine treats every file under the own root as own code, and the fresh pass deliberately never cleans inside it (own code is not litter), so after one compile `status` reports the compiled `lib/` as own code the tree has and the delta does not, and `load` refuses over it as a dirty tree. The contract now lets a type say which paths inside an owned directory a build writes (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYOUT`), and this type says it: inside the own package `lib/**`, `node_modules/**`, `.nyc_output/**`, `coverage/**`, `.eslintcache`, `*.tsbuildinfo`; inside the application the same plus `src-gen/**`, `plugins/**` and the generated bundler entries. The coverage state was measured on the real clone in P5-2: the test runner of this family writes `.nyc_output/` inside the owned directory, exactly as the compiler writes `lib/`. The engine never copies them into the delta, never counts them as changed own code, never removes them on a load, and removes them on `load --fresh`; the hand protocol of P5 (delete them before every command) is retired. The first type never met this because its own code compiles into `out/` outside the own root. @status:impl/done",
       "line": 13,
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT"
     },

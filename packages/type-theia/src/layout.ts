@@ -83,7 +83,14 @@ export function ownRootProblem(ownRoot: string): Refusal {
  * a dependency the root cannot hoist writes `node_modules/` there too. None of
  * it is own code, and none of it belongs in the delta.
  */
-export const OWN_BUILD_OUTPUTS: readonly string[] = ['lib/**', 'node_modules/**', '.eslintcache', '*.tsbuildinfo'];
+export const OWN_BUILD_OUTPUTS: readonly string[] = [
+	'lib/**',
+	'node_modules/**',
+	'.nyc_output/**',
+	'coverage/**',
+	'.eslintcache',
+	'*.tsbuildinfo'
+];
 
 /**
  * ##THEIA-APPLICATION-ROOT: the application generates more than it compiles.
@@ -98,6 +105,8 @@ export const APPLICATION_BUILD_OUTPUTS: readonly string[] = [
 	'src-gen/**',
 	'node_modules/**',
 	'plugins/**',
+	'.nyc_output/**',
+	'coverage/**',
 	'gen-esbuild.*.mjs',
 	'gen-webpack*.js',
 	'.eslintcache',
