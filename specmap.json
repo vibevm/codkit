@@ -590,7 +590,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:0b1d1f15e52983271aba86e49231e60cb451bb68e1326f62ac56b124d744e7ee",
+      "content_hash": "sha256:6f215e29ab455a3353db9db852800fd4f5e4117ddc38071c4839706c7e7bbd6e",
       "doc_path": "common/PROP-004",
       "file": "vibevm/vibespecs/common/PROP-004-clean-room.xml",
       "heading": "PROP-004: Clean-room development",
@@ -608,7 +608,7 @@
     },
     {
       "anchor": "rules",
-      "content_hash": "sha256:cac8b8e72a075e1d91a9beadbcc23bc84cb8ce3af311dab6a427fc3d24409509",
+      "content_hash": "sha256:11c205ecc34d248c832041dfc69266452a3c5bfaa857fd102f71da1094c26383",
       "doc_path": "common/PROP-004",
       "file": "vibevm/vibespecs/common/PROP-004-clean-room.xml",
       "heading": "Rules",
@@ -650,6 +650,15 @@
       "heading": "The clean-room checker and focused review verify the boundary before release. @status:spec/done",
       "line": 11,
       "uri": "spec://codkit/common/PROP-004#CHECK-CLEAN-ROOM"
+    },
+    {
+      "anchor": "NO-CONSUMER-PRODUCT-IN-THE-TOOL",
+      "content_hash": "sha256:74d560e0d2f23de8993f1fd5c38dcf42b533953781a7e0c873f023348865d764",
+      "doc_path": "common/PROP-004",
+      "file": "vibevm/vibespecs/common/PROP-004-clean-room.xml",
+      "heading": "The tool repository names no consumer product built with the tool and holds none of its implementation - not in code, tests, specifications, research or design documents; a consumer product holds no implementation of the tool, only the managed copies the tool delivers (standards, runtime, skills, the licence notice). The isolation grep over the tool repository for the names of the consumer products prints zero before every commit. Owner rule of 2026-09-08/09, stated for every product alike. @status:spec/done",
+      "line": 12,
+      "uri": "spec://codkit/common/PROP-004#NO-CONSUMER-PRODUCT-IN-THE-TOOL"
     },
     {
       "anchor": "root",

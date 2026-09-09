@@ -9,6 +9,7 @@
       <ALLOW-UPSTREAM fact="true" status="spec/done">The selected VS Code upstream is implementation input, not a prohibited reference repository.</ALLOW-UPSTREAM>
       <RESEARCH-SEPARATE fact="true" status="spec/done">Comparative research produces prose facts; implementation sessions consume ratified specifications.</RESEARCH-SEPARATE>
       <CHECK-CLEAN-ROOM fact="true" status="spec/done">The clean-room checker and focused review verify the boundary before release.</CHECK-CLEAN-ROOM>
+      <NO-CONSUMER-PRODUCT-IN-THE-TOOL fact="true" status="spec/done">The tool repository names no consumer product built with the tool and holds none of its implementation - not in code, tests, specifications, research or design documents; a consumer product holds no implementation of the tool, only the managed copies the tool delivers (standards, runtime, skills, the licence notice). The isolation grep over the tool repository for the names of the consumer products prints zero before every commit. Owner rule of 2026-09-08/09, stated for every product alike.</NO-CONSUMER-PRODUCT-IN-THE-TOOL>
     </facts>
   </rules>
 </spec>
