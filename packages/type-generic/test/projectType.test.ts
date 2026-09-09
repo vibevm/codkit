@@ -85,6 +85,15 @@ describe('what typeConfig turns the type into', () => {
 	it('takes the cleanup whitelist from the patch set and forbids no patch target of its own', () => {
 		const configured = projectTypeFor({ ownRoot: 'own', cleanupWhitelist: ['build/', 'node_modules/'] });
 		expect(configured.layout.cleanupWhitelist).toEqual(['build/', 'node_modules/']);
+	});
+
+	it('owns one directory and carries the build outputs the patch set declared inside it', () => {
+		const bare = projectTypeFor({ ownRoot: 'own' });
+		expect(bare.layout.ownRoots({ ownRoot: 'own' })).toEqual([{ path: 'own', role: 'own', buildOutputs: [] }]);
+		const configured = projectTypeFor({ ownRoot: 'own', ownBuildOutputs: ['lib/**', '*.tsbuildinfo'] });
+		expect(configured.layout.ownRoots({ ownRoot: 'own' })).toEqual([
+			{ path: 'own', role: 'own', buildOutputs: ['lib/**', '*.tsbuildinfo'] }
+		]);
 		expect(configured.layout.forbiddenPatchTargets).toEqual([]);
 		expect(configured.layout.ownExtensionPath('sample')).toBeNull();
 	});

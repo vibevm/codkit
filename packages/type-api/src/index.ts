@@ -5,7 +5,8 @@
 export { CAPABILITIES, isCapability } from './capabilities.ts';
 export type { Capability } from './capabilities.ts';
 export type { FingerprintFiles, IdentityArea, TreeFingerprint } from './identity.ts';
-export type { LayoutArea, Refusal } from './layout.ts';
+export { oneOwnedDirectory } from './layout.ts';
+export type { LayoutArea, LayoutConfig, OwnedDirectory, OwnedRole, Refusal } from './layout.ts';
 export type {
 	EntryModuleLocator,
 	ExtensionMaterializer,

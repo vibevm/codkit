@@ -112,6 +112,14 @@ export const configSchema = z
 		overlayTargets: z.array(treePathSchema).optional(),
 		/** Untracked build outputs a fresh pass may remove without asking. */
 		cleanupWhitelist: z.array(z.string().min(1)).optional(),
+		/**
+		 * The paths a build writes *inside* the own root, as globs relative to
+		 * it (`lib/**`, `*.tsbuildinfo`). They are not own code: the mirror never
+		 * carries them into the delta, `status` never counts them as changed own
+		 * code, and a fresh pass removes them. A tree that compiles elsewhere
+		 * declares none (##TYPE-AREA-LAYOUT).
+		 */
+		ownBuildOutputs: z.array(z.string().min(1)).optional(),
 		/** What proves that a directory really is a tree of this upstream. */
 		identity: z
 			.object({

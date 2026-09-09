@@ -17,6 +17,7 @@ function bareType(overrides: Partial<ProjectType> = {}): ProjectType {
 		identity: { tagPattern: /^v\d+$/u, tagShape: 'v<number>', fingerprints: [] },
 		layout: {
 			ownRootProblem: () => null,
+			ownRoots: (config) => [{ path: config.ownRoot, role: 'own', buildOutputs: [] }],
 			ownExtensionPath: () => null,
 			cleanupWhitelist: [],
 			forbiddenPatchTargets: []
@@ -164,6 +165,59 @@ describe('the shape gate of a type', () => {
 			}
 		});
 		expect(projectTypeProblems(type)).toEqual([]);
+	});
+});
+
+describe('the owned directories', () => {
+	it('accepts one owned directory that is the own root itself', () => {
+		expect(projectTypeProblems(bareType())).toEqual([]);
+	});
+
+	it('accepts a second owned directory with its own role and build outputs', () => {
+		const type = bareType({
+			layout: {
+				ownRootProblem: () => null,
+				ownRoots: (config) => [
+					{ path: config.ownRoot, role: 'own', buildOutputs: ['lib/**'] },
+					{ path: 'applications/product', role: 'application', buildOutputs: ['lib/**', 'src-gen/**'] }
+				],
+				ownExtensionPath: () => null,
+				cleanupWhitelist: [],
+				forbiddenPatchTargets: []
+			}
+		});
+		expect(projectTypeProblems(type)).toEqual([]);
+	});
+
+	it('refuses an answer that does not begin with the own root', () => {
+		const type = bareType({
+			layout: {
+				ownRootProblem: () => null,
+				ownRoots: () => [{ path: 'applications/product', role: 'application', buildOutputs: [] }],
+				ownExtensionPath: () => null,
+				cleanupWhitelist: [],
+				forbiddenPatchTargets: []
+			}
+		});
+		expect(projectTypeProblems(type)).toEqual(['bare: the first owned directory must be the own root itself, with the role own']);
+	});
+
+	it('refuses an owned directory that sits inside another', () => {
+		const type = bareType({
+			layout: {
+				ownRootProblem: () => null,
+				ownRoots: (config) => [
+					{ path: config.ownRoot, role: 'own', buildOutputs: [] },
+					{ path: `${config.ownRoot}/inside`, role: 'application', buildOutputs: [] }
+				],
+				ownExtensionPath: () => null,
+				cleanupWhitelist: [],
+				forbiddenPatchTargets: []
+			}
+		});
+		expect(projectTypeProblems(type)).toEqual([
+			'bare: the owned directory codkit-probe/own-root/inside sits inside the owned directory codkit-probe/own-root'
+		]);
 	});
 });
 

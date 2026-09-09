@@ -7,6 +7,7 @@
 // package too and it has to sit under one of the workspace globs of the root
 // manifest, or `lerna run`, the generated tsconfig references and the
 // localization extraction never see it (##THEIA-OWN-ROOT).
+import { oneOwnedDirectory } from '@codkit/type-api';
 /**
  * ##THEIA-OWN-ROOT: the workspace globs an own package may live under. The
  * fourth glob of the root manifest, `sample-plugins/*&#47;*`, is deliberately not
@@ -66,8 +67,13 @@ export function ownRootProblem(ownRoot) {
     }
     return null;
 }
+/** The directories the delta owns; see `makeLayout` for the second one. */
+export function ownRoots(config) {
+    return oneOwnedDirectory(config.ownRoot);
+}
 export const layout = {
     ownRootProblem,
+    ownRoots,
     // A Theia extension is own code - a workspace package - and not a built-in
     // extension of a distribution, so this family materializes none
     // (##THEIA-EXTENSIONS-ARE-OWN-CODE).

@@ -55,7 +55,7 @@ export function projectTypeFor(config: GenericTypeConfig): ProjectType {
 		configurableCapabilities: new Set(CONFIGURABLE_CAPABILITIES),
 		configSchema,
 		identity: makeIdentity(config.identity),
-		layout: makeLayout(config.cleanupWhitelist ?? []),
+		layout: makeLayout(config.cleanupWhitelist ?? [], config.ownBuildOutputs ?? []),
 		layers: makeLayers(overlayTargets),
 		build: makeBuild(config),
 		advisory,

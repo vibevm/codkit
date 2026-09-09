@@ -5,6 +5,7 @@
 // To the engine the own root is an opaque directory. Only this type knows why
 // it has to sit under `src/vs/`: the tsconfig, layering, test and nls globs of
 // the distribution are anchored there (##OWN-UNDER-SRC-VS).
+import { oneOwnedDirectory } from '@codkit/type-api';
 /** The bounds of `typeConfig.ownRoot` for this family, with a trailing slash. */
 export const OWN_ROOT_PREFIX = 'src/vs/';
 /** Where the upstream build looks for built-in extensions, from the tree root. */
@@ -49,8 +50,17 @@ export function ownRootProblem(ownRoot) {
 export function ownExtensionPath(name) {
     return `${EXTENSIONS_TREE_DIR}/${name}`;
 }
+/**
+ * ##VSCODE-OWN-ROOT-CONSTRAINT: one owned directory and no build output inside
+ * it. This distribution transpiles the whole of `src/` into `out/` at the tree
+ * root, so nothing of a build is ever written next to the sources of own code.
+ */
+export function ownRoots(config) {
+    return oneOwnedDirectory(config.ownRoot);
+}
 export const layout = {
     ownRootProblem,
+    ownRoots,
     ownExtensionPath,
     cleanupWhitelist: CLEANUP_WHITELIST,
     forbiddenPatchTargets: FORBIDDEN_PATCH_TARGETS

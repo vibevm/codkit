@@ -23,6 +23,7 @@ const base: ProjectType = {
 	},
 	layout: {
 		ownRootProblem: () => null,
+		ownRoots: (config) => [{ path: config.ownRoot, role: 'own', buildOutputs: [] }],
 		ownExtensionPath: () => null,
 		cleanupWhitelist: [],
 		forbiddenPatchTargets: []

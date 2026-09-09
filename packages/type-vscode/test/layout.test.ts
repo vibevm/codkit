@@ -32,6 +32,10 @@ describe('the layout answers', () => {
 		expect(layout.ownExtensionPath('acme-pack')).toBe('extensions/acme-pack');
 	});
 
+	it('owns one directory, the own root, and no build output sits inside it', () => {
+		expect(layout.ownRoots({ ownRoot: 'src/vs/patchset' })).toEqual([{ path: 'src/vs/patchset', role: 'own', buildOutputs: [] }]);
+	});
+
 	it('names the build outputs a fresh pass may remove and the targets a patch may not touch', () => {
 		expect(layout.cleanupWhitelist).toContain('node_modules/');
 		expect(layout.cleanupWhitelist).toContain('/out*/');

@@ -6,7 +6,8 @@
 // it has to sit under `src/vs/`: the tsconfig, layering, test and nls globs of
 // the distribution are anchored there (##OWN-UNDER-SRC-VS).
 
-import type { LayoutArea, Refusal } from '@codkit/type-api';
+import { oneOwnedDirectory } from '@codkit/type-api';
+import type { LayoutArea, OwnedDirectory, Refusal } from '@codkit/type-api';
 
 /** The bounds of `typeConfig.ownRoot` for this family, with a trailing slash. */
 export const OWN_ROOT_PREFIX = 'src/vs/';
@@ -58,8 +59,18 @@ export function ownExtensionPath(name: string): string {
 	return `${EXTENSIONS_TREE_DIR}/${name}`;
 }
 
+/**
+ * ##VSCODE-OWN-ROOT-CONSTRAINT: one owned directory and no build output inside
+ * it. This distribution transpiles the whole of `src/` into `out/` at the tree
+ * root, so nothing of a build is ever written next to the sources of own code.
+ */
+export function ownRoots(config: { readonly ownRoot: string }): readonly OwnedDirectory[] {
+	return oneOwnedDirectory(config.ownRoot);
+}
+
 export const layout: LayoutArea = {
 	ownRootProblem,
+	ownRoots,
 	ownExtensionPath,
 	cleanupWhitelist: CLEANUP_WHITELIST,
 	forbiddenPatchTargets: FORBIDDEN_PATCH_TARGETS

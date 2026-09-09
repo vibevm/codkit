@@ -18,7 +18,7 @@ import type { ConventionsArea } from './conventions.ts';
 import type { GeneratorsArea } from './generators.ts';
 import type { IdentityArea } from './identity.ts';
 import type { LayersArea } from './layers.ts';
-import type { LayoutArea } from './layout.ts';
+import type { LayoutArea, OwnedDirectory } from './layout.ts';
 import type { RuntimeArea } from './runtime.ts';
 import type { StandardsArea } from './standards.ts';
 
@@ -65,6 +65,49 @@ export type ProjectType = {
 	 */
 	configure?(typeConfig: unknown): ProjectType;
 };
+
+/**
+ * ##TYPE-AREA-LAYOUT: the shape of the owned directories, asked of the type
+ * with a probe own root. The engine asks the same questions again over the real
+ * configuration, where a bad answer is `CK-E-CONFIG`; here they are part of the
+ * type's own shape, so a type package's suite catches the answer before any
+ * patch set exists. The rules are the ones the engine could not work around:
+ * the own root comes first, no role and no path repeats, and no owned directory
+ * sits inside another.
+ */
+function ownedDirectoryProblems(type: ProjectType): readonly string[] {
+	const probe = 'codkit-probe/own-root';
+	let answer: readonly OwnedDirectory[];
+	try {
+		answer = type.layout.ownRoots({ ownRoot: probe });
+	} catch (error) {
+		return [`${type.id}: layout.ownRoots refused a well-formed own root: ${error instanceof Error ? error.message : String(error)}`];
+	}
+	const problems: string[] = [];
+	const first = answer[0];
+	if (first === undefined || first.path !== probe || first.role !== 'own') {
+		problems.push(`${type.id}: the first owned directory must be the own root itself, with the role own`);
+	}
+	const paths = new Set<string>();
+	const roles = new Set<string>();
+	for (const owned of answer) {
+		if (owned.path === '' || owned.path.startsWith('/') || owned.path.endsWith('/') || owned.path.includes('\\')) {
+			problems.push(`${type.id}: the owned directory ${JSON.stringify(owned.path)} is not a path from the tree root`);
+		}
+		if (paths.has(owned.path)) problems.push(`${type.id}: the owned directory ${owned.path} is named twice`);
+		if (roles.has(owned.role)) problems.push(`${type.id}: the role ${owned.role} is used by two owned directories`);
+		paths.add(owned.path);
+		roles.add(owned.role);
+	}
+	for (const owned of answer) {
+		for (const other of answer) {
+			if (other !== owned && `${other.path}/`.startsWith(`${owned.path}/`) && other.path !== owned.path) {
+				problems.push(`${type.id}: the owned directory ${other.path} sits inside the owned directory ${owned.path}`);
+			}
+		}
+	}
+	return problems;
+}
 
 /**
  * The areas that are optional in the interface, paired with the capability that
@@ -122,6 +165,7 @@ export function projectTypeProblems(type: ProjectType): readonly string[] {
 	if (configurable !== undefined && configurable.size > 0 && type.configure === undefined) {
 		problems.push(`${type.id}: capabilities are named as configurable, and the type answers no configure`);
 	}
+	problems.push(...ownedDirectoryProblems(type));
 	const images = type.brandImages;
 	if (images !== undefined) {
 		const kinds = new Set(images.codecs.map((codec) => codec.kind));

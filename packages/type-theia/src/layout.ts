@@ -8,7 +8,8 @@
 // manifest, or `lerna run`, the generated tsconfig references and the
 // localization extraction never see it (##THEIA-OWN-ROOT).
 
-import type { LayoutArea, Refusal } from '@codkit/type-api';
+import { oneOwnedDirectory } from '@codkit/type-api';
+import type { LayoutArea, OwnedDirectory, Refusal } from '@codkit/type-api';
 
 /**
  * ##THEIA-OWN-ROOT: the workspace globs an own package may live under. The
@@ -76,8 +77,14 @@ export function ownRootProblem(ownRoot: string): Refusal {
 	return null;
 }
 
+/** The directories the delta owns; see `makeLayout` for the second one. */
+export function ownRoots(config: { readonly ownRoot: string }): readonly OwnedDirectory[] {
+	return oneOwnedDirectory(config.ownRoot);
+}
+
 export const layout: LayoutArea = {
 	ownRootProblem,
+	ownRoots,
 	// A Theia extension is own code - a workspace package - and not a built-in
 	// extension of a distribution, so this family materializes none
 	// (##THEIA-EXTENSIONS-ARE-OWN-CODE).

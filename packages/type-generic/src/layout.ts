@@ -8,7 +8,8 @@
 // and no forbidden patch targets beyond the overlay targets the engine adds
 // from the layers area.
 
-import type { LayoutArea, Refusal } from '@codkit/type-api';
+import { oneOwnedDirectory } from '@codkit/type-api';
+import type { LayoutArea, OwnedDirectory, Refusal } from '@codkit/type-api';
 
 /** ##TYPE-GENERIC: any directory of the tree, named from its root. */
 export function ownRootProblem(ownRoot: string): Refusal {
@@ -27,10 +28,18 @@ export function ownRootProblem(ownRoot: string): Refusal {
 	return null;
 }
 
-/** The layout of a patch set whose cleanup whitelist it declared itself. */
-export function makeLayout(cleanupWhitelist: readonly string[]): LayoutArea {
+/**
+ * The layout of a patch set whose cleanup whitelist and own build outputs it
+ * declared itself. A plain upstream has one owned directory - there is no
+ * product model with an application directory in it - and whether a build
+ * writes anything inside that directory is a fact of the patch set's own tree,
+ * so it comes from `typeConfig.ownBuildOutputs` and is empty when nothing is
+ * declared.
+ */
+export function makeLayout(cleanupWhitelist: readonly string[], ownBuildOutputs: readonly string[] = []): LayoutArea {
 	return {
 		ownRootProblem,
+		ownRoots: (config): readonly OwnedDirectory[] => oneOwnedDirectory(config.ownRoot, ownBuildOutputs),
 		// No extension host, so an own extension has nowhere to go; the engine
 		// refuses the layer through the capability rather than through a path.
 		ownExtensionPath: () => null,
