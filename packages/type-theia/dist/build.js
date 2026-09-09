@@ -9,7 +9,8 @@
 //   install        npm ci                                       (##THEIA-INSTALL)
 //   hygiene        npm run lint -w <own root>, then npm run lint (##THEIA-LINT)
 //   own tests      npm run test -w <own root>                    (##THEIA-TEST-RUNNERS)
-//   package build  theia build in the application directory      (##THEIA-PACKAGE-BUILD)
+//   package build  compile the tree, then the own package, then
+//                  theia build in the application directory      (##THEIA-PACKAGE-BUILD)
 //
 // The scripts of the own package are run **by workspace and not through
 // `lerna --scope`**, and that is a measurement rather than a preference: the
@@ -116,12 +117,25 @@ export function ownTestsOf(ownRoot) {
  * ##THEIA-PACKAGE-BUILD: upstream packages no desktop application - no
  * electron-builder configuration, no signing, no installer - and its contract
  * with a packager is the built `lib/` of the application. The package build of
- * this type is therefore `theia build` of the application, run inside the
+ * this type therefore ends with `theia build` of the application, run inside the
  * application directory through the workspace it is. The installer is a product
  * artifact and is the second, separately answered half below.
+ *
+ * It ends with it, and does not start with it: the bundler of this family reads
+ * the compiled `lib/` of every package it pulls in, the cleanup whitelist of a
+ * fresh pass removes exactly those directories, and a bundler that cannot find
+ * one of them **does not fail** - it leaves a runtime require in the bundle and
+ * still prints a pass with no errors. The result is a package that builds,
+ * starts, and carries not one line of the product's own code. So the build of
+ * this type compiles before it bundles: the whole tree first (`tsc -b` over the
+ * project references, incremental, and therefore cheap on a warm tree), then the
+ * own package - which can only be compiled once the packages it depends on have
+ * their `lib/` (##THEIA-COMPILE) - and only then the bundle.
  */
-export function packageBuildOf(applicationRoot) {
+export function packageBuildOf(applicationRoot, ownRoot) {
     return [
+        { label: 'compile tree', command: 'npm', args: ['run', 'compile'] },
+        ownScript('compile own package', 'compile', ownRoot),
         {
             label: 'package',
             command: 'npm',
@@ -159,7 +173,7 @@ export function makeBuild(config) {
         dependencyRoots: DEPENDENCY_ROOTS,
         hygiene: hygieneOf(config.ownRoot),
         ownTests: () => ownTests,
-        packageBuild: packageBuildOf(config.applicationRoot),
+        packageBuild: packageBuildOf(config.applicationRoot, config.ownRoot),
         packageDistributable: packageDistributableOf(config.applicationRoot, config.packageScript),
         packageOutputs: packageOutputsOf(config.applicationRoot),
         // ##THEIA-PACKAGE-SCRATCH: neither half of the packaging of this family

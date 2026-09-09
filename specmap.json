@@ -941,7 +941,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:91e11181c32fbb1836230993e44004df5c5d49497bc196bc4adbc987ec3a43b9",
+      "content_hash": "sha256:4ae61a83111fd27dd05e05cec3b9867b92ce8cffbd3e43173e8b34ee1c852614",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: End-to-end acceptance scenarios S01–S28 (Given/When/Then)",
@@ -2495,6 +2495,24 @@
       "heading": "**Given**: a loaded fork tree whose project type names a tracked path its packager rewrites while it packages. **When**: `codkit package` over it. **Then**: exit 0; the plan carries a `scratch restore` step, `data.scratchRestored` names the path, the file equals the tip of the loaded tree again and `codkit status` is exit 0 - a successful packaging leaves the tree as it found it (`spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-SCRATCH`). **When**: the same run with a packaging command that exits non-zero, and again with `--keep-overlay`. **Then**: the path is put back in both - the residue is nobody's overlay and the flag never keeps it - while `--keep-overlay` still leaves the materialized target in the tree. **Given**: that path rewritten in a tree nothing else touched, as an interrupted run would leave it. **When**: `codkit status`. **Then**: exit 1, `data.upstream.packagingScratch` names it, the printed next step names the path and `codkit load --fresh --discard`, and `run codkit save …` is not printed at all; one real edit beside it brings the ordinary `save` advice back (`spec://codkit/modules/codkit/PROP-007#STATUS-ADVICE-FOLLOWS-THE-LAYER`). @status:spec/done",
       "line": 260,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S84"
+    },
+    {
+      "anchor": "s85",
+      "content_hash": "sha256:c0a41e5d6b6a936b2a723f81df92da86fff6bb4447bef3b8122327318750ec86",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S85 - the second family compiles before it bundles",
+      "line": 262,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s85"
+    },
+    {
+      "anchor": "S85",
+      "content_hash": "sha256:9ab397ea28b6f5e9788ca94e07c551646ffd98829f9de569b34a66b68dd0f826",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: the project type of the second family and a patch set that names its own root and its application root. **When**: the type answers `build.packageBuild`. **Then**: three commands in this order - the compile of the whole tree, the compile of the own package by its workspace, and the bundle of the application - whatever the product declares as its own packaging step afterwards (`spec://codkit/modules/theia/PROP-004#THEIA-PACKAGE-BUILD-COMPILES-FIRST`). The order is the answer and not a convenience: a fresh load removes the compiled `lib/` of every package, the bundler of this family reports a clean pass over a package whose `lib/` is missing instead of failing, and a run that started at the bundle produced a distributable carrying none of the product's own code. @status:spec/done",
+      "line": 263,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S85"
     },
     {
       "anchor": "root",
@@ -10832,7 +10850,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:2c56619bd9c2e2792ecb43097981a698116615e78d85de74b5b5a0f135840db8",
+      "content_hash": "sha256:8c5e09fc32195fbe2025d51b7427066ce293b06de7c39c7801168351f4656682",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "theia PROP-004: Build, watch, lint, test, packaging",
@@ -10903,12 +10921,21 @@
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-PACKAGE-BUILD"
     },
     {
+      "anchor": "THEIA-PACKAGE-BUILD-COMPILES-FIRST",
+      "content_hash": "sha256:b731ca75fb0f35f42ee005cacb7254df12ca7300a014dbda19a05a88b3fa72b8",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "**The package build of this family compiles before it bundles, and the reason is that the bundler does not complain when it should.** `build.packageBuild` is three commands in this order: `npm run compile` at the tree root (`tsc -b` over the project references - incremental, so it costs seconds on a warm tree and the full 68 s of ##THEIA-COMPILE only on a cold one), then `npm run compile --workspace <ownRoot>` (the own package can only be compiled once the packages it depends on have their `lib/`, ##THEIA-COMPILE), then `theia build` in the application. It used to be the bundle alone, and that was wrong in exactly the case the tool creates for itself: `codkit load --fresh` removes the build outputs its cleanup whitelist names, `**/lib/` among them, so the tree a packaging run starts from is uncompiled. esbuild then **does not fail** over the missing `<ownPackage>/lib/…` - it leaves the import as a runtime require and reports a pass with zero errors - and the run ends green with a package that builds, starts, and carries not one line of the product's own code. Measured on 2026-09-09 on the first packaging of a real fork of this family. The engine is unchanged: the order of the commands is an answer of the type, and `codkit package --skip-type-build` still skips all three, because a tree the watch channels already built is exactly the case where none of them is needed. @status:impl/done",
+      "line": 13,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-PACKAGE-BUILD-COMPILES-FIRST"
+    },
+    {
       "anchor": "THEIA-PACKAGE-SCRATCH",
       "content_hash": "sha256:20b09ecae130f4ba16c6092c52e8a6419e233b5f2b2792ed373e753604ade8d0",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "**This family leaves no packaging residue**: neither half writes into a tracked file of the tree - the build of the application writes its own `lib/` and `src-gen/`, and a packager the product declares writes the application's `dist/` - so `build.packageScratch` is empty and `codkit package` has nothing to put back beyond the overlay targets it materialized itself (`spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-SCRATCH`). Unlike the first family, whose bundler rewrites the manifest of every add-on it packages (`spec://codkit/modules/vscode/PROP-004#VSCODE-PACKAGE-SCRATCH`), nothing here edits the sources in passing. @status:impl/done",
-      "line": 13,
+      "line": 14,
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-PACKAGE-SCRATCH"
     },
     {
@@ -10917,7 +10944,7 @@
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "**Both halves write inside the managed tree, so this type can name where the artifact lands.** `build.packageOutputs` is `<applicationRoot>/dist/` - the directory a packager of this family leaves its result in (`spec://codkit/modules/theia/PROP-002#THEIA-PACKAGER-OUTPUT`, which already counts it as a build output of the application) - and `codkit package` prints it when it exists. Unlike the first family, nothing here is written beside the tree, so nothing has to be reported as unnameable (`spec://codkit/modules/vscode/PROP-004#VSCODE-PACKAGE-OUTPUTS`). @status:spec/done",
-      "line": 14,
+      "line": 15,
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-PACKAGE-OUTPUTS"
     },
     {
@@ -10926,7 +10953,7 @@
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "Nothing is stamped at build time - no sha, no date, no quality channel (`09-build-time-stamps.md`); what is baked into `src-gen/` is the frontend and backend configuration, the page title and the extension inventory. A product that wants a commit in its About dialog adds it through its own package (a generated constant written by `load` from the pin), not through the type. @status:spec/done",
-      "line": 15,
+      "line": 16,
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-NO-STAMPS"
     },
     {
@@ -10935,7 +10962,7 @@
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "**Measured on a real clone in P5 as a defect of the engine; answered in P5-2.** The own root of this family is a *compiled npm package*, so its build output lands **inside** it - `packages/<own>/lib/`, `.eslintcache`, `*.tsbuildinfo`. The engine treats every file under the own root as own code, and the fresh pass deliberately never cleans inside it (own code is not litter), so after one compile `status` reports the compiled `lib/` as own code the tree has and the delta does not, and `load` refuses over it as a dirty tree. The contract now lets a type say which paths inside an owned directory a build writes (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYOUT`), and this type says it: inside the own package `lib/**`, `node_modules/**`, `.nyc_output/**`, `coverage/**`, `.eslintcache`, `*.tsbuildinfo`; inside the application the same plus `src-gen/**`, `plugins/**` and the generated bundler entries. The coverage state was measured on the real clone in P5-2: the test runner of this family writes `.nyc_output/` inside the owned directory, exactly as the compiler writes `lib/`. The engine never copies them into the delta, never counts them as changed own code, never removes them on a load, and removes them on `load --fresh`; the hand protocol of P5 (delete them before every command) is retired. The first type never met this because its own code compiles into `out/` outside the own root. @status:impl/done",
-      "line": 16,
+      "line": 17,
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT"
     },
     {

@@ -45,10 +45,8 @@ CLI-пакета, и ни один модуль не грузится из patch
 - `type` — идентификатор из `codkit types`;
 - `typeConfig` — секция, которую валидирует сам тип. Первое поле секции,
   `ownRoot`, — полный путь собственного кода от корня дерева; остальные поля
-  секции движок не читает. У типа `vscode` второе поле необязательно:
-  `quality` (`stable` | `insider` | `exploration`) — канал качества, который
-  `codkit package` штампует в `VSCODE_QUALITY`; без него штампуется тег пина
-  ([08](08-release-ci.md#упаковка)).
+  секции движок не читает (у `vscode` их одно: необязательное `quality` —
+  `stable` | `insider` | `exploration` — канал для `VSCODE_QUALITY`, см. [08](08-release-ci.md#упаковка)).
 
 Схемы 1 больше нет: слоя совместимости не существует, и ни один путь кода не
 выводит тип по догадке.
@@ -98,7 +96,7 @@ patch set по шагам — [02](02-daily.md#патч-сет-над-апстр
 | `ownPackageName` | npm-имя собственного пакета: им `lerna run <скрипт> --scope` выбирает пакет для линта и тестов |
 | `applicationRoot` | каталог приложения: **второй владеемый каталог** (роль `application`, дельта `delta/own-roots/application/`), его `package.json` — цель overlay, его сборка — package build |
 | `watchScripts.typecheck`, `watchScripts.bundle` | имена корневых npm-скриптов двух каналов наблюдения; по умолчанию `watch:compile` и `watch:bundle` |
-| `packageScript` | необязательное имя npm-скрипта манифеста приложения: с ним `codkit package` после `theia build` выполняет `npm run <скрипт> --workspace <applicationRoot>` и доходит до дистрибутива продукта; без него упаковка заканчивается собранным приложением |
+| `packageScript` | необязательное имя npm-скрипта манифеста приложения: с ним `codkit package` после `theia build` (которому предшествуют две компиляции) выполняет `npm run <скрипт> --workspace <applicationRoot>` и доходит до дистрибутива продукта; без него упаковка заканчивается собранным приложением |
 
 Возможности одинаковы у любого patch set этого семейства — `config-overlay`,
 `service-override`, `build-channels`, `upgrade-advisory`, — поэтому в
@@ -133,8 +131,10 @@ patch set по шагам — [02](02-daily.md#патч-сет-над-апстр
 
 Сборка: `npm ci`; линт — сначала собственный пакет
 (`npm run lint --workspace <ownRoot>`), затем полный `npm run lint`; собственные
-тесты — `npm run test --workspace <ownRoot>`; package build — `theia build`
-приложения. Ничего не штампуется на сборке: ни sha, ни даты, ни канала качества.
+тесты — `npm run test --workspace <ownRoot>`; package build — `npm run compile`
+дерева, затем `npm run compile --workspace <ownRoot>`, и лишь потом `theia build`
+приложения: `load --fresh` удаляет `**/lib/`, а бандлер над пакетом без `lib/` не
+падает и даёт пакет без собственного кода продукта. На сборке не штампуется ничего.
 
 Почему по workspace, а не `lerna run --scope <пакет>` (измерено на настоящем
 клоне): Codkit исключает собственный корень из git через `.git/info/exclude`, а

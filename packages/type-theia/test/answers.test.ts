@@ -232,23 +232,26 @@ describe('build', () => {
 		expect(makeBuild(CONFIG).ownTests('packages/acme')?.args).toEqual(['run', 'test', '--workspace', 'packages/acme']);
 	});
 
-	it('builds the application and stamps nothing into it', () => {
-		// ##THEIA-PACKAGE-BUILD, ##THEIA-NO-STAMPS
-		expect(packageBuildOf('examples/electron')[0]?.args).toEqual([
-			'exec',
-			'--no',
-			'--workspace',
-			'examples/electron',
-			'--',
-			'theia',
-			'build'
+	it('compiles the tree and the own package before it bundles the application', () => {
+		// ##THEIA-PACKAGE-BUILD: the bundler of this family does not fail over a
+		// package whose lib/ is missing - it leaves a runtime require and reports
+		// a clean pass - so a build that started at the bundle produced a package
+		// without one line of the product's own code. The order is the answer:
+		// the tree, then the own package (##THEIA-COMPILE), then the bundle.
+		expect(packageBuildOf('examples/electron', 'packages/acme').map((command) => [command.label, ...command.args])).toEqual([
+			['compile tree', 'run', 'compile'],
+			['compile own package', 'run', 'compile', '--workspace', 'packages/acme'],
+			['package', 'exec', '--no', '--workspace', 'examples/electron', '--', 'theia', 'build']
 		]);
+		expect(makeBuild(CONFIG).packageBuild).toEqual(packageBuildOf(CONFIG.applicationRoot, CONFIG.ownRoot));
+		// The family's build is the same three commands whatever the product
+		// declares; what follows it is the separate answer below.
+		expect(makeBuild({ ...CONFIG, packageScript: 'package:linux' }).packageBuild).toHaveLength(3);
+	});
+
+	it('stamps nothing into the built application', () => {
+		// ##THEIA-NO-STAMPS
 		expect(makeBuild(CONFIG).packageStamps).toEqual([]);
-		// The family's build is one command whatever the product declares; what
-		// follows it is the separate answer below.
-		expect(packageBuildOf('examples/electron')).toHaveLength(1);
-		expect(makeBuild(CONFIG).packageBuild).toHaveLength(1);
-		expect(makeBuild({ ...CONFIG, packageScript: 'package:linux' }).packageBuild).toHaveLength(1);
 	});
 
 	it('continues into the packaging script the product declares, and only then', () => {
