@@ -13,17 +13,21 @@
 import type { Capability, ProjectType } from '@codkit/type-api';
 import { ckError } from '../lib/messages.ts';
 
-/** What a person reads instead of the verb's answer, per capability. */
+/**
+ * What a person reads instead of the verb's answer, per capability. Each value
+ * completes the sentence "this family of upstreams has no ...", so none of them
+ * carries an article of its own.
+ */
 const WHAT_IT_IS: Readonly<Record<Capability, string>> = {
-	'brand-images': 'a brand image set',
-	'gen-brand': 'a brand table generator',
+	'brand-images': 'brand image set',
+	'gen-brand': 'brand table generator',
 	'build-channels': 'compile channels behind a watch wrapper',
-	'runtime-library': 'a runtime library to deliver',
+	'runtime-library': 'runtime library to deliver',
 	'own-extensions': 'own extensions of the patch set',
-	'service-override': 'a service-override seam',
+	'service-override': 'service-override seam',
 	'entry-module': 'entry modules a graft may target',
 	'config-overlay': 'configuration files an overlay may target',
-	'dev-channel': 'a development channel beside an overlay target',
+	'dev-channel': 'development channel beside an overlay target',
 	'upgrade-advisory': 'semantic readers for the upgrade advisory'
 };
 
