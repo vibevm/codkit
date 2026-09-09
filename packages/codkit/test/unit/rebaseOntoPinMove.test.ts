@@ -237,7 +237,7 @@ function moveOptions(current: MaterializationFixture): RebaseMoveOptions {
 		desiredTree: current.desiredTree,
 		patchsetHead: current.patchsetHead,
 		allowedOwnBeforeTree: current.head,
-		allowedIgnoredPrefix: 'src/vs/patchset/',
+		allowedIgnoredPrefixes: ['src/vs/patchset/'],
 		allowedIgnoredPaths: [],
 		allowCompletedRollover: false
 	};

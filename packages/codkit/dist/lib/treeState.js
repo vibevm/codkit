@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expandCollapsedUntracked, porcelainZEntries } from './driftGuard.js';
+import { ownedTreePrefixes } from './ownedRoots.js';
 import { runGit, runGitBytes } from './gitx.js';
 import { ckError } from './messages.js';
 import { repoRelativePathProblem } from './pathSafety.js';
@@ -23,17 +24,16 @@ import { toPosix } from './syncEngine.js';
 /**
  * The paths in which `state` differs from `base` (D4): the worktree's final
  * state - staged, unstaged and committed together - or one commit's state.
- * The own directory is not an upstream file in any mode and is filtered out;
+ * An owned directory is not an upstream file in any mode and is filtered out;
  * `forcedPaths` are internal addressed targets that must be regenerated even
  * when the tree already carries their bytes, appended as modified when absent.
  */
-export function changesSince(treeDir, base, state, ownRoot, forcedPaths = [], ownedPrefixes = []) {
-    const ownPrefix = `${ownRoot}/`;
+export function changesSince(treeDir, base, state, roots, forcedPaths = [], ownedPrefixes = []) {
     // ##OWN-EXTENSION-UNIT: the materialization of a declared own extension is
-    // supplied by the delta too, so it is no more an upstream file than the own
+    // supplied by the delta too, so it is no more an upstream file than an owned
     // directory is - and without this a materialized extension would be selected
     // as a new file in the upstream zone.
-    const owned = [ownPrefix, ...ownedPrefixes];
+    const owned = [...ownedTreePrefixes(roots), ...ownedPrefixes];
     const isOwned = (path) => owned.some((prefix) => path.startsWith(prefix));
     const changes = diffEntries(treeDir, base, state).filter((entry) => !isOwned(entry.path));
     if (state.kind === 'worktree') {

@@ -13,6 +13,7 @@ import { loadConventions } from './conventionsFile.js';
 import { devChannelFile } from './layers/overlay.js';
 import { sha256 } from './renameFileState.js';
 import { ckError } from './messages.js';
+import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.js';
 import { encodePatchName, parseCkpatch, serializeCkpatch } from './patchFormat.js';
 import { resolveContainedPath } from './pathSafety.js';
 import { replayPatch } from './replayPatch.js';
@@ -68,7 +69,7 @@ export function rebaseOntoPin(options) {
             desiredTree,
             patchsetHead: graph.head,
             allowedOwnBeforeTree: sourceBaseline,
-            allowedIgnoredPrefix: `${graph.targetConfig.typeConfig.ownRoot}/`,
+            allowedIgnoredPrefixes: ownedTreePrefixes(ownedRootsOf(options.type, graph.targetConfig.typeConfig)),
             allowedIgnoredPaths: devChannelPaths,
             allowCompletedRollover: !hasRebasePendingRecords(options.patchesDir),
             completedCheckpoint: () => options.checkpoint?.('after-complete'),

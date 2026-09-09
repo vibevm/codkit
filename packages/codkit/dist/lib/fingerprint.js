@@ -18,7 +18,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { OWN_SOURCE_DIR } from './ownCopy.js';
+import { OWN_ROOTS_DIR, OWN_SOURCE_DIR } from './ownedRoots.js';
 /** Directory holding every delta artifact, relative to the patchset root. */
 export const DELTA_DIR_NAME = 'delta';
 /** Version of the canonical string; part of the hashed input. */
@@ -48,17 +48,17 @@ export function deltaFingerprint(patchesDir, pinSha) {
     return deltaFiles(patchesDir, pinSha).fingerprint;
 }
 /**
- * The mark's artifact map (PROP-006 ##TREE-MARK): `files` minus the own
- * subtree - own keeps its own per-file map (`ownFiles`), so the two never
- * double-cover a path. This filter is the single definition of "artifact" for
- * the moved-check; the writer of the mark and its reader both go through it
- * (PROP-008 ##PATCHSET-MOVED-RULE).
+ * The mark's artifact map (PROP-006 ##TREE-MARK): `files` minus the owned
+ * subtrees - every owned directory keeps its own per-file map in the mark
+ * (`ownFiles`, `ownRootFiles`), so the two never double-cover a path. This
+ * filter is the single definition of "artifact" for the moved-check; the writer
+ * of the mark and its reader both go through it (PROP-008 ##PATCHSET-MOVED-RULE).
  */
 export function deltaArtifactMap(files) {
-    const ownPrefix = `${OWN_SOURCE_DIR}/`;
+    const ownedPrefixes = [`${OWN_SOURCE_DIR}/`, `${OWN_ROOTS_DIR}/`];
     const artifacts = {};
     for (const [path, sha256] of Object.entries(files)) {
-        if (!path.startsWith(ownPrefix)) {
+        if (!ownedPrefixes.some((prefix) => path.startsWith(prefix))) {
             artifacts[path] = sha256;
         }
     }

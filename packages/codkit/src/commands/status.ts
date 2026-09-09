@@ -33,8 +33,10 @@ import {
 import type { Materializer } from '../lib/layers/ownExtensions.ts';
 import type { OwnExtension } from '../lib/layers/ownManifest.ts';
 import { loadOwnManifest } from '../lib/layers/ownManifest.ts';
-import { classifyOwn } from '../lib/ownCopy.ts';
-import type { OwnSideClass, OwnSideKind } from '../lib/ownCopy.ts';
+import { classifyAllOwn, ownMarkFilesOf } from '../lib/ownSides.ts';
+import { ownedRootsOf, ownedTreePrefixes } from '../lib/ownedRoots.ts';
+import type { OwnedRoot } from '../lib/ownedRoots.ts';
+import type { OwnSideClass, OwnSideKind } from '../lib/ownSides.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { listPendingHeaders } from '../lib/pendingHeader.ts';
 import { readSyncTransaction } from '../lib/syncTransaction.ts';
@@ -126,6 +128,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	// ##PATCHSET-MOVED-RULE). This is the data the manual merge recipe of
 	// CK-E-PATCHSET-MOVED works from, so it belongs in the report even while
 	// the tree itself is clean.
+	const roots = ownedRootsOf(requireProjectType(ctx), config.typeConfig);
 	const loaded = loadedFrom({ treeDir: tree, base: treeCommits.base, pinSha: config.pin.sha, mark });
 	ctx.out.info(`loaded from patchset commit: ${loadedFromLabel(loaded)}`);
 	const movedArtifacts = movedArtifactsOf(
@@ -136,7 +139,7 @@ async function run(ctx: CommandContext): Promise<number> {
 			type: requireProjectType(ctx),
 			base: treeCommits.base,
 			mark,
-			ownRoot: config.typeConfig.ownRoot,
+			roots,
 			commits: treeCommits.commits
 		})
 	);
@@ -151,8 +154,8 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	// 2. Own code, per file and per side (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
-	const own = classifyOwn(ctx.patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
-	reportOwn(ctx.out, own, config.typeConfig.ownRoot);
+	const own = classifyAllOwn(ctx.patchesDir, tree, roots, (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
+	reportOwn(ctx.out, own, roots);
 
 	// 2a. Own extensions (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT): materialized under
 	// the materialization directory of the type, they are own code in the upstream zone - drift is
@@ -189,12 +192,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	// 3. Upstream files: what git sees outside the own directory and outside
 	// the declared own extensions, and whether the markers of those files are
 	// still valid.
-	const upstream = upstreamFiles(
-		tree,
-		config.typeConfig.ownRoot,
-		conventions,
-		materializer === null ? [] : ownExtensionTreePrefixes(materializer, declared)
-	);
+	const upstream = upstreamFiles(tree, roots, conventions, materializer === null ? [] : ownExtensionTreePrefixes(materializer, declared));
 	const blocks = upstream.reduce((sum, file) => sum + file.blocks, 0);
 	const markerErrors = upstream.reduce((sum, file) => sum + file.markerErrors, 0);
 	ctx.out.info(`upstream files: ${upstream.length} changed, ${blocks} marker block(s) in them, ${markerErrors} marker error(s)`);
@@ -282,15 +280,21 @@ function firstUnmet(conditions: readonly { ok: boolean; reason: string }[]): str
 	return conditions.find((condition) => !condition.ok)?.reason ?? '';
 }
 
-function reportOwn(out: Output, own: readonly OwnSideClass[], ownRoot: string): void {
+function reportOwn(out: Output, own: readonly OwnSideClass[], roots: readonly OwnedRoot[]): void {
 	const counts = countKinds(own);
 	out.info(
 		`own code: ${own.length} changed file(s) - ${counts['tree-edited']} in the tree, ${counts['patchset-edited']} in patchset, ` +
 			`${counts['both-edited']} on both sides, ${counts['unknown']} undecidable`
 	);
-	const prefix = ownRoot;
+	// The owned directories are named when there is more than one of them: the
+	// daily line of a patch set that owns one directory does not change, and a
+	// patch set that owns two says which one it is talking about
+	// (PROP-016 ##TYPE-AREA-LAYOUT).
+	if (roots.length > 1) {
+		out.info(`owned directories: ${roots.map((owned) => `${owned.path} (${owned.role})`).join(', ')}`);
+	}
 	for (const entry of own.slice(0, LIST_LIMIT)) {
-		out.info(`  ${entry.kind} ${prefix}/${entry.relative}`);
+		out.info(`  ${entry.kind} ${entry.owned.path}/${entry.relative}`);
 	}
 	if (own.length > LIST_LIMIT) {
 		out.info(`  ... and ${own.length - LIST_LIMIT} more`);
@@ -305,7 +309,7 @@ function ownData(own: readonly OwnSideClass[]): JsonValue {
 		patchsetEdited: counts['patchset-edited'],
 		bothEdited: counts['both-edited'],
 		unknown: counts['unknown'],
-		files: own.map((entry) => ({ path: entry.relative, kind: entry.kind }))
+		files: own.map((entry) => ({ path: `${entry.owned.path}/${entry.relative}`, kind: entry.kind, role: entry.owned.role }))
 	};
 }
 
@@ -320,7 +324,7 @@ function countKinds(own: readonly OwnSideClass[]): Record<OwnSideKind, number> {
 /** Changed upstream files, with the marker verdict of each readable one. */
 function upstreamFiles(
 	treeDir: string,
-	ownRoot: string,
+	roots: readonly OwnedRoot[],
 	conventions: Conventions,
 	ownedPrefixes: readonly string[]
 ): readonly UpstreamFile[] {
@@ -332,7 +336,7 @@ function upstreamFiles(
 			'check that the fork tree is a healthy git work tree'
 		);
 	}
-	const owned = [`${ownRoot}/`, ...ownedPrefixes];
+	const owned = [...ownedTreePrefixes(roots), ...ownedPrefixes];
 	const files: UpstreamFile[] = [];
 	for (const entry of expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), ownedPrefixes)) {
 		if (owned.some((prefix) => entry.path.startsWith(prefix))) {

@@ -246,9 +246,12 @@ export type OpenSyncTransactionInput = {
 	readonly treeArtifacts: readonly string[];
 	/** Tree paths the patch set moved (the rebuild rewrites them). */
 	readonly patchsetTargets: readonly string[];
-	/** delta/own-relative paths diverging between the sides, and their tree-side prefix. */
-	readonly ownRelatives: readonly string[];
-	readonly ownTargetPrefix: string;
+	/**
+	 * Every own file diverging between the sides, as the pair of paths it lives
+	 * at: the artifact inside the delta directory of its owned root, and its
+	 * materialization in the tree (PROP-016 ##TYPE-AREA-LAYOUT).
+	 */
+	readonly ownPaths: readonly { readonly artifact: string; readonly target: string }[];
 	/** Tree paths of the both-sides conflicts (D19): the run materializes markers into them. */
 	readonly conflictTargets: readonly string[];
 };
@@ -270,12 +273,12 @@ export function openSyncTransaction(input: OpenSyncTransactionInput): SyncTransa
 			...snapshotForTransaction(
 				input.patchesDir,
 				'patchset',
-				input.ownRelatives.map((relative) => `delta/own/${relative}`)
+				input.ownPaths.map((pair) => pair.artifact)
 			),
 			...snapshotForTransaction(
 				input.treeDir,
 				'tree',
-				input.ownRelatives.map((relative) => `${input.ownTargetPrefix}/${relative}`)
+				input.ownPaths.map((pair) => pair.target)
 			),
 			...snapshotForTransaction(input.treeDir, 'tree', input.conflictTargets)
 		],

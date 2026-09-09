@@ -26,6 +26,7 @@ import {
 import { gitDirOf, writeTreeMark } from '../../src/lib/treeCache.ts';
 import type { TreeMark } from '../../src/lib/treeCache.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { oneOwnedRoot } from '../support/ownedRoots.ts';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -123,7 +124,7 @@ describe('a linked worktree fork tree', () => {
 		expect(commonExclude).not.toBe(join(perWorktreeDir(worktree), 'info', 'exclude'));
 		const commonBefore = readFileSync(commonExclude, 'utf8');
 
-		writeExclude(worktree, 'src/vs/patchset');
+		writeExclude(worktree, oneOwnedRoot('src/vs/patchset'));
 
 		// The shared exclude of the repository is untouched: no managed block
 		// may hide this tree's own paths in its sibling worktrees.
@@ -160,8 +161,8 @@ describe('a linked worktree fork tree', () => {
 		const commonExclude = gitPathOf(first, 'info/exclude');
 		writeFileSync(commonExclude, '# user rules\n*.secret\n', 'utf8');
 
-		writeExclude(first, 'src/vs/alpha');
-		writeExclude(second, 'src/vs/beta');
+		writeExclude(first, oneOwnedRoot('src/vs/alpha'));
+		writeExclude(second, oneOwnedRoot('src/vs/beta'));
 
 		// Each worktree hides exactly its own directory...
 		for (const [tree, own, other] of [
@@ -195,7 +196,7 @@ describe('a linked worktree fork tree', () => {
 		const commonExclude = gitPathOf(worktree, 'info/exclude');
 		writeFileSync(commonExclude, `# user rules\n${EXCLUDE_BEGIN}\n/src/vs/oldown/\n${EXCLUDE_END}\n*.local\n`, 'utf8');
 
-		writeExclude(worktree, 'src/vs/patchset');
+		writeExclude(worktree, oneOwnedRoot('src/vs/patchset'));
 
 		// Our own block is removed; the user's lines stay byte for byte.
 		expect(readFileSync(commonExclude, 'utf8')).toBe('# user rules\n*.local\n');
@@ -212,7 +213,7 @@ describe('a linked worktree fork tree', () => {
 		writeFileSync(foreign, '/user-own/\n', 'utf8');
 		runGit({ args: ['config', '--worktree', 'core.excludesFile', foreign], cwd: worktree });
 
-		expect(() => writeExclude(worktree, 'src/vs/patchset')).toThrow(/core\.excludesFile/);
+		expect(() => writeExclude(worktree, oneOwnedRoot('src/vs/patchset'))).toThrow(/core\.excludesFile/);
 		const kept = runGit({ args: ['config', '--worktree', '--get', 'core.excludesFile'], cwd: worktree });
 		expect(kept.stdout.trim()).toBe(foreign);
 		expect(readFileSync(foreign, 'utf8')).toBe('/user-own/\n');
@@ -227,7 +228,7 @@ describe('a linked worktree fork tree', () => {
 		const planted = `[core]\n\texcludesFile = ${foreign}\n`;
 
 		expect(() =>
-			writeExclude(worktree, 'src/vs/patchset', {
+			writeExclude(worktree, oneOwnedRoot('src/vs/patchset'), {
 				afterPlan: () => writeFileSync(config, planted, 'utf8')
 			})
 		).toThrow(/dormant config\.worktree/);
@@ -251,7 +252,7 @@ describe('a linked worktree fork tree', () => {
 			const statusBefore = runGit({ args: ['status', '--porcelain', '--untracked-files=all'], cwd: worktree }).stdout;
 
 			expect(() =>
-				writeExclude(worktree, 'src/vs/patchset', {
+				writeExclude(worktree, oneOwnedRoot('src/vs/patchset'), {
 					[checkpoint]: () => {
 						throw new Error(`injected ${checkpoint}`);
 					}
@@ -270,7 +271,7 @@ describe('a linked worktree fork tree', () => {
 		// Git itself only accepts true here, but the shared extension slot is
 		// read before any write: an unexpected value is a human decision.
 		runGit({ args: ['config', '--local', 'extensions.worktreeConfig', 'false'], cwd: main });
-		expect(() => writeExclude(worktree, 'src/vs/patchset')).toThrow(/extensions\.worktreeConfig/);
+		expect(() => writeExclude(worktree, oneOwnedRoot('src/vs/patchset'))).toThrow(/extensions\.worktreeConfig/);
 	});
 
 	it('refuses foreign content in the codkit-owned exclude file', () => {
@@ -278,13 +279,13 @@ describe('a linked worktree fork tree', () => {
 		const own = join(perWorktreeDir(worktree), ...OWN_EXCLUDE_RELATIVE_PATH.split('/'));
 		mkdirSync(dirname(own), { recursive: true });
 		writeFileSync(own, '/somebody-else/\n', 'utf8');
-		expect(() => writeExclude(worktree, 'src/vs/patchset')).toThrow(/foreign content/);
+		expect(() => writeExclude(worktree, oneOwnedRoot('src/vs/patchset'))).toThrow(/foreign content/);
 		expect(readFileSync(own, 'utf8')).toBe('/somebody-else/\n');
 	});
 
 	it('ignores an exclude file planted at the per-worktree location Git never reads', () => {
 		const { worktree } = makeLinkedWorktree('exclude-negative');
-		writeExclude(worktree, 'src/vs/patchset');
+		writeExclude(worktree, oneOwnedRoot('src/vs/patchset'));
 		writeFileSync(join(worktree, 'loose.txt'), 'user file\n', 'utf8');
 
 		// The old appended location with an exclude-everything pattern: if Git
@@ -548,7 +549,7 @@ describe('a tree git cannot resolve', () => {
 		mkdirSync(join(tree, '.git', 'info'), { recursive: true });
 		writeFileSync(join(tree, '.git', 'info', 'exclude'), '# user\n', 'utf8');
 
-		writeExclude(tree, 'src/vs/patchset');
+		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		expect(readFileSync(join(tree, '.git', 'info', 'exclude'), 'utf8')).toBe(
 			`# user\n\n${EXCLUDE_BEGIN}\n/src/vs/patchset/\n${EXCLUDE_END}\n`
 		);

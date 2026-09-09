@@ -17,6 +17,8 @@ import { readContainedFile } from './containedFile.ts';
 import { runGit } from './gitx.ts';
 import type { CkError } from './messages.ts';
 import { ckError } from './messages.ts';
+import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.ts';
+import type { OwnedRoot } from './ownedRoots.ts';
 import type { ForkDirResolution } from './paths.ts';
 
 export type TreeCheckId = 'repo' | 'upstream' | 'pin' | 'fingerprints' | 'lfs' | 'write' | 'clean';
@@ -142,7 +144,7 @@ export function checkTree(resolution: ForkDirResolution, config: CodkitConfig, o
 
 	// 7. Cleanliness, only when the command requires it.
 	if (options.requireClean === true) {
-		return checkClean(repo.topLevel, config, checks);
+		return checkClean(repo.topLevel, ownedRootsOf(options.type ?? null, config.typeConfig), checks);
 	}
 	return { checks, fatal: null };
 }
@@ -418,7 +420,7 @@ function checkWritable(tree: string, gitDir: string, checks: TreeCheck[]): CkErr
 	return null;
 }
 
-function checkClean(topLevel: string, config: CodkitConfig, checks: TreeCheck[]): TreeIdentityResult {
+function checkClean(topLevel: string, roots: readonly OwnedRoot[], checks: TreeCheck[]): TreeIdentityResult {
 	const status = runGit({ args: ['status', '--porcelain'], cwd: topLevel });
 	if (status.status !== 0) {
 		checks.push(makeCheck('clean', false));
@@ -433,10 +435,13 @@ function checkClean(topLevel: string, config: CodkitConfig, checks: TreeCheck[])
 	}
 	// Own code lives in the tree but is owned by patchset: it is expected to differ
 	// from the upstream pin and is never "dirt" (PROP-008 ##ID-CHECK-CLEAN).
-	const ownPrefix = `${config.typeConfig.ownRoot}/`;
-	const dirtyFiles = parsePorcelain(status.stdout).filter((path) => !path.startsWith(ownPrefix));
+	// Every directory the delta owns is expected to differ from the pin, not only
+	// the own root (PROP-016 ##TYPE-AREA-LAYOUT).
+	const ownPrefixes = ownedTreePrefixes(roots);
+	const named = ownPrefixes.join(', ');
+	const dirtyFiles = parsePorcelain(status.stdout).filter((path) => !ownPrefixes.some((prefix) => path.startsWith(prefix)));
 	const ok = dirtyFiles.length === 0;
-	checks.push(makeCheck('clean', ok, ok ? `no changes outside ${ownPrefix}` : `${dirtyFiles.length} path(s) changed outside ${ownPrefix}`));
+	checks.push(makeCheck('clean', ok, ok ? `no changes outside ${named}` : `${dirtyFiles.length} path(s) changed outside ${named}`));
 	return { checks, fatal: null, dirtyFiles };
 }
 

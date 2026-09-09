@@ -16,18 +16,30 @@
 // The same listing is used by the drift guard, which compares the two sides
 // without writing: locally the own directory is excluded from git, so byte
 // comparison is the only thing that can see a change in it.
+//
+// Every function here works on **one** owned directory, and the plural form of
+// each - the one the commands call - loops over the list the type answered
+// (PROP-016 ##TYPE-AREA-LAYOUT, `ownedRoots.ts`). Inside an owned directory the
+// build outputs the type named are not own code at all: the listing never
+// yields them, so they are never copied into the delta, never compared, never
+// removed by a load, and never counted as work at risk. Only the fresh pass,
+// which was told to remove build outputs, touches them.
 
-import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readFileSync, readdirSync, rmdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import type { Dirent } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { bytesEqual } from './bytes.ts';
 import { LICENCE_NOTICE_NAME, OWN_MANIFEST_NAME } from './layers/ownManifest.ts';
 import { ckError } from './messages.ts';
+import { ownCodeFilter, OWN_SOURCE_DIR } from './ownedRoots.ts';
+import type { OwnedRoot } from './ownedRoots.ts';
+import type { OwnSideClass } from './ownSides.ts';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.ts';
 
-/** Own code inside patchset, relative to the patchset root. */
-export const OWN_SOURCE_DIR = 'delta/own';
+// The delta directory of the own root is defined with the owned directories
+// themselves and re-exported here, where every consumer of the own layer
+// already imports from.
+export { OWN_SOURCE_DIR };
 
 /** Placeholder that only exists to keep an empty directory in git. */
 export const GITKEEP_NAME = '.gitkeep';
@@ -72,8 +84,13 @@ export type OwnSyncReport = {
 	readonly total: number;
 };
 
-export function ownSourceRoot(patchesDir: string): string {
-	return join(patchesDir, ...OWN_SOURCE_DIR.split('/'));
+/**
+ * The delta directory of one owned root, absolute. The default is the own root
+ * of the patch set, `delta/own/` - the historical location, and still the only
+ * one for the family that owns one directory (PROP-005 ##OWN-ROOTS-IN-THE-DELTA).
+ */
+export function ownSourceRoot(patchesDir: string, deltaDir: string = OWN_SOURCE_DIR): string {
+	return join(patchesDir, ...deltaDir.split('/'));
 }
 
 /**
@@ -94,9 +111,12 @@ export function ownTargetRoot(treeDir: string, ownRoot: string): string {
  * files `isDeliveredOwnFile` excludes - because `verify` and the inventory read
  * the manifest and the placeholders as content of patchset.
  */
-export function listOwnFiles(root: string, options: { readonly refuseSymlinks: boolean }): readonly string[] {
+export function listOwnFiles(
+	root: string,
+	options: { readonly refuseSymlinks: boolean; readonly keep?: ((relative: string) => boolean) | undefined }
+): readonly string[] {
 	const out: string[] = [];
-	walk(root, '', out, options.refuseSymlinks);
+	walk(root, '', out, options.refuseSymlinks, options.keep);
 	out.sort((left, right) => Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8')));
 	return out;
 }
@@ -130,38 +150,46 @@ export type OwnDivergenceKind =
 	| 'patchset-only';
 
 export type OwnDivergence = {
-	/** Path relative to the own root, POSIX. */
+	/** Path relative to the owned directory, POSIX. */
 	readonly relative: string;
 	readonly kind: OwnDivergenceKind;
+	/** The owned directory the path belongs to. */
+	readonly owned: OwnedRoot;
 };
 
 /** Paths (relative to the own root) that differ between patchset and the tree. */
-export function compareOwn(patchesDir: string, treeDir: string, ownRoot: string): readonly OwnDivergence[] {
-	const source = ownSourceRoot(patchesDir);
-	const target = ownTargetRoot(treeDir, ownRoot);
-	assertOwnRootsSafe(patchesDir, treeDir, ownRoot);
-	const sourceFiles = listOwnFiles(source, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
-	const targetFiles = listOwnFiles(target, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
+export function compareOwn(patchesDir: string, treeDir: string, owned: OwnedRoot): readonly OwnDivergence[] {
+	const source = ownSourceRoot(patchesDir, owned.deltaDir);
+	const target = ownTargetRoot(treeDir, owned.path);
+	assertOwnRootsSafe(patchesDir, treeDir, owned);
+	const keep = ownCodeFilter(owned);
+	const sourceFiles = listOwnFiles(source, { refuseSymlinks: true, keep }).filter(isDeliveredOwnFile);
+	const targetFiles = listOwnFiles(target, { refuseSymlinks: true, keep }).filter(isDeliveredOwnFile);
 
 	const diverged: OwnDivergence[] = [];
 	const targetSet = new Set(targetFiles);
 	for (const relative of sourceFiles) {
 		if (!targetSet.has(relative)) {
-			diverged.push({ relative, kind: 'patchset-only' });
+			diverged.push({ relative, kind: 'patchset-only', owned });
 			continue;
 		}
 		if (!fileContentEqual(join(source, relative), join(target, relative))) {
-			diverged.push({ relative, kind: 'both' });
+			diverged.push({ relative, kind: 'both', owned });
 		}
 	}
 	const sourceSet = new Set(sourceFiles);
 	for (const relative of targetFiles) {
 		if (!sourceSet.has(relative)) {
-			diverged.push({ relative, kind: 'tree-only' });
+			diverged.push({ relative, kind: 'tree-only', owned });
 		}
 	}
 	diverged.sort((left, right) => Buffer.from(left.relative, 'utf8').compare(Buffer.from(right.relative, 'utf8')));
 	return diverged;
+}
+
+/** Every owned directory compared, in the order the type answered. */
+export function compareAllOwn(patchesDir: string, treeDir: string, roots: readonly OwnedRoot[]): readonly OwnDivergence[] {
+	return roots.flatMap((owned) => compareOwn(patchesDir, treeDir, owned));
 }
 
 /**
@@ -172,15 +200,19 @@ export function compareOwn(patchesDir: string, treeDir: string, ownRoot: string)
  * the tree: it is no longer copied, so the next run finds it in the mirror
  * without a source and deletes it like any other leftover.
  */
-export function syncOwnCode(patchesDir: string, treeDir: string, ownRoot: string): OwnSyncReport {
-	const source = ownSourceRoot(patchesDir);
-	const target = ownTargetRoot(treeDir, ownRoot);
+export function syncOwnCode(patchesDir: string, treeDir: string, owned: OwnedRoot): OwnSyncReport {
+	const source = ownSourceRoot(patchesDir, owned.deltaDir);
+	const target = ownTargetRoot(treeDir, owned.path);
 	// Validate both complete trees before the first copy/delete. In particular, a
 	// symlink on the materialized side must not redirect a later write outside the
 	// fork tree, and a symlink found after one copy must not leave a partial load.
-	assertOwnRootsSafe(patchesDir, treeDir, ownRoot);
-	const sourceFiles = listOwnFiles(source, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
-	const targetFiles = listOwnFiles(target, { refuseSymlinks: true });
+	assertOwnRootsSafe(patchesDir, treeDir, owned);
+	const keep = ownCodeFilter(owned);
+	const sourceFiles = listOwnFiles(source, { refuseSymlinks: true, keep }).filter(isDeliveredOwnFile);
+	// The target side is listed under the same filter: a build output the tree
+	// carries is not a leftover of a withdrawn own file, and deleting it would
+	// force a full rebuild on every load (##TYPE-AREA-LAYOUT).
+	const targetFiles = listOwnFiles(target, { refuseSymlinks: true, keep });
 
 	let copied = 0;
 	for (const relative of sourceFiles) {
@@ -195,10 +227,10 @@ export function syncOwnCode(patchesDir: string, treeDir: string, ownRoot: string
 	}
 
 	let removed = 0;
-	const keep = new Set(sourceFiles);
+	const delivered = new Set(sourceFiles);
 	const emptied = new Set<string>();
 	for (const relative of targetFiles) {
-		if (keep.has(relative)) {
+		if (delivered.has(relative)) {
 			continue;
 		}
 		rmSync(join(target, relative), { force: true });
@@ -210,129 +242,18 @@ export function syncOwnCode(patchesDir: string, treeDir: string, ownRoot: string
 	return { copied, removed, total: sourceFiles.length };
 }
 
-// ---------------------------------------------------------------------------
-// Own state: the per-file map the mark carries, and what it lets save decide
-// ---------------------------------------------------------------------------
-
-/** sha256 of every own file at one moment, keyed by its path under the own root. */
-export type OwnFileMap = Readonly<Record<string, string>>;
-
-export type OwnState = {
-	readonly files: OwnFileMap;
-	/** hex sha256 of the canonical string over `files`; the mark's ownFingerprint. */
-	readonly fingerprint: string;
-};
-
-/** Version of the canonical string of ownFingerprint; part of the hashed input. */
-const OWN_FINGERPRINT_SCHEMA_VERSION = 1;
-
-/**
- * The own state as patchset holds it. Recorded in the tree mark by every load and
- * save (PROP-006 ##TREE-MARK) so that the next run can tell, file by file, which
- * side moved: a file equal to the mark did not change on that side.
- *
- * It is taken from `delta/own/` and not from the tree, because immediately after
- * the copy the two sides are identical by construction and patchset is the source
- * of truth (PROP-005 ##OWN-SOURCE-OF-TRUTH).
- */
-export function ownStateOfPatchSet(patchesDir: string): OwnState {
-	assertContainedOwnRoot(patchesDir, OWN_SOURCE_DIR, 'own source');
-	return ownStateOf(ownSourceRoot(patchesDir));
-}
-
-export function ownStateOfTree(treeDir: string, ownRoot: string): OwnState {
-	assertSafeOwnRoot(ownRoot);
-	assertContainedOwnRoot(treeDir, ownRoot, 'materialized own target');
-	return ownStateOf(ownTargetRoot(treeDir, ownRoot));
-}
-
-/**
- * The state of one side. Both sides are read through the same filter: a file
- * that is not delivered is not part of the comparison on either side, so it can
- * never be classified as "one of the sides moved it".
- */
-function ownStateOf(root: string): OwnState {
-	const relatives = listOwnFiles(root, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
-	const files: Record<string, string> = {};
-	const hash = createHash('sha256');
-	for (const relative of relatives) {
-		const sha = sha256File(join(root, relative));
-		files[relative] = sha;
-		hash.update(`${relative}\n${sha}\n`, 'utf8');
+/** Every owned directory mirrored into the tree, as one report. */
+export function syncAllOwnCode(patchesDir: string, treeDir: string, roots: readonly OwnedRoot[]): OwnSyncReport {
+	let copied = 0;
+	let removed = 0;
+	let total = 0;
+	for (const owned of roots) {
+		const report = syncOwnCode(patchesDir, treeDir, owned);
+		copied += report.copied;
+		removed += report.removed;
+		total += report.total;
 	}
-	hash.update(`schema ${OWN_FINGERPRINT_SCHEMA_VERSION}\n`, 'utf8');
-	return { files, fingerprint: hash.digest('hex') };
-}
-
-function sha256File(absolute: string): string {
-	return createHash('sha256').update(readFileSync(absolute)).digest('hex');
-}
-
-/**
- * Which side of one own file moved since the tree was last synced
- * (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
- */
-export type OwnSideKind =
-	/** Both sides carry the same bytes: nothing to decide. */
-	| 'same'
-	/** The tree still matches the mark, patchset does not: patchset was edited. */
-	| 'patchset-edited'
-	/** patchset still matches the mark, the tree does not: the tree was edited. */
-	| 'tree-edited'
-	/** Both sides moved away from the mark, and away from each other. */
-	| 'both-edited'
-	/**
-	 * The two sides differ and there is no map to judge by: a mark written
-	 * before the map existed, or no mark at all. Callers stay conservative.
-	 */
-	| 'unknown';
-
-export type OwnSideClass = {
-	/** Path relative to the own root, POSIX. */
-	readonly relative: string;
-	readonly kind: OwnSideKind;
-	/** sha256 in patchset, or null when the file is not there. */
-	readonly patchset: string | null;
-	/** sha256 in the tree, or null when the file is not there. */
-	readonly tree: string | null;
-};
-
-/**
- * Classify every own file by which side moved. `markFiles` is the map the tree
- * mark recorded at the last load; null means "the map is unknown" - migration
- * from a mark written before the map existed - and every difference then falls
- * into `unknown` rather than being guessed at.
- */
-export function classifyOwn(patchesDir: string, treeDir: string, ownRoot: string, markFiles: OwnFileMap | null): readonly OwnSideClass[] {
-	const patchset = ownStateOfPatchSet(patchesDir).files;
-	const tree = ownStateOfTree(treeDir, ownRoot).files;
-	const paths = [...new Set([...Object.keys(patchset), ...Object.keys(tree)])].sort((left, right) =>
-		Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8'))
-	);
-
-	const out: OwnSideClass[] = [];
-	for (const relative of paths) {
-		const inPatchSet = patchset[relative] ?? null;
-		const inTree = tree[relative] ?? null;
-		out.push({ relative, kind: classifyOne(inPatchSet, inTree, markFiles, relative), patchset: inPatchSet, tree: inTree });
-	}
-	return out;
-}
-
-function classifyOne(inPatchSet: string | null, inTree: string | null, markFiles: OwnFileMap | null, relative: string): OwnSideKind {
-	if (inPatchSet === inTree) {
-		return 'same';
-	}
-	if (markFiles === null) {
-		return 'unknown';
-	}
-	const marked = markFiles[relative] ?? null;
-	const patchsetMoved = inPatchSet !== marked;
-	const treeMoved = inTree !== marked;
-	if (patchsetMoved && treeMoved) {
-		return 'both-edited';
-	}
-	return patchsetMoved ? 'patchset-edited' : 'tree-edited';
+	return { copied, removed, total };
 }
 
 export type OwnMirrorReport = OwnSyncReport & {
@@ -349,9 +270,9 @@ export type OwnMirrorReport = OwnSyncReport & {
  * function - the caller stops at CK-E-BOTH-SIDES-EDITED before anything is
  * written.
  */
-export function mirrorOwnBack(patchesDir: string, treeDir: string, ownRoot: string, classes: readonly OwnSideClass[]): OwnMirrorReport {
-	const source = ownTargetRoot(treeDir, ownRoot);
-	const target = ownSourceRoot(patchesDir);
+export function mirrorOwnBack(patchesDir: string, treeDir: string, owned: OwnedRoot, classes: readonly OwnSideClass[]): OwnMirrorReport {
+	const source = ownTargetRoot(treeDir, owned.path);
+	const target = ownSourceRoot(patchesDir, owned.deltaDir);
 	let copied = 0;
 	let removed = 0;
 	let kept = 0;
@@ -387,7 +308,35 @@ export function mirrorOwnBack(patchesDir: string, treeDir: string, ownRoot: stri
 	return { copied, removed, kept, total };
 }
 
-function walk(absoluteDir: string, relativeDir: string, into: string[], refuseSymlinks: boolean): void {
+/** Every owned directory mirrored back, as one report. */
+export function mirrorAllOwnBack(
+	patchesDir: string,
+	treeDir: string,
+	roots: readonly OwnedRoot[],
+	classes: readonly OwnSideClass[]
+): OwnMirrorReport {
+	let copied = 0;
+	let removed = 0;
+	let kept = 0;
+	let total = 0;
+	for (const owned of roots) {
+		const mine = classes.filter((entry) => entry.owned.role === owned.role);
+		const report = mirrorOwnBack(patchesDir, treeDir, owned, mine);
+		copied += report.copied;
+		removed += report.removed;
+		kept += report.kept;
+		total += report.total;
+	}
+	return { copied, removed, kept, total };
+}
+
+function walk(
+	absoluteDir: string,
+	relativeDir: string,
+	into: string[],
+	refuseSymlinks: boolean,
+	keep?: ((relative: string) => boolean) | undefined
+): void {
 	let entries: Dirent[];
 	try {
 		entries = readdirSync(absoluteDir, { withFileTypes: true });
@@ -399,6 +348,12 @@ function walk(absoluteDir: string, relativeDir: string, into: string[], refuseSy
 	for (const entry of entries) {
 		const absolute = join(absoluteDir, entry.name);
 		const relative = relativeDir === '' ? entry.name : `${relativeDir}/${entry.name}`;
+		// A directory the filter rejects is not descended into at all: that is
+		// what keeps the listing away from what a build wrote, symlinks of an
+		// install inside it included.
+		if (keep !== undefined && !keep(entry.isDirectory() ? `${relative}/` : relative)) {
+			continue;
+		}
 		if (entry.isSymbolicLink()) {
 			if (refuseSymlinks) {
 				throw ckError(
@@ -409,14 +364,14 @@ function walk(absoluteDir: string, relativeDir: string, into: string[], refuseSy
 				);
 			}
 			if (isDirectory(absolute)) {
-				walk(absolute, relative, into, refuseSymlinks);
+				walk(absolute, relative, into, refuseSymlinks, keep);
 				continue;
 			}
 			into.push(relative);
 			continue;
 		}
 		if (entry.isDirectory()) {
-			walk(absolute, relative, into, refuseSymlinks);
+			walk(absolute, relative, into, refuseSymlinks, keep);
 			continue;
 		}
 		into.push(relative);
@@ -431,10 +386,10 @@ function isDirectory(absolute: string): boolean {
 	}
 }
 
-function assertOwnRootsSafe(patchesDir: string, treeDir: string, ownRoot: string): void {
-	assertSafeOwnRoot(ownRoot);
-	assertContainedOwnRoot(patchesDir, OWN_SOURCE_DIR, 'own source');
-	assertContainedOwnRoot(treeDir, ownRoot, 'materialized own target');
+function assertOwnRootsSafe(patchesDir: string, treeDir: string, owned: OwnedRoot): void {
+	assertSafeOwnRoot(owned.path);
+	assertContainedOwnRoot(patchesDir, owned.deltaDir, 'own source');
+	assertContainedOwnRoot(treeDir, owned.path, 'materialized own target');
 }
 
 /**
@@ -442,7 +397,7 @@ function assertOwnRootsSafe(patchesDir: string, treeDir: string, ownRoot: string
  * before it is joined: the type states where the root may sit, the engine
  * states only that it stays inside the tree (##TYPE-OWN-ROOT).
  */
-function assertSafeOwnRoot(ownRoot: string): void {
+export function assertSafeOwnRoot(ownRoot: string): void {
 	const problem = repoRelativePathProblem(ownRoot);
 	if (problem !== null) {
 		throw ckError(
@@ -453,7 +408,7 @@ function assertSafeOwnRoot(ownRoot: string): void {
 	}
 }
 
-function assertContainedOwnRoot(repositoryRoot: string, relative: string, label: string): void {
+export function assertContainedOwnRoot(repositoryRoot: string, relative: string, label: string): void {
 	const resolved = resolveContainedPath(repositoryRoot, relative, { allowMissing: true });
 	if (!resolved.ok) {
 		throw ckError(

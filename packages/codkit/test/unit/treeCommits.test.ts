@@ -28,6 +28,7 @@ import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
 import { materializerOf } from '../../src/lib/layers/ownExtensions.ts';
+import { oneOwnedRoot } from '../support/ownedRoots.ts';
 
 const IDENTITY: GitEnv = {
 	GIT_AUTHOR_NAME: 'human',
@@ -253,9 +254,15 @@ describe('the third half inside the drift guard', () => {
 		const first = humanCommit('guard sees the first', '2026-09-06T10:10:00Z');
 		const second = humanCommit('guard sees the second', '2026-09-06T10:11:00Z');
 		try {
-			const drift = driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
-				generated: { pinSha: fixture.config.pin.sha, branch: branch() }
-			});
+			const drift = driftDirty(
+				materializerOf(vscodeType),
+				fixture.treeDir,
+				oneOwnedRoot(fixture.config.typeConfig.ownRoot),
+				fixture.patchesDir,
+				{
+					generated: { pinSha: fixture.config.pin.sha, branch: branch() }
+				}
+			);
 			expect(drift.upstream).toEqual([]);
 			expect(drift.commits.map((commit) => commit.sha)).toEqual([first, second]);
 			expect(drift.dirty).toBe(true);

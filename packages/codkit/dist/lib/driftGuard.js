@@ -7,7 +7,8 @@
 //
 //   (a) `git status --porcelain` outside the own directory - edits to upstream
 //       files, which git can see because those files are tracked;
-//   (b) a byte comparison of the tree's own directory against `delta/own/` -
+//   (b) a byte comparison of the tree's owned directories against their delta
+//       directories -
 //       edits to own code, which git cannot see, because locally the own
 //       directory is excluded (##OWN-EXCLUDED-LOCALLY: the managed block of
 //       info/exclude in a single-worktree repository, the worktree-local
@@ -52,31 +53,30 @@ import { runGit } from './gitx.js';
 import { compareOwnExtensions, extensionsTreeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
-import { OWN_SOURCE_DIR, compareOwn } from './ownCopy.js';
+import { compareAllOwn } from './ownCopy.js';
+import { ownedTreePrefixes } from './ownedRoots.js';
 import { foreignCommits } from './treeCommits.js';
 /** Marker appended to own-code entries of the list. */
 export const OWN_DIVERGENCE_NOTE = 'own code differs from';
-export function driftDirty(materializer, treeDir, ownRoot, patchesDir, options) {
+export function driftDirty(materializer, treeDir, roots, patchesDir, options) {
     const declared = materializer === null ? [] : declaredExtensions(patchesDir);
     const prefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, declared);
-    const upstream = upstreamDirt(treeDir, ownRoot, {
+    const upstream = upstreamDirt(treeDir, roots, {
         materializationRoot: materializer === null ? '' : extensionsTreeDir(materializer),
         ...options,
         ownedPrefixes: prefixes
     });
-    const own = compareOwn(patchesDir, treeDir, ownRoot);
+    const own = compareAllOwn(patchesDir, treeDir, roots);
     const extensions = materializer === null ? [] : compareOwnExtensions(materializer, patchesDir, treeDir, declared);
     const treeCommits = foreignCommits(treeDir, options.generated.pinSha, options.generated.branch);
-    const ownPrefix = ownRoot;
     const files = [...upstream];
     for (const divergence of own) {
         if (divergence.kind === 'patchset-only') {
             continue;
         }
-        const note = divergence.kind === 'tree-only'
-            ? `own code is not in ${OWN_SOURCE_DIR}/${divergence.relative}`
-            : `${OWN_DIVERGENCE_NOTE} ${OWN_SOURCE_DIR}/${divergence.relative}`;
-        files.push(`${ownPrefix}/${divergence.relative} (${note})`);
+        const artifact = `${divergence.owned.deltaDir}/${divergence.relative}`;
+        const note = divergence.kind === 'tree-only' ? `own code is not in ${artifact}` : `${OWN_DIVERGENCE_NOTE} ${artifact}`;
+        files.push(`${divergence.owned.path}/${divergence.relative} (${note})`);
     }
     for (const divergence of extensions) {
         if (divergence.kind === 'patchset-only') {
@@ -110,11 +110,12 @@ function declaredExtensions(patchesDir) {
     }
 }
 /**
- * Half (a): what git sees, minus the own directory it is not allowed to judge,
- * minus the tracked paths the caller certified as its own known materialization,
- * minus the tracked paths the caller was told by name to throw away.
+ * Half (a): what git sees, minus the owned directories it is not allowed to
+ * judge, minus the tracked paths the caller certified as its own known
+ * materialization, minus the tracked paths the caller was told by name to throw
+ * away.
  */
-export function upstreamDirt(treeDir, ownRoot, options = {}) {
+export function upstreamDirt(treeDir, roots, options = {}) {
     const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
     if (status.status !== 0) {
         throw ckError('NOT-A-REPO', `git status failed in ${treeDir}: ${firstLine(status.stderr)}`, 'check that the fork tree is a healthy git work tree');
@@ -123,8 +124,7 @@ export function upstreamDirt(treeDir, ownRoot, options = {}) {
     const classify = options.isKnownMaterialization;
     const discardable = options.isDiscardable;
     const stranded = options.isStrandedExtension;
-    const ownPrefix = `${ownRoot}/`;
-    const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
+    const owned = [...ownedTreePrefixes(roots), ...(options.ownedPrefixes ?? [])];
     // The stranded question is asked per top-level directory of the
     // materialization root, and a wholly untracked one is a collapsed entry that hides
     // exactly those names - so the caller that can answer them gets the listing

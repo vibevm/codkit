@@ -9,11 +9,16 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { classifyOwn, mirrorOwnBack, ownStateOfTree, ownStateOfPatchSet, syncOwnCode } from '../../src/lib/ownCopy.ts';
-import type { OwnFileMap } from '../../src/lib/ownCopy.ts';
+import { mirrorOwnBack, syncOwnCode } from '../../src/lib/ownCopy.ts';
+import { classifyOwn, ownStateOfTree, ownStateOfPatchSet } from '../../src/lib/ownSides.ts';
+import type { OwnFileMap } from '../../src/lib/ownSides.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { ownedRoot } from '../support/ownedRoots.ts';
 
 const OWN_DIR = 'src/vs/patchset';
+
+/** The one owned directory these sides are about. */
+const OWNED = ownedRoot(OWN_DIR);
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -41,7 +46,7 @@ function write(absolute: string, content: string): void {
 
 function kinds(sides: Sides, mark: OwnFileMap | null): Record<string, string> {
 	const out: Record<string, string> = {};
-	for (const entry of classifyOwn(sides.patchesDir, sides.treeDir, OWN_DIR, mark)) {
+	for (const entry of classifyOwn(sides.patchesDir, sides.treeDir, OWNED, mark)) {
 		out[entry.relative] = entry.kind;
 	}
 	return out;
@@ -55,7 +60,7 @@ describe('classifyOwn', () => {
 			{ 'same.ts': 'a\n', 'patchset.ts': 'as of the mark\n', 'tree.ts': 'edited in the tree\n', 'both.ts': 'the tree version\n' }
 		);
 		// The mark records the state both sides had after the last load.
-		const mark = ownStateOfTree(sides.treeDir, OWN_DIR).files;
+		const mark = ownStateOfTree(sides.treeDir, OWNED).files;
 		const asOfMark: OwnFileMap = {
 			'same.ts': mark['same.ts'] ?? '',
 			'patchset.ts': mark['patchset.ts'] ?? '',
@@ -95,9 +100,9 @@ describe('classifyOwn', () => {
 
 	it('gives the same fingerprint to the same content and a different one otherwise', () => {
 		const sides = makeSides('fingerprint', { 'a.ts': 'x\n' }, { 'a.ts': 'x\n' });
-		expect(ownStateOfPatchSet(sides.patchesDir).fingerprint).toBe(ownStateOfTree(sides.treeDir, OWN_DIR).fingerprint);
+		expect(ownStateOfPatchSet(sides.patchesDir).fingerprint).toBe(ownStateOfTree(sides.treeDir, OWNED).fingerprint);
 		write(join(sides.treeDir, OWN_DIR, 'a.ts'), 'y\n');
-		expect(ownStateOfPatchSet(sides.patchesDir).fingerprint).not.toBe(ownStateOfTree(sides.treeDir, OWN_DIR).fingerprint);
+		expect(ownStateOfPatchSet(sides.patchesDir).fingerprint).not.toBe(ownStateOfTree(sides.treeDir, OWNED).fingerprint);
 	});
 });
 
@@ -109,14 +114,14 @@ describe('mirrorOwnBack', () => {
 			{ 'tree.ts': 'edited in the tree\n', 'patchset.ts': 'as of the mark\n' }
 		);
 		const patchset = ownStateOfPatchSet(sides.patchesDir).files;
-		const tree = ownStateOfTree(sides.treeDir, OWN_DIR).files;
+		const tree = ownStateOfTree(sides.treeDir, OWNED).files;
 		const mark: OwnFileMap = {
 			'tree.ts': patchset['tree.ts'] ?? '',
 			'patchset.ts': tree['patchset.ts'] ?? '',
 			'gone.ts': patchset['gone.ts'] ?? ''
 		};
 
-		const report = mirrorOwnBack(sides.patchesDir, sides.treeDir, OWN_DIR, classifyOwn(sides.patchesDir, sides.treeDir, OWN_DIR, mark));
+		const report = mirrorOwnBack(sides.patchesDir, sides.treeDir, OWNED, classifyOwn(sides.patchesDir, sides.treeDir, OWNED, mark));
 
 		expect(report.copied).toBe(1);
 		expect(report.kept).toBe(1);
@@ -130,7 +135,7 @@ describe('mirrorOwnBack', () => {
 
 	it('does not delete a patchset file the tree never had', () => {
 		const sides = makeSides('mirror-new', { 'fresh.ts': 'written in patchset\n' }, {});
-		const report = mirrorOwnBack(sides.patchesDir, sides.treeDir, OWN_DIR, classifyOwn(sides.patchesDir, sides.treeDir, OWN_DIR, {}));
+		const report = mirrorOwnBack(sides.patchesDir, sides.treeDir, OWNED, classifyOwn(sides.patchesDir, sides.treeDir, OWNED, {}));
 
 		expect(report.removed).toBe(0);
 		expect(report.kept).toBe(1);
@@ -139,14 +144,14 @@ describe('mirrorOwnBack', () => {
 
 	it('takes the tree side when there is no map, as codkit did before the map', () => {
 		const sides = makeSides('mirror-unknown', { 'a.ts': 'the patchset version\n' }, { 'a.ts': 'the tree version\n' });
-		mirrorOwnBack(sides.patchesDir, sides.treeDir, OWN_DIR, classifyOwn(sides.patchesDir, sides.treeDir, OWN_DIR, null));
+		mirrorOwnBack(sides.patchesDir, sides.treeDir, OWNED, classifyOwn(sides.patchesDir, sides.treeDir, OWNED, null));
 		expect(readFileSync(join(sides.patchesDir, 'delta', 'own', 'a.ts'), 'utf8')).toBe('the tree version\n');
 	});
 
 	it('leaves the own root of patchset in place when everything under it goes', () => {
 		const sides = makeSides('mirror-empty', { 'a.ts': 'x\n' }, {});
 		const mark: OwnFileMap = { 'a.ts': ownStateOfPatchSet(sides.patchesDir).files['a.ts'] ?? '' };
-		mirrorOwnBack(sides.patchesDir, sides.treeDir, OWN_DIR, classifyOwn(sides.patchesDir, sides.treeDir, OWN_DIR, mark));
+		mirrorOwnBack(sides.patchesDir, sides.treeDir, OWNED, classifyOwn(sides.patchesDir, sides.treeDir, OWNED, mark));
 
 		expect(existsSync(join(sides.patchesDir, 'delta', 'own', 'a.ts'))).toBe(false);
 		expect(existsSync(join(sides.patchesDir, 'delta', 'own'))).toBe(true);
@@ -173,7 +178,7 @@ describe('syncOwnCode path safety', () => {
 		mkdirSync(dirname(link), { recursive: true });
 		symlinkSync(victim, link);
 
-		expect(() => syncOwnCode(sides.patchesDir, sides.treeDir, OWN_DIR)).toThrow(/symlink/i);
+		expect(() => syncOwnCode(sides.patchesDir, sides.treeDir, OWNED)).toThrow(/symlink/i);
 		expect(readFileSync(victim, 'utf8')).toBe('outside bytes\n');
 		expect(existsSync(join(sides.treeDir, OWN_DIR, 'other.ts'))).toBe(false);
 	});

@@ -13,7 +13,8 @@ import { OVERLAYS_DIR, loadOverlays, renderOverlayTarget } from './layers/overla
 import { loadResourceMap, resourceSourcePath } from './layers/resource.js';
 import { RULES_DIR, loadRules } from './layers/rule.js';
 import { ckError } from './messages.js';
-import { syncOwnCode } from './ownCopy.js';
+import { syncAllOwnCode } from './ownCopy.js';
+import { ownedRootsOf } from './ownedRoots.js';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
 import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, PATCHES_DIR, overlayVarContext, pinCommitDate, toPosix, patchSetCommitId } from './syncEngine.js';
 import { checkTree } from './treeIdentity.js';
@@ -46,7 +47,7 @@ export function materializeCycleApply(options) {
         const preflight = prepareProvisionalMove(moveOptions);
         importProspectiveObjects(tree, prospective.gitDir);
         const move = executeProvisionalMove(moveOptions, preflight);
-        const own = syncOwnCode(options.patchesDir, tree, options.config.typeConfig.ownRoot);
+        const own = syncAllOwnCode(options.patchesDir, tree, ownedRootsOf(options.type, options.config.typeConfig));
         for (const blocker of prepared.blockers) {
             options.out.info(`cycle blocker ${blocker.outcome}: ${blocker.artifactPath} -> ${blocker.targetPath}`);
         }
@@ -70,8 +71,9 @@ function prepare(options, patchSetCommit) {
         newRef: options.config.pin.sha
     });
     assertClassificationsEqual(recomputed, supplied);
-    const ownEvidence = assertGeneratedTargetOwnership(options.patchesDir, options.type, options.config.typeConfig.ownRoot, generatedLayerTargets(recomputed, loaded.resources));
-    assertCycleOwnPreflight(options.patchesDir, options.resolution.path, options.config.typeConfig.ownRoot, ownEvidence.ownTargets, options.ownRenameAuthority);
+    const roots = ownedRootsOf(options.type, options.config.typeConfig);
+    const ownEvidence = assertGeneratedTargetOwnership(options.patchesDir, options.type, roots, generatedLayerTargets(recomputed, loaded.resources));
+    assertCycleOwnPreflight(options.patchesDir, options.resolution.path, roots, ownEvidence.ownTargets, options.ownRenameAuthority);
     const stages = [];
     const conflicts = [];
     const blockers = [];

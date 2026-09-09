@@ -19,6 +19,7 @@ import type { StateChange } from '../../src/lib/treeState.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import { oneOwnedRoot } from '../support/ownedRoots.ts';
 
 const IDENTITY: GitEnv = {
 	GIT_AUTHOR_NAME: 'human',
@@ -57,7 +58,7 @@ function base(): string {
 }
 
 function changes(forcedPaths: readonly string[] = []): readonly StateChange[] {
-	return changesSince(fixture.treeDir, base(), { kind: 'worktree' }, fixture.config.typeConfig.ownRoot, forcedPaths);
+	return changesSince(fixture.treeDir, base(), { kind: 'worktree' }, oneOwnedRoot(fixture.config.typeConfig.ownRoot), forcedPaths);
 }
 
 function statusOf(path: string): string {
@@ -136,7 +137,9 @@ describe('changesSince over the worktree state', () => {
 			// The porcelain view over a commit is empty; the selector is not.
 			expect(runGit({ args: ['status', '--porcelain'], cwd: fixture.treeDir }).stdout).toBe('');
 			expect(
-				changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, fixture.config.typeConfig.ownRoot).map((entry) => entry.path)
+				changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, oneOwnedRoot(fixture.config.typeConfig.ownRoot)).map(
+					(entry) => entry.path
+				)
 			).toEqual([TARGET]);
 		} finally {
 			gitLocal({ args: ['reset', '--quiet', '--hard', `refs/heads/${branch()}`], cwd: fixture.treeDir });
@@ -148,7 +151,7 @@ describe('changesSince over the worktree state', () => {
 		commitWithLine('// committed half', 'committed half');
 		writeFileSync(treePath(TARGET), `${readTarget()}// uncommitted half\n`, 'utf8');
 		try {
-			const changes = changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, fixture.config.typeConfig.ownRoot);
+			const changes = changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, oneOwnedRoot(fixture.config.typeConfig.ownRoot));
 			expect(changes.map((entry) => entry.path)).toEqual([TARGET]);
 			// The selection carries the final state; the byte read proves it.
 			expect(Buffer.from(bytesOf(fixture.treeDir, { kind: 'worktree' }, TARGET)).toString('utf8')).toContain('// uncommitted half');
@@ -200,7 +203,7 @@ describe('changesSince over a commit state', () => {
 		// An edit the commit does not hold separates the two byte sources.
 		writeFileSync(treePath(TARGET), `${readTarget()}// after the commit\n`, 'utf8');
 		try {
-			const committed = changesSince(fixture.treeDir, appliedTip, { kind: 'commit', sha }, fixture.config.typeConfig.ownRoot);
+			const committed = changesSince(fixture.treeDir, appliedTip, { kind: 'commit', sha }, oneOwnedRoot(fixture.config.typeConfig.ownRoot));
 			expect(committed.map((entry) => entry.path)).toEqual([TARGET]);
 			const blob = Buffer.from(bytesOf(fixture.treeDir, { kind: 'commit', sha }, TARGET)).toString('utf8');
 			expect(blob).toContain('// state of one commit');

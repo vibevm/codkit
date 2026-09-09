@@ -8,6 +8,7 @@ import { materializerOf, ownExtensionFiles } from './layers/ownExtensions.js';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
 import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.js';
+import { ownCodeFilter } from './ownedRoots.js';
 export const GENERATED_HISTORY_FINGERPRINT_VERSION = 1;
 /**
  * Which own files the generated snapshot carries. A release branch leaves the
@@ -18,11 +19,16 @@ function ownPredicate(omitLicenceNotice) {
     return omitLicenceNotice ? isReleasedOwnFile : isDeliveredOwnFile;
 }
 /** Fail before object/ref/worktree mutation when two generated layers claim one target. */
-export function assertGeneratedTargetOwnership(patchesDir, type, ownRoot, layerTargets, omitLicenceNotice = false) {
-    const ownTargets = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })
-        .filter(ownPredicate(omitLicenceNotice))
-        .map((relative) => `${ownRoot}/${relative}`);
-    const claims = new Map(ownTargets.map((target) => [target, { layer: 'own', artifact: `delta/own/${target.slice(ownRoot.length + 1)}` }]));
+export function assertGeneratedTargetOwnership(patchesDir, type, roots, layerTargets, omitLicenceNotice = false) {
+    const claims = new Map();
+    const ownTargets = [];
+    for (const owned of roots) {
+        for (const relative of ownFilesOf(patchesDir, owned, omitLicenceNotice)) {
+            const target = `${owned.path}/${relative}`;
+            ownTargets.push(target);
+            claims.set(target, { layer: 'own', artifact: `${owned.deltaDir}/${relative}` });
+        }
+    }
     const ids = new Map();
     const manifest = loadOwnManifest(patchesDir);
     const materializer = materializerOf(type);
@@ -58,10 +64,16 @@ export function assertGeneratedTargetOwnership(patchesDir, type, ownRoot, layerT
     }
     return { ownTargets, extensionTargets: extensionFiles.map((file) => file.target) };
 }
+/**
+ * The delivered files of one owned directory. A build output inside it is not
+ * own code and never reaches the generated snapshot: the branch carries what
+ * the delta holds, and a build of the tree writes the rest (##TYPE-AREA-LAYOUT).
+ */
+function ownFilesOf(patchesDir, owned, omitLicenceNotice) {
+    return listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), { refuseSymlinks: true, keep: ownCodeFilter(owned) }).filter(ownPredicate(omitLicenceNotice));
+}
 /** Keep full and local branch/cache variants distinct without changing schemas. */
-export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, type, omitLicenceNotice = false) {
-    const sourceRoot = ownSourceRoot(patchesDir);
-    const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(omitLicenceNotice));
+export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, type, roots, omitLicenceNotice = false) {
     const hash = createHash('sha256')
         .update(`codkit-generated-history\0${GENERATED_HISTORY_FINGERPRINT_VERSION}\0`, 'utf8')
         .update(deltaFingerprint, 'utf8');
@@ -69,8 +81,11 @@ export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, type, 
     // they hold different bytes (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
     if (omitLicenceNotice)
         hash.update('\0omit-licence-notice\0', 'utf8');
-    for (const relative of files)
-        hash.update(`\0${relative}\0${ownFileMode(patchesDir, relative)}`, 'utf8');
+    for (const owned of roots) {
+        for (const relative of ownFilesOf(patchesDir, owned, omitLicenceNotice)) {
+            hash.update(`\0${owned.deltaDir}/${relative}\0${ownFileMode(patchesDir, owned, relative)}`, 'utf8');
+        }
+    }
     // ##OWN-EXTENSION-UNIT: the extensions are part of the snapshot, so a change
     // to one of them has to change the fingerprint the fast path compares.
     const deltaRoot = materializerOf(type)?.deltaRoot ?? '';
@@ -86,9 +101,16 @@ export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, type, 
  */
 export function appendGeneratedOwnCommit(options) {
     const indexEnv = { GIT_INDEX_FILE: options.indexFile };
-    const targetRoot = options.ownRoot;
-    const sourceRoot = ownSourceRoot(options.patchesDir);
-    const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(options.omitLicenceNotice ?? false));
+    const first = options.roots[0];
+    if (first === undefined) {
+        throw ckError('ARTIFACT-BROKEN', 'the generated own-code atom was asked for without a single owned directory');
+    }
+    const targetRoot = first.path;
+    const snapshot = options.roots.map((owned) => ({
+        owned,
+        relatives: ownFilesOf(options.patchesDir, owned, options.omitLicenceNotice ?? false)
+    }));
+    const files = snapshot.flatMap(({ owned, relatives }) => relatives.map((relative) => `${owned.path}/${relative}`));
     // ##OWN-EXTENSION-UNIT: the own extensions ride in the same atom. `ci` and
     // `publish` need the complete reproducible tree, and an extension the branch
     // does not carry is an extension the build does not see.
@@ -98,9 +120,14 @@ export function appendGeneratedOwnCommit(options) {
     // an empty layer is skipped exactly like any other.
     if (files.length === 0 && extensions.length === 0)
         return { sha: null, files };
-    removeIndexedOwnTree(options.treeDir, targetRoot, indexEnv);
-    for (const relative of files) {
-        stageGeneratedFile(options, indexEnv, join(sourceRoot, ...relative.split('/')), `${targetRoot}/${relative}`, `delta/own/${relative}`);
+    for (const owned of options.roots) {
+        removeIndexedOwnTree(options.treeDir, owned.path, indexEnv);
+    }
+    for (const { owned, relatives } of snapshot) {
+        const sourceRoot = ownSourceRoot(options.patchesDir, owned.deltaDir);
+        for (const relative of relatives) {
+            stageGeneratedFile(options, indexEnv, join(sourceRoot, ...relative.split('/')), `${owned.path}/${relative}`, `${owned.deltaDir}/${relative}`);
+        }
     }
     for (const file of extensions) {
         stageGeneratedFile(options, indexEnv, file.source, file.target, `${materializer?.deltaRoot ?? ''}/${file.relative}`);
@@ -148,8 +175,8 @@ function removeIndexedOwnTree(treeDir, targetRoot, indexEnv) {
         gitOk({ args: ['update-index', '--force-remove', '--', path], cwd: treeDir, env: indexEnv }, { code: 'ARTIFACT-BROKEN', message: `cannot remove stale generated own-code path ${path}` });
     }
 }
-function ownFileMode(patchesDir, relative, modeSource) {
-    return fileMode(patchesDir, `delta/own/${relative}`, modeSource);
+function ownFileMode(patchesDir, owned, relative, modeSource) {
+    return fileMode(patchesDir, `${owned.deltaDir}/${relative}`, modeSource);
 }
 /** The mode git records for one delta file; anything unreadable is a plain file. */
 function fileMode(patchesDir, sourcePath, modeSource) {

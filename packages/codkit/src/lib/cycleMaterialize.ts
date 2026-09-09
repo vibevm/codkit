@@ -21,7 +21,8 @@ import { loadResourceMap, resourceSourcePath } from './layers/resource.ts';
 import type { ResourceEntry } from './layers/resource.ts';
 import { RULES_DIR, loadRules } from './layers/rule.ts';
 import { ckError } from './messages.ts';
-import { syncOwnCode } from './ownCopy.ts';
+import { syncAllOwnCode } from './ownCopy.ts';
+import { ownedRootsOf } from './ownedRoots.ts';
 import type { OwnSyncReport } from './ownCopy.ts';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.ts';
 import type { ForkDirResolution } from './paths.ts';
@@ -128,7 +129,7 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 		const preflight = prepareProvisionalMove(moveOptions);
 		importProspectiveObjects(tree, prospective.gitDir);
 		const move = executeProvisionalMove(moveOptions, preflight);
-		const own = syncOwnCode(options.patchesDir, tree, options.config.typeConfig.ownRoot);
+		const own = syncAllOwnCode(options.patchesDir, tree, ownedRootsOf(options.type, options.config.typeConfig));
 		for (const blocker of prepared.blockers) {
 			options.out.info(`cycle blocker ${blocker.outcome}: ${blocker.artifactPath} -> ${blocker.targetPath}`);
 		}
@@ -152,19 +153,14 @@ function prepare(options: CycleMaterializeOptions, patchSetCommit: string): Prep
 		newRef: options.config.pin.sha
 	});
 	assertClassificationsEqual(recomputed, supplied);
+	const roots = ownedRootsOf(options.type, options.config.typeConfig);
 	const ownEvidence = assertGeneratedTargetOwnership(
 		options.patchesDir,
 		options.type,
-		options.config.typeConfig.ownRoot,
+		roots,
 		generatedLayerTargets(recomputed, loaded.resources)
 	);
-	assertCycleOwnPreflight(
-		options.patchesDir,
-		options.resolution.path,
-		options.config.typeConfig.ownRoot,
-		ownEvidence.ownTargets,
-		options.ownRenameAuthority
-	);
+	assertCycleOwnPreflight(options.patchesDir, options.resolution.path, roots, ownEvidence.ownTargets, options.ownRenameAuthority);
 	const stages: Stage[] = [];
 	const conflicts: ConflictWrite[] = [];
 	const blockers: CycleMaterializeBlocker[] = [];

@@ -55,6 +55,7 @@ import type { Output } from './jsonOut.ts';
 import { isCkError } from './messages.ts';
 import type { CkErrorPayload } from './messages.ts';
 import { listOwnFiles, ownSourceRoot } from './ownCopy.ts';
+import { ownedRootsOf } from './ownedRoots.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { buildGeneratedTip, runSync } from './syncEngine.ts';
 import { treeHeadError } from './treeCommits.ts';
@@ -276,7 +277,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		}
 		throw error;
 	}
-	const drift = driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
+	const drift = driftDirty(materializerOf(options.type), tree, ownedRootsOf(options.type, config.typeConfig), patchesDir, {
 		untrackedIsDirt: false,
 		generated: { pinSha: config.pin.sha, branch }
 	});

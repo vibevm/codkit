@@ -6,6 +6,33 @@ import type { JsonValue } from './jsonOut.ts';
 import { ckError } from './messages.ts';
 import { resolveContainedPath } from './pathSafety.ts';
 import type { CycleState } from './cycleState.ts';
+import { isDeliveredOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
+import { ownCodeFilter } from './ownedRoots.ts';
+import type { OwnedRoot } from './ownedRoots.ts';
+
+/**
+ * The delta paths a rename plan is written against: the contract tests of the
+ * own layer, and the rest of the own code. Every directory the delta owns
+ * contributes its own files - a rename inside the application directory has the
+ * same references as one inside the own root (PROP-016 ##TYPE-AREA-LAYOUT) -
+ * and the build outputs inside an owned directory contribute none, because they
+ * are not own code.
+ */
+export function renameReferencePaths(
+	patchesDir: string,
+	roots: readonly OwnedRoot[]
+): { readonly contractTests: readonly string[]; readonly own: readonly string[] } {
+	const contractTests: string[] = [];
+	const own: string[] = [];
+	for (const owned of roots) {
+		const options = { refuseSymlinks: true, keep: ownCodeFilter(owned) };
+		for (const relative of listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), options)) {
+			if (!isDeliveredOwnFile(relative)) continue;
+			(relative.startsWith('test/') ? contractTests : own).push(`${owned.deltaDir}/${relative}`);
+		}
+	}
+	return { contractTests, own };
+}
 
 export function applyReportWrites(root: string, writes: readonly { path: string; previous: string | null; contents: string }[]): void {
 	for (const write of writes) {

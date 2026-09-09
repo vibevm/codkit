@@ -61,7 +61,10 @@ import { RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, resourceSourcePa
 import type { ResourceEntry } from './layers/resource.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkError } from './messages.ts';
-import { OWN_SOURCE_DIR, classifyOwn, ownStateOfPatchSet, syncOwnCode } from './ownCopy.ts';
+import { OWN_SOURCE_DIR, syncAllOwnCode } from './ownCopy.ts';
+import { classifyAllOwn, ownMarkFilesOf, ownMarkState } from './ownSides.ts';
+import { isBuildOutput, ownedRootOf, ownedRootsOf } from './ownedRoots.ts';
+import type { OwnedRoot } from './ownedRoots.ts';
 import type { OwnDivergence, OwnSyncReport } from './ownCopy.ts';
 import { PATCH_FILE_SUFFIX, encodePatchName, parseCkpatch } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
@@ -329,6 +332,10 @@ const NO_OWN: OwnSyncReport = { copied: 0, removed: 0, total: 0 };
 export function runSync(options: SyncEngineOptions): SyncResult {
 	const { patchesDir, resolution, config, out, dryRun } = options;
 	const tree = resolution.path;
+	// Every directory the delta owns, the own root first (PROP-016
+	// ##TYPE-AREA-LAYOUT). Mirroring, the drift guard, the exclusion, the
+	// generated snapshot and the mark all work over this list.
+	const roots = ownedRootsOf(options.type, config.typeConfig);
 	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
 	let generatedBranch = options.generatedBranch === true;
 	// Only a release snapshot leaves the licence notice out; every other
@@ -375,7 +382,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		}
 	}
 	if (options.forceApply === true) {
-		const drift = driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
+		const drift = driftDirty(materializerOf(options.type), tree, roots, patchesDir, {
 			generated: { pinSha: config.pin.sha, branch }
 		});
 		const head = treeHeadError(drift.treeCommits, branch);
@@ -400,7 +407,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// rewriting work-tree files.
 	let excludePlan: ExcludePlan;
 	try {
-		excludePlan = planExclude(tree, config.typeConfig.ownRoot);
+		excludePlan = planExclude(tree, roots);
 	} catch (error) {
 		return reportBroken(out, error, branch);
 	}
@@ -429,13 +436,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	try {
 		prebuiltConventions = loadConventions(options.type, patchesDir);
 		prebuiltPlan = buildPlan(patchesDir, prebuiltConventions, overlays, warnFrom(out));
-		ownershipEvidence = assertGeneratedTargetOwnership(
-			patchesDir,
-			options.type,
-			config.typeConfig.ownRoot,
-			layerTargets(prebuiltPlan),
-			omitLicenceNotice
-		);
+		ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, options.type, roots, layerTargets(prebuiltPlan), omitLicenceNotice);
 	} catch (error) {
 		return reportBroken(out, error, branch);
 	}
@@ -447,7 +448,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// ##TREE-MARK).
 	const deltaState = deltaFiles(patchesDir, config.pin.sha);
 	const delta = deltaState.fingerprint;
-	const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, options.type, omitLicenceNotice) : delta;
+	const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice) : delta;
 	const id = treeId(tree);
 	const warn = (text: string): void => {
 		out.warn(text);
@@ -495,7 +496,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		const materialized: string[] = [];
 		const passStranded = options.passStrandedExtensions === true && !options.fresh;
 		const driftMaterializer = materializerOf(options.type);
-		const drift = driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
+		const drift = driftDirty(materializerOf(options.type), tree, roots, patchesDir, {
 			untrackedIsDirt: !options.fresh,
 			generated: { pinSha: config.pin.sha, branch },
 			...(options.fresh
@@ -561,7 +562,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			return refuseDrift(`${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`);
 		}
 		if (drift.dirty) {
-			const verdict = judgeOwnSides(drift, patchesDir, tree, config.typeConfig.ownRoot, mark, fingerprint);
+			const verdict = judgeOwnSides(drift, patchesDir, tree, roots, mark, fingerprint);
 			if (verdict.kind === 'both-sides') {
 				out.addError(verdict.error.toPayload());
 				return result('dirty', 1, { branch, dirtyFiles: drift.files });
@@ -615,7 +616,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// writes nothing - and reports nothing as discarded either, because nothing
 	// was.
 	if (dryRun && discardWorktreeEdits) {
-		driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
+		driftDirty(materializerOf(options.type), tree, roots, patchesDir, {
 			untrackedIsDirt: false,
 			generated: { pinSha: config.pin.sha, branch },
 			isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, []),
@@ -649,7 +650,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// Own code is verified on every run: locally it is not part of the
 		// branch commits, so the branch cannot vouch for it. The own extensions
 		// are materialized on the same terms (##OWN-EXTENSION-UNIT).
-		const own = syncOwnCode(patchesDir, tree, config.typeConfig.ownRoot);
+		const own = syncAllOwnCode(patchesDir, tree, roots);
 		const materializer = materializerOf(options.type);
 		const ownExtensions =
 			materializer === null ? NO_OWN_EXTENSIONS : syncOwnExtensions(materializer, patchesDir, tree, declaredOwnExtensions(patchesDir));
@@ -751,7 +752,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// --fresh cleanup used to delete user untracked files and only then learn
 		// that a sibling held the generated branch.
 		if (options.fresh) {
-			cleaned = cleanUntracked(tree, config, conventions);
+			cleaned = cleanUntracked(tree, roots, conventions);
 			out.info(`fresh: removed ${cleaned} untracked path(s), kept everything the cleanup whitelist protects`);
 		}
 		updateRef(tree, branch, built.top);
@@ -781,7 +782,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	}
 
 	// 10. Own code, dev overlay, exclude, hook, mark, cache.
-	const own = syncOwnCode(patchesDir, tree, config.typeConfig.ownRoot);
+	const own = syncAllOwnCode(patchesDir, tree, roots);
 	// ##OWN-EXTENSION-UNIT: the second pair of own roots, mirrored on the same
 	// terms and in the same step, so the materialized extensions and the own root
 	// are never half a load apart.
@@ -805,7 +806,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// with the fingerprint of step 3), the commit is exactly what the built
 	// commits carry in their trailer - `save` reads both back before it writes
 	// anything (##PATCHSET-MOVED-RULE, ##LINEAGE-CHECK).
-	const ownState = ownStateOfPatchSet(patchesDir);
+	const ownState = ownMarkState(patchesDir, roots);
 	writeTreeMark(
 		tree,
 		{
@@ -813,8 +814,9 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			pinSha: config.pin.sha,
 			deltaFingerprint: fingerprint,
 			branchTip: built.top,
-			ownFingerprint: ownState.fingerprint,
-			ownFiles: ownState.files,
+			ownFingerprint: ownState.ownFingerprint,
+			ownFiles: ownState.ownFiles,
+			...(ownState.ownRootFiles === undefined ? {} : { ownRootFiles: ownState.ownRootFiles }),
 			artifacts: deltaArtifactMap(deltaState.files),
 			patchSetCommit: built.patchSetCommit
 		},
@@ -1039,7 +1041,7 @@ type BuildOutcome = {
 
 function buildBranch(options: SyncEngineOptions, plan: readonly Artifact[], context: OverlayVarContext, id: string): BuildOutcome {
 	const { patchesDir, config, out } = options;
-	assertGeneratedTargetOwnership(patchesDir, options.type, config.typeConfig.ownRoot, layerTargets(plan));
+	assertGeneratedTargetOwnership(patchesDir, options.type, ownedRootsOf(options.type, config.typeConfig), layerTargets(plan));
 	const tree = options.resolution.path;
 	const scratch = join(patchesDir, '.codkit', 'tmp');
 	mkdirSync(scratch, { recursive: true });
@@ -1079,7 +1081,7 @@ function buildBranch(options: SyncEngineOptions, plan: readonly Artifact[], cont
 				treeDir: tree,
 				indexFile,
 				parent,
-				ownRoot: config.typeConfig.ownRoot,
+				roots: ownedRootsOf(options.type, config.typeConfig),
 				pinTag: config.pin.tag,
 				pinSha: config.pin.sha,
 				pinDateIso,
@@ -1201,7 +1203,7 @@ export function buildAppliedTip(options: AppliedTipOptions): string {
 	assertGeneratedTargetOwnership(
 		options.patchesDir,
 		options.type,
-		options.config.typeConfig.ownRoot,
+		ownedRootsOf(options.type, options.config.typeConfig),
 		layerTargets(plan),
 		options.omitLicenceNotice === true
 	);
@@ -1478,7 +1480,7 @@ function* batches(paths: readonly string[]): Generator<readonly string[]> {
  * minus the whitelist is what gets removed. Discipline: what is not on the list
  * goes away.
  */
-export function cleanUntracked(treeDir: string, config: CodkitConfig, conventions: Conventions): number {
+export function cleanUntracked(treeDir: string, roots: readonly OwnedRoot[], conventions: Conventions): number {
 	// File by file, never `--directory`: a collapsed directory entry would hide
 	// whitelisted content nested inside an untracked one (a build output under an
 	// untracked materialization root, for instance) and take it down with it.
@@ -1486,7 +1488,6 @@ export function cleanUntracked(treeDir: string, config: CodkitConfig, convention
 		...listUntracked(treeDir, ['--others', '--exclude-standard', '-z']),
 		...listUntracked(treeDir, ['--others', '--ignored', '--exclude-standard', '-z'])
 	]);
-	const ownDir = config.typeConfig.ownRoot;
 	const emptied = new Set<string>();
 	let removed = 0;
 
@@ -1494,8 +1495,19 @@ export function cleanUntracked(treeDir: string, config: CodkitConfig, convention
 		if (path === '' || path.startsWith('.git/')) {
 			continue;
 		}
-		// Own code is not litter: it is the materialization of delta/own/.
-		if (path === `${ownDir}/` || path === ownDir || path.startsWith(`${ownDir}/`)) {
+		// Own code is not litter: it is the materialization of the delta. What a
+		// build wrote *inside* an owned directory is litter, though - the type
+		// named those paths, and a fresh pass is exactly the run that removes
+		// them (PROP-016 ##TYPE-AREA-LAYOUT).
+		const owned = ownedRootOf(roots, path.endsWith('/') ? path.slice(0, -1) : path);
+		if (owned !== null) {
+			const relative = path.slice(owned.path.length + 1);
+			if (relative === '' || !isBuildOutput(owned, relative)) {
+				continue;
+			}
+			rmSync(join(treeDir, ...path.split('/')), { recursive: true, force: true });
+			removed += 1;
+			collectAncestors(path, emptied);
 			continue;
 		}
 		if (matchesCleanupWhitelist(path, conventions.cleanupWhitelist)) {
@@ -1572,13 +1584,22 @@ export type ExcludeCheckpoints = {
 	readonly afterCoreSet?: () => void;
 };
 
-export function writeExclude(treeDir: string, ownRoot: string, checkpoints?: ExcludeCheckpoints): void {
-	const plan = planExclude(treeDir, ownRoot, checkpoints?.afterOpen);
+export function writeExclude(treeDir: string, roots: readonly OwnedRoot[], checkpoints?: ExcludeCheckpoints): void {
+	const plan = planExclude(treeDir, roots, checkpoints?.afterOpen);
 	checkpoints?.afterPlan?.();
 	writeExcludePlan(plan, checkpoints);
 }
 
-function planExclude(treeDir: string, ownRoot: string, afterOpen?: () => void): ExcludePlan {
+/**
+ * The managed block carries one line per owned directory, in the order the type
+ * answered: git reads them as it reads any exclude file, and a family that owns
+ * one directory gets exactly the single line it always got.
+ */
+function excludeBody(roots: readonly OwnedRoot[]): string {
+	return roots.map((owned) => `/${owned.path}/`).join('\n');
+}
+
+function planExclude(treeDir: string, roots: readonly OwnedRoot[], afterOpen?: () => void): ExcludePlan {
 	const listings = listWorktrees(treeDir);
 	if (listings === null) {
 		// Keep the historical lower-level fallback for a path that is not a git
@@ -1603,10 +1624,10 @@ function planExclude(treeDir: string, ownRoot: string, afterOpen?: () => void): 
 			treeDir,
 			adminRoot,
 			adminSegments: segments,
-			...planManagedBlock(path, existing, `/${ownRoot}/`)
+			...planManagedBlock(path, existing, excludeBody(roots))
 		};
 	}
-	const body = `/${ownRoot}/`;
+	const body = excludeBody(roots);
 	if (listings.length > 1) {
 		return planWorktreeExclude(treeDir, body);
 	}
@@ -2237,7 +2258,7 @@ function judgeOwnSides(
 	},
 	patchesDir: string,
 	treeDir: string,
-	ownRoot: string,
+	roots: readonly OwnedRoot[],
 	mark: TreeMark | null,
 	fingerprint: string
 ): OwnSideVerdict {
@@ -2252,8 +2273,9 @@ function judgeOwnSides(
 	if (drift.extensions.some((divergence) => divergence.kind !== 'patchset-only')) {
 		return { kind: 'unextracted' };
 	}
-	const map = mark?.ownFiles ?? null;
-	const classes = classifyOwn(patchesDir, treeDir, ownRoot, map).filter((entry) => entry.kind !== 'same');
+	const classes = classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)).filter(
+		(entry) => entry.kind !== 'same'
+	);
 	const bothSides = classes.find((entry) => entry.kind === 'both-edited');
 	if (bothSides !== undefined) {
 		return { kind: 'both-sides', error: bothSidesError(bothSides.relative) };

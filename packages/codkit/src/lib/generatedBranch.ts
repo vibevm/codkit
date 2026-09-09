@@ -12,6 +12,8 @@ import type { OwnExtensionFile } from './layers/ownExtensions.ts';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.ts';
 import { ckError } from './messages.ts';
 import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
+import { ownCodeFilter } from './ownedRoots.ts';
+import type { OwnedRoot } from './ownedRoots.ts';
 import type { ProjectType } from '@codkit/type-api';
 
 export const GENERATED_HISTORY_FINGERPRINT_VERSION = 1;
@@ -23,7 +25,8 @@ export type GeneratedOwnCommitOptions = {
 	readonly treeDir: string;
 	readonly indexFile: string;
 	readonly parent: string;
-	readonly ownRoot: string;
+	/** The owned directories, the own root first (PROP-016 ##TYPE-AREA-LAYOUT). */
+	readonly roots: readonly OwnedRoot[];
 	readonly pinTag: string;
 	readonly pinSha: string;
 	readonly pinDateIso: string;
@@ -75,14 +78,19 @@ function ownPredicate(omitLicenceNotice: boolean): (relative: string) => boolean
 export function assertGeneratedTargetOwnership(
 	patchesDir: string,
 	type: ProjectType,
-	ownRoot: string,
+	roots: readonly OwnedRoot[],
 	layerTargets: readonly GeneratedLayerTarget[],
 	omitLicenceNotice = false
 ): GeneratedOwnEvidence {
-	const ownTargets = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })
-		.filter(ownPredicate(omitLicenceNotice))
-		.map((relative) => `${ownRoot}/${relative}`);
-	const claims = new Map(ownTargets.map((target) => [target, { layer: 'own', artifact: `delta/own/${target.slice(ownRoot.length + 1)}` }]));
+	const claims = new Map<string, { readonly layer: string; readonly artifact: string }>();
+	const ownTargets: string[] = [];
+	for (const owned of roots) {
+		for (const relative of ownFilesOf(patchesDir, owned, omitLicenceNotice)) {
+			const target = `${owned.path}/${relative}`;
+			ownTargets.push(target);
+			claims.set(target, { layer: 'own', artifact: `${owned.deltaDir}/${relative}` });
+		}
+	}
 	const ids = new Map<string, string>();
 	const manifest = loadOwnManifest(patchesDir);
 	const materializer = materializerOf(type);
@@ -134,22 +142,36 @@ export function assertGeneratedTargetOwnership(
 	return { ownTargets, extensionTargets: extensionFiles.map((file) => file.target) };
 }
 
+/**
+ * The delivered files of one owned directory. A build output inside it is not
+ * own code and never reaches the generated snapshot: the branch carries what
+ * the delta holds, and a build of the tree writes the rest (##TYPE-AREA-LAYOUT).
+ */
+function ownFilesOf(patchesDir: string, owned: OwnedRoot, omitLicenceNotice: boolean): readonly string[] {
+	return listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), { refuseSymlinks: true, keep: ownCodeFilter(owned) }).filter(
+		ownPredicate(omitLicenceNotice)
+	);
+}
+
 /** Keep full and local branch/cache variants distinct without changing schemas. */
 export function generatedHistoryFingerprint(
 	deltaFingerprint: string,
 	patchesDir: string,
 	type: ProjectType,
+	roots: readonly OwnedRoot[],
 	omitLicenceNotice = false
 ): string {
-	const sourceRoot = ownSourceRoot(patchesDir);
-	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(omitLicenceNotice));
 	const hash = createHash('sha256')
 		.update(`codkit-generated-history\0${GENERATED_HISTORY_FINGERPRINT_VERSION}\0`, 'utf8')
 		.update(deltaFingerprint, 'utf8');
 	// The release snapshot and the ci snapshot must never share a fingerprint:
 	// they hold different bytes (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
 	if (omitLicenceNotice) hash.update('\0omit-licence-notice\0', 'utf8');
-	for (const relative of files) hash.update(`\0${relative}\0${ownFileMode(patchesDir, relative)}`, 'utf8');
+	for (const owned of roots) {
+		for (const relative of ownFilesOf(patchesDir, owned, omitLicenceNotice)) {
+			hash.update(`\0${owned.deltaDir}/${relative}\0${ownFileMode(patchesDir, owned, relative)}`, 'utf8');
+		}
+	}
 	// ##OWN-EXTENSION-UNIT: the extensions are part of the snapshot, so a change
 	// to one of them has to change the fingerprint the fast path compares.
 	const deltaRoot = materializerOf(type)?.deltaRoot ?? '';
@@ -166,9 +188,16 @@ export function generatedHistoryFingerprint(
  */
 export function appendGeneratedOwnCommit(options: GeneratedOwnCommitOptions): GeneratedOwnCommit {
 	const indexEnv: GitEnv = { GIT_INDEX_FILE: options.indexFile };
-	const targetRoot = options.ownRoot;
-	const sourceRoot = ownSourceRoot(options.patchesDir);
-	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(options.omitLicenceNotice ?? false));
+	const first = options.roots[0];
+	if (first === undefined) {
+		throw ckError('ARTIFACT-BROKEN', 'the generated own-code atom was asked for without a single owned directory');
+	}
+	const targetRoot = first.path;
+	const snapshot = options.roots.map((owned) => ({
+		owned,
+		relatives: ownFilesOf(options.patchesDir, owned, options.omitLicenceNotice ?? false)
+	}));
+	const files = snapshot.flatMap(({ owned, relatives }) => relatives.map((relative) => `${owned.path}/${relative}`));
 	// ##OWN-EXTENSION-UNIT: the own extensions ride in the same atom. `ci` and
 	// `publish` need the complete reproducible tree, and an extension the branch
 	// does not carry is an extension the build does not see.
@@ -177,9 +206,20 @@ export function appendGeneratedOwnCommit(options: GeneratedOwnCommitOptions): Ge
 	// An own snapshot that is only the licence notice is empty for a release, and
 	// an empty layer is skipped exactly like any other.
 	if (files.length === 0 && extensions.length === 0) return { sha: null, files };
-	removeIndexedOwnTree(options.treeDir, targetRoot, indexEnv);
-	for (const relative of files) {
-		stageGeneratedFile(options, indexEnv, join(sourceRoot, ...relative.split('/')), `${targetRoot}/${relative}`, `delta/own/${relative}`);
+	for (const owned of options.roots) {
+		removeIndexedOwnTree(options.treeDir, owned.path, indexEnv);
+	}
+	for (const { owned, relatives } of snapshot) {
+		const sourceRoot = ownSourceRoot(options.patchesDir, owned.deltaDir);
+		for (const relative of relatives) {
+			stageGeneratedFile(
+				options,
+				indexEnv,
+				join(sourceRoot, ...relative.split('/')),
+				`${owned.path}/${relative}`,
+				`${owned.deltaDir}/${relative}`
+			);
+		}
 	}
 	for (const file of extensions) {
 		stageGeneratedFile(options, indexEnv, file.source, file.target, `${materializer?.deltaRoot ?? ''}/${file.relative}`);
@@ -251,10 +291,11 @@ function removeIndexedOwnTree(treeDir: string, targetRoot: string, indexEnv: Git
 
 function ownFileMode(
 	patchesDir: string,
+	owned: OwnedRoot,
 	relative: string,
 	modeSource?: { readonly repositoryRoot: string; readonly ref: string }
 ): '100644' | '100755' {
-	return fileMode(patchesDir, `delta/own/${relative}`, modeSource);
+	return fileMode(patchesDir, `${owned.deltaDir}/${relative}`, modeSource);
 }
 
 /** The mode git records for one delta file; anything unreadable is a plain file. */

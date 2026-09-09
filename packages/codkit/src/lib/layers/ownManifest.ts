@@ -21,8 +21,17 @@ export const OWN_MANIFEST_SCHEMA_VERSION = 2;
 /** File name of the manifest inside delta/own/. */
 export const OWN_MANIFEST_NAME = 'patchset.delta.json';
 
-/** The manifest, relative to the patchset root. */
+/** The manifest of the own root, relative to the patchset root. */
 export const OWN_MANIFEST_PATH = `delta/own/${OWN_MANIFEST_NAME}`;
+
+/**
+ * The manifest of one owned directory (PROP-016 ##TYPE-AREA-LAYOUT): the same
+ * file, in the delta directory of that owned root. A patch set whose type owns
+ * one directory only ever asks about `delta/own/`.
+ */
+export function ownManifestPath(deltaDir: string): string {
+	return `${deltaDir}/${OWN_MANIFEST_NAME}`;
+}
 
 /**
  * The licence notice `codkit standards load` places in `delta/own/`
@@ -196,8 +205,8 @@ const HINT = 'see PROP-005 sec. 3 for the own manifest';
  * give: `verify` is where "own code without a manifest" becomes a failure, with
  * the list of files nobody declared.
  */
-export function loadOwnManifest(patchesDir: string): OwnManifest {
-	const absolute = join(patchesDir, ...OWN_MANIFEST_PATH.split('/'));
+export function loadOwnManifest(patchesDir: string, deltaDir = 'delta/own'): OwnManifest {
+	const absolute = join(patchesDir, ...ownManifestPath(deltaDir).split('/'));
 	if (!existsSync(absolute)) {
 		return { units: [], serviceOverrides: [], extensions: [], present: false };
 	}

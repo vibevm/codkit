@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { readContainedFile } from './containedFile.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
+import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.js';
 /** First bytes of a git-lfs pointer file (PROP-008 ##ID-CHECK-LFS). */
 export const LFS_POINTER_MARKER = 'version https://git-lfs.github.com/spec/v1';
 /** How many LFS paths are sampled for pointer content. */
@@ -79,7 +80,7 @@ export function checkTree(resolution, config, options) {
     }
     // 7. Cleanliness, only when the command requires it.
     if (options.requireClean === true) {
-        return checkClean(repo.topLevel, config, checks);
+        return checkClean(repo.topLevel, ownedRootsOf(options.type ?? null, config.typeConfig), checks);
     }
     return { checks, fatal: null };
 }
@@ -310,7 +311,7 @@ function checkWritable(tree, gitDir, checks) {
     checks.push(makeCheck('write', true, `${scratch} is writable`));
     return null;
 }
-function checkClean(topLevel, config, checks) {
+function checkClean(topLevel, roots, checks) {
     const status = runGit({ args: ['status', '--porcelain'], cwd: topLevel });
     if (status.status !== 0) {
         checks.push(makeCheck('clean', false));
@@ -321,10 +322,13 @@ function checkClean(topLevel, config, checks) {
     }
     // Own code lives in the tree but is owned by patchset: it is expected to differ
     // from the upstream pin and is never "dirt" (PROP-008 ##ID-CHECK-CLEAN).
-    const ownPrefix = `${config.typeConfig.ownRoot}/`;
-    const dirtyFiles = parsePorcelain(status.stdout).filter((path) => !path.startsWith(ownPrefix));
+    // Every directory the delta owns is expected to differ from the pin, not only
+    // the own root (PROP-016 ##TYPE-AREA-LAYOUT).
+    const ownPrefixes = ownedTreePrefixes(roots);
+    const named = ownPrefixes.join(', ');
+    const dirtyFiles = parsePorcelain(status.stdout).filter((path) => !ownPrefixes.some((prefix) => path.startsWith(prefix)));
     const ok = dirtyFiles.length === 0;
-    checks.push(makeCheck('clean', ok, ok ? `no changes outside ${ownPrefix}` : `${dirtyFiles.length} path(s) changed outside ${ownPrefix}`));
+    checks.push(makeCheck('clean', ok, ok ? `no changes outside ${named}` : `${dirtyFiles.length} path(s) changed outside ${named}`));
     return { checks, fatal: null, dirtyFiles };
 }
 /**

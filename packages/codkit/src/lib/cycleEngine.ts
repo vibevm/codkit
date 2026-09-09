@@ -13,7 +13,7 @@ import {
 } from './cycleEngineRecord.ts';
 import type { CycleApplyRecord } from './cycleEngineRecord.ts';
 import { clearCycleTerminalRecord } from './cycleEngineTerminal.ts';
-import { byteSorted, fileDigest, readText, toJson } from './cycleEngineIo.ts';
+import { byteSorted, fileDigest, readText, renameReferencePaths, toJson } from './cycleEngineIo.ts';
 import {
 	pendingTerminal,
 	pendingTransition,
@@ -38,7 +38,7 @@ import { buildInventory } from './inventory.ts';
 import type { JsonValue, Output } from './jsonOut.ts';
 import { acquireLock } from './lock.ts';
 import { ckError } from './messages.ts';
-import { isDeliveredOwnFile, listOwnFiles, OWN_SOURCE_DIR, ownSourceRoot } from './ownCopy.ts';
+import { ownedRootsOf } from './ownedRoots.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { RESOURCE_MAP_PATH } from './layers/resource.ts';
 import type { ProjectType } from '@codkit/type-api';
@@ -381,7 +381,7 @@ function recordFromClassification(
 }
 
 function baseClassifyOptions(options: ContinueCycleOptions, state: CycleState) {
-	const references = renameReferencePaths(options.patchesDir);
+	const references = renameReferencePaths(options.patchesDir, ownedRootsOf(options.type, options.config.typeConfig));
 	return {
 		patchesDir: options.patchesDir,
 		treeDir: options.resolution.path,
@@ -391,20 +391,6 @@ function baseClassifyOptions(options: ContinueCycleOptions, state: CycleState) {
 		contractTestPaths: references.contractTests,
 		ownPaths: references.own
 	};
-}
-
-function renameReferencePaths(patchesDir: string): {
-	readonly contractTests: readonly string[];
-	readonly own: readonly string[];
-} {
-	const contractTests: string[] = [];
-	const own: string[] = [];
-	for (const relative of listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })) {
-		if (!isDeliveredOwnFile(relative)) continue;
-		const path = `${OWN_SOURCE_DIR}/${relative}`;
-		(relative.startsWith('test/') ? contractTests : own).push(path);
-	}
-	return { contractTests, own };
 }
 
 function renamePaths(resultValue: CycleClassifyResult): readonly string[] {

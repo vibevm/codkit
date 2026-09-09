@@ -52,7 +52,7 @@ export type RebaseMoveOptions = {
 	readonly desiredTree: string;
 	readonly patchsetHead: string;
 	readonly allowedOwnBeforeTree: string;
-	readonly allowedIgnoredPrefix: string;
+	readonly allowedIgnoredPrefixes: readonly string[];
 	readonly allowedIgnoredPaths: readonly string[];
 	readonly allowCompletedRollover: boolean;
 	/** Test seam after one path reaches its desired state. */
@@ -236,7 +236,7 @@ export function materializeRebaseDesiredTree(options: RebaseMoveOptions): Rebase
 		entries: desired.map(({ path, before, after, beforeObject, afterObject }) => ({ path, before, after, beforeObject, afterObject }))
 	};
 	reconcileMoveTemps(options.treeDir, desired, semantics);
-	assertIgnoredClean(options.treeDir, options.allowedIgnoredPrefix, options.allowedIgnoredPaths);
+	assertIgnoredClean(options.treeDir, options.allowedIgnoredPrefixes, options.allowedIgnoredPaths);
 	if (existing === null) {
 		const alreadyDesired = desired.every((entry) => sameState(worktreeState(options.treeDir, entry.path, semantics), entry.after));
 		if (alreadyDesired) assertRecognizedPartial(options.treeDir, desired, semantics);
@@ -311,13 +311,15 @@ function assertCompletedRollover(options: RebaseMoveOptions, record: MoveRecord,
 	if (extra.length > 0) throw moveError(`completed receipt has unrelated fork dirt: ${extra.join(', ')}`);
 }
 
-function assertIgnoredClean(treeDir: string, allowedPrefix: string, allowedPaths: readonly string[]): void {
+function assertIgnoredClean(treeDir: string, allowedPrefixes: readonly string[], allowedPaths: readonly string[]): void {
 	const status = runGit({ args: ['status', '--porcelain=v1', '-z', '--ignored=matching', '--untracked-files=normal'], cwd: treeDir });
 	if (status.status !== 0) throw moveError('fork ignored-file status is unreadable');
 	const forbidden = porcelainZEntries(status.stdout)
 		.filter((entry) => entry.status === '!!')
 		.map((entry) => entry.path)
-		.filter((path) => path !== allowedPrefix.slice(0, -1) && !path.startsWith(allowedPrefix) && !allowedPaths.includes(path));
+		.filter(
+			(path) => !allowedPrefixes.some((prefix) => path === prefix.slice(0, -1) || path.startsWith(prefix)) && !allowedPaths.includes(path)
+		);
 	if (forbidden.length > 0) throw moveError(`fork has unrelated ignored paths: ${forbidden.join(', ')}`);
 }
 
@@ -328,7 +330,7 @@ function desiredEntries(
 	existing: MoveRecord | null,
 	rollover: boolean
 ): readonly DesiredEntry[] {
-	const { scratchTree, desiredTree, treeDir, allowedIgnoredPrefix, allowedOwnBeforeTree } = options;
+	const { scratchTree, desiredTree, treeDir, allowedIgnoredPrefixes, allowedOwnBeforeTree } = options;
 	const diff = runGit({ args: ['diff', '--name-status', '--no-renames', '-z', head, desiredTree], cwd: scratchTree });
 	if (diff.status !== 0 || (diff.stdout !== '' && !diff.stdout.endsWith('\0')))
 		throw moveError('cannot compare real HEAD with the scratch desired tree');
@@ -341,19 +343,24 @@ function desiredEntries(
 		if (!/^[ADMT]$/.test(status) || path === '') throw moveError(`malformed desired-tree diff record ${JSON.stringify(status)}`);
 		paths.add(path);
 	}
-	const ownRoot = contained(treeDir, allowedIgnoredPrefix.slice(0, -1), true);
-	for (const relative of listOwnFiles(ownRoot, { refuseSymlinks: true })) paths.add(`${allowedIgnoredPrefix}${relative}`);
-	const desiredOwn = runGit({ args: ['ls-tree', '-r', '--name-only', '-z', desiredTree, '--', allowedIgnoredPrefix], cwd: scratchTree });
-	if (desiredOwn.status !== 0 || (desiredOwn.stdout !== '' && !desiredOwn.stdout.endsWith('\0')))
-		throw moveError('cannot list desired own files');
-	for (const path of desiredOwn.stdout.split('\0').filter(Boolean)) paths.add(path);
-	const sourceOwn = runGit({
-		args: ['ls-tree', '-r', '--name-only', '-z', allowedOwnBeforeTree, '--', allowedIgnoredPrefix],
-		cwd: scratchTree
-	});
-	if (sourceOwn.status !== 0 || (sourceOwn.stdout !== '' && !sourceOwn.stdout.endsWith('\0')))
-		throw moveError('cannot list source own files');
-	for (const path of sourceOwn.stdout.split('\0').filter(Boolean)) paths.add(path);
+	// Every owned directory of the patch set carries the same three sources of
+	// paths: what the tree holds today, what the desired tree holds, and what the
+	// source tree held (PROP-016 ##TYPE-AREA-LAYOUT).
+	for (const prefix of allowedIgnoredPrefixes) {
+		const ownRoot = contained(treeDir, prefix.slice(0, -1), true);
+		for (const relative of listOwnFiles(ownRoot, { refuseSymlinks: true })) paths.add(`${prefix}${relative}`);
+		const desiredOwn = runGit({ args: ['ls-tree', '-r', '--name-only', '-z', desiredTree, '--', prefix], cwd: scratchTree });
+		if (desiredOwn.status !== 0 || (desiredOwn.stdout !== '' && !desiredOwn.stdout.endsWith('\0')))
+			throw moveError('cannot list desired own files');
+		for (const path of desiredOwn.stdout.split('\0').filter(Boolean)) paths.add(path);
+		const sourceOwn = runGit({
+			args: ['ls-tree', '-r', '--name-only', '-z', allowedOwnBeforeTree, '--', prefix],
+			cwd: scratchTree
+		});
+		if (sourceOwn.status !== 0 || (sourceOwn.stdout !== '' && !sourceOwn.stdout.endsWith('\0')))
+			throw moveError('cannot list source own files');
+		for (const path of sourceOwn.stdout.split('\0').filter(Boolean)) paths.add(path);
+	}
 	for (const path of options.allowedIgnoredPaths) paths.add(path);
 	for (const entry of existing?.entries ?? []) paths.add(entry.path);
 	const existingByPath = new Map(existing?.entries.map((entry) => [entry.path, entry] as const) ?? []);
@@ -363,7 +370,7 @@ function desiredEntries(
 		const existingEntry = existingByPath.get(path);
 		let recordedBefore = rollover && existingEntry !== undefined ? existingEntry.after : (before?.digest ?? null);
 		let recordedBeforeObject = rollover && existingEntry !== undefined ? existingEntry.afterObject : (before?.object ?? null);
-		if (path.startsWith(allowedIgnoredPrefix)) {
+		if (allowedIgnoredPrefixes.some((prefix) => path.startsWith(prefix))) {
 			if (rollover && existingEntry !== undefined) {
 				recordedBefore = existingEntry.after;
 				recordedBeforeObject = existingEntry.afterObject;

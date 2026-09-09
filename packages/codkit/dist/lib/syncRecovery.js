@@ -20,7 +20,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { runGit } from './gitx.js';
 import { ckError, isCkError } from './messages.js';
-import { classifyOwn } from './ownCopy.js';
+import { classifyAllOwn, ownMarkFilesOf } from './ownSides.js';
+import { ownedRootsOf } from './ownedRoots.js';
 import { decodePatchName, encodePatchName } from './patchFormat.js';
 import { runSave } from './saveEngine.js';
 import { abortStoppedSync } from './syncAbort.js';
@@ -297,7 +298,7 @@ function continueStoppedSync(input, record) {
         return blocked(classified.classes, treeState.commits.length, { transaction: record.id });
     }
     const classes = classified.classes;
-    const ownClasses = classifyOwn(patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+    const ownClasses = classifyAllOwn(patchesDir, tree, ownedRootsOf(input.type, config.typeConfig), (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
     if (ownClasses.some((entry) => entry.kind === 'both-edited')) {
         out.addError(ckError('BOTH-SIDES-EDITED', 'the fork tree and the patch set both changed an own file since the stop; own code has no marker blocks to materialize a merge into', 'choose a side by hand (revert one side), then codkit sync --continue again, or codkit sync --abort').toPayload());
         return blocked(classes, treeState.commits.length, { transaction: record.id });
@@ -313,7 +314,7 @@ function continueStoppedSync(input, record) {
     // after the stop): the save half is about to rewrite their artifacts, and
     // an abort after a crash in the continuation must cover them too.
     const live = extendRecordSnapshots(input, record, treeState);
-    const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
+    const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(input.type, config.typeConfig));
     const hasTreeWork = treeState.commits.length > 0 ||
         changes.length > 0 ||
         ownClasses.some((entry) => entry.kind === 'tree-edited' || entry.kind === 'unknown');
@@ -375,7 +376,7 @@ function differsFromSnapshot(treeDir, path, record) {
 /** Snapshots the artifacts of every changed tree file the record does not carry yet. */
 function extendRecordSnapshots(input, record, treeState) {
     const { patchesDir, resolution, config } = input;
-    const changes = changesSince(resolution.path, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
+    const changes = changesSince(resolution.path, treeState.base, { kind: 'worktree' }, ownedRootsOf(input.type, config.typeConfig));
     const artifacts = changes.map((change) => `${PATCHES_DIR}/${encodePatchName(change.path)}`);
     const fresh = artifacts.filter((artifact) => recordedRewriteOf(record, 'patchset', artifact) === null);
     if (fresh.length === 0) {
@@ -419,7 +420,7 @@ function classifySides(input, mark, treeState) {
         type: input.type,
         base: treeState.base,
         mark,
-        ownRoot: input.config.typeConfig.ownRoot,
+        roots: ownedRootsOf(input.type, input.config.typeConfig),
         commits: treeState.commits
     });
     if (classes.unknown) {

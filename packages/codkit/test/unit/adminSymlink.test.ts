@@ -15,6 +15,7 @@ import { writeExclude, writeTreeHook } from '../../src/lib/syncEngine.ts';
 import { gitDirOf, readTreeMark, writeTreeMark } from '../../src/lib/treeCache.ts';
 import type { TreeMark } from '../../src/lib/treeCache.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { oneOwnedRoot } from '../support/ownedRoots.ts';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -75,7 +76,7 @@ describe('git-admin writes refuse symlinked paths', () => {
 		const sentinel = plantSentinel(outside, 'exclude', SENTINEL_EXCLUDE, 0o644);
 		try {
 			expect(() =>
-				writeExclude(repo, 'src/vs/patchset', {
+				writeExclude(repo, oneOwnedRoot('src/vs/patchset'), {
 					afterOpen: () => {
 						renameSync(info, held);
 						symlinkSync(outside, info);
@@ -100,7 +101,7 @@ describe('git-admin writes refuse symlinked paths', () => {
 		// The leaf-shape refusal of the contained reader names a link as a link:
 		// a bare toThrow() here was satisfied by any failure anywhere in the
 		// write path.
-		expect(() => writeExclude(repo, 'src/vs/patchset')).toThrow(/must be a regular non-symlink file/);
+		expect(() => writeExclude(repo, oneOwnedRoot('src/vs/patchset'))).toThrow(/must be a regular non-symlink file/);
 		expect(readFileSync(sentinel, 'utf8')).toBe(SENTINEL_EXCLUDE);
 	});
 

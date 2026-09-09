@@ -25,7 +25,8 @@ import { treeId } from '../lib/fingerprint.js';
 import { runGit } from '../lib/gitx.js';
 import { withLock } from '../lib/lock.js';
 import { ckError, isCkError } from '../lib/messages.js';
-import { classifyOwn } from '../lib/ownCopy.js';
+import { classifyAllOwn, ownMarkFilesOf } from '../lib/ownSides.js';
+import { ownedRootsOf } from '../lib/ownedRoots.js';
 import { encodePatchName } from '../lib/patchFormat.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { artifactTarget, blocked, materializeConflicts, NO_CLASSES, ok, runSyncRecovery, runWritePass, stoppedMidway, unfit } from '../lib/syncRecovery.js';
@@ -177,7 +178,7 @@ function runTwoWay(input) {
         type: type,
         base: treeState.base,
         mark,
-        ownRoot: config.typeConfig.ownRoot,
+        roots: ownedRootsOf(type, config.typeConfig),
         commits: treeState.commits
     });
     if (classes.unknown) {
@@ -187,11 +188,13 @@ function runTwoWay(input) {
     // 5. Own code, file by file (##PATCHSET-SIDE-EDIT-RULE): own code has no
     // marker blocks to materialize a merge into, so a both-sided own file keeps
     // the choose-a-side refusal.
-    const ownClasses = classifyOwn(patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+    const ownClasses = classifyAllOwn(patchesDir, tree, ownedRootsOf(type, config.typeConfig), (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
     const ownBoth = ownClasses.filter((entry) => entry.kind === 'both-edited');
     if (ownBoth.length > 0) {
-        const prefix = config.typeConfig.ownRoot;
-        const sides = ownBoth.map((entry) => ({ artifact: `delta/own/${entry.relative}`, target: `${prefix}/${entry.relative}` }));
+        const sides = ownBoth.map((entry) => ({
+            artifact: `${entry.owned.deltaDir}/${entry.relative}`,
+            target: `${entry.owned.path}/${entry.relative}`
+        }));
         out.addError(bothSidesConflictError(sides, restoreRef).toPayload());
         return blocked(classes, treeState.commits.length);
     }
@@ -205,7 +208,7 @@ function runTwoWay(input) {
     const bothSides = classes.both.map((artifact) => ({ artifact, target: artifactTarget(artifact) }));
     const conflictTargets = flags.discard
         ? bothSides
-            .filter((side) => uncommittedChanges(tree, treeState, config.typeConfig.ownRoot).some((change) => change.path === side.target))
+            .filter((side) => uncommittedChanges(tree, treeState, ownedRootsOf(type, config.typeConfig)).some((change) => change.path === side.target))
             .map((side) => side.target)
         : bothSides.map((side) => side.target);
     if (flags.discard && conflictTargets.length > 0) {
@@ -215,7 +218,7 @@ function runTwoWay(input) {
     }
     // 7. --dry-run: the classification is the answer; nothing is written.
     if (flags.dryRun) {
-        const paths = changesSince(tree, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot).map((change) => change.path);
+        const paths = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(type, config.typeConfig)).map((change) => change.path);
         reportSyncPlan(out, classes, treeState.commits.length, paths);
         return ok('dry-run', classes, treeState.commits.length);
     }
@@ -231,7 +234,7 @@ function runTwoWay(input) {
     // 9. Is there anything to merge at all? With both sides still, the load
     // engine alone answers - usually from its fast path - and no transaction is
     // written, because nothing is about to mutate.
-    const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
+    const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(type, config.typeConfig));
     const hasTreeWork = treeState.commits.length > 0 ||
         changes.length > 0 ||
         ownClasses.some((entry) => entry.kind === 'tree-edited' || entry.kind === 'unknown');
@@ -323,8 +326,10 @@ function openRecord(input, treeState, mark, changes, ownClasses, patchsetOnly, c
         markSnapshot: mark,
         treeArtifacts: changes.map((change) => `${PATCHES_DIR}/${encodePatchName(change.path)}`),
         patchsetTargets: patchsetOnly.map(artifactTarget),
-        ownRelatives: ownClasses.map((entry) => entry.relative),
-        ownTargetPrefix: config.typeConfig.ownRoot,
+        ownPaths: ownClasses.map((entry) => ({
+            artifact: `${entry.owned.deltaDir}/${entry.relative}`,
+            target: `${entry.owned.path}/${entry.relative}`
+        })),
         conflictTargets
     });
 }
@@ -349,8 +354,8 @@ function buildData(result) {
 // Small readers
 // ---------------------------------------------------------------------------
 /** Changes the working tree carries on top of its own HEAD: the part `--discard` may not drop. */
-function uncommittedChanges(tree, treeState, ownRoot) {
-    return changesSince(tree, treeState.head, { kind: 'worktree' }, ownRoot);
+function uncommittedChanges(tree, treeState, roots) {
+    return changesSince(tree, treeState.head, { kind: 'worktree' }, roots);
 }
 /** Whether delta paths of the patchset carry uncommitted modifications right now. */
 function deltaDirty(patchesDir) {

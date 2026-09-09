@@ -169,8 +169,8 @@ export function openSyncTransaction(input) {
         rewrite: [
             ...snapshotForTransaction(input.patchesDir, 'patchset', input.treeArtifacts),
             ...snapshotForTransaction(input.treeDir, 'tree', input.patchsetTargets),
-            ...snapshotForTransaction(input.patchesDir, 'patchset', input.ownRelatives.map((relative) => `delta/own/${relative}`)),
-            ...snapshotForTransaction(input.treeDir, 'tree', input.ownRelatives.map((relative) => `${input.ownTargetPrefix}/${relative}`)),
+            ...snapshotForTransaction(input.patchesDir, 'patchset', input.ownPaths.map((pair) => pair.artifact)),
+            ...snapshotForTransaction(input.treeDir, 'tree', input.ownPaths.map((pair) => pair.target)),
             ...snapshotForTransaction(input.treeDir, 'tree', input.conflictTargets)
         ],
         conflicts: input.conflictTargets.map((path) => ({ path, materialized: null }))

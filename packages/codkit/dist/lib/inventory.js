@@ -26,7 +26,7 @@ import { loadConventions } from './conventionsFile.js';
 import { gitOk, runGit } from './gitx.js';
 import { loadOverlays } from './layers/overlay.js';
 import { isSafeExtensionName, listExtensionFiles, materializerOf, ownExtensionSourceRoot } from './layers/ownExtensions.js';
-import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.js';
+import { OWN_MANIFEST_PATH, loadOwnManifest, ownManifestPath } from './layers/ownManifest.js';
 import { loadRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap } from './layers/resource.js';
 import { loadRules } from './layers/rule.js';
@@ -34,6 +34,7 @@ import { statIfPresent } from './containedPath.js';
 import { RUNTIME_PREFIX } from './licenceNotice.js';
 import { ckError } from './messages.js';
 import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.js';
+import { ownCodeFilter, ownedRootsOf } from './ownedRoots.js';
 import { readVersionLiteral } from './runtimePackage.js';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
 import { PATCHES_DIR, patchSetCommitId } from './syncEngine.js';
@@ -101,6 +102,9 @@ export function buildInventory(patchesDir, type, options = {}) {
     const manifest = loadOwnManifest(patchesDir);
     const removed = loadRemoved(patchesDir);
     const resources = loadResourceMap(patchesDir);
+    // The owned directories the units live in; the configuration is read here
+    // when the caller did not hand one over, exactly as the pin is.
+    const roots = ownedRootsOf(type, configOf(patchesDir, options.config).typeConfig);
     const entries = [
         ...patches.map((entry) => patchEntry(entry)),
         ...overlays.map((overlay) => overlayEntry(overlay)),
@@ -120,7 +124,7 @@ export function buildInventory(patchesDir, type, options = {}) {
             artifact: RESOURCE_MAP_PATH
         })),
         ...rules.map((rule) => ruleEntry(rule)),
-        ...ownEntries(patchesDir, type, manifest),
+        ...ownEntries(patchesDir, type, manifest, roots),
         ...deliveredRuntimeEntry(patchesDir)
     ];
     entries.sort((left, right) => compareBytes(left.id, right.id));
@@ -514,25 +518,31 @@ function ruleEntry(rule) {
  * files those roots actually cover today - the point of the record is what own
  * code exists, not what a prefix could match.
  */
-function ownEntries(patchesDir, type, manifest) {
-    const ownFiles = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true });
+function ownEntries(patchesDir, type, manifest, roots) {
     const entries = [];
-    for (const unit of manifest.units) {
-        entries.push({
-            id: unit.id,
-            layer: 'own',
-            type: unit.type,
-            category: unit.category,
-            subsystem: subsystemOf(unit.id),
-            files: expandRoots(unit.roots, ownFiles),
-            owner: unit.owner,
-            reason: unit.reason,
-            link: unit.link,
-            cause: causeOf(unit.cause),
-            pin: unit.pin,
-            contractTests: unit.contractTests,
-            artifact: OWN_MANIFEST_PATH
-        });
+    // One pass per owned directory: the own root reads the manifest the caller
+    // already loaded, every other owned directory reads its own
+    // (PROP-016 ##TYPE-AREA-LAYOUT, PROP-005 ##OWN-ROOTS-IN-THE-DELTA).
+    for (const [index, owned] of roots.entries()) {
+        const ownedManifest = index === 0 ? manifest : loadOwnManifest(patchesDir, owned.deltaDir);
+        const ownFiles = listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), { refuseSymlinks: true, keep: ownCodeFilter(owned) });
+        for (const unit of ownedManifest.units) {
+            entries.push({
+                id: unit.id,
+                layer: 'own',
+                type: unit.type,
+                category: unit.category,
+                subsystem: subsystemOf(unit.id),
+                files: expandRoots(unit.roots, ownFiles),
+                owner: unit.owner,
+                reason: unit.reason,
+                link: unit.link,
+                cause: causeOf(unit.cause),
+                pin: unit.pin,
+                contractTests: unit.contractTests,
+                artifact: ownManifestPath(owned.deltaDir)
+            });
+        }
     }
     // ##OWN-EXTENSION-UNIT: one record per extension, in the own layer, naming the
     // files the directory holds today - the same rule the units follow.
@@ -718,11 +728,16 @@ function causeOf(value) {
  * checkout whose inventory cannot state a pin at all.
  */
 function pinOf(patchesDir, given) {
+    const config = configOf(patchesDir, given);
+    return `${config.pin.tag}@${config.pin.sha}`;
+}
+/** The configuration of the checkout: the caller's, or the file's. */
+function configOf(patchesDir, given) {
     const config = given ?? loadConfig(patchesDir);
     if (config === null) {
         throw ckError('CONFIG', 'codkit.json was not found in the patchset root: the inventory states the pin the delta is written against', 'build the inventory from a patchset checkout that carries codkit.json');
     }
-    return `${config.pin.tag}@${config.pin.sha}`;
+    return config;
 }
 function compareBytes(left, right) {
     return Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8'));

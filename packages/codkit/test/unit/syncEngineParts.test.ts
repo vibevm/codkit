@@ -10,6 +10,7 @@ import { EXCLUDE_BEGIN, EXCLUDE_END, matchesCleanupWhitelist, toPosix, writeExcl
 import { isCkError } from '../../src/lib/messages.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
+import { oneOwnedRoot } from '../support/ownedRoots.ts';
 
 /**
  * The shipped list (PROP-011 ##CLEANUP-WHITELIST-CONTENT), read as gitignore
@@ -171,28 +172,28 @@ describe('writeExclude', () => {
 
 	it('writes exactly the three managed lines', () => {
 		const tree = makeTree('exclude-new', null);
-		writeExclude(tree, 'src/vs/patchset');
+		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		expect(excludeFile(tree)).toBe(`${EXCLUDE_BEGIN}\n/src/vs/patchset/\n${EXCLUDE_END}\n`);
 	});
 
 	it('creates an absent block after one blank line without normalizing host bytes', () => {
 		const tree = makeTree('exclude-separated', '# user\r\n*.local');
-		writeExclude(tree, 'src/vs/patchset');
+		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		expect(excludeFile(tree)).toBe(`# user\r\n*.local\r\n\r\n${EXCLUDE_BEGIN}\r\n/src/vs/patchset/\r\n${EXCLUDE_END}\r\n`);
 	});
 
 	it('is idempotent', () => {
 		const tree = makeTree('exclude-idempotent', '# left by the user\n*.local\n');
-		writeExclude(tree, 'src/vs/patchset');
+		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		const once = excludeFile(tree);
-		writeExclude(tree, 'src/vs/patchset');
+		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		expect(excludeFile(tree)).toBe(once);
 		expect(once.startsWith('# left by the user\n*.local\n')).toBe(true);
 	});
 
 	it('replaces a stale managed block without touching other lines', () => {
 		const tree = makeTree('exclude-stale', `# mine\n${EXCLUDE_BEGIN}\n/src/vs/oldname/\n${EXCLUDE_END}\n# also mine\n`);
-		writeExclude(tree, 'src/vs/patchset');
+		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		expect(excludeFile(tree)).toBe(`# mine\n${EXCLUDE_BEGIN}\n/src/vs/patchset/\n${EXCLUDE_END}\n# also mine\n`);
 	});
 
@@ -201,7 +202,7 @@ describe('writeExclude', () => {
 		const tree = makeTree('exclude-unclosed', existing);
 		let failure: unknown;
 		try {
-			writeExclude(tree, 'src/vs/patchset');
+			writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		} catch (error) {
 			failure = error;
 		}
@@ -212,7 +213,7 @@ describe('writeExclude', () => {
 	it('hard-stops on duplicate markers', () => {
 		const existing = `${EXCLUDE_BEGIN}\nold\n${EXCLUDE_END}\n${EXCLUDE_BEGIN}\nother\n${EXCLUDE_END}\n`;
 		const tree = makeTree('exclude-duplicate', existing);
-		expect(() => writeExclude(tree, 'src/vs/patchset')).toThrow(/expected zero markers or one ordered pair/);
+		expect(() => writeExclude(tree, oneOwnedRoot('src/vs/patchset'))).toThrow(/expected zero markers or one ordered pair/);
 		expect(excludeFile(tree)).toBe(existing);
 	});
 
@@ -221,7 +222,7 @@ describe('writeExclude', () => {
 		const tree = makeTree('exclude-noop', existing);
 		const path = join(tree, '.git', 'info', 'exclude');
 		const before = statSync(path).mtimeMs;
-		writeExclude(tree, 'src/vs/patchset');
+		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
 		expect(excludeFile(tree)).toBe(existing);
 		expect(statSync(path).mtimeMs).toBe(before);
 	});

@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { CYCLE_STATE_PATH } from './cycleState.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
-import { fileContentEqual, isDeliveredOwnFile, listOwnFiles, OWN_SOURCE_DIR, ownSourceRoot, ownTargetRoot } from './ownCopy.js';
+import { fileContentEqual, isDeliveredOwnFile, listOwnFiles, ownSourceRoot, ownTargetRoot } from './ownCopy.js';
+import { ownCodeFilter } from './ownedRoots.js';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
 import { createRebaseCheckoutContext, rebaseTreeEntry, releaseRebaseCheckoutContext } from './rebaseOntoPinCheckout.js';
 /**
@@ -15,15 +16,39 @@ import { createRebaseCheckoutContext, rebaseTreeEntry, releaseRebaseCheckoutCont
  * what makes an interrupted delivery resumable without turning a rename into
  * permission to overwrite arbitrary ignored files.
  */
-export function assertCycleOwnPreflight(patchesDir, tree, ownRoot, generatedOwnTargets, renameAuthority) {
-    const source = ownSourceRoot(patchesDir);
-    const target = ownTargetRoot(tree, ownRoot);
-    strictOwnRoot(source, 'own source', true);
-    strictOwnRoot(target, 'materialized own target', true);
-    const relatives = ownRelatives(generatedOwnTargets, ownRoot);
-    const accepted = acceptedOwnTransitions(patchesDir, relatives, renameAuthority);
+export function assertCycleOwnPreflight(patchesDir, tree, roots, generatedOwnTargets, renameAuthority) {
+    const dangerous = [];
+    const claimed = new Set();
+    for (const owned of roots) {
+        const mine = generatedOwnTargets.filter((target) => target.startsWith(`${owned.path}/`));
+        for (const target of mine)
+            claimed.add(target);
+        dangerous.push(...ownedRootDanger(patchesDir, tree, owned, mine, renameAuthority));
+    }
+    for (const target of generatedOwnTargets) {
+        if (!claimed.has(target))
+            throw broken(`generated own evidence contains foreign target ${target}`);
+    }
+    if (dangerous.length > 0) {
+        throw ckError('DIRTY-TREE', `own code carries unextracted work: ${dangerous.join(', ')}`, 'save or reconcile own code before continuing the cycle');
+    }
+}
+/**
+ * One owned directory of the preflight (PROP-016 ##TYPE-AREA-LAYOUT): the same
+ * two strict roots, the same accepted transitions, and the build outputs of the
+ * directory left out of both sides - a compiled `lib/` beside the sources is
+ * not own code and never was work at risk.
+ */
+function ownedRootDanger(patchesDir, tree, owned, generatedOwnTargets, renameAuthority) {
+    const keep = ownCodeFilter(owned);
+    const source = ownSourceRoot(patchesDir, owned.deltaDir);
+    const target = ownTargetRoot(tree, owned.path);
+    strictOwnRoot(source, 'own source', true, keep);
+    strictOwnRoot(target, 'materialized own target', true, keep);
+    const relatives = ownRelatives(generatedOwnTargets, owned.path);
+    const accepted = acceptedOwnTransitions(patchesDir, owned, relatives, renameAuthority);
     const sourceSet = new Set(relatives);
-    const targetFiles = listOwnFiles(target, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
+    const targetFiles = listOwnFiles(target, { refuseSymlinks: true, keep }).filter(isDeliveredOwnFile);
     const targetSet = new Set(targetFiles);
     const dangerous = [];
     for (const relative of targetFiles) {
@@ -32,7 +57,7 @@ export function assertCycleOwnPreflight(patchesDir, tree, ownRoot, generatedOwnT
     }
     for (const relative of relatives) {
         const sourcePath = contained(source, relative, false);
-        const targetPath = contained(tree, `${ownRoot}/${relative}`, true);
+        const targetPath = contained(tree, `${owned.path}/${relative}`, true);
         if (!targetSet.has(relative) || fileContentEqual(sourcePath, targetPath))
             continue;
         const transition = accepted.get(relative);
@@ -42,11 +67,9 @@ export function assertCycleOwnPreflight(patchesDir, tree, ownRoot, generatedOwnT
             continue;
         dangerous.push(`both ${relative}`);
     }
-    if (dangerous.length > 0) {
-        throw ckError('DIRTY-TREE', `own code carries unextracted work: ${dangerous.join(', ')}`, 'save or reconcile own code before continuing the cycle');
-    }
+    return dangerous;
 }
-function acceptedOwnTransitions(patchesDir, relatives, authority) {
+function acceptedOwnTransitions(patchesDir, owned, relatives, authority) {
     if (authority === undefined)
         return new Map();
     if (!orderedUnique(authority.paths))
@@ -66,13 +89,13 @@ function acceptedOwnTransitions(patchesDir, relatives, authority) {
     assertCanonicalRenameCommit(patchesDir, authority);
     const expectedRelatives = new Set(relatives);
     const transitions = new Map();
-    const ownPaths = authority.paths.filter((candidate) => candidate.startsWith(`${OWN_SOURCE_DIR}/`));
+    const ownPaths = authority.paths.filter((candidate) => candidate.startsWith(`${owned.deltaDir}/`));
     if (ownPaths.length === 0)
         return transitions;
     const checkout = createRebaseCheckoutContext(patchesDir, patchesDir);
     try {
         for (const path of ownPaths) {
-            const relative = path.slice(OWN_SOURCE_DIR.length + 1);
+            const relative = path.slice(owned.deltaDir.length + 1);
             if (!isDeliveredOwnFile(relative) || !expectedRelatives.has(relative)) {
                 throw broken(`rename authority names non-delivered own path ${path}`);
             }
@@ -85,7 +108,7 @@ function acceptedOwnTransitions(patchesDir, relatives, authority) {
                 before.digest.sha256 === after.digest.sha256) {
                 throw broken(`rename authority has no exact changed regular-file endpoints for ${path}`);
             }
-            const sourcePath = contained(ownSourceRoot(patchesDir), relative, false);
+            const sourcePath = contained(ownSourceRoot(patchesDir, owned.deltaDir), relative, false);
             if (sha256(readFileSync(sourcePath)) !== after.digest.sha256) {
                 throw broken(`current own source differs from rename endpoint ${path}`);
             }
@@ -134,7 +157,10 @@ function ownRelatives(targets, ownRoot) {
         throw broken('generated own evidence is not byte-sorted and unique');
     return relatives;
 }
-function strictOwnRoot(root, label, rootMayBeAbsent) {
+function strictOwnRoot(root, label, rootMayBeAbsent, keep) {
+    strictOwnRootAt(root, label, rootMayBeAbsent, keep, '');
+}
+function strictOwnRootAt(root, label, rootMayBeAbsent, keep, relativeDir) {
     let stat;
     try {
         stat = lstatSync(root);
@@ -155,10 +181,13 @@ function strictOwnRoot(root, label, rootMayBeAbsent) {
     }
     for (const entry of entries) {
         const child = join(root, entry.name);
+        const relative = relativeDir === '' ? entry.name : `${relativeDir}/${entry.name}`;
+        if (keep !== undefined && !keep(entry.isDirectory() ? `${relative}/` : relative))
+            continue;
         if (entry.isSymbolicLink())
             throw broken(`${label} contains symlink ${entry.name}`);
         if (entry.isDirectory())
-            strictOwnRoot(child, `${label}/${entry.name}`, false);
+            strictOwnRootAt(child, `${label}/${entry.name}`, false, keep, relative);
         else if (!entry.isFile())
             throw broken(`${label} contains non-file ${entry.name}`);
     }

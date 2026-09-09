@@ -4,7 +4,7 @@ import { applyCycleClassification, previewCycleApply } from './cycleClassify.js'
 import { commitCycleAtom } from './cycleCommit.js';
 import { CYCLE_APPLY_RECORD_PATH, clearCycleApplyRecord, makeCycleApplyRecord, readCycleApplyRecord, updateCycleApplyRecord, writeCycleApplyRecord } from './cycleEngineRecord.js';
 import { clearCycleTerminalRecord } from './cycleEngineTerminal.js';
-import { byteSorted, fileDigest, readText, toJson } from './cycleEngineIo.js';
+import { byteSorted, fileDigest, readText, renameReferencePaths, toJson } from './cycleEngineIo.js';
 import { pendingTerminal, pendingTransition, planStabilizationTransition, planTerminalTransaction, resumeCycleTerminal, resumeCycleTransition } from './cycleEngineTransactions.js';
 import { readCycleJournal } from './cycleJournal.js';
 import { appendCycleJournalEntry } from './cycleJournal.js';
@@ -17,7 +17,7 @@ import { runGit } from './gitx.js';
 import { buildInventory } from './inventory.js';
 import { acquireLock } from './lock.js';
 import { ckError } from './messages.js';
-import { isDeliveredOwnFile, listOwnFiles, OWN_SOURCE_DIR, ownSourceRoot } from './ownCopy.js';
+import { ownedRootsOf } from './ownedRoots.js';
 import { RESOURCE_MAP_PATH } from './layers/resource.js';
 const GLOBAL_LOCK_ID = 'cycle-global';
 const JOURNAL_ACTOR = 'agent:codkit';
@@ -300,7 +300,7 @@ function recordFromClassification(options, state, classification, previous) {
     });
 }
 function baseClassifyOptions(options, state) {
-    const references = renameReferencePaths(options.patchesDir);
+    const references = renameReferencePaths(options.patchesDir, ownedRootsOf(options.type, options.config.typeConfig));
     return {
         patchesDir: options.patchesDir,
         treeDir: options.resolution.path,
@@ -310,17 +310,6 @@ function baseClassifyOptions(options, state) {
         contractTestPaths: references.contractTests,
         ownPaths: references.own
     };
-}
-function renameReferencePaths(patchesDir) {
-    const contractTests = [];
-    const own = [];
-    for (const relative of listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })) {
-        if (!isDeliveredOwnFile(relative))
-            continue;
-        const path = `${OWN_SOURCE_DIR}/${relative}`;
-        (relative.startsWith('test/') ? contractTests : own).push(path);
-    }
-    return { contractTests, own };
 }
 function renamePaths(resultValue) {
     const paths = [];

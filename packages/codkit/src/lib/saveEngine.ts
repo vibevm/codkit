@@ -38,10 +38,13 @@ import {
 	ownExtensionTreePrefixes
 } from './layers/ownExtensions.ts';
 import type { Materializer, OwnExtensionSyncReport } from './layers/ownExtensions.ts';
-import { classifyOwn, mirrorOwnBack } from './ownCopy.ts';
+import { mirrorAllOwnBack } from './ownCopy.ts';
+import { classifyAllOwn, ownMarkFilesOf } from './ownSides.ts';
+import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.ts';
 import { isDeliveredByCodkit, loadOwnManifest } from './layers/ownManifest.ts';
 import type { OwnExtension } from './layers/ownManifest.ts';
-import type { OwnMirrorReport, OwnSideClass } from './ownCopy.ts';
+import type { OwnMirrorReport } from './ownCopy.ts';
+import type { OwnSideClass } from './ownSides.ts';
 import { encodePatchName, extractHeaderText, formatPatchHeader, parseCkpatch, serializeCkpatch } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
 import { regeneratePatch } from './patchGenerate.ts';
@@ -189,6 +192,10 @@ export type PlannedFile = {
 export function runSave(options: SaveEngineOptions): SaveResult {
 	const { patchesDir, resolution, config, out } = options;
 	const tree = resolution.path;
+	// The directories the delta owns (PROP-016 ##TYPE-AREA-LAYOUT): what git may
+	// not judge, what the mirror extracts from, and what a positional path may
+	// name as own code.
+	const roots = ownedRootsOf(options.type, config.typeConfig);
 	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
 
 	// 0. A live two-way sync leaves the tree and the patch set half-mutated;
@@ -280,7 +287,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			type: options.type,
 			base: treeState.base,
 			mark,
-			ownRoot: config.typeConfig.ownRoot,
+			roots,
 			commits: treeState.commits
 		});
 		if (classes.unknown) {
@@ -310,7 +317,10 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// tree side is mirrored back into the delta instead.
 	const declaredExtensions = loadOwnManifest(patchesDir).extensions;
 	const materializer = materializerOf(options.type);
-	const ownedPrefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, declaredExtensions);
+	const ownedPrefixes = [
+		...ownedTreePrefixes(roots.slice(1)),
+		...(materializer === null ? [] : ownExtensionTreePrefixes(materializer, declaredExtensions))
+	];
 	const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
 	const headerOverrides = validateHeaderOverrides(options);
 	// Paths on the command line name files of the tree; they are read the same
@@ -322,7 +332,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	];
 	if (headerOverrides.size > 0) {
 		const addressed = new Set(
-			changesSince(tree, treeState.base, selection, config.typeConfig.ownRoot, forcedPaths, ownedPrefixes)
+			changesSince(tree, treeState.base, selection, roots, forcedPaths, ownedPrefixes)
 				.filter((entry) => matchesFilters(entry.path, filters))
 				.map((entry) => entry.path)
 		);
@@ -348,7 +358,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// been validated - a refusal must leave patchset without new commits *and*
 	// without new own bytes. The mark itself was read at 1d, before the
 	// moved-check needed it.
-	const classes = classifyOwn(patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+	const classes = classifyAllOwn(patchesDir, tree, roots, (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
 	// ##RT-SAVE-REFUSES-DELIVERED-EDITS: a file codkit delivered is not the
 	// product's to edit, and `save` extracts nothing at all over such an edit -
 	// not the delivered file and not the rest, so the refusal leaves one state to
@@ -362,7 +372,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			entry.tree !== null && entry.tree !== entry.patchset && entry.kind !== 'patchset-edited' && isDeliveredByCodkit(entry.relative)
 	);
 	if (deliveredEdits.length > 0) {
-		const paths = deliveredEdits.map((entry) => `${config.typeConfig.ownRoot}/${entry.relative}`);
+		const paths = deliveredEdits.map((entry) => `${entry.owned.path}/${entry.relative}`);
 		out.addError(
 			ckError(
 				'DELIVERED-EDIT',
@@ -378,7 +388,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		out.addError(bothSidesError(conflict.relative).toPayload());
 		return result('blocked', 1, { branch });
 	}
-	const ownInScope = filterOwn(classes, filters, config.typeConfig.ownRoot);
+	const ownInScope = filterOwn(classes, filters);
 	// An addressed save mirrors only the extensions its paths name, the way it
 	// mirrors only the own files they name. An extension is mirrored as a whole
 	// directory, so naming one file inside it names the extension.
@@ -405,7 +415,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			type: options.type,
 			tree,
 			base: treeState.base,
-			ownRoot: config.typeConfig.ownRoot,
+			roots,
 			forcedPaths,
 			commits: treeState.commits,
 			planFile: planFor
@@ -430,7 +440,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			// committed (D5) - a refusal higher above never wrote any of it. The
 			// worktree remainder writes below read a store that pass 2 has already
 			// put on disk, so their 'unchanged' verdicts describe the real files.
-			own = mirrorOwnBack(patchesDir, tree, config.typeConfig.ownRoot, ownInScope);
+			own = mirrorAllOwnBack(patchesDir, tree, roots, ownInScope);
 			ownExtensions =
 				materializer === null ? NO_OWN_EXTENSIONS : mirrorOwnExtensionsBack(materializer, patchesDir, tree, extensionsInScope);
 			reportOwn(out, own);
@@ -445,14 +455,14 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// actions ('updated' against the pre-save artifact, not 'unchanged' against
 	// the store's copy of the last state).
 	if (!replayEligible || (squashing && errors.length === 0)) {
-		own = mirrorOwnBack(patchesDir, tree, config.typeConfig.ownRoot, ownInScope);
+		own = mirrorAllOwnBack(patchesDir, tree, roots, ownInScope);
 		ownExtensions = materializer === null ? NO_OWN_EXTENSIONS : mirrorOwnExtensionsBack(materializer, patchesDir, tree, extensionsInScope);
 		reportOwn(out, own);
 		reportOwnExtensions(out, ownExtensions);
 		// 3. Upstream files: everything the tree's final state holds outside the own
 		// directory, relative to the last applied tip - not `git status`, which is
 		// blind to everything a commit already carries (D4).
-		const changed = changesSince(tree, treeState.base, selection, config.typeConfig.ownRoot, forcedPaths, ownedPrefixes);
+		const changed = changesSince(tree, treeState.base, selection, roots, forcedPaths, ownedPrefixes);
 		dirty = changed.filter((entry) => matchesFilters(entry.path, filters));
 		if (options.verbose) {
 			out.diag(`changed upstream file(s): ${dirty.length === 0 ? 'none' : dirty.map((entry) => entry.path).join(', ')}`);
@@ -685,12 +695,11 @@ function filterOwnExtensions(
 }
 
 /** Own divergences narrowed by the positional paths, which name tree paths. */
-function filterOwn(classes: readonly OwnSideClass[], filters: readonly string[], ownRoot: string): readonly OwnSideClass[] {
+function filterOwn(classes: readonly OwnSideClass[], filters: readonly string[]): readonly OwnSideClass[] {
 	if (filters.length === 0) {
 		return classes;
 	}
-	const prefix = ownRoot;
-	return classes.filter((entry) => matchesFilters(`${prefix}/${entry.relative}`, filters));
+	return classes.filter((entry) => matchesFilters(`${entry.owned.path}/${entry.relative}`, filters));
 }
 
 // ---------------------------------------------------------------------------

@@ -17,6 +17,7 @@ import { devChannelFile } from './layers/overlay.ts';
 import { sha256 } from './renameFileState.ts';
 import type { Output } from './jsonOut.ts';
 import { ckError } from './messages.ts';
+import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.ts';
 import { encodePatchName, parseCkpatch, serializeCkpatch } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
 import { resolveContainedPath } from './pathSafety.ts';
@@ -141,7 +142,7 @@ export function rebaseOntoPin(options: RebaseOntoPinOptions): RebaseOntoPinResul
 			desiredTree,
 			patchsetHead: graph.head,
 			allowedOwnBeforeTree: sourceBaseline,
-			allowedIgnoredPrefix: `${graph.targetConfig.typeConfig.ownRoot}/`,
+			allowedIgnoredPrefixes: ownedTreePrefixes(ownedRootsOf(options.type, graph.targetConfig.typeConfig)),
 			allowedIgnoredPaths: devChannelPaths,
 			allowCompletedRollover: !hasRebasePendingRecords(options.patchesDir),
 			completedCheckpoint: () => options.checkpoint?.('after-complete'),

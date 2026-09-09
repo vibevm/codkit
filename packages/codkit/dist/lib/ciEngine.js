@@ -37,6 +37,7 @@ import { runGit, useGitConfigGlobal } from './gitx.js';
 import { buildInventory, checkoutPatchSetRef, diffInventories, renderInventoryDiffMarkdown } from './inventory.js';
 import { isCkError } from './messages.js';
 import { listOwnFiles, ownSourceRoot } from './ownCopy.js';
+import { ownedRootsOf } from './ownedRoots.js';
 import { buildGeneratedTip, runSync } from './syncEngine.js';
 import { treeHeadError } from './treeCommits.js';
 import { checkTree, formatCheckLine } from './treeIdentity.js';
@@ -159,7 +160,7 @@ export async function runCi(options) {
         }
         throw error;
     }
-    const drift = driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
+    const drift = driftDirty(materializerOf(options.type), tree, ownedRootsOf(options.type, config.typeConfig), patchesDir, {
         untrackedIsDirt: false,
         generated: { pinSha: config.pin.sha, branch }
     });

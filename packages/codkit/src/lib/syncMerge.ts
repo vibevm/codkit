@@ -48,6 +48,7 @@ import type { TreeCommit } from './treeCommits.ts';
 import { bytesOf, changesSince } from './treeState.ts';
 import type { TreeState } from './treeState.ts';
 import type { ProjectType } from '@codkit/type-api';
+import type { OwnedRoot } from './ownedRoots.ts';
 
 /** Where the patch artifacts live, relative to the patchset root (PROP-004 sec. 4). */
 const PATCHES_DIR = 'delta/patches';
@@ -177,7 +178,7 @@ export type ClassifyInput = {
 	/** The base of the tree's selection, as `save` reads it (D4). */
 	readonly base: string;
 	readonly mark: TreeMark | null;
-	readonly ownRoot: string;
+	readonly roots: readonly OwnedRoot[];
 	/** Foreign commits of the HEAD line, oldest first: the replay's states. */
 	readonly commits: readonly TreeCommit[];
 };
@@ -209,7 +210,7 @@ export function classifyTargets(input: ClassifyInput): TargetClasses {
 	// The tree side, as the selection of a save reads it (D4): the worktree's
 	// final state against the same base, target paths keyed by their artifact.
 	const targetByArtifact = new Map<string, string>();
-	for (const change of changesSince(input.treeDir, input.base, { kind: 'worktree' }, input.ownRoot)) {
+	for (const change of changesSince(input.treeDir, input.base, { kind: 'worktree' }, input.roots)) {
 		targetByArtifact.set(`${PATCHES_DIR}/${encodePatchName(change.path)}`, change.path);
 	}
 

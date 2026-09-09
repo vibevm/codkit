@@ -30,7 +30,7 @@ import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunks
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.js';
 import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, checkOverlay, devChannelIgnoreWarning, devChannelTarget, loadOverlays, restrictedTargetViolations, overlayDriftErrors, parseOverlay, serializeOverlay } from './layers/overlay.js';
 import { checkOwnExtensions, compareOwnExtensions, materializerOf, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes, pinShipsExtension } from './layers/ownExtensions.js';
-import { OWN_CODKIT_ROOT, OWN_MANIFEST_PATH, checkServiceOverrideModules, checkUnitCoverage, isNotOwnCode, isUnderCodkitRoot, loadOwnManifest, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.js';
+import { OWN_CODKIT_ROOT, OWN_MANIFEST_PATH, checkServiceOverrideModules, checkUnitCoverage, isNotOwnCode, isUnderCodkitRoot, loadOwnManifest, ownManifestPath, parseOwnManifest, serializeOwnManifest } from './layers/ownManifest.js';
 import { REMOVED_PATH, loadRemoved, parseRemoved, serializeRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap, parseResourceMap, resourceSourcePath, serializeResourceMap } from './layers/resource.js';
 import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, serializeRule } from './layers/rule.js';
@@ -38,6 +38,7 @@ import { BEGIN_TOKEN, END_TOKEN, parseMarkers } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.js';
 import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.js';
+import { ownCodeFilter, ownedRootsOf, ownedTreePrefixes } from './ownedRoots.js';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
 import { CODKIT_TOOL_ROOT, shippedRuntime } from './runtimePackage.js';
 import { RUNTIME_TARGET_PATH } from './runtimeLoad.js';
@@ -115,6 +116,11 @@ export function runVerify(options) {
     // (h) Own code: declared, not overlapping, and not overriding a bootstrap
     // service.
     checkOwn(options.type, patchesDir, conventions, manifest, findings);
+    // (h1) The owned directories beside the own root (PROP-016 ##TYPE-AREA-LAYOUT):
+    // each carries a manifest of the same shape, and every file inside it belongs
+    // to exactly one unit of that manifest - own code nobody claimed is own code
+    // nobody maintains, wherever the delta keeps it.
+    checkOwnedRoots(patchesDir, ownedRootsOf(options.type, config.typeConfig), findings);
     // (h2) What codkit delivered into the own layer: the installed runtime
     // library is byte-equal to the shipped one, and no record of the product
     // claims a path inside the root that belongs to codkit (PROP-015 sec. 4,
@@ -523,6 +529,37 @@ function checkOwn(type, patchesDir, conventions, manifest, findings) {
     }
     checkSingletonRegistrations(type.layers.serviceOverride, root, conventions, ownFiles, overrideModules, findings);
 }
+/**
+ * ##OWN-UNCOVERED for an owned directory that is not the own root. The rules of
+ * the own layer proper - the service overrides, the own extensions, the codkit
+ * root, the runtime library - belong to the own root and to it alone; what a
+ * second owned directory answers for is that every file inside it is declared.
+ */
+function checkOwnedRoots(patchesDir, roots, findings) {
+    for (const owned of roots.slice(1)) {
+        const manifestPath = ownManifestPath(owned.deltaDir);
+        const manifest = loadOwnManifest(patchesDir, owned.deltaDir);
+        const files = listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), {
+            refuseSymlinks: true,
+            keep: ownCodeFilter(owned)
+        });
+        const codeFiles = files.filter((file) => !isNotOwnCode(file));
+        if (!manifest.present && codeFiles.length > 0) {
+            findings.push(finding('OWN-UNCOVERED', `${codeFiles.length} file(s) under ${owned.deltaDir}/ and no manifest to declare them`, `create ${manifestPath} and put every file of the ${owned.role} directory into exactly one unit`, manifestPath));
+            continue;
+        }
+        if (manifest.serviceOverrides.length > 0 || manifest.extensions.length > 0) {
+            findings.push(finding('OWN-UNCOVERED', `${manifestPath} declares service overrides or own extensions, which belong to the own root`, `move those records to ${OWN_MANIFEST_PATH}; the manifest of an owned directory declares its units only`, manifestPath));
+        }
+        const coverage = checkUnitCoverage(manifest, files);
+        for (const file of coverage.uncovered) {
+            findings.push(finding('OWN-UNCOVERED', `${owned.deltaDir}/${file} belongs to no unit of the manifest`, `add the file to the roots of a unit in ${manifestPath}, or give it a unit of its own`, `${owned.deltaDir}/${file}`));
+        }
+        for (const [file, units] of coverage.overlapping) {
+            findings.push(finding('OWN-UNCOVERED', `${owned.deltaDir}/${file} is claimed by more than one unit (${units.join(', ')}): every own file belongs to exactly one`, `narrow the roots of ${units.join(' or ')} in ${manifestPath} so they do not overlap`, `${owned.deltaDir}/${file}`));
+        }
+    }
+}
 // ---------------------------------------------------------------------------
 // (h2) What codkit delivered into the own layer (PROP-015 sec. 4)
 // ---------------------------------------------------------------------------
@@ -873,7 +910,7 @@ function checkCompleteness(type, patchesDir, treeDir, config, patches, overlays,
     // finding as its own and drops it.
     const materializer = materializerOf(type);
     const ownPrefixes = [
-        `${config.typeConfig.ownRoot}/`,
+        ...ownedTreePrefixes(ownedRootsOf(type, config.typeConfig)),
         ...(materializer === null ? [] : ownExtensionTreePrefixes(materializer, loadOwnManifest(patchesDir).extensions))
     ];
     for (const path of changed) {

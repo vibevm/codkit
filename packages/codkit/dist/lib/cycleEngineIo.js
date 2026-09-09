@@ -4,6 +4,29 @@ import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from '
 import { dirname } from 'node:path';
 import { ckError } from './messages.js';
 import { resolveContainedPath } from './pathSafety.js';
+import { isDeliveredOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.js';
+import { ownCodeFilter } from './ownedRoots.js';
+/**
+ * The delta paths a rename plan is written against: the contract tests of the
+ * own layer, and the rest of the own code. Every directory the delta owns
+ * contributes its own files - a rename inside the application directory has the
+ * same references as one inside the own root (PROP-016 ##TYPE-AREA-LAYOUT) -
+ * and the build outputs inside an owned directory contribute none, because they
+ * are not own code.
+ */
+export function renameReferencePaths(patchesDir, roots) {
+    const contractTests = [];
+    const own = [];
+    for (const owned of roots) {
+        const options = { refuseSymlinks: true, keep: ownCodeFilter(owned) };
+        for (const relative of listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), options)) {
+            if (!isDeliveredOwnFile(relative))
+                continue;
+            (relative.startsWith('test/') ? contractTests : own).push(`${owned.deltaDir}/${relative}`);
+        }
+    }
+    return { contractTests, own };
+}
 export function applyReportWrites(root, writes) {
     for (const write of writes) {
         const current = readText(root, write.path);

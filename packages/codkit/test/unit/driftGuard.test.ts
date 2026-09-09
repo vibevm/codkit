@@ -18,6 +18,7 @@ import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
+import { oneOwnedRoot, ownedRoot } from '../support/ownedRoots.ts';
 
 const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
 const OWN_IN_PATCHSET = 'delta/own/hello.ts';
@@ -39,7 +40,7 @@ function generated(): DriftOptions['generated'] {
 }
 
 function guard(): ReturnType<typeof driftDirty> {
-	return driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+	return driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 		generated: generated()
 	});
 }
@@ -87,15 +88,15 @@ describe('driftDirty', () => {
 		expect(result.dirty).toBe(true);
 		// git says nothing about it: the own directory is excluded locally.
 		expect(result.upstream).toEqual([]);
-		expect(upstreamDirt(fixture.treeDir, fixture.config.typeConfig.ownRoot)).toEqual([]);
-		expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'both' });
+		expect(upstreamDirt(fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot))).toEqual([]);
+		expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'both', owned: ownedRoot('src/vs/patchset') });
 		expect(result.files.some((path) => path.startsWith(OWN_IN_TREE) && path.includes(OWN_IN_PATCHSET))).toBe(true);
 	});
 
 	it('reports an own file the tree has and patchset does not', () => {
 		const result = whileChanged('src/vs/patchset/strayNote.ts', '// never extracted\n', guard);
 		expect(result.dirty).toBe(true);
-		expect(result.own).toContainEqual({ relative: 'strayNote.ts', kind: 'tree-only' });
+		expect(result.own).toContainEqual({ relative: 'strayNote.ts', kind: 'tree-only', owned: ownedRoot('src/vs/patchset') });
 	});
 
 	it('does not call own code that is merely not materialized yet dirt', () => {
@@ -104,7 +105,7 @@ describe('driftDirty', () => {
 		rmSync(inTree);
 		try {
 			const result = guard();
-			expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'patchset-only' });
+			expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'patchset-only', owned: ownedRoot('src/vs/patchset') });
 			expect(result.dirty).toBe(false);
 		} finally {
 			writeFileSync(inTree, saved);
@@ -116,10 +117,16 @@ describe('driftDirty', () => {
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
 			expect(guard().files).toContain('left-behind.txt');
-			const fresh = driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
-				untrackedIsDirt: false,
-				generated: generated()
-			});
+			const fresh = driftDirty(
+				materializerOf(vscodeType),
+				fixture.treeDir,
+				oneOwnedRoot(fixture.config.typeConfig.ownRoot),
+				fixture.patchesDir,
+				{
+					untrackedIsDirt: false,
+					generated: generated()
+				}
+			);
 			expect(fresh.dirty).toBe(false);
 		} finally {
 			rmSync(litter, { force: true });
@@ -134,7 +141,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 	it('drops a tracked path the caller certifies, and only that path', () => {
 		const result = whileChanged(EXAMPLE_PART_PATH, '// replaced by hand\n', () =>
 			whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+				driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 					generated: generated(),
 					isKnownMaterialization: (path) => path === 'product.json'
 				})
@@ -148,7 +155,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 
 	it('keeps the path dirt when the predicate answers no', () => {
 		const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-			driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+			driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 				generated: generated(),
 				isKnownMaterialization: () => false
 			})
@@ -165,7 +172,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
 			const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+				driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 					generated: generated(),
 					isKnownMaterialization: (path) => {
 						asked.push(path);
@@ -196,7 +203,7 @@ describe('driftDirty: the stranded-materialization exception (##DRIFT-GUARD-PRED
 			fixture.config.pin.sha,
 			loadOwnManifest(fixture.patchesDir).extensions
 		);
-		return driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+		return driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 			generated: generated(),
 			isStrandedExtension: (entry) => {
 				asked.push(entry.path);

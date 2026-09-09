@@ -38,6 +38,7 @@ const treeMarkSchema = z.object({
     branchTip: z.string().min(1),
     ownFingerprint: z.string().min(1).optional(),
     ownFiles: z.record(z.string(), z.string().min(1)).optional(),
+    ownRootFiles: z.record(z.string(), z.record(z.string(), z.string().min(1))).optional(),
     artifacts: z.record(z.string(), z.string().min(1)).optional(),
     patchSetCommit: z.string().min(1).optional()
 });

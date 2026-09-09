@@ -58,6 +58,14 @@ export type TreeMark = {
 	readonly ownFingerprint?: string | undefined;
 	readonly ownFiles?: Readonly<Record<string, string>> | undefined;
 	/**
+	 * The same per-file map for every owned directory *beside* the own root,
+	 * keyed by its role (PROP-016 ##TYPE-AREA-LAYOUT, PROP-005 ##OWN-ROOTS-IN-THE-DELTA).
+	 * A patch set whose type owns one directory never carries the field, and a
+	 * mark written before it existed reads as "no map for that directory", which
+	 * makes the classifier answer `unknown` rather than guess.
+	 */
+	readonly ownRootFiles?: Readonly<Record<string, Readonly<Record<string, string>>>> | undefined;
+	/**
 	 * The delta outside own code as of the last apply (PROP-006 ##TREE-MARK):
 	 * sha256 of every file under `delta/` except `delta/own/**`, which the map
 	 * above already covers. This is what lets `save` tell "the delta moved
@@ -96,6 +104,7 @@ const treeMarkSchema = z.object({
 	branchTip: z.string().min(1),
 	ownFingerprint: z.string().min(1).optional(),
 	ownFiles: z.record(z.string(), z.string().min(1)).optional(),
+	ownRootFiles: z.record(z.string(), z.record(z.string(), z.string().min(1))).optional(),
 	artifacts: z.record(z.string(), z.string().min(1)).optional(),
 	patchSetCommit: z.string().min(1).optional()
 });

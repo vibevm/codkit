@@ -22,6 +22,7 @@ import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
 import { materializerOf } from '../../src/lib/layers/ownExtensions.ts';
+import { oneOwnedRoot, ownedRoot } from '../support/ownedRoots.ts';
 
 /** A tracked upstream file no artifact of the delta touches: it carries no block. */
 const PLAIN_UPSTREAM = 'src/vs/base/common/lifecycle.ts';
@@ -48,14 +49,20 @@ function generated(): DriftOptions['generated'] {
 function classify(spy?: (entry: PorcelainEntry) => void): { plan: WorktreeDiscardPlan; drift: DriftResult } {
 	const plan = emptyWorktreeDiscardPlan();
 	const decide = worktreeDiscardClassifier(fixture.treeDir, conventions, plan);
-	const drift = driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
-		untrackedIsDirt: false,
-		generated: generated(),
-		isDiscardable: (entry) => {
-			spy?.(entry);
-			return decide(entry);
+	const drift = driftDirty(
+		materializerOf(vscodeType),
+		fixture.treeDir,
+		oneOwnedRoot(fixture.config.typeConfig.ownRoot),
+		fixture.patchesDir,
+		{
+			untrackedIsDirt: false,
+			generated: generated(),
+			isDiscardable: (entry) => {
+				spy?.(entry);
+				return decide(entry);
+			}
 		}
-	});
+	);
 	return { plan, drift };
 }
 
@@ -142,7 +149,7 @@ describe('the working-tree discard classifier', () => {
 		expect(asked).toEqual([]);
 		expect(plan.discard).toEqual([]);
 		// Half (b) still carries the verdict, untouched by the flag.
-		expect(drift.own).toContainEqual({ relative: 'hello.ts', kind: 'both' });
+		expect(drift.own).toContainEqual({ relative: 'hello.ts', kind: 'both', owned: ownedRoot('src/vs/patchset') });
 		expect(drift.dirty).toBe(true);
 	});
 

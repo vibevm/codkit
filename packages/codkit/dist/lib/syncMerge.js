@@ -134,7 +134,7 @@ export function classifyTargets(input) {
     // The tree side, as the selection of a save reads it (D4): the worktree's
     // final state against the same base, target paths keyed by their artifact.
     const targetByArtifact = new Map();
-    for (const change of changesSince(input.treeDir, input.base, { kind: 'worktree' }, input.ownRoot)) {
+    for (const change of changesSince(input.treeDir, input.base, { kind: 'worktree' }, input.roots)) {
         targetByArtifact.set(`${PATCHES_DIR}/${encodePatchName(change.path)}`, change.path);
     }
     const treeOnly = [];

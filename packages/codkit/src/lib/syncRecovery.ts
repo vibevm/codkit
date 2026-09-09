@@ -24,7 +24,8 @@ import { runGit } from './gitx.ts';
 import type { Output } from './jsonOut.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkError } from './messages.ts';
-import { classifyOwn } from './ownCopy.ts';
+import { classifyAllOwn, ownMarkFilesOf } from './ownSides.ts';
+import { ownedRootsOf } from './ownedRoots.ts';
 import { decodePatchName, encodePatchName } from './patchFormat.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { runSave } from './saveEngine.ts';
@@ -417,9 +418,9 @@ function continueStoppedSync(input: TwoWayInput, record: SyncTransaction): TwoWa
 		return blocked(classified.classes, treeState.commits.length, { transaction: record.id });
 	}
 	const classes = classified.classes;
-	const ownClasses = classifyOwn(patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter(
-		(entry) => entry.kind !== 'same'
-	);
+	const ownClasses = classifyAllOwn(patchesDir, tree, ownedRootsOf(input.type, config.typeConfig), (owned) =>
+		ownMarkFilesOf(mark, owned)
+	).filter((entry) => entry.kind !== 'same');
 	if (ownClasses.some((entry) => entry.kind === 'both-edited')) {
 		out.addError(
 			ckError(
@@ -444,7 +445,7 @@ function continueStoppedSync(input: TwoWayInput, record: SyncTransaction): TwoWa
 	// an abort after a crash in the continuation must cover them too.
 	const live = extendRecordSnapshots(input, record, treeState);
 
-	const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
+	const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(input.type, config.typeConfig));
 	const hasTreeWork =
 		treeState.commits.length > 0 ||
 		changes.length > 0 ||
@@ -519,7 +520,7 @@ function differsFromSnapshot(treeDir: string, path: string, record: SyncTransact
 /** Snapshots the artifacts of every changed tree file the record does not carry yet. */
 function extendRecordSnapshots(input: TwoWayInput, record: SyncTransaction, treeState: TreeCommits): SyncTransaction {
 	const { patchesDir, resolution, config } = input;
-	const changes = changesSince(resolution.path, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
+	const changes = changesSince(resolution.path, treeState.base, { kind: 'worktree' }, ownedRootsOf(input.type, config.typeConfig));
 	const artifacts = changes.map((change) => `${PATCHES_DIR}/${encodePatchName(change.path)}`);
 	const fresh = artifacts.filter((artifact) => recordedRewriteOf(record, 'patchset', artifact) === null);
 	if (fresh.length === 0) {
@@ -576,7 +577,7 @@ function classifySides(
 		type: input.type,
 		base: treeState.base,
 		mark,
-		ownRoot: input.config.typeConfig.ownRoot,
+		roots: ownedRootsOf(input.type, input.config.typeConfig),
 		commits: treeState.commits
 	});
 	if (classes.unknown) {
