@@ -96,14 +96,45 @@ describe('the stamps of the run', () => {
 			}
 		});
 
-		expect(packageStamps(type, config, treeDir)).toEqual({ HEAD_OF_THE_TREE: head, QUALITY: '9.9.9', PIN_DATE: '2026-09-09' });
+		expect(packageStamps(type, config, treeDir, {})).toEqual([
+			{ name: 'HEAD_OF_THE_TREE', value: head, fromEnvironment: false },
+			{ name: 'QUALITY', value: '9.9.9', fromEnvironment: false },
+			{ name: 'PIN_DATE', value: '2026-09-09', fromEnvironment: false }
+		]);
+	});
+
+	it('keeps the value the operator exported, and fills an empty one from the type', () => {
+		const treeDir = makeTempRoot('package-stamps-env');
+		const config = { pin: { tag: '9.9.9', sha: 'x', date: '2026-09-09' } } as unknown as Parameters<typeof packageStamps>[1];
+		const type = stubType({
+			build: {
+				...BOTH_HALVES.build,
+				packageStamps: [
+					{ name: 'QUALITY', source: 'pin-tag' },
+					{ name: 'PIN_DATE', source: 'pin-date' }
+				]
+			}
+		});
+
+		expect(packageStamps(type, config, treeDir, { QUALITY: 'stable', PIN_DATE: '' })).toEqual([
+			{ name: 'QUALITY', value: 'stable', fromEnvironment: true },
+			{ name: 'PIN_DATE', value: '2026-09-09', fromEnvironment: false }
+		]);
+	});
+
+	it('takes the value the type itself answers with for a literal stamp', () => {
+		const treeDir = makeTempRoot('package-stamps-literal');
+		const config = { pin: { tag: '9.9.9', sha: 'x', date: '2026-09-09' } } as unknown as Parameters<typeof packageStamps>[1];
+		const type = stubType({ build: { ...BOTH_HALVES.build, packageStamps: [{ name: 'QUALITY', source: 'literal', value: 'insider' }] } });
+
+		expect(packageStamps(type, config, treeDir, {})).toEqual([{ name: 'QUALITY', value: 'insider', fromEnvironment: false }]);
 	});
 
 	it('is empty for a family that stamps nothing', () => {
 		const type = stubType({ build: { ...BOTH_HALVES.build, packageStamps: [] } });
 		const config = { pin: { tag: '1.0.0', sha: 'x', date: '2026-01-01' } } as unknown as Parameters<typeof packageStamps>[1];
 
-		expect(packageStamps(type, config, makeTempRoot('package-no-stamps'))).toEqual({});
+		expect(packageStamps(type, config, makeTempRoot('package-no-stamps'), {})).toEqual([]);
 	});
 });
 
@@ -158,6 +189,8 @@ describe('a packager that fails', () => {
 			out: silentOutput(),
 			flags: { keepOverlay: false, skipTypeBuild: false },
 			timeoutMs: null,
+			// The stamps come from the type and the pin, whatever this machine exports.
+			env: {},
 			runCommand: (command) => {
 				seen.push(command);
 				// The target is materialized while the packager runs, and only then.

@@ -7,6 +7,7 @@
 // the engine's; the names of the scripts are this type's answer.
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PLACEHOLDER_CONFIG } from './configSchema.js';
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 /** ##VSCODE-BUILD-STEPS: the dependency install of the tree and of `build/`. */
 export const INSTALL = [
@@ -53,11 +54,21 @@ export const PACKAGE_DISTRIBUTABLE = [];
  * so the packaging step cannot read `.git/HEAD` as a directory and has to be
  * told the commit; without it the packaged product carries no `commit` and the
  * NLS loader does not read language packs.
+ *
+ * ##VSCODE-QUALITY-IS-A-PRODUCT-ANSWER: the second stamp is the quality channel,
+ * and which channel a product ships is a property of the product and not of the
+ * pin it sits on. A patch set that says so in `typeConfig.quality` gets that
+ * word; one that says nothing keeps the older answer - the tag of the pin -
+ * which is a version string and therefore reads as "not the released channel"
+ * to a packager that compares it with one.
  */
-export const PACKAGE_STAMPS = [
-    { name: 'BUILD_SOURCEVERSION', source: 'tree-head' },
-    { name: 'VSCODE_QUALITY', source: 'pin-tag' }
-];
+export function packageStampsOf(quality) {
+    return [
+        { name: 'BUILD_SOURCEVERSION', source: 'tree-head' },
+        quality === undefined ? { name: 'VSCODE_QUALITY', source: 'pin-tag' } : { name: 'VSCODE_QUALITY', source: 'literal', value: quality }
+    ];
+}
+export const PACKAGE_STAMPS = packageStampsOf();
 /**
  * ##DAEMON-TRAPS: argv fragments that mean somebody else's watcher already
  * runs over this tree. The upstream watch scripts and the channels of this type
@@ -97,16 +108,25 @@ export function ownTests(ownRoot) {
         args: ['run', 'test-node', '--', '--runGlob', `vs/${leaf}/**/test/{common,node}/**/*.test.js`]
     };
 }
-export const build = {
-    install: INSTALL,
-    dependencyRoots: DEPENDENCY_ROOTS,
-    hygiene: HYGIENE,
-    ownTests,
-    packageBuild: PACKAGE_BUILD,
-    packageDistributable: PACKAGE_DISTRIBUTABLE,
-    packageStamps: PACKAGE_STAMPS,
-    packageOutputs: PACKAGE_OUTPUTS,
-    defaultChannels: DEFAULT_CHANNELS,
-    watchProfilePath: WATCH_PROFILE_PATH,
-    foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
-};
+/**
+ * The area as one patch set's `typeConfig` makes it. Only the stamps depend on
+ * the section: every command of this family is the same script whoever declares
+ * it, and the quality channel is the one thing the product answers for itself.
+ */
+export function makeBuild(config) {
+    return {
+        install: INSTALL,
+        dependencyRoots: DEPENDENCY_ROOTS,
+        hygiene: HYGIENE,
+        ownTests,
+        packageBuild: PACKAGE_BUILD,
+        packageDistributable: PACKAGE_DISTRIBUTABLE,
+        packageStamps: packageStampsOf(config.quality),
+        packageOutputs: PACKAGE_OUTPUTS,
+        defaultChannels: DEFAULT_CHANNELS,
+        watchProfilePath: WATCH_PROFILE_PATH,
+        foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
+    };
+}
+/** The area of a patch set that answered nothing beyond the own root. */
+export const build = makeBuild(PLACEHOLDER_CONFIG);

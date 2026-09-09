@@ -80,6 +80,7 @@ function dataOf(result: PackageResult): JsonValue {
 		materialized: [...result.materialized],
 		restored: [...result.restored],
 		stamps: { ...result.stamps },
+		stampsFromEnvironment: [...result.stampsFromEnvironment],
 		commands: [...result.commands],
 		outputs: [...result.outputs]
 	};

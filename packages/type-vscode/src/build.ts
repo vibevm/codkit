@@ -9,6 +9,8 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { BuildArea, BuildCommand, BuildStamp } from '@codkit/type-api';
+import { PLACEHOLDER_CONFIG } from './configSchema.ts';
+import type { VscodeQuality, VscodeTypeConfig } from './configSchema.ts';
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -63,11 +65,22 @@ export const PACKAGE_DISTRIBUTABLE: readonly BuildCommand[] = [];
  * so the packaging step cannot read `.git/HEAD` as a directory and has to be
  * told the commit; without it the packaged product carries no `commit` and the
  * NLS loader does not read language packs.
+ *
+ * ##VSCODE-QUALITY-IS-A-PRODUCT-ANSWER: the second stamp is the quality channel,
+ * and which channel a product ships is a property of the product and not of the
+ * pin it sits on. A patch set that says so in `typeConfig.quality` gets that
+ * word; one that says nothing keeps the older answer - the tag of the pin -
+ * which is a version string and therefore reads as "not the released channel"
+ * to a packager that compares it with one.
  */
-export const PACKAGE_STAMPS: readonly BuildStamp[] = [
-	{ name: 'BUILD_SOURCEVERSION', source: 'tree-head' },
-	{ name: 'VSCODE_QUALITY', source: 'pin-tag' }
-];
+export function packageStampsOf(quality?: VscodeQuality): readonly BuildStamp[] {
+	return [
+		{ name: 'BUILD_SOURCEVERSION', source: 'tree-head' },
+		quality === undefined ? { name: 'VSCODE_QUALITY', source: 'pin-tag' } : { name: 'VSCODE_QUALITY', source: 'literal', value: quality }
+	];
+}
+
+export const PACKAGE_STAMPS: readonly BuildStamp[] = packageStampsOf();
 
 /**
  * ##DAEMON-TRAPS: argv fragments that mean somebody else's watcher already
@@ -113,16 +126,26 @@ export function ownTests(ownRoot: string): BuildCommand | null {
 	};
 }
 
-export const build: BuildArea = {
-	install: INSTALL,
-	dependencyRoots: DEPENDENCY_ROOTS,
-	hygiene: HYGIENE,
-	ownTests,
-	packageBuild: PACKAGE_BUILD,
-	packageDistributable: PACKAGE_DISTRIBUTABLE,
-	packageStamps: PACKAGE_STAMPS,
-	packageOutputs: PACKAGE_OUTPUTS,
-	defaultChannels: DEFAULT_CHANNELS,
-	watchProfilePath: WATCH_PROFILE_PATH,
-	foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
-};
+/**
+ * The area as one patch set's `typeConfig` makes it. Only the stamps depend on
+ * the section: every command of this family is the same script whoever declares
+ * it, and the quality channel is the one thing the product answers for itself.
+ */
+export function makeBuild(config: VscodeTypeConfig): BuildArea {
+	return {
+		install: INSTALL,
+		dependencyRoots: DEPENDENCY_ROOTS,
+		hygiene: HYGIENE,
+		ownTests,
+		packageBuild: PACKAGE_BUILD,
+		packageDistributable: PACKAGE_DISTRIBUTABLE,
+		packageStamps: packageStampsOf(config.quality),
+		packageOutputs: PACKAGE_OUTPUTS,
+		defaultChannels: DEFAULT_CHANNELS,
+		watchProfilePath: WATCH_PROFILE_PATH,
+		foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
+	};
+}
+
+/** The area of a patch set that answered nothing beyond the own root. */
+export const build: BuildArea = makeBuild(PLACEHOLDER_CONFIG);

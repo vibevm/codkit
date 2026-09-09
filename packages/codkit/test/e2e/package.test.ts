@@ -19,6 +19,7 @@ type PackageData = {
 	materialized: string[];
 	restored: string[];
 	stamps: Record<string, string>;
+	stampsFromEnvironment: string[];
 	commands: string[];
 	outputs: string[];
 };
@@ -92,6 +93,26 @@ describe('codkit package', () => {
 		expect(manifestInTree()).toBe(manifestAtPin());
 		expect(existsSync(fixture.treePath('manifest.overrides.json'))).toBe(true);
 		expect(fixture.run(['status']).status).toBe(0);
+	});
+
+	it('keeps a stamp the operator exported and hands the packager that value', () => {
+		// ##TYPE-STAMPS-FILL-A-GAP: the stamps of a type exist because a packager
+		// reads a variable nobody remembers to set - not to overrule the operator
+		// who set one deliberately. The packager prints what it was handed, so the
+		// proof is on both sides of the process boundary.
+		removeArtifacts();
+		const { run, envelope } = fixture.json(['package'], { BUILD_QUALITY: 'stable' });
+
+		expect(run.status).toBe(0);
+		const report = data(envelope);
+		expect(report.stamps['BUILD_QUALITY']).toBe('stable');
+		expect(report.stamps['BUILD_QUALITY']).not.toBe(fixture.upstream.t1.tag);
+		expect(report.stampsFromEnvironment).toEqual(['BUILD_QUALITY']);
+		expect(run.stderr).toContain('stamp BUILD_QUALITY=stable (from environment)');
+		expect(run.stderr).toContain('build: BUILD_QUALITY=stable');
+		// The stamp the operator did not name is still the type's answer.
+		expect(report.stamps['BUILD_SOURCE_VERSION']).toBe(fixture.git(['rev-parse', 'HEAD']).stdout.trim());
+		expect(manifestInTree()).toBe(manifestAtPin());
 	});
 
 	it('leaves the materialized targets in the tree under --keep-overlay, and load --fresh takes them back', () => {

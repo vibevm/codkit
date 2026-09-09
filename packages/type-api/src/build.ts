@@ -52,7 +52,9 @@ export type BuildArea = {
 	readonly packageDistributable: readonly BuildCommand[];
 	/**
 	 * Environment variables the package build needs stamped, with the meaning of
-	 * each; the engine fills them from the pin and the tree head.
+	 * each; the engine fills them from the pin, the tree head, or the type's own
+	 * answer, and a name the operator already exported keeps the operator's
+	 * value (`spec://codkit/modules/codkit/PROP-016#TYPE-STAMPS-FILL-A-GAP`).
 	 */
 	readonly packageStamps: readonly BuildStamp[];
 	/**
@@ -101,8 +103,26 @@ export type BuildArea = {
 	readonly foreignWatcherMarkers: readonly string[];
 };
 
-export type BuildStamp = {
-	readonly name: string;
-	/** Which value of the run fills it. */
-	readonly source: 'tree-head' | 'pin-date' | 'pin-tag';
-};
+/**
+ * One environment variable the packaging of the family reads, and where its
+ * value comes from.
+ *
+ * Three of the sources are values of the run - the head of the tree and the two
+ * halves of the pin - and the fourth is the type's own word: a channel, a
+ * flavour, a build kind that belongs to the product and not to the pin it sits
+ * on. The type answers it as a literal so that the engine keeps filling
+ * environment names it does not understand (##TYPE-ENGINE-IS-BLIND) instead of
+ * learning a fourth kind of value.
+ */
+export type BuildStamp =
+	| {
+			readonly name: string;
+			/** Which value of the run fills it. */
+			readonly source: 'tree-head' | 'pin-date' | 'pin-tag';
+	  }
+	| {
+			readonly name: string;
+			readonly source: 'literal';
+			/** The value the type itself answers with, from its own configuration. */
+			readonly value: string;
+	  };

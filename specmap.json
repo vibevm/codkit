@@ -941,7 +941,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:96669e28c8199dc9c652cff464c54125c7455d1d3daf118ea548dbafcb6fe77c",
+      "content_hash": "sha256:97546b174f3a64d96be78e47be85343eb38ac3b3a5631251bd1506bf5140674b",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: End-to-end acceptance scenarios S01–S28 (Given/When/Then)",
@@ -2459,6 +2459,24 @@
       "heading": "**Given**: a patch set whose delta has no overlay for a target the project type declares. **When**: `codkit overlay new <target> --id … --type … --owner … --reason … --contract-test …`. **Then**: exit 0; `delta/overlays/<target>.overlay.json` exists, its bytes are the canonical form the loader accepts - the schema key order, two-space indentation, one final LF - its `pin` is the `<tag>@<sha>` of `codkit.json`, its `contractTests` are the ones given, its `operations` is empty, and `codkit overlay check <target>` over it is exit 0 (`spec://codkit/modules/codkit/PROP-007#CMD-OVERLAY-NEW`). **When**: the same command again for the same target. **Then**: exit 1, `CK-E-GEN-EXISTS`, the artifact untouched. **When**: the command with a malformed id, an intervention type outside the vocabulary, an id another overlay already carries, or an owner `delta/owners.json` does not declare. **Then**: exit 1 with `CK-E-MARKER-BAD-ID`, exit 2 with `CK-E-CONFIG`, exit 1 with `CK-E-MARKER-DUP-ID` and exit 1 with `CK-E-OWNER-UNKNOWN` respectively, nothing written in any of them. **When**: the command with no `--contract-test`, or with `--layer`. **Then**: exit 2 each - the guard test is mandatory for this layer, and the artifact is the layer. @status:spec/done",
       "line": 254,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S82"
+    },
+    {
+      "anchor": "s83",
+      "content_hash": "sha256:225ffddfe4a6ecda2662f50608452ef2929e56ec129555aa385e03b3a737c471",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S83 - the stamp the operator exported, and the channel the product names",
+      "line": 256,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s83"
+    },
+    {
+      "anchor": "S83",
+      "content_hash": "sha256:74250cdd68d4cbd6fabf46f8105b174b1415d87559c6790ecdba7f42165d4cbc",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: a loaded fork tree whose project type stamps a quality-like variable from the pin tag. **When**: `codkit package` with that variable exported non-empty in the environment of the run. **Then**: exit 0; the printed line is `stamp <name>=<the operator's value> (from environment)`, `data.stamps` carries the operator's value and `data.stampsFromEnvironment` names the variable, the packaging command itself is handed that value, and every other stamp is still the type's answer (`spec://codkit/modules/codkit/PROP-016#TYPE-STAMPS-FILL-A-GAP`). **When**: the same run with the variable absent or exported empty. **Then**: exit 0 and the value is the type's again. **Given**: a patch set of the first family that declares `typeConfig.quality`. **When**: the type answers `build.packageStamps`. **Then**: `VSCODE_QUALITY` is the literal word the patch set named instead of the tag of the pin, a patch set naming none reads exactly as it did before the field existed, and a word outside `stable|insider|exploration` is refused by the schema of the type (`spec://codkit/modules/vscode/PROP-004#VSCODE-QUALITY-IS-A-PRODUCT-ANSWER`). @status:spec/done",
+      "line": 257,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S83"
     },
     {
       "anchor": "root",
@@ -5180,7 +5198,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:110d6fadd5e382c5d1edcb6b1712e4290d2916e222f4b94f77fce472f823779f",
+      "content_hash": "sha256:203c3d43c329751af0b7f5ddecfb8e3d3501ea9ff16291a94dd4bd424a3667be",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -6233,7 +6251,7 @@
     },
     {
       "anchor": "cmd-package",
-      "content_hash": "sha256:8d2ea200d74359e9d03861ec7d19e2db4e6dfa7178fbff385316ab7a2dc451af",
+      "content_hash": "sha256:3370eb836f61fd8f23f27e82a754be1ff385b49f610c2f9e05dca948a3671c1a",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "27. codkit package [--keep-overlay] [--skip-type-build] [--timeout s]",
@@ -6242,10 +6260,10 @@
     },
     {
       "anchor": "CMD-PACKAGE",
-      "content_hash": "sha256:071fea415cb093a57443f1124197a2e8df102f3890201996b30accda015f5778",
+      "content_hash": "sha256:6c040d1b4788f47cf8a37b9f540dbb4cbaef9d1ca87b3b6d121920431e0036f8",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "Build the product's distributable out of the already loaded fork tree. It exists because `ci --profile build` stops at the compile channels and the own tests: until this verb, `build.packageBuild` was a field of the type contract that no module of the engine read, and the last step of a release was a sequence of commands typed by hand whose two ends people got wrong. The order of one run is fixed and is printed before it starts: (1) the drift guard of `load` - unextracted work is `CK-E-DIRTY-TREE`, exit 1, and the one exemption is the one `load --fresh` makes, a tracked overlay target carrying exactly the strict composition of the configured overlays (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`), which a previous `--keep-overlay` run may have left; (2) the overlay targets are materialized into the tree, because a packaged product reads the target file itself and not the dev-channel sidecar; (3) the stamps the type names (`build.packageStamps`) are put into the environment of the commands below, filled from the tree head and the pin; (4) `build.packageBuild` of the type runs in the tree, each command's whole output printed; (5) then `build.packageDistributable` - the packaging step the patch set declared - runs on the same terms; (6) the existing artifacts matching `build.packageOutputs` are printed; (7) the overlay targets **this run materialized itself** are returned to the pin and the dev channel is rewritten, exactly as `load --fresh --discard` does for those files - not a fresh pass: build outputs, dependency roots and everything else in the tree are left alone. Step 7 runs whatever the verdict of steps 4-5, so a build that fails halfway never leaves a developer's tree in packaging state. It is not a daemon, so the wrapper of §13 does not apply and `--timeout <seconds>` bounds one command instead of one pass; it holds the per-tree lock like every writing command. Flags: `--keep-overlay` (skip step 7, for a hand check of the package in the tree; `codkit load --fresh` is the way back), `--skip-type-build` (skip step 4, when the watch channels already built the application), `--timeout <seconds>`, `--json`. There is deliberately **no `--discard`**: giving up somebody's unextracted work is never a side effect of packaging, and the guard of this command may only be narrowed by codkit's own materialization. Codes: 0; 1 - the guard, or a packaging command that exited non-zero (`CK-E-PACKAGE-FAILED`, naming the label, the exit code and the tail of what the command printed); 2 - the environment (an unusable tree, a command that could not be started at all, a malformed `--timeout`). `--json`: `data: {steps:[{name,state,detail}], materialized:[…], restored:[…], stamps:{…}, commands:[…], outputs:[…]}`. @status:spec/done",
+      "heading": "Build the product's distributable out of the already loaded fork tree. It exists because `ci --profile build` stops at the compile channels and the own tests: until this verb, `build.packageBuild` was a field of the type contract that no module of the engine read, and the last step of a release was a sequence of commands typed by hand whose two ends people got wrong. The order of one run is fixed and is printed before it starts: (1) the drift guard of `load` - unextracted work is `CK-E-DIRTY-TREE`, exit 1, and the one exemption is the one `load --fresh` makes, a tracked overlay target carrying exactly the strict composition of the configured overlays (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`), which a previous `--keep-overlay` run may have left; (2) the overlay targets are materialized into the tree, because a packaged product reads the target file itself and not the dev-channel sidecar; (3) the stamps the type names (`build.packageStamps`) are put into the environment of the commands below, filled from the tree head, the pin or the type's own answer - except a name the operator already exported with a non-empty value, which keeps the operator's value and is printed as `stamp <name>=<value> (from environment)` (`spec://codkit/modules/codkit/PROP-016#TYPE-STAMPS-FILL-A-GAP`); (4) `build.packageBuild` of the type runs in the tree, each command's whole output printed; (5) then `build.packageDistributable` - the packaging step the patch set declared - runs on the same terms; (6) the existing artifacts matching `build.packageOutputs` are printed; (7) the overlay targets **this run materialized itself** are returned to the pin and the dev channel is rewritten, exactly as `load --fresh --discard` does for those files - not a fresh pass: build outputs, dependency roots and everything else in the tree are left alone. Step 7 runs whatever the verdict of steps 4-5, so a build that fails halfway never leaves a developer's tree in packaging state. It is not a daemon, so the wrapper of §13 does not apply and `--timeout <seconds>` bounds one command instead of one pass; it holds the per-tree lock like every writing command. Flags: `--keep-overlay` (skip step 7, for a hand check of the package in the tree; `codkit load --fresh` is the way back), `--skip-type-build` (skip step 4, when the watch channels already built the application), `--timeout <seconds>`, `--json`. There is deliberately **no `--discard`**: giving up somebody's unextracted work is never a side effect of packaging, and the guard of this command may only be narrowed by codkit's own materialization. Codes: 0; 1 - the guard, or a packaging command that exited non-zero (`CK-E-PACKAGE-FAILED`, naming the label, the exit code and the tail of what the command printed); 2 - the environment (an unusable tree, a command that could not be started at all, a malformed `--timeout`). `--json`: `data: {steps:[{name,state,detail}], materialized:[…], restored:[…], stamps:{…}, stampsFromEnvironment:[…], commands:[…], outputs:[…]}`. @status:spec/done",
       "line": 300,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE"
     },
@@ -9914,7 +9932,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:7044076a26a59cdac391f673f0be8200baa264093f4402980417825985370bf7",
+      "content_hash": "sha256:5c302ab9392cea2064e4b8d1126d56fe4bce06b3b55da4f67e2568ab32af78ce",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -9968,7 +9986,7 @@
     },
     {
       "anchor": "contract",
-      "content_hash": "sha256:57cc9d8721bbfe426cea9225c697bd604770704c38aae33b50dd6d8e3d81ee60",
+      "content_hash": "sha256:e0b9e052eb0459a9ee4817ab974c4a7af82b8de8e9edfbd94ac204e0a29de918",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "2. The contract: ten questions a type answers",
@@ -10022,83 +10040,92 @@
     },
     {
       "anchor": "TYPE-PACKAGE-ANSWERS",
-      "content_hash": "sha256:acb0ac9f72a032b30899b17d49c7e9343df03339e9a6e7c358d68586ac622fdd",
+      "content_hash": "sha256:b1d4ac67924897a685d1aadf008f1b6ac9eec8ec66e6feaefbe29f6e891d9718",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Packaging is four answers of the area, and all four are common fields of the contract** - the engine runs what it is handed and never learns whose packager it is. `packageBuild` is the family's build of the application. `packageDistributable` is the product's own step after it - an installer, an archive, a signed bundle - and is a **separate** list precisely because the two have different authors: `codkit package --skip-type-build` runs only the second half over a tree the watch channels already built, and a family or a patch set with no such step answers with an empty list. `packageStamps` are the environment variables the packaging needs, each with the value of the run that fills it (`tree-head`, `pin-tag`, `pin-date`); a family that bakes nothing at build time answers with none. `packageOutputs` are **path patterns from the tree root** naming where the artifacts land, matched segment by segment with `*` never crossing a `/` and a trailing `/` meaning a directory; a pattern that would leave the tree is refused, so a family whose packager writes **beside** the managed tree answers with an empty list and says so rather than pointing the engine at a directory the tool neither manages nor guards (`spec://codkit/modules/vscode/PROP-004#VSCODE-PACKAGE-OUTPUTS`). Measured on 2026-09-09 by the first product that had to reach a distributable: until then `packageBuild` was a field of the contract that no module of the engine read. @status:spec/done",
+      "heading": "**Packaging is four answers of the area, and all four are common fields of the contract** - the engine runs what it is handed and never learns whose packager it is. `packageBuild` is the family's build of the application. `packageDistributable` is the product's own step after it - an installer, an archive, a signed bundle - and is a **separate** list precisely because the two have different authors: `codkit package --skip-type-build` runs only the second half over a tree the watch channels already built, and a family or a patch set with no such step answers with an empty list. `packageStamps` are the environment variables the packaging needs, each with the value that fills it - a value of the run (`tree-head`, `pin-tag`, `pin-date`) or the type's own word (`literal`, whose value comes from the type's own configuration); a family that bakes nothing at build time answers with none, and what an operator already exported is never overwritten (##TYPE-STAMPS-FILL-A-GAP). `packageOutputs` are **path patterns from the tree root** naming where the artifacts land, matched segment by segment with `*` never crossing a `/` and a trailing `/` meaning a directory; a pattern that would leave the tree is refused, so a family whose packager writes **beside** the managed tree answers with an empty list and says so rather than pointing the engine at a directory the tool neither manages nor guards (`spec://codkit/modules/vscode/PROP-004#VSCODE-PACKAGE-OUTPUTS`). Measured on 2026-09-09 by the first product that had to reach a distributable: until then `packageBuild` was a field of the contract that no module of the engine read. @status:spec/done",
       "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-ANSWERS"
     },
     {
+      "anchor": "TYPE-STAMPS-FILL-A-GAP",
+      "content_hash": "sha256:78d1044b2f014c168053b6aebeeea1659f71249ddd8960828492ea317f6f2fa3",
+      "doc_path": "modules/codkit/PROP-016",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
+      "heading": "**A stamp of a type fills a gap in the environment; it never argues with the operator.** `codkit package` resolves each name of `build.packageStamps` against the environment it was started in: a name that already carries a non-empty value keeps that value and is printed as `stamp <name>=<value> (from environment)`, and only an absent or empty name is filled from the type's answer. The reason is what the stamps are for: a family declares them because its packager reads a variable nobody remembers to set (a commit, a channel, a date), not because the tool has an opinion about a variable somebody set deliberately - and the run that measured this had to be told a channel the type could not yet name, found the type's value written over its own, and could not package at all. An exported name with an empty value is an empty value and not an answer, so the type still fills it. The names that came from the environment travel in `--json` as `data.stampsFromEnvironment` (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE`). Measured on 2026-09-09 on the first real distributable of the first family. @status:impl/done",
+      "line": 21,
+      "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-STAMPS-FILL-A-GAP"
+    },
+    {
       "anchor": "TYPE-BUILD-CHANNELS",
-      "content_hash": "sha256:b3c49a64f4fd9bc5dae1ea1e8a9230e3ac9e30934a1c2a46d498c1d62da2bf97",
+      "content_hash": "sha256:31ba4a98a64a14d1a1b443afae44d0e04c0aa2cf59e32b66ec6cd98f12e20206",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Which compile channels a run that names none starts is the type's answer** (`build.defaultChannels`), not a constant of the engine. `codkit build up` without `--channel` and the single pass of `ci --profile build` both took the pair `['transpile', 'typecheck']` from a module of the watch wrapper - the channel names of the first family - and the second family, whose channels are `typecheck` and `bundle`, therefore had a build profile that type-checked and **never bundled its application**, while calling itself the build profile. The answer is a list of names: the profile's own names are what it selects from, a name the profile does not declare is ignored, and a type that names none has every declared channel as its default, so the bare form of a command is never a refusal over a name from another family. `vscode` answers `transpile, typecheck`; `theia` answers `typecheck, bundle`; `generic` answers every channel the patch set declared, in the order it declared them. The word `transpile` joined the dictionary of the blindness gate in the same change (##TYPE-ENGINE-IS-BLIND), so the next constant of this shape cannot reach the engine quietly. @status:impl/done",
-      "line": 21,
+      "line": 22,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-BUILD-CHANNELS"
     },
     {
       "anchor": "TYPE-AREA-ADVISORY",
-      "content_hash": "sha256:1ede4ec832b4ba4178728f4c37855830c6d18261ac1a6f35f5ad2f7be9a58a90",
+      "content_hash": "sha256:72785f07959a0528b4287e34f8f48700126dc5779d0e8eee1b4adb97f4428bb3",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Upgrade advisory.** The semantic readers the cycle runs between two pins (VS Code: built-in extensions of `product.json`, Electron and TypeScript versions). The advisory's frame - what changed, what it means, what to do - is the engine's. @status:spec/done",
-      "line": 22,
+      "line": 23,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-ADVISORY"
     },
     {
       "anchor": "TYPE-AREA-BRAND-IMAGES",
-      "content_hash": "sha256:802ea1ffbf9e6f36df4265331b5fb3c4134e77719445a5cdb9b782c78e12dbce",
+      "content_hash": "sha256:522db94325cdf3302390e09654cfa77b972f70734d1ae7ad30ef3024a8d134a5",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Brand images** (capability `brand-images`). The target table of the distribution's icons and image forms; the generator, the index and the verifier are the engine's. @status:spec/done",
-      "line": 23,
+      "line": 24,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-BRAND-IMAGES"
     },
     {
       "anchor": "TYPE-AREA-RUNTIME",
-      "content_hash": "sha256:9e3984c4948a2ec0877a4b9f05b568983df5f63f33063414e5ebe0f024c12050",
+      "content_hash": "sha256:d4d2c1d28434a285823a5329a1484cccef9cb97105890fd34bd692ef8a1abbeb",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Runtime library** (capability `runtime-library`). Which shipped runtime package the type delivers with `codkit runtime load` (today's library becomes `runtime-vscode`). @status:spec/done",
-      "line": 24,
+      "line": 25,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-RUNTIME"
     },
     {
       "anchor": "TYPE-AREA-STANDARDS",
-      "content_hash": "sha256:73d7b6a10ce849a6ed149f98d880cc168d13dd9a2266b2f7bb38ecb9ad8e6b94",
+      "content_hash": "sha256:f38e3d7d0d23d5385361f6dfa4c7aecba80dba98b8107ec2b0f225d72d35e373",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Standards and skills.** The standard `minimal-intervention` is universal; the seam catalogue and the list \"how upstream would build it\" that `ck-intervene` routes through come from the type's packages (`seams-vscode`). @status:spec/done",
-      "line": 25,
+      "line": 26,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-STANDARDS"
     },
     {
       "anchor": "TYPE-AREA-CONVENTIONS",
-      "content_hash": "sha256:e6320d9561585c28d421100a288b43c1fbacf79710d171a3cd3c68bb37166d59",
+      "content_hash": "sha256:bd33c57d74c25c801c2fb94af05d1240dc8b972ae8e27bd6ff62d6fb3b8297e0",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Conventions.** The subsystems of intervention ids, the forbidden service ids, the defaults of `conventions.json` a product may extend through `conventionsExtensionFile`; the marker grammar and the id pattern's shape stay the engine's. @status:spec/done",
-      "line": 26,
+      "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-CONVENTIONS"
     },
     {
       "anchor": "TYPE-AREA-GENERATORS",
-      "content_hash": "sha256:c9a40c55b88c71b7245bd905a248f31528ce930e32ed4a46fc10d50b43d18342",
+      "content_hash": "sha256:d72699c70fae89d6726fc1c014a7798e68a8332c8f69892615b572744be00a3d",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Generators.** The skeletons `gen feature` writes (the feature class, its flag declaration, its test) and the string-funnel graft `gen brand` prints are the type's: for VS Code a workbench contribution with DI and the `nls.ts` hook, for Theia an inversify container module with a preference-backed flag and no funnel graft (capability `gen-brand` absent). The engine owns the command, the header handling (`GEN-HEADER-IS-THE-PRODUCTS`), the refusal over existing files and the test location rule; the type supplies the templates and the reminders. @status:spec/done",
-      "line": 27,
+      "line": 28,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-GENERATORS"
     },
     {
       "anchor": "TYPE-DEPENDENCY-ROOTS",
-      "content_hash": "sha256:c79ee4f3e13e15ecad3134f56facb42b54e9343e92e8bbc95a100a82dc186163",
+      "content_hash": "sha256:d55570dd4441215b92544500fb03a40e9ee601dfe2381dc45624b22c30847a32",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Which directories hold the installed dependencies is the type's answer, not the engine's.** The build profile refuses over a tree whose dependencies never arrived, and `publish` carries them into its disposable fork; both used a module constant of the engine, `['node_modules', 'build/node_modules']` - the two install roots of the first family, which reached the engine before there was a contract to put them in. A second family has one root and no `build/` directory at all, so the constant made `ci --profile build` unable to go green over any tree of it, and said so with a message asking for a directory the tree already had. The contract therefore carries `build.dependencyRoots`, a list of tree-relative directories; the engine asks for the npm receipt `<root>/.package-lock.json` inside each of them (an empty bind mount is not a restored cache, `spec://codkit/modules/codkit/PROP-011#CI-DEPS-POLICY-M1`) and **names the receipts that are missing** rather than the first root of a list it made up. Measured by the first real consumer of the second type. @status:impl/done",
-      "line": 28,
+      "line": 29,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-DEPENDENCY-ROOTS"
     },
     {
@@ -10107,7 +10134,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**A type whose answers are a function of its own configuration.** Most types answer the same thing for every patch set and state their areas as constants. A type of a family with no product model cannot: which JSON files an overlay may target, what installs and tests the tree, whether there are compile channels at all is knowledge only the patch set has (`TYPE-GENERIC`). Such a type answers one more member of the interface, `configure(typeConfig)`, and the engine calls it exactly once - after `configSchema` has accepted the section and before any engine is asked anything - and hands the RESULT to every engine below, so that no module of the CLI package ever learns that a type has a configuration. The result is a project type in its own right: `projectTypeProblems` holds it to the same shape, it keeps the identifier of the type that built it, and it may declare only capabilities the unconfigured type named in `capabilities` or in the new `configurableCapabilities` - otherwise `codkit types`, which runs with no patch set in reach, would print a matrix the tool does not keep. `codkit types` prints both sets and carries both in `--json` (`CMD-TYPES`). Where the boundaries of a watch pass are is the one answer that used to be a path into the type's package and cannot be for a configured type; `BuildArea` therefore takes `watchProfilePath: string | null` beside an optional `watchProfile` carrying the same document as data, and the engine validates the data with the schema it applies to the file (PROP-010 `PASS-BOUNDARIES-ARE-DATA`). Added on 2026-09-09 with the second official type, by the rule of `DECISION-TYPE-CONTRACT-FROM-MEASUREMENT`. @status:spec/done",
-      "line": 30,
+      "line": 31,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-CONFIGURED"
     },
     {
@@ -10116,7 +10143,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**What the engine never knows.** No module of the CLI package names a type's fact: no `product.json`, no `src/vs/`, no `extensions/`, no `registerSingleton`, no `npm run hygiene`, no icon table. The graft budget, the marker grammar, the drift guard's predicate, the sacrifice by name of `--discard`, the licence carriers, the generated branch, the cycle's transactions and the standards protocol belong to the engine and are forbidden to consult the type. A grep of the CLI package for the VS Code tokens of DESIGN-001 §1 is a gate of phase P2 and prints zero. The gate is **executable and part of the floor**: the dictionary and the scan live in the engine's own suite, because the one constant that slipped past the hand-run gate (##TYPE-DEPENDENCY-ROOTS) slipped past it precisely by not being in a list anybody could re-read. The list may only grow. @status:spec/done",
-      "line": 31,
+      "line": 32,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-ENGINE-IS-BLIND"
     },
     {
@@ -10125,7 +10152,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "3. Types are packages",
-      "line": 33,
+      "line": 34,
       "uri": "spec://codkit/modules/codkit/PROP-016#packaging"
     },
     {
@@ -10134,7 +10161,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "Workspace layout of the tool repository: `packages/codkit` (the CLI and the engine; the binary `codkit`), `packages/type-api` (the contract), `packages/type-vscode`, `packages/type-generic`, `packages/type-theia`. Each package has its own `package.json`, tests and licence carriers; the floor runs over the workspace. The split happens once, in phase P2, and every later type is born as a package. @status:spec/done",
-      "line": 35,
+      "line": 36,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGES"
     },
     {
@@ -10143,7 +10170,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The engine holds a **registry of the package names it will load**, keyed by type identifier (`vscode` → `@codkit/type-vscode`). A type is resolved by a dynamic import of that package from the CLI package's own dependencies; the official types are regular dependencies of the CLI package. No module is loaded from a patch set or from an arbitrary path: determinism, the air-gapped circuit and the clean room all want the set of loadable code fixed by the tool's own release. Adding a type is publishing its package and adding its name to the registry. @status:spec/done",
-      "line": 36,
+      "line": 37,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-REGISTRY"
     },
     {
@@ -10152,7 +10179,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "A `type` the registry does not know, or whose package is not installed, is `CK-E-TYPE-UNKNOWN`, exit 2, naming the identifier and the package the registry expected; no command proceeds without a type. @status:spec/done",
-      "line": 37,
+      "line": 38,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-UNKNOWN"
     },
     {
@@ -10161,7 +10188,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The air-gapped supply kit (PROP-011) carries the CLI package and every official type package as tarballs; `npm pack` of the workspace produces them; the kit's manifest lists them with their versions and hashes. @status:spec/done",
-      "line": 38,
+      "line": 39,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SUPPLY-KIT"
     },
     {
@@ -10170,7 +10197,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The P2-4 implementation: `npm run kit` (`tools/build-supply-kit.mjs`) packs every published package of the workspace into `target/supply-kit/` and writes `kit-manifest.json` beside them - `codkitSupplyKit: 1`, the version of the CLI package, and one row per tarball with the package name, its version, the type identifier it implements (from the registry), its role (`cli`, `contract`, `type`), the file name, the size and the sha256; the build refuses when the registry names a type package the workspace does not publish, so a registered type can never be missing from a kit. The kit is installed as ONE unit - the manifest carries the exact command, `npm install --offline ./codkit-<version>.tgz ./codkit-type-*-<version>.tgz …` in an empty directory - because the type tarballs are what the CLI package's dependencies on them resolve against with no registry in reach; installing the CLI tarball alone asks the registry for `@codkit/type-api` and fails. `bundleDependencies` was tried and does not apply: npm does not bundle a workspace dependency, which is a symlink at pack time. The tarballs carry `npm-shrinkwrap.json` for the THIRD-PARTY closure only (`codkit`, `@codkit/type-api`, `@codkit/type-vscode`); the sibling `@codkit/*` packages are deliberately absent from those files, since a resolved registry URL for them would send an air-gapped install out of the circuit, and the kit manifest is what pins them instead. The third-party half of the delivery is unchanged (PROP-011 ##SK-CODKIT-NPM): an internal registry or a pre-filled npm cache; with neither, the offline install stops at the first third-party package with npm's `ENOTCACHED`. @status:impl/done",
-      "line": 39,
+      "line": 40,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SUPPLY-KIT-IMPL"
     },
     {
@@ -10179,7 +10206,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "`@codkit/type-api` is the only import a type package may take from the tool; the CLI package imports the type only through the interface. A change of the interface is a change of every official type in the same commit of the workspace (the workspace is one repository precisely so that this stays atomic). The contract package is not purely declarative: it carries the codec of its own payload format (PNG, the language of `ImagePayload`) and the shape of a refusal, because one implementation must serve the engine and every type alike; a container codec of one upstream family (ICNS, ICO) belongs to that family's type. Decision of 2026-09-09 after the extraction; a fourth package for shared pixels was considered and rejected as a package for one file. @status:spec/done",
-      "line": 40,
+      "line": 41,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-API-STABILITY"
     },
     {
@@ -10188,7 +10215,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "4. Configuration",
-      "line": 43,
+      "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-016#configuration"
     },
     {
@@ -10197,7 +10224,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "`codkit.json` schema 2 has `\"type\": \"<identifier>\"` and `\"typeConfig\": { ... }`. The engine validates the universal fields; the type validates `typeConfig` with its own schema and refuses with `CK-E-CONFIG` naming the field. One patch set, one type. @status:spec/done",
-      "line": 45,
+      "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-CONFIG-FIELD"
     },
     {
@@ -10206,7 +10233,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "Schema 2 is the only schema: a `codkit.json` without `type` (schema 1) is refused with `CK-E-CONFIG` that names the two fields to add (`type`, `typeConfig.ownRoot`) and nothing else; no command reads schema 1 and no code path infers a type. There is one consumer of the tool today and it is migrated in the campaign (phase P2: its `codkit.json` gets `\"type\": \"vscode\"` and `\"typeConfig\": {\"ownRoot\": \"src/vs/patchset\"}`, and its gates - `verify`, `status`, `ci --profile build`, the static proof, the dev and package UI proofs - run on the migrated configuration). Owner ruling of 2026-09-09. @status:spec/done",
-      "line": 46,
+      "line": 47,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED"
     },
     {
@@ -10215,7 +10242,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The own root is a **full path from the tree root** in `typeConfig.ownRoot`; the field is required, the type supplies its constraints (VS Code: under `src/vs/`; Theia: a workspace package directory) and refuses a root outside them with `CK-E-CONFIG`. The engine treats the own root as an opaque directory: mirrored by content, excluded from the drift guard, named in the inventory. `typeConfig.ownRoot` is the first of the owned directories; a type that owns more names the others in its own `typeConfig` fields (Theia: `applicationRoot`), and the engine treats every owned directory the same way. @status:spec/done",
-      "line": 47,
+      "line": 48,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT"
     },
     {
@@ -10224,7 +10251,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "Several forks are several patch sets, each bound to its own fork tree per command (`--patches-dir`, `--fork-dir`, the local config), exactly as today (`GOAL-ANY-FORK`). Two forks of one upstream are two patch sets of one type; forks of different upstreams are patch sets of different types. Sharing between forks travels through packages (standards, runtime, skills), never through the tool's configuration. A workspace file naming several patch sets is a later convenience and is not part of phases P1-P5. @status:spec/done",
-      "line": 48,
+      "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-MANY-FORKS"
     },
     {
@@ -10233,7 +10260,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "5. CLI",
-      "line": 51,
+      "line": 52,
       "uri": "spec://codkit/modules/codkit/PROP-016#cli"
     },
     {
@@ -10242,7 +10269,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The verbs of the roster (PROP-007 `COMMAND-ROSTER`) are universal and keep their names, flags and exit codes. Their output names the type where it matters: `where` prints it, the JSON envelope carries `codkit.type`. @status:spec/done",
-      "line": 53,
+      "line": 54,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-VERBS-UNIVERSAL"
     },
     {
@@ -10251,7 +10278,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "A verb that needs a capability the type does not declare refuses with `CK-E-TYPE-CAPABILITY`, exit 2, naming the type and the capability, before any write; no verb silently does something else. The verbs that need one: `imageset *` (`brand-images`), `gen brand` (`gen-brand`), `build *` (`build-channels`), `runtime load|check` (`runtime-library`), and `verify` over an artifact of a layer the type does not provide. @status:spec/done",
-      "line": 54,
+      "line": 55,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-CAPABILITY-REFUSAL"
     },
     {
@@ -10260,7 +10287,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "`codkit types` - print the registered types, their package and version, and the capability matrix; `--json`: `data: {types: [{id, package, version, installed, capabilities, configurableCapabilities}]}`. `configurableCapabilities` is the abilities a type declares only for a patch set whose `typeConfig` asks for them (`TYPE-CONFIGURED`); it is empty for a type that answers the same thing for every patch set, and the human output prints it as a `from typeConfig:` line under the declared ones. Read-only, no patch set required. @status:spec/done",
-      "line": 55,
+      "line": 56,
       "uri": "spec://codkit/modules/codkit/PROP-016#CMD-TYPES"
     },
     {
@@ -10269,7 +10296,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "New codes: `CK-E-TYPE-UNKNOWN` (type not registered or package not installed), `CK-E-TYPE-CAPABILITY` (verb or layer outside the type's capabilities). A type may add codes only under its own prefix (`CK-E-VSCODE-…`) for facts the engine cannot state; every code has an FAQ entry (PROP-012). @status:spec/done",
-      "line": 56,
+      "line": 57,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-ERROR-CODES"
     },
     {
@@ -10278,7 +10305,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "6. The official types",
-      "line": 59,
+      "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-016#types"
     },
     {
@@ -10287,7 +10314,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "`vscode` - today's behaviour, extracted without change: the specification module `modules/vscode` holds its answers (layout `src/vs/<own>` and `extensions/`, the `product.json` overlay with the `product.overrides.json` dev channel, built-in extensions, `registerSingleton`, `workbench.common.main`, `npm ci`/hygiene/eslint/watch channels/`test-node`, the package build and its stamps, the advisory readers, the brand image set, the runtime library, the seam catalogue, the conventions). The product's gates - `verify`, `status`, `ci --profile build`, its static proof and UI proofs - are the regression net of the extraction. @status:spec/plan",
-      "line": 61,
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-VSCODE"
     },
     {
@@ -10296,7 +10323,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "`generic` - a plain git upstream with no product model: no extensions, no service overrides, no entry module, no dev channel, no brand images, no runtime library; the install, lint, compile and test commands are declared in `typeConfig`; the own root is a configured directory. It carries `own`, `patch`, `resource-file`, `rewrite-rule` and `config-overlay` over declared JSON targets without a dev channel, so that `load|save|verify|cycle|publish|ci` run over any upstream before its own type exists. Its polygon is a **synthetic repository** in the fixtures (owner ruling). @status:spec/done",
-      "line": 62,
+      "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-GENERIC"
     },
     {
@@ -10305,7 +10332,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The P3 implementation of `TYPE-GENERIC`: `@codkit/type-generic`, whose whole knowledge is the section `typeConfig` of the patch set that declares it - `ownRoot` (any directory of the tree; only a path that is not repository-relative POSIX is refused), `commands.install` and `commands.lint` (argv, written as a string split on whitespace or as the words themselves), `commands.compile` (the watch channels: the npm script of each and where a pass begins and ends in its output), `commands.test` (`{command, ownGlobArg?}`, run over the glob `<ownRoot>/**/*.test.*`), `overlayTargets` (the JSON files an overlay may touch, never with a development channel), `cleanupWhitelist` and `identity.manifest` (`{path, nameField?}`, the fingerprint of a healthy tree). The unconfigured type declares NO capability and names `config-overlay` and `build-channels` as configurable; `configure` declares `config-overlay` when a target was declared and `build-channels` when a channel was, so `imageset`, `gen brand`, `runtime load|check` always refuse with `CK-E-TYPE-CAPABILITY`, and `build *` refuses until compile channels are declared. The channels carry their pass boundaries because the engine's profile schema requires them and the tool never guesses them (PROP-010 `PASS-BOUNDARIES-ARE-DATA`): a bare list of script names would produce a profile that recognizes no pass. The type ships no data file, delivers no standards package, declares no advisory reader - the cycle's advisory then reports the two pins and no semantic change - and its feature skeleton is identifiers, feature and test inside one directory with no composition root to register into. @status:impl/done",
-      "line": 63,
+      "line": 64,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-GENERIC-IMPL"
     },
     {
@@ -10314,7 +10341,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "`theia` - the second real type, designed from the facts of Theia master (`research/theia-facts-<version>`) and specified in `modules/theia`: the own root as a workspace package, the application manifest as the overlay target, inversify `rebind` as the service override, the application's module list as the entry module, yarn/lerna build and watch, its test runner, electron-builder packaging, its advisory readers. It is proved by a real product of the owner built on it, in that product's own repository, the way the VS Code product was built. @status:spec/done",
-      "line": 64,
+      "line": 65,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-THEIA"
     },
     {
@@ -10323,7 +10350,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The P5 implementation: `@codkit/type-theia`, a **configured** type (##TYPE-CONFIGURED) whose section carries the three answers upstream cannot give - `ownRoot` (a workspace package directory under `packages/*`, `dev-packages/*` or `examples/*`), `ownPackageName` (what `lerna run <script> --scope` selects) and `applicationRoot` (the application whose `package.json` is the overlay target), plus the optional names of the two root npm scripts that are its watch channels. Its capabilities are the same for every patch set - `config-overlay`, `service-override`, `build-channels`, `upgrade-advisory` - so `codkit types` prints a true matrix with no configuration in reach, and `configurableCapabilities` is empty. Four capabilities of the roster are absent and each absence is an answer: no `entry-module` (own code is included by one line of the application's `dependencies`), no `own-extensions` (a Theia extension **is** own code), no `brand-images` (upstream has no icon target table), no `gen-brand` (identity is a manifest key, not a string funnel), no `dev-channel` and no `runtime-library` yet. Two things the second type measured and the contract grew for it: `TreeFingerprint.contentProblem`, because this family is proved by what two manifests say and not only by their presence (`spec://codkit/modules/codkit/PROP-008#ID-CHECK-FINGERPRINTS`), and `ServiceOverrideVerifier.overrideProblems`, because a `rebind` wins only when the own package depends on the package that binds the service and the engine cannot state that edge itself. Both are optional members: the first two types are unchanged by them. @status:impl/done",
-      "line": 65,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-THEIA-IMPL"
     },
     {
@@ -10332,7 +10359,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "7. Testing",
-      "line": 68,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/PROP-016#testing"
     },
     {
@@ -10341,7 +10368,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The engine's tests run against a **stub type** in the fixtures that answers the contract with the smallest possible layout, and the pseudo-upstream is shaped by that stub's layout (`spec://codkit/modules/codkit/PROP-013#FIXTURE-UPSTREAM`); the e2e suites, which drive the real CLI, reach it through `TYPE-TEST-SEAM`. They never import an official type, with one kind of exception that is an answer rather than a gap: a suite about a payload the tool ships for one family - its runtime library, its brand images, its vibe packages - and the suite of the registry itself are that family's polygon inside the engine's tree, and each such file says so in its own header. Each type package has its own suites and its own polygon; FEAT-001 becomes two polygons - the VS Code-shaped one it is today and the synthetic generic one. @status:spec/done",
-      "line": 70,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-ENGINE-TESTS"
     },
     {
@@ -10350,7 +10377,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The engine's e2e suites run the real CLI as a subprocess, and that subprocess resolves a type only through the registry of `TYPE-REGISTRY`; a stub type living in the test tree is therefore unreachable to it. The test build alone (the build condition `codkit-test`, modelled on `CODKIT_TEST_STANDARDS_SOURCE`, `CODKIT_TEST_RUNTIME_SOURCE` and `CODKIT_TEST_CRASH_AT`) honours the env `CODKIT_TEST_TYPE_PACKAGE=<id>=<absolute path of a module exporting projectType>`, which adds that one type to the registry for the lifetime of the process; the module must answer the contract the way any package does, and the row never appears in `codkit types` of a production build. Without the build condition the variable is ignored and the same `type` is `CK-E-TYPE-UNKNOWN`, and a test proves that the seam does not leak, the way S33 proves it for the standards source. The production registry is unchanged: nothing is ever loaded from a patch set or from a path named in `codkit.json`. @status:spec/done",
-      "line": 71,
+      "line": 72,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-TEST-SEAM"
     },
     {
@@ -10359,7 +10386,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "Acceptance scenarios (FEAT-002): a schema-1 patch set is refused with `CK-E-CONFIG` naming `type` and `typeConfig.ownRoot`; the migrated VS Code patch set behaves exactly as before; `codkit types` lists the official types; `imageset` over a `generic` patch set refuses with `CK-E-TYPE-CAPABILITY`; a `type` the registry does not know refuses with `CK-E-TYPE-UNKNOWN`; the generic polygon passes `load`, `save`, `verify`, `cycle` and `ci --profile verify` end to end; the VS Code polygon passes every scenario it passed before the split. @status:spec/plan",
-      "line": 72,
+      "line": 73,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SCENARIOS"
     },
     {
@@ -10368,7 +10395,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "8. Specifications: the split",
-      "line": 75,
+      "line": 76,
       "uri": "spec://codkit/modules/codkit/PROP-016#specs"
     },
     {
@@ -10377,7 +10404,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "`modules/codkit` specifies the engine and this contract; `modules/vscode` specifies the `vscode` type; `modules/theia` will specify the `theia` type; `common/*` states the vision without naming an upstream. A fact that is a type's answer moves to the type's module; a fact about the engine stays. @status:spec/plan",
-      "line": 77,
+      "line": 78,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SPEC-MODULES"
     },
     {
@@ -10386,7 +10413,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "Anchors are immutable: a moved fact leaves a tombstone at its old address naming the new one (`NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR`), and every `##ANCHOR` citation in code is re-pointed in the same commit; `trace:check` and the spec map are the gates. The unit count of the two modules together equals the count before the split plus the tombstones and the new facts of this document. @status:spec/plan",
-      "line": 78,
+      "line": 79,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SPEC-TOMBSTONES"
     },
     {
@@ -10395,7 +10422,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "The type modules of the tool are English like the rest of the tool's specifications (`SPEC-LANGUAGE-IS-ENGLISH`); a product's specifications keep the product's own rule. @status:spec/plan",
-      "line": 79,
+      "line": 80,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SPEC-LANGUAGE"
     },
     {
@@ -10404,7 +10431,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "9. Decisions",
-      "line": 82,
+      "line": 83,
       "uri": "spec://codkit/modules/codkit/PROP-016#decisions"
     },
     {
@@ -10413,7 +10440,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Decision:** a type is a separate npm package from the first day, resolved through a registry of names. **Why:** the owner's ruling - the procedure of splitting is done once; a package boundary that exists only in a directory drifts back into the engine. **Considered and rejected:** in-tree directories under one package (cheaper now, a second split later); arbitrary plugin loading from a patch set (breaks determinism, the air-gapped kit and the clean room). **When to revisit:** a third party ships a type - then the registry becomes a declared list in the tool's configuration rather than a constant. @status:spec/done",
-      "line": 83,
+      "line": 84,
       "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-TYPE-IS-A-PACKAGE"
     },
     {
@@ -10422,7 +10449,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Decision:** no compatibility layer for the old configuration schema: schema 2 is required, schema 1 is refused with a migration hint. **Why:** the owner's ruling of 2026-09-09 - the tool has one consumer, and fixing it is cheaper than building a compatibility layer and maintaining it afterwards; the consumer is migrated inside the campaign with its gates as the proof. **Considered and rejected:** reading schema 1 as `vscode` (a second code path, a second set of tests, and a rule that would outlive its only reason). **When to revisit:** never for schema 1; a future schema change gets the same treatment while the consumers can be counted on one hand. @status:spec/done",
-      "line": 84,
+      "line": 85,
       "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-NO-COMPATIBILITY-LAYER"
     },
     {
@@ -10431,7 +10458,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Decision:** the contract's areas are the measured variation points and nothing else. **Why:** an interface designed for one real type fits that type; the `generic` type and the Theia type are the two forces that keep it honest, and each new question is added when a type needs it. **Considered and rejected:** a general \"hooks everywhere\" plugin API (speculative surface, untestable). **When to revisit:** a third real type that needs a tenth question. @status:spec/plan",
-      "line": 85,
+      "line": 86,
       "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-TYPE-CONTRACT-FROM-MEASUREMENT"
     },
     {
@@ -10440,7 +10467,7 @@
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "**Decision:** the layout area answers with a list of owned directories and with the build outputs inside them, not with one own root. **Why:** measured on the second real type (P5, 2026-09-09): a Theia package compiles `src/` to `lib/` inside itself, so the engine that treats the whole owned directory as source read a build as a change of own code and refused to load; and the product's application is a second owned directory the engine mirrored nothing of. **Considered and rejected:** compiling own code elsewhere (fights the family's own tools and lint); listing the outputs in the cleanup whitelist only (they would still count as changed own code). **When to revisit:** a family whose outputs are interleaved with sources file by file rather than by directory. @status:spec/done",
-      "line": 86,
+      "line": 87,
       "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-OWNED-DIRECTORIES-AND-BUILD-OUTPUTS"
     },
     {
@@ -11336,7 +11363,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:1927cfb33e5825547496d1e992c15065b7fb9ed5a7f9221ab95b2a744eb2fec0",
+      "content_hash": "sha256:02a223f3423aa3945e333f1a4e19aee2cfb5514a0867ccd374150d0e036b6bb8",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "vscode PROP-004: Build and test - install, hygiene, watch channels, runners, packaging stamps",
@@ -11345,7 +11372,7 @@
     },
     {
       "anchor": "steps",
-      "content_hash": "sha256:261a3d36d1e394fb07a22f78f7169fe4f5eb102958203ddfd4fa4a99159a2787",
+      "content_hash": "sha256:d7c8f4fc12b328b48242f68b37c1fd933318b62fb36a7136fb9c912ff37a067f",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "1. The commands of the type",
@@ -11372,10 +11399,10 @@
     },
     {
       "anchor": "BUILD-COMMIT-COMES-FROM-THE-TREE-HEAD",
-      "content_hash": "sha256:8d9e4de6345f8776d8b75b82eb2b3c123a0e9cc2cb5b90f69685e1cc8e94593b",
+      "content_hash": "sha256:92a292aca119be29660dd98371f900026424789f5707a81f537c06d156a064a2",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
-      "heading": "**Build commit.** The product package build (`gulp vscode-*`) stamps `product.json.commit` from `BUILD_SOURCEVERSION`, and without it by reading `.git/HEAD` as a directory (`build/lib/git.ts` at pin 1.135.0); a managed tree is a linked worktree, its `.git` is a file, so the package is left without `commit`, and without `commit` the NLS loader does not read language packs. This is what `build.packageStamps` of this type answers - `BUILD_SOURCEVERSION` from the tree head and `VSCODE_QUALITY` from the pin tag - and `codkit package` (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE`) is the run that puts them into the environment of the packager. Codkit still neither writes the package nor changes code: it runs the upstream task and stamps what the task reads. @status:spec/plan",
+      "heading": "**Build commit.** The product package build (`gulp vscode-*`) stamps `product.json.commit` from `BUILD_SOURCEVERSION`, and without it by reading `.git/HEAD` as a directory (`build/lib/git.ts` at pin 1.135.0); a managed tree is a linked worktree, its `.git` is a file, so the package is left without `commit`, and without `commit` the NLS loader does not read language packs. This is what `build.packageStamps` of this type answers - `BUILD_SOURCEVERSION` from the tree head and `VSCODE_QUALITY` from the quality channel of the patch set, or from the pin tag while it names none (##VSCODE-QUALITY-IS-A-PRODUCT-ANSWER) - and `codkit package` (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE`) is the run that puts them into the environment of the packager. Codkit still neither writes the package nor changes code: it runs the upstream task and stamps what the task reads. @status:spec/plan",
       "line": 8,
       "uri": "spec://codkit/modules/vscode/PROP-004#BUILD-COMMIT-COMES-FROM-THE-TREE-HEAD"
     },
@@ -11389,12 +11416,21 @@
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-BUILD-CHANNELS-DEFAULT"
     },
     {
+      "anchor": "VSCODE-QUALITY-IS-A-PRODUCT-ANSWER",
+      "content_hash": "sha256:b7d7394911bdf7bd88f2fdbc9f434a4f27ed254a19a99fa5e658f1bfbdc5f1a5",
+      "doc_path": "modules/vscode/PROP-004",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
+      "heading": "**The quality channel is a property of the product, not of the pin it sits on**, so it is the patch set that answers it: `typeConfig.quality`, one of `stable`, `insider`, `exploration`, optional, and stamped into `VSCODE_QUALITY` as the literal word. A patch set that names none keeps the older answer, the tag of the pin - which is a version string (`1.135.0`), and therefore reads as \"not the released channel\" to every part of the upstream build that compares this variable with `stable`: the packaging of a bundled extension then takes its pre-release path, demands a publish counter it was never given, and the whole `codkit package` run stops. That is how this was measured, on the first real distributable of this family on 2026-09-09. Two things follow and both are recorded here rather than in the engine: the three words are the ones the upstream build itself distinguishes, so a fourth word is a `CK-E-CONFIG` refusal of the schema and never a value handed to a packager; and the operator keeps the last word anyway, because a stamp already exported into the environment is never overwritten (`spec://codkit/modules/codkit/PROP-016#TYPE-STAMPS-FILL-A-GAP`). @status:impl/done",
+      "line": 10,
+      "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-QUALITY-IS-A-PRODUCT-ANSWER"
+    },
+    {
       "anchor": "VSCODE-PACKAGE-OUTPUTS",
       "content_hash": "sha256:18cf094442b64d2320e52dd197e1e20b7aff861ea8254dd4458de8e6242fd7a8",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**This family names no package output inside the tree, and that is the honest answer.** The `gulp vscode-*` task writes its result into a **sibling** directory of the managed tree whose name carries the platform and the architecture (`../VSCode-<platform>-<arch>*/`), while `build.packageOutputs` is tree-relative by contract (`spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-ANSWERS`). Rather than widen the contract so the engine can list a directory it neither manages, guards nor cleans, this type answers with an empty list; `codkit package` then says that the type names no output and the operator reads the location from the packager's own output, which the command printed in full. For the same reason `build.packageDistributable` is empty here: the upstream task is the whole packaging of this family, and there is no second, product-supplied step after it. @status:spec/done",
-      "line": 10,
+      "line": 11,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-PACKAGE-OUTPUTS"
     },
     {
@@ -11403,7 +11439,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "2. Watch channels",
-      "line": 12,
+      "line": 13,
       "uri": "spec://codkit/modules/vscode/PROP-004#channels"
     },
     {
@@ -11412,7 +11448,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "Traps the wrapper implements: `npm run compile` and a restart of the transpile daemon wipe `out/`, so `build up` does not restart a living channel; before `npm install` in the tree the daemons must be stopped, so `build down --all` is invoked by the deps-advisory protocol; the upstream `watchd` scripts and our channels are mutually exclusive, so `up` refuses to start when a foreign watch process over the same tree is detected (probing by the command-line substrings `build/next/index.ts transpile --watch` and `gulp watch-`). @status:spec/done",
-      "line": 20,
+      "line": 21,
       "uri": "spec://codkit/modules/vscode/PROP-004#DAEMON-TRAPS"
     },
     {
@@ -11421,7 +11457,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "3. Pass boundaries and error lines",
-      "line": 22,
+      "line": 23,
       "uri": "spec://codkit/modules/vscode/PROP-004#pass-boundaries"
     },
     {
@@ -11430,7 +11466,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "`falseEndGuards`: the lines `Finished compilation <id> with … errors` with a non-empty `<id>` come from the code-generation channels (`api-proposal-names`, `extension-point-names`), which print their markers on every change; a naive match yields false pass ends. M1 refinement: with strict `passEnd` expressions the guards are defence in depth and become load-bearing only when `passEnd` is weakened; the count lines are separated into their own data field `errorCountLine` (for typecheck/copilot the count line is not a diagnostic; extensions has NO count field, and the authority there is the parsed diagnostics, REPAIR-003/006). @status:impl/done",
-      "line": 30,
+      "line": 31,
       "uri": "spec://codkit/modules/vscode/PROP-004#FALSE-END-GUARDS"
     },
     {
@@ -11439,7 +11475,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "4. Test runners",
-      "line": 32,
+      "line": 33,
       "uri": "spec://codkit/modules/vscode/PROP-004#tests"
     },
     {
@@ -11448,7 +11484,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**The split by runners.** `--runGlob` bypasses the regular layer exclusion of the upstream node runner, and a suite that brings up the workbench pulls in style sheets that node does not load; therefore `ci --profile build` runs the node runner over the glob `vs/<own>/**/test/{common,node}/**/*.test.js`, while the `test/browser` suites of the product, of the library and of the features are a mandatory protocol step outside `ci`: the upstream electron runner (`scripts/test.sh --runGlob 'vs/<own>/**/test/browser/**/*.test.js'`, under `xvfb-run` on a machine without a display), because a CI container without a display cannot make it mandatory for the profile. @status:spec/plan",
-      "line": 33,
+      "line": 34,
       "uri": "spec://codkit/modules/vscode/PROP-004#TESTS-LAYER-SPLIT"
     },
     {

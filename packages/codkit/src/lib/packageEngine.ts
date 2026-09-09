@@ -31,7 +31,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { BuildCommand, ProjectType } from '@codkit/type-api';
+import type { BuildCommand, BuildStamp, ProjectType } from '@codkit/type-api';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { driftDirty } from './driftGuard.ts';
@@ -60,6 +60,14 @@ export type PackageStep = {
 	readonly name: PackageStepName;
 	readonly state: 'ok' | 'skipped' | 'failed';
 	readonly detail: string;
+};
+
+/** One stamp of the run, resolved to the value the packaging will see. */
+export type ResolvedStamp = {
+	readonly name: string;
+	readonly value: string;
+	/** True when the value is the operator's own, not the one the type answers. */
+	readonly fromEnvironment: boolean;
 };
 
 export type PackageFlags = {
@@ -123,6 +131,8 @@ export type PackageOptions = {
 	readonly flags: PackageFlags;
 	readonly timeoutMs: number | null;
 	readonly runCommand?: PackageCommandRunner;
+	/** The operator's environment; a test hands its own instead of the process's. */
+	readonly env?: Readonly<Record<string, string | undefined>>;
 };
 
 export type PackageResult = {
@@ -133,6 +143,8 @@ export type PackageResult = {
 	/** Of those, the ones it put back; empty under `--keep-overlay`. */
 	readonly restored: readonly string[];
 	readonly stamps: Readonly<Record<string, string>>;
+	/** Of those, the names the operator's own environment already carried. */
+	readonly stampsFromEnvironment: readonly string[];
 	readonly commands: readonly string[];
 	readonly outputs: readonly string[];
 };
@@ -154,13 +166,24 @@ export function runPackage(options: PackageOptions): PackageResult {
 	out.info(`package plan: ${packageStepPlan(type, options.flags).join(' -> ')}`);
 	const overlays = loadOverlays(patchesDir);
 	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir));
-	const stamps = packageStamps(type, config, tree);
+	const stamps = packageStamps(type, config, tree, options.env ?? process.env);
+	const stampValues = Object.fromEntries(stamps.map((stamp) => [stamp.name, stamp.value]));
+	const stampsFromEnvironment = stamps.filter((stamp) => stamp.fromEnvironment).map((stamp) => stamp.name);
 
 	const guard = guardStep(options, overlays, context);
 	if (guard !== null) {
 		record('drift guard', 'failed', guard.detail);
 		out.addError(guard.error);
-		return { exitCode: guard.exitCode, steps, materialized, restored, stamps, commands, outputs };
+		return {
+			exitCode: guard.exitCode,
+			steps,
+			materialized,
+			restored,
+			stamps: stampValues,
+			stampsFromEnvironment,
+			commands,
+			outputs
+		};
 	}
 	record('drift guard', 'ok', 'the fork tree carries no unextracted work');
 
@@ -179,10 +202,10 @@ export function runPackage(options: PackageOptions): PackageResult {
 		record(
 			'stamps',
 			'ok',
-			Object.keys(stamps).length === 0 ? `the project type ${type.id} stamps nothing` : Object.keys(stamps).join(', ')
+			stamps.length === 0 ? `the project type ${type.id} stamps nothing` : stamps.map((stamp) => stamp.name).join(', ')
 		);
-		for (const [name, value] of Object.entries(stamps)) {
-			out.info(`stamp ${name}=${value}`);
+		for (const stamp of stamps) {
+			out.info(`stamp ${stamp.name}=${stamp.value}${stamp.fromEnvironment ? ' (from environment)' : ''}`);
 		}
 		if (options.flags.skipTypeBuild) {
 			out.info(`skip-type-build: the application build of ${type.id} is not run; the tree is taken as already built`);
@@ -196,7 +219,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 			if (half.build.length === 0) {
 				continue;
 			}
-			const outcome = runCommands(options, half.build, stamps, commands);
+			const outcome = runCommands(options, half.build, stampValues, commands);
 			record(half.name, outcome.state, outcome.detail);
 			if (outcome.error !== null) {
 				out.addError(outcome.error);
@@ -222,7 +245,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 			record('restore', 'ok', restored.length === 0 ? 'this run materialized nothing to put back' : restored.join(', '));
 		}
 	}
-	return { exitCode, steps, materialized, restored, stamps, commands, outputs };
+	return { exitCode, steps, materialized, restored, stamps: stampValues, stampsFromEnvironment, commands, outputs };
 }
 
 /** What the outputs step says when it found something, and when it did not. */
@@ -333,17 +356,44 @@ function restoreOverlayTargets(
 	return [...materialized];
 }
 
-/** The environment the family asks for, filled from the pin and the tree head. */
-export function packageStamps(type: ProjectType, config: CodkitConfig, treeDir: string): Readonly<Record<string, string>> {
-	const stamps: Record<string, string> = {};
-	for (const stamp of type.build.packageStamps) {
-		if (stamp.source === 'tree-head') {
-			stamps[stamp.name] = revParse(treeDir, 'HEAD') ?? '';
-			continue;
+/**
+ * The environment the family asks for, and where each value came from.
+ *
+ * A name the operator already exported keeps the operator's value
+ * (##TYPE-STAMPS-FILL-A-GAP): the stamps of a type exist because a packager
+ * reads a variable nobody remembers to set, not because the tool has an opinion
+ * about a variable somebody set deliberately. An exported name whose value is
+ * empty is an empty value and not an answer, so the type still fills it - which
+ * is also what keeps `FOO= codkit package` from silently packaging with an
+ * empty channel.
+ */
+export function packageStamps(
+	type: ProjectType,
+	config: CodkitConfig,
+	treeDir: string,
+	env: Readonly<Record<string, string | undefined>> = process.env
+): readonly ResolvedStamp[] {
+	return type.build.packageStamps.map((stamp) => {
+		const exported = env[stamp.name];
+		if (exported !== undefined && exported !== '') {
+			return { name: stamp.name, value: exported, fromEnvironment: true };
 		}
-		stamps[stamp.name] = stamp.source === 'pin-tag' ? config.pin.tag : config.pin.date;
+		return { name: stamp.name, value: valueOfStamp(stamp, config, treeDir), fromEnvironment: false };
+	});
+}
+
+/** What the run itself, or the type's own configuration, fills a stamp with. */
+function valueOfStamp(stamp: BuildStamp, config: CodkitConfig, treeDir: string): string {
+	switch (stamp.source) {
+		case 'tree-head':
+			return revParse(treeDir, 'HEAD') ?? '';
+		case 'pin-tag':
+			return config.pin.tag;
+		case 'pin-date':
+			return config.pin.date;
+		default:
+			return stamp.value;
 	}
-	return stamps;
 }
 
 type CommandsOutcome = {

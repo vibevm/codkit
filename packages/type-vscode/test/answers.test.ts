@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ADVISORY_PATHS, advisory } from '../src/advisory.ts';
-import { build, WATCH_PROFILE_PATH } from '../src/build.ts';
+import { build, makeBuild, packageStampsOf, WATCH_PROFILE_PATH } from '../src/build.ts';
 import { conventions } from '../src/conventions.ts';
 import { identity } from '../src/identity.ts';
 import { layers, PRODUCT_JSON_TARGET, PRODUCT_OVERRIDES_FILE } from '../src/layers.ts';
@@ -87,6 +87,19 @@ describe('build and test', () => {
 			{ name: 'BUILD_SOURCEVERSION', source: 'tree-head' },
 			{ name: 'VSCODE_QUALITY', source: 'pin-tag' }
 		]);
+	});
+
+	it('takes the quality channel from the patch set when it names one', () => {
+		// ##VSCODE-QUALITY-IS-A-PRODUCT-ANSWER: the channel is a property of the
+		// product, so a patch set that names it gets that word instead of a tag
+		// of the upstream, which is a version string and no channel at all.
+		expect(makeBuild({ ownRoot: 'src/vs/patchset', quality: 'stable' }).packageStamps).toEqual([
+			{ name: 'BUILD_SOURCEVERSION', source: 'tree-head' },
+			{ name: 'VSCODE_QUALITY', source: 'literal', value: 'stable' }
+		]);
+		expect(packageStampsOf('insider')).toContainEqual({ name: 'VSCODE_QUALITY', source: 'literal', value: 'insider' });
+		// A patch set that names none reads exactly as it did before the field.
+		expect(makeBuild({ ownRoot: 'src/vs/patchset' }).packageStamps).toEqual(build.packageStamps);
 	});
 
 	it('names the two channels a run that names none starts', () => {

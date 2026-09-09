@@ -8,8 +8,9 @@
 import type { Capability, ProjectType } from '@codkit/type-api';
 import { advisory } from './advisory.ts';
 import { brandImages } from './brandImages.ts';
-import { build } from './build.ts';
-import { configSchema } from './configSchema.ts';
+import { makeBuild } from './build.ts';
+import { configSchema, PLACEHOLDER_CONFIG } from './configSchema.ts';
+import type { VscodeTypeConfig } from './configSchema.ts';
 import { conventions } from './conventions.ts';
 import { generators } from './generators.ts';
 import { identity } from './identity.ts';
@@ -39,29 +40,48 @@ export const CAPABILITIES: readonly Capability[] = [
 	'upgrade-advisory'
 ];
 
-export const projectType: ProjectType = {
-	id: TYPE_ID,
-	capabilities: new Set(CAPABILITIES),
-	configSchema,
-	identity,
-	layout,
-	layers,
-	build,
-	advisory,
-	brandImages,
-	runtime,
-	standards,
-	conventions,
-	generators
-};
+/** The type as one patch set's `typeConfig` makes it. */
+export function projectTypeFor(config: VscodeTypeConfig): ProjectType {
+	return {
+		id: TYPE_ID,
+		capabilities: new Set(CAPABILITIES),
+		configSchema,
+		identity,
+		layout,
+		layers,
+		build: makeBuild(config),
+		advisory,
+		brandImages,
+		runtime,
+		standards,
+		conventions,
+		generators,
+		configure
+	};
+}
+
+/**
+ * The specialization step of the contract (##TYPE-CONFIGURED). Only one answer
+ * of this type depends on the section - the quality channel of the packaging -
+ * but the engine asks the result everything afterwards, so the whole type is
+ * rebuilt from the validated section. Parsing it again here is what makes this
+ * function total: a section that somehow arrives unvalidated produces the type
+ * of a patch set that answered nothing rather than a crash.
+ */
+function configure(typeConfig: unknown): ProjectType {
+	const parsed = configSchema.safeParse(typeConfig);
+	return projectTypeFor(parsed.success ? parsed.data : PLACEHOLDER_CONFIG);
+}
+
+export const projectType: ProjectType = projectTypeFor(PLACEHOLDER_CONFIG);
 
 export default projectType;
 
 export { advisory, ADVISORY_PATHS, readers } from './advisory.ts';
 export { brandImages, codecs, familyNotes, targets } from './brandImages.ts';
-export { build } from './build.ts';
-export { configSchema } from './configSchema.ts';
-export type { VscodeTypeConfig } from './configSchema.ts';
+export { build, makeBuild, packageStampsOf } from './build.ts';
+export { configSchema, PLACEHOLDER_CONFIG, QUALITY_CHANNELS } from './configSchema.ts';
+export type { VscodeQuality, VscodeTypeConfig } from './configSchema.ts';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.ts';
 export { brandGraft, featureClassName, featureSkeleton, generators, settingId } from './generators.ts';
 export { identity } from './identity.ts';

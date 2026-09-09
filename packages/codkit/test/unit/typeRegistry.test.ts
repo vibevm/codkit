@@ -78,9 +78,23 @@ describe('the configured type', () => {
 		expect(configured.layers.overlayTargets.map((target) => target.path)).toEqual(['app.json']);
 	});
 
-	it('returns a type without a configure step unchanged', async () => {
+	it('returns a type without a configure step unchanged', () => {
+		const { configure, ...withoutConfigure } = vscodeType;
+		const plain: ProjectType = { ...withoutConfigure, id: 'plain' };
+		expect(configureProjectType(plain, { ownRoot: 'src/vs/patchset' })).toBe(plain);
+	});
+
+	it('takes the quality channel of the first family from the section it was handed', async () => {
+		// ##VSCODE-QUALITY-IS-A-PRODUCT-ANSWER: the one answer of this type that
+		// a patch set moves, and the engine below asks only the configured type.
 		const vscode = await resolveProjectType('vscode');
-		expect(configureProjectType(vscode, { ownRoot: 'src/vs/patchset' })).toBe(vscode);
+		const configured = configureProjectType(vscode, { ownRoot: 'src/vs/patchset', quality: 'stable' });
+
+		expect(configured.build.packageStamps).toContainEqual({ name: 'VSCODE_QUALITY', source: 'literal', value: 'stable' });
+		expect(configureProjectType(vscode, { ownRoot: 'src/vs/patchset' }).build.packageStamps).toContainEqual({
+			name: 'VSCODE_QUALITY',
+			source: 'pin-tag'
+		});
 	});
 
 	it('refuses a configure that declares a capability the type never announced', () => {
