@@ -258,7 +258,11 @@ export async function runConcreteStabilization(options: StabilizeHeavyRunnerOpti
 	const failures: unknown[] = [];
 	const cleanupFailures: unknown[] = [];
 	try {
-		channels = loadBuildWatch(options.type, options.patchesDir).channels.map((channel) => channel.name);
+		// A type with no compile channels has no daemon to stop afterwards, and no
+		// profile to read either (PROP-016 ##TYPE-CONFIGURED).
+		channels = options.type.capabilities.has('build-channels')
+			? loadBuildWatch(options.type, options.patchesDir).channels.map((channel) => channel.name)
+			: [];
 		verify = runVerify({ ...options, type: options.type });
 		build = await runCi({
 			...options,
@@ -333,9 +337,16 @@ function buildRedList(execution: StabilizeExecution, contracts: readonly Contrac
 		if (execution.build.profile !== 'build')
 			red.push(redItem('build', 'profile', `expected build profile, got ${execution.build.profile}`));
 		if (execution.build.exitCode !== 0) red.push(redItem('build', 'exit', `build profile exited ${execution.build.exitCode}`));
+		// The build profile skips `compile` when the project type declares no
+		// compile channels and `product tests` when it has no own-root runner,
+		// and the skipped step carries the reason (PROP-016 ##TYPE-AREA-BUILD).
+		// A step that had nothing to do is not evidence of a broken upgrade;
+		// `verify` is universal and has to be green whatever the family is.
+		const skippable = new Set(['compile', 'product tests']);
 		for (const required of ['verify', 'compile', 'product tests']) {
-			if (!execution.build.steps.some((step) => step.name === required && step.state === 'ok'))
-				red.push(redItem('build', required, `required ${required} step was not observed green`));
+			const observed = execution.build.steps.find((step) => step.name === required);
+			if (observed?.state === 'ok' || (skippable.has(required) && observed?.state === 'skipped')) continue;
+			red.push(redItem('build', required, `required ${required} step was not observed green`));
 		}
 	}
 	for (const error of execution.errors) red.push({ kind: 'error', id: error.code, detail: error.message, artifact: error.file ?? null });

@@ -439,10 +439,19 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		return done(EXIT_OK);
 	}
 
-	// One compilation pass through the daemons, then they are stopped.
-	const compiled = await compileOnce(options, steps);
-	if (compiled !== EXIT_OK) {
-		return done(compiled);
+	// One compilation pass through the daemons, then they are stopped. A type
+	// that declares no compile channels has no pass to make; the step is skipped
+	// with the reason rather than refused, because the roster of the skeleton's
+	// steps is the same for every family and only the answers differ
+	// (PROP-016 ##TYPE-AREA-BUILD). The refusal `CK-E-TYPE-CAPABILITY` belongs
+	// to the `build` verbs a person types, not to a step of `ci`.
+	if (!options.type.capabilities.has('build-channels')) {
+		steps.record('compile', 'skipped', `the project type ${options.type.id} declares no compile channels`);
+	} else {
+		const compiled = await compileOnce(options, steps);
+		if (compiled !== EXIT_OK) {
+			return done(compiled);
+		}
 	}
 
 	// Own product and contract tests, through the upstream node runner and the

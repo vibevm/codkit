@@ -6,10 +6,10 @@
 // `git apply --cached --check` against the pin before the generator returns. A
 // fixture that only looks like a patch would let a broken engine pass.
 
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { runGit } from '../../src/lib/gitx.ts';
+import { mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { ckError } from '../../src/lib/messages.ts';
+import { assertApplies, encodePatchName, showAtPin, unifiedDiff, writeBytes, writeJson } from './patchText.ts';
 import { EXAMPLE_AREA_ANCHOR, EXAMPLE_PART_PATH, EXAMPLE_TOOLBAR_ANCHOR, fixtureCommit, fixtureGit, pinDate } from './makeUpstream.ts';
 import type { UpstreamFixture } from './makeUpstream.ts';
 
@@ -260,11 +260,11 @@ function buildSamplePatch(dir: string, upstream: UpstreamFixture): string {
 	const scratch = join(dir, '.codkit', 'tmp');
 	mkdirSync(scratch, { recursive: true });
 	try {
-		const atPin = showAtPin(upstream, EXAMPLE_PART_PATH);
+		const atPin = showAtPin(upstream.dir, upstream.t1.sha, EXAMPLE_PART_PATH);
 		const withHook = insertHookBlock(atPin);
 		const body = unifiedDiff(scratch, atPin, withHook, EXAMPLE_PART_PATH);
 		const patch = patchHeader(upstream) + body;
-		assertApplies(scratch, upstream, patch);
+		assertApplies(scratch, upstream.dir, upstream.t1, patch);
 		return patch;
 	} finally {
 		rmSync(join(dir, '.codkit'), { recursive: true, force: true });
@@ -287,15 +287,6 @@ function patchHeader(upstream: UpstreamFixture): string {
 	].join('\n');
 }
 
-/** The file as of the pin, read from git objects - never from the work tree. */
-function showAtPin(upstream: UpstreamFixture, path: string): string {
-	const result = runGit({ args: ['show', `${upstream.t1.sha}:${path}`], cwd: upstream.dir });
-	if (result.status !== 0) {
-		throw ckError('INTERNAL', `fixture: cannot read ${path} at ${upstream.t1.tag}: ${result.stderr.trim()}`);
-	}
-	return result.stdout;
-}
-
 /** Put the three marker lines at the top of the create* method body. */
 function insertHookBlock(source: string): string {
 	const anchor = `${EXAMPLE_AREA_ANCHOR}\n`;
@@ -309,109 +300,4 @@ function insertHookBlock(source: string): string {
 		''
 	].join('\n');
 	return source.replace(anchor, anchor + block);
-}
-
-/**
- * `git diff --no-index` with the flags of PROP-004 ##GEN-DIFF-INVOCATION, then
- * the normalization: volatile headers dropped, --- / +++ rewritten to the
- * canonical upstream path.
- */
-function unifiedDiff(scratch: string, before: string, after: string, path: string): string {
-	writeFileSync(join(scratch, 'a'), before, 'utf8');
-	writeFileSync(join(scratch, 'b'), after, 'utf8');
-	const result = runGit({
-		args: [
-			'-c',
-			'diff.algorithm=myers',
-			'-c',
-			'diff.renames=false',
-			'-c',
-			'diff.mnemonicPrefix=false',
-			'-c',
-			'diff.noprefix=false',
-			'diff',
-			'--no-index',
-			'-U3',
-			'--no-color',
-			'--no-ext-diff',
-			'--no-textconv',
-			'--',
-			'a',
-			'b'
-		],
-		cwd: scratch
-	});
-	// 0 = identical, 1 = differences; anything else is a real failure.
-	if (result.status !== 1) {
-		throw ckError('INTERNAL', `fixture: diff generation failed (status ${result.status}): ${result.stderr.trim()}`);
-	}
-	return normalizeDiff(result.stdout, path);
-}
-
-function normalizeDiff(raw: string, path: string): string {
-	const out: string[] = [];
-	let sawMinus = false;
-	let sawPlus = false;
-	for (const line of raw.split('\n')) {
-		if (line.startsWith('diff --git ') || line.startsWith('index ') || line.startsWith('old mode ') || line.startsWith('new mode ')) {
-			continue;
-		}
-		if (!sawMinus && line.startsWith('--- ')) {
-			out.push(`--- a/${path}`);
-			sawMinus = true;
-			continue;
-		}
-		if (!sawPlus && line.startsWith('+++ ')) {
-			out.push(`+++ b/${path}`);
-			sawPlus = true;
-			continue;
-		}
-		out.push(line);
-	}
-	if (!sawMinus || !sawPlus) {
-		throw ckError('INTERNAL', 'fixture: generated diff has no file headers');
-	}
-	return out.join('\n');
-}
-
-/**
- * The generator refuses to hand out a patch that does not apply at the pin:
- * checked against a temporary index holding the pin's tree, so the work tree
- * of the fixture (which sits at t2) is not involved.
- */
-function assertApplies(scratch: string, upstream: UpstreamFixture, patch: string): void {
-	const patchFile = join(scratch, 'candidate.ckpatch');
-	writeFileSync(patchFile, patch, 'utf8');
-	const indexFile = join(scratch, 'pin-index');
-	const env = { GIT_INDEX_FILE: indexFile };
-
-	const read = runGit({ args: ['read-tree', upstream.t1.sha], cwd: upstream.dir, env });
-	if (read.status !== 0) {
-		throw ckError('INTERNAL', `fixture: cannot read the pin tree into a temporary index: ${read.stderr.trim()}`);
-	}
-	const check = runGit({ args: ['apply', '--cached', '--check', patchFile], cwd: upstream.dir, env });
-	if (check.status !== 0) {
-		throw ckError(
-			'INTERNAL',
-			`fixture: the generated patch does not apply at ${upstream.t1.tag}: ${check.stderr.trim()}`,
-			'the fixture patch generator and makeUpstream have drifted apart'
-		);
-	}
-}
-
-/** `src/a/b.ts` -> `src__a__b.ts` (PROP-004 sec. 4, patch file name encoding). */
-function encodePatchName(path: string): string {
-	if (path.includes('__')) {
-		throw ckError('INTERNAL', `fixture: path ${path} cannot be encoded as a patch name`);
-	}
-	return path.split('/').join('__');
-}
-
-function writeJson(absolutePath: string, value: unknown): void {
-	writeBytes(absolutePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function writeBytes(absolutePath: string, content: string | Uint8Array): void {
-	mkdirSync(dirname(absolutePath), { recursive: true });
-	writeFileSync(absolutePath, content);
 }

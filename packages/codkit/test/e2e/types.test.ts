@@ -1,4 +1,8 @@
-// The type of a patch set as the CLI shows it and refuses over it (PROP-016
+// The type of a patch set as the CLI shows it and refuses over it: FEAT-002
+// S63 (schema 1 is refused, and the migrated patch set behaves as before), S64
+// (`codkit types`) and the second half of S65 (a type the registry does not
+// know). The refusals of a capability a type lacks are proved over the generic
+// polygon, in `genericPolygon.test.ts` (PROP-016
 // ##CMD-TYPES, ##TYPE-VERBS-UNIVERSAL, ##TYPE-UNKNOWN, ##TYPE-CAPABILITY-REFUSAL,
 // modules/codkit/PROP-003 ##CFG-SCHEMA-1-IS-REFUSED).
 
@@ -58,14 +62,15 @@ describe('what the configuration refuses', () => {
 	it('refuses a type the registry does not know, naming the identifier and what it does carry', () => {
 		const fixture = makeCliFixture('types-unknown');
 		editConfig(fixture, (config) => {
-			config['type'] = 'theia';
+			config['type'] = 'kettle';
 		});
 		const { run, envelope } = fixture.json(['status']);
 
 		expect(run.status).toBe(2);
 		expect(envelope.errors[0]?.code).toBe('CK-E-TYPE-UNKNOWN');
-		expect(envelope.errors[0]?.message).toContain('theia');
+		expect(envelope.errors[0]?.message).toContain('kettle');
 		expect(envelope.errors[0]?.hint).toContain('vscode');
+		expect(envelope.errors[0]?.hint).toContain('generic');
 	});
 
 	it('refuses a schema-1 configuration naming the two fields to add and nothing else', () => {
