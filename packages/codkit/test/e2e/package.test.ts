@@ -18,6 +18,7 @@ type PackageData = {
 	steps: Step[];
 	materialized: string[];
 	restored: string[];
+	scratchRestored: string[];
 	stamps: Record<string, string>;
 	stampsFromEnvironment: string[];
 	commands: string[];
@@ -68,6 +69,7 @@ describe('codkit package', () => {
 			'package build',
 			'package distributable',
 			'outputs',
+			'scratch restore',
 			'restore'
 		]);
 		expect(report.steps.every((step) => step.state === 'ok')).toBe(true);
@@ -93,6 +95,42 @@ describe('codkit package', () => {
 		expect(manifestInTree()).toBe(manifestAtPin());
 		expect(existsSync(fixture.treePath('manifest.overrides.json'))).toBe(true);
 		expect(fixture.run(['status']).status).toBe(0);
+	});
+
+	it('puts back the tracked file the packager rewrote in passing', () => {
+		// ##TYPE-PACKAGE-SCRATCH: the packager of the fixture bumps the version in
+		// the tree's own manifest, the way a real one edits a manifest it bundles.
+		// Nobody asked for those bytes, so the run returns them and `status` is
+		// clean afterwards - the previous test would already have refused over a
+		// dirty tree if it did not.
+		removeArtifacts();
+		const atTip = readFileSync(fixture.treePath('package.json'), 'utf8');
+		const { run, envelope } = fixture.json(['package']);
+
+		expect(run.status).toBe(0);
+		const report = data(envelope);
+		expect(report.scratchRestored).toEqual(['package.json']);
+		expect(readFileSync(fixture.treePath('package.json'), 'utf8')).toBe(atTip);
+		expect(run.stderr).toContain('package scratch restore: ok (package.json)');
+		expect(fixture.run(['status']).status).toBe(0);
+	});
+
+	it('puts the residue back even when the packaging fails, and even under --keep-overlay', () => {
+		removeArtifacts();
+		const atTip = readFileSync(fixture.treePath('package.json'), 'utf8');
+
+		const failed = fixture.json(['package'], { STUB_PACKAGE_MODE: 'fail-build' });
+		expect(failed.run.status).toBe(1);
+		expect(data(failed.envelope).scratchRestored).toEqual(['package.json']);
+		expect(readFileSync(fixture.treePath('package.json'), 'utf8')).toBe(atTip);
+
+		const kept = fixture.json(['package', '--keep-overlay']);
+		expect(kept.run.status).toBe(0);
+		// The overlay stays for the hand check; the residue of the packager does not.
+		expect(data(kept.envelope).restored).toEqual([]);
+		expect(data(kept.envelope).scratchRestored).toEqual(['package.json']);
+		expect(readFileSync(fixture.treePath('package.json'), 'utf8')).toBe(atTip);
+		expect(fixture.run(['load', '--fresh']).status).toBe(0);
 	});
 
 	it('keeps a stamp the operator exported and hands the packager that value', () => {

@@ -61,6 +61,17 @@ export const PACKAGE_OUTPUTS: readonly string[] = [];
 export const PACKAGE_DISTRIBUTABLE: readonly BuildCommand[] = [];
 
 /**
+ * ##VSCODE-PACKAGE-SCRATCH: the bundling of a built-in add-on of this family
+ * rewrites the add-on's own manifest in place - the build kind, the version,
+ * the pre-release flag - so a successful package run leaves a tracked file of
+ * the upstream changed and an otherwise clean tree dirty. The manifests are
+ * the residue this family is known to leave; the pattern is the shape of them
+ * rather than the name of one add-on, because which add-ons a distribution
+ * bundles is the distribution's business and not the type's.
+ */
+export const PACKAGE_SCRATCH: readonly string[] = ['extensions/*/package.json'];
+
+/**
  * ##BUILD-COMMIT-COMES-FROM-THE-TREE-HEAD: a managed tree is a linked worktree,
  * so the packaging step cannot read `.git/HEAD` as a directory and has to be
  * told the commit; without it the packaged product carries no `commit` and the
@@ -141,6 +152,7 @@ export function makeBuild(config: VscodeTypeConfig): BuildArea {
 		packageDistributable: PACKAGE_DISTRIBUTABLE,
 		packageStamps: packageStampsOf(config.quality),
 		packageOutputs: PACKAGE_OUTPUTS,
+		packageScratch: PACKAGE_SCRATCH,
 		defaultChannels: DEFAULT_CHANNELS,
 		watchProfilePath: WATCH_PROFILE_PATH,
 		foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS

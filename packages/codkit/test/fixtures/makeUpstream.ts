@@ -313,6 +313,8 @@ const STUB_PACKAGE = `#!/usr/bin/env node
 // what \`codkit package\` promises to have done before it runs - the overlay
 // target materialized, the stamps of the type in the environment - and writes a
 // file into every declared package output, so the command has something to find.
+// The build half also rewrites the tree's own manifest, the way a real packager
+// of a family edits a tracked file in passing.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -326,6 +328,17 @@ if (manifest.displayName !== 'Fixture PatchSet') {
 	console.error(half + ': the overlay target was not materialized before the package build');
 	process.exit(1);
 }
+
+// The side effect a real packager of a family has: it bumps a version in a
+// tracked manifest of the upstream while it packages, and nobody asked for the
+// edit. It happens before the failure below, because a run that dies halfway
+// leaves the same residue behind (PROP-016 ##TYPE-PACKAGE-SCRATCH).
+if (half === 'build') {
+	const own = JSON.parse(readFileSync('package.json', 'utf8'));
+	own.version = '1.0.0-package';
+	writeFileSync('package.json', JSON.stringify(own, null, '\\t') + '\\n', 'utf8');
+}
+
 if (process.env.STUB_PACKAGE_MODE === 'fail-' + half) {
 	console.error(half + ': fixture packaging failed');
 	process.exit(3);

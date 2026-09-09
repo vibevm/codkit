@@ -162,6 +162,10 @@ export function makeBuild(config) {
         packageBuild: packageBuildOf(config.applicationRoot),
         packageDistributable: packageDistributableOf(config.applicationRoot, config.packageScript),
         packageOutputs: packageOutputsOf(config.applicationRoot),
+        // ##THEIA-PACKAGE-SCRATCH: neither half of the packaging of this family
+        // edits a tracked file of the tree in place - both write into the
+        // application's own build directories - so there is nothing to put back.
+        packageScratch: [],
         // ##THEIA-NO-STAMPS: nothing is stamped at build time in this family -
         // no sha, no date, no quality channel. What is baked into `src-gen/` is
         // the declared configuration and the extension inventory, and a product

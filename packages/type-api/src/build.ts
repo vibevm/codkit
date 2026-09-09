@@ -69,6 +69,21 @@ export type BuildArea = {
 	 */
 	readonly packageOutputs: readonly string[];
 	/**
+	 * Paths inside the tree that the packaging above rewrites as a side effect
+	 * of running - a manifest whose version it bumps, a generated file it
+	 * refreshes - as the same kind of patterns as `packageOutputs`.
+	 *
+	 * They are not artifacts and nobody asked for them: they are bytes of the
+	 * upstream that the packager edited in place, and after a package run they
+	 * are what makes an otherwise clean tree dirty. `codkit package` returns
+	 * exactly these paths to the tip of the loaded tree once the packaging is
+	 * over, and `codkit status` names them as packaging residue rather than as
+	 * work to extract (`spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-SCRATCH`).
+	 * A family whose packager writes nothing but its artifacts answers with an
+	 * empty list.
+	 */
+	readonly packageScratch: readonly string[];
+	/**
 	 * The compile channels a run that names none starts: `codkit build up`
 	 * without `--channel`, and the single pass of `ci --profile build`.
 	 *

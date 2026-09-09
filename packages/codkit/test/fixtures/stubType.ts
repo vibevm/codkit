@@ -158,6 +158,14 @@ export const PACKAGE_DISTRIBUTABLE: readonly BuildCommand[] = [
 export const PACKAGE_OUTPUTS: readonly string[] = ['.build/package/', '.build/app-*.tar'];
 
 /**
+ * What the packager of this layout rewrites in place while it runs: the
+ * manifest of the tree, whose version it bumps. It is a tracked file of the
+ * pseudo-upstream and nobody asked for the edit, so the package run has to put
+ * it back (PROP-016 ##TYPE-PACKAGE-SCRATCH).
+ */
+export const PACKAGE_SCRATCH: readonly string[] = ['package.json'];
+
+/**
  * The channels a run that names none starts. The stub's profile declares four,
  * and the two below are the ones a bare `build up` and the single pass of the
  * build profile take.
@@ -291,6 +299,7 @@ const base: ProjectType = {
 		packageBuild: PACKAGE_BUILD,
 		packageDistributable: PACKAGE_DISTRIBUTABLE,
 		packageOutputs: PACKAGE_OUTPUTS,
+		packageScratch: PACKAGE_SCRATCH,
 		packageStamps: [
 			{ name: 'BUILD_SOURCE_VERSION', source: 'tree-head' },
 			{ name: 'BUILD_QUALITY', source: 'pin-tag' }

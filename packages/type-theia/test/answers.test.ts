@@ -280,6 +280,12 @@ describe('build', () => {
 		expect(makeBuild(CONFIG).packageOutputs).toEqual([`${CONFIG.applicationRoot}/dist/`]);
 	});
 
+	it('leaves no tracked file of the tree rewritten behind it', () => {
+		// ##THEIA-PACKAGE-SCRATCH: both halves write into the application's own
+		// build directories, so this family has no packaging residue to put back.
+		expect(makeBuild(CONFIG).packageScratch).toEqual([]);
+	});
+
 	it('rejects an empty packaging script rather than running npm run with no name', () => {
 		expect(configSchema.safeParse({ ...CONFIG, packageScript: '' }).success).toBe(false);
 		expect(configSchema.safeParse({ ...CONFIG, packageScript: 'package:linux' }).success).toBe(true);

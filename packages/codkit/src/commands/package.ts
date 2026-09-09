@@ -79,6 +79,7 @@ function dataOf(result: PackageResult): JsonValue {
 		steps: result.steps.map((step) => ({ name: step.name, state: step.state, detail: step.detail })),
 		materialized: [...result.materialized],
 		restored: [...result.restored],
+		scratchRestored: [...result.scratchRestored],
 		stamps: { ...result.stamps },
 		stampsFromEnvironment: [...result.stampsFromEnvironment],
 		commands: [...result.commands],

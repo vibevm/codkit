@@ -166,6 +166,40 @@ describe('codkit status: a materialized overlay target', () => {
 	});
 });
 
+describe('codkit status: the residue of a packaging run', () => {
+	it('names the discard rather than save over a path the packager rewrites', () => {
+		// The defect: a package run that did not reach its own restore leaves a
+		// tracked file of the upstream rewritten, and `status` advised `save` -
+		// which would carry a build side effect into the delta
+		// (PROP-016 ##TYPE-PACKAGE-SCRATCH).
+		const fixture = makeCliFixture('status-package-scratch');
+		expect(fixture.run(['load']).status).toBe(0);
+		const manifest = fixture.treePath('package.json');
+		const atTip = readFileSync(manifest, 'utf8');
+		writeFileSync(manifest, atTip.replace('"version": "1.0.0"', '"version": "1.0.0-package"'), 'utf8');
+
+		const outcome = fixture.json(['status']);
+
+		expect(outcome.run.status).toBe(1);
+		const upstream = section(outcome.envelope.data, 'upstream');
+		expect(upstream['changed']).toBe(1);
+		expect(upstream['packagingScratch']).toEqual(['package.json']);
+		const advice = outcome.envelope.messages
+			.map((message) => message.text)
+			.filter((text) => text.includes('codkit load --fresh --discard'));
+		expect(advice).toHaveLength(1);
+		expect(advice[0]).toContain('package.json is a path the packager of the project type rewrites');
+		expect(outcome.envelope.messages.some((message) => message.text.startsWith('run codkit save'))).toBe(false);
+
+		// A real edit beside it brings the ordinary advice back: the discard is
+		// only right while the residue is the only thing there is.
+		writeFileSync(fixture.treePath(EXAMPLE_PART_PATH), `${readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')}// edited\n`, 'utf8');
+		const second = fixture.json(['status']);
+		expect(section(second.envelope.data, 'upstream')['packagingScratch']).toEqual(['package.json']);
+		expect(second.envelope.messages.some((message) => message.text.startsWith('run codkit save'))).toBe(true);
+	});
+});
+
 describe('codkit status: the other direction of truth', () => {
 	it('warns when delta/ is edited in patchset while the tree is clean', () => {
 		const fixture = makeCliFixture('status-patchset-side');

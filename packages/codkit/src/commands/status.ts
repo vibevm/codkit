@@ -40,6 +40,7 @@ import type { OwnedRoot } from '../lib/ownedRoots.ts';
 import type { OwnSideClass, OwnSideKind } from '../lib/ownSides.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { listPendingHeaders } from '../lib/pendingHeader.ts';
+import { matchesTreePattern } from '../lib/packagePaths.ts';
 import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId } from '../lib/syncEngine.ts';
 import { readSyncTransaction } from '../lib/syncTransaction.ts';
 import { classifyTargets, loadedFrom, loadedFromLabel, movedArtifactsOf } from '../lib/syncMerge.ts';
@@ -227,6 +228,19 @@ async function run(ctx: CommandContext): Promise<number> {
 	// file - it is an overlay target, not a patch target - and the command that
 	// returns it is `load --fresh`, so the advice below has to say so.
 	const materializedTargets = knownMaterializations(ctx, config, tree, upstream);
+	// 3b. And the other half of the same question: the paths the packager of the
+	// project type rewrites as a side effect of packaging (PROP-016
+	// ##TYPE-PACKAGE-SCRATCH). `codkit package` returns them itself, so what is
+	// left here is the residue of a run that died before its restore - and the
+	// step that returns it gives up working-tree bytes, which `save` would
+	// instead extract into the delta.
+	const packagingScratch = upstream
+		.map((file) => file.path)
+		.filter(
+			(path) =>
+				!materializedTargets.includes(path) &&
+				requireProjectType(ctx).build.packageScratch.some((pattern) => matchesTreePattern(path, pattern))
+		);
 	const unextracted =
 		upstream.length + own.filter((entry) => entry.kind !== 'patchset-edited').length + extensionDrift.length + treeCommits.commits.length;
 	ctx.out.setData({
@@ -251,14 +265,15 @@ async function run(ctx: CommandContext): Promise<number> {
 			markerBlocks: blocks,
 			markerErrors,
 			files: upstream.map((file) => ({ path: file.path, status: file.status, blocks: file.blocks, markerErrors: file.markerErrors })),
-			materializedOverlayTargets: [...materializedTargets]
+			materializedOverlayTargets: [...materializedTargets],
+			packagingScratch: [...packagingScratch]
 		},
 		patchset: { uncommittedDelta: [...uncommitted] },
 		pendingHeaders: pending.map((entry) => entry.header.id)
 	});
 
 	if (unextracted > 0) {
-		ctx.out.info(nextStepLine(unextracted, upstream, materializedTargets));
+		ctx.out.info(nextStepLine(unextracted, upstream, materializedTargets, packagingScratch));
 	}
 	// A stranded materialization raises the code without joining `unextracted`:
 	// there is something to remove, but `save` is not what removes it, and the
@@ -269,20 +284,42 @@ async function run(ctx: CommandContext): Promise<number> {
 /**
  * What to run about the work this tree carries.
  *
- * `save` is the answer for an edit somebody made, and the wrong answer for a
- * materialized overlay target: that file is not a patch target, `save` refuses
- * it or extracts nothing, and the state was written by `overlay apply` or by
- * `codkit package --keep-overlay`. When the materializations are the ONLY thing
- * this tree carries, the recipe is the one that withdraws them.
+ * `save` is the answer for an edit somebody made, and the wrong answer twice
+ * over. A materialized overlay target is not a patch target: `save` refuses it
+ * or extracts nothing, and the state was written by `overlay apply` or by
+ * `codkit package --keep-overlay`. A path the packager of the type rewrites in
+ * passing is not somebody's work either - it is the residue of a packaging run
+ * that did not reach its own restore - and extracting it would carry a bumped
+ * version or a build flag into the delta, which is exactly what the first real
+ * packaging run of a fork was advised to do.
+ *
+ * Both recipes stand only while such paths are the ONLY thing the tree carries,
+ * and the residue's one names `--discard`, because those bytes are a real edit
+ * of a tracked file and nothing but the discard gives them up. So the line says
+ * which paths it is talking about and leaves `save` named for the case where
+ * the reader, not the packager, wrote them.
  */
-function nextStepLine(unextracted: number, upstream: readonly UpstreamFile[], materialized: readonly string[]): string {
-	const onlyMaterialized = materialized.length > 0 && materialized.length === upstream.length && unextracted === upstream.length;
-	if (!onlyMaterialized) {
+function nextStepLine(
+	unextracted: number,
+	upstream: readonly UpstreamFile[],
+	materialized: readonly string[],
+	scratch: readonly string[]
+): string {
+	const known = materialized.length + scratch.length;
+	const onlyKnown = known > 0 && known === upstream.length && unextracted === upstream.length;
+	if (!onlyKnown) {
 		return 'run codkit save to extract the changes of the fork tree into patchset';
 	}
+	if (scratch.length === 0) {
+		return (
+			`${materialized.join(', ')} carries the exact overlay materialization codkit itself writes, so codkit save is not what returns it; ` +
+			'run codkit load --fresh (codkit package --keep-overlay and codkit overlay apply are what leave this state behind)'
+		);
+	}
 	return (
-		`${materialized.join(', ')} carries the exact overlay materialization codkit itself writes, so codkit save is not what returns it; ` +
-		'run codkit load --fresh (codkit package --keep-overlay and codkit overlay apply are what leave this state behind)'
+		`${scratch.join(', ')} is a path the packager of the project type rewrites while it packages, so codkit save would extract a build ` +
+		'side effect into patchset; run codkit load --fresh --discard to give those bytes up (codkit package returns them itself unless the ' +
+		'run was interrupted) - or codkit save, if you edited the file yourself'
 	);
 }
 

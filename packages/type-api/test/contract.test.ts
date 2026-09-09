@@ -32,6 +32,7 @@ function bareType(overrides: Partial<ProjectType> = {}): ProjectType {
 			packageDistributable: [],
 			packageStamps: [],
 			packageOutputs: [],
+			packageScratch: [],
 			defaultChannels: [],
 			watchProfilePath: 'config/build-watch.json',
 			foreignWatcherMarkers: []

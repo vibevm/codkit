@@ -103,6 +103,7 @@ export function makeBuild(config: GenericTypeConfig): BuildArea {
 		packageDistributable: [],
 		packageStamps: [],
 		packageOutputs: [],
+		packageScratch: [],
 		defaultChannels: defaultChannelsOf(commands.compile),
 		watchProfilePath: null,
 		...(watchProfile === undefined ? {} : { watchProfile }),

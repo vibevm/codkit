@@ -7,11 +7,12 @@
 // The rollback itself is exercised over a real tree with a failing packager.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
 import { Output } from '../../src/lib/jsonOut.ts';
-import { packageOutputPaths, packageStamps, packageStepPlan, runPackage } from '../../src/lib/packageEngine.ts';
+import { packageStamps, packageStepPlan, runPackage } from '../../src/lib/packageEngine.ts';
+import { packageOutputPaths, packageScratchPaths } from '../../src/lib/packagePaths.ts';
 import type { PackageCommand } from '../../src/lib/packageEngine.ts';
 import { stubType } from '../fixtures/stubType.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
@@ -32,18 +33,23 @@ describe('the plan of one package run', () => {
 			'package build',
 			'package distributable',
 			'outputs',
+			'scratch restore',
 			'restore'
 		]);
 	});
 
 	it('drops the restore under --keep-overlay and the type build under --skip-type-build', () => {
-		expect(packageStepPlan(BOTH_HALVES, { keepOverlay: true, skipTypeBuild: false })).not.toContain('restore');
+		const kept = packageStepPlan(BOTH_HALVES, { keepOverlay: true, skipTypeBuild: false });
+		expect(kept).not.toContain('restore');
+		// The residue of the packager is nobody's overlay: the flag never keeps it.
+		expect(kept).toContain('scratch restore');
 		expect(packageStepPlan(BOTH_HALVES, { keepOverlay: false, skipTypeBuild: true })).toEqual([
 			'drift guard',
 			'overlay apply',
 			'stamps',
 			'package distributable',
 			'outputs',
+			'scratch restore',
 			'restore'
 		]);
 	});
@@ -58,8 +64,13 @@ describe('the plan of one package run', () => {
 			'overlay apply',
 			'stamps',
 			'outputs',
+			'scratch restore',
 			'restore'
 		]);
+		// A type that names no scratch path has no such step at all.
+		expect(
+			packageStepPlan(stubType({ build: { ...BOTH_HALVES.build, packageScratch: [] } }), { keepOverlay: false, skipTypeBuild: false })
+		).not.toContain('scratch restore');
 	});
 });
 
@@ -172,6 +183,37 @@ describe('the outputs the type names', () => {
 	});
 });
 
+describe('the scratch paths the packager rewrites', () => {
+	it('names only the declared paths the run actually changed', () => {
+		const treeDir = makeTempRoot('package-scratch');
+		writeGitFixture(treeDir, ['package.json', 'addons/one/package.json', 'addons/two/package.json', 'resources/icon.bin']);
+		writeFileSync(join(treeDir, 'package.json'), '{"version":"1.0.0-package"}\n', 'utf8');
+		writeFileSync(join(treeDir, 'addons', 'one', 'package.json'), '{"bumped":true}\n', 'utf8');
+		writeFileSync(join(treeDir, 'resources', 'icon.bin'), 'changed', 'utf8');
+		const warned: string[] = [];
+		const found = (patterns: readonly string[]): readonly string[] => packageScratchPaths(treeDir, patterns, (text) => warned.push(text));
+
+		// The wildcard matches the changed manifest and not the untouched one.
+		expect(found(['addons/*/package.json'])).toEqual(['addons/one/package.json']);
+		// A pattern nothing changed under yields nothing at all.
+		expect(found(['addons/two/package.json'])).toEqual([]);
+		// A wildcard never crosses a directory boundary.
+		expect(found(['*/package.json'])).toEqual([]);
+		expect(found(['package.json', 'resources/'])).toEqual(['package.json', 'resources/icon.bin']);
+		expect(warned).toEqual([]);
+	});
+
+	it('skips a pattern that would leave the tree, and says so', () => {
+		const treeDir = makeTempRoot('package-scratch-escape');
+		writeGitFixture(treeDir, ['package.json']);
+		writeFileSync(join(treeDir, 'package.json'), '{"version":"1.0.0-package"}\n', 'utf8');
+		const warned: string[] = [];
+
+		expect(packageScratchPaths(treeDir, ['../beside-the-tree/', 'package.json'], (text) => warned.push(text))).toEqual(['package.json']);
+		expect(warned[0]).toContain('../beside-the-tree/');
+	});
+});
+
 describe('a packager that fails', () => {
 	it('leaves the overlay target back at the pin', () => {
 		const fixture = makeSyncFixture('package-rollback');
@@ -209,6 +251,26 @@ describe('a packager that fails', () => {
 		expect(existsSync(join(fixture.treeDir, 'manifest.overrides.json'))).toBe(true);
 	});
 });
+
+/** A git repository whose tip carries the named files, one line each. */
+function writeGitFixture(treeDir: string, files: readonly string[]): void {
+	runGit({ args: ['init', '--quiet', '-b', 'main', '.'], cwd: treeDir });
+	for (const relative of files) {
+		mkdirSync(dirname(join(treeDir, relative)), { recursive: true });
+		writeFileSync(join(treeDir, relative), 'at the tip\n', 'utf8');
+	}
+	runGit({ args: ['add', '--all'], cwd: treeDir });
+	runGit({
+		args: ['commit', '--quiet', '-m', 'tip'],
+		cwd: treeDir,
+		env: {
+			GIT_AUTHOR_NAME: 'Fixture',
+			GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+			GIT_COMMITTER_NAME: 'Fixture',
+			GIT_COMMITTER_EMAIL: 'fixture@example.invalid'
+		}
+	});
+}
 
 function silentOutput(): Output {
 	return new Output({

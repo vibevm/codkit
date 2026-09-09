@@ -29,8 +29,6 @@
 // never a side effect of packaging.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 import type { BuildCommand, BuildStamp, ProjectType } from '@codkit/type-api';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import type { CodkitConfig } from './configFile.ts';
@@ -41,6 +39,7 @@ import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/ove
 import type { Overlay } from './layers/overlay.ts';
 import { materializerOf } from './layers/ownExtensions.ts';
 import { ownedRootsOf } from './ownedRoots.ts';
+import { packageOutputPaths, packageScratchPaths } from './packagePaths.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId, restoreToTip } from './syncEngine.ts';
 import { revParse } from './treeCache.ts';
@@ -54,7 +53,7 @@ const FAILURE_TAIL_LINES = 20;
 
 /** The steps of one run, in the order they happen. */
 export type PackageStepName =
-	'drift guard' | 'overlay apply' | 'stamps' | 'package build' | 'package distributable' | 'outputs' | 'restore';
+	'drift guard' | 'overlay apply' | 'stamps' | 'package build' | 'package distributable' | 'outputs' | 'scratch restore' | 'restore';
 
 export type PackageStep = {
 	readonly name: PackageStepName;
@@ -95,6 +94,12 @@ export function packageStepPlan(type: ProjectType, flags: PackageFlags): readonl
 		steps.push('package distributable');
 	}
 	steps.push('outputs');
+	// The residue of the packager is not the overlay, so `--keep-overlay` does
+	// not keep it: nobody asked for those bytes, and the flag was asked to keep
+	// the materialization for a hand check of the package.
+	if (type.build.packageScratch.length > 0) {
+		steps.push('scratch restore');
+	}
 	if (!flags.keepOverlay) {
 		steps.push('restore');
 	}
@@ -142,6 +147,8 @@ export type PackageResult = {
 	readonly materialized: readonly string[];
 	/** Of those, the ones it put back; empty under `--keep-overlay`. */
 	readonly restored: readonly string[];
+	/** Paths the packager rewrote as a side effect and this run put back. */
+	readonly scratchRestored: readonly string[];
 	readonly stamps: Readonly<Record<string, string>>;
 	/** Of those, the names the operator's own environment already carried. */
 	readonly stampsFromEnvironment: readonly string[];
@@ -157,6 +164,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 	const materialized: string[] = [];
 	const commands: string[] = [];
 	let restored: readonly string[] = [];
+	let scratchRestored: readonly string[] = [];
 	let outputs: readonly string[] = [];
 	const record = (name: PackageStepName, state: PackageStep['state'], detail: string): void => {
 		steps.push({ name, state, detail });
@@ -179,6 +187,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 			steps,
 			materialized,
 			restored,
+			scratchRestored,
 			stamps: stampValues,
 			stampsFromEnvironment,
 			commands,
@@ -238,6 +247,14 @@ export function runPackage(options: PackageOptions): PackageResult {
 			}
 		}
 	} finally {
+		// The packager's own leftovers first, the overlay after it: the overlay
+		// restore is what rewrites the dev channel, and it has to be the last
+		// thing that touches the tree.
+		const scratch = restoreScratch(options);
+		scratchRestored = scratch.paths;
+		if (type.build.packageScratch.length > 0) {
+			record('scratch restore', 'ok', scratch.detail);
+		}
 		restored = restoreOverlayTargets(options, overlays, context, materialized);
 		if (options.flags.keepOverlay) {
 			out.info(`keep-overlay: ${materialized.length} materialized target(s) stay in the fork tree; codkit load --fresh returns them`);
@@ -245,7 +262,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 			record('restore', 'ok', restored.length === 0 ? 'this run materialized nothing to put back' : restored.join(', '));
 		}
 	}
-	return { exitCode, steps, materialized, restored, stamps: stampValues, stampsFromEnvironment, commands, outputs };
+	return { exitCode, steps, materialized, restored, scratchRestored, stamps: stampValues, stampsFromEnvironment, commands, outputs };
 }
 
 /** What the outputs step says when it found something, and when it did not. */
@@ -357,6 +374,29 @@ function restoreOverlayTargets(
 }
 
 /**
+ * Put back the paths the packager rewrote as a side effect of running.
+ *
+ * Only the paths the type named, and only to the tip of the loaded tree - the
+ * same `git checkout HEAD --` the overlay restore uses. The guard at the start
+ * of the run proved the tree carried no unextracted work, so a named path that
+ * differs now differs because the packaging changed it; a path nothing changed
+ * is not touched and is not reported. Untracked files are left alone: removing
+ * a file nobody tracked is what `load --fresh` does, and it is not a side
+ * effect of packaging.
+ */
+function restoreScratch(options: PackageOptions): { readonly paths: readonly string[]; readonly detail: string } {
+	const tree = options.resolution.path;
+	const paths = packageScratchPaths(tree, options.type.build.packageScratch, (text) => {
+		options.out.warn(text);
+	});
+	if (paths.length === 0) {
+		return { paths, detail: 'the packaging changed none of the paths the project type names' };
+	}
+	restoreToTip(tree, paths);
+	return { paths, detail: paths.join(', ') };
+}
+
+/**
  * The environment the family asks for, and where each value came from.
  *
  * A name the operator already exported keeps the operator's value
@@ -451,71 +491,6 @@ function runCommands(
 		};
 	}
 	return { state: 'ok', detail: `${build.length} command(s) passed`, error: null, exitCode: EXIT_OK };
-}
-
-/** The declared outputs that exist in the tree, in pattern order then path order. */
-export function packageOutputPaths(treeDir: string, patterns: readonly string[], onWarn: (text: string) => void): readonly string[] {
-	const found: string[] = [];
-	for (const pattern of patterns) {
-		const directoryOnly = pattern.endsWith('/');
-		const segments = (directoryOnly ? pattern.slice(0, -1) : pattern).split('/');
-		if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
-			onWarn(`the project type names an unusable package output pattern and it was skipped: ${pattern}`);
-			continue;
-		}
-		for (const relative of expand(treeDir, segments)) {
-			const absolute = join(treeDir, ...relative.split('/'));
-			const isDirectory = statSync(absolute).isDirectory();
-			if (directoryOnly && !isDirectory) {
-				continue;
-			}
-			const shown = isDirectory ? `${relative}/` : relative;
-			if (!found.includes(shown)) {
-				found.push(shown);
-			}
-		}
-	}
-	return found;
-}
-
-/** Every existing tree-relative path the segments match; `*` never crosses a `/`. */
-function expand(treeDir: string, segments: readonly string[]): readonly string[] {
-	let matches: string[] = [''];
-	for (const segment of segments) {
-		const next: string[] = [];
-		for (const prefix of matches) {
-			const parent = prefix === '' ? treeDir : join(treeDir, ...prefix.split('/'));
-			if (!segment.includes('*')) {
-				const candidate = prefix === '' ? segment : `${prefix}/${segment}`;
-				if (existsSync(join(parent, segment))) {
-					next.push(candidate);
-				}
-				continue;
-			}
-			const expression = segmentExpression(segment);
-			let entries: string[];
-			try {
-				entries = readdirSync(parent).sort();
-			} catch {
-				continue;
-			}
-			for (const entry of entries) {
-				if (expression.test(entry)) {
-					next.push(prefix === '' ? entry : `${prefix}/${entry}`);
-				}
-			}
-		}
-		matches = next;
-	}
-	return matches;
-}
-
-function segmentExpression(segment: string): RegExp {
-	const source = segment
-		.split('*')
-		.map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
-		.join('[^/]*');
-	return new RegExp(`^${source}$`, 'u');
 }
 
 function defaultPackageCommandRunner(command: PackageCommand): PackageCommandResult {

@@ -28,13 +28,12 @@
 // and `--discard` is not a flag of this command - giving up somebody's edits is
 // never a side effect of packaging.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
 import { driftDirty } from './driftGuard.js';
 import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/overlay.js';
 import { materializerOf } from './layers/ownExtensions.js';
 import { ownedRootsOf } from './ownedRoots.js';
+import { packageOutputPaths, packageScratchPaths } from './packagePaths.js';
 import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId, restoreToTip } from './syncEngine.js';
 import { revParse } from './treeCache.js';
 import { treeHeadError } from './treeCommits.js';
@@ -60,6 +59,12 @@ export function packageStepPlan(type, flags) {
         steps.push('package distributable');
     }
     steps.push('outputs');
+    // The residue of the packager is not the overlay, so `--keep-overlay` does
+    // not keep it: nobody asked for those bytes, and the flag was asked to keep
+    // the materialization for a hand check of the package.
+    if (type.build.packageScratch.length > 0) {
+        steps.push('scratch restore');
+    }
     if (!flags.keepOverlay) {
         steps.push('restore');
     }
@@ -73,6 +78,7 @@ export function runPackage(options) {
     const materialized = [];
     const commands = [];
     let restored = [];
+    let scratchRestored = [];
     let outputs = [];
     const record = (name, state, detail) => {
         steps.push({ name, state, detail });
@@ -93,6 +99,7 @@ export function runPackage(options) {
             steps,
             materialized,
             restored,
+            scratchRestored,
             stamps: stampValues,
             stampsFromEnvironment,
             commands,
@@ -145,6 +152,14 @@ export function runPackage(options) {
         }
     }
     finally {
+        // The packager's own leftovers first, the overlay after it: the overlay
+        // restore is what rewrites the dev channel, and it has to be the last
+        // thing that touches the tree.
+        const scratch = restoreScratch(options);
+        scratchRestored = scratch.paths;
+        if (type.build.packageScratch.length > 0) {
+            record('scratch restore', 'ok', scratch.detail);
+        }
         restored = restoreOverlayTargets(options, overlays, context, materialized);
         if (options.flags.keepOverlay) {
             out.info(`keep-overlay: ${materialized.length} materialized target(s) stay in the fork tree; codkit load --fresh returns them`);
@@ -153,7 +168,7 @@ export function runPackage(options) {
             record('restore', 'ok', restored.length === 0 ? 'this run materialized nothing to put back' : restored.join(', '));
         }
     }
-    return { exitCode, steps, materialized, restored, stamps: stampValues, stampsFromEnvironment, commands, outputs };
+    return { exitCode, steps, materialized, restored, scratchRestored, stamps: stampValues, stampsFromEnvironment, commands, outputs };
 }
 /** What the outputs step says when it found something, and when it did not. */
 function outputsDetail(type, outputs) {
@@ -241,6 +256,28 @@ function restoreOverlayTargets(options, overlays, context, materialized) {
     return [...materialized];
 }
 /**
+ * Put back the paths the packager rewrote as a side effect of running.
+ *
+ * Only the paths the type named, and only to the tip of the loaded tree - the
+ * same `git checkout HEAD --` the overlay restore uses. The guard at the start
+ * of the run proved the tree carried no unextracted work, so a named path that
+ * differs now differs because the packaging changed it; a path nothing changed
+ * is not touched and is not reported. Untracked files are left alone: removing
+ * a file nobody tracked is what `load --fresh` does, and it is not a side
+ * effect of packaging.
+ */
+function restoreScratch(options) {
+    const tree = options.resolution.path;
+    const paths = packageScratchPaths(tree, options.type.build.packageScratch, (text) => {
+        options.out.warn(text);
+    });
+    if (paths.length === 0) {
+        return { paths, detail: 'the packaging changed none of the paths the project type names' };
+    }
+    restoreToTip(tree, paths);
+    return { paths, detail: paths.join(', ') };
+}
+/**
  * The environment the family asks for, and where each value came from.
  *
  * A name the operator already exported keeps the operator's value
@@ -317,69 +354,6 @@ function runCommands(options, build, stamps, into) {
         };
     }
     return { state: 'ok', detail: `${build.length} command(s) passed`, error: null, exitCode: EXIT_OK };
-}
-/** The declared outputs that exist in the tree, in pattern order then path order. */
-export function packageOutputPaths(treeDir, patterns, onWarn) {
-    const found = [];
-    for (const pattern of patterns) {
-        const directoryOnly = pattern.endsWith('/');
-        const segments = (directoryOnly ? pattern.slice(0, -1) : pattern).split('/');
-        if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
-            onWarn(`the project type names an unusable package output pattern and it was skipped: ${pattern}`);
-            continue;
-        }
-        for (const relative of expand(treeDir, segments)) {
-            const absolute = join(treeDir, ...relative.split('/'));
-            const isDirectory = statSync(absolute).isDirectory();
-            if (directoryOnly && !isDirectory) {
-                continue;
-            }
-            const shown = isDirectory ? `${relative}/` : relative;
-            if (!found.includes(shown)) {
-                found.push(shown);
-            }
-        }
-    }
-    return found;
-}
-/** Every existing tree-relative path the segments match; `*` never crosses a `/`. */
-function expand(treeDir, segments) {
-    let matches = [''];
-    for (const segment of segments) {
-        const next = [];
-        for (const prefix of matches) {
-            const parent = prefix === '' ? treeDir : join(treeDir, ...prefix.split('/'));
-            if (!segment.includes('*')) {
-                const candidate = prefix === '' ? segment : `${prefix}/${segment}`;
-                if (existsSync(join(parent, segment))) {
-                    next.push(candidate);
-                }
-                continue;
-            }
-            const expression = segmentExpression(segment);
-            let entries;
-            try {
-                entries = readdirSync(parent).sort();
-            }
-            catch {
-                continue;
-            }
-            for (const entry of entries) {
-                if (expression.test(entry)) {
-                    next.push(prefix === '' ? entry : `${prefix}/${entry}`);
-                }
-            }
-        }
-        matches = next;
-    }
-    return matches;
-}
-function segmentExpression(segment) {
-    const source = segment
-        .split('*')
-        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
-        .join('[^/]*');
-    return new RegExp(`^${source}$`, 'u');
 }
 function defaultPackageCommandRunner(command) {
     const result = spawnSync(command.command, [...command.args], {

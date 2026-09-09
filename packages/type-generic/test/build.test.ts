@@ -19,6 +19,7 @@ describe('the declared commands', () => {
 		expect(build.packageDistributable).toEqual([]);
 		expect(build.packageStamps).toEqual([]);
 		expect(build.packageOutputs).toEqual([]);
+		expect(build.packageScratch).toEqual([]);
 		expect(build.foreignWatcherMarkers).toEqual([]);
 		expect(build.watchProfilePath).toBeNull();
 		expect(build.watchProfile).toBeUndefined();

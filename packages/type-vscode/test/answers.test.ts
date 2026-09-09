@@ -108,6 +108,13 @@ describe('build and test', () => {
 		expect(build.defaultChannels).toEqual(['transpile', 'typecheck']);
 	});
 
+	it('names the manifests its packager rewrites while it packages', () => {
+		// ##VSCODE-PACKAGE-SCRATCH: the bundling of a built-in add-on edits the
+		// add-on's own manifest in place, so a successful run leaves a tracked
+		// file of the upstream changed until `codkit package` puts it back.
+		expect(build.packageScratch).toEqual(['extensions/*/package.json']);
+	});
+
 	it('names no package output, because its packager writes beside the managed tree', () => {
 		// ##VSCODE-PACKAGE-OUTPUTS: the gulp task of this family writes a sibling
 		// directory of the tree, and the contract keeps the patterns inside it.
