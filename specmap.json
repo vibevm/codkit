@@ -9464,7 +9464,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:a7e1cf8b6eec0b0ed57152b8fe7b2041f94e0bd3d190a7fcb9e6025a3da5a3cf",
+      "content_hash": "sha256:d590cce5322664bd6d34a77efac3b2b3390bb62f00549e37f6fec34cf5a17218",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -9635,7 +9635,7 @@
     },
     {
       "anchor": "packaging",
-      "content_hash": "sha256:2ea3e44dfe9397946351f1824d7375f2072e88ef9dd39682c8cecd200f8dcd20",
+      "content_hash": "sha256:f5e4f2668ae707c1f063bf569c9061b4d62cc227d7ad03d04eb45334028b4419",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "3. Types are packages",
@@ -9680,10 +9680,10 @@
     },
     {
       "anchor": "TYPE-API-STABILITY",
-      "content_hash": "sha256:a6d53de9cbcdff8dc6d2158b13dfa49302b8b44775b952ecec26b7267258ad47",
+      "content_hash": "sha256:bb8f9ad52b74cccae0e844f352f25535f27a70eddd07bcbe20742ad3043bf42c",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "`@codkit/type-api` is the only import a type package may take from the tool; the CLI package imports the type only through the interface. A change of the interface is a change of every official type in the same commit of the workspace (the workspace is one repository precisely so that this stays atomic). @status:spec/plan",
+      "heading": "`@codkit/type-api` is the only import a type package may take from the tool; the CLI package imports the type only through the interface. A change of the interface is a change of every official type in the same commit of the workspace (the workspace is one repository precisely so that this stays atomic). The contract package is not purely declarative: it carries the codec of its own payload format (PNG, the language of `ImagePayload`) and the shape of a refusal, because one implementation must serve the engine and every type alike; a container codec of one upstream family (ICNS, ICO) belongs to that family's type. Decision of 2026-09-09 after the extraction; a fourth package for shared pixels was considered and rejected as a package for one file. @status:spec/plan",
       "line": 35,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-API-STABILITY"
     },
