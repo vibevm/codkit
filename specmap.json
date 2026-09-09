@@ -10031,6 +10031,501 @@
     },
     {
       "anchor": "root",
+      "content_hash": "sha256:87b37e039526a666f151665fcc6ba7583e46d469f79e88d38f027843fb95cf98",
+      "doc_path": "modules/theia/PROP-001",
+      "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
+      "heading": "theia PROP-001: The `theia` project type - overview and module map",
+      "line": 3,
+      "uri": "spec://codkit/modules/theia/PROP-001#root"
+    },
+    {
+      "anchor": "THEIA-TYPE-IS-AN-ANSWER-SET",
+      "content_hash": "sha256:5d9da1c6d88c4e2b54d590fa1281a0a95ac864ee110314d82d302d031e1803c7",
+      "doc_path": "modules/theia/PROP-001",
+      "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
+      "heading": "`theia` is the project type (`spec://codkit/modules/codkit/PROP-016#TYPE-TERM`) that carries the tool's knowledge of the Eclipse Theia monorepo as an upstream: an npm workspace of packages on Node 24, built by lerna and tsc project references and bundled by esbuild, composed at build time from one application `package.json` by inversify container modules. It is the second real type and the proof of the contract: it answers the nine questions with different shapes than the `vscode` type, and some of its answers are absences. @status:spec/plan",
+      "line": 5,
+      "uri": "spec://codkit/modules/theia/PROP-001#THEIA-TYPE-IS-AN-ANSWER-SET"
+    },
+    {
+      "anchor": "THEIA-TYPE-FROM-FACTS",
+      "content_hash": "sha256:06d934c203523f265664766314761324d6aecbb5bf5df7548a6395f8cb0a1e90",
+      "doc_path": "modules/theia/PROP-001",
+      "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
+      "heading": "Every fact of this module is derived from `research/theia-facts-1.75.0/` (upstream master `c8926e4d`, 2026-09-08, version 1.75.0) and cites its file; a fact the spike did not establish is marked as an open question, not guessed (`research/theia-facts-1.75.0/open-questions.md`). @status:spec/plan",
+      "line": 6,
+      "uri": "spec://codkit/modules/theia/PROP-001#THEIA-TYPE-FROM-FACTS"
+    },
+    {
+      "anchor": "map",
+      "content_hash": "sha256:10a7757cdaa630fb5dc4be8178baf6c2f391cd5c56200af1a22b0db85c926fa3",
+      "doc_path": "modules/theia/PROP-001",
+      "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
+      "heading": "1. Module map",
+      "line": 7,
+      "uri": "spec://codkit/modules/theia/PROP-001#map"
+    },
+    {
+      "anchor": "THEIA-MODULE-MAP",
+      "content_hash": "sha256:6c9b1e70a1b2d9737ce34ebe767c75fe2429128f00e4850a656cd0aa22584a79",
+      "doc_path": "modules/theia/PROP-001",
+      "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
+      "heading": "PROP-001 the type and this map; PROP-002 upstream identity and tree layout; PROP-003 layers - the application manifest overlay, the own package, service overrides by `rebind`, no entry-module graft; PROP-004 build, watch, lint, test and packaging; PROP-005 upgrade advisory, hygiene and conventions; PROP-006 the absences - no brand images, no runtime library, no build-time stamps, no upstream packaging - and what a product supplies instead. @status:spec/plan",
+      "line": 8,
+      "uri": "spec://codkit/modules/theia/PROP-001#THEIA-MODULE-MAP"
+    },
+    {
+      "anchor": "capabilities",
+      "content_hash": "sha256:55fab79e78dd4c43054a3b239b600dc0bbb9f67432a7e81f8ec0010810a10eaf",
+      "doc_path": "modules/theia/PROP-001",
+      "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
+      "heading": "2. Capabilities",
+      "line": 10,
+      "uri": "spec://codkit/modules/theia/PROP-001#capabilities"
+    },
+    {
+      "anchor": "THEIA-CAPABILITIES",
+      "content_hash": "sha256:84f8c9b16b64a216397cb87d7e89c3a3e4bdd066c5e6f561712627db2410e9f7",
+      "doc_path": "modules/theia/PROP-001",
+      "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
+      "heading": "Declared: `config-overlay` (targets: the application `package.json`; no `dev-channel`), `service-override` (inversify `rebind` in an own container module), `build-channels` (`tsc -b -w` and `theia build --watch`), `upgrade-advisory`. Not declared in the first version: `own-extensions` (a Theia extension is own code itself - see PROP-003; VS Code-style plugins are a later capability `own-plugins`), `entry-module` (Theia needs no graft to include own code), `brand-images`, `gen-brand`, `runtime-library`. A verb that needs an undeclared capability refuses with `CK-E-TYPE-CAPABILITY` (`spec://codkit/modules/codkit/PROP-016#TYPE-CAPABILITY-REFUSAL`). @status:spec/plan",
+      "line": 11,
+      "uri": "spec://codkit/modules/theia/PROP-001#THEIA-CAPABILITIES"
+    },
+    {
+      "anchor": "root",
+      "content_hash": "sha256:9957c8b0a85f1f4a18ceb0df1c444124590f654c10ce696d8eb741077cdf7758",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "theia PROP-002: Upstream identity and tree layout",
+      "line": 3,
+      "uri": "spec://codkit/modules/theia/PROP-002#root"
+    },
+    {
+      "anchor": "identity",
+      "content_hash": "sha256:2242f717eef92ea24dc1a1043a07357a5e45a2daddf80f097c20386d35fec52b",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "1. Upstream identity",
+      "line": 5,
+      "uri": "spec://codkit/modules/theia/PROP-002#identity"
+    },
+    {
+      "anchor": "THEIA-PIN-TAGS",
+      "content_hash": "sha256:2fce1850693603abcbc83de63291091d2e0f3801fd1cfccec33c0ab26a760ee4",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "Release tags match `v[0-9]+\\.[0-9]+\\.[0-9]+`; the rolling tag `next` is mutable and a pin resolver ignores it (`01-version-and-sha.md`, tag shape). A pin is `tag@sha@date` as everywhere; a pin on a master commit between tags is allowed and is written with the nearest reachable tag plus the sha (`v1.75.0@c8926e4d…`). @status:spec/plan",
+      "line": 7,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-PIN-TAGS"
+    },
+    {
+      "anchor": "THEIA-VERSION-SOURCE",
+      "content_hash": "sha256:b5ef8e59b8689bae6587d335d8cb79ff7ed5b819650d4f99b11f067c86946c1d",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "The upstream version is read from `lerna.json` (`version`, fixed mode), not from the root `package.json`, which is the private `@theia/monorepo` at `0.0.0`; every `@theia/*` package carries the same literal version (`01`, \"Where the version is written\"). @status:spec/plan",
+      "line": 8,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-VERSION-SOURCE"
+    },
+    {
+      "anchor": "THEIA-TREE-FINGERPRINT",
+      "content_hash": "sha256:c679908b0acb42633f48ff4a795986b276e0500b15bb6e6ce2750ac39fa20125",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "`check-tree` fingerprints: root `package.json` named `@theia/monorepo` with `workspaces` covering `packages/*` and `dev-packages/*`; `lerna.json` with `npmClient: \"npm\"`; `packages/core/package.json` named `@theia/core` at the version of `lerna.json`; the anchor commit reachable from the pin (`01`, `02`). @status:spec/plan",
+      "line": 9,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-TREE-FINGERPRINT"
+    },
+    {
+      "anchor": "layout",
+      "content_hash": "sha256:2eae614c379eefb267a707a1bf1951c18768c2235ab06de7570d96cb62c6fee8",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "2. Tree layout",
+      "line": 12,
+      "uri": "spec://codkit/modules/theia/PROP-002#layout"
+    },
+    {
+      "anchor": "THEIA-OWN-ROOT",
+      "content_hash": "sha256:94c757961fe4380b47293a1d5bb8cfb59507642ba6b0695af255c2347ec97b8b",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "The own root is a workspace package directory: `typeConfig.ownRoot` defaults to `packages/<name>` and must match one of the workspace globs of the root `package.json` (`dev-packages/*`, `packages/*`, `examples/*`); the type refuses a root outside them (`CK-E-CONFIG`). A package under `packages/` is what the `theiaext` scripts, the generated tsconfig references and the `nls-extract` glob already cover (`10-downstream-own-package.md`, \"Placement\"). @status:spec/plan",
+      "line": 14,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-OWN-ROOT"
+    },
+    {
+      "anchor": "THEIA-OWN-PACKAGE-SHAPE",
+      "content_hash": "sha256:2942713f049514ade57ecd571daba57ca267a702871303219f8cd759a1e7ab02",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "The own root is an npm package with `theiaExtensions` (the ten entry kinds of `extension-package.ts:22-33`), `version` equal to the monorepo version, `dependencies` on the `@theia/*` packages it uses at the exact same version, the `theiaext` scripts (`lint`, `build`, `watch`, `clean`, `compile`, `test`) and `@theia/ext-scripts` as a dev dependency, its own `.eslintrc.js` and `tsconfig.json` (a package without them is not linted at all - `08`); the skeleton of `examples/api-provider-sample/package.json` is the reference (`10`, \"The skeleton\"). @status:spec/plan",
+      "line": 15,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-OWN-PACKAGE-SHAPE"
+    },
+    {
+      "anchor": "THEIA-APPLICATION-ROOT",
+      "content_hash": "sha256:0e61dbf122a88efe6d527863b8c39d1f837a3f2fe53f6a05f7c89090f3ec5547",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "A product's application is a second directory the delta owns, `typeConfig.applicationRoot` (default `applications/<name>` or an `examples/*` slot), whose `package.json` is the overlay target of PROP-003. The type materializes both directories the way the `vscode` type materializes its own root: mirrored by content from the delta, excluded from the drift guard. @status:spec/plan",
+      "line": 16,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-APPLICATION-ROOT"
+    },
+    {
+      "anchor": "THEIA-CLEANUP-WHITELIST",
+      "content_hash": "sha256:c53dd6cbeac2d66b1ea5a8983c0312626e3e382f82d71166c2178d2ec9360ffe",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "Build outputs the fresh pass may remove: `node_modules/`, `**/lib/` of workspace packages, `**/src-gen/`, `**/gen-webpack*.js` if present, `.eslintcache`, `*.tsbuildinfo`, `plugins/` downloaded by `theia download:plugins` (`02-repository-layout.md`, runtime folders and build outputs). @status:spec/plan",
+      "line": 17,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-CLEANUP-WHITELIST"
+    },
+    {
+      "anchor": "THEIA-FORBIDDEN-TARGETS",
+      "content_hash": "sha256:cc92398b850d3dc0127f520021f6c27204428d91b83af8aadaafc151c4e3a3f8",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "Never patched: `dev-packages/cli/patches/**` (upstream's own patches of `node_modules`, applied on every install by `theia-patch`), `package-lock.json` (regenerated by install), `src-gen/**` (generated). A patch of `lerna.json` or of the root `package.json` workspace globs is a graft of the constant set and needs a decision record. @status:spec/plan",
+      "line": 18,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-FORBIDDEN-TARGETS"
+    },
+    {
+      "anchor": "THEIA-MARKER-FORMS",
+      "content_hash": "sha256:8df230ee7ef41d3a1179dc5be6cfa3df99d2724d738128cc1c8e844907e9be13",
+      "doc_path": "modules/theia/PROP-002",
+      "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
+      "heading": "Marker comment forms are the engine's by extension; Theia adds none. The SPDX header rule of upstream's lint applies to every `.ts`/`.tsx` under a linted package (PROP-005), which shapes where a marker block may sit in an own file: below the header. @status:spec/plan",
+      "line": 19,
+      "uri": "spec://codkit/modules/theia/PROP-002#THEIA-MARKER-FORMS"
+    },
+    {
+      "anchor": "root",
+      "content_hash": "sha256:aef246599b44f94ac51319b76fcb68da5c90431424035f0a0005be6b7ae9f316",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "theia PROP-003: Layers - the application manifest, the own package, rebind",
+      "line": 3,
+      "uri": "spec://codkit/modules/theia/PROP-003#root"
+    },
+    {
+      "anchor": "overlay",
+      "content_hash": "sha256:e65b160eb7e9a98680713588a76c6bbb33d0d702ea4e4f875d63e4ee90fac2bd",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "1. config-overlay: the application manifest",
+      "line": 5,
+      "uri": "spec://codkit/modules/theia/PROP-003#overlay"
+    },
+    {
+      "anchor": "THEIA-OVERLAY-TARGET",
+      "content_hash": "sha256:345810df7b6396e660517235e19dc24ce4f275cf3313222743340da18da9d04b",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "The overlay target is the application's `package.json`: the `theia` section (`target`, `frontend.config` with `applicationName`, preference defaults, `electron` window options and `appUserModelId`, `backend.config`), `productName`, `main`, `theiaPluginsDir`, `theiaPlugins` and the `dependencies` inventory of extensions (`05-application-and-product-model.md`; schema `application-props.ts:286-336`). There is no `product.json` and no dev channel: the application manifest is the delta's own file, so the overlay is materialized directly and `load` writes it (`05`, \"An application is a package.json\"). @status:spec/plan",
+      "line": 7,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-OVERLAY-TARGET"
+    },
+    {
+      "anchor": "THEIA-OVERLAY-IS-OWN-FILE",
+      "content_hash": "sha256:8e8b151eea8d525c4b6f68497aad56970228606cb77620e80caf58589ff4c92d",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "Because the application directory is owned by the delta (PROP-002 `THEIA-APPLICATION-ROOT`), the overlay's `expectUpstream` is checked against upstream's example application the product forked from (`examples/electron/package.json` or `examples/browser/package.json`) when the product declares one as its origin, and against nothing when the application is written from scratch; the drift detector reports the origin's drift as information, not as a refusal. @status:spec/plan",
+      "line": 8,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-OVERLAY-IS-OWN-FILE"
+    },
+    {
+      "anchor": "THEIA-IDENTITY-FUNNEL",
+      "content_hash": "sha256:4d60eb000d75f4e43c46ae74011ef86e414cc6bc821d0fa38420ef0e8c44b693",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "Product identity is one key, `theia.frontend.config.applicationName`, frozen into `src-gen/frontend/index.js` at build time and read at runtime through `FrontendApplicationConfigProvider.get()` (`05`; `frontend-generator.ts:80-82`); the page title and the Electron window title come from it (`09-build-time-stamps.md`). A brand transform over upstream strings is therefore not needed for the name; it is needed only if a product wants to rename upstream's own vocabulary, and then it is a graft of the localization funnel of PROP-005. @status:spec/plan",
+      "line": 9,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-IDENTITY-FUNNEL"
+    },
+    {
+      "anchor": "own",
+      "content_hash": "sha256:65a1793b2d5b6dc35eb6dae17ca28d8b705ef62634f4dc2d5fb2868aa9834ac1",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "2. own: the package that needs no graft",
+      "line": 12,
+      "uri": "spec://codkit/modules/theia/PROP-003#own"
+    },
+    {
+      "anchor": "THEIA-OWN-IS-INCLUDED-BY-DEPENDENCY",
+      "content_hash": "sha256:e909553963f62aa24c508a4c26a892c4cee6dcb54e25b4567d42344bca6aca2c",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "Own code enters the application by one line in the application's `dependencies` plus `theiaExtensions` in the own package: the generator collects extension packages by module resolution (`extension-package-collector.ts:64`) and emits `await load(container, require(...))` for each (`frontend-generator.ts:144`). **No upstream file is patched to include own code** - the VS Code pair \"own layer + entry-module graft\" collapses into a JSON key (`10`, \"The short version\"). The constant graft set of a Theia product may be empty. @status:spec/plan",
+      "line": 14,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-OWN-IS-INCLUDED-BY-DEPENDENCY"
+    },
+    {
+      "anchor": "THEIA-NO-ENTRY-MODULE",
+      "content_hash": "sha256:c01af2506ac4a15b6b17882c76478385b8977d5cde1d4855fdbe22e6dcea14de",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "The layer `entry-module` is not provided: an artifact of that layer in a `theia` patch set is refused by `verify` with `CK-E-TYPE-CAPABILITY`, and the ladder of `ck-intervene` skips the rung. @status:spec/plan",
+      "line": 15,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-NO-ENTRY-MODULE"
+    },
+    {
+      "anchor": "THEIA-EXTENSIONS-ARE-OWN-CODE",
+      "content_hash": "sha256:70362f92fde248b1e7a828f4cbe4e80f736c78206b3e744e6796a8a0ae4637cf",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "A Theia extension is own code (a workspace package), not a VS Code-style built-in extension; the `own-extensions` layer is therefore not provided in the first version. VS Code extensions run in Theia as plugins (`.vsix` under `theiaPluginsDir`, `theiaPlugins` in the application manifest) - a later capability `own-plugins` may materialize a product's plugins from the delta (`06-extension-model.md`, the two mechanisms). @status:spec/plan",
+      "line": 16,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-EXTENSIONS-ARE-OWN-CODE"
+    },
+    {
+      "anchor": "override",
+      "content_hash": "sha256:4f59647f5bf0f5baf4d235e51ed9152084efd36ceaa87f33693e16e28bd5787a",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "3. service-override: rebind plus dependency order",
+      "line": 19,
+      "uri": "spec://codkit/modules/theia/PROP-003#override"
+    },
+    {
+      "anchor": "THEIA-OVERRIDE-IS-REBIND",
+      "content_hash": "sha256:18006c82505cbb1cd5f8df4215322fbd24695a1104780e8d895341c9912c7827",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "A service override is `rebind(Id).to(Impl)` (or `.toService`/`.toDynamicValue`) inside the own package's `ContainerModule`; it wins because `ExtensionPackageCollector` pushes a package after its dependencies, so the own module loads after the module it overrides (`04-dependency-injection.md`; `extension-package-collector.ts:76-84`). @status:spec/plan",
+      "line": 21,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-OVERRIDE-IS-REBIND"
+    },
+    {
+      "anchor": "THEIA-OVERRIDE-VERIFIER",
+      "content_hash": "sha256:1adda9ff7983f3ebebdee2f6c3c9604010fa25b9969fd0bac5882caf5f74d875",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "The verifier of a `service-override` record checks two things: the `rebind` call of the declared service identifier in the declared own module, and the dependency edge from the own package to the package that binds the service (a `rebind` without the edge may load first and be overridden itself). There is no `registerSingleton` call site and no forbidden-service list from upstream; `forbiddenServiceIds` starts empty and grows from measurement. @status:spec/plan",
+      "line": 22,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-OVERRIDE-VERIFIER"
+    },
+    {
+      "anchor": "THEIA-OVERRIDE-CHILD-CONTAINERS",
+      "content_hash": "sha256:135387a69b99d928892d1be232af95edc083fb0ef9b8c16663a2ab05fb90d0b0",
+      "doc_path": "modules/theia/PROP-003",
+      "file": "vibevm/vibespecs/modules/theia/PROP-003-layers.xml",
+      "heading": "Open question of the spike (`open-questions.md` 4): whether a `rebind` in a child container behaves like one in the root container for the overrides a product wants. Until measured, the verifier accepts only root-container modules and names the limitation. @status:spec/plan",
+      "line": 23,
+      "uri": "spec://codkit/modules/theia/PROP-003#THEIA-OVERRIDE-CHILD-CONTAINERS"
+    },
+    {
+      "anchor": "root",
+      "content_hash": "sha256:a2aebf6f66867f9a19c187fb18d057a882dd00b79d655f39c717b4bfdec81388",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "theia PROP-004: Build, watch, lint, test, packaging",
+      "line": 3,
+      "uri": "spec://codkit/modules/theia/PROP-004#root"
+    },
+    {
+      "anchor": "THEIA-INSTALL",
+      "content_hash": "sha256:e7942cd399f6a31cf4634b6b58d033c757d24e886d48f23339907c60a3b59bcf",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "Dependencies: `npm ci` on Node ≥ 24 with Python 3.13 available for native modules; install runs `node-gyp install`, `theia-patch`, `compute-references` and `lerna run afterInstall` (`03-build-watch-lint-test.md`; `package.json:94-95`). The CI profile's dependency step is `npm ci`; the tree must be byte-identical after it (upstream's own clean-tree gate, `08`). @status:spec/plan",
+      "line": 6,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-INSTALL"
+    },
+    {
+      "anchor": "THEIA-COMPILE",
+      "content_hash": "sha256:5961bace4fe2529596037001fe63a3d0525e72d546ae837ad1124a7cc060e7e1",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "Compile: `lerna run compile` (per package `theiaext compile` = `tsc --project .`) for the whole tree, or `lerna run compile --scope <own package>` for own code; the application bundle is `theia build` in the application directory (esbuild since 1.75.0; webpack is gone - `bundler-generator.ts:43-45`). @status:spec/plan",
+      "line": 7,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-COMPILE"
+    },
+    {
+      "anchor": "THEIA-BUILD-CHANNELS",
+      "content_hash": "sha256:ad80ab028eea91e15a29dc0f41ba3178908d0aa7ae608b045566283df6f7d983",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "`build up` starts two channels: `typecheck-watch` = `tsc -b -w` at the tree root (project references), `bundle-watch` = `theia build --watch` in the application directory; `build errors` reads their logs; foreign-watcher markers are those two command lines (`03`, watchers). @status:spec/plan",
+      "line": 8,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-BUILD-CHANNELS"
+    },
+    {
+      "anchor": "THEIA-LINT",
+      "content_hash": "sha256:96ad4105d65a9214a187c66028f4457696801711d0e502f9fe29e41014472280",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "Lint: `lerna run lint --scope <own package>` (`theiaext lint`, type-aware eslint per package) for the own directory and `npm run lint` for the full tree; the full run is the gate of a phase that adds a package, as `CONF-OWN-EXTENSION-PASSES-THE-FULL-LINT` says for the same reason. @status:spec/plan",
+      "line": 9,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-LINT"
+    },
+    {
+      "anchor": "THEIA-TEST-RUNNERS",
+      "content_hash": "sha256:493b5d41b5b40f59818ea0453a4fa1bb18f61ea863ee6d2c303e728874e98019",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "Three runners (`12-app-test-harness.md`): unit tests `theiaext test` (nyc + mocha over `lib/**/*.spec.js`, selected per package by `lerna run test --scope`); in-page tests `theia test . --test-spec=<glob>` (mocha inside the running frontend with the live container); system tests with `@theia/playwright`. The own-root glob of the CI profile is the package scope, not a path glob. @status:spec/plan",
+      "line": 10,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-TEST-RUNNERS"
+    },
+    {
+      "anchor": "THEIA-PACKAGE-BUILD",
+      "content_hash": "sha256:cdca0fbe97bd7fcc090b5131d72f0b58aacb39f9dcab313c4ddf57aa9dac7a53",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "Upstream packages no desktop application: no electron-builder configuration, no signing, no installer, no `.icns`/`.ico` generation; its release artefact is npm packages, and its contract with a packager is the built `lib/` of the application (`11-release-packaging.md`). The type's package build is therefore `theia build` of the application; the installer is a product artifact (the product declares its packager and its config in its own delta), and the type's `ci --profile build` ends at the built application unless the product declares more. @status:spec/plan",
+      "line": 11,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-PACKAGE-BUILD"
+    },
+    {
+      "anchor": "THEIA-NO-STAMPS",
+      "content_hash": "sha256:a46fc6c3a549c53a4486a461f074d29b0f0ac7fe01b648c8c278d5ada2027b14",
+      "doc_path": "modules/theia/PROP-004",
+      "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
+      "heading": "Nothing is stamped at build time - no sha, no date, no quality channel (`09-build-time-stamps.md`); what is baked into `src-gen/` is the frontend and backend configuration, the page title and the extension inventory. A product that wants a commit in its About dialog adds it through its own package (a generated constant written by `load` from the pin), not through the type. @status:spec/plan",
+      "line": 12,
+      "uri": "spec://codkit/modules/theia/PROP-004#THEIA-NO-STAMPS"
+    },
+    {
+      "anchor": "root",
+      "content_hash": "sha256:3b62cba3ade0b896f10ff5ee4b2c79547766549d477e8fc7f48cdccb61c22bc2",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "theia PROP-005: Upgrade advisory, hygiene, conventions",
+      "line": 3,
+      "uri": "spec://codkit/modules/theia/PROP-005#root"
+    },
+    {
+      "anchor": "advisory",
+      "content_hash": "sha256:ad8647f90bf5c046b47c25c3d65c4e099db4efa2b6e6d446a99b5a4e9638b042",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "1. Upgrade advisory",
+      "line": 5,
+      "uri": "spec://codkit/modules/theia/PROP-005#advisory"
+    },
+    {
+      "anchor": "THEIA-ADVISORY-READERS",
+      "content_hash": "sha256:7598698e5e0ac55b7ccb4b057403af9e21db888e10e3cef75f71a3cf36c8a696",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "Between two pins the advisory reads: the version of `lerna.json`; the Node engine of the root `package.json`; the Electron version pinned by `dev-packages/electron` (or the application's dev dependency); the set of `@theia/*` packages (added, removed, renamed - the removal of `@theia/preview` at master is the live example); the entry kinds of `theiaExtensions` in `extension-package.ts`; the `theia` section schema in `application-props.ts` (new or removed keys). Each is a semantic change with a recommendation, in the engine's frame. @status:spec/plan",
+      "line": 7,
+      "uri": "spec://codkit/modules/theia/PROP-005#THEIA-ADVISORY-READERS"
+    },
+    {
+      "anchor": "hygiene",
+      "content_hash": "sha256:4365ed3a32852f50a111b00e72ee3580b4ef7fb93c6855d48201a65647b67951",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "2. Hygiene that refuses foreign code",
+      "line": 10,
+      "uri": "spec://codkit/modules/theia/PROP-005#hygiene"
+    },
+    {
+      "anchor": "THEIA-HEADER-RULE",
+      "content_hash": "sha256:e9c82a3692ccffbfbadf436bebb3efbd257ef6346e28e9c8dfe113ebf26bc90d",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "Upstream's lint requires in every source file of a linted package a header matching `SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0` (`configs/errors.eslintrc.json:105-115`, tslint `file-header`). An own package that carries the product's own licence therefore either carries a header the rule accepts or ships its own `.eslintrc.js` that overrides the rule for that package - the second is the product's choice, and it is a file of the own package, not a graft (`08-hygiene-and-lint.md`). @status:spec/plan",
+      "line": 12,
+      "uri": "spec://codkit/modules/theia/PROP-005#THEIA-HEADER-RULE"
+    },
+    {
+      "anchor": "THEIA-LOCALIZATION-RULE",
+      "content_hash": "sha256:ce973533630a98d3cdbeab021064cf0e23910503c93d58b3df3a50799ef5568e",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "`@theia/localization-check` forbids `nls.localizeByDefault` for a string that is not a VS Code message; own strings use `nls.localize(key, default)` with own keys, and the product's translations go into its own `nls.*.json` files or into the package's `i18n` the way `packages/core/i18n` does (`07-localization.md`). This is the type's answer to the string funnel: there is no `nls.ts` graft. @status:spec/plan",
+      "line": 13,
+      "uri": "spec://codkit/modules/theia/PROP-005#THEIA-LOCALIZATION-RULE"
+    },
+    {
+      "anchor": "THEIA-IMPORT-RULES",
+      "content_hash": "sha256:1821bc581f553fa98f340fb0fd1017bda46d4e80d0fd00435eaf47fee01ce25d",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "`@theia/runtime-import-check` (a closed set of folders and a fixed import lattice between `common`, `browser`, `node`, `electron-*`) and `@theia/shared-dependencies` (import inversify and other shared libraries only through `@theia/core/shared/*`) shape the layout of an own package: the same folder names, the same import direction, or the lint refuses (`08`). @status:spec/plan",
+      "line": 14,
+      "uri": "spec://codkit/modules/theia/PROP-005#THEIA-IMPORT-RULES"
+    },
+    {
+      "anchor": "conventions",
+      "content_hash": "sha256:19af9ea9eb2e5ad64c6afcd522cdbba0aa93941848bff6f12523fc5f76e6750c",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "3. Conventions",
+      "line": 17,
+      "uri": "spec://codkit/modules/theia/PROP-005#conventions"
+    },
+    {
+      "anchor": "THEIA-SUBSYSTEMS",
+      "content_hash": "sha256:e2b47af5d2ddc4c7b253332d7aac9992981c749da6bdcddd05675f976cc9d6fe",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "Subsystems for intervention ids: `core`, `frontend`, `backend`, `electron`, `plugin`, `app`, `build`, `test`, `deps`; id pattern `CK-(core|frontend|backend|electron|plugin|app|build|test|deps)-[0-9]{3}`. @status:spec/plan",
+      "line": 19,
+      "uri": "spec://codkit/modules/theia/PROP-005#THEIA-SUBSYSTEMS"
+    },
+    {
+      "anchor": "THEIA-FORBIDDEN-SERVICES",
+      "content_hash": "sha256:edc3f7af1b74757f12c18be8ce43dfe78789331bf2760671dc7c6c23f10d8fc8",
+      "doc_path": "modules/theia/PROP-005",
+      "file": "vibevm/vibespecs/modules/theia/PROP-005-advisory-hygiene-conventions.xml",
+      "heading": "`forbiddenServiceIds` starts empty; there is no upstream list of services set before the container exists. Candidates appear from measurement of failed `rebind`s and are added with the failure that proved them. @status:spec/plan",
+      "line": 20,
+      "uri": "spec://codkit/modules/theia/PROP-005#THEIA-FORBIDDEN-SERVICES"
+    },
+    {
+      "anchor": "root",
+      "content_hash": "sha256:790a3c5ece80b347558daef4a1ce6bb1f4a4ca5e34d039747c3932e252ae9679",
+      "doc_path": "modules/theia/PROP-006",
+      "file": "vibevm/vibespecs/modules/theia/PROP-006-absences.xml",
+      "heading": "theia PROP-006: What the type does not provide, and what a product supplies",
+      "line": 3,
+      "uri": "spec://codkit/modules/theia/PROP-006#root"
+    },
+    {
+      "anchor": "THEIA-NO-BRAND-IMAGES",
+      "content_hash": "sha256:8b50dd92b1a84b846bd478da8c2f3af2965c44141079e4f8a978ac017a1b6450",
+      "doc_path": "modules/theia/PROP-006",
+      "file": "vibevm/vibespecs/modules/theia/PROP-006-absences.xml",
+      "heading": "No icon target table exists upstream, so `brand-images` is not declared and `imageset` refuses. A product's icons are files of its application directory (splash screen `resources/theia-logo.svg` in the example, the Electron icon of the product's packager) - resource files of the delta. @status:spec/plan",
+      "line": 6,
+      "uri": "spec://codkit/modules/theia/PROP-006#THEIA-NO-BRAND-IMAGES"
+    },
+    {
+      "anchor": "THEIA-NO-RUNTIME-LIBRARY",
+      "content_hash": "sha256:5fa1ee67580ad6a5035e9d1e10dbda802bd3ff84637764babfa52610813a58fa",
+      "doc_path": "modules/theia/PROP-006",
+      "file": "vibevm/vibespecs/modules/theia/PROP-006-absences.xml",
+      "heading": "`runtime-library` is not declared in the first version: the feature-flag runtime of the tool is a VS Code library (`runtime-vscode`), and a Theia equivalent would bind through inversify and Theia preferences. It is written when a product needs it, as `runtime-theia`, from the same runtime specification. @status:spec/plan",
+      "line": 7,
+      "uri": "spec://codkit/modules/theia/PROP-006#THEIA-NO-RUNTIME-LIBRARY"
+    },
+    {
+      "anchor": "THEIA-NO-GEN-BRAND",
+      "content_hash": "sha256:866dfa19185d422b7095e23b7f2f5aef51c473cf6f6538d3e6745f36bdf3f68c",
+      "doc_path": "modules/theia/PROP-006",
+      "file": "vibevm/vibespecs/modules/theia/PROP-006-absences.xml",
+      "heading": "`gen brand` is not declared: identity is a manifest key (PROP-003 `THEIA-IDENTITY-FUNNEL`), not a string funnel. `gen feature` is provided: the skeleton is an own container module with a preference-backed flag, in the own package. @status:spec/plan",
+      "line": 8,
+      "uri": "spec://codkit/modules/theia/PROP-006#THEIA-NO-GEN-BRAND"
+    },
+    {
+      "anchor": "THEIA-PRODUCT-SUPPLIES",
+      "content_hash": "sha256:2a4148cd5025dcc8a1f715656e89771b0fc4504c1e991069b2228fbadc4fd072",
+      "doc_path": "modules/theia/PROP-006",
+      "file": "vibevm/vibespecs/modules/theia/PROP-006-absences.xml",
+      "heading": "A product of this type supplies in its own delta: the application directory (manifest, resources, packager configuration), the own package, its licence header policy for lint, its translations, its installer. None of it is the type's. @status:spec/plan",
+      "line": 9,
+      "uri": "spec://codkit/modules/theia/PROP-006#THEIA-PRODUCT-SUPPLIES"
+    },
+    {
+      "anchor": "root",
       "content_hash": "sha256:1295f69dbb955e0f8121a16de25db198faf9f1541030b62730981d9435e65610",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",

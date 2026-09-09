@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">theia PROP-006: What the type does not provide, and what a product supplies</title>
+  <status stage="spec" state="plan" comment="the absences of the theia type, each an honest answer to a contract question; facts 09, 11"/>
+  <facts ordered="false">
+    <THEIA-NO-BRAND-IMAGES fact="true" status="spec/plan">No icon target table exists upstream, so `brand-images` is not declared and `imageset` refuses. A product's icons are files of its application directory (splash screen `resources/theia-logo.svg` in the example, the Electron icon of the product's packager) - resource files of the delta.</THEIA-NO-BRAND-IMAGES>
+    <THEIA-NO-RUNTIME-LIBRARY fact="true" status="spec/plan">`runtime-library` is not declared in the first version: the feature-flag runtime of the tool is a VS Code library (`runtime-vscode`), and a Theia equivalent would bind through inversify and Theia preferences. It is written when a product needs it, as `runtime-theia`, from the same runtime specification.</THEIA-NO-RUNTIME-LIBRARY>
+    <THEIA-NO-GEN-BRAND fact="true" status="spec/plan">`gen brand` is not declared: identity is a manifest key (PROP-003 `THEIA-IDENTITY-FUNNEL`), not a string funnel. `gen feature` is provided: the skeleton is an own container module with a preference-backed flag, in the own package.</THEIA-NO-GEN-BRAND>
+    <THEIA-PRODUCT-SUPPLIES fact="true" status="spec/plan">A product of this type supplies in its own delta: the application directory (manifest, resources, packager configuration), the own package, its licence header policy for lint, its translations, its installer. None of it is the type's.</THEIA-PRODUCT-SUPPLIES>
+  </facts>
+</spec>
