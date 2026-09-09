@@ -1,5 +1,5 @@
 // The third polygon end to end: a patch set of type `theia` over a synthetic
-// Eclipse Theia monorepo (FEAT-002 S70-S74; FEAT-001 ##POLYGON-THEIA-COVERAGE).
+// Eclipse Theia monorepo (FEAT-002 S70-S75; FEAT-001 ##POLYGON-THEIA-COVERAGE).
 //
 // What it proves is the model of the type, not the framework: the fingerprints
 // of a healthy tree, the own package materialized as a workspace package, the
@@ -8,10 +8,14 @@
 // family does not have, and the cycle onto the second pin with the advisory
 // that names the version of the monorepo.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
+	APPLICATION_ENTRY,
 	APPLICATION_NAME,
+	APPLICATION_NOTICE,
+	APPLICATION_UNIT_ID,
 	ENTRY_MODULE_PATCH_NAME,
 	OVERRIDE_ID,
 	OVERRIDE_MODULE,
@@ -20,7 +24,7 @@ import {
 	PATCH_ID,
 	writeEntryModulePatch
 } from '../fixtures/makeTheiaPatchSet.ts';
-import { APPLICATION_MANIFEST, CORE_MODULE_PATH, NEW_VERSION, OLD_VERSION } from '../fixtures/makeTheiaUpstream.ts';
+import { APPLICATION_MANIFEST, APPLICATION_ROOT, CORE_MODULE_PATH, NEW_VERSION, OLD_VERSION } from '../fixtures/makeTheiaUpstream.ts';
 import { excludeTheiaRuntimeState, makeTheiaFixture, provideTheiaTreeDependencies } from '../support/theiaFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
@@ -116,7 +120,10 @@ describe('S71 - load materializes the own package, and the overlay writes the ap
 		const data = inventory.envelope.data as { inventory: { entries: readonly { id: string; layer: string }[] } };
 		const ids = data.inventory.entries.map((row) => row.id);
 		expect(new Set(ids).size).toBe(ids.length);
-		expect(data.inventory.entries.map((row) => row.layer).sort()).toEqual(['config-overlay', 'own', 'patch', 'service-override']);
+		// Two own units: the own package, and the files of the second owned
+		// directory - the product's application (PROP-016 ##TYPE-AREA-LAYOUT).
+		expect(data.inventory.entries.map((row) => row.layer).sort()).toEqual(['config-overlay', 'own', 'own', 'patch', 'service-override']);
+		expect(ids).toContain(APPLICATION_UNIT_ID);
 	}, 30_000);
 });
 
@@ -229,3 +236,76 @@ describe('S74 - the cycle onto the second pin, with the advisory of this family'
 		expect(config.pin.tag).toBe(fixture.upstream.v2.tag);
 	}, 180_000);
 });
+
+describe('S75 - the second owned directory, and the build output inside an owned one', () => {
+	it('materializes the application beside the own package, and leaves upstream files in it alone', () => {
+		// ##THEIA-APPLICATION-ROOT, PROP-005 ##OWN-ROOTS-IN-THE-DELTA: the delta
+		// owns two directories, and inside the application the pin is the
+		// boundary - its manifest is upstream's file and the overlay's target.
+		const fixture = makeTheiaFixture('theia-owned');
+		expect(fixture.json(['load']).run.status).toBe(0);
+
+		expect(readFileSync(fixture.treePath(`${APPLICATION_ROOT}/${APPLICATION_ENTRY}`), 'utf8')).toContain('src-gen/frontend');
+		expect(readFileSync(fixture.treePath(`${APPLICATION_ROOT}/${APPLICATION_NOTICE}`), 'utf8')).toContain('Acme Studio');
+		expect(applicationManifest(fixture)['productName']).toBe('Theia Electron Example');
+
+		// A second load over the materialized tree is the daily case: neither
+		// directory carries unextracted work, and the manifest the pin ships is
+		// not read as an own file the delta lost.
+		const again = fixture.json(['load']);
+		expect(again.run.status, again.run.stderr).toBe(0);
+
+		const status = fixture.json(['status']);
+		expect(status.run.status, status.run.stderr).toBe(0);
+		const own = status.envelope.data['own'] as { changed: number };
+		expect(own.changed).toBe(0);
+
+		const verified = fixture.json(['verify']);
+		expect(verified.run.status, verified.run.stderr).toBe(0);
+	}, 60_000);
+
+	it('does not read a compiled package as changed own code, and a fresh pass removes the output', () => {
+		// ##THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT: `tsc -b` writes lib/ next to
+		// the sources inside the owned directory. This is the defect P5 measured
+		// on a real clone, and the whole point of the build outputs of the type.
+		const fixture = makeTheiaFixture('theia-compiled');
+		provideTheiaTreeDependencies(fixture);
+		expect(fixture.json(['load']).run.status).toBe(0);
+
+		compile(fixture);
+		const status = fixture.json(['status']);
+		expect(status.run.status, status.run.stderr).toBe(0);
+		const own = status.envelope.data['own'] as { changed: number };
+		expect(own.changed).toBe(0);
+
+		// A load over the compiled tree passes and leaves the output where the
+		// build put it: nothing recompiles for a load.
+		const loaded = fixture.json(['load']);
+		expect(loaded.run.status, loaded.run.stderr).toBe(0);
+		expect(existsSync(fixture.treePath(`${OWN_ROOT}/lib/browser/acme-editor-manager.js`))).toBe(true);
+
+		// An edit of own code is extracted; the build output beside it is not.
+		const source = fixture.treePath(`${OWN_ROOT}/src/browser/acme-editor-manager.ts`);
+		writeFileSync(source, `${readFileSync(source, 'utf8')}// a line the tree added\n`, 'utf8');
+		const saved = fixture.json(['save']);
+		expect(saved.run.status, saved.run.stderr).toBe(0);
+		expect(readFileSync(fixture.patchesPath('delta/own/src/browser/acme-editor-manager.ts'), 'utf8')).toContain('a line the tree added');
+		expect(existsSync(fixture.patchesPath('delta/own/lib'))).toBe(false);
+		expect(existsSync(fixture.patchesPath('delta/own/tsconfig.tsbuildinfo'))).toBe(false);
+
+		// The fresh pass is the run that removes it (##THEIA-CLEANUP-WHITELIST).
+		const fresh = fixture.json(['load', '--fresh']);
+		expect(fresh.run.status, fresh.run.stderr).toBe(0);
+		expect(existsSync(fixture.treePath(`${OWN_ROOT}/lib/browser/acme-editor-manager.js`))).toBe(false);
+		expect(existsSync(fixture.treePath(`${OWN_ROOT}/src/browser/acme-editor-manager.ts`))).toBe(true);
+	}, 60_000);
+});
+
+/** What `tsc -b` of this family leaves inside the owned directory of the package. */
+function compile(fixture: ReturnType<typeof makeTheiaFixture>): void {
+	const output = fixture.treePath(`${OWN_ROOT}/lib/browser/acme-editor-manager.js`);
+	mkdirSync(dirname(output), { recursive: true });
+	writeFileSync(output, '"use strict";\n// compiled by the fixture\n', 'utf8');
+	writeFileSync(fixture.treePath(`${OWN_ROOT}/tsconfig.tsbuildinfo`), '{"version":"1"}\n', 'utf8');
+	writeFileSync(fixture.treePath(`${OWN_ROOT}/.eslintcache`), '[]\n', 'utf8');
+}

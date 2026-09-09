@@ -277,10 +277,16 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		}
 		throw error;
 	}
-	const drift = driftDirty(materializerOf(options.type), tree, ownedRootsOf(options.type, config.typeConfig), patchesDir, {
-		untrackedIsDirt: false,
-		generated: { pinSha: config.pin.sha, branch }
-	});
+	const drift = driftDirty(
+		materializerOf(options.type),
+		tree,
+		ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
+		patchesDir,
+		{
+			untrackedIsDirt: false,
+			generated: { pinSha: config.pin.sha, branch }
+		}
+	);
 	const head = treeHeadError(drift.treeCommits, branch);
 	if (head !== null) {
 		steps.record('fresh apply', 'failed', 'HEAD of the tree is not on the generated branch while it carries commits');

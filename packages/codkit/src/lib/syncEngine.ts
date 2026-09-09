@@ -335,7 +335,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// Every directory the delta owns, the own root first (PROP-016
 	// ##TYPE-AREA-LAYOUT). Mirroring, the drift guard, the exclusion, the
 	// generated snapshot and the mark all work over this list.
-	const roots = ownedRootsOf(options.type, config.typeConfig);
+	const roots = ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
 	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
 	let generatedBranch = options.generatedBranch === true;
 	// Only a release snapshot leaves the licence notice out; every other
@@ -1041,8 +1041,13 @@ type BuildOutcome = {
 
 function buildBranch(options: SyncEngineOptions, plan: readonly Artifact[], context: OverlayVarContext, id: string): BuildOutcome {
 	const { patchesDir, config, out } = options;
-	assertGeneratedTargetOwnership(patchesDir, options.type, ownedRootsOf(options.type, config.typeConfig), layerTargets(plan));
 	const tree = options.resolution.path;
+	assertGeneratedTargetOwnership(
+		patchesDir,
+		options.type,
+		ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
+		layerTargets(plan)
+	);
 	const scratch = join(patchesDir, '.codkit', 'tmp');
 	mkdirSync(scratch, { recursive: true });
 	const indexFile = join(scratch, `${id}.index`);
@@ -1081,7 +1086,7 @@ function buildBranch(options: SyncEngineOptions, plan: readonly Artifact[], cont
 				treeDir: tree,
 				indexFile,
 				parent,
-				roots: ownedRootsOf(options.type, config.typeConfig),
+				roots: ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
 				pinTag: config.pin.tag,
 				pinSha: config.pin.sha,
 				pinDateIso,
@@ -1203,7 +1208,7 @@ export function buildAppliedTip(options: AppliedTipOptions): string {
 	assertGeneratedTargetOwnership(
 		options.patchesDir,
 		options.type,
-		ownedRootsOf(options.type, options.config.typeConfig),
+		ownedRootsOf(options.type, options.config.typeConfig, { treeDir: tree, pinSha: options.config.pin.sha }),
 		layerTargets(plan),
 		options.omitLicenceNotice === true
 	);

@@ -178,7 +178,7 @@ function runTwoWay(input) {
         type: type,
         base: treeState.base,
         mark,
-        roots: ownedRootsOf(type, config.typeConfig),
+        roots: ownedRootsOf(type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
         commits: treeState.commits
     });
     if (classes.unknown) {
@@ -188,7 +188,7 @@ function runTwoWay(input) {
     // 5. Own code, file by file (##PATCHSET-SIDE-EDIT-RULE): own code has no
     // marker blocks to materialize a merge into, so a both-sided own file keeps
     // the choose-a-side refusal.
-    const ownClasses = classifyAllOwn(patchesDir, tree, ownedRootsOf(type, config.typeConfig), (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
+    const ownClasses = classifyAllOwn(patchesDir, tree, ownedRootsOf(type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
     const ownBoth = ownClasses.filter((entry) => entry.kind === 'both-edited');
     if (ownBoth.length > 0) {
         const sides = ownBoth.map((entry) => ({
@@ -208,7 +208,7 @@ function runTwoWay(input) {
     const bothSides = classes.both.map((artifact) => ({ artifact, target: artifactTarget(artifact) }));
     const conflictTargets = flags.discard
         ? bothSides
-            .filter((side) => uncommittedChanges(tree, treeState, ownedRootsOf(type, config.typeConfig)).some((change) => change.path === side.target))
+            .filter((side) => uncommittedChanges(tree, treeState, ownedRootsOf(type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha })).some((change) => change.path === side.target))
             .map((side) => side.target)
         : bothSides.map((side) => side.target);
     if (flags.discard && conflictTargets.length > 0) {
@@ -218,7 +218,7 @@ function runTwoWay(input) {
     }
     // 7. --dry-run: the classification is the answer; nothing is written.
     if (flags.dryRun) {
-        const paths = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(type, config.typeConfig)).map((change) => change.path);
+        const paths = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha })).map((change) => change.path);
         reportSyncPlan(out, classes, treeState.commits.length, paths);
         return ok('dry-run', classes, treeState.commits.length);
     }
@@ -234,7 +234,7 @@ function runTwoWay(input) {
     // 9. Is there anything to merge at all? With both sides still, the load
     // engine alone answers - usually from its fast path - and no transaction is
     // written, because nothing is about to mutate.
-    const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(type, config.typeConfig));
+    const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, ownedRootsOf(type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }));
     const hasTreeWork = treeState.commits.length > 0 ||
         changes.length > 0 ||
         ownClasses.some((entry) => entry.kind === 'tree-edited' || entry.kind === 'unknown');

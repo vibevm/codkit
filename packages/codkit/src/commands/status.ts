@@ -128,7 +128,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	// ##PATCHSET-MOVED-RULE). This is the data the manual merge recipe of
 	// CK-E-PATCHSET-MOVED works from, so it belongs in the report even while
 	// the tree itself is clean.
-	const roots = ownedRootsOf(requireProjectType(ctx), config.typeConfig);
+	const roots = ownedRootsOf(requireProjectType(ctx), config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
 	const loaded = loadedFrom({ treeDir: tree, base: treeCommits.base, pinSha: config.pin.sha, mark });
 	ctx.out.info(`loaded from patchset commit: ${loadedFromLabel(loaded)}`);
 	const movedArtifacts = movedArtifactsOf(

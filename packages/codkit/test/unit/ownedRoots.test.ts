@@ -57,7 +57,7 @@ describe('the owned directories a type answers with', () => {
 
 	it('is the own root alone when the type owns one directory', () => {
 		const roots = ownedRootsOf(stubType(), { ownRoot: 'own/here' });
-		expect(roots).toEqual([{ path: 'own/here', role: 'own', buildOutputs: [], deltaDir: 'delta/own' }]);
+		expect(roots).toEqual([{ path: 'own/here', role: 'own', buildOutputs: [], deltaDir: 'delta/own', upstreamPaths: new Set() }]);
 		expect(ownedTreePrefixes(roots)).toEqual(['own/here/']);
 	});
 

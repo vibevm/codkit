@@ -27,7 +27,7 @@ import { conventions } from './conventions.js';
 import { generators } from './generators.js';
 import { identity } from './identity.js';
 import { makeLayers } from './layers.js';
-import { layout } from './layout.js';
+import { makeLayout } from './layout.js';
 import { standards } from './standards.js';
 /** The identifier a patch set declares in `codkit.json`. */
 export const TYPE_ID = 'theia';
@@ -48,7 +48,7 @@ export function projectTypeFor(config) {
         capabilities: new Set(CAPABILITIES),
         configSchema,
         identity,
-        layout,
+        layout: makeLayout(config.applicationRoot),
         layers: makeLayers(config.applicationRoot),
         build: makeBuild(config),
         advisory: makeAdvisory(config.applicationRoot),
@@ -84,5 +84,5 @@ export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.js
 export { bindFunctionName, featureClassName, featureConstant, featureSkeleton, generators, preferenceId } from './generators.js';
 export { CORE_MANIFEST_PATH, CORE_PACKAGE_NAME, fingerprints, identity, LERNA_MANIFEST_PATH, MONOREPO_NAME, monorepoVersion, REQUIRED_WORKSPACE_GLOBS, ROOT_MANIFEST_PATH, TAG_PATTERN } from './identity.js';
 export { importedPackageOf, makeLayers, overlayTargetsOf, overrideProblems, packageNameOf, serviceOverride } from './layers.js';
-export { CLEANUP_WHITELIST, FORBIDDEN_PATCH_TARGETS, layout, ownRootProblem, WORKSPACE_PARENTS } from './layout.js';
+export { APPLICATION_BUILD_OUTPUTS, CLEANUP_WHITELIST, FORBIDDEN_PATCH_TARGETS, layout, makeLayout, OWN_BUILD_OUTPUTS, ownRootProblem, WORKSPACE_PARENTS } from './layout.js';
 export { standards, STANDARDS_PACKAGES } from './standards.js';

@@ -80,7 +80,7 @@ export function checkTree(resolution, config, options) {
     }
     // 7. Cleanliness, only when the command requires it.
     if (options.requireClean === true) {
-        return checkClean(repo.topLevel, ownedRootsOf(options.type ?? null, config.typeConfig), checks);
+        return checkClean(repo.topLevel, ownedRootsOf(options.type ?? null, config.typeConfig, { treeDir: repo.topLevel, pinSha: config.pin.sha }), checks);
     }
     return { checks, fatal: null };
 }

@@ -142,7 +142,12 @@ export function rebaseOntoPin(options: RebaseOntoPinOptions): RebaseOntoPinResul
 			desiredTree,
 			patchsetHead: graph.head,
 			allowedOwnBeforeTree: sourceBaseline,
-			allowedIgnoredPrefixes: ownedTreePrefixes(ownedRootsOf(options.type, graph.targetConfig.typeConfig)),
+			allowedIgnoredPrefixes: ownedTreePrefixes(
+				ownedRootsOf(options.type, graph.targetConfig.typeConfig, {
+					treeDir: options.resolution.path,
+					pinSha: graph.targetConfig.pin.sha
+				})
+			),
 			allowedIgnoredPaths: devChannelPaths,
 			allowCompletedRollover: !hasRebasePendingRecords(options.patchesDir),
 			completedCheckpoint: () => options.checkpoint?.('after-complete'),

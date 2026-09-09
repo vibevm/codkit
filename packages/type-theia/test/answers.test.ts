@@ -14,6 +14,7 @@ import {
 	LERNA_MANIFEST_PATH,
 	makeAdvisory,
 	makeBuild,
+	makeLayout,
 	ownTestsOf,
 	overrideProblems,
 	packageBuildOf,
@@ -97,6 +98,22 @@ describe('layout', () => {
 		expect(CLEANUP_WHITELIST).toContain('plugins/');
 		// The user-editable bundler entry of an application is not a build output.
 		expect(CLEANUP_WHITELIST.some((glob) => glob.includes('esbuild.mjs') && !glob.includes('gen-esbuild'))).toBe(false);
+	});
+
+	it('owns the own package and the application, and names what a build writes inside each', () => {
+		// ##THEIA-APPLICATION-ROOT, ##THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT.
+		const owned = makeLayout('examples/electron').ownRoots({ ownRoot: 'packages/product' });
+		expect(owned.map((entry) => [entry.path, entry.role])).toEqual([
+			['packages/product', 'own'],
+			['examples/electron', 'application']
+		]);
+		expect(owned[0]?.buildOutputs).toContain('lib/**');
+		expect(owned[0]?.buildOutputs).toContain('*.tsbuildinfo');
+		// The application generates its composition as well as compiling it.
+		expect(owned[1]?.buildOutputs).toContain('src-gen/**');
+		expect(owned[1]?.buildOutputs).toContain('lib/**');
+		// The user-editable bundler entry is the product's file, not a build output.
+		expect(owned[1]?.buildOutputs.some((glob) => glob.includes('esbuild.mjs') && !glob.includes('gen-esbuild'))).toBe(false);
 	});
 
 	it('never patches what an install regenerates', () => {

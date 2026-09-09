@@ -30,7 +30,7 @@ import { conventions } from './conventions.ts';
 import { generators } from './generators.ts';
 import { identity } from './identity.ts';
 import { makeLayers } from './layers.ts';
-import { layout } from './layout.ts';
+import { makeLayout } from './layout.ts';
 import { standards } from './standards.ts';
 
 /** The identifier a patch set declares in `codkit.json`. */
@@ -54,7 +54,7 @@ export function projectTypeFor(config: TheiaTypeConfig): ProjectType {
 		capabilities: new Set(CAPABILITIES),
 		configSchema,
 		identity,
-		layout,
+		layout: makeLayout(config.applicationRoot),
 		layers: makeLayers(config.applicationRoot),
 		build: makeBuild(config),
 		advisory: makeAdvisory(config.applicationRoot),
@@ -116,5 +116,14 @@ export {
 	TAG_PATTERN
 } from './identity.ts';
 export { importedPackageOf, makeLayers, overlayTargetsOf, overrideProblems, packageNameOf, serviceOverride } from './layers.ts';
-export { CLEANUP_WHITELIST, FORBIDDEN_PATCH_TARGETS, layout, ownRootProblem, WORKSPACE_PARENTS } from './layout.ts';
+export {
+	APPLICATION_BUILD_OUTPUTS,
+	CLEANUP_WHITELIST,
+	FORBIDDEN_PATCH_TARGETS,
+	layout,
+	makeLayout,
+	OWN_BUILD_OUTPUTS,
+	ownRootProblem,
+	WORKSPACE_PARENTS
+} from './layout.ts';
 export { standards, STANDARDS_PACKAGES } from './standards.ts';

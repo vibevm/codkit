@@ -19,6 +19,7 @@
 // own layer; the others live under `delta/own-roots/<role>/`
 // (PROP-005 ##OWN-ROOTS-IN-THE-DELTA).
 import { matchesPatternList } from './conventionsFile.js';
+import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { repoRelativePathProblem } from './pathSafety.js';
 /**
@@ -44,19 +45,49 @@ export function deltaDirOfRole(role) {
  * resolved, or a test of the engine's own paths - gets the own root alone,
  * which is what every type answers when it owns one directory.
  */
-export function ownedRootsOf(type, typeConfig) {
+export function ownedRootsOf(type, typeConfig, pin) {
     if (type === null) {
-        return [{ path: typeConfig.ownRoot, role: 'own', buildOutputs: [], deltaDir: OWN_SOURCE_DIR }];
+        return [{ path: typeConfig.ownRoot, role: 'own', buildOutputs: [], deltaDir: OWN_SOURCE_DIR, upstreamPaths: new Set() }];
     }
     const answer = type.layout.ownRoots({ ownRoot: typeConfig.ownRoot });
     const roots = answer.map((owned) => ({
         path: owned.path,
         role: owned.role,
         buildOutputs: [...owned.buildOutputs],
-        deltaDir: deltaDirOfRole(owned.role)
+        deltaDir: deltaDirOfRole(owned.role),
+        upstreamPaths: pin === undefined ? new Set() : upstreamPathsOf(pin.treeDir, pin.pinSha, owned.path)
     }));
     assertOwnedRoots(type, typeConfig.ownRoot, roots);
     return roots;
+}
+/**
+ * What the pin ships inside one owned directory. A pin whose objects the tree
+ * cannot read answers "nothing", because a guess in the other direction would
+ * hide the tree's own files from the guard that protects them.
+ */
+function upstreamPathsOf(treeDir, pinSha, path) {
+    // A tree that is not there yet, or not a repository at all, is the business
+    // of the checks that run after this one: the question "what does the pin ship
+    // here" simply has no answer, and the answer "nothing" leaves every later
+    // refusal exactly as it was.
+    let listed;
+    try {
+        listed = runGit({ args: ['ls-tree', '-r', '--name-only', '-z', pinSha, '--', `${path}/`], cwd: treeDir });
+    }
+    catch {
+        return new Set();
+    }
+    if (listed.status !== 0) {
+        return new Set();
+    }
+    const prefix = `${path}/`;
+    const paths = new Set();
+    for (const entry of listed.stdout.split('\0')) {
+        if (entry.startsWith(prefix)) {
+            paths.add(entry.slice(prefix.length));
+        }
+    }
+    return paths;
 }
 /**
  * The rules the engine cannot work around, checked over the real configuration
@@ -142,5 +173,11 @@ function expandedGlobs(globs) {
  * a fresh pass removes it.
  */
 export function ownCodeFilter(owned) {
-    return owned.buildOutputs.length === 0 ? undefined : (relative) => !isBuildOutput(owned, relative);
+    if (owned.buildOutputs.length === 0 && owned.upstreamPaths.size === 0) {
+        return undefined;
+    }
+    // A directory is offered with its trailing slash, so a directory that holds
+    // upstream files is still descended into; only the files themselves are left
+    // out of the delta's half of the directory.
+    return (relative) => !isBuildOutput(owned, relative) && !owned.upstreamPaths.has(relative);
 }

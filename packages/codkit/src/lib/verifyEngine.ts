@@ -82,7 +82,7 @@ import { ckError, isCkError } from './messages.ts';
 import type { CkErrorPayload, ErrorCode } from './messages.ts';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.ts';
 import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
-import { ownCodeFilter, ownedRootsOf, ownedTreePrefixes } from './ownedRoots.ts';
+import { ownCodeFilter, ownedRootOf, ownedRootsOf } from './ownedRoots.ts';
 import type { OwnedRoot } from './ownedRoots.ts';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.ts';
 import { CODKIT_TOOL_ROOT, shippedRuntime } from './runtimePackage.ts';
@@ -215,7 +215,7 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	// each carries a manifest of the same shape, and every file inside it belongs
 	// to exactly one unit of that manifest - own code nobody claimed is own code
 	// nobody maintains, wherever the delta keeps it.
-	checkOwnedRoots(patchesDir, ownedRootsOf(options.type, config.typeConfig), findings);
+	checkOwnedRoots(patchesDir, ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), findings);
 
 	// (h2) What codkit delivered into the own layer: the installed runtime
 	// library is byte-equal to the shipped one, and no record of the product
@@ -875,6 +875,21 @@ function checkOwnedRoots(patchesDir: string, roots: readonly OwnedRoot[], findin
 				)
 			);
 		}
+		// A delta file at a path the pin ships inside this directory would never
+		// materialize: inside an owned directory the pin is the boundary, and an
+		// upstream file is changed by the upper layers, not by the mirror.
+		for (const shadowed of listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), { refuseSymlinks: true }).filter((file) =>
+			owned.upstreamPaths.has(file)
+		)) {
+			findings.push(
+				finding(
+					'OWN-UNCOVERED',
+					`${owned.deltaDir}/${shadowed} sits at a path the pin ships inside ${owned.path}/`,
+					'change that upstream file through the config-overlay, resource-file or patch layer; the mirror never overwrites what the pin ships inside an owned directory',
+					`${owned.deltaDir}/${shadowed}`
+				)
+			);
+		}
 		const coverage = checkUnitCoverage(manifest, files);
 		for (const file of coverage.uncovered) {
 			findings.push(
@@ -1376,13 +1391,21 @@ function checkCompleteness(
 	// reported in the same words - `ci`, which built the branch, recognises the
 	// finding as its own and drops it.
 	const materializer = materializerOf(type);
-	const ownPrefixes = [
-		...ownedTreePrefixes(ownedRootsOf(type, config.typeConfig)),
-		...(materializer === null ? [] : ownExtensionTreePrefixes(materializer, loadOwnManifest(patchesDir).extensions))
-	];
+	const roots = ownedRootsOf(type, config.typeConfig, { treeDir, pinSha: config.pin.sha });
+	const extensionPrefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, loadOwnManifest(patchesDir).extensions);
+	// Inside an owned directory the pin is the boundary: a file the pin ships
+	// there is an upstream file and is judged by the layer that changes it, not
+	// by the rule about own code on a branch (PROP-016 ##TYPE-AREA-LAYOUT).
+	const suppliedByTheDelta = (path: string): boolean => {
+		const owned = ownedRootOf(roots, path);
+		if (owned !== null) {
+			return !owned.upstreamPaths.has(path.slice(owned.path.length + 1));
+		}
+		return extensionPrefixes.some((prefix) => path.startsWith(prefix));
+	};
 
 	for (const path of changed) {
-		if (ownPrefixes.some((prefix) => path.startsWith(prefix))) {
+		if (suppliedByTheDelta(path)) {
 			// ##OWN-EXCLUDED-LOCALLY: own code is committed on the generated branch
 			// only in the ci/publish mode; locally it is copied in untracked, so a
 			// committed own file means the two modes were mixed in one tree.

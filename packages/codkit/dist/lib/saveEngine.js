@@ -59,7 +59,7 @@ export function runSave(options) {
     // The directories the delta owns (PROP-016 ##TYPE-AREA-LAYOUT): what git may
     // not judge, what the mirror extracts from, and what a positional path may
     // name as own code.
-    const roots = ownedRootsOf(options.type, config.typeConfig);
+    const roots = ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
     const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
     // 0. A live two-way sync leaves the tree and the patch set half-mutated;
     // extracting into that state is what this refusal prevents (PROP-008

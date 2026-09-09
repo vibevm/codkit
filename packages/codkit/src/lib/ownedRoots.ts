@@ -21,6 +21,7 @@
 
 import type { OwnedRole, ProjectType } from '@codkit/type-api';
 import { matchesPatternList } from './conventionsFile.ts';
+import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { repoRelativePathProblem } from './pathSafety.ts';
 
@@ -43,6 +44,23 @@ export type OwnedRoot = {
 	readonly buildOutputs: readonly string[];
 	/** Where its content lives in patchset, a path from the patchset root. */
 	readonly deltaDir: string;
+	/**
+	 * The files the pin ships inside this directory, relative to `path`.
+	 *
+	 * An owned directory may sit over content upstream already has - a product's
+	 * application is usually a fork of one of upstream's example applications -
+	 * and inside it the pin is the boundary: what the pin ships is upstream's
+	 * file, changed the way any upstream file is (a config-overlay, a
+	 * resource-file, a patch), and what the pin does not ship is the delta's own
+	 * code, mirrored and guarded like any other. The own root is the ordinary
+	 * case of this rule and not an exception: it is a directory the product
+	 * creates, so the pin ships nothing inside it and the set is empty.
+	 *
+	 * Empty as well when the caller could not name a pin and a tree to read it
+	 * from - the answer is then "nothing is upstream's", which is the behaviour
+	 * of every patch set that owns one directory.
+	 */
+	readonly upstreamPaths: ReadonlySet<string>;
 };
 
 /**
@@ -62,19 +80,53 @@ export function deltaDirOfRole(role: OwnedRole): string {
  * resolved, or a test of the engine's own paths - gets the own root alone,
  * which is what every type answers when it owns one directory.
  */
-export function ownedRootsOf(type: ProjectType | null, typeConfig: { readonly ownRoot: string }): readonly OwnedRoot[] {
+export function ownedRootsOf(
+	type: ProjectType | null,
+	typeConfig: { readonly ownRoot: string },
+	pin?: { readonly treeDir: string; readonly pinSha: string }
+): readonly OwnedRoot[] {
 	if (type === null) {
-		return [{ path: typeConfig.ownRoot, role: 'own', buildOutputs: [], deltaDir: OWN_SOURCE_DIR }];
+		return [{ path: typeConfig.ownRoot, role: 'own', buildOutputs: [], deltaDir: OWN_SOURCE_DIR, upstreamPaths: new Set() }];
 	}
 	const answer = type.layout.ownRoots({ ownRoot: typeConfig.ownRoot });
 	const roots = answer.map((owned) => ({
 		path: owned.path,
 		role: owned.role,
 		buildOutputs: [...owned.buildOutputs],
-		deltaDir: deltaDirOfRole(owned.role)
+		deltaDir: deltaDirOfRole(owned.role),
+		upstreamPaths: pin === undefined ? new Set<string>() : upstreamPathsOf(pin.treeDir, pin.pinSha, owned.path)
 	}));
 	assertOwnedRoots(type, typeConfig.ownRoot, roots);
 	return roots;
+}
+
+/**
+ * What the pin ships inside one owned directory. A pin whose objects the tree
+ * cannot read answers "nothing", because a guess in the other direction would
+ * hide the tree's own files from the guard that protects them.
+ */
+function upstreamPathsOf(treeDir: string, pinSha: string, path: string): ReadonlySet<string> {
+	// A tree that is not there yet, or not a repository at all, is the business
+	// of the checks that run after this one: the question "what does the pin ship
+	// here" simply has no answer, and the answer "nothing" leaves every later
+	// refusal exactly as it was.
+	let listed;
+	try {
+		listed = runGit({ args: ['ls-tree', '-r', '--name-only', '-z', pinSha, '--', `${path}/`], cwd: treeDir });
+	} catch {
+		return new Set();
+	}
+	if (listed.status !== 0) {
+		return new Set();
+	}
+	const prefix = `${path}/`;
+	const paths = new Set<string>();
+	for (const entry of listed.stdout.split('\0')) {
+		if (entry.startsWith(prefix)) {
+			paths.add(entry.slice(prefix.length));
+		}
+	}
+	return paths;
 }
 
 /**
@@ -173,5 +225,11 @@ function expandedGlobs(globs: readonly string[]): readonly string[] {
  * a fresh pass removes it.
  */
 export function ownCodeFilter(owned: OwnedRoot): ((relative: string) => boolean) | undefined {
-	return owned.buildOutputs.length === 0 ? undefined : (relative) => !isBuildOutput(owned, relative);
+	if (owned.buildOutputs.length === 0 && owned.upstreamPaths.size === 0) {
+		return undefined;
+	}
+	// A directory is offered with its trailing slash, so a directory that holds
+	// upstream files is still descended into; only the files themselves are left
+	// out of the delta's half of the directory.
+	return (relative) => !isBuildOutput(owned, relative) && !owned.upstreamPaths.has(relative);
 }

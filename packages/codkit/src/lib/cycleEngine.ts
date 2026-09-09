@@ -381,7 +381,13 @@ function recordFromClassification(
 }
 
 function baseClassifyOptions(options: ContinueCycleOptions, state: CycleState) {
-	const references = renameReferencePaths(options.patchesDir, ownedRootsOf(options.type, options.config.typeConfig));
+	const references = renameReferencePaths(
+		options.patchesDir,
+		ownedRootsOf(options.type, options.config.typeConfig, {
+			treeDir: options.resolution.path,
+			pinSha: options.config.pin.sha
+		})
+	);
 	return {
 		patchesDir: options.patchesDir,
 		treeDir: options.resolution.path,

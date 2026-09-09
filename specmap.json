@@ -662,7 +662,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:f0c87354a0b0dd3f2d38fee43030f1a1efe6427902bddff1ea45c70fc8ef44db",
+      "content_hash": "sha256:4b2509d2b54e09cdb69cb7dd675b69347725805ab772686f20a6ce0ebd94129d",
       "doc_path": "modules/codkit/FEAT-001",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-001-polygon.xml",
       "heading": "codkit FEAT-001: Standalone integration polygon",
@@ -896,7 +896,7 @@
     },
     {
       "anchor": "theia-polygon",
-      "content_hash": "sha256:169f498855714240b9485657767d65054c8fd7a9ca0c5f29becaba6ac4b0c390",
+      "content_hash": "sha256:8b4d6c114fc1a421ff65f05404fa2c9f862879bc5499fcb15c7f88e70db939af",
       "doc_path": "modules/codkit/FEAT-001",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-001-polygon.xml",
       "heading": "7. The third polygon - the shape of a Theia monorepo",
@@ -914,10 +914,10 @@
     },
     {
       "anchor": "POLYGON-THEIA-COVERAGE",
-      "content_hash": "sha256:b55108e3db57e5bad5748f8fe67f8652baf4beda9f44085e0bceb09171611122",
+      "content_hash": "sha256:2457ff5bff73ea202bb5b850752f9238dd7e5baa67f197e4e44a93bb27641c61",
       "doc_path": "modules/codkit/FEAT-001",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-001-polygon.xml",
-      "heading": "What it carries: the fingerprints of a healthy tree and the refusal of a tree whose framework package disagrees with `lerna.json` about the version; `load` mirroring the whole own package into a workspace package directory, and the one patch a product of this family ever needs - a hook with a named reason, since additions need no upstream edit at all - landing shifted on the second pin; `overlay apply` writing the identity of the product into the application manifest; `verify` accepting a `rebind` whose package depends on the package that binds the service and refusing the same `rebind` without that dependency; an artifact of the `entry-module` layer refused with `CK-E-TYPE-CAPABILITY`, and the same refusal for `imageset`, `gen brand` and `runtime load|check`; `build status` over the two channels of the family; and the cycle onto the second pin stopping for the advisory that names the version of the monorepo. What it deliberately does not carry: an install, a compile, a running application - those are the probe's, and they are measured on upstream itself. @status:spec/done",
+      "heading": "What it carries: the fingerprints of a healthy tree and the refusal of a tree whose framework package disagrees with `lerna.json` about the version; `load` mirroring the whole own package into a workspace package directory, and the one patch a product of this family ever needs - a hook with a named reason, since additions need no upstream edit at all - landing shifted on the second pin; `overlay apply` writing the identity of the product into the application manifest; `verify` accepting a `rebind` whose package depends on the package that binds the service and refusing the same `rebind` without that dependency; an artifact of the `entry-module` layer refused with `CK-E-TYPE-CAPABILITY`, and the same refusal for `imageset`, `gen brand` and `runtime load|check`; `build status` over the two channels of the family; the cycle onto the second pin stopping for the advisory that names the version of the monorepo; and (P5-2) the two owned directories of this family - the application materialized beside the own package, the file the pin ships inside it left to the overlay, and a compiled `lib/` inside the owned directory read as a build output rather than as changed own code. What it deliberately does not carry: an install, a compile, a running application - those are the probe's, and they are measured on upstream itself. @status:spec/done",
       "line": 55,
       "uri": "spec://codkit/modules/codkit/FEAT-001#POLYGON-THEIA-COVERAGE"
     },
@@ -941,7 +941,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:bee65998bb4d1e20d62782e93ac5c0623cb9479680d71188feda47071a6079c5",
+      "content_hash": "sha256:c39a576b67f0dc5dae6c43b64fd32e09b9dab716e3d2a444403bfe48901e8aec",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: End-to-end acceptance scenarios S01–S28 (Given/When/Then)",
@@ -2315,6 +2315,24 @@
       "heading": "**Given**: the same polygon at the first pin, with the tree's dependency receipts in place. **When**: `codkit cycle start v1.76.0` without `--ci`. **Then**: exit 3 at the advisory stop, and the report names the readers that changed - the version of the monorepo, read from `lerna.json`, and the entry kinds a `theiaExtensions` array may declare (`spec://codkit/modules/theia/PROP-005#THEIA-ADVISORY-READERS`). **When**: `codkit cycle continue --ci` while the lint of the tree is red. **Then**: exit 3 with `stop: stabilize-red` - the gates of the upstream run over the tree the cycle built. **When**: `codkit cycle continue --ci` again, with the gates green. **Then**: exit 0, `status: completed`, and `codkit.json` carries the second pin. @status:spec/done",
       "line": 230,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S74"
+    },
+    {
+      "anchor": "s75",
+      "content_hash": "sha256:941c35249c55ef6494594b59ee82e708027bb502de7b99ba2e6631891029d009",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S75 - two owned directories, and the build output inside one of them",
+      "line": 232,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s75"
+    },
+    {
+      "anchor": "S75",
+      "content_hash": "sha256:fed3fa2c82a61a74dff21ec678a63bb453bc7101208e0093bad13746e8a33439",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: the Theia polygon, whose type owns two directories - the own package and the application - and whose delta carries the application's bundler entry and its notice under `delta/own-roots/application/` (`spec://codkit/modules/codkit/PROP-005#OWN-ROOTS-IN-THE-DELTA`). **When**: `codkit load`. **Then**: exit 0; both directories are materialized, and the application's `package.json` - the file the pin ships inside that directory - is still upstream's, because inside an owned directory the pin is the boundary and that file is the overlay's target. **When**: `codkit load` again, then `codkit status` and `codkit verify`. **Then**: exit 0 each, `own.changed` is zero: the files the pin ships inside an owned directory are not own code the delta lost. **When**: the own package is compiled in place - `lib/**`, `*.tsbuildinfo`, `.eslintcache` inside the owned directory - and `codkit status`, `codkit load` and `codkit save` are run over the compiled tree. **Then**: exit 0 each; the build output is not counted as changed own code, the load leaves it where the build put it, and `save` extracts the edited source and none of the output (`spec://codkit/modules/theia/PROP-004#THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT`). **When**: `codkit load --fresh`. **Then**: exit 0, the build output is gone and the own sources are still there - the fresh pass is the one run that removes what a build wrote inside an owned directory. @status:spec/done",
+      "line": 233,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S75"
     },
     {
       "anchor": "root",
@@ -10283,7 +10301,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:67ca0cba96d0883976c3194e95fc6d5bced73acafb60203ded3e537fd0178e00",
+      "content_hash": "sha256:e2ee353d06b117c8460f6275246307544c82b14e614880bfef31ec17550681d4",
       "doc_path": "modules/theia/PROP-002",
       "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
       "heading": "theia PROP-002: Upstream identity and tree layout",
@@ -10328,7 +10346,7 @@
     },
     {
       "anchor": "layout",
-      "content_hash": "sha256:4715cba647420163c852cc281be71f6feb63f2592998a8b7ddbf2135381bddac",
+      "content_hash": "sha256:df0a0da8016995967a68de16fb18c3c10efd6270bb9999ae3681d08fa96eef11",
       "doc_path": "modules/theia/PROP-002",
       "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
       "heading": "2. Tree layout",
@@ -10355,19 +10373,19 @@
     },
     {
       "anchor": "THEIA-APPLICATION-ROOT",
-      "content_hash": "sha256:0e61dbf122a88efe6d527863b8c39d1f837a3f2fe53f6a05f7c89090f3ec5547",
+      "content_hash": "sha256:894b5052206eecd71f03348a9ef90b3520be37951e97eed3400a8742a2a2acfb",
       "doc_path": "modules/theia/PROP-002",
       "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
-      "heading": "A product's application is a second directory the delta owns, `typeConfig.applicationRoot` (default `applications/<name>` or an `examples/*` slot), whose `package.json` is the overlay target of PROP-003. The type materializes both directories the way the `vscode` type materializes its own root: mirrored by content from the delta, excluded from the drift guard. @status:spec/plan",
+      "heading": "A product's application is a second directory the delta owns, `typeConfig.applicationRoot` (default `applications/<name>` or an `examples/*` slot), whose `package.json` is the overlay target of PROP-003. The type materializes both directories the way the `vscode` type materializes its own root: mirrored by content from the delta, excluded from the drift guard. **Implemented in P5-2** (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYOUT`): the type answers `layout.ownRoots` with the own package (role `own`) and the application (role `application`), the delta keeps the second one under `delta/own-roots/application/`, and inside it **the pin is the boundary** - the files the pin ships there (the manifest of a forked example application, its tsconfig) stay upstream's and are changed by the config-overlay, resource-file or patch layer, while everything the pin does not ship is own code of that directory. That is what lets the overlay of the manifest and the ownership of the directory co-exist, and it is what an application written from scratch needs nothing of: at a pin that ships nothing there, the delta owns the whole directory. @status:spec/done",
       "line": 16,
       "uri": "spec://codkit/modules/theia/PROP-002#THEIA-APPLICATION-ROOT"
     },
     {
       "anchor": "THEIA-APPLICATION-ROOT-IMPL",
-      "content_hash": "sha256:e04276637c37edb7253235202d4d33e054ef60ca5ddd1f4d4b04a19c79ee9377",
+      "content_hash": "sha256:a1521013aa0a82a292d6f6fd3afbc8e2205e253138332359dbcc0a1db68992f4",
       "doc_path": "modules/theia/PROP-002",
       "file": "vibevm/vibespecs/modules/theia/PROP-002-identity-and-layout.xml",
-      "heading": "The P5 implementation: `typeConfig.applicationRoot` is a required field and it is what the type builds its overlay target, its package build and its advisory reader of the application from. The second half of the fact above - the delta *materializing* that directory the way it materializes the own root - is **not** implemented and is not expressible in the contract as it stands: the engine mirrors exactly one own root (`spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`), and a second mirrored directory is a change of the engine, not of a type. What a product does today instead: it forks one of upstream's example applications, points `applicationRoot` at that directory as it exists **at the pin**, and owns its content through the overlay of its manifest and through resource-file artifacts. An application written from scratch, which exists at no pin, cannot be an overlay target at all (`OVERLAY-BASE-IS-THE-PIN`), and is the open question this fact leaves for the phase that needs it. @status:impl/done",
+      "heading": "**Superseded by P5-2 for its second half** (the delta now materializes the application directory; see the fact above). The P5 implementation was: `typeConfig.applicationRoot` is a required field and it is what the type builds its overlay target, its package build and its advisory reader of the application from. The second half of the fact above - the delta *materializing* that directory the way it materializes the own root - is **not** implemented and is not expressible in the contract as it stands: the engine mirrors exactly one own root (`spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`), and a second mirrored directory is a change of the engine, not of a type. What a product does today instead: it forks one of upstream's example applications, points `applicationRoot` at that directory as it exists **at the pin**, and owns its content through the overlay of its manifest and through resource-file artifacts. An application written from scratch, which exists at no pin, cannot be an overlay target at all (`OVERLAY-BASE-IS-THE-PIN`), and is the open question this fact leaves for the phase that needs it. P5-2 answered exactly that: the engine mirrors every owned directory, and an application that exists at no pin is owned whole. @status:impl/done",
       "line": 17,
       "uri": "spec://codkit/modules/theia/PROP-002#THEIA-APPLICATION-ROOT-IMPL"
     },
@@ -10517,7 +10535,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:9222296b3e391f49998cc7d970d8dc7fb4b3c1a402679fe42d6929cdbd15c839",
+      "content_hash": "sha256:b588d2c5aaceea902fb31b0e043986aa238dd6cbe0ead552d74eca4761bd37c1",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "theia PROP-004: Build, watch, lint, test, packaging",
@@ -10589,10 +10607,10 @@
     },
     {
       "anchor": "THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT",
-      "content_hash": "sha256:b44385583f466c583f10e842c1ef46bbebc77c414fd9a8c256deee2135177bfd",
+      "content_hash": "sha256:c1231447fdfa08e63195c13c4bfd5eac6ae1466fea28a6826b6f3b118373bac4",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
-      "heading": "**An open defect of the engine, measured on a real clone in P5.** The own root of this family is a *compiled npm package*, so its build output lands **inside** it - `packages/<own>/lib/`, `.eslintcache`, `*.tsbuildinfo`. The engine treats every file under the own root as own code, and the fresh pass deliberately never cleans inside it (own code is not litter), so after one compile `status` reports the compiled `lib/` as own code the tree has and the delta does not, and `load` refuses over it as a dirty tree. Nothing in the contract lets a type say \"these paths inside the own root are build outputs\": the cleanup whitelist is consulted **outside** the own root only. Until the engine has such an answer the protocol of this type says: remove `<ownRoot>/lib`, `<ownRoot>/.eslintcache` and `<ownRoot>/*.tsbuildinfo` before `load`, `save` or `status`. The first type never met this because its own code compiles into `out/` outside the own root. @status:impl/done",
+      "heading": "**Measured on a real clone in P5 as a defect of the engine; answered in P5-2.** The own root of this family is a *compiled npm package*, so its build output lands **inside** it - `packages/<own>/lib/`, `.eslintcache`, `*.tsbuildinfo`. The engine treats every file under the own root as own code, and the fresh pass deliberately never cleans inside it (own code is not litter), so after one compile `status` reports the compiled `lib/` as own code the tree has and the delta does not, and `load` refuses over it as a dirty tree. The contract now lets a type say which paths inside an owned directory a build writes (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYOUT`), and this type says it: inside the own package `lib/**`, `node_modules/**`, `.eslintcache`, `*.tsbuildinfo`; inside the application `lib/**`, `src-gen/**`, `node_modules/**`, `plugins/**`, the generated bundler entries, `.eslintcache` and `*.tsbuildinfo`. The engine never copies them into the delta, never counts them as changed own code, never removes them on a load, and removes them on `load --fresh`; the hand protocol of P5 (delete them before every command) is retired. The first type never met this because its own code compiles into `out/` outside the own root. @status:impl/done",
       "line": 13,
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT"
     },

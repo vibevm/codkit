@@ -160,7 +160,7 @@ export async function runCi(options) {
         }
         throw error;
     }
-    const drift = driftDirty(materializerOf(options.type), tree, ownedRootsOf(options.type, config.typeConfig), patchesDir, {
+    const drift = driftDirty(materializerOf(options.type), tree, ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), patchesDir, {
         untrackedIsDirt: false,
         generated: { pinSha: config.pin.sha, branch }
     });

@@ -207,7 +207,7 @@ export function appendGeneratedOwnCommit(options: GeneratedOwnCommitOptions): Ge
 	// an empty layer is skipped exactly like any other.
 	if (files.length === 0 && extensions.length === 0) return { sha: null, files };
 	for (const owned of options.roots) {
-		removeIndexedOwnTree(options.treeDir, owned.path, indexEnv);
+		removeIndexedOwnTree(options.treeDir, owned, indexEnv);
 	}
 	for (const { owned, relatives } of snapshot) {
 		const sourceRoot = ownSourceRoot(options.patchesDir, owned.deltaDir);
@@ -275,13 +275,20 @@ function extensionSnapshot(materializer: Materializer | null, patchesDir: string
 	return materializer === null ? [] : ownExtensionFiles(materializer, patchesDir, loadOwnManifest(patchesDir).extensions);
 }
 
-function removeIndexedOwnTree(treeDir: string, targetRoot: string, indexEnv: GitEnv): void {
+/**
+ * Everything the delta supplies inside one owned directory is replaced, so a
+ * file the delta no longer carries leaves the snapshot. What the pin ships
+ * inside that directory stays: an owned directory may sit over a fork of
+ * upstream's own example, and those files are upstream's, carried by the
+ * commits of the pin and changed by the upper layers (PROP-016 ##TYPE-AREA-LAYOUT).
+ */
+function removeIndexedOwnTree(treeDir: string, owned: OwnedRoot, indexEnv: GitEnv): void {
 	const listed = gitOk(
-		{ args: ['ls-files', '-z', '--', `${targetRoot}/`], cwd: treeDir, env: indexEnv },
-		{ code: 'ARTIFACT-BROKEN', message: `cannot inspect the generated own-code subtree ${targetRoot}` }
+		{ args: ['ls-files', '-z', '--', `${owned.path}/`], cwd: treeDir, env: indexEnv },
+		{ code: 'ARTIFACT-BROKEN', message: `cannot inspect the generated own-code subtree ${owned.path}` }
 	).stdout;
 	for (const path of listed.split('\0')) {
-		if (path === '') continue;
+		if (path === '' || owned.upstreamPaths.has(path.slice(owned.path.length + 1))) continue;
 		gitOk(
 			{ args: ['update-index', '--force-remove', '--', path], cwd: treeDir, env: indexEnv },
 			{ code: 'ARTIFACT-BROKEN', message: `cannot remove stale generated own-code path ${path}` }

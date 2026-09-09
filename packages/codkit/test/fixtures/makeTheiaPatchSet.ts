@@ -28,6 +28,8 @@ export const PATCH_ID = 'CK-core-901';
 export const OWN_UNIT_ID = 'CK-frontend-901';
 export const OVERRIDE_ID = 'CK-frontend-902';
 export const OVERLAY_ID = 'CK-app-901';
+/** The unit of the second owned directory: the product's application. */
+export const APPLICATION_UNIT_ID = 'CK-app-902';
 
 /** ##THEIA-OWN-ROOT: the own package is a workspace package directory. */
 export const OWN_ROOT = 'packages/acme';
@@ -41,6 +43,15 @@ export const SERVICE_OWNER_PACKAGE = '@theia/core';
 
 /** The name the overlay gives the application. */
 export const APPLICATION_NAME = 'Acme Studio';
+
+/**
+ * ##THEIA-APPLICATION-ROOT: the application is the second directory the delta
+ * owns. Its manifest is upstream's file at the pin and stays the overlay
+ * target; these two are the product's own files inside it, and the pin ships
+ * neither, so they are own code of that directory.
+ */
+export const APPLICATION_ENTRY = 'esbuild.mjs';
+export const APPLICATION_NOTICE = 'resources/product-notice.md';
 
 /** Name of the sample patch file (PROP-004 sec. 4, patch file name encoding). */
 export const PATCH_FILE_NAME = `${encodePatchName(CORE_MODULE_PATH)}.ckpatch`;
@@ -139,6 +150,33 @@ function writeLayers(dir: string, upstream: TheiaUpstreamFixture): void {
 		]
 	});
 
+	// The second owned directory: the application of the product. What the pin
+	// ships inside it (the manifest) stays upstream's file and is changed by the
+	// overlay below; what the pin does not ship is own code of that directory,
+	// mirrored from `delta/own-roots/application/` (PROP-005 ##OWN-ROOTS-IN-THE-DELTA).
+	const applicationDelta = join(dir, 'delta', 'own-roots', 'application');
+	writeBytes(join(applicationDelta, APPLICATION_ENTRY), APPLICATION_ENTRY_MJS);
+	writeBytes(join(applicationDelta, APPLICATION_NOTICE), APPLICATION_NOTICE_MD);
+	writeJson(join(applicationDelta, 'patchset.delta.json'), {
+		codkitOwnManifest: 2,
+		units: [
+			{
+				id: APPLICATION_UNIT_ID,
+				layer: 'own',
+				type: 'extend',
+				category: 'own',
+				owner: OWNER,
+				reason: 'the files of the product application upstream has no counterpart for: its bundler entry and the notice it ships',
+				link: 'none',
+				cause: 'none',
+				pin,
+				contractTests: ['fixture.theia.application'],
+				roots: [APPLICATION_ENTRY, 'resources/']
+			}
+		],
+		serviceOverrides: []
+	});
+
 	// config-overlay layer: the application manifest, which is where the product
 	// model of this family lives (##THEIA-OVERLAY-TARGET).
 	writeJson(join(dir, 'delta', 'overlays', 'examples-electron-package.json.overlay.json'), {
@@ -232,6 +270,16 @@ export class AcmeEditorManager extends EditorManager {
  * ##CONTRACT-TESTS-MANDATE). Nothing here runs under vitest: the file is content
  * of the pseudo-patchset, read as text.
  */
+/** The bundler entry of the product application: a file upstream does not have. */
+const APPLICATION_ENTRY_MJS = `// The bundler entry of the product application.
+export default { entryPoints: ['src-gen/frontend/index.js'] };
+`;
+
+const APPLICATION_NOTICE_MD = `# Acme Studio
+
+The notice the product application ships beside its bundle.
+`;
+
 const OWN_GUARD_TESTS = `import * as assert from 'assert';
 
 import { AcmeEditorManager } from '../acme-editor-manager';

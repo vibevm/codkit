@@ -10,8 +10,13 @@ import { deltaDirOfRole } from '../../src/lib/ownedRoots.ts';
 import type { OwnedRoot } from '../../src/lib/ownedRoots.ts';
 
 /** One owned directory, with the build outputs a build writes inside it. */
-export function ownedRoot(path: string, role: OwnedRole = 'own', buildOutputs: readonly string[] = []): OwnedRoot {
-	return { path, role, buildOutputs, deltaDir: deltaDirOfRole(role) };
+export function ownedRoot(
+	path: string,
+	role: OwnedRole = 'own',
+	buildOutputs: readonly string[] = [],
+	upstreamPaths: readonly string[] = []
+): OwnedRoot {
+	return { path, role, buildOutputs, deltaDir: deltaDirOfRole(role), upstreamPaths: new Set(upstreamPaths) };
 }
 
 /** The list of a patch set whose type owns exactly the own root. */

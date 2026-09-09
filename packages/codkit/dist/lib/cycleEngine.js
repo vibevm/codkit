@@ -300,7 +300,10 @@ function recordFromClassification(options, state, classification, previous) {
     });
 }
 function baseClassifyOptions(options, state) {
-    const references = renameReferencePaths(options.patchesDir, ownedRootsOf(options.type, options.config.typeConfig));
+    const references = renameReferencePaths(options.patchesDir, ownedRootsOf(options.type, options.config.typeConfig, {
+        treeDir: options.resolution.path,
+        pinSha: options.config.pin.sha
+    }));
     return {
         patchesDir: options.patchesDir,
         treeDir: options.resolution.path,

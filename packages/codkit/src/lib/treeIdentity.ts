@@ -144,7 +144,11 @@ export function checkTree(resolution: ForkDirResolution, config: CodkitConfig, o
 
 	// 7. Cleanliness, only when the command requires it.
 	if (options.requireClean === true) {
-		return checkClean(repo.topLevel, ownedRootsOf(options.type ?? null, config.typeConfig), checks);
+		return checkClean(
+			repo.topLevel,
+			ownedRootsOf(options.type ?? null, config.typeConfig, { treeDir: repo.topLevel, pinSha: config.pin.sha }),
+			checks
+		);
 	}
 	return { checks, fatal: null };
 }

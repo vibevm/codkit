@@ -129,7 +129,11 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 		const preflight = prepareProvisionalMove(moveOptions);
 		importProspectiveObjects(tree, prospective.gitDir);
 		const move = executeProvisionalMove(moveOptions, preflight);
-		const own = syncAllOwnCode(options.patchesDir, tree, ownedRootsOf(options.type, options.config.typeConfig));
+		const own = syncAllOwnCode(
+			options.patchesDir,
+			tree,
+			ownedRootsOf(options.type, options.config.typeConfig, { treeDir: options.resolution.path, pinSha: options.config.pin.sha })
+		);
 		for (const blocker of prepared.blockers) {
 			options.out.info(`cycle blocker ${blocker.outcome}: ${blocker.artifactPath} -> ${blocker.targetPath}`);
 		}
@@ -153,7 +157,7 @@ function prepare(options: CycleMaterializeOptions, patchSetCommit: string): Prep
 		newRef: options.config.pin.sha
 	});
 	assertClassificationsEqual(recomputed, supplied);
-	const roots = ownedRootsOf(options.type, options.config.typeConfig);
+	const roots = ownedRootsOf(options.type, options.config.typeConfig, { treeDir: options.resolution.path, pinSha: options.config.pin.sha });
 	const ownEvidence = assertGeneratedTargetOwnership(
 		options.patchesDir,
 		options.type,

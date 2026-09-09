@@ -94,7 +94,7 @@ export function runSync(options) {
     // Every directory the delta owns, the own root first (PROP-016
     // ##TYPE-AREA-LAYOUT). Mirroring, the drift guard, the exclusion, the
     // generated snapshot and the mark all work over this list.
-    const roots = ownedRootsOf(options.type, config.typeConfig);
+    const roots = ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
     const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
     let generatedBranch = options.generatedBranch === true;
     // Only a release snapshot leaves the licence notice out; every other
@@ -738,8 +738,8 @@ function listPatchFiles(patchesDir) {
 }
 function buildBranch(options, plan, context, id) {
     const { patchesDir, config, out } = options;
-    assertGeneratedTargetOwnership(patchesDir, options.type, ownedRootsOf(options.type, config.typeConfig), layerTargets(plan));
     const tree = options.resolution.path;
+    assertGeneratedTargetOwnership(patchesDir, options.type, ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), layerTargets(plan));
     const scratch = join(patchesDir, '.codkit', 'tmp');
     mkdirSync(scratch, { recursive: true });
     const indexFile = join(scratch, `${id}.index`);
@@ -772,7 +772,7 @@ function buildBranch(options, plan, context, id) {
                 treeDir: tree,
                 indexFile,
                 parent,
-                roots: ownedRootsOf(options.type, config.typeConfig),
+                roots: ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
                 pinTag: config.pin.tag,
                 pinSha: config.pin.sha,
                 pinDateIso,
@@ -861,7 +861,7 @@ export function buildAppliedTip(options) {
     const conventions = loadConventions(options.type, options.patchesDir);
     const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir) : [];
     const plan = buildPlan(options.patchesDir, conventions, overlays, warn);
-    assertGeneratedTargetOwnership(options.patchesDir, options.type, ownedRootsOf(options.type, options.config.typeConfig), layerTargets(plan), options.omitLicenceNotice === true);
+    assertGeneratedTargetOwnership(options.patchesDir, options.type, ownedRootsOf(options.type, options.config.typeConfig, { treeDir: tree, pinSha: options.config.pin.sha }), layerTargets(plan), options.omitLicenceNotice === true);
     const context = overlayVarContext(options.config, pinCommitDate(tree, options.config.pin.sha), options.patchSetCommit ?? patchSetCommitId(options.patchesDir));
     return buildBranch(engine, plan, context, treeId(tree)).top;
 }
