@@ -9698,7 +9698,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:d69fddf70c96233967be723eb31f1138fb830f55a8c6c1235b255a100d54c416",
+      "content_hash": "sha256:7c995c8aad08c8d8071a2802036e6e761d2fe46a86f275ab21d4554d029f5246",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -9752,7 +9752,7 @@
     },
     {
       "anchor": "contract",
-      "content_hash": "sha256:1752df66cd21985604f8d9eba9dcdca6aef8f89225965b6bf4f40dd8e1036af8",
+      "content_hash": "sha256:65a0566417094bcf53fce634f9ce8e78c14f11930156bfb25b7a6ba5f274ffac",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "2. The contract: ten questions a type answers",
@@ -9779,10 +9779,10 @@
     },
     {
       "anchor": "TYPE-AREA-LAYOUT",
-      "content_hash": "sha256:2e4a11b6bc7cc301ca3c403e7e60ac05baf3336a1bc3f9701ade05e10fd0beea",
+      "content_hash": "sha256:abe18b01d70a5fddaa36c0bafd736ebbec5468ea4a1faf3bc0633c1b36293094",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Tree layout.** The own root (`typeConfig.ownRoot`, a path from the tree root: `src/vs/<name>` for VS Code, a workspace package for Theia), whether own extensions exist and where they materialize, the cleanup whitelist of build outputs the fresh pass may remove, the forbidden patch targets, type-specific marker comment forms if any. @status:spec/done",
+      "heading": "**Tree layout.** The own root (`typeConfig.ownRoot`, a path from the tree root: `src/vs/<name>` for VS Code, a workspace package for Theia), whether own extensions exist and where they materialize, the cleanup whitelist of build outputs the fresh pass may remove, the forbidden patch targets, type-specific marker comment forms if any. **Amended 2026-09-09 after the second real type:** a type may name **several owned directories** (`ownRoots`: the own root plus, for a family whose application is a directory of the product, the application root), each mirrored by content, excluded from the drift guard and named in the inventory like the own root; and it names the **build outputs inside an owned directory** (`ownBuildOutputs`, globs relative to the owned root, e.g. `lib/**`, `*.tsbuildinfo`) that the mirror never copies to the delta, `status` never counts as changed own code, and the fresh pass may remove - because a family that compiles a package in place writes its output next to its sources. @status:spec/done",
       "line": 17,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYOUT"
     },
@@ -9941,7 +9941,7 @@
     },
     {
       "anchor": "configuration",
-      "content_hash": "sha256:e27b88d5ea5c36dc2682fd35675a19cc256516d698cd3cace8a268014280a812",
+      "content_hash": "sha256:f4e37a3b3cd9594fc7fa94853fe1939265c492fd38433cb1f317083e2feb1d46",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "4. Configuration",
@@ -9968,10 +9968,10 @@
     },
     {
       "anchor": "TYPE-OWN-ROOT",
-      "content_hash": "sha256:8078d86985e6f7380583a916e77b870dd7cfc30e656159b9b80b87491490b154",
+      "content_hash": "sha256:dfdc6e7f3092de108706bf17bcf6b869b41140378ca9c8e2754c9ba2cf47d000",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "The own root is a **full path from the tree root** in `typeConfig.ownRoot`; the field is required, the type supplies its constraints (VS Code: under `src/vs/`; Theia: a workspace package directory) and refuses a root outside them with `CK-E-CONFIG`. The engine treats the own root as an opaque directory: mirrored by content, excluded from the drift guard, named in the inventory. @status:spec/done",
+      "heading": "The own root is a **full path from the tree root** in `typeConfig.ownRoot`; the field is required, the type supplies its constraints (VS Code: under `src/vs/`; Theia: a workspace package directory) and refuses a root outside them with `CK-E-CONFIG`. The engine treats the own root as an opaque directory: mirrored by content, excluded from the drift guard, named in the inventory. `typeConfig.ownRoot` is the first of the owned directories; a type that owns more names the others in its own `typeConfig` fields (Theia: `applicationRoot`), and the engine treats every owned directory the same way. @status:spec/done",
       "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT"
     },
@@ -10148,7 +10148,7 @@
     },
     {
       "anchor": "decisions",
-      "content_hash": "sha256:77499747b188b7e2ee26dd42da207104fdca41aeda056b005daf98e917139561",
+      "content_hash": "sha256:d5090509c0847174eb467c948f1c14856f63fa3d34c6f72a737f35a4d3d4104f",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "9. Decisions",
@@ -10181,6 +10181,15 @@
       "heading": "**Decision:** the contract's areas are the measured variation points and nothing else. **Why:** an interface designed for one real type fits that type; the `generic` type and the Theia type are the two forces that keep it honest, and each new question is added when a type needs it. **Considered and rejected:** a general \"hooks everywhere\" plugin API (speculative surface, untestable). **When to revisit:** a third real type that needs a tenth question. @status:spec/plan",
       "line": 81,
       "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-TYPE-CONTRACT-FROM-MEASUREMENT"
+    },
+    {
+      "anchor": "DECISION-OWNED-DIRECTORIES-AND-BUILD-OUTPUTS",
+      "content_hash": "sha256:ce47212f2a006706e47f7f9e10f1edefad97956da8f3fc91a90e1cf63baee2bd",
+      "doc_path": "modules/codkit/PROP-016",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
+      "heading": "**Decision:** the layout area answers with a list of owned directories and with the build outputs inside them, not with one own root. **Why:** measured on the second real type (P5, 2026-09-09): a Theia package compiles `src/` to `lib/` inside itself, so the engine that treats the whole owned directory as source read a build as a change of own code and refused to load; and the product's application is a second owned directory the engine mirrored nothing of. **Considered and rejected:** compiling own code elsewhere (fights the family's own tools and lint); listing the outputs in the cleanup whitelist only (they would still count as changed own code). **When to revisit:** a family whose outputs are interleaved with sources file by file rather than by directory. @status:spec/plan",
+      "line": 82,
+      "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-OWNED-DIRECTORIES-AND-BUILD-OUTPUTS"
     },
     {
       "anchor": "root",
