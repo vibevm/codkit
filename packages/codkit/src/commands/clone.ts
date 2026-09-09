@@ -10,7 +10,7 @@
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution } from '../lib/command.ts';
+import { EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { gitOk, runGit } from '../lib/gitx.ts';
 import type { Output } from '../lib/jsonOut.ts';
@@ -70,7 +70,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	// Final verdict on the tree we just produced.
 	const after = refreshResolution(resolution);
 	ctx.out.setForkTree(after.path, after.source);
-	return report(ctx, checkTree(after, config, { mode: 'read' }), 'cloned');
+	return report(ctx, checkTree(after, config, { mode: 'read', type: requireProjectType(ctx) }), 'cloned');
 }
 
 function requireConfig(config: CodkitConfig | null): CodkitConfig {
@@ -117,7 +117,7 @@ function inspectTarget(path: string): TargetState {
  */
 function reportExisting(ctx: CommandContext, resolution: ForkDirResolution, config: CodkitConfig): number {
 	ctx.out.info(`${resolution.path} is not empty; checking what is in it`);
-	return report(ctx, checkTree(resolution, config, { mode: 'read' }), 'already-present');
+	return report(ctx, checkTree(resolution, config, { mode: 'read', type: requireProjectType(ctx) }), 'already-present');
 }
 
 function report(ctx: CommandContext, result: TreeIdentityResult, outcome: 'cloned' | 'already-present'): number {

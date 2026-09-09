@@ -239,7 +239,7 @@ export function abortStoppedSync(input: TwoWayInput, record: SyncTransaction): A
 
 	// The abort writes into the tree by the record's say-so; an unfit tree is
 	// not one to write into.
-	const identity = checkTree(resolution, config, { mode: 'write' });
+	const identity = checkTree(resolution, config, { mode: 'write', type: input.type });
 	if (identity.fatal !== null) {
 		out.addError(identity.fatal.toPayload());
 		return { outcome: 'unfit' };

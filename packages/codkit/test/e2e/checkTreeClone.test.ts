@@ -146,7 +146,7 @@ describe('codkit check-tree', () => {
 		const envelope = parseEnvelope(run.stdout);
 		expect(envelope.ok).toBe(true);
 		expect(envelope.roots.fork).toMatchObject({ path: upstream.dir, source: 'flag' });
-		expect(envelope.data.checks?.map((check) => check.id)).toEqual(['repo', 'upstream', 'pin', 'lfs']);
+		expect(envelope.data.checks?.map((check) => check.id)).toEqual(['repo', 'upstream', 'pin', 'fingerprints', 'lfs']);
 		expect(envelope.data.checks?.every((check) => check.ok)).toBe(true);
 		expect(envelope.data.clean).toBeUndefined();
 	});

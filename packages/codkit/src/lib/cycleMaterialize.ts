@@ -106,7 +106,7 @@ type Prospective = {
 export function materializeCycleApply(options: CycleMaterializeOptions): CycleMaterializeResult {
 	const tree = options.resolution.path;
 	const branch = provisionalBranch(options.config, tree);
-	const checked = checkTree(options.resolution, options.config, { mode: 'write' });
+	const checked = checkTree(options.resolution, options.config, { mode: 'write', type: options.type });
 	if (checked.fatal !== null) throw checked.fatal;
 	const patchSetCommit = patchSetCommitId(options.patchesDir);
 	const prepared = prepare(options, patchSetCommit);

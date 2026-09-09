@@ -27,7 +27,7 @@ async function run(ctx, mode) {
     const config = requireConfig(ctx.config, mode);
     const overlays = loadOverlays(ctx.patchesDir);
     const selected = selectTarget(overlays, ctx.args[0]);
-    const identity = checkTree(resolution, config, { mode: mode === 'apply' ? 'write' : 'read' });
+    const identity = checkTree(resolution, config, { mode: mode === 'apply' ? 'write' : 'read', type: requireProjectType(ctx) });
     if (identity.fatal !== null) {
         ctx.out.addError(identity.fatal.toPayload());
         return EXIT_ENVIRONMENT;

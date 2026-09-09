@@ -6,7 +6,7 @@
 // probe of ##ID-CHECK-WRITE is not part of its check list.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { ckError } from '../lib/messages.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
@@ -35,7 +35,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	const requireClean = commandFlagGiven(ctx.commandFlags, REQUIRE_CLEAN);
-	const result = checkTree(resolution, ctx.config, { mode: 'read', requireClean });
+	const result = checkTree(resolution, ctx.config, { mode: 'read', requireClean, type: requireProjectType(ctx) });
 
 	for (const check of result.checks) {
 		ctx.out.info(formatCheckLine(check));

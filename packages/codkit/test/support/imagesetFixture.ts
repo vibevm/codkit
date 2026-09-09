@@ -7,7 +7,7 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
+import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/makeUpstream.ts';
 import { makeTempRoot } from './tmp.ts';
 
 const fixtureRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'type-vscode', 'test', 'fixtures', 'imageset');
@@ -48,6 +48,7 @@ export type ImagesetTreeFixture = {
 export function makeImagesetTree(label: string, options: { readonly extended?: boolean } = {}): ImagesetTreeFixture {
 	const dir = makeTempRoot(`${label}-tree`);
 	fixtureGit(dir, ['init', '--quiet', '--initial-branch=main', '.']);
+	writeFingerprintFiles(dir);
 	writeFileSync(join(dir, 'product.json'), '{\n\t"nameShort": "Fixture - OSS"\n}\n', 'utf8');
 	const shipped = options.extended === true ? new Map([...SHIPPED_ICONS, ...EXTENDED_ICONS]) : SHIPPED_ICONS;
 	for (const [relative, name] of shipped) {

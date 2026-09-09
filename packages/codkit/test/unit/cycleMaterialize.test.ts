@@ -30,7 +30,7 @@ import { parseRule } from '../../src/lib/layers/rule.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { formatPatchHeader, parseCkpatch } from '../../src/lib/patchFormat.ts';
 import type { ForkDirResolution } from '../../src/lib/paths.ts';
-import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
+import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { writeOwnManifestFixture } from '../support/ownManifestFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
@@ -63,6 +63,7 @@ type Fixture = {
 function fixture(): Fixture {
 	const tree = makeTempRoot('cycle-materialize-tree');
 	fixtureGit(tree, ['init', '--quiet', '--initial-branch=main', '.']);
+	writeFingerprintFiles(tree);
 	write(tree, CLEAN, 'a\nbase\nz\n');
 	write(tree, MERGED, 'a\nbase\nz\n');
 	write(tree, CONFLICT, 'a\nbase\nz\n');

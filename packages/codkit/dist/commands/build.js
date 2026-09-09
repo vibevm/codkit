@@ -34,7 +34,7 @@ async function run(ctx, mode) {
     const config = requireConfig(ctx.config, mode);
     const watch = loadBuildWatch(requireProjectType(ctx), ctx.patchesDir);
     const requested = commandFlagValue(ctx.commandFlags, CHANNEL);
-    const identity = checkTree(resolution, config, { mode: mode === 'up' ? 'write' : 'read' });
+    const identity = checkTree(resolution, config, { mode: mode === 'up' ? 'write' : 'read', type: requireProjectType(ctx) });
     if (identity.fatal !== null) {
         ctx.out.addError(identity.fatal.toPayload());
         return EXIT_ENVIRONMENT;

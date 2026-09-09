@@ -160,7 +160,7 @@ export function runStagedFast(options) {
     if (staged.length === 0) {
         return { findings, warnings, counts: {}, inventory: null, checked: 0, staged, treeUsable: true };
     }
-    const identity = options.resolution === null ? null : checkTree(options.resolution, config, { mode: 'read' });
+    const identity = options.resolution === null ? null : checkTree(options.resolution, config, { mode: 'read', type: options.type });
     const treeUsable = identity !== null && identity.fatal === null;
     if (!treeUsable) {
         warnings.push((options.resolution === null

@@ -346,7 +346,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	}
 
 	// 1. Is this the tree we think it is, and may we write to it?
-	const identity = checkTree(resolution, config, { mode: dryRun ? 'read' : 'write' });
+	const identity = checkTree(resolution, config, { mode: dryRun ? 'read' : 'write', type: options.type });
 	if (options.verbose) {
 		for (const check of identity.checks) {
 			out.diag(formatCheckLine(check));

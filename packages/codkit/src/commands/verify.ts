@@ -41,7 +41,7 @@ async function run(ctx: CommandContext): Promise<number> {
 
 	// Read-only, and deliberately not `requireClean`: verify works on a dirty
 	// tree because everything it compares against comes from git objects.
-	const identity = checkTree(resolution, config, { mode: 'read' });
+	const identity = checkTree(resolution, config, { mode: 'read', type: requireProjectType(ctx) });
 	if (identity.fatal !== null) {
 		ctx.out.addError(identity.fatal.toPayload());
 		return EXIT_ENVIRONMENT;

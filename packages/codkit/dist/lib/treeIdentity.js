@@ -8,8 +8,9 @@
 //
 // Nothing here writes to the tree in 'read' mode, and nothing here reaches the
 // network: every git call goes through gitx with netAllowed left at false.
-import { accessSync, constants, closeSync, existsSync, mkdirSync, openSync, readSync, rmSync, writeFileSync } from 'node:fs';
+import { accessSync, constants, closeSync, existsSync, mkdirSync, openSync, readSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readContainedFile } from './containedFile.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 /** First bytes of a git-lfs pointer file (PROP-008 ##ID-CHECK-LFS). */
@@ -20,6 +21,7 @@ const CHECK_NAMES = {
     repo: 'git repository',
     upstream: 'upstream origin',
     pin: 'pin reachable',
+    fingerprints: 'family fingerprints',
     lfs: 'git-lfs content',
     write: 'write access',
     clean: 'clean working tree'
@@ -58,19 +60,24 @@ export function checkTree(resolution, config, options) {
     if (pinFatal !== null) {
         return { checks, fatal: pinFatal };
     }
-    // 4. git-lfs: pointer files must never be mistaken for real content.
+    // 4. The tree really carries a checkout of this family (the type's answer).
+    const familyFatal = checkFingerprints(repo.topLevel, options.type, checks);
+    if (familyFatal !== null) {
+        return { checks, fatal: familyFatal };
+    }
+    // 5. git-lfs: pointer files must never be mistaken for real content.
     const lfsFatal = checkLfs(repo.topLevel, config.pin.sha, checks);
     if (lfsFatal !== null) {
         return { checks, fatal: lfsFatal };
     }
-    // 5. Write access, only for callers that are about to write.
+    // 6. Write access, only for callers that are about to write.
     if (options.mode === 'write') {
         const writeFatal = checkWritable(tree, repo.gitDir, checks);
         if (writeFatal !== null) {
             return { checks, fatal: writeFatal };
         }
     }
-    // 6. Cleanliness, only when the command requires it.
+    // 7. Cleanliness, only when the command requires it.
     if (options.requireClean === true) {
         return checkClean(repo.topLevel, config, checks);
     }
@@ -130,6 +137,84 @@ function checkPin(tree, config, checks) {
     }
     checks.push(makeCheck('pin', true, `${tag}@${shortSha(sha)}`));
     return null;
+}
+/**
+ * ##ID-CHECK-FINGERPRINTS: what the project type says proves a healthy tree of
+ * its family - a manifest under a known name, a marker directory, two files
+ * that have to agree on a version. The engine reads the paths and hands over
+ * the bytes; every word of what they must contain is the type's answer, and a
+ * type that names none has this check pass vacuously.
+ */
+function checkFingerprints(topLevel, type, checks) {
+    if (type === undefined) {
+        return null;
+    }
+    const fingerprints = type.identity.fingerprints;
+    if (fingerprints.length === 0) {
+        checks.push(makeCheck('fingerprints', true, `the project type ${type.id} names none`));
+        return null;
+    }
+    const files = fingerprintFiles(topLevel, fingerprints);
+    const problems = [];
+    for (const fingerprint of fingerprints) {
+        const problem = fingerprintProblem(topLevel, fingerprint, files);
+        if (problem !== null) {
+            problems.push(problem);
+        }
+    }
+    if (problems.length > 0) {
+        checks.push(makeCheck('fingerprints', false, problems[0]));
+        return ckError('NOT-UPSTREAM', `${topLevel} does not carry the tree of the project type ${type.id}: ${problems.join('; ')}`, `point --fork-dir at a fork of the upstream family ${type.id} describes, or declare in codkit.json the type this tree really is`);
+    }
+    checks.push(makeCheck('fingerprints', true, `${fingerprints.length} path(s) of ${type.id}`));
+    return null;
+}
+/** The text of every file fingerprint of this family; unreadable arrives as null. */
+function fingerprintFiles(topLevel, fingerprints) {
+    const files = new Map();
+    for (const fingerprint of fingerprints) {
+        if (fingerprint.kind !== 'file') {
+            continue;
+        }
+        files.set(fingerprint.path, readFingerprintText(topLevel, fingerprint.path));
+    }
+    return files;
+}
+function readFingerprintText(topLevel, path) {
+    try {
+        const read = readContainedFile(topLevel, path, { what: path });
+        return read.state === 'absent' ? null : Buffer.from(read.bytes).toString('utf8');
+    }
+    catch {
+        // A path that is a symlink, a directory or otherwise not a plain file of
+        // the tree is a missing fingerprint, not a crash of check-tree.
+        return null;
+    }
+}
+/** What is wrong with one fingerprint, or null when the tree satisfies it. */
+function fingerprintProblem(topLevel, fingerprint, files) {
+    const absolute = join(topLevel, ...fingerprint.path.split('/'));
+    let stats;
+    try {
+        stats = statSync(absolute);
+    }
+    catch {
+        return `${fingerprint.path} is missing (${fingerprint.why})`;
+    }
+    if (fingerprint.kind === 'directory' ? !stats.isDirectory() : !stats.isFile()) {
+        return `${fingerprint.path} is not a ${fingerprint.kind} (${fingerprint.why})`;
+    }
+    if (fingerprint.kind !== 'file' || fingerprint.contentProblem === undefined) {
+        return null;
+    }
+    let detail;
+    try {
+        detail = fingerprint.contentProblem(files);
+    }
+    catch (error) {
+        detail = `cannot be read: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    return detail === null ? null : `${fingerprint.path}: ${detail}`;
 }
 /**
  * Generalized LFS detection (PROP-008 ##ID-CHECK-LFS): no path list is hard-coded.

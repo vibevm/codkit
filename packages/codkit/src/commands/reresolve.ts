@@ -32,7 +32,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		);
 	}
 
-	const identity = checkTree(resolution, config, { mode: 'write' });
+	const identity = checkTree(resolution, config, { mode: 'write', type: requireProjectType(ctx) });
 	if (identity.fatal !== null) {
 		ctx.out.addError(identity.fatal.toPayload());
 		return EXIT_ENVIRONMENT;

@@ -108,6 +108,18 @@ export function makeUpstream(dir: string): UpstreamFixture {
 }
 
 /** `YYYY-MM-DD` of an ISO-8601 timestamp: the form codkit.json wants for pin.date. */
+/**
+ * The three paths the `vscode` type names as the fingerprints of a healthy tree
+ * (PROP-008 ##ID-CHECK-FINGERPRINTS). `makeUpstream` writes them as part of its
+ * own root commit; a suite that hand-rolls a smaller tree of the same type
+ * writes them with this, so that `check-tree` recognizes the family it declares.
+ */
+export function writeFingerprintFiles(dir: string): void {
+	writeFile(dir, 'package.json', '{\n\t"name": "fixture-code"\n}\n');
+	writeFile(dir, 'product.json', '{\n\t"nameShort": "Fixture"\n}\n');
+	writeFile(dir, 'src/vs/base/common/fixture.ts', 'export const FIXTURE = true;\n');
+}
+
 export function pinDate(dateIso: string): string {
 	return dateIso.slice(0, 10);
 }

@@ -4,7 +4,7 @@
 //
 // Read-only by construction: the command never writes to the tree, so the write
 // probe of ##ID-CHECK-WRITE is not part of its check list.
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { checkTree, formatCheckLine } from '../lib/treeIdentity.js';
@@ -22,7 +22,7 @@ async function run(ctx) {
         throw ckError('CONFIG', 'codkit.json was not found in the patchset root: check-tree needs the pin and the upstream anchor to check against', 'run check-tree from a patchset checkout that carries codkit.json');
     }
     const requireClean = commandFlagGiven(ctx.commandFlags, REQUIRE_CLEAN);
-    const result = checkTree(resolution, ctx.config, { mode: 'read', requireClean });
+    const result = checkTree(resolution, ctx.config, { mode: 'read', requireClean, type: requireProjectType(ctx) });
     for (const check of result.checks) {
         ctx.out.info(formatCheckLine(check));
     }

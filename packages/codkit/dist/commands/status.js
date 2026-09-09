@@ -39,7 +39,7 @@ async function run(ctx) {
     const config = requireConfig(ctx.config);
     ctx.out.info(`pin: ${config.pin.tag}@${config.pin.sha.slice(0, 8)} (${config.pin.date})`);
     // Read-only: the write probe of ##ID-CHECK-WRITE is not part of this command.
-    const identity = checkTree(resolution, config, { mode: 'read' });
+    const identity = checkTree(resolution, config, { mode: 'read', type: requireProjectType(ctx) });
     if (identity.fatal !== null) {
         ctx.out.addError(identity.fatal.toPayload());
         ctx.out.setData({ pin: pinData(config), tree: 'unusable' });

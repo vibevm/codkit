@@ -63,7 +63,7 @@ export function runSave(options) {
         return result('blocked', 1, { branch });
     }
     // 1. Is this the tree we think it is, and may we write to it?
-    const identity = checkTree(resolution, config, { mode: 'write' });
+    const identity = checkTree(resolution, config, { mode: 'write', type: options.type });
     if (options.verbose) {
         for (const check of identity.checks) {
             out.diag(formatCheckLine(check));

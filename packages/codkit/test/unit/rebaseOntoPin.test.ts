@@ -17,7 +17,7 @@ import { REBASE_MOVE_PATH } from '../../src/lib/rebaseOntoPinMove.ts';
 import { readRebasePending } from '../../src/lib/rebaseOntoPinPending.ts';
 import { runSave } from '../../src/lib/saveEngine.ts';
 import { runSync } from '../../src/lib/syncEngine.ts';
-import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
+import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
@@ -37,6 +37,7 @@ type Fixture = { readonly root: string; readonly tree: string; readonly t1: stri
 function makeFixture(label: string, options: FixtureOptions = {}): Fixture {
 	const tree = makeTempRoot(`${label}-tree`);
 	fixtureGit(tree, ['init', '--quiet', '--initial-branch=main', '.']);
+	writeFingerprintFiles(tree);
 	write(tree, '.gitignore', 'product.overrides.json\nsrc/vs/patchset/\n');
 	for (const target of [...Object.values(TARGETS), TARGET_ONLY]) write(tree, target, baseText());
 	write(tree, OVERLAY_TARGET, '{"name":"upstream","stable":true}\n');

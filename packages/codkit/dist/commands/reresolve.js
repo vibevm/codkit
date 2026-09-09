@@ -20,7 +20,7 @@ async function run(ctx) {
     if (target === undefined || target === '') {
         throw ckError('CONFIG', 'reresolve needs the fork-tree file to replay into', 'usage: codkit reresolve <file> [--patch <contained-old-patch>]');
     }
-    const identity = checkTree(resolution, config, { mode: 'write' });
+    const identity = checkTree(resolution, config, { mode: 'write', type: requireProjectType(ctx) });
     if (identity.fatal !== null) {
         ctx.out.addError(identity.fatal.toPayload());
         return EXIT_ENVIRONMENT;

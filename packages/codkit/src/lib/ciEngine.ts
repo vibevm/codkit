@@ -234,7 +234,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	}
 
 	// 3. Is this the tree the delta is written against?
-	const identity = checkTree(resolution, config, { mode: 'write' });
+	const identity = checkTree(resolution, config, { mode: 'write', type: options.type });
 	if (options.verbose) {
 		for (const check of identity.checks) {
 			out.diag(formatCheckLine(check));

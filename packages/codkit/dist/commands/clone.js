@@ -8,7 +8,7 @@
 // download gigabytes because a path was mistyped.
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution } from '../lib/command.js';
+import { EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { gitOk, runGit } from '../lib/gitx.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine, refreshResolution } from '../lib/paths.js';
@@ -53,7 +53,7 @@ async function run(ctx) {
     // Final verdict on the tree we just produced.
     const after = refreshResolution(resolution);
     ctx.out.setForkTree(after.path, after.source);
-    return report(ctx, checkTree(after, config, { mode: 'read' }), 'cloned');
+    return report(ctx, checkTree(after, config, { mode: 'read', type: requireProjectType(ctx) }), 'cloned');
 }
 function requireConfig(config) {
     if (config === null) {
@@ -88,7 +88,7 @@ function inspectTarget(path) {
  */
 function reportExisting(ctx, resolution, config) {
     ctx.out.info(`${resolution.path} is not empty; checking what is in it`);
-    return report(ctx, checkTree(resolution, config, { mode: 'read' }), 'already-present');
+    return report(ctx, checkTree(resolution, config, { mode: 'read', type: requireProjectType(ctx) }), 'already-present');
 }
 function report(ctx, result, outcome) {
     for (const check of result.checks) {

@@ -45,7 +45,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	// ##IB-SPEED: building the inventory never touches the fork tree. The tree is
 	// consulted only for the cross-checks, and a tree that cannot be used costs
 	// the checks, not the document.
-	const identity = checkTree(resolution, config, { mode: 'read' });
+	const identity = checkTree(resolution, config, { mode: 'read', type: requireProjectType(ctx) });
 	const treeUsable = identity.fatal === null;
 
 	let inventory: Inventory;

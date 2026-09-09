@@ -15,7 +15,7 @@ import { Output } from '../../src/lib/jsonOut.ts';
 import type { Envelope } from '../../src/lib/jsonOut.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { encodePatchName, formatPatchHeader } from '../../src/lib/patchFormat.ts';
-import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
+import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
 
@@ -28,6 +28,7 @@ type Fixture = { readonly root: string; readonly tree: string; readonly t1: stri
 function makeFixture(label: string): Fixture {
 	const tree = makeTempRoot(`${label}-tree`);
 	fixtureGit(tree, ['init', '--quiet', '--initial-branch=main', '.']);
+	writeFingerprintFiles(tree);
 	write(tree, SHIFTED, 'a\nbase\nz\n');
 	write(tree, CONFLICT, 'a\nbase\nz\n');
 	write(tree, RESOURCE, 'upstream resource\n');

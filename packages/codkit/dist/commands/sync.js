@@ -121,7 +121,7 @@ function runTwoWay(input) {
     // 1. Is this the tree we think it is, and may we write to it? A dry run
     // only reads, so it takes the read mode and skips the exclusive preflight,
     // exactly like `load --dry-run`.
-    const identity = checkTree(resolution, config, { mode: flags.dryRun ? 'read' : 'write' });
+    const identity = checkTree(resolution, config, { mode: flags.dryRun ? 'read' : 'write', type });
     if (identity.fatal !== null) {
         out.addError(identity.fatal.toPayload());
         return unfit();

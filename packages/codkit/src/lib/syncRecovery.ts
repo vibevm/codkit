@@ -365,7 +365,7 @@ function continueStoppedSync(input: TwoWayInput, record: SyncTransaction): TwoWa
 	const tree = resolution.path;
 	const branch = generatedBranchName(config);
 
-	const identity = checkTree(resolution, config, { mode: 'write' });
+	const identity = checkTree(resolution, config, { mode: 'write', type: input.type });
 	if (identity.fatal !== null) {
 		out.addError(identity.fatal.toPayload());
 		return unfit();

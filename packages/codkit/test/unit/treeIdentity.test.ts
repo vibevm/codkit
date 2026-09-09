@@ -4,7 +4,7 @@
 // (PROP-013 ##TP-REAL-GIT-FAKE-HEAVY, ##TP-UNRELATED-PATHS); nothing here looks
 // at the machine's real fork tree.
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { CodkitConfig } from '../../src/lib/configFile.ts';
@@ -13,6 +13,8 @@ import { checkTree, LFS_POINTER_MARKER } from '../../src/lib/treeIdentity.ts';
 import type { TreeCheck, TreeCheckId } from '../../src/lib/treeIdentity.ts';
 import { fixtureCommit, fixtureGit, makeUpstream, pinDate } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
+import { stubType } from '../support/stubType.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(() => {
@@ -225,5 +227,79 @@ describe('checkTree cleanliness', () => {
 		expect(result.fatal).toBeNull();
 		expect(result.dirtyFiles).toEqual([]);
 		expect(find(result.checks, 'clean').ok).toBe(true);
+	});
+});
+
+// PROP-008 ##ID-CHECK-FINGERPRINTS: what proves the tree belongs to the family
+// of the declared project type. Every word of it is the type's answer; the
+// engine only reads the paths and hands over the bytes.
+describe('checkTree fingerprints of the declared family', () => {
+	it('runs the check when a type is given and reports what it found', () => {
+		const fixture = upstreamFixture('family-ok');
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: vscodeType });
+
+		expect(result.fatal).toBeNull();
+		expect(ids(result.checks)).toEqual(['repo', 'upstream', 'pin', 'fingerprints', 'lfs']);
+		expect(find(result.checks, 'fingerprints').ok).toBe(true);
+	});
+
+	it('does not run the check at all without a type', () => {
+		const fixture = upstreamFixture('family-absent');
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read' });
+
+		expect(ids(result.checks)).not.toContain('fingerprints');
+	});
+
+	it('refuses a tree that is missing a path the type names, and says why it matters', () => {
+		const fixture = upstreamFixture('family-missing');
+		rmSync(join(fixture.dir, 'product.json'));
+
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: vscodeType });
+
+		expect(result.fatal?.code).toBe('NOT-UPSTREAM');
+		expect(result.fatal?.message).toContain('product.json is missing');
+		expect(result.fatal?.message).toContain('the product manifest of the distribution');
+		expect(find(result.checks, 'fingerprints').ok).toBe(false);
+		// The sequence stops at the first fatal check, so nothing after it ran.
+		expect(ids(result.checks)).toEqual(['repo', 'upstream', 'pin', 'fingerprints']);
+	});
+
+	it('asks a fingerprint about the content of the files, and can compare two of them', () => {
+		const fixture = upstreamFixture('family-content');
+		const type = stubType({
+			identity: {
+				tagPattern: /^\d+\.\d+\.\d+$/u,
+				tagShape: '<major>.<minor>.<patch>',
+				fingerprints: [
+					{
+						path: 'package.json',
+						kind: 'file',
+						why: 'the manifest of the family',
+						contentProblem: (files) => ((files.get('package.json') ?? '').includes(`"${'name'}"`) ? null : 'carries no name of the project')
+					},
+					{
+						path: 'product.json',
+						kind: 'file',
+						why: 'the product manifest',
+						contentProblem: (files) =>
+							files.get('package.json') === files.get('product.json') ? null : 'does not repeat the root manifest byte for byte'
+					}
+				]
+			}
+		});
+
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type });
+
+		expect(result.fatal?.code).toBe('NOT-UPSTREAM');
+		expect(result.fatal?.message).toContain('product.json: does not repeat the root manifest');
+		expect(result.fatal?.message).not.toContain('package.json: carries no name');
+	});
+
+	it('passes vacuously for a type that names no fingerprint', () => {
+		const fixture = upstreamFixture('family-none');
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: stubType() });
+
+		expect(result.fatal).toBeNull();
+		expect(find(result.checks, 'fingerprints').info).toContain('names none');
 	});
 });

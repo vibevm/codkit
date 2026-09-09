@@ -28,7 +28,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	ctx.out.setForkTree(resolution.path, resolution.source);
 	ctx.out.info(formatForkTreeLine(resolution));
 	if (resolution.warning !== null) ctx.out.warn(resolution.warning);
-	const identity = checkTree(resolution, config, { mode: 'read' });
+	const identity = checkTree(resolution, config, { mode: 'read', type: requireProjectType(ctx) });
 	if (ctx.flags.verbose) {
 		for (const check of identity.checks) ctx.out.diag(formatCheckLine(check));
 	}
