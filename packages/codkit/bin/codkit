@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+bin_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+if ! command -v node >/dev/null 2>&1; then
+	printf '%s\n' 'error CK-E-DEPS-MISSING: node is not available on PATH' >&2
+	printf '%s\n' 'hint: install the Node version required by the managed fork tree' >&2
+	exit 2
+fi
+
+exec node "$bin_dir/codkit.mjs" "$@"

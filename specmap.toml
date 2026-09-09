@@ -4,7 +4,7 @@
 # The spec:// namespace this project's units are minted under.
 namespace = "codkit"
 
-scan_roots = ["codkit/*"]
+scan_roots = ["packages/*"]
 spec_roots = ["vibevm/vibespecs"]
 root_spec_docs = []
 # The installed TypeScript-7 extractor currently degrades every file because it

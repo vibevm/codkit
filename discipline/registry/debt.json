@@ -10,7 +10,7 @@
 				"spec://codkit/common/PROP-000#AI-NATIVE-APPLIES-TO-CODKIT"
 			],
 			"disposition": "fixed",
-			"tripwires": ["touch:codkit/src/**"],
+			"tripwires": ["touch:packages/codkit/src/**"],
 			"sunset": "permanent project-local trace gate; replaced only by a non-vacuous installed specmap gate"
 		},
 		{

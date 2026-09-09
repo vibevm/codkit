@@ -1,7 +1,7 @@
 # Сопровождение протокола
 
 Протокол версионируется в patchset. Владелец — мейнтейнер протокола; урок каждого cycle исправляется в том же PR,
-что и retrospective follow-up. Словари не копируются: источник — [conventions.json](../../../../codkit/config/conventions.json),
+что и retrospective follow-up. Словари не копируются: источник — [conventions.json](../../../../packages/codkit/config/conventions.json),
 а [03](03-interventions.md) описывает только выбор/действие.
 
 Agent protocol ссылается на human protocol и conventions; права/границы агента определяет FEAT-004.

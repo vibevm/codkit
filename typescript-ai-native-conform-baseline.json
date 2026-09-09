@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "findings": [
-    "file-length|codkit/src/lib/buildWrap.ts",
-    "file-length|codkit/src/lib/ciEngine.ts",
-    "file-length|codkit/src/lib/inventory.ts",
-    "file-length|codkit/src/lib/layers/overlay.ts",
-    "file-length|codkit/src/lib/patchFormat.ts",
-    "file-length|codkit/src/lib/saveEngine.ts",
-    "file-length|codkit/src/lib/syncEngine.ts",
-    "file-length|codkit/src/lib/verifyEngine.ts"
+    "file-length|packages/codkit/src/lib/buildWrap.ts",
+    "file-length|packages/codkit/src/lib/ciEngine.ts",
+    "file-length|packages/codkit/src/lib/inventory.ts",
+    "file-length|packages/codkit/src/lib/layers/overlay.ts",
+    "file-length|packages/codkit/src/lib/patchFormat.ts",
+    "file-length|packages/codkit/src/lib/saveEngine.ts",
+    "file-length|packages/codkit/src/lib/syncEngine.ts",
+    "file-length|packages/codkit/src/lib/verifyEngine.ts"
   ]
 }

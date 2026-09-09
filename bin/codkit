@@ -10,4 +10,4 @@ if ! command -v node >/dev/null 2>&1; then
 	exit 2
 fi
 
-exec node "$repo_root/codkit/bin/codkit.mjs" "$@"
+exec node "$repo_root/packages/codkit/bin/codkit.mjs" "$@"

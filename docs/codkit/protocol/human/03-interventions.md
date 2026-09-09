@@ -1,7 +1,7 @@
 # Вмешательства в апстрим
 
 Словари `layer`, `type`, `category`, id и запретных сервисов определяет только
-[conventions.json](../../../../codkit/config/conventions.json). Ниже — выбор, authoring и ревью.
+[conventions.json](../../../../packages/codkit/config/conventions.json). Ниже — выбор, authoring и ревью.
 
 ## Дерево решений слоя
 
@@ -57,7 +57,7 @@
 
 ## Терминальный лист service-override
 
-1. Взглядом сверь service id с `forbiddenServiceIds` в `codkit/config/conventions.json`; совпадение → терминальный исход «дизайн-эскалация».
+1. Взглядом сверь service id с `forbiddenServiceIds` в `packages/codkit/config/conventions.json`; совпадение → терминальный исход «дизайн-эскалация».
 2. Реализацию и регистрацию положи в own; DI получай через accessor, не новым параметром апстримного конструктора.
 3. Добавь `serviceOverrides` metadata и contract-test в `delta/own/patchset.delta.json`.
 4. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.

@@ -11,7 +11,7 @@ Evals проверяют поведение и артефакты, а не со�
 | Вопрос | Локальная проверка | Статус |
 | --- | --- | --- |
 | `paths` rules | frontmatter parser проверяет массив glob; fixture проверяет ровно `delta/**`, `codkit/**`, `cycle/**` и отсутствие scope у markers | structural green; model-loading smoke остаётся ручным |
-| policy JSON | `JSON.parse` шаблона `codkit/claude/settings.json`, deny-only permissions, current PreToolUse exec form `command+args` с placeholder `<codkit-tool-root>`; отсутствие hook/agents/skills в `.claude/` инструмента | structural green; загрузка установленного профиля в репозитории продукта остаётся ручной проверкой |
+| policy JSON | `JSON.parse` шаблона `packages/codkit/claude/settings.json`, deny-only permissions, current PreToolUse exec form `command+args` с placeholder `<codkit-tool-root>`; отсутствие hook/agents/skills в `.claude/` инструмента | structural green; загрузка установленного профиля в репозитории продукта остаётся ручной проверкой |
 | hook input/output | Bash wrapper и Node core получают documented stdin; allow даёт пустой stdout, deny — current structured JSON | green на Linux |
 | task perimeter | no-task/out-of-list/malformed task/symlink escape red; resolve path и exact report outputs green | green на fixture |
 | shell perimeter | redirection/substitution/dynamic/unknown commands red; one static read-only command green | green на fixture |
@@ -47,7 +47,7 @@ resolver/task, но не заменяет managed policy/OS sandbox в hostile C
 5. Повторить N=5 и принять минимум 4 структурно корректных результата. Текст и
    стиль не входят в pass/fail.
 
-Harness запускается при изменении `codkit/claude/skills/**` и по расписанию. До его
+Harness запускается при изменении `packages/codkit/claude/skills/**` и по расписанию. До его
 введения каждая ошибка/откат первого реального цикла добавляет regression
 fixture и правит соответствующий skill в том же PR.
 

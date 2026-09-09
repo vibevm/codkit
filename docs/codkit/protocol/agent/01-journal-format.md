@@ -2,7 +2,7 @@
 
 Все runtime-файлы ниже UTF-8/LF. `.codkit/**` локален и не коммитится; журнал и
 reports коммитятся обычным процессом цикла. Значения словарей берутся из
-[`conventions.json`](../../../../codkit/config/conventions.json), не из этого
+[`conventions.json`](../../../../packages/codkit/config/conventions.json), не из этого
 документа.
 
 ## Resolve task

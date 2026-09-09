@@ -117,7 +117,7 @@
 **When to revisit:** if `@resvg/resvg-js` publishes no release for 24 months; or a platform codkit supports disappears from the set of its platform binaries (observed through the `optionalDependencies` list in `npm-shrinkwrap.json`); or its licence in the closure stops being MPL-2.0.</DECISION-IMAGESET-RASTERISER></p>
     <p><DECISION-IMAGESET-CONTAINER-ENCODERS fact="true" status="impl/done">**Decision:** the ICO, ICNS, BMP, XPM and PNG codecs are hand-written inside codkit; there are no codec packages.
 
-**Why:** The containers are trivial: ICO - a 6-byte header and 16 bytes per directory frame with a PNG payload, ICNS - `icns` plus the length and elements of `&lt;type&gt;&lt;length&gt;&lt;PNG&gt;`; all together that is ~800 lines in `codkit/src/lib/imageset*.ts`. The result was checked not by our own parser but by other people's: `icotool -l` showed four frames 16/32/128/256 at 32 bits, `icns2png -l` showed every type at the right sizes and depth, plus Pillow independently.
+**Why:** The containers are trivial: ICO - a 6-byte header and 16 bytes per directory frame with a PNG payload, ICNS - `icns` plus the length and elements of `&lt;type&gt;&lt;length&gt;&lt;PNG&gt;`; all together that is ~800 lines in `packages/codkit/src/lib/imageset*.ts`. The result was checked not by our own parser but by other people's: `icotool -l` showed four frames 16/32/128/256 at 32 bits, `icns2png -l` showed every type at the right sizes and depth, plus Pillow independently.
 
 **Considered and rejected:**
 - encoder packages (`png-to-ico`, `icns-lib`, `jimp`) - a dependency and a licence surface each, for a few dozen lines;
@@ -180,7 +180,7 @@
 - one command with flags (`--index`) - the root becomes a dumping ground as the verbs appear;
 - the bare root as a synonym for `gen` - it silently does work where a human asked for help, and that is exactly the failure that is forbidden.
 
-**When to revisit:** if `imageset` is left with one subcommand - observed through the number of definitions prefixed `imageset ` in the `COMMANDS` map (`codkit/src/main.ts`).</DECISION-IMAGESET-NAMESPACE></p>
+**When to revisit:** if `imageset` is left with one subcommand - observed through the number of definitions prefixed `imageset ` in the `COMMANDS` map (`packages/codkit/src/main.ts`).</DECISION-IMAGESET-NAMESPACE></p>
     <p><DECISION-IMAGESET-SEEDING fact="true" status="impl/done">**Decision:** a missing masters directory is not an error: the first `gen` creates it and fills it with the distribution's own artwork from the fork tree; an existing directory is never overwritten.
 
 **Why:** The owner's direction. And it is what makes the round trip meaningful on the very first day: the operator starts from real upstream material and replaces it piece by piece. Checked e2e: the first `gen` seeds `icon.png`, `installer-big.png` and `installer-small.png` and prints which file and which size each of them was taken from.

@@ -2,7 +2,7 @@
 
 Статус: рабочая норма standalone Codkit. Натурные доказательства хранятся в
 репозитории конкретного patch set, а не в установке Codkit.
-Определения данных задаёт только [conventions.json](../../../../codkit/config/conventions.json);
+Определения данных задаёт только [conventions.json](../../../../packages/codkit/config/conventions.json);
 контракты команд — [PROP-007](../../../../vibevm/vibespecs/modules/codkit/PROP-007-cli.xml).
 
 ## Launcher и корни

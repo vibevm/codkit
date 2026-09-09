@@ -20,7 +20,7 @@
 ## Delta boundary
 
 - Choose the highest applicable intervention layer from the installed
-  `<codkit-tool-root>/codkit/config/conventions.json` and
+  `<codkit-tool-root>/config/conventions.json` and
   `<codkit-tool-root>/docs/codkit/protocol/human/03-interventions.md`. The layers are `own`,
   `service-override`, `entry-module`, `config-overlay`, `resource-file`,
   `rewrite-rule`, then `patch`.

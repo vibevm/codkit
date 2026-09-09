@@ -33,23 +33,23 @@ launcher or the tool's `package.json`/`node_modules`. Run `codkit --json where`
 to obtain the schema-2 `roots.tool`, `roots.patches`, and `roots.fork` values;
 the three resolved roots must be pairwise disjoint.
 
-See [Codkit usage](codkit/README.md), the
+See [Codkit usage](packages/codkit/README.md), the
 [human protocol](docs/codkit/protocol/human/00-index.md), and the
 [command reference](docs/codkit/reference/commands.md). The harness-specific
 part of the agent-session profile for a product repository (Claude Code
-settings, rules, agents) ships under `codkit/claude/`; see the
+settings, rules, agents) ships under `packages/codkit/claude/`; see the
 [agent protocol](docs/codkit/protocol/agent/00-index.md). The Codkit tool
 repository itself carries no agent perimeter. Current accepted
 evidence and open external risks are tracked in the
 [risk register](docs/codkit/proofs/RISK-REGISTER.md).
 
-Two UPL-1.0 vibe packages ship under `vibevm/vibepacks/org.vibevm.codkit/`:
+Two UPL-1.0 vibe packages ship under `packages/codkit/vibevm/vibepacks/org.vibevm.codkit/`:
 `standards`, the default norms for a patch set, and `agent-skills`, the agent
 skills `vibe skill install` projects into every coding agent.
 `codkit standards load` delivers both into a product repository in one run, and
 `--upgrade` takes an edition that was extended in place (human protocol
 page 13).
-The feature-flag runtime ships as the library under `codkit/runtime/`;
+The feature-flag runtime ships as the library under `packages/codkit/runtime/`;
 `codkit runtime load` delivers it as a managed copy into the product's own
 layer and `codkit gen feature` scaffolds a feature behind a flag (human
 protocol page 14).

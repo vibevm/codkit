@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..', '..', '..');
-const profileRoot = join(root, 'codkit', 'claude');
+const profileRoot = join(root, 'packages', 'codkit', 'claude');
 const failures = [];
 const docs = ['00-index.md', '01-journal-format.md', '02-evals.md', '03-memory-policy.md'];
 const agents = ['ck-upstream-scout.md', 'ck-conflict-resolver.md', 'ck-verifier.md', 'ck-upgrade-reviewer.md', 'ck-cause-finder.md'];
@@ -16,7 +16,7 @@ const profileRules = new Map([
 	['ck-markers.md', null],
 	['ck-cycle.md', 'cycle/**']
 ]);
-const toolRules = new Map([['ck-codkit-dev.md', 'codkit/**']]);
+const toolRules = new Map([['ck-codkit-dev.md', 'packages/**']]);
 
 for (const name of docs) checkText(join(here, name), true);
 for (const name of agents) {
@@ -36,15 +36,15 @@ for (const name of ['CLAUDE.md', 'AGENTS.md']) {
 	const text = checkText(join(profileRoot, name), false);
 	if (text === null || core === null) continue;
 	if (occurrences(text, '<!-- codkit-agent-core:begin -->') !== 1 || occurrences(text, '<!-- codkit-agent-core:end -->') !== 1) {
-		failures.push(`managed core markers invalid: codkit/claude/${name}`);
+		failures.push(`managed core markers invalid: packages/codkit/claude/${name}`);
 	} else if (!text.includes(core.trimEnd())) {
-		failures.push(`managed core differs from source: codkit/claude/${name}`);
+		failures.push(`managed core differs from source: packages/codkit/claude/${name}`);
 	}
 }
 
 checkSettings();
 checkToolRepositoryIsFree();
-for (const path of ['codkit/hooks/pretool.mjs', 'codkit/hooks/pretool.sh', 'codkit/hooks/pretool.ps1']) checkText(join(root, path), false);
+for (const path of ['packages/codkit/hooks/pretool.mjs', 'packages/codkit/hooks/pretool.sh', 'packages/codkit/hooks/pretool.ps1']) checkText(join(root, path), false);
 checkSkillsPackage();
 
 const sync = spawnSync(process.execPath, [join(root, 'tools', 'sync-codkit-agents.mjs'), '--check'], {
@@ -145,7 +145,7 @@ function checkSettings() {
 		hook.command !== 'node' ||
 		!Array.isArray(hook.args) ||
 		hook.args.length !== 1 ||
-		hook.args[0] !== '<codkit-tool-root>/codkit/hooks/pretool.mjs'
+		hook.args[0] !== '<codkit-tool-root>/hooks/pretool.mjs'
 	) {
 		failures.push('PreToolUse hook must use the Node exec form with the <codkit-tool-root> placeholder');
 	}
@@ -165,7 +165,7 @@ function checkToolRepositoryIsFree() {
 		if (settings?.hooks !== undefined) failures.push('tool repository .claude/settings.json must not install hooks');
 	}
 	for (const name of ['agents', 'skills']) {
-		if (existsSync(join(root, '.claude', name))) failures.push(`tool repository must not carry .claude/${name}; the profile lives under codkit/claude/`);
+		if (existsSync(join(root, '.claude', name))) failures.push(`tool repository must not carry .claude/${name}; the profile lives under packages/codkit/claude/`);
 	}
 }
 
@@ -173,7 +173,7 @@ function checkToolRepositoryIsFree() {
 // `agent-skills` vibe package and reach a repository through `codkit standards
 // load`, `vibe install --offline` and `vibe skill install` (PROP-014 §1a).
 function skillsPackageRoot() {
-	const parent = join(root, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'agent-skills');
+	const parent = join(root, 'packages', 'codkit', 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'agent-skills');
 	const versions = existsSync(parent) ? readdirSync(parent).filter((name) => name.startsWith('v')).sort() : [];
 	if (versions.length !== 1) {
 		failures.push(`the agent-skills package must have exactly one version directory: found ${versions.length}`);
@@ -186,7 +186,7 @@ function checkSkillsPackage() {
 	const skills = skillsPackageRoot();
 	if (skills === null) return;
 	if (existsSync(join(profileRoot, 'skills'))) {
-		failures.push('codkit/claude/skills must not exist; the skills ship in the agent-skills package');
+		failures.push('packages/codkit/claude/skills must not exist; the skills ship in the agent-skills package');
 	}
 	for (const name of ['ck-orient', 'ck-intervene', 'ck-review-intervention', 'ck-resolve']) {
 		const body = checkText(join(skills, name, 'SKILL.md'), false);
@@ -214,7 +214,7 @@ function checkResolverSkill(skillRoot) {
 		if (!skill.includes('<skill-dir>/scripts/append-journal.mjs')) {
 			failures.push('resolver skill must call the journal helper beside itself in the projection');
 		}
-		if (skill.includes('<codkit-tool-root>/codkit/claude/skills/')) {
+		if (skill.includes('<codkit-tool-root>/claude/skills/')) {
 			failures.push('resolver skill still names the retired profile path of the journal helper');
 		}
 	}

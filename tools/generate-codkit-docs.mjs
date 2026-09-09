@@ -4,9 +4,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_NEEDS_HUMAN, EXIT_OK } from '../codkit/src/lib/command.ts';
-import { loadConventions } from '../codkit/src/lib/conventionsFile.ts';
-import { ERROR_CODES, WARNING_CODES } from '../codkit/src/lib/messages.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_NEEDS_HUMAN, EXIT_OK } from '../packages/codkit/src/lib/command.ts';
+import { loadConventions } from '../packages/codkit/src/lib/conventionsFile.ts';
+import { ERROR_CODES, WARNING_CODES } from '../packages/codkit/src/lib/messages.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const check = process.argv.includes('--check');
@@ -51,11 +51,11 @@ function main() {
 		process.stderr.write('run: node tools/generate-codkit-docs.mjs\n');
 		process.exit(1);
 	}
-	if (check) checkLocalLinks([...outputs.keys(), join(root, 'codkit/README.md'), ...ciExampleMarkdownFiles()]);
+	if (check) checkLocalLinks([...outputs.keys(), join(root, 'packages/codkit/README.md'), ...ciExampleMarkdownFiles()]);
 }
 
 function codkitHelp() {
-	const result = spawnSync(process.execPath, [join(root, 'codkit/bin/codkit.mjs')], {
+	const result = spawnSync(process.execPath, [join(root, 'packages/codkit/bin/codkit.mjs')], {
 		cwd: root,
 		encoding: 'utf8',
 		env: process.env
@@ -98,12 +98,12 @@ function parseHelp(text) {
 }
 
 function readFlagKinds() {
-	const source = readFileSync(join(root, 'codkit/src/lib/argv.ts'), 'utf8');
+	const source = readFileSync(join(root, 'packages/codkit/src/lib/argv.ts'), 'utf8');
 	const kinds = new Map();
 	for (const match of source.matchAll(/\['(--[^']+)', '(boolean|value|repeatable)'\]/g)) {
 		kinds.set(match[1], match[2]);
 	}
-	if (kinds.size === 0) throw new Error('cannot read command flag kinds from codkit/src/lib/argv.ts');
+	if (kinds.size === 0) throw new Error('cannot read command flag kinds from packages/codkit/src/lib/argv.ts');
 	return kinds;
 }
 
@@ -369,7 +369,7 @@ function renderCommands({ commands, globalFlags }, kinds) {
 	return (
 		generatedHeader('Command reference') +
 		`
-Codkit manages an external patch set and a separate VS Code fork tree. The public command and flag tables below are rendered from the output of the live CLI; command-flag arity is read from \`codkit/src/lib/argv.ts\`.
+Codkit manages an external patch set and a separate VS Code fork tree. The public command and flag tables below are rendered from the output of the live CLI; command-flag arity is read from \`packages/codkit/src/lib/argv.ts\`.
 
 Install the launcher as \`codkit\` on \`PATH\`, or invoke the explicit Bash launcher as \`<codkit-tool-root>/bin/codkit ...\` and the PowerShell launcher as \`& <codkit-tool-root>\\bin\\codkit.ps1 ...\`. Never look for a launcher or \`package.json\` in the patch-set directory. Running the launcher with no arguments prints the current help and exits 0. There is no global \`--help\`; \`codkit imageset --help\` is the one command-scoped help and it answers before any root is required, while passing \`--help\` to another command is a usage error (exit 2).
 
@@ -433,7 +433,7 @@ function renderConventions(conventions) {
 	return (
 		generatedHeader('Conventions reference') +
 		`
-This page is rendered from [\`codkit/config/conventions.json\`](../../../codkit/config/conventions.json), schema \`codkitConventions: ${conventions.codkitConventions}\`. Change the JSON source, then regenerate this page; do not hand-maintain copies of these values.
+This page is rendered from [\`packages/codkit/config/conventions.json\`](../../../packages/codkit/config/conventions.json), schema \`codkitConventions: ${conventions.codkitConventions}\`. Change the JSON source, then regenerate this page; do not hand-maintain copies of these values.
 
 ## Intervention identity and metadata
 
@@ -660,7 +660,7 @@ const faqEntries = {
 		'The library is codkit-owned. Change it in codkit, not in the product; to take the shipped version run `codkit runtime load --upgrade`, which replaces the directory as a whole and lists what it replaced.'
 	],
 	'RUNTIME-PACKAGE': [
-		'The codkit installation carries no usable runtime library: `codkit/runtime/` has zero or several version directories, or the `CODKIT_RUNTIME_VERSION` literal in `common/version.ts` disagrees with the directory name.',
+		'The codkit installation carries no usable runtime library: `runtime/` of the installation has zero or several version directories, or the `CODKIT_RUNTIME_VERSION` literal in `common/version.ts` disagrees with the directory name.',
 		'Restore the codkit installation from the approved supply; nothing in the product repository is wrong.'
 	],
 	'DELIVERED-EDIT': [
@@ -710,7 +710,7 @@ function renderFaq() {
 	return (
 		generatedHeader('Troubleshooting FAQ') +
 		`
-This page is keyed from the live registry in [\`codkit/src/lib/messages.ts\`](../../../codkit/src/lib/messages.ts). It covers every currently registered error and warning code. The hint printed for the specific failure is authoritative; the table gives the usual operator path.
+This page is keyed from the live registry in [\`packages/codkit/src/lib/messages.ts\`](../../../packages/codkit/src/lib/messages.ts). It covers every currently registered error and warning code. The hint printed for the specific failure is authoritative; the table gives the usual operator path.
 
 ## How should automation read a failure?
 

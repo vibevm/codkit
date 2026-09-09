@@ -887,7 +887,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:a9718df78d1d3ade26e873a9e1102ecb6d05236a272657680a3a2f6e340c8b6d",
+      "content_hash": "sha256:f2fb98acd185c7edc8aae2da902c3f8d1110b3a24646e7127df895ededd10008",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: End-to-end acceptance scenarios S01–S28 (Given/When/Then)",
@@ -1454,7 +1454,7 @@
     },
     {
       "anchor": "s30",
-      "content_hash": "sha256:6fa7be3f13c901d89cf5daa7718d83dd8ffd28eaf2dc4ff3cfd3d89a01129633",
+      "content_hash": "sha256:d5d0e87bc28edb4089a4f2fdedf4922351b02697ab067d5c65e8588846619834",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S30 — standards load into a fresh product: the copy, the manifest block, then vibe install",
@@ -1463,10 +1463,10 @@
     },
     {
       "anchor": "S30",
-      "content_hash": "sha256:0e7bb761b20a490913ddae2df12889ac7a304a423f3d53963c4c3e6d80e49909",
+      "content_hash": "sha256:6b7918d0b740be8fe8828344dfaaa04033a6714ea10573ad585105e28f56a95f",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given** (PROP-014 §4–5; e2e `standards.test.ts`): a patchesDir from `makeCliFixture` plus a `vibe.toml` written by the test, `[project]\\nname = \"fixture\"\\nversion = \"0.0.1\"\\n`; forkDir is not set at all. **When**: `codkit --json standards load --dry-run`. **Then**: exit 0; `data.files.created` equals the number of files of the package, `data.manifest.action = \"append\"`, not one byte is written (the sha256 of `vibe.toml` and the absence of the directory are checked). **When**: `codkit --json standards load`. **Then**: exit 0; `vibevm/vibepacks/org.vibevm.codkit/standards/v<version>/` is byte for byte equal to the package of toolRoot (`diff -r` is empty, including `LICENSE` and `LICENSES/UPL-1.0.txt`); `LICENSE-CODKIT.md` in the root of patchesDir and in `delta/own/` are byte for byte equal to `toolRoot/codkit/config/LICENSE-CODKIT.md` (`data.noticeFiles` — two `created` records); after the note the block `licence notice file:` and the full text of the file are printed (`data.noticeText` is present); `vibe.toml` = the former bytes + LF normalization + an empty line + the canonical block; the lines outside the block did not change by a byte; `data.next = \"vibe install --offline\"`; after the summary exactly four lines beginning with `licence note:` are printed, verbatim per PROP-014 `STD-LOAD-LICENCE-NOTE`, and `data.notes` carries the same four lines (also on `up to date` and `--dry-run`); there is no `.codkit-load-*` under `standards/`. **When (if `vibe` is on PATH; otherwise the step is skipped with a note in the test output)**: `vibe install --offline --assume-yes` in patchesDir, then `vibe check --quiet`. **Then**: `vibevm/vibedeps/org.vibevm.codkit.standards/<version>/` is byte for byte equal to the copy, `vibe.lock` holds `source_kind = \"local\"`, `vibe check` — 0 errors. The manual equivalent on a real product repository is `docs/codkit/protocol/human/13-standards.md`. @status:impl/done",
+      "heading": "**Given** (PROP-014 §4–5; e2e `standards.test.ts`): a patchesDir from `makeCliFixture` plus a `vibe.toml` written by the test, `[project]\\nname = \"fixture\"\\nversion = \"0.0.1\"\\n`; forkDir is not set at all. **When**: `codkit --json standards load --dry-run`. **Then**: exit 0; `data.files.created` equals the number of files of the package, `data.manifest.action = \"append\"`, not one byte is written (the sha256 of `vibe.toml` and the absence of the directory are checked). **When**: `codkit --json standards load`. **Then**: exit 0; `vibevm/vibepacks/org.vibevm.codkit/standards/v<version>/` is byte for byte equal to the package of toolRoot (`diff -r` is empty, including `LICENSE` and `LICENSES/UPL-1.0.txt`); `LICENSE-CODKIT.md` in the root of patchesDir and in `delta/own/` are byte for byte equal to `toolRoot/config/LICENSE-CODKIT.md` (`data.noticeFiles` — two `created` records); after the note the block `licence notice file:` and the full text of the file are printed (`data.noticeText` is present); `vibe.toml` = the former bytes + LF normalization + an empty line + the canonical block; the lines outside the block did not change by a byte; `data.next = \"vibe install --offline\"`; after the summary exactly four lines beginning with `licence note:` are printed, verbatim per PROP-014 `STD-LOAD-LICENCE-NOTE`, and `data.notes` carries the same four lines (also on `up to date` and `--dry-run`); there is no `.codkit-load-*` under `standards/`. **When (if `vibe` is on PATH; otherwise the step is skipped with a note in the test output)**: `vibe install --offline --assume-yes` in patchesDir, then `vibe check --quiet`. **Then**: `vibevm/vibedeps/org.vibevm.codkit.standards/<version>/` is byte for byte equal to the copy, `vibe.lock` holds `source_kind = \"local\"`, `vibe check` — 0 errors. The manual equivalent on a real product repository is `docs/codkit/protocol/human/13-standards.md`. @status:impl/done",
       "line": 98,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S30"
     },
@@ -1544,7 +1544,7 @@
     },
     {
       "anchor": "s35",
-      "content_hash": "sha256:7b556617ce950464fd26cdc47d5f003ab65b2ad26fcbcedf5518c1ba36826e92",
+      "content_hash": "sha256:f202383afb2646c0c8445a98904072db7ceb6c14809ef21140f302b457293993",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S35 — standards license prints the notice file, the recommendations and the scrape contract rows",
@@ -1553,10 +1553,10 @@
     },
     {
       "anchor": "S35",
-      "content_hash": "sha256:b40aa8b79ae65f8e46d4e4cc3150298b4585451f609d30f9fd3fb94e0c2290fe",
+      "content_hash": "sha256:ea2a98b6e334c2d410aedf90c0842eab541dd9cd47e0768149ab31626faa7c13",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: any cwd, no roots set. **When**: `codkit standards license`. **Then**: exit 0; stdout holds the full text of `toolRoot/codkit/config/LICENSE-CODKIT.md` (compared with the file), the block of recommendations (both copies, \"do not edit\", the links — the owner's choice from the README of the product and from an intervention in the README of the fork, the three circuits) and, verbatim, the two contract rows from PROP-014 `STD-SCRAPE-CONTRACT-ROWS`; `--json` — `data.text`, `data.recommendations` (a non-empty array), `data.scrapeContractRows` (a string, parsed by the test's `tomllib`-like parser as the two tables `classify` and `assert` with the expected fields). **When**: `codkit standards license --dry-run`. **Then**: usage exit 2 (the flag is not declared). @status:impl/done",
+      "heading": "**Given**: any cwd, no roots set. **When**: `codkit standards license`. **Then**: exit 0; stdout holds the full text of `toolRoot/config/LICENSE-CODKIT.md` (compared with the file), the block of recommendations (both copies, \"do not edit\", the links — the owner's choice from the README of the product and from an intervention in the README of the fork, the three circuits) and, verbatim, the two contract rows from PROP-014 `STD-SCRAPE-CONTRACT-ROWS`; `--json` — `data.text`, `data.recommendations` (a non-empty array), `data.scrapeContractRows` (a string, parsed by the test's `tomllib`-like parser as the two tables `classify` and `assert` with the expected fields). **When**: `codkit standards license --dry-run`. **Then**: usage exit 2 (the flag is not declared). @status:impl/done",
       "line": 113,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S35"
     },
@@ -1670,7 +1670,7 @@
     },
     {
       "anchor": "s42",
-      "content_hash": "sha256:25e95fb5f3a803127ec1c4cefaa89de7506598027a17f737c304fe7fd1863c15",
+      "content_hash": "sha256:3f2aed32bd366ac6fb83056a2764c15deda0bf7a2daae6ac1b638584860ac958",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S42 — runtime load delivers the library into a clean product and writes the notice with the components block",
@@ -1679,10 +1679,10 @@
     },
     {
       "anchor": "S42",
-      "content_hash": "sha256:8a904f1d27feb2549ecac610cfd027981a229be15feb2ea76cee3c381d8a9229",
+      "content_hash": "sha256:7a708e8fbbef72e04f68420257fb61eff439d62432c110465408be9468c26660",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: a fresh patchesDir with `codkit.json` (`pin.tag` from `CODKIT_RUNTIME_VERIFIED_UPSTREAM`), an empty `delta/own/`, the standards package already installed. **When**: `codkit --json runtime load`. **Then**: exit 0; `delta/own/codkit/**` is byte for byte equal to `codkit/runtime/v<version>/**`; `data.state = \"created\"`, `data.version` equals the name of the directory; both copies of `LICENSE-CODKIT.md` (the root and `delta/own/codkit/`) equal the render of the template with a components block of two rows (`standards`, `runtime`); the text output holds three hints (the graft `featureFlags.contribution.js`, the `code-import-patterns` block, `codkit gen feature`); `data.verifiedUpstream = true`. @status:spec/plan",
+      "heading": "**Given**: a fresh patchesDir with `codkit.json` (`pin.tag` from `CODKIT_RUNTIME_VERIFIED_UPSTREAM`), an empty `delta/own/`, the standards package already installed. **When**: `codkit --json runtime load`. **Then**: exit 0; `delta/own/codkit/**` is byte for byte equal to `toolRoot/runtime/v<version>/**`; `data.state = \"created\"`, `data.version` equals the name of the directory; both copies of `LICENSE-CODKIT.md` (the root and `delta/own/codkit/`) equal the render of the template with a components block of two rows (`standards`, `runtime`); the text output holds three hints (the graft `featureFlags.contribution.js`, the `code-import-patterns` block, `codkit gen feature`); `data.verifiedUpstream = true`. @status:spec/plan",
       "line": 134,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S42"
     },
@@ -2138,7 +2138,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ca7768708d82bc170cde567423fc42a994ce990604983680cd9afc9acf0128f8",
+      "content_hash": "sha256:6c704b14182396d33dcf14386040b259c3911b4e93127ab3bc1611218d6cef69",
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "codkit FEAT-003: Requirements for the human working protocol",
@@ -2264,7 +2264,7 @@
     },
     {
       "anchor": "sections",
-      "content_hash": "sha256:569e5fa4ae292e117eff390aae841813e8b394614d74cd3b520e1f95d5408d58",
+      "content_hash": "sha256:dee7b9fa73064769e1fd37dff4d635feec22853f73fb545780e9178d40ed1b20",
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "4. Requirements for the sections (goal / content / acceptance)",
@@ -2372,10 +2372,10 @@
     },
     {
       "anchor": "HP-MAINTENANCE",
-      "content_hash": "sha256:afe7ecd7bb6a954ac08eea0b21ce611f418d367653948fa4f9f5050524ecc04e",
+      "content_hash": "sha256:2c8825b61a627b48a4b8dfba0c9dca5c3b7285cec493f68c75e68c0f0174911f",
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
-      "heading": "**12-maintenance** — the shared protocol is versioned with toolRoot; a patch set keeps only its own owners, journal and intervention evidence. The shipped `toolRoot/codkit/config/conventions.json` is the base machine source; an explicit additive extension in patchesDir adds to it per PROP-003 and never weakens it. Agent and human documents refer to the effective policy; the docs gate checks the paths, the commands and the schema-2 roots. @status:spec/done",
+      "heading": "**12-maintenance** — the shared protocol is versioned with toolRoot; a patch set keeps only its own owners, journal and intervention evidence. The shipped `toolRoot/config/conventions.json` is the base machine source; an explicit additive extension in patchesDir adds to it per PROP-003 and never weakens it. Agent and human documents refer to the effective policy; the docs gate checks the paths, the commands and the schema-2 roots. @status:spec/done",
       "line": 64,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HP-MAINTENANCE"
     },
@@ -2489,7 +2489,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:26586a4d4174cbb48447ff453ed252cace169243b265cf6d6cef92fab13ce57f",
+      "content_hash": "sha256:e4f10bce460843bac4d420e83e3f0749af59377d2acf62f5ca4be913834608a0",
       "doc_path": "modules/codkit/FEAT-004",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-004-agent-protocol.xml",
       "heading": "codkit FEAT-004: Requirements for the AI-agent working protocol",
@@ -2561,7 +2561,7 @@
     },
     {
       "anchor": "layout",
-      "content_hash": "sha256:563e545bc4df1031b2681c739aa0e88ff07ee9cb86d87a9030d64114855354bb",
+      "content_hash": "sha256:267f495ff385ca855e4605c8604db673383cf05fa55b2c7d66344abc7c8e321f",
       "doc_path": "modules/codkit/FEAT-004",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-004-agent-protocol.xml",
       "heading": "2. File layout",
@@ -2570,16 +2570,16 @@
     },
     {
       "anchor": "AP-SYNC-RULE",
-      "content_hash": "sha256:a545f1c3e2e54c80d85b11af44baba9a12a845cc3aeb58be1734bff66b08af0e",
+      "content_hash": "sha256:5df6ef91b7f1f0ba32ec5eed4ac2a07954071eed641602bc2780690050420047",
       "doc_path": "modules/codkit/FEAT-004",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-004-agent-protocol.xml",
-      "heading": "Sources of generic agent descriptions live under `toolRoot/docs/codkit/agents/`; the rendered profile lives under `toolRoot/codkit/claude/` and is installed into the product repository's `.claude/` and root `CLAUDE.md`/`AGENTS.md`. Hooks are shipped under `toolRoot/codkit/hooks/`. A patch-set receives runtime task/result files only under its own `.codkit/`, never a copied Codkit implementation. The Codkit tool repository carries no agent perimeter of its own (§5, `GR-TREE-EDITS-SCOPE`). @status:spec/done",
+      "heading": "Sources of generic agent descriptions live under `toolRoot/docs/codkit/agents/`; the rendered profile lives under `toolRoot/claude/` and is installed into the product repository's `.claude/` and root `CLAUDE.md`/`AGENTS.md`. Hooks are shipped under `toolRoot/hooks/`. A patch-set receives runtime task/result files only under its own `.codkit/`, never a copied Codkit implementation. The Codkit tool repository carries no agent perimeter of its own (§5, `GR-TREE-EDITS-SCOPE`). @status:spec/done",
       "line": 37,
       "uri": "spec://codkit/modules/codkit/FEAT-004#AP-SYNC-RULE"
     },
     {
       "anchor": "core",
-      "content_hash": "sha256:32a9fb678e4e7b17d94a2935bff16ec64f191e99ffaf730b6f6d185849f8ca70",
+      "content_hash": "sha256:5503179becdf2b50f9ebd47370e7b9997062fd697e65303811d8e8e61a7ee768",
       "doc_path": "modules/codkit/FEAT-004",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-004-agent-protocol.xml",
       "heading": "3. The instruction layer",
@@ -2597,10 +2597,10 @@
     },
     {
       "anchor": "AP-RULES-SET",
-      "content_hash": "sha256:98ac62ad209b4f46956752aa0039fd0b6b5d8ec136a8fb6f282bf49d0f04e5ce",
+      "content_hash": "sha256:2e5e549c8faac16485c801bac45bc250eb61fef85b9b7b6f93437d9f9264f6a0",
       "doc_path": "modules/codkit/FEAT-004",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-004-agent-protocol.xml",
-      "heading": "The rules (`codkit/claude/rules/*.md`, installed as the product's `.claude/rules/*.md`; `ck-codkit-dev.md` stays in the tool's `.claude/rules/`; the paths-scope mechanism is to be re-verified, J1): `ck-delta-artifacts.md` (`delta/**`) — the artifact formats are the module specs; artifacts are not edited by hand (apart from header metadata) — `codkit save` writes them; `ck-markers.md` — the marker rules; `ck-codkit-dev.md` (`codkit/**`) — the clean room of the implementation; `ck-cycle.md` (`cycle/**`) — the journal is mandatory, `state.json` is not edited by hand (only the `cycle` commands). @status:spec/done",
+      "heading": "The rules (`toolRoot/claude/rules/*.md`, installed as the product's `.claude/rules/*.md`; `ck-codkit-dev.md` stays in the tool's `.claude/rules/`; the paths-scope mechanism is to be re-verified, J1): `ck-delta-artifacts.md` (`delta/**`) — the artifact formats are the module specs; artifacts are not edited by hand (apart from header metadata) — `codkit save` writes them; `ck-markers.md` — the marker rules; `ck-codkit-dev.md` (`codkit/**`) — the clean room of the implementation; `ck-cycle.md` (`cycle/**`) — the journal is mandatory, `state.json` is not edited by hand (only the `cycle` commands). @status:spec/done",
       "line": 41,
       "uri": "spec://codkit/modules/codkit/FEAT-004#AP-RULES-SET"
     },
@@ -2678,7 +2678,7 @@
     },
     {
       "anchor": "guardrails",
-      "content_hash": "sha256:39e3e6be93f0732937ef4158df85434e9786bfbccda25ef91470f29256d6a14d",
+      "content_hash": "sha256:5a2ca779c962b995d5a15991726ee5b99bf9a68c8b88b874b1d4c5adac837781",
       "doc_path": "modules/codkit/FEAT-004",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-004-agent-protocol.xml",
       "heading": "5. Guardrails — the two echelons plus the architectural one",
@@ -3110,7 +3110,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:0a255a8f279e404a3e6f6ab90e70de99731e398229ece41baf9305ce28941216",
+      "content_hash": "sha256:c2ed990bd1c88cdd85750cd52e5b39c8bfbd938b625264a1c2d01872a7b6d510",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "codkit PROP-002: Code layout, launch, toolchain, components",
@@ -3119,7 +3119,7 @@
     },
     {
       "anchor": "layout",
-      "content_hash": "sha256:adae5e83d7f2581bdc0fb2f64916442eaf6996b7d263eebec5c4c10f7d7a213d",
+      "content_hash": "sha256:1428508cd487724dfc30237416630d3482995921e0f3007be1c85dc1bc956cfa",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "1. Where the code lives",
@@ -3137,11 +3137,11 @@
     },
     {
       "anchor": "ROOT-OWNERSHIP",
-      "content_hash": "sha256:a5b6e5a5af20d34cb9cbcb1496c63572c14af9089917061b5b5195c46c04fe43",
+      "content_hash": "sha256:d803c18196a3e7b9f26d584eaff626e4f6d7410c70ef266a3e19918849e7ade0",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "Only toolRoot owns the sources, the launchers, the base safety configs, the tests and the npm dependencies of Codkit. Only patchesDir owns `codkit.json`, `delta/**`, `cycle/**`, the runtime `.codkit/**` and the Git history of the patch set. Only forkDir owns the VS Code checkout and the generated refs. The standards package in toolRoot belongs to toolRoot; its installed copy under patchesDir belongs to codkit and is edited only by the standards load command (PROP-014). @status:spec/done",
-      "line": 34,
+      "heading": "toolRoot is the CLI package `packages/codkit` of the tool's npm workspace, and only it owns the sources, the launchers, the base safety configs, the tests and the npm dependencies of Codkit; the workspace root above it owns the repository's own machinery (the specs, the generators, the gates, the development lock) and is private - it publishes nothing. Only patchesDir owns `codkit.json`, `delta/**`, `cycle/**`, the runtime `.codkit/**` and the Git history of the patch set. Only forkDir owns the VS Code checkout and the generated refs. The standards package in toolRoot belongs to toolRoot; its installed copy under patchesDir belongs to codkit and is edited only by the standards load command (PROP-014). @status:spec/done",
+      "line": 43,
       "uri": "spec://codkit/modules/codkit/PROP-002#ROOT-OWNERSHIP"
     },
     {
@@ -3150,25 +3150,25 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "A patch set ignores at least `codkit.local.json` and `.codkit/`. It is not obliged to have a `package.json` or `node_modules` for the sake of Codkit. @status:spec/done",
-      "line": 35,
+      "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-002#PATCHSET-GITIGNORE"
     },
     {
       "anchor": "TOOL-PACKAGE",
-      "content_hash": "sha256:be8042ab2adc266a56704c82f5cdbddc73e37296a1da1c7d5ca3d81560b66391",
+      "content_hash": "sha256:4885a8fa7104e7cfbb3e685c197eec1181c02561201f3e638930e77ec7701b2c",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "`package.json` and the publishable `npm-shrinkwrap.json` belong to toolRoot and fix the runtime dependency graph identically in the source checkout and in the npm artifact. The runtime dependencies are installed next to the tool. Missing dependencies give a diagnosed refusal that demands the installation be restored from the approved supply; for a source checkout `npm ci` is admissible. @status:spec/done",
-      "line": 36,
+      "heading": "`package.json` and the publishable `npm-shrinkwrap.json` belong to toolRoot - that is, to the CLI package `packages/codkit`, not to the workspace root - and fix the runtime dependency graph identically in the source checkout and in the npm artifact. The workspace root carries its own `npm-shrinkwrap.json` for the development install of every package at once; it is never published. The runtime dependencies are installed next to the tool. Missing dependencies give a diagnosed refusal that demands the installation be restored from the approved supply; for a source checkout `npm ci` is admissible. @status:spec/done",
+      "line": 45,
       "uri": "spec://codkit/modules/codkit/PROP-002#TOOL-PACKAGE"
     },
     {
       "anchor": "TOOL-PACKAGE-TAR-BOUND",
-      "content_hash": "sha256:d4d5e3c0cf0f044945cb28d154333650849198e943a4718b2c7c69fa1ce3bdf4",
+      "content_hash": "sha256:277494d6d4022c01c88f3e3d36bb91fe716061b4afa4905218f5693b9f07e048",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "Bounds of the npm tarball in `codkit/test/unit/packageManifest.test.ts`. **Decision (owner ruling, 2026-09-07, verbatim: «поднять размер в тесте до 50 мегабайт»):** `unpackedSize < 50_000_000`; `entryCount < 640` and the tar bound `2_000_000` stay as the ruling of 2026-09-06 left them. **Why:** the unpacked bound fired on planned work - the STANDARDS campaign added the standards package (81_940 bytes), PROP-014 (112_670) and six modules that ship twice, as sources and as their compiled output, taking the tarball to 5_055_081 unpacked with the tar at 1_383_894 and 429 of 640 entries. Nothing a consumer experiences was near a limit: 5 MB unpacked on a developer machine costs nothing, and this decision's own revisit trigger (the tar above 2 MB, or a consumer complaint) had not fired. A ratchet that blocks planned work without naming a cost measures the wrong thing. The consequence is recorded rather than hidden: at this number the effective ratchet is the tar bound, which text compressing about fivefold reaches near 10 MB unpacked, so 50 MB is never approached - the unpacked bound is now a backstop against a pathological artifact, not the growth signal. **Considered and rejected:** dropping `codkit/src` from the shipped set - measured at 272 entries and 3_063_152 unpacked, and the launcher runs `codkit/dist/main.js` so sources are not needed at runtime, but a consumer would stop receiving the source of the tool they installed, and that is a distribution decision nobody asked for; a smaller step such as 5_500_000 - the owner named 50 MB; dropping `AUDIT.md` or `docs/codkit` - documentation a consumer should have. **When to revisit:** the tar exceeds 2 MB (unchanged, and now the binding signal), or a consumer reports install size or time. @status:spec/done",
-      "line": 37,
+      "heading": "Bounds of the npm tarball in `packages/codkit/test/unit/packageManifest.test.ts`, applied to every published package of the workspace (PROP-016 ##TYPE-SUPPLY-KIT): the test packs each `packages/*` with `npm pack --dry-run` and states, per package, the files it must ship, the executables it must keep executable, and these bounds. **Decision (owner ruling, 2026-09-07, verbatim: «поднять размер в тесте до 50 мегабайт»):** `unpackedSize < 50_000_000`; `entryCount < 640` and the tar bound `2_000_000` stay as the ruling of 2026-09-06 left them. **Why:** the unpacked bound fired on planned work - the STANDARDS campaign added the standards package (81_940 bytes), PROP-014 (112_670) and six modules that ship twice, as sources and as their compiled output, taking the tarball to 5_055_081 unpacked with the tar at 1_383_894 and 429 of 640 entries. Nothing a consumer experiences was near a limit: 5 MB unpacked on a developer machine costs nothing, and this decision's own revisit trigger (the tar above 2 MB, or a consumer complaint) had not fired. A ratchet that blocks planned work without naming a cost measures the wrong thing. The consequence is recorded rather than hidden: at this number the effective ratchet is the tar bound, which text compressing about fivefold reaches near 10 MB unpacked, so 50 MB is never approached - the unpacked bound is now a backstop against a pathological artifact, not the growth signal. **Consequence of the workspace split (2026-09-09):** a package can only ship what lies inside it, so the CLI tarball carries the runnable tool and the operator surfaces that live in `packages/codkit` - the sources, the compiled runtime, the launchers, the configs, the agent profile and its guard, the shipped vibe packages and the runtime library - while the repository's specifications, `docs/codkit` and the repository-level `AUDIT.md`/`AGENTS.md`/`CLAUDE.md` stay at the workspace root and reach a consumer through the repository rather than through the tarball. **Considered and rejected:** dropping `packages/codkit/src` from the shipped set - measured at 272 entries and 3_063_152 unpacked, and the launcher runs `packages/codkit/dist/main.js` so sources are not needed at runtime, but a consumer would stop receiving the source of the tool they installed, and that is a distribution decision nobody asked for; a smaller step such as 5_500_000 - the owner named 50 MB; dropping `AUDIT.md` or `docs/codkit` - documentation a consumer should have. **When to revisit:** the tar exceeds 2 MB (unchanged, and now the binding signal), or a consumer reports install size or time. @status:spec/done",
+      "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-002#TOOL-PACKAGE-TAR-BOUND"
     },
     {
@@ -3177,34 +3177,34 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "toolRoot is computed only from the `import.meta.url` of the tool being launched. patchesDir and forkDir are resolved independently through the sources of PROP-003; cwd never becomes a root automatically. @status:spec/done",
-      "line": 38,
+      "line": 47,
       "uri": "spec://codkit/modules/codkit/PROP-002#ROOT-DERIVATION"
     },
     {
       "anchor": "toolchain",
-      "content_hash": "sha256:3ecfd31613e13bcaef59bab6ab9bf6b7b7228e93906bf1afd6ad0f96fae7998e",
+      "content_hash": "sha256:0dfc919a885b7756160c958a14c3a52e87aba825af8ffded5e64956fd8b9e738",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "2. Launch and toolchain",
-      "line": 41,
+      "line": 50,
       "uri": "spec://codkit/modules/codkit/PROP-002#toolchain"
     },
     {
       "anchor": "COMPILED-RUNTIME-LAUNCHER",
-      "content_hash": "sha256:ff635684408646e9f8fdc52913371367630eaf13797e4fde9e83c1e786a6f523",
+      "content_hash": "sha256:75dc5534aa479adffd8856203efc84a0516f8e6980752d1e868bcdaad980ac41",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "The source of truth is the TypeScript in `codkit/src`. `npm run runtime:build` produces plain ESM JavaScript in `codkit/dist` with rewritten relative extensions; `runtime:check` compares a fresh temp emit with the tracked dist byte for byte. The launcher calls `node toolRoot/codkit/dist/main.js <args>` with the same `process.execPath`, so an installed npm package does not try to strip `.ts` under `node_modules`. @status:spec/done",
-      "line": 43,
+      "heading": "The source of truth is the TypeScript in `packages/codkit/src`. `npm run runtime:build` produces plain ESM JavaScript in `packages/codkit/dist` with rewritten relative extensions; `runtime:check` compares a fresh temp emit with the tracked dist byte for byte. The launcher calls `node toolRoot/dist/main.js <args>` with the same `process.execPath`, so an installed npm package does not try to strip `.ts` under `node_modules`. @status:spec/done",
+      "line": 52,
       "uri": "spec://codkit/modules/codkit/PROP-002#COMPILED-RUNTIME-LAUNCHER"
     },
     {
       "anchor": "USER-LAUNCHERS",
-      "content_hash": "sha256:db97bc149dc4e320767cd929a8b5f849bf09dd164c4171405172277cc2e26607",
+      "content_hash": "sha256:6b12407027929b4b9b358bd2b0346fb719bbbe14a2939c9ec7fb842d26d08df6",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "The user entry points are `bin/codkit` for Bash and `bin/codkit.ps1` for PowerShell. Both resolve the root relative to their own file (not to cwd), check that Node is available and pass argv and the exit code on to the internal `codkit/bin/codkit.mjs`; the wrapper scripts carry no command or format logic. @status:impl/done",
-      "line": 44,
+      "heading": "The user entry points are `bin/codkit` for Bash and `bin/codkit.ps1` for PowerShell. They exist twice and identically in purpose: inside the CLI package, where an installation is rooted, and at the workspace root of the source checkout. Both resolve the root relative to their own file (not to cwd), check that Node is available and pass argv and the exit code on to the internal `bin/codkit.mjs` of the CLI package; the wrapper scripts carry no command or format logic. @status:impl/done",
+      "line": 53,
       "uri": "spec://codkit/modules/codkit/PROP-002#USER-LAUNCHERS"
     },
     {
@@ -3213,7 +3213,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "A constraint for the codkit code: erasable TS syntax only — no `enum`, no `namespace`, no constructor parameter properties; instead of an enum — union types and `as const` objects. (It coincides with the `erasableSyntaxOnly` flag of the AI-native TypeScript envelope — `common/PROP-000` §5.) @status:spec/done",
-      "line": 45,
+      "line": 54,
       "uri": "spec://codkit/modules/codkit/PROP-002#ERASABLE-SYNTAX-ONLY"
     },
     {
@@ -3222,7 +3222,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "Codkit itself requires Node ≥ 22.6 as its installed runtime floor. The build version of a particular fork is set by that fork's `.nvmrc`; if the resolved tree requires another major, Codkit warns instead of substituting the environment, and it does not make a consumer-specific version part of the tool policy. @status:spec/done",
-      "line": 46,
+      "line": 55,
       "uri": "spec://codkit/modules/codkit/PROP-002#NODE-VERSION-RULE"
     },
     {
@@ -3231,7 +3231,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "git ≥ 2.40 (a stable `git apply`, `merge-file`, `commit-tree` and `--force-with-lease` are needed); git-lfs ≥ 3.0 is an environment contract: without it the tree holds pointer files. @status:spec/done",
-      "line": 47,
+      "line": 56,
       "uri": "spec://codkit/modules/codkit/PROP-002#GIT-VERSION-RULE"
     },
     {
@@ -3240,7 +3240,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "The operating systems: Linux, macOS, Windows. All paths go through `node:path`/`node:fs` (`realpath`), never through concatenation of strings with separators; on Windows codkit checks `core.longpaths=true` in the config of the tree and warns when it is absent. @status:spec/done",
-      "line": 48,
+      "line": 57,
       "uri": "spec://codkit/modules/codkit/PROP-002#CROSS-PLATFORM-PATHS"
     },
     {
@@ -3249,7 +3249,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "`CODKIT_PATCHES_DIR` and `CODKIT_FORK_DIR` are public user sources, not test overrides. Each root has its own independent precedence CLI flag → env → `~/.codkit/settings.json`; relative CLI and env paths are resolved from cwd, and settings accepts absolute paths only. @status:impl/done",
-      "line": 50,
+      "line": 59,
       "uri": "spec://codkit/modules/codkit/PROP-002#PUBLIC-ROOT-SOURCES"
     },
     {
@@ -3258,7 +3258,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "**The isolation of the Git environment is the foundation of determinism:** every git run from codkit is executed with the environment `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, `LC_ALL=C`, `TZ=UTC` and with explicit `-c core.autocrlf=false -c core.quotepath=false`; the repository settings that are needed are passed as `-c` flags. The exceptions are the operations obliged to see the config of the repository or of the container (reading `safe.directory` in CI, PROP-011 §5; their list is fixed there) and the single read-only query `rev-parse --git-path hooks/<name>` with the machine config visible (the `machineConfig` flag of the wrapper, legal ONLY together with `pathResolution`): the effective location of a configured hook is a property of the user's git, an isolated view does not see it, and to declare the guard active without asking the user's git would be a lie (PROP-008 §3 `##TREE-HOOK-STEP`, REPAIR-006). @status:spec/done",
-      "line": 51,
+      "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-002#GIT-ENV-ISOLATION"
     },
     {
@@ -3267,7 +3267,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "**The administrative files touched by REPAIR-006 (the git mark, the hooks, the exclude) and the configuration reads of `codkit.json` / `codkit.local.json` / the declared build-watch and conventions all go through one implementation, `containedFile.ts`.** Reading: the parent components are checked with lstat (a symbolic link is a refusal), the leaf is opened with a single descriptor with `O_NOFOLLOW` (the platforms without it — Windows — check the leaf before the open and compare the descriptor afterwards; the remaining check-then-open window is documented, not hidden), the descriptor must be a regular file, and after the open it is proved that it names a file inside the root (realpath + a comparison of dev/ino with the canonical path) — a parent component swapped for a symlink after the check is caught by the post-open proof and its bytes are not used. Writing: an atomic replacement (an exclusive temporary file + rename) only inside a parent which, immediately before the write, must be a real canonical directory; a leaf symlink is a refusal (`codkit never writes through a link`), and a symlink swapped in after the check of the leaf is replaced by the rename itself — the target of the link does not change; after the write the identity and realpath of the parent are re-checked. The limitation of the Node `fs` is recorded honestly: the portable API gives no `openat`/`renameat` relative to a held directory descriptor, so a malicious swap of the parent itself in the narrow window between the last check and the creation of the temporary file is detected post-write but is not prevented before the first byte on every platform; a pre-existing parent or leaf symlink and a swap during a read are refused before the data is used. The administrative directories (`hooks/`, `codkit/`, `info/`) are created only as real directories — a symlink component is a refusal. The module does not decide «whose bytes these are»: ownership and refusal stay with the calling layer. @status:impl/done",
-      "line": 52,
+      "line": 61,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONTAINED-FILE-IO"
     },
     {
@@ -3276,7 +3276,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "REPAIR-007: the tree mark, the common/worktree exclude, the tree hook and the patch-set hooks use `readContainedFile(root, relative)` end-to-end, and the writes use `writeContainedFileAtomic`; a checked parent is not then handed to a weaker leaf-only reader. On a real FS `writeConfigPin` reads descriptor-held bytes, performs a repeated contained CAS read and writes a contained atomic replacement; the injectable legacy FS stays a test seam only. Every public consumer has a deterministic after-open parent-swap regression with an unchanged outside sentinel. @status:impl/done",
-      "line": 53,
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONTAINED-CONSUMERS"
     },
     {
@@ -3285,16 +3285,16 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "REPAIR-009: mutating the pin in `codkit.json` requires a LIVE capability of this patch set's cycle-global lock, not merely a structurally similar handle: a forged, a copied, an already released and a foreign (another patchesDir) handle all refuse. The bytes are re-read before the replacement, so an external edit that arrived after the comparison is preserved and the call returns a locked/config failure. The residual limitation is recorded honestly: an external editor whose last system call writes after our repeated read can still be overwritten — Node gives no atomic compare-and-swap over an ordinary file. @status:impl/done",
-      "line": 54,
+      "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONFIG-PIN-CAPABILITY"
     },
     {
       "anchor": "components",
-      "content_hash": "sha256:9af2cb1e69046be41e591cfcc3271e814f0ff1192f13abb06362a2b848e86d38",
+      "content_hash": "sha256:5094e40be504ae9b6bd4baf8a114a18107ab02a59ac7679f6f5f138dfcb9f59d",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "3. Components (the modules of codkit/src/lib/)",
-      "line": 56,
+      "heading": "3. Components (the modules of packages/codkit/src/lib/)",
+      "line": 65,
       "uri": "spec://codkit/modules/codkit/PROP-002#components"
     },
     {
@@ -3303,7 +3303,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "The file names are a recommendation, the responsibilities are normative: @status:spec/done",
-      "line": 57,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/PROP-002#components-lead"
     },
     {
@@ -3312,7 +3312,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "`layers/*`, `applyEngine` and `inventory` know nothing about the CLI; the commands receive explicit toolRoot, patchesDir, forkDir and the patch-set config object instead of reopening the roots through cwd. This is the cell rule of AI-native TypeScript as well: one module = one cell with a single public entry. @status:spec/done",
-      "line": 94,
+      "line": 103,
       "uri": "spec://codkit/modules/codkit/PROP-002#DEPENDENCY-RULE-BETWEEN-MODULES"
     },
     {
@@ -3321,7 +3321,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "4. Cross-platform support — the conditions of acceptance",
-      "line": 96,
+      "line": 105,
       "uri": "spec://codkit/modules/codkit/PROP-002#cross-platform"
     },
     {
@@ -3330,7 +3330,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "Acceptance requires a native test «a double regeneration gives an empty diff» separately on Linux, macOS and Windows (S16). The current Linux run is not a proof for the two other operating systems. @status:spec/plan",
-      "line": 98,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-DOUBLE-REGEN"
     },
     {
@@ -3339,7 +3339,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "No mechanism assumes that the three roots are neighbours; the tests use three unrelated random paths (PROP-013 §1). @status:spec/done",
-      "line": 99,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-NO-NEIGHBOR-ASSUMPTION"
     },
     {
@@ -3348,12 +3348,12 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "Symlinks are not used as a mechanism (code is delivered by copying); on Windows linking is replaced by a copy everywhere. @status:spec/done",
-      "line": 100,
+      "line": 109,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-NO-SYMLINKS"
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c0ef32544d34867e4c915bb2a31c1b1f2f51470ad599f6c807a9f17b438bc7d8",
+      "content_hash": "sha256:ba7e4495c68860a9efd0e2388960bf89374f62e78e0da6c8207cce3096572163",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "codkit PROP-003: Configuration, data conventions, the owners map, common format rules",
@@ -3542,7 +3542,7 @@
     },
     {
       "anchor": "conventions-data",
-      "content_hash": "sha256:67741e9ce72dcf6774e6c54aa8110ef6f56aa223227186f2a1f7108591e4eefe",
+      "content_hash": "sha256:3b51f1f41d25c7364e866b57c19c42506188763596feade8b5a0fde03d9f469a",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "4. Data conventions and safe extension",
@@ -3551,10 +3551,10 @@
     },
     {
       "anchor": "CONVENTIONS-SINGLE-DEFINITION",
-      "content_hash": "sha256:057fa3f82b976b04cfdb4a3fa9d7e2624918caf869288e1fbf6c6cb93640e4a4",
+      "content_hash": "sha256:9817dade990169dc94db586c9d08abb6bd009dfbdd108d9836986f01c6e3d7ae",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
-      "heading": "The mandatory base policy lives only in `toolRoot/codkit/config/conventions.json`; the CLI, the checks, the CI and the agent protocols read it. A file with the same path under patchesDir never shadows the installed policy. @status:spec/done",
+      "heading": "The mandatory base policy lives only in `toolRoot/config/conventions.json`; the CLI, the checks, the CI and the agent protocols read it. A file with the same path under patchesDir never shadows the installed policy. @status:spec/done",
       "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONVENTIONS-SINGLE-DEFINITION"
     },
@@ -3587,10 +3587,10 @@
     },
     {
       "anchor": "BUILD-WATCH-SELECTION",
-      "content_hash": "sha256:41eb565519d7971b27e7e6bf07797e7c0f783879b4448a199060c3728c6ccfa3",
+      "content_hash": "sha256:0d5a80790f4e16403ccb72230854d059aeb177513ce37a0eae86ad4838974860",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
-      "heading": "By default the build wrapper reads `toolRoot/codkit/config/build-watch.json`. Only an explicit `buildWatchFile` selects the strict versioned profile of a particular fork; the patch set is the project policy chosen by the user, but a hidden copy under the same name is not taken into account. The path must be relative and contained inside patchesDir. Every channel must have at least one `errorLine` or `errorCountLine`; unknown fields are forbidden. The author of a custom profile keeps green/red log fixtures and confirms that an error does not become exit 0. @status:spec/done",
+      "heading": "By default the build wrapper reads `toolRoot/config/build-watch.json`. Only an explicit `buildWatchFile` selects the strict versioned profile of a particular fork; the patch set is the project policy chosen by the user, but a hidden copy under the same name is not taken into account. The path must be relative and contained inside patchesDir. Every channel must have at least one `errorLine` or `errorCountLine`; unknown fields are forbidden. The author of a custom profile keeps green/red log fixtures and confirms that an error does not become exit 0. @status:spec/done",
       "line": 77,
       "uri": "spec://codkit/modules/codkit/PROP-003#BUILD-WATCH-SELECTION"
     },
@@ -4820,7 +4820,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:fbf3f8ef4279708d57ddb8834b69e45544ee5c189de226a066d25f31be23c774",
+      "content_hash": "sha256:7ed151717ec3159ba708c16dc2747296d458ed402ff4d08574ac2bf40cf6b4a6",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -5396,7 +5396,7 @@
     },
     {
       "anchor": "cmd-imageset",
-      "content_hash": "sha256:b9a34763335930e388e41cc33901f72fc6f3fb1d08de29378dc96e6272c78936",
+      "content_hash": "sha256:9acb1037e7ce661e084f529929dd4d7ba83e4b235626d05a585a3363d5738040",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "21. codkit imageset gen|index|verify",
@@ -5531,10 +5531,10 @@
     },
     {
       "anchor": "DECISION-IMAGESET-CONTAINER-ENCODERS",
-      "content_hash": "sha256:84038f8ecf6a063ae02172945785055970e376894b074503d8295eafef0ca270",
+      "content_hash": "sha256:9c049da4e687bf986515a9a8b3019a7405a4b8e64e0de05ce6cb922d177e61f3",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "**Decision:** the ICO, ICNS, BMP, XPM and PNG codecs are hand-written inside codkit; there are no codec packages.\n\n**Why:** The containers are trivial: ICO - a 6-byte header and 16 bytes per directory frame with a PNG payload, ICNS - `icns` plus the length and elements of `<type><length><PNG>`; all together that is ~800 lines in `codkit/src/lib/imageset*.ts`. The result was checked not by our own parser but by other people's: `icotool -l` showed four frames 16/32/128/256 at 32 bits, `icns2png -l` showed every type at the right sizes and depth, plus Pillow independently.\n\n**Considered and rejected:**\n- encoder packages (`png-to-ico`, `icns-lib`, `jimp`) - a dependency and a licence surface each, for a few dozen lines;\n- calling the system `icotool`/`iconutil` - platform-dependent, the same argument as in `##DECISION-IMAGESET-RASTERISER`.\n\n**When to revisit:** if upstream puts into an `.ico` or an `.icns` an element that is not a PNG payload and has to be reproduced - observed through a non-empty `data.targets[].legacyTypes` for a type that stopped being legacy. @status:impl/done",
+      "heading": "**Decision:** the ICO, ICNS, BMP, XPM and PNG codecs are hand-written inside codkit; there are no codec packages.\n\n**Why:** The containers are trivial: ICO - a 6-byte header and 16 bytes per directory frame with a PNG payload, ICNS - `icns` plus the length and elements of `<type><length><PNG>`; all together that is ~800 lines in `packages/codkit/src/lib/imageset*.ts`. The result was checked not by our own parser but by other people's: `icotool -l` showed four frames 16/32/128/256 at 32 bits, `icns2png -l` showed every type at the right sizes and depth, plus Pillow independently.\n\n**Considered and rejected:**\n- encoder packages (`png-to-ico`, `icns-lib`, `jimp`) - a dependency and a licence surface each, for a few dozen lines;\n- calling the system `icotool`/`iconutil` - platform-dependent, the same argument as in `##DECISION-IMAGESET-RASTERISER`.\n\n**When to revisit:** if upstream puts into an `.ico` or an `.icns` an element that is not a PNG payload and has to be reproduced - observed through a non-empty `data.targets[].legacyTypes` for a type that stopped being legacy. @status:impl/done",
       "line": 118,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-CONTAINER-ENCODERS"
     },
@@ -5585,10 +5585,10 @@
     },
     {
       "anchor": "DECISION-IMAGESET-NAMESPACE",
-      "content_hash": "sha256:75f82a366a7fd345a848da1678dd59a609dcf9c5f3f059cd664817533e5aa8e4",
+      "content_hash": "sha256:4024c08c464df0aab8f09d044b2353849ae431dd41c3811427fdec8118c1dd96",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "**Decision:** `imageset` is a namespace: generation lives in `imageset gen`, the report in `imageset index`, and a bare `codkit imageset` prints the list of subcommands and exits 2, doing nothing.\n\n**Why:** The owner's direction of 2026-09-06. The mechanism is not new: `marker new`, `overlay apply|check` and `build up|down|status|errors` are already resolved by the longest match in `main.ts`, and the `imageset` subcommands are resolved by the same code. A root that generates \"just in case\" is exactly the dumping ground the split is made against.\n\n**Considered and rejected:**\n- one command with flags (`--index`) - the root becomes a dumping ground as the verbs appear;\n- the bare root as a synonym for `gen` - it silently does work where a human asked for help, and that is exactly the failure that is forbidden.\n\n**When to revisit:** if `imageset` is left with one subcommand - observed through the number of definitions prefixed `imageset ` in the `COMMANDS` map (`codkit/src/main.ts`). @status:impl/done",
+      "heading": "**Decision:** `imageset` is a namespace: generation lives in `imageset gen`, the report in `imageset index`, and a bare `codkit imageset` prints the list of subcommands and exits 2, doing nothing.\n\n**Why:** The owner's direction of 2026-09-06. The mechanism is not new: `marker new`, `overlay apply|check` and `build up|down|status|errors` are already resolved by the longest match in `main.ts`, and the `imageset` subcommands are resolved by the same code. A root that generates \"just in case\" is exactly the dumping ground the split is made against.\n\n**Considered and rejected:**\n- one command with flags (`--index`) - the root becomes a dumping ground as the verbs appear;\n- the bare root as a synonym for `gen` - it silently does work where a human asked for help, and that is exactly the failure that is forbidden.\n\n**When to revisit:** if `imageset` is left with one subcommand - observed through the number of definitions prefixed `imageset ` in the `COMMANDS` map (`packages/codkit/src/main.ts`). @status:impl/done",
       "line": 175,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-NAMESPACE"
     },
@@ -6584,7 +6584,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:1117c5490ac868f0597463dd6bb8413d9893b478a9311cb3e98ae0724386536c",
+      "content_hash": "sha256:4481b2df08e59519ef022075a0b69c33a558023cddcd1154e5dc2da0eff51a78",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "codkit PROP-010: Build integration - code delivery, watch daemons, tests",
@@ -6620,7 +6620,7 @@
     },
     {
       "anchor": "daemons",
-      "content_hash": "sha256:224ec1a7585c41c449875006599c0547374b5086a84ea6ac13c1e34f13790170",
+      "content_hash": "sha256:b5bb0b223342069f94bf1ea377e3a8de1ba49c78bccd5c47701d2d0f8e5eeedb",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "2. Watch-daemon wrapper",
@@ -6782,10 +6782,10 @@
     },
     {
       "anchor": "PASS-BOUNDARIES-ARE-DATA",
-      "content_hash": "sha256:1311820cd03b537b01518b9698410e3cc797256c5ff8d33bb8ef4eaa87428877",
+      "content_hash": "sha256:76fffdac807ca2093bac7f0ae520fce2a0bca175a7113ad952b844073395dda0",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
-      "heading": "The pass-boundary detector is strict versioned data. The default lives in `toolRoot/codkit/config/build-watch.json`; the patch set selected by the user may supply a complete fork-specific profile only through an explicit contained `codkit.json.buildWatchFile`. An implicit file at the same path does not shadow the shipped default. Channels declare `passStart`, `passEnd`, `errorLine`, `errorCountLine`, `falseEndGuards`; unknown fields are forbidden, and a channel without `errorLine` and `errorCountLine` is invalid. The counting detector `errorCountLine` is validated on load: every pattern must contain a capturing group for the number (group 1 is the only one the counter reads), otherwise `CK-E-CONFIG` before any log is read; and during the read: a pattern that MATCHED a count line but yielded no numeric group 1 (no group, or a group that captured non-digits) is also `CK-E-CONFIG` and not \"no summary\" (REPAIR-006: a silent `stated:null` with zero parsed diagnostics produced a false green). A custom profile must have stored green/red log fixtures; the cycle re-checks the expressions on the new pin. @status:spec/done",
+      "heading": "The pass-boundary detector is strict versioned data. The default lives in `toolRoot/config/build-watch.json`; the patch set selected by the user may supply a complete fork-specific profile only through an explicit contained `codkit.json.buildWatchFile`. An implicit file at the same path does not shadow the shipped default. Channels declare `passStart`, `passEnd`, `errorLine`, `errorCountLine`, `falseEndGuards`; unknown fields are forbidden, and a channel without `errorLine` and `errorCountLine` is invalid. The counting detector `errorCountLine` is validated on load: every pattern must contain a capturing group for the number (group 1 is the only one the counter reads), otherwise `CK-E-CONFIG` before any log is read; and during the read: a pattern that MATCHED a count line but yielded no numeric group 1 (no group, or a group that captured non-digits) is also `CK-E-CONFIG` and not \"no summary\" (REPAIR-006: a silent `stated:null` with zero parsed diagnostics produced a false green). A custom profile must have stored green/red log fixtures; the cycle re-checks the expressions on the new pin. @status:spec/done",
       "line": 36,
       "uri": "spec://codkit/modules/codkit/PROP-010#PASS-BOUNDARIES-ARE-DATA"
     },
@@ -7187,7 +7187,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:29da8a2bdb88d8edbc23952f8afe19901dab1baf8fb42b864d6da32a5d046908",
+      "content_hash": "sha256:0ab4c552d99ace2db35dc3c6ed4cd14f3e0111e04e08d6904c4e66976d7ecce3",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "codkit PROP-012: Output and messages, NFRs, documentation, open decision points",
@@ -7214,7 +7214,7 @@
     },
     {
       "anchor": "errors",
-      "content_hash": "sha256:7319108b1a121aac6fdab900509ca13c6706e44d66cf9eb7624b43d57132a9fa",
+      "content_hash": "sha256:574b53794bd2aaef7c1a492663c5e4c5937b28e7429f28ed3ad26fb44ce85c0b",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "2. Human-readable errors and the code registry",
@@ -7232,10 +7232,10 @@
     },
     {
       "anchor": "ERROR-REGISTRY",
-      "content_hash": "sha256:4eb357d43d6451865fe96a583e3696be4b9f0b2bfe66cf911aff812f19b498c7",
+      "content_hash": "sha256:cab349b16eb614fb94614a41b1abd1b49bdaaa7f7215a43bccd554778321badb",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
-      "heading": "The full registry of the codes is kept in `codkit/src/lib/messages.ts` (the single definition). The codes required by the specifications: `CONFIG`, `NOT-A-REPO`, `NOT-UPSTREAM`, `PIN-UNREACHABLE`, `LFS`, `LOCKED`, `DIRTY-TREE`, `CRLF`, `EOF-NEWLINE`, `ENCODING`, `MARKER-MALFORMED`, `MARKER-NESTED`, `MARKER-UNBALANCED`, `MARKER-UNCLOSED`, `MARKER-DUP-ID`, `MARKER-BAD-ID`, `HUNK-OUTSIDE-MARKER`, `DELETES-UPSTREAM-LINE`, `DELETES-UPSTREAM-FILE`, `NEW-FILE-IN-UPSTREAM-ZONE`, `FORBIDDEN-TARGET`, `MARKER-ARTIFACT-MISMATCH`, `UNTRACKED-INTERVENTION`, `STALE-ARTIFACT`, `OWN-UNCOVERED`, `OWNER-UNKNOWN`, `OVERLAY-SCHEMA`, `OVERLAY-DRIFT`, `RULE-DRIFT`, `ARTIFACT-BROKEN`, `NET-FORBIDDEN`, `LOG-INCOMPLETE`, `BOTH-SIDES-EDITED`, `WORKTREE-REF-SHARED` (the generated branch is one for all the worktrees of the repository; load/cycle refuse to move it while a sibling worktree stands on it - both trees are named, every ref, index and worktree is left untouched; PROP-008 §3 `##GENERATED-REF-WORKTREE-PREFLIGHT`), `TREE-HEAD` (the HEAD of the fork tree is off the generated branch while there are foreign commits on its line, or the history under the generated tip has been rewritten; `load` and `save` refuse with a recipe for getting back - exit 1, nothing touched; PROP-008 §4 `##TREE-COMMITS-ARE-WORK`, decision D8 of campaign TREE-COMMITS-SAVE), `SYNC-IN-PROGRESS` (the two-way `codkit sync` did not finish and left a transaction record - the tree and the patch set are half in one state and half in the other; `load`/`save`/`sync` refuse and `status` names the record; PROP-008 §5a `##SYNC-TRANSACTION`, PROP-006 §1 `##SYNC-TRANSACTION-FILE`, decision D20 of campaign TREE-COMMITS-SAVE), `INTERNAL` (an uncaught error - a bug, exit 2, the hint is to attach `--verbose`), `DEPS-MISSING` (no runtime dependencies - restore the installed Codkit from the approved supply; a source checkout may run `npm ci`), `TREE-READONLY` (no right to write into the tree or `.git/codkit` - the check `##ID-CHECK-WRITE`), `HEADER-MISSING` (a new patch without a draft header - PROP-007 §8 `##PENDING-HEADER-MECHANISM`), `GUARD-MISSING` (the mandatory guard test is missing, or its id is not declared in the own tests - verify), `FORBIDDEN-SERVICE` (own code overrides a bootstrap service from forbiddenServiceIds - verify), `LICENSE-HEADER` (a file of the package without a carrier of the licence information, or with a wrong carrier - PROP-014 §3), `LICENSE-THIRD-PARTY` (a third-party file breaks the rules of the registry: it is not covered by a `REUSE.toml` annotation, its licence is outside the allowlist, the carrier and the annotation diverge, the notices are stale - PROP-014 §2–3), `LICENSE-PACKAGE` (the package is not consistent: the manifest, `LICENSE`, `LICENSES/`, the symbolic link - PROP-014 §3), `STANDARDS-DRIFT` (the installed copy of the standards package or the copy of the notice differs from the shipped one - `standards load` refuses without writing anything; PROP-014 §5), `RUNTIME-DRIFT` (the installed copy of the runtime library differs from the shipped one - `runtime load` without `--upgrade`, `runtime check`, `verify`; PROP-015 §4), `RUNTIME-PACKAGE` (toolRoot holds not exactly one runtime version directory, or the version literal does not match the name of the directory; PROP-015 §1), `DELIVERED-EDIT` (`save` found an edit of a delivered Codkit file in the tree; PROP-005 §12), `OWN-UNDER-CODKIT` (an own unit whose root is inside `codkit/`; PROP-005 §12), `HOOK-TOO-LARGE` (a patch of type hook exceeds the graft budget; PROP-005 §12), `GEN-EXISTS` (the generator does not overwrite an existing file; PROP-015 §5), `GEN-ID` (a feature identifier not of the required form; PROP-015 §5), `OWN-EXTENSION-MANIFEST` (the `extensions` section of the manifest is invalid, there is no `package.json`, or the name coincides with an upstream extension; PROP-005 §13), `OWN-EXTENSION-DRIFT` (the extension in the tree differs from the delta; PROP-005 §13); the warnings `CK-W-*` (at the minimum: `MARK-RO`, `PATCHSET-SIDE-EDIT`, `EMPTY-BLOCK`). @status:spec/done",
+      "heading": "The full registry of the codes is kept in `packages/codkit/src/lib/messages.ts` (the single definition). The codes required by the specifications: `CONFIG`, `NOT-A-REPO`, `NOT-UPSTREAM`, `PIN-UNREACHABLE`, `LFS`, `LOCKED`, `DIRTY-TREE`, `CRLF`, `EOF-NEWLINE`, `ENCODING`, `MARKER-MALFORMED`, `MARKER-NESTED`, `MARKER-UNBALANCED`, `MARKER-UNCLOSED`, `MARKER-DUP-ID`, `MARKER-BAD-ID`, `HUNK-OUTSIDE-MARKER`, `DELETES-UPSTREAM-LINE`, `DELETES-UPSTREAM-FILE`, `NEW-FILE-IN-UPSTREAM-ZONE`, `FORBIDDEN-TARGET`, `MARKER-ARTIFACT-MISMATCH`, `UNTRACKED-INTERVENTION`, `STALE-ARTIFACT`, `OWN-UNCOVERED`, `OWNER-UNKNOWN`, `OVERLAY-SCHEMA`, `OVERLAY-DRIFT`, `RULE-DRIFT`, `ARTIFACT-BROKEN`, `NET-FORBIDDEN`, `LOG-INCOMPLETE`, `BOTH-SIDES-EDITED`, `WORKTREE-REF-SHARED` (the generated branch is one for all the worktrees of the repository; load/cycle refuse to move it while a sibling worktree stands on it - both trees are named, every ref, index and worktree is left untouched; PROP-008 §3 `##GENERATED-REF-WORKTREE-PREFLIGHT`), `TREE-HEAD` (the HEAD of the fork tree is off the generated branch while there are foreign commits on its line, or the history under the generated tip has been rewritten; `load` and `save` refuse with a recipe for getting back - exit 1, nothing touched; PROP-008 §4 `##TREE-COMMITS-ARE-WORK`, decision D8 of campaign TREE-COMMITS-SAVE), `SYNC-IN-PROGRESS` (the two-way `codkit sync` did not finish and left a transaction record - the tree and the patch set are half in one state and half in the other; `load`/`save`/`sync` refuse and `status` names the record; PROP-008 §5a `##SYNC-TRANSACTION`, PROP-006 §1 `##SYNC-TRANSACTION-FILE`, decision D20 of campaign TREE-COMMITS-SAVE), `INTERNAL` (an uncaught error - a bug, exit 2, the hint is to attach `--verbose`), `DEPS-MISSING` (no runtime dependencies - restore the installed Codkit from the approved supply; a source checkout may run `npm ci`), `TREE-READONLY` (no right to write into the tree or `.git/codkit` - the check `##ID-CHECK-WRITE`), `HEADER-MISSING` (a new patch without a draft header - PROP-007 §8 `##PENDING-HEADER-MECHANISM`), `GUARD-MISSING` (the mandatory guard test is missing, or its id is not declared in the own tests - verify), `FORBIDDEN-SERVICE` (own code overrides a bootstrap service from forbiddenServiceIds - verify), `LICENSE-HEADER` (a file of the package without a carrier of the licence information, or with a wrong carrier - PROP-014 §3), `LICENSE-THIRD-PARTY` (a third-party file breaks the rules of the registry: it is not covered by a `REUSE.toml` annotation, its licence is outside the allowlist, the carrier and the annotation diverge, the notices are stale - PROP-014 §2–3), `LICENSE-PACKAGE` (the package is not consistent: the manifest, `LICENSE`, `LICENSES/`, the symbolic link - PROP-014 §3), `STANDARDS-DRIFT` (the installed copy of the standards package or the copy of the notice differs from the shipped one - `standards load` refuses without writing anything; PROP-014 §5), `RUNTIME-DRIFT` (the installed copy of the runtime library differs from the shipped one - `runtime load` without `--upgrade`, `runtime check`, `verify`; PROP-015 §4), `RUNTIME-PACKAGE` (toolRoot holds not exactly one runtime version directory, or the version literal does not match the name of the directory; PROP-015 §1), `DELIVERED-EDIT` (`save` found an edit of a delivered Codkit file in the tree; PROP-005 §12), `OWN-UNDER-CODKIT` (an own unit whose root is inside `codkit/`; PROP-005 §12), `HOOK-TOO-LARGE` (a patch of type hook exceeds the graft budget; PROP-005 §12), `GEN-EXISTS` (the generator does not overwrite an existing file; PROP-015 §5), `GEN-ID` (a feature identifier not of the required form; PROP-015 §5), `OWN-EXTENSION-MANIFEST` (the `extensions` section of the manifest is invalid, there is no `package.json`, or the name coincides with an upstream extension; PROP-005 §13), `OWN-EXTENSION-DRIFT` (the extension in the tree differs from the delta; PROP-005 §13); the warnings `CK-W-*` (at the minimum: `MARK-RO`, `PATCHSET-SIDE-EDIT`, `EMPTY-BLOCK`). @status:spec/done",
       "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-012#ERROR-REGISTRY"
     },
@@ -7394,7 +7394,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:6022de37212b078e80f29405fb8c4c09c068673e1b513003c9c219c3365c5696",
+      "content_hash": "sha256:1908c6a903f9b0ed9822a10f0528772bae1a0bd632642165e12f9f5b85835f7f",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "codkit PROP-013: How codkit itself is tested",
@@ -7403,7 +7403,7 @@
     },
     {
       "anchor": "principles",
-      "content_hash": "sha256:f8a6940147206bad521c2e24686459673ec17db113ab086e1bd965c9449aee52",
+      "content_hash": "sha256:5faddbe75debec0d481bdaa2c0da2e71289acf22a6e167a597a8de966396bc4e",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "1. Principles",
@@ -7448,10 +7448,10 @@
     },
     {
       "anchor": "TP-RUNNER",
-      "content_hash": "sha256:93d4d4db90499cc4a9400ba1490013457a87549e46b8ed90b6196d0c16269234",
+      "content_hash": "sha256:3cf8519de191e843446dc277bf5b0da9edb463e3fb7d1e4bc61e619d99a21da1",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
-      "heading": "The runner is vitest (`common/PROP-000` `##CODKIT-TEST-RUNNER-VITEST`); the tests live in `codkit/test/{unit,e2e}/`; on flakes: the tests that depend on timings (buildWrap) use controlled stubs, not real sleeps. @status:spec/done",
+      "heading": "The runner is vitest (`common/PROP-000` `##CODKIT-TEST-RUNNER-VITEST`); the tests live in `packages/codkit/test/{unit,e2e}/`; on flakes: the tests that depend on timings (buildWrap) use controlled stubs, not real sleeps. @status:spec/done",
       "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-013#TP-RUNNER"
     },
@@ -7466,7 +7466,7 @@
     },
     {
       "anchor": "fixtures",
-      "content_hash": "sha256:a6e2b815965cd205bec4266d9b077e37f0420426f586cb15888ff109601de36d",
+      "content_hash": "sha256:28db4b84741170b763754eb6420d17536a2ace6f3ce263df7772db37a15188dc",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
       "heading": "2. Fixture repositories",
@@ -7475,10 +7475,10 @@
     },
     {
       "anchor": "FIXTURE-UPSTREAM",
-      "content_hash": "sha256:820625d2269ad0152b11deeb4e890d25b5c5df32e1a767e6123d1aadda2d0c15",
+      "content_hash": "sha256:1f36d88d9ad60e54d82297c446bbdd2250d1e964e37808edc435bd7a8eefab4f",
       "doc_path": "modules/codkit/PROP-013",
       "file": "vibevm/vibespecs/modules/codkit/PROP-013-testing.xml",
-      "heading": "**The pseudo-upstream (a «mini VS Code»)** is generated by code (`codkit/test/fixtures/makeUpstream.ts`): a git repository of ~40 files that repeats the **shape** of VS Code which matters to codkit: `src/vs/workbench/**` with 2–3 TS files (including a file with a `constructor(` and a `create*` method), a CSS file, `product.json`, a `package.json` with the stub scripts `watch-client-transpile` and others (the scripts print the verbatim pass-boundary markers from `codkit/config/build-watch.json` and sleep), `resources/` with a binary, `.nvmrc`. The history: the root commit (the anchor) → the tag `t1` (the «old pin») → the changes: an edit of the target file, a **rename** of one file (an analogue of R096), a deletion of one file, an edit of a constructor (a future conflict) → the tag `t2` (the «new pin»). LFS is not emulated (the lfs check uses a separate mock of `git lfs version`). @status:spec/done",
+      "heading": "**The pseudo-upstream (a «mini VS Code»)** is generated by code (`packages/codkit/test/fixtures/makeUpstream.ts`): a git repository of ~40 files that repeats the **shape** of VS Code which matters to codkit: `src/vs/workbench/**` with 2–3 TS files (including a file with a `constructor(` and a `create*` method), a CSS file, `product.json`, a `package.json` with the stub scripts `watch-client-transpile` and others (the scripts print the verbatim pass-boundary markers from `toolRoot/config/build-watch.json` and sleep), `resources/` with a binary, `.nvmrc`. The history: the root commit (the anchor) → the tag `t1` (the «old pin») → the changes: an edit of the target file, a **rename** of one file (an analogue of R096), a deletion of one file, an edit of a constructor (a future conflict) → the tag `t2` (the «new pin»). LFS is not emulated (the lfs check uses a separate mock of `git lfs version`). @status:spec/done",
       "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-013#FIXTURE-UPSTREAM"
     },
@@ -7673,7 +7673,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:8c4226ba2d8cdd9524eab775afe8ba00613a3fd15776ca8032a7da79c07d3e51",
+      "content_hash": "sha256:2605d211afc33826173f8e1987b62e590a1da12df49edbd73034979c0d31a574",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: The standards package and licence markup",
@@ -7691,10 +7691,10 @@
     },
     {
       "anchor": "STD-TERMS",
-      "content_hash": "sha256:71683e63224730de1c0aad6be645f2a3a308a1523dce8428054f804fc17ab610",
+      "content_hash": "sha256:f719fdd2a8ed80c534ebf712b5f1010b8f4630c65847088f5b34fcf299370823",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Terms. The **standards package** is the directory `vibevm/vibepacks/org.vibevm.codkit/standards/v<version>/` in toolRoot. The **installed copy** is the same directory relative to patchesDir. The **managed manifest block** is the lines of the product `vibe.toml` between the markers `# codkit:begin standards` and `# codkit:end standards`. A **carrier** is where a file's licence information lives: a header comment in the file itself or an adjacent sidecar `<file name>.license`. The **licence policy** is `toolRoot/codkit/config/license-policy.json`. A **holder** is a string from the `holders` of the policy. @status:spec/done",
+      "heading": "Terms. The **standards package** is the directory `vibevm/vibepacks/org.vibevm.codkit/standards/v<version>/` in toolRoot. The **installed copy** is the same directory relative to patchesDir. The **managed manifest block** is the lines of the product `vibe.toml` between the markers `# codkit:begin standards` and `# codkit:end standards`. A **carrier** is where a file's licence information lives: a header comment in the file itself or an adjacent sidecar `<file name>.license`. The **licence policy** is `toolRoot/config/license-policy.json`. A **holder** is a string from the `holders` of the policy. @status:spec/done",
       "line": 6,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-TERMS"
     },
@@ -7808,7 +7808,7 @@
     },
     {
       "anchor": "skills",
-      "content_hash": "sha256:49b0a1536c6e0855bcafe92854b44fac59edb4bd5f7947b62e2c0a75e9bb689b",
+      "content_hash": "sha256:054bdf1d75c8b0ff8bc212a7d5bba21c4c43026c43d5de3addb37943ce031791",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "1a. The agent skills package `org.vibevm.codkit/agent-skills`",
@@ -7844,19 +7844,19 @@
     },
     {
       "anchor": "STD-SKILLS-ROSTER-1-0-0",
-      "content_hash": "sha256:ea85f1a0825beffe7c8a5a405b87a2c8aa6aba26f928ab15c71a7a54834d659c",
+      "content_hash": "sha256:78b84118521c425aebe2a6004fda9e4c9d58eae9dab5af86554150c89e883f39",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The roster of 1.0.0: `ck-resolve` — resolving a cycle blocker by an explicit assignment (moved from `codkit/claude/skills/ck-resolve/` with no change of meaning); `ck-orient` — orientation by reading only (`where`, `status`, `verify`, the inventory), with a state report and no edits; `ck-intervene` — the router for the choice of an intervention layer: the decision tree of human protocol 03 and the \"area → owning specification\" table from the README of the product's own catalogue (`MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`); `ck-review-intervention` — the reviewer's checklist over the `CONF-*` of the standard, with the output \"artifact → norm → done/not done/where\". @status:spec/plan",
+      "heading": "The roster of 1.0.0: `ck-resolve` — resolving a cycle blocker by an explicit assignment (moved from `packages/codkit/claude/skills/ck-resolve/` with no change of meaning); `ck-orient` — orientation by reading only (`where`, `status`, `verify`, the inventory), with a state report and no edits; `ck-intervene` — the router for the choice of an intervention layer: the decision tree of human protocol 03 and the \"area → owning specification\" table from the README of the product's own catalogue (`MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`); `ck-review-intervention` — the reviewer's checklist over the `CONF-*` of the standard, with the output \"artifact → norm → done/not done/where\". @status:spec/plan",
       "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-ROSTER-1-0-0"
     },
     {
       "anchor": "STD-SKILLS-SOURCE-OF-TRUTH",
-      "content_hash": "sha256:3ddcfa20b4652a2eb2554548df2790c0ce61542d4d39d933760940a4cddc5a79",
+      "content_hash": "sha256:8f259b1d8920777ba68e141eb26e55c887b511385a8af7361834d01343fc01c2",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The only source of the skills is the package: the directory `codkit/claude/skills/` is removed from the repository; the profile `codkit/claude/` keeps only what VibeVM does not project (`settings.json` with the hook and the deny profile, `rules/`, `agents/`, the managed blocks of `CLAUDE.md`/`AGENTS.md`); `settings.json` refers to the skill scripts by the projection path. Installing the profile into a product: `codkit standards load` → `vibe install --offline` → `vibe skill install` → copying the Claude-specific parts by the agent protocol; `agentProtocol.test.ts` and the `check.mjs` of the agent protocol check the new location. Decision D-S3-2. @status:spec/plan",
+      "heading": "The only source of the skills is the package: the directory `packages/codkit/claude/skills/` is removed from the repository; the profile `packages/codkit/claude/` keeps only what VibeVM does not project (`settings.json` with the hook and the deny profile, `rules/`, `agents/`, the managed blocks of `CLAUDE.md`/`AGENTS.md`); `settings.json` refers to the skill scripts by the projection path. Installing the profile into a product: `codkit standards load` → `vibe install --offline` → `vibe skill install` → copying the Claude-specific parts by the agent protocol; `agentProtocol.test.ts` and the `check.mjs` of the agent protocol check the new location. Decision D-S3-2. @status:spec/plan",
       "line": 47,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-SOURCE-OF-TRUTH"
     },
@@ -7871,7 +7871,7 @@
     },
     {
       "anchor": "licensing",
-      "content_hash": "sha256:a5f1dc75554673ffe41b5c10e3857b74c0180b4a95cd8e88e7c53c42c6f9d7f3",
+      "content_hash": "sha256:7f25fcd6cf878657e87fb19d58c63b4c567bb60c1d6781ba4aa5eebda0cba4eb",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "2. The licence markup of the package",
@@ -7880,19 +7880,19 @@
     },
     {
       "anchor": "LIC-POLICY-FILE",
-      "content_hash": "sha256:322f8bd43d9c11a573b9a41bc604fb2dabd889ba5b31a9fb4f9d1ef6b9a3d5bf",
+      "content_hash": "sha256:c7eccad18051ad51f629a1ffa93a5b92bf37abb80aad621fd162dace44f86ee8",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The policy is `toolRoot/codkit/config/license-policy.json`, strict schema `{\"codkitLicensePolicy\":1,\"holders\":[<string>+],\"ownLicense\":\"UPL-1.0\",\"allowedThirdParty\":[<SPDX-id>*],\"allowedExceptions\":[<SPDX-exception-id>*]}` (Zod, an unknown field is an error); it is read only from toolRoot through the contained reader (PROP-002 `CONTAINED-FILE-IO`) and is never shadowed by a file of the patch set (the same rule as `CONVENTIONS-SINGLE-DEFINITION`). The lists are edited by a human; widening the allowlist is a separate deliberate decision, not a side effect. @status:spec/done",
+      "heading": "The policy is `toolRoot/config/license-policy.json`, strict schema `{\"codkitLicensePolicy\":1,\"holders\":[<string>+],\"ownLicense\":\"UPL-1.0\",\"allowedThirdParty\":[<SPDX-id>*],\"allowedExceptions\":[<SPDX-exception-id>*]}` (Zod, an unknown field is an error); it is read only from toolRoot through the contained reader (PROP-002 `CONTAINED-FILE-IO`) and is never shadowed by a file of the patch set (the same rule as `CONVENTIONS-SINGLE-DEFINITION`). The lists are edited by a human; widening the allowlist is a separate deliberate decision, not a side effect. @status:spec/done",
       "line": 53,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-POLICY-FILE"
     },
     {
       "anchor": "LIC-SPDX-ID-LIST",
-      "content_hash": "sha256:752b16e800ff807c2f3a5b23f850c10f56baa49b3546f030e58cfbe3c1e2a878",
+      "content_hash": "sha256:3caa066440a14231234492a2abf7ef3522a9a1597ad3cdf4127fa2e158cc24fb",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The list of SPDX identifiers is the data file `toolRoot/codkit/config/spdx-license-ids.json`: `{\"codkitSpdxLicenseIds\":1,\"listVersion\":\"…\",\"releaseDate\":\"…\",\"ids\":[…]}`, 739 identifiers of the SPDX list of 2026-09-03 (version `01b8052`), with the sidecar `spdx-license-ids.json.license` (`CC0-1.0`, source `json/licenses.json` of the `spdx/license-list-data` repository). An update is a regeneration from the same SPDX file by the same command as recorded in the campaign plan; the list is not edited by hand. An identifier is valid when it is in the list; the form `LicenseRef-*` is recognized syntactically and is forbidden in the package; `NOASSERTION` is forbidden. @status:spec/done",
+      "heading": "The list of SPDX identifiers is the data file `toolRoot/config/spdx-license-ids.json`: `{\"codkitSpdxLicenseIds\":1,\"listVersion\":\"…\",\"releaseDate\":\"…\",\"ids\":[…]}`, 739 identifiers of the SPDX list of 2026-09-03 (version `01b8052`), with the sidecar `spdx-license-ids.json.license` (`CC0-1.0`, source `json/licenses.json` of the `spdx/license-list-data` repository). An update is a regeneration from the same SPDX file by the same command as recorded in the campaign plan; the list is not edited by hand. An identifier is valid when it is in the list; the form `LicenseRef-*` is recognized syntactically and is forbidden in the package; `NOASSERTION` is forbidden. @status:spec/done",
       "line": 64,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-SPDX-ID-LIST"
     },
@@ -8069,10 +8069,10 @@
     },
     {
       "anchor": "LIC-CANONICAL-TEXT-EMBEDDED",
-      "content_hash": "sha256:a406c3c6cbefd11a6478fd850cf45683979cf395753b83e69dbc2d4efd641aea",
+      "content_hash": "sha256:3a3bfe23d69293f2c0658a3eabb0da40af7e97746c5485c94c7ba2f177eca79e",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The canonical text of UPL-1.0 — the file `text/UPL-1.0.txt` of the SPDX licence list (1837 bytes, sha256 `2f81e75033a0c872ab9725b36081e363f0c9e6c45585c35930edb66043fdc576`) — is embedded verbatim in `codkit/src/lib/licenseTexts.ts` as a string constant; this is the only oracle for \"the licence text has not been changed\" (the acceptance \"a LICENSE with a changed word → 1\"). @status:spec/done",
+      "heading": "The canonical text of UPL-1.0 — the file `text/UPL-1.0.txt` of the SPDX licence list (1837 bytes, sha256 `2f81e75033a0c872ab9725b36081e363f0c9e6c45585c35930edb66043fdc576`) — is embedded verbatim in `packages/codkit/src/lib/licenseTexts.ts` as a string constant; this is the only oracle for \"the licence text has not been changed\" (the acceptance \"a LICENSE with a changed word → 1\"). @status:spec/done",
       "line": 85,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CANONICAL-TEXT-EMBEDDED"
     },
@@ -8339,7 +8339,7 @@
     },
     {
       "anchor": "notice",
-      "content_hash": "sha256:1f5e4b8fe032b65e464630e3e20a8c56984044590bace63f1b81e4788db0cd88",
+      "content_hash": "sha256:2e16ce47388350aeaeb05e1954ee87e717a0caa328061d1e5c4d9255086e1b02",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "4a. The file LICENSE-CODKIT.md",
@@ -8348,10 +8348,10 @@
     },
     {
       "anchor": "STD-NOTICE-FILE",
-      "content_hash": "sha256:57047d8bbe2ee7e8d2dc92b9315df1b956c8734172096d8349fd869af1c3a42e",
+      "content_hash": "sha256:d900c9e5db67ea14a18843ef86613ca1874a40b71907f76a556071e4c72c4efb",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Codkit ships the notice file `toolRoot/codkit/config/LICENSE-CODKIT.md` (owner decisions of 2026-09-06 and 2026-09-07): a heading; two scope paragraphs — English and Russian — **by paths** (`STD-NOTICE-SCOPE-BY-PATHS`); the managed components block (`STD-NOTICE-COMPONENTS-BLOCK`, empty in the shipped file); two paragraphs about the copies vibe builds (`STD-NOTICE-VIBE-COPIES`); the four notice lines (the copyright, the English and the Russian links; there is no SPDX line — the file is a notice, not a carrier for the check) and the text of UPL 1.0 (the body after the first empty line following the notice equals the canonical text by `LIC-TEXT-NORMALIZATION`; asserted by `shippedStandards.test.ts`). The file is part of `files` through `codkit/config`. @status:spec/done",
+      "heading": "Codkit ships the notice file `toolRoot/config/LICENSE-CODKIT.md` (owner decisions of 2026-09-06 and 2026-09-07): a heading; two scope paragraphs — English and Russian — **by paths** (`STD-NOTICE-SCOPE-BY-PATHS`); the managed components block (`STD-NOTICE-COMPONENTS-BLOCK`, empty in the shipped file); two paragraphs about the copies vibe builds (`STD-NOTICE-VIBE-COPIES`); the four notice lines (the copyright, the English and the Russian links; there is no SPDX line — the file is a notice, not a carrier for the check) and the text of UPL 1.0 (the body after the first empty line following the notice equals the canonical text by `LIC-TEXT-NORMALIZATION`; asserted by `shippedStandards.test.ts`). The file is part of `files` through `config`. @status:spec/done",
       "line": 161,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-FILE"
     },
@@ -8672,7 +8672,7 @@
     },
     {
       "anchor": "components",
-      "content_hash": "sha256:99719c7c3f32465b6f46ecf41d638866a049ed09cbc86906056b4139ab68ab3b",
+      "content_hash": "sha256:368f7f93b70afbc9e76dced2250ebfd1025303270d5abe9d5ae4c8b2d0ee0d49",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "7. Components",
@@ -8690,7 +8690,7 @@
     },
     {
       "anchor": "decisions",
-      "content_hash": "sha256:9c248249e17f7be6fa7d185d45d9d7cb0a6853a8c28d25fd35edf86631458eba",
+      "content_hash": "sha256:3218b46b9ffe5cd0cc5267c9f13179ec2b7c1ca17662352923306bf8bab49484",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "8. Decisions",
@@ -8708,10 +8708,10 @@
     },
     {
       "anchor": "DECISION-STD-SKILLS-PACKAGE",
-      "content_hash": "sha256:4c87c8ce67a0bba57138a8177266536de67c8f36ff525c2e64d4fd0344fb5731",
+      "content_hash": "sha256:5bbd05846e18899fe2107d70da1ef11890267c20a603fcbf68c43cddeba09f88",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "**Decision:** the agent skills are a separate package `agent-skills` with `[[skill]]`, delivered by the same `standards load` and projected by `vibe skill install`; `codkit/claude/skills/` is abolished. **Why:** VibeVM can already project skills into every harness (PROP-018 §2.6, `vibe skill list|install`), while a hand-written profile for one harness is a second source of the same procedure; the version of a norm must not change because a procedure was edited. **Considered and rejected:** the skills inside the standards package; a separate command `codkit skills load`; keeping `codkit/claude/skills/` as the source and generating the package from it (the source must live where `vibe` reads it). **When to revisit:** VibeVM learns to project subagents/hooks (then `agents/` and `rules/` move into the package as well), or the `package` phase of the lifecycle becomes `impl`. @status:spec/plan",
+      "heading": "**Decision:** the agent skills are a separate package `agent-skills` with `[[skill]]`, delivered by the same `standards load` and projected by `vibe skill install`; `packages/codkit/claude/skills/` is abolished. **Why:** VibeVM can already project skills into every harness (PROP-018 §2.6, `vibe skill list|install`), while a hand-written profile for one harness is a second source of the same procedure; the version of a norm must not change because a procedure was edited. **Considered and rejected:** the skills inside the standards package; a separate command `codkit skills load`; keeping `packages/codkit/claude/skills/` as the source and generating the package from it (the source must live where `vibe` reads it). **When to revisit:** VibeVM learns to project subagents/hooks (then `agents/` and `rules/` move into the package as well), or the `package` phase of the lifecycle becomes `impl`. @status:spec/plan",
       "line": 242,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-SKILLS-PACKAGE"
     },
@@ -8762,10 +8762,10 @@
     },
     {
       "anchor": "DECISION-LIC-SPDX-LIST-AS-DATA",
-      "content_hash": "sha256:6cf64091b0a141c2c7e3dcf723a17b42ad4ab290f0226697d01d717cff083399",
+      "content_hash": "sha256:579b794ace6787f8e992a28e5b12f3d2f9bee215188f7f7b77a9dd6e8d175614",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "**Decision:** the list of SPDX identifiers is the data file `codkit/config/spdx-license-ids.json` (739 identifiers, list version `01b8052` of 2026-09-03) with a `CC0-1.0` sidecar, regenerated by a script from the SPDX `json/licenses.json`; not a constant in the code and not a network request.\n\n**Why:** the list changes several times a year and a human must update it deliberately; a data file diffs and is reviewed, a constant in the code is not; the network is forbidden under `--ci` (`NFR-NETWORK`).\n\n**Considered and rejected:**\n- the npm package `spdx-license-ids` — one more dependency for the sake of a single array, and its version lags behind the list;\n- downloading it during the check — the network is forbidden in CI.\n\n**When to revisit:** an identifier that is absent from the list appears in the package (observed as `not an SPDX identifier` on a valid fresh identifier) — then a regeneration. @status:spec/done",
+      "heading": "**Decision:** the list of SPDX identifiers is the data file `toolRoot/config/spdx-license-ids.json` (739 identifiers, list version `01b8052` of 2026-09-03) with a `CC0-1.0` sidecar, regenerated by a script from the SPDX `json/licenses.json`; not a constant in the code and not a network request.\n\n**Why:** the list changes several times a year and a human must update it deliberately; a data file diffs and is reviewed, a constant in the code is not; the network is forbidden under `--ci` (`NFR-NETWORK`).\n\n**Considered and rejected:**\n- the npm package `spdx-license-ids` — one more dependency for the sake of a single array, and its version lags behind the list;\n- downloading it during the check — the network is forbidden in CI.\n\n**When to revisit:** an identifier that is absent from the list appears in the package (observed as `not an SPDX identifier` on a valid fresh identifier) — then a regeneration. @status:spec/done",
       "line": 291,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-SPDX-LIST-AS-DATA"
     },
@@ -8879,7 +8879,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:f4e7bdf5dc56a168a62adb6d1064c138da74e4c979e8f67ab14ce596344a46c5",
+      "content_hash": "sha256:ac0897356690a22f221f253686091d549d1c54c2bfd2d13fb77a42bc0286f402",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "codkit PROP-015: The delivery of the Codkit runtime into the own layer of a product",
@@ -8888,7 +8888,7 @@
     },
     {
       "anchor": "purpose",
-      "content_hash": "sha256:1719a4ea29e6d0773e934368072517b3da8f649c679158eca6ac582ab76df764",
+      "content_hash": "sha256:078a03e6ed3123733186288ae084c926ceaa04b4eb02f7ba313b71abda79f201",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "1. Purpose and the form of delivery",
@@ -8924,10 +8924,10 @@
     },
     {
       "anchor": "RT-SHIPPED-LOCATION",
-      "content_hash": "sha256:4ae97b1b6fc0817cd4c9f5a26e1f59287009d5ef325cc5697371abe1b3c3b9d9",
+      "content_hash": "sha256:a7c00abddcee5b929b33cb5c82a28553f5bbcb014356530d1a0fe385c2236a60",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "In toolRoot the library lives in `codkit/runtime/v<semver>/`, exactly one version directory (as in `STD-PACKAGE-LOCATION`); the directory is listed in the `files` of `package.json` and travels in the tarball. The content of the version directory is exactly the tree that lands in `delta/own/codkit/` (without the notice file, which belongs to PROP-014 §4a). @status:spec/done",
+      "heading": "In toolRoot the library lives in `runtime/v<semver>/`, exactly one version directory (as in `STD-PACKAGE-LOCATION`); the directory is listed in the `files` of `package.json` and travels in the tarball. The content of the version directory is exactly the tree that lands in `delta/own/codkit/` (without the notice file, which belongs to PROP-014 §4a). @status:spec/done",
       "line": 10,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-SHIPPED-LOCATION"
     },
@@ -9140,7 +9140,7 @@
     },
     {
       "anchor": "testing",
-      "content_hash": "sha256:c0945e13b3b4840a64b1f2f5cf946290ba211b5acb68e1fd06d77b4593b33e01",
+      "content_hash": "sha256:74a8cd0d817fbceac0d8ad0a2a0527dbfd24e2a5e1b162b7946e2d9b2a6cad0d",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "3. The typecheck harness and the tests",
@@ -9176,10 +9176,10 @@
     },
     {
       "anchor": "RT-SHIPPED-RUNTIME-TEST",
-      "content_hash": "sha256:aa4d44000e9c9d9dd6972ed7a8a62d6898be8976964a03777cfbc01e42f6c6af",
+      "content_hash": "sha256:6ba7c7ef6f4bc5ea4e6e76e337044a4120b07181b1b17d89dfd0d47b650bcbf5",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "`codkit/test/unit/shippedRuntime.test.ts` in `npm run floor`: exactly one version directory; the version literal equals the name of the directory; only `.ts`/`.md`; the four header lines in every file; `checkLicenseCarriers` → 0 problems; the imports per `RT-NARROW-UPSTREAM-SURFACE`; no product names; no non-ASCII outside the comments of the header. @status:spec/done",
+      "heading": "`packages/codkit/test/unit/shippedRuntime.test.ts` in `npm run floor`: exactly one version directory; the version literal equals the name of the directory; only `.ts`/`.md`; the four header lines in every file; `checkLicenseCarriers` → 0 problems; the imports per `RT-NARROW-UPSTREAM-SURFACE`; no product names; no non-ASCII outside the comments of the header. @status:spec/done",
       "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-SHIPPED-RUNTIME-TEST"
     },
@@ -9347,7 +9347,7 @@
     },
     {
       "anchor": "components",
-      "content_hash": "sha256:c3d52f99943498cc9d67701e8f9d4a9ba28dd90b4647554147b64a77cb08b522",
+      "content_hash": "sha256:5af07875aa1f63c51a21fe6261ac0b40c25dfbf2f1cccf417bcdc70e563bf5bc",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "7. Components",
@@ -10346,7 +10346,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:0dd8c0804e3054b075a840c065c1987b2a53b244af297eb2edf7f521adc9177c",
+      "content_hash": "sha256:e5f8a2319159d5cec0ca669e254fc8395c6afb62021ec8889844f566961eb940",
       "doc_path": "modules/vscode/PROP-006",
       "file": "vibevm/vibespecs/modules/vscode/PROP-006-brand-images.xml",
       "heading": "vscode PROP-006: The brand image set - the target table and the artwork families",
@@ -10355,7 +10355,7 @@
     },
     {
       "anchor": "targets",
-      "content_hash": "sha256:8eeb0ce024abeead5025e764320ebd48fb0b900a9711a2758aec5cd93e5ff9ff",
+      "content_hash": "sha256:f9876a183195d593e697e6c607977e826aebe3fa68b29e79278769e106a1d5fe",
       "doc_path": "modules/vscode/PROP-006",
       "file": "vibevm/vibespecs/modules/vscode/PROP-006-brand-images.xml",
       "heading": "1. The target table",
@@ -10373,10 +10373,10 @@
     },
     {
       "anchor": "DECISION-IMAGESET-ROLE-TABLE",
-      "content_hash": "sha256:560bf5ae8934e8f13731a7a5b58a7c10c03bc7b10f456887ae5b304cfd4861fd",
+      "content_hash": "sha256:4a452fecbf0be82e96b1718e91c0e2a8aae6bdab7fbc79e73c525004e752f851",
       "doc_path": "modules/vscode/PROP-006",
       "file": "vibevm/vibespecs/modules/vscode/PROP-006-brand-images.xml",
-      "heading": "**Decision:** the role of every target - \"where a human sees this image\" - is codkit's knowledge: it lives in the path table `codkit/src/lib/imagesetTargets.ts` and is worded without the name of any downstream product.\n\n**Why:** The role is what whoever draws needs, and it is a property of the layout of the distribution rather than of a particular product: `resources/win32/code.ico` is the icon of the executable, of the taskbar button, of the shortcut and of the file associations; `resources/win32/inno-small-*.bmp` is the header of every page of the installation wizard; `resources/linux/rpm/*.xpm` is the icon of the package in the menu of RPM distributions. codkit is a universal tool, so the name of a product in its texts would be a leak; this is checked by a test that looks for the forbidden substrings in the rendered index.\n\n**Considered and rejected:**\n- keeping the roles in the product repository - every product would rewrite the same knowledge about upstream;\n- not writing the role at all - the index stops being a document worth handing to an agent.\n\n**When to revisit:** when upstream adds a target whose role is not derivable from its path - then the table needs a source and not a guess. @status:impl/done",
+      "heading": "**Decision:** the role of every target - \"where a human sees this image\" - is codkit's knowledge: it lives in the path table `packages/codkit/src/lib/imagesetTargets.ts` and is worded without the name of any downstream product.\n\n**Why:** The role is what whoever draws needs, and it is a property of the layout of the distribution rather than of a particular product: `resources/win32/code.ico` is the icon of the executable, of the taskbar button, of the shortcut and of the file associations; `resources/win32/inno-small-*.bmp` is the header of every page of the installation wizard; `resources/linux/rpm/*.xpm` is the icon of the package in the menu of RPM distributions. codkit is a universal tool, so the name of a product in its texts would be a leak; this is checked by a test that looks for the forbidden substrings in the rendered index.\n\n**Considered and rejected:**\n- keeping the roles in the product repository - every product would rewrite the same knowledge about upstream;\n- not writing the role at all - the index stops being a document worth handing to an agent.\n\n**When to revisit:** when upstream adds a target whose role is not derivable from its path - then the table needs a source and not a guess. @status:impl/done",
       "line": 7,
       "uri": "spec://codkit/modules/vscode/PROP-006#DECISION-IMAGESET-ROLE-TABLE"
     },
@@ -10409,7 +10409,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:18d1f1fe10438b3017c5258e69a68195d47585305dc2dcd3ecdbd884e0b20fd4",
+      "content_hash": "sha256:2b9b7c6c14731c1be423587adb3cfcc5b9e87e34ca724e8021e1b00a15075221",
       "doc_path": "modules/vscode/PROP-007",
       "file": "vibevm/vibespecs/modules/vscode/PROP-007-runtime.xml",
       "heading": "vscode PROP-007: The runtime library - features, flags, brand engine",
@@ -10418,7 +10418,7 @@
     },
     {
       "anchor": "purpose",
-      "content_hash": "sha256:195f471ae0dd4bbe091caa66b4f9d058cc11180c0102d515ae5a7979c3193781",
+      "content_hash": "sha256:d218c2d5f41b04fd85155bfa5479c8aa9686ebfbaadf09394febe7e4f83648d6",
       "doc_path": "modules/vscode/PROP-007",
       "file": "vibevm/vibespecs/modules/vscode/PROP-007-runtime.xml",
       "heading": "1. Purpose and the shape of the library",

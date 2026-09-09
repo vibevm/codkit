@@ -1,6 +1,6 @@
 ---
 paths:
-  - "codkit/**"
+  - "packages/**"
 ---
 
 # Codkit clean-room development

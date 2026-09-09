@@ -1,0 +1,31 @@
+{
+	"name": "codkit",
+	"version": "1.0.0",
+	"license": "UPL-1.0",
+	"type": "module",
+	"engines": {
+		"node": ">=22.6.0"
+	},
+	"bin": {
+		"codkit": "bin/codkit.mjs"
+	},
+	"files": [
+		"bin",
+		"claude",
+		"config",
+		"dist",
+		"hooks",
+		"runtime",
+		"src",
+		"vibevm/vibepacks",
+		"npm-shrinkwrap.json",
+		"README.md",
+		"LICENSE.md"
+	],
+	"dependencies": {
+		"@resvg/resvg-js": "2.6.2",
+		"smol-toml": "1.8.0",
+		"typescript": "^7.0.2",
+		"zod": "^4.5.4"
+	}
+}

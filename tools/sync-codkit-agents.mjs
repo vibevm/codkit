@@ -9,7 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const profileRoot = join(root, 'codkit', 'claude');
+const profileRoot = join(root, 'packages', 'codkit', 'claude');
 const check = process.argv.slice(2).includes('--check');
 const unexpected = process.argv.slice(2).filter((arg) => arg !== '--check');
 if (unexpected.length > 0) {

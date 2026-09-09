@@ -15,7 +15,7 @@
 | Изменение agent protocol | [evals](02-evals.md), [memory policy](03-memory-policy.md), [maintenance](../human/12-maintenance.md) |
 
 Исходники пяти профилей находятся в [`docs/codkit/agents`](../../agents/).
-Поставляемый профиль [`codkit/claude/`](../../../../codkit/claude/) —
+Поставляемый профиль [`packages/codkit/claude/`](../../../../packages/codkit/claude/) —
 `settings.json`, `rules/`, `agents/` и `CLAUDE.md`/`AGENTS.md` с управляемым
 ядром — синхронизированная копия. Обновление:
 `node tools/sync-codkit-agents.mjs`; проверка:
@@ -47,11 +47,11 @@
    харнессов, которые знает менеджер пакетов: `.claude/skills/<имя>/`,
    `.opencode/skills/<имя>/`, `.agents/skills/<имя>/`. Каталог навыка копируется
    как есть, вместе с `scripts/` и `agents/`.
-4. Скопируй `codkit/claude/{settings.json,rules,agents}` в `.claude/`
+4. Скопируй `packages/codkit/claude/{settings.json,rules,agents}` в `.claude/`
    репозитория продукта; в `settings.json` замени `<codkit-tool-root>` на
-   абсолютный путь установки Codkit (hook `codkit/hooks/pretool.mjs` остаётся в
+   абсолютный путь установки Codkit (hook `hooks/pretool.mjs` установки остаётся в
    установке и сам находит tool root по своему расположению); управляемый блок
-   из `codkit/claude/CLAUDE.md` и `codkit/claude/AGENTS.md` добавь в корневые
+   из `packages/codkit/claude/CLAUDE.md` и `packages/codkit/claude/AGENTS.md` добавь в корневые
    `CLAUDE.md`/`AGENTS.md` продукта между маркерами
    `codkit-agent-core:begin/end`.
 
@@ -62,8 +62,8 @@
 | Навыки `ck-orient`, `ck-intervene`, `ck-review-intervention`, `ck-resolve` | пакет `org.vibevm.codkit/agent-skills` | `codkit standards load` → `vibe install --offline` → `vibe skill install` |
 | Journal helper `ck-resolve` | тот же пакет, `scripts/` навыка | той же проекцией, рядом с `SKILL.md` |
 | Нормы patch set | пакет `org.vibevm.codkit/standards` | `codkit standards load` → `vibe install --offline` |
-| `settings.json` (deny + hook), `rules/`, `agents/` | `codkit/claude/` установки Codkit | копированием вручную (шаг 4) |
-| Ядро `CLAUDE.md`/`AGENTS.md` | `codkit/claude/CLAUDE.md`, `AGENTS.md` | вставкой управляемого блока (шаг 4) |
+| `settings.json` (deny + hook), `rules/`, `agents/` | `claude/` установки Codkit | копированием вручную (шаг 4) |
+| Ядро `CLAUDE.md`/`AGENTS.md` | `packages/codkit/claude/CLAUDE.md`, `AGENTS.md` | вставкой управляемого блока (шаг 4) |
 | Hook `pretool.mjs` | установка Codkit | не копируется: `settings.json` ссылается на tool root |
 
 Journal helper `ck-resolve` вызывается только по пути проекции —
@@ -96,8 +96,8 @@ Journal helper `ck-resolve` вызывается только по пути пр
 | Design stop | JSON `exitCode:3`, ограниченные tools, result file | `status: stopped`, решение человека |
 | Маркеры/дельта/state | scoped rules + `save`/`verify`/`cycle` | соответствующий `CK-E-*` |
 | Clean room `codkit/**` | path-rule + локальный deny-профиль | доступ к reference не выдаётся |
-| Периметр не действует в репозитории инструмента | `codkit/claude/` вместо `.claude/` инструмента; `check.mjs` и `agentProtocol.test.ts` красные при hook/agents/skills в `.claude/` инструмента | check/test red |
-| Навыки — из пакета, не из профиля | `check.mjs` требует ростер в пакете и запрещает `codkit/claude/skills` | check red |
+| Периметр не действует в репозитории инструмента | `packages/codkit/claude/` вместо `.claude/` инструмента; `check.mjs` и `agentProtocol.test.ts` красные при hook/agents/skills в `.claude/` инструмента | check/test red |
+| Навыки — из пакета, не из профиля | `check.mjs` требует ростер в пакете и запрещает `packages/codkit/claude/skills` | check red |
 
 Hook выводит актуальный `hookSpecificOutput.permissionDecision:"deny"`. Пустой
 успешный вывод означает только «hook не возражает»; обычные permissions всё ещё
@@ -110,7 +110,7 @@ Task schema поддерживает `resolve`, `scout`, `verify`, `review`, `ca
 
 ## Ограничение path rules
 
-`paths` в `codkit/claude/rules` (после установки — `.claude/rules` продукта)
+`paths` в `packages/codkit/claude/rules` (после установки — `.claude/rules` продукта)
 сопоставляется с путями репозитория `patchset` при чтении файла. Внешнее дерево имеет динамический путь, поэтому glob для него не
 коммитится. `ck-markers.md` загружается без path scope, а реальный периметр
 принуждает hook через единственный resolver `codkit where --json`.

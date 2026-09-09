@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$launcher = Join-Path $repoRoot 'codkit/bin/codkit.mjs'
+$launcher = Join-Path $repoRoot 'packages/codkit/bin/codkit.mjs'
 $node = Get-Command node -ErrorAction SilentlyContinue
 
 if ($null -eq $node) {

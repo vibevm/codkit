@@ -1,25 +1,20 @@
 {
-	"name": "codkit",
-	"version": "0.1.0",
+	"name": "codkit-workspace",
+	"version": "1.0.0",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
-			"name": "codkit",
-			"version": "0.1.0",
+			"name": "codkit-workspace",
+			"version": "1.0.0",
 			"license": "UPL-1.0",
-			"dependencies": {
-				"@resvg/resvg-js": "2.6.2",
-				"smol-toml": "1.8.0",
-				"typescript": "^7.0.2",
-				"zod": "^4.5.4"
-			},
-			"bin": {
-				"codkit": "codkit/bin/codkit.mjs"
-			},
+			"workspaces": [
+				"packages/*"
+			],
 			"devDependencies": {
 				"@types/node": "^26.4.0",
 				"prettier": "^3.9.6",
+				"typescript": "^7.0.2",
 				"vitest": "^4.1.11"
 			},
 			"engines": {
@@ -1045,6 +1040,10 @@
 				"node": ">=18"
 			}
 		},
+		"node_modules/codkit": {
+			"resolved": "packages/codkit",
+			"link": true
+		},
 		"node_modules/convert-source-map": {
 			"version": "2.0.0",
 			"resolved": "https://registry.npmjs.org/convert-source-map/-/convert-source-map-2.0.0.tgz",
@@ -1864,6 +1863,22 @@
 			"license": "MIT",
 			"funding": {
 				"url": "https://github.com/sponsors/colinhacks"
+			}
+		},
+		"packages/codkit": {
+			"version": "1.0.0",
+			"license": "UPL-1.0",
+			"dependencies": {
+				"@resvg/resvg-js": "2.6.2",
+				"smol-toml": "1.8.0",
+				"typescript": "^7.0.2",
+				"zod": "^4.5.4"
+			},
+			"bin": {
+				"codkit": "bin/codkit.mjs"
+			},
+			"engines": {
+				"node": ">=22.6.0"
 			}
 		}
 	}
