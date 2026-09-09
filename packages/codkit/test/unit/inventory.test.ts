@@ -175,8 +175,15 @@ describe('test id scanning', () => {
 		expect(declaredTestIds('suite(\'a.b\', () => {});\ntest("c.d", () => {});\nsuite(`e.f`, () => {});')).toEqual(['a.b', 'c.d', 'e.f']);
 	});
 
+	it('reads the BDD names of the same runner too', () => {
+		// ##CONTRACT-TESTS-MANDATE: which interface a family writes its tests in
+		// is the family's habit; one upstream writes suite/test, another writes
+		// describe/it, and a guard is a guard either way.
+		expect(declaredTestIds("describe('x.y', () => {});\nit('x.z', () => {});")).toEqual(['x.y', 'x.z']);
+	});
+
 	it('ignores a call that is not a declaration', () => {
-		expect(declaredTestIds("describe('x.y', () => {});")).toEqual([]);
+		expect(declaredTestIds("suiteOf('x.y', () => {});")).toEqual([]);
 	});
 
 	it('ignores declaration-shaped text in comments, strings and template text', () => {

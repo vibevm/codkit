@@ -138,11 +138,14 @@ export function isCovered(contractTests, testIds) {
     return contractTests.length > 0 && contractTests.every((id) => testIds.has(id));
 }
 /**
- * The test ids own code declares: direct `suite('<id>', ...)` and
- * `test('<id>', ...)` calls in .ts/.js files under delta/own/ (PROP-010
- * ##CONTRACT-TESTS-MANDATE). The compiler parser separates executable syntax
- * from comments and string/template text; property calls such as `test.skip`
- * are deliberately not declarations of enabled coverage.
+ * The test ids own code declares: direct `suite('<id>', ...)`,
+ * `test('<id>', ...)`, `describe('<id>', ...)` and `it('<id>', ...)` calls in
+ * .ts/.js files under delta/own/ (PROP-010 ##CONTRACT-TESTS-MANDATE). Both
+ * interfaces of the same runner are accepted, because which one a family writes
+ * its tests in is the family's habit and not the tool's: the TDD names come
+ * from one upstream, the BDD names from another. The compiler parser separates
+ * executable syntax from comments and string/template text; property calls such
+ * as `test.skip` are deliberately not declarations of enabled coverage.
  */
 export function ownTestIds(patchesDir) {
     const root = ownSourceRoot(patchesDir);
@@ -206,12 +209,14 @@ function declaredTestIdsInSources(sources) {
         api.close();
     }
 }
+/** The names of a test declaration, in both interfaces of the runner. */
+const TEST_DECLARATION_CALLEES = new Set(['suite', 'test', 'describe', 'it']);
 function collectDirectTestCalls(sourceFile, ids) {
     const visit = (node) => {
         if (isCallExpression(node) && node.questionDotToken === undefined && isIdentifier(node.expression)) {
             const callee = node.expression.text;
             const first = node.arguments[0];
-            if ((callee === 'suite' || callee === 'test') && first !== undefined) {
+            if (TEST_DECLARATION_CALLEES.has(callee) && first !== undefined) {
                 if ((isStringLiteral(first) || isNoSubstitutionTemplateLiteral(first)) && first.text !== '') {
                     ids.push(first.text);
                 }

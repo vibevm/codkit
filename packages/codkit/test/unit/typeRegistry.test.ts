@@ -49,7 +49,7 @@ describe('the registry', () => {
 
 	it('prints one row per registered type, with its package, version and capabilities', async () => {
 		const rows = await registeredTypes();
-		expect(rows.map((row) => row.id)).toEqual(['vscode', 'generic']);
+		expect(rows.map((row) => row.id)).toEqual(['vscode', 'generic', 'theia']);
 		expect(rows.every((row) => row.installed)).toBe(true);
 		expect(rows.every((row) => row.version === '1.0.0')).toBe(true);
 		expect(rows[0]?.capabilities).toContain('brand-images');
@@ -61,6 +61,9 @@ describe('the registry', () => {
 		expect(generic?.capabilities).toEqual([]);
 		expect(generic?.configurableCapabilities).toEqual(['build-channels', 'config-overlay']);
 		expect(rows.find((row) => row.id === 'vscode')?.configurableCapabilities).toEqual([]);
+		// The theia type is configured too, and yet its capability matrix is the
+		// same for every patch set: what its section moves are paths, not answers.
+		expect(rows.find((row) => row.id === 'theia')?.configurableCapabilities).toEqual([]);
 	});
 });
 

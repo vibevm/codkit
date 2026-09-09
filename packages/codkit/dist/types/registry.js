@@ -22,7 +22,8 @@ import { ckError } from '../lib/messages.js';
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
 export const TYPE_REGISTRY = new Map([
     ['vscode', '@codkit/type-vscode'],
-    ['generic', '@codkit/type-generic']
+    ['generic', '@codkit/type-generic'],
+    ['theia', '@codkit/type-theia']
 ]);
 const loaded = new Map();
 /**

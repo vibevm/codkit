@@ -359,6 +359,47 @@ describe('(h) own code', () => {
 		expect(findings.filter((item) => item.code === 'ARTIFACT-BROKEN' || item.code === 'OWN-UNCOVERED')).toEqual([]);
 	});
 
+	it('asks the type what else an override of its family requires, and reports what it answers', () => {
+		// ##TYPE-AREA-LAYERS: in a family where the last registration wins the call
+		// is the whole proof; in one where the order of the packages decides it, it
+		// is not - so the type is asked, over the same module, and the engine
+		// reports its answer without knowing what it means.
+		const asked: string[] = [];
+		const type: ProjectType = {
+			...vscodeType,
+			layers: {
+				...vscodeType.layers,
+				serviceOverride: {
+					...(vscodeType.layers.serviceOverride ?? {
+						registrationCall: 'registerSingleton',
+						registrationModule: null,
+						forbiddenReason: '',
+						forbiddenHint: ''
+					}),
+					overrideProblems: (context) => {
+						asked.push(`${context.serviceId}@${context.modulePath}`);
+						return context.read('patchset.delta.json') === null
+							? []
+							: [{ detail: `the own layer does not declare ${context.serviceId} anywhere else`, hint: 'declare it' }];
+					}
+				}
+			}
+		};
+		const source = 'registerSingleton(IFixtureService, FixtureService, 0);\n';
+		const findings = withFile('delta/own/test/service.override.ts', source, () =>
+			withEdit(
+				'delta/own/patchset.delta.json',
+				(text) => addServiceOverride(text, 'test/service.override.ts'),
+				() => runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config, type }).findings
+			)
+		);
+
+		expect(asked).toEqual(['IFixtureService@test/service.override.ts']);
+		const answered = findings.filter((item) => item.message.includes('does not declare IFixtureService'));
+		expect(answered).toHaveLength(1);
+		expect(answered[0]?.file).toBe('delta/own/test/service.override.ts');
+	});
+
 	it('reports a delivered override module outside every own unit', () => {
 		const source = 'registerSingleton(IFixtureService, FixtureService, 0);\n';
 		const findings = withFile('delta/own/services/service.override.ts', source, () =>

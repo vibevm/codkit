@@ -18,7 +18,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import type { ProjectType, ServiceOverrideVerifier } from '@codkit/type-api';
+import type { ProjectType, ServiceOverrideProblem, ServiceOverrideVerifier } from '@codkit/type-api';
 import { requireCapability } from '../types/capability.ts';
 import { isCallExpression, isIdentifier, isImportDeclaration, isNamedImports } from 'typescript/unstable/ast';
 import type { Node, SourceFile } from 'typescript/unstable/ast';
@@ -676,7 +676,7 @@ function reportGuard(
 			finding(
 				'GUARD-MISSING',
 				`${id}: contractTests is empty, and ${reason}`,
-				`write the guard test under ${OWN_SOURCE_DIR}/test/ as suite('<id>') and name that id in contractTests`,
+				`write the guard test under ${OWN_SOURCE_DIR}/test/ as suite('<id>') or describe('<id>') and name that id in contractTests`,
 				artifact
 			)
 		);
@@ -690,7 +690,7 @@ function reportGuard(
 		finding(
 			'GUARD-MISSING',
 			`${id}: no own test declares ${missing.join(', ')}, and ${reason}`,
-			`add suite('${missing[0] ?? ''}') to a test file under ${OWN_SOURCE_DIR}/test/, or correct the id in contractTests`,
+			`add suite('${missing[0] ?? ''}') or describe('${missing[0] ?? ''}') to a test file under ${OWN_SOURCE_DIR}/test/, or correct the id in contractTests`,
 			artifact
 		)
 	);
@@ -1122,18 +1122,53 @@ function checkSingletonRegistrations(
 			continue;
 		}
 		const calls = registrations.get(item.module) ?? [];
-		if (calls.some((registration) => registration.serviceId === item.override.serviceId)) {
+		if (!calls.some((registration) => registration.serviceId === item.override.serviceId)) {
+			findings.push(
+				finding(
+					'ARTIFACT-BROKEN',
+					`${item.override.id}: ${OWN_SOURCE_DIR}/${item.module} does not call ${call}(${item.override.serviceId}) as its service override declares`,
+					`make the module registration and serviceOverrides[].serviceId in ${OWN_MANIFEST_PATH} agree`,
+					`${OWN_SOURCE_DIR}/${item.module}`
+				)
+			);
 			continue;
 		}
-		findings.push(
-			finding(
-				'ARTIFACT-BROKEN',
-				`${item.override.id}: ${OWN_SOURCE_DIR}/${item.module} does not call ${call}(${item.override.serviceId}) as its service override declares`,
-				`make the module registration and serviceOverrides[].serviceId in ${OWN_MANIFEST_PATH} agree`,
-				`${OWN_SOURCE_DIR}/${item.module}`
-			)
-		);
+		// ##TYPE-AREA-LAYERS: in a family where the last registration wins, the
+		// call is the whole proof; in one where an override wins only because
+		// its package is loaded after the package it overrides, it is not. What
+		// else has to hold is the type's answer, and it is asked over the same
+		// module the registration was found in.
+		for (const problem of overrideProblems(verifier, root, item.module, item.override.serviceId)) {
+			findings.push(finding('ARTIFACT-BROKEN', `${item.override.id}: ${problem.detail}`, problem.hint, `${OWN_SOURCE_DIR}/${item.module}`));
+		}
 	}
+}
+
+/** What the type finds wrong with one override beyond its registration call. */
+function overrideProblems(
+	verifier: ServiceOverrideVerifier,
+	root: string,
+	modulePath: string,
+	serviceId: string
+): readonly ServiceOverrideProblem[] {
+	const ask = verifier.overrideProblems;
+	if (ask === undefined) {
+		return [];
+	}
+	const read = (relative: string): string | null => {
+		try {
+			return readFileSync(join(root, ...relative.split('/')), 'utf8');
+		} catch {
+			// A file of the own layer the type asked for and the layer does not
+			// carry is an answer - "it is not there" - and not a failure.
+			return null;
+		}
+	};
+	const moduleText = read(modulePath);
+	if (moduleText === null) {
+		return [];
+	}
+	return ask({ serviceId, modulePath, moduleText, read });
 }
 
 type SingletonRegistration = { readonly serviceId: string; readonly line: number };

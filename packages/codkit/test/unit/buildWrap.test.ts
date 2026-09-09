@@ -40,7 +40,7 @@ import {
 	stripAnsi,
 	treeRelativePath
 } from '../../src/lib/buildWrap.ts';
-import type { ChannelConfig, ProcessRunner } from '../../src/lib/buildWrap.ts';
+import type { BuildWatch, ChannelConfig, ProcessRunner } from '../../src/lib/buildWrap.ts';
 import { readRecordState } from '../../src/lib/buildRuntime.ts';
 import { configureProjectType } from '../../src/types/configure.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
@@ -302,6 +302,20 @@ describe('build-watch.json', () => {
 		]);
 		expect(selectChannels(shipped, 'copilot', DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['copilot']);
 		expect(() => selectChannels(shipped, 'nope', DEFAULT_UP_CHANNELS)).toThrow(/unknown build channel/);
+	});
+
+	it('takes every declared channel as the default when the profile names none of the fallback', () => {
+		// The fallback pair is the channel set of one family (PROP-007 ##CMD-BUILD);
+		// a type whose profile declares neither of them must still start what it has.
+		const other: BuildWatch = {
+			channels: [
+				{ name: 'typecheck', script: 'watch:compile', passStart: [], passEnd: [], errorLine: [], errorCountLine: [], falseEndGuards: [] },
+				{ name: 'bundle', script: 'watch:bundle', passStart: [], passEnd: [], errorLine: [], errorCountLine: [], falseEndGuards: [] }
+			]
+		};
+		expect(selectChannels(other, null, DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['typecheck']);
+		const foreign: BuildWatch = { channels: [other.channels[1] as ChannelConfig] };
+		expect(selectChannels(foreign, null, DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['bundle']);
 	});
 });
 

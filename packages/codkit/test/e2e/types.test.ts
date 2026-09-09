@@ -36,13 +36,18 @@ describe('codkit types', () => {
 			capabilities: string[];
 			configurableCapabilities: string[];
 		}[];
-		expect(rows.map((row) => row.id)).toEqual(['vscode', 'generic']);
+		expect(rows.map((row) => row.id)).toEqual(['vscode', 'generic', 'theia']);
 		expect(rows[0]?.package).toBe('@codkit/type-vscode');
 		expect(rows[0]?.installed).toBe(true);
 		expect(rows[0]?.capabilities).toContain('brand-images');
 		expect(rows[1]?.package).toBe('@codkit/type-generic');
 		expect(rows[1]?.capabilities).toEqual([]);
 		expect(rows[1]?.configurableCapabilities).toEqual(['build-channels', 'config-overlay']);
+		// The second real type: four capabilities for every patch set of the
+		// family, and six absences that are answers of their own.
+		expect(rows[2]?.package).toBe('@codkit/type-theia');
+		expect(rows[2]?.capabilities).toEqual(['build-channels', 'config-overlay', 'service-override', 'upgrade-advisory']);
+		expect(rows[2]?.configurableCapabilities).toEqual([]);
 	});
 });
 

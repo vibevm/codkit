@@ -182,7 +182,11 @@ export function channelByName(watch, name) {
  * a name means that channel. An unknown name is a diagnosed condition.
  */
 export function selectChannels(watch, requested, fallback) {
-    const names = requested === null ? fallback : requested === ALL_CHANNELS ? watch.channels.map((channel) => channel.name) : [requested];
+    const names = requested === null
+        ? defaultChannelNames(watch, fallback)
+        : requested === ALL_CHANNELS
+            ? watch.channels.map((channel) => channel.name)
+            : [requested];
     return names.map((name) => {
         const channel = channelByName(watch, name);
         if (channel === null) {
@@ -190,6 +194,18 @@ export function selectChannels(watch, requested, fallback) {
         }
         return channel;
     });
+}
+/**
+ * The channels a bare `build up` starts. The default of PROP-007 ##CMD-BUILD is
+ * a pair of names, and it was written when there was one project type; a type
+ * whose profile declares neither of them would otherwise refuse the default of
+ * the command rather than start what it has. So the default is the declared
+ * channels the fallback names, and every declared channel when it names none.
+ */
+function defaultChannelNames(watch, fallback) {
+    const declared = new Set(watch.channels.map((channel) => channel.name));
+    const named = fallback.filter((name) => declared.has(name));
+    return named.length > 0 ? named : [...declared];
 }
 const PROC = '/proc';
 const POWERSHELL = 'powershell.exe';

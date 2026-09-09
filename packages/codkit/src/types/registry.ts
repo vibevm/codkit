@@ -17,7 +17,8 @@ import { ckError } from '../lib/messages.ts';
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
 export const TYPE_REGISTRY: ReadonlyMap<string, string> = new Map([
 	['vscode', '@codkit/type-vscode'],
-	['generic', '@codkit/type-generic']
+	['generic', '@codkit/type-generic'],
+	['theia', '@codkit/type-theia']
 ]);
 
 /** One row of `codkit types` (##CMD-TYPES). */

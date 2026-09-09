@@ -439,14 +439,14 @@ function guardReason(entry) {
 }
 function reportGuard(id, contractTests, testIds, artifact, reason, findings) {
     if (contractTests.length === 0) {
-        findings.push(finding('GUARD-MISSING', `${id}: contractTests is empty, and ${reason}`, `write the guard test under ${OWN_SOURCE_DIR}/test/ as suite('<id>') and name that id in contractTests`, artifact));
+        findings.push(finding('GUARD-MISSING', `${id}: contractTests is empty, and ${reason}`, `write the guard test under ${OWN_SOURCE_DIR}/test/ as suite('<id>') or describe('<id>') and name that id in contractTests`, artifact));
         return;
     }
     const missing = contractTests.filter((test) => !testIds.has(test));
     if (missing.length === 0) {
         return;
     }
-    findings.push(finding('GUARD-MISSING', `${id}: no own test declares ${missing.join(', ')}, and ${reason}`, `add suite('${missing[0] ?? ''}') to a test file under ${OWN_SOURCE_DIR}/test/, or correct the id in contractTests`, artifact));
+    findings.push(finding('GUARD-MISSING', `${id}: no own test declares ${missing.join(', ')}, and ${reason}`, `add suite('${missing[0] ?? ''}') or describe('${missing[0] ?? ''}') to a test file under ${OWN_SOURCE_DIR}/test/, or correct the id in contractTests`, artifact));
 }
 // ---------------------------------------------------------------------------
 // (f) Rules
@@ -725,11 +725,41 @@ function checkSingletonRegistrations(verifier, root, conventions, ownFiles, over
             continue;
         }
         const calls = registrations.get(item.module) ?? [];
-        if (calls.some((registration) => registration.serviceId === item.override.serviceId)) {
+        if (!calls.some((registration) => registration.serviceId === item.override.serviceId)) {
+            findings.push(finding('ARTIFACT-BROKEN', `${item.override.id}: ${OWN_SOURCE_DIR}/${item.module} does not call ${call}(${item.override.serviceId}) as its service override declares`, `make the module registration and serviceOverrides[].serviceId in ${OWN_MANIFEST_PATH} agree`, `${OWN_SOURCE_DIR}/${item.module}`));
             continue;
         }
-        findings.push(finding('ARTIFACT-BROKEN', `${item.override.id}: ${OWN_SOURCE_DIR}/${item.module} does not call ${call}(${item.override.serviceId}) as its service override declares`, `make the module registration and serviceOverrides[].serviceId in ${OWN_MANIFEST_PATH} agree`, `${OWN_SOURCE_DIR}/${item.module}`));
+        // ##TYPE-AREA-LAYERS: in a family where the last registration wins, the
+        // call is the whole proof; in one where an override wins only because
+        // its package is loaded after the package it overrides, it is not. What
+        // else has to hold is the type's answer, and it is asked over the same
+        // module the registration was found in.
+        for (const problem of overrideProblems(verifier, root, item.module, item.override.serviceId)) {
+            findings.push(finding('ARTIFACT-BROKEN', `${item.override.id}: ${problem.detail}`, problem.hint, `${OWN_SOURCE_DIR}/${item.module}`));
+        }
     }
+}
+/** What the type finds wrong with one override beyond its registration call. */
+function overrideProblems(verifier, root, modulePath, serviceId) {
+    const ask = verifier.overrideProblems;
+    if (ask === undefined) {
+        return [];
+    }
+    const read = (relative) => {
+        try {
+            return readFileSync(join(root, ...relative.split('/')), 'utf8');
+        }
+        catch {
+            // A file of the own layer the type asked for and the layer does not
+            // carry is an answer - "it is not there" - and not a failure.
+            return null;
+        }
+    };
+    const moduleText = read(modulePath);
+    if (moduleText === null) {
+        return [];
+    }
+    return ask({ serviceId, modulePath, moduleText, read });
 }
 const SINGLETON_SCAN_ROOT = '/codkit-singleton-scan';
 function singletonRegistrations(verifier, root, ownFiles) {

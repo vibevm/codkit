@@ -43,6 +43,30 @@ export type ExtensionMaterializer = {
 	readonly manifestFile: string;
 };
 
+/** What else an override of this family has to say, beyond calling the registration. */
+export type ServiceOverrideContext = {
+	/** The service identifier the override declares. */
+	readonly serviceId: string;
+	/** The module of the override, as a path inside the own layer, POSIX. */
+	readonly modulePath: string;
+	/** Its text; the registration call itself has already been found in it. */
+	readonly moduleText: string;
+	/**
+	 * Another file of the own layer by its path inside the layer, or null when
+	 * the layer does not carry it. A family whose override wins by the order of
+	 * its packages needs the manifest of the own package, not only the module.
+	 */
+	read(path: string): string | null;
+};
+
+/** One thing wrong with an override, in the engine's own frame. */
+export type ServiceOverrideProblem = {
+	/** Completes the sentence "`<id>`: ..."; states what is wrong. */
+	readonly detail: string;
+	/** What makes it right. */
+	readonly hint: string;
+};
+
 /** How the engine proves that own code really overrides the service it declares. */
 export type ServiceOverrideVerifier = {
 	/** The function an override calls, e.g. a registration or a rebinding. */
@@ -53,6 +77,17 @@ export type ServiceOverrideVerifier = {
 	readonly forbiddenReason: string;
 	/** What a person should do instead of overriding a forbidden service. */
 	readonly forbiddenHint: string;
+	/**
+	 * Everything else this family requires of an override that the registration
+	 * call alone does not prove. A family where the last registration of an id
+	 * wins needs nothing here; a family where the override wins only because its
+	 * package is loaded after the package it overrides needs the dependency edge
+	 * that guarantees the order, and the engine cannot state that edge itself.
+	 * Added on 2026-09-09 with the second official type, by the rule of
+	 * ##DECISION-TYPE-CONTRACT-FROM-MEASUREMENT; the answer is optional and a
+	 * type that omits it is verified exactly as before.
+	 */
+	overrideProblems?(context: ServiceOverrideContext): readonly ServiceOverrideProblem[];
 };
 
 /** Where a graft of the entry-module layer belongs in this family. */

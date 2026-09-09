@@ -25,6 +25,7 @@
 	"dependencies": {
 		"@codkit/type-api": "1.0.0",
 		"@codkit/type-generic": "1.0.0",
+		"@codkit/type-theia": "1.0.0",
 		"@codkit/type-vscode": "1.0.0",
 		"@resvg/resvg-js": "2.6.2",
 		"smol-toml": "1.8.0",
