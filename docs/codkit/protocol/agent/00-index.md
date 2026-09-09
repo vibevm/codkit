@@ -56,9 +56,11 @@ Patch set объявляет тип проекта — знание Codkit об 
 Установка профиля в репозиторий продукта — четыре шага; первые три
 машинные, четвёртый пока ручной (mechanism gap: команды копирования нет):
 
-1. `codkit standards load` — кладёт в продукт оба поставляемых пакета:
-   `standards` (нормы) и `agent-skills` (навыки), плюс блок зависимостей в
+1. `codkit standards load` — кладёт в продукт универсальные пакеты `standards`
+   (нормы) и `agent-skills` (навыки), пакеты объявленного типа проекта (у
+   `vscode` это `seams-vscode` — каталог швов) и блок зависимостей в
    `vibe.toml` (человеческий протокол — [13](../human/13-standards.md)).
+   Команда читает `codkit.json`: без типа спрашивать не у кого.
 2. `vibe install --offline` — материализует пакеты в `vibevm/vibedeps/` и
    пересобирает загрузочную полосу. После `codkit standards load --upgrade`
    нужен `vibe install --offline --force`: номер издания тот же, байты другие.
@@ -81,6 +83,7 @@ Patch set объявляет тип проекта — знание Codkit об 
 | Навыки `ck-orient`, `ck-intervene`, `ck-review-intervention`, `ck-resolve` | пакет `org.vibevm.codkit/agent-skills` | `codkit standards load` → `vibe install --offline` → `vibe skill install` |
 | Journal helper `ck-resolve` | тот же пакет, `scripts/` навыка | той же проекцией, рядом с `SKILL.md` |
 | Нормы patch set | пакет `org.vibevm.codkit/standards` | `codkit standards load` → `vibe install --offline` |
+| Каталог швов семейства апстримов | пакет типа `org.vibevm.codkit/seams-<тип>` | тем же `codkit standards load` — только patch set'у этого типа |
 | `settings.json` (deny + hook), `rules/`, `agents/` | `claude/` установки Codkit | копированием вручную (шаг 4) |
 | Ядро `CLAUDE.md`/`AGENTS.md` | `packages/codkit/claude/CLAUDE.md`, `AGENTS.md` | вставкой управляемого блока (шаг 4) |
 | Hook `pretool.mjs` | установка Codkit | не копируется: `settings.json` ссылается на tool root |

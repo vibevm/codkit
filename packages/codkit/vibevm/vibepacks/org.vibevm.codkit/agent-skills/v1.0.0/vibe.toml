@@ -12,7 +12,7 @@ epoch = 1
 format = "normal"
 authors = ["Oleg Chirukhin"]
 license = "UPL-1.0"
-description = "The agent skills of codkit, projected into every coding agent by vibe skill install: orient in a patch set without editing, choose the layer of an intervention, review an intervention against the standard, and resolve one assigned upgrade-cycle blocker"
+description = "The agent skills of codkit, projected into every coding agent by vibe skill install: orient in a patch set without editing, choose the layer of an intervention against the seam catalogue of its project type, review an intervention against the standard, and resolve one assigned upgrade-cycle blocker"
 keywords = ["codkit", "skills", "agents", "patch-set", "fork", "upgrade-cycle"]
 
 [compatibility]
@@ -32,7 +32,7 @@ description = "Orient in a codkit patch set without editing anything: roots, tre
 [[skill]]
 name = "ck-intervene"
 path = "vibevm/vibespecs/skills/ck-intervene"
-description = "Choose the layer of a new intervention in a codkit patch set: the ladder, the hook budget, the feature-and-flag form, and the owning specification, presented as a proposal before any edit"
+description = "Choose the layer of a new intervention in a codkit patch set: the ladder, the seam catalogue of the declared project type, the hook budget, the feature-and-flag form, and the owning specification, presented as a proposal before any edit"
 
 [[skill]]
 name = "ck-review-intervention"

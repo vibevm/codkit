@@ -215,6 +215,29 @@ describe('the shipped agent-skills package', () => {
 	it('names no product', () => {
 		expectNoProductName(skills?.directory ?? '');
 	});
+
+	/**
+	 * ##STD-SKILLS-ARE-TYPE-NEUTRAL: a skill is delivered to every patch set, so
+	 * it states no seam of one family - it routes to the catalogue of the type
+	 * the patch set declares.
+	 */
+	it("routes to the type's seam catalogue and states no seam of its own", () => {
+		const bodies = SKILL_NAMES.map((name) => ({
+			name,
+			text: readFileSync(join(skills?.directory ?? '', 'vibevm', 'vibespecs', 'skills', name, 'SKILL.md'), 'utf8')
+		}));
+		for (const { name, text } of bodies) {
+			for (const needle of ['product.json', 'registerSingleton', 'workbench', 'extensions/', 'nls.ts']) {
+				expect(text.includes(needle), `${name} names ${needle}`).toBe(false);
+			}
+		}
+		const intervene = bodies.find((body) => body.name === 'ck-intervene')?.text ?? '';
+		expect(intervene).toContain('vibevm/vibepacks/org.vibevm.codkit/seams-<type>/v*');
+		expect(intervene).toContain('codkit --json where');
+		expect(bodies.find((body) => body.name === 'ck-review-intervention')?.text).toContain(
+			'vibevm/vibepacks/org.vibevm.codkit/seams-<type>/v*'
+		);
+	});
 });
 
 /**

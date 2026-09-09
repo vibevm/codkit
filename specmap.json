@@ -7745,7 +7745,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:248f7ac575afc36c70bf89f337224e4c870de48905087fc8db19082804cc6f6f",
+      "content_hash": "sha256:17c1e4e96bbcef652706c11eb3bc5c2a8e8238549aedde2b91efa965ac1e59fd",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: The standards package and licence markup",
@@ -7889,7 +7889,7 @@
     },
     {
       "anchor": "skills",
-      "content_hash": "sha256:054bdf1d75c8b0ff8bc212a7d5bba21c4c43026c43d5de3addb37943ce031791",
+      "content_hash": "sha256:ec9387c11f3ace52d03de389c621520e58c8e32cfb7c92e961e3eadb0e86e8ff",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "1a. The agent skills package `org.vibevm.codkit/agent-skills`",
@@ -7898,57 +7898,66 @@
     },
     {
       "anchor": "STD-SKILLS-PACKAGE-IDENTITY",
-      "content_hash": "sha256:8a74cbeb8f1d6e74bf5490dfd7f59452d544e3af68116f4979e463fd514ea53a",
+      "content_hash": "sha256:38234d1b16b8c3ef5bd4fbcb5695227e8502433810de517ad0ff689cb8bc1a7f",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The identity is `(org.vibevm.codkit, agent-skills, <version>)`; the manifest `vibe.toml`: `kind = \"flow\"`, `license = \"UPL-1.0\"`, a minimal `[boot_snippet]` (two lines: the skills are projected, they route and restate nothing — the projection of skills is not a boot snippet by itself, PROP-018 §2.5 of VibeVM, but a `flow` package carries a snippet by its form), and `[[skill]]` sections, one per skill. The mandatory files are those of the standards package (`STD-PACKAGE-REQUIRED-FILES`) without the assets; every carrier bears the notice; the scope of the notice `LICENSE-CODKIT.md` covers the package through the path `vibevm/vibepacks/org.vibevm.codkit/**` with no edit. @status:spec/plan",
+      "heading": "The identity is `(org.vibevm.codkit, agent-skills, <version>)`; the manifest `vibe.toml`: `kind = \"flow\"`, `license = \"UPL-1.0\"`, a minimal `[boot_snippet]` (two lines: the skills are projected, they route and restate nothing — the projection of skills is not a boot snippet by itself, PROP-018 §2.5 of VibeVM, but a `flow` package carries a snippet by its form), and `[[skill]]` sections, one per skill. The mandatory files are those of the standards package (`STD-PACKAGE-REQUIRED-FILES`) without the assets; every carrier bears the notice; the scope of the notice `LICENSE-CODKIT.md` covers the package through the path `vibevm/vibepacks/org.vibevm.codkit/**` with no edit. @status:spec/done",
       "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-PACKAGE-IDENTITY"
     },
     {
       "anchor": "STD-SKILLS-DECLARATION",
-      "content_hash": "sha256:a0070693294771282d124bdfb05f013545b081e1b82865f8417d5db9991e78f6",
+      "content_hash": "sha256:ca9db7c5a4081c41ffa9e2b4c7bc9c73c1dc42f6295d19fc36c9f79c19666bd6",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The declaration form is VibeVM's `SKILL-TABLE-SHAPE`: `[[skill]] name = \"<name>\"` (the directory name in the harness), `path = \"vibevm/vibespecs/skills/<name>\"` (a directory with `SKILL.md` and nested `scripts/`, `agents/`; the path is written explicitly — the package manager does not resolve the `spec/` alias during projection, checked 2026-09-07), `description` (mandatory for us: the lazy-push trigger, one sentence in English), and `agents` is not set (every harness). A skill body addresses its own scripts by the projection path (`.<agent>/skills/<name>/scripts/…`), not by `<codkit-tool-root>`. @status:spec/plan",
+      "heading": "The declaration form is VibeVM's `SKILL-TABLE-SHAPE`: `[[skill]] name = \"<name>\"` (the directory name in the harness), `path = \"vibevm/vibespecs/skills/<name>\"` (a directory with `SKILL.md` and nested `scripts/`, `agents/`; the path is written explicitly — the package manager does not resolve the `spec/` alias during projection, checked 2026-09-07), `description` (mandatory for us: the lazy-push trigger, one sentence in English), and `agents` is not set (every harness). A skill body addresses its own scripts by the projection path (`.<agent>/skills/<name>/scripts/…`), not by `<codkit-tool-root>`. @status:spec/done",
       "line": 45,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-DECLARATION"
     },
     {
       "anchor": "STD-SKILLS-ROSTER-0-1-0",
-      "content_hash": "sha256:a2dc7d8a3a81197b58edfcfe0467e8b2df489c791fc23e552f7fac99917f6eec",
+      "content_hash": "sha256:865b71b0caa61b22e3ceabf4809188b58786fb5f43a7a6aa6f8f10fb464e8e74",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "A tombstone (owner ruling of 2026-09-08, `DEV-VERSION-IS-1-0-0`): the roster it carried is `STD-SKILLS-ROSTER-1-0-0` below, with the same four skills - the package moved from 0.1.0 to the development version 1.0.0 and its directory moved with it. The anchor is neither renamed nor deleted (`NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR`). @status:spec/plan",
+      "heading": "A tombstone (owner ruling of 2026-09-08, `DEV-VERSION-IS-1-0-0`): the roster it carried is `STD-SKILLS-ROSTER-1-0-0` below, with the same four skills - the package moved from 0.1.0 to the development version 1.0.0 and its directory moved with it. The anchor is neither renamed nor deleted (`NEVER-RENAME-OR-DELETE-A-CITED-ANCHOR`). @status:spec/done",
       "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-ROSTER-0-1-0"
     },
     {
       "anchor": "STD-SKILLS-ROSTER-1-0-0",
-      "content_hash": "sha256:78b84118521c425aebe2a6004fda9e4c9d58eae9dab5af86554150c89e883f39",
+      "content_hash": "sha256:9d1ad3f1f5ab29cf8ef0e5db7bc66faf2e7b911331066edd0949cec6775730f5",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The roster of 1.0.0: `ck-resolve` — resolving a cycle blocker by an explicit assignment (moved from `packages/codkit/claude/skills/ck-resolve/` with no change of meaning); `ck-orient` — orientation by reading only (`where`, `status`, `verify`, the inventory), with a state report and no edits; `ck-intervene` — the router for the choice of an intervention layer: the decision tree of human protocol 03 and the \"area → owning specification\" table from the README of the product's own catalogue (`MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`); `ck-review-intervention` — the reviewer's checklist over the `CONF-*` of the standard, with the output \"artifact → norm → done/not done/where\". @status:spec/plan",
+      "heading": "The roster of 1.0.0: `ck-resolve` — resolving a cycle blocker by an explicit assignment (moved from `packages/codkit/claude/skills/ck-resolve/` with no change of meaning); `ck-orient` — orientation by reading only (`where`, `status`, `verify`, the inventory), with a state report and no edits; `ck-intervene` — the router for the choice of an intervention layer: the decision tree of human protocol 03 and the \"area → owning specification\" table from the README of the product's own catalogue (`MI-OWN-README-ROUTES-TO-THE-OWNING-SPEC`); `ck-review-intervention` — the reviewer's checklist over the `CONF-*` of the standard, with the output \"artifact → norm → done/not done/where\". @status:spec/done",
       "line": 47,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-ROSTER-1-0-0"
     },
     {
       "anchor": "STD-SKILLS-SOURCE-OF-TRUTH",
-      "content_hash": "sha256:8f259b1d8920777ba68e141eb26e55c887b511385a8af7361834d01343fc01c2",
+      "content_hash": "sha256:0e1106c4dc55ecd8100187e8b7e50ff3e57c0b9d0e9e04b3fa32339d58a3deb4",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The only source of the skills is the package: the directory `packages/codkit/claude/skills/` is removed from the repository; the profile `packages/codkit/claude/` keeps only what VibeVM does not project (`settings.json` with the hook and the deny profile, `rules/`, `agents/`, the managed blocks of `CLAUDE.md`/`AGENTS.md`); `settings.json` refers to the skill scripts by the projection path. Installing the profile into a product: `codkit standards load` → `vibe install --offline` → `vibe skill install` → copying the Claude-specific parts by the agent protocol; `agentProtocol.test.ts` and the `check.mjs` of the agent protocol check the new location. Decision D-S3-2. @status:spec/plan",
+      "heading": "The only source of the skills is the package: the directory `packages/codkit/claude/skills/` is removed from the repository; the profile `packages/codkit/claude/` keeps only what VibeVM does not project (`settings.json` with the hook and the deny profile, `rules/`, `agents/`, the managed blocks of `CLAUDE.md`/`AGENTS.md`); `settings.json` refers to the skill scripts by the projection path. Installing the profile into a product: `codkit standards load` → `vibe install --offline` → `vibe skill install` → copying the Claude-specific parts by the agent protocol; `agentProtocol.test.ts` and the `check.mjs` of the agent protocol check the new location. Decision D-S3-2. @status:spec/done",
       "line": 48,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-SOURCE-OF-TRUTH"
     },
     {
       "anchor": "STD-SKILLS-LANGUAGE",
-      "content_hash": "sha256:c77102b5cf2066a8f5b4e214853c8f9992e5359d054f29a9dbba645cf06c73cf",
+      "content_hash": "sha256:0c57f93c82e18b7cb6008fb7c9b40d30eabe7552065a1fca2d2a9625a1ff500a",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Skill bodies are in English, with no product names; the tool is mentioned operationally (commands, exit codes); every skill names its stop conditions and what it does not do (commits, editing the fork tree by hand, widening the packet). @status:spec/plan",
+      "heading": "Skill bodies are in English, with no product names; the tool is mentioned operationally (commands, exit codes); every skill names its stop conditions and what it does not do (commits, editing the fork tree by hand, widening the packet). @status:spec/done",
       "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-LANGUAGE"
+    },
+    {
+      "anchor": "STD-SKILLS-ARE-TYPE-NEUTRAL",
+      "content_hash": "sha256:c6c91adcb3c25c9d0d6612a1ad8b67624deb597c58e9a4f6fc57a5f43f1b544d",
+      "doc_path": "modules/codkit/PROP-014",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
+      "heading": "A skill body names no fact of one family of upstreams either: it is delivered to every patch set, whatever its project type, and a seam it stated would be wrong for half of them. Where a procedure needs a seam, the skill **routes**: `ck-intervene` step 3 and `ck-review-intervention` step 5 read the tiers from the installed catalogue of the patch set's own type, `vibevm/vibepacks/org.vibevm.codkit/seams-<type>/v*/vibevm/vibespecs/flows/standards/seam-catalogue.xml`, with `<type>` taken from `codkit.type` of `codkit --json where`; a type that ships no catalogue is answered \"this type has none\", never with an invented seam, and a layer the type does not declare is not a leaf of the ladder to reject (`codkit types` says which it declares). The boot snippet of the package states the same rule (`SKILLS-ROUTE-TO-THE-TYPES-CATALOGUE`). @status:spec/done",
+      "line": 50,
+      "uri": "spec://codkit/modules/codkit/PROP-014#STD-SKILLS-ARE-TYPE-NEUTRAL"
     },
     {
       "anchor": "licensing",
@@ -7956,7 +7965,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "2. The licence markup of the package",
-      "line": 53,
+      "line": 54,
       "uri": "spec://codkit/modules/codkit/PROP-014#licensing"
     },
     {
@@ -7965,7 +7974,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The policy is `toolRoot/config/license-policy.json`, strict schema `{\"codkitLicensePolicy\":1,\"holders\":[<string>+],\"ownLicense\":\"UPL-1.0\",\"allowedThirdParty\":[<SPDX-id>*],\"allowedExceptions\":[<SPDX-exception-id>*]}` (Zod, an unknown field is an error); it is read only from toolRoot through the contained reader (PROP-002 `CONTAINED-FILE-IO`) and is never shadowed by a file of the patch set (the same rule as `CONVENTIONS-SINGLE-DEFINITION`). The lists are edited by a human; widening the allowlist is a separate deliberate decision, not a side effect. @status:spec/done",
-      "line": 54,
+      "line": 55,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-POLICY-FILE"
     },
     {
@@ -7974,7 +7983,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The list of SPDX identifiers is the data file `toolRoot/config/spdx-license-ids.json`: `{\"codkitSpdxLicenseIds\":1,\"listVersion\":\"…\",\"releaseDate\":\"…\",\"ids\":[…]}`, 739 identifiers of the SPDX list of 2026-09-03 (version `01b8052`), with the sidecar `spdx-license-ids.json.license` (`CC0-1.0`, source `json/licenses.json` of the `spdx/license-list-data` repository). An update is a regeneration from the same SPDX file by the same command as recorded in the campaign plan; the list is not edited by hand. An identifier is valid when it is in the list; the form `LicenseRef-*` is recognized syntactically and is forbidden in the package; `NOASSERTION` is forbidden. @status:spec/done",
-      "line": 65,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-SPDX-ID-LIST"
     },
     {
@@ -7983,7 +7992,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A text file carries a header in its first **20 non-empty lines**: at least one copyright line and exactly one `SPDX-License-Identifier` line. The header stands right after the prelude of the file (`<?xml …?>`, a shebang, a Python encoding line, `<!DOCTYPE>`, YAML front matter), wrapped in the comment of the file's language; the check does not look at the comment markers. @status:spec/done",
-      "line": 67,
+      "line": 68,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CARRIER-HEADER"
     },
     {
@@ -7992,7 +8001,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The carrier block ends at the `SPDX-License-Identifier` line: copyright lines are read only from the lines of the window up to and including it; everything below is file content, even when it looks like a copyright. The reason: the table header `| Path | Copyright | License | Source |` of the notices file matches the regular expression of a copyright line and without this rule would make an own file \"third-party\" (found by the reference run of 2026-09-06, `DECISION-LIC-HEADER-BLOCK`). @status:spec/done",
-      "line": 68,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-HEADER-BLOCK-ENDS-AT-SPDX"
     },
     {
@@ -8001,7 +8010,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A file that cannot carry a comment (JSON, CSV, `lock` files, a binary file — a file with a zero byte in its first 8 KiB, a file that is not UTF-8) carries a sidecar `<file name>.license` with the same lines without comment markers; when a sidecar is present the content of the file itself is not scanned. A file and its sidecar are an inseparable pair: they are copied, renamed and deleted together; a sidecar without its file is an error (`orphan sidecar`), and a binary file without a sidecar and without an annotation is an error. Metadata inside a binary (PNG `tEXt`, XMP, VERSIONINFO) is not a carrier and is not read. @status:spec/done",
-      "line": 69,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CARRIER-SIDECAR"
     },
     {
@@ -8010,7 +8019,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The source of a file's licence information is chosen in the REUSE order: (1) the sidecar; (2) a `REUSE.toml` annotation with `precedence = \"override\"`; (3) the header in the file (the window of 20 non-empty lines); (4) an annotation with `precedence = \"closest\"` (the default) or `\"aggregate\"`. A file with none of the four is the error `no licence carrier`. Edition 3 (2026-09-07): an annotation is a carrier in its own right for a file whose extension has no comment style in `LIC-COMMENT-STYLES` (`LIC-CARRIER-ANNOTATION`); for an extension that has a comment style the header stays mandatory, and an annotation does not replace it. Under `closest`/`aggregate` a disagreement between the header (or the sidecar) and the annotation is the error `carrier disagrees with annotation`. @status:spec/done",
-      "line": 70,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CARRIER-PRECEDENCE"
     },
     {
@@ -8019,7 +8028,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A file with no comment style (an image, a font, JSON, CSV, a binary file) counts as covered when an `[[annotations]]` annotation of a `REUSE.toml` registry (a nested one included, `LIC-REGISTRY-NESTED`) applies to it: a `.license` sidecar stays allowed for such files, but is not the only carrier. This is how a directory of hundreds of images is covered by one annotation over a mask instead of a hundred sidecars (owner decision of 2026-09-07). A file with a comment style, without a header and without a sidecar, is a `LICENSE-HEADER` error even when an annotation covers it: a source file must stay self-sufficient when a single file is copied. @status:spec/done",
-      "line": 71,
+      "line": 72,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CARRIER-ANNOTATION"
     },
     {
@@ -8028,7 +8037,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`license check` reads a `REUSE.toml` in **every** directory of the tree being checked (REUSE 3.3 allows a registry in a subdirectory); annotation paths are relative to the directory of their own registry. A file matched by annotations from several registries is assigned the annotation from the deepest directory, and at equal depth the first one in file order. This lets the own directory of a fork, whose root belongs to upstream, carry a registry of its own. @status:spec/done",
-      "line": 72,
+      "line": 73,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-REGISTRY-NESTED"
     },
     {
@@ -8037,7 +8046,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "An annotation whose `SPDX-FileComment` does not begin with `third-party;` is an **own** annotation: its `SPDX-FileCopyrightText` must name a holder from the `holders` of the policy, and its `SPDX-License-Identifier` must equal `ownLicense`; otherwise every covered file gets a `LICENSE-HEADER` error with the text `own annotation names a foreign holder or licence`. Third-party annotations follow `LIC-THIRD-PARTY-REGISTRY` unchanged. `SPDX-FileComment` is not mandatory on an own annotation. @status:spec/done",
-      "line": 73,
+      "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-ANNOTATION-OWN"
     },
     {
@@ -8046,7 +8055,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The search window is the first 20 non-empty lines; a header below the window does not count (`CRITICAL-CONSTRAINTS-LIVE-AT-THE-START-OR-END`). @status:spec/done",
-      "line": 74,
+      "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-HEADER-WINDOW"
     },
     {
@@ -8055,7 +8064,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Not marked up and not scanned: `LICENSE`, `COPYING*`, everything under `LICENSES/`, every `*.license`, `REUSE.toml`, the `.git` directory. A symbolic link anywhere in the package is a package error (`LICENSE-PACKAGE`). This is the same set that `reuse lint` ignores. @status:spec/done",
-      "line": 75,
+      "line": 76,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-UNSCANNED-SET"
     },
     {
@@ -8064,7 +8073,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A copyright line (modelled on reuse-tool; comment markers at the edges are allowed): `(SPDX-FileCopyrightText:\\s*)?(Copyright\\s*(\\(c\\)|©)?|©)\\s*(?<years>\\d{4}(\\s*[-,]\\s*\\d{4})*)?\\s+(?<holder>.+?)\\s*$` with the `u` flag; `holder` is stripped of trailing comment markers (`-->`, `*/`, `-*)`) and spaces. The year is the year the file was created (a range is allowed, it is not updated annually). A line of the form `Modifications Copyright (c) <year> <holder>` marks our own edits to a third-party file: it takes no part in the classification of the file. @status:spec/done",
-      "line": 76,
+      "line": 77,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-COPYRIGHT-REGEX"
     },
     {
@@ -8073,7 +8082,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The licence line: `SPDX-License-Identifier:\\s*(?<expr>[A-Za-z0-9.+\\-]+(\\s+(AND|OR|WITH)\\s+[A-Za-z0-9.+\\-]+)*)`; the expression is split into identifiers by `AND`/`OR`/`WITH`; every identifier must be in the SPDX list (`LIC-SPDX-ID-LIST`), otherwise an error with the text `not an SPDX identifier: …` (for `UPL`, `UPL 1.0`, `UPL1.0`, `upl-1.0` the text `the only valid form is UPL-1.0` is added). Two `SPDX-License-Identifier` lines in the window are an error. @status:spec/done",
-      "line": 77,
+      "line": 78,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-SPDX-REGEX"
     },
     {
@@ -8082,7 +8091,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "By the copyright lines of the block (without the `Modifications Copyright` lines): every holder from `holders` → an **own file**: a year is mandatory on every line and the expression must be exactly `ownLicense`. At least one holder outside `holders` → a **third-party file**: it must fall under a registry annotation (`LIC-THIRD-PARTY-REGISTRY`), otherwise the error `holder not in policy and no REUSE.toml annotation covers the file (typo in the holder, or an undeclared third-party file)`; the licence of the annotation must agree with the expression of the carrier; every identifier of the expression must be in `allowedThirdParty` (the exceptions after `WITH` — in `allowedExceptions`); `LicenseRef-*` and `NOASSERTION` are an error, \"even when the file has a banner\". Our copyright is never put on a third-party file; other parties' notices are never removed. @status:spec/done",
-      "line": 78,
+      "line": 79,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-FILE-CLASSIFICATION"
     },
     {
@@ -8091,7 +8100,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The check does **not** compare the header with a reference string as a whole: the year, the case of the markers, the spaces, the order of the lines, extra copyright lines and link lines all vary legitimately and do not affect the verdict. @status:spec/done",
-      "line": 79,
+      "line": 80,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NOT-A-TEMPLATE-MATCH"
     },
     {
@@ -8100,7 +8109,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The licence notice in the carrier of an own file is four lines: the copyright line, the English link to the UPL, the Russian link to the UPL, the `SPDX-License-Identifier` line (owner decision of 2026-09-06). The check requires only the first and the fourth, while the shipped package must carry all four in every own carrier and in `LICENSE` — `shippedStandards.test.ts` asserts this by substrings of both links; the Russian line is a notice, and where the two diverge the English text governs. @status:spec/done",
-      "line": 80,
+      "line": 81,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NOTICE-BILINGUAL"
     },
     {
@@ -8109,7 +8118,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The registry of third-party files is the package `REUSE.toml` (`version = 1`, optionally `SPDX-PackageName`, `SPDX-PackageSupplier`, `SPDX-PackageDownloadLocation`): every third-party file, besides its own carrier (the original header or a sidecar), falls under an `[[annotations]]` entry with `path` (a string or an array of REUSE globs: `*`, `**`), `precedence` (`closest` by default | `aggregate` | `override`), `SPDX-FileCopyrightText`, `SPDX-License-Identifier` and a mandatory `SPDX-FileComment` of the form `third-party; <URL, version/tag, sha256 for binaries>`. The annotation is the only source from which `THIRD-PARTY-NOTICES.md` is generated; an unknown key, `version ≠ 1`, an annotation without a copyright or without a licence — `LICENSE-PACKAGE`. Annotations may cover own files as well (REUSE semantics), but the shipped package does not use that: every scanned file of it resolves through a header or a sidecar (asserted by `shippedStandards.test.ts`) — the mandate \"every file carries licence information\". @status:spec/done",
-      "line": 81,
+      "line": 82,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-THIRD-PARTY-REGISTRY"
     },
     {
@@ -8118,7 +8127,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The package `vibe.toml` must contain the line `license = \"UPL-1.0\"` (regular expression `^license = \"(.*)\"$`, the value equal to `ownLicense`); otherwise `LICENSE-PACKAGE`. @status:spec/done",
-      "line": 82,
+      "line": 83,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-MANIFEST-FIELD"
     },
     {
@@ -8127,7 +8136,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`LICENSE`: the header is every line up to the first empty line, no fewer than two: line 1 is a copyright line with a holder from the policy, the rest are the English and the Russian links to the UPL; then an empty line; then the body — the text of UPL 1.0, equal to `LICENSES/UPL-1.0.txt` from its third line on (the first line of the SPDX file is a placeholder, the second is empty), compared by `LIC-TEXT-NORMALIZATION`. @status:spec/done",
-      "line": 83,
+      "line": 84,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-LICENSE-FILE-SHAPE"
     },
     {
@@ -8136,7 +8145,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`LICENSES/` contains exactly one `<SPDX-ID>.txt` file per identifier that occurs in the carriers of the package (the own licence and the licences of third-party files; `WITH` exceptions need no texts), and nothing beyond that: a missing text and an extra text are both `LICENSE-PACKAGE`. The text of `UPL-1.0.txt` is compared with the canonical one (`LIC-CANONICAL-TEXT-EMBEDDED`); the texts of other licences are taken verbatim from SPDX (`text/<ID>.txt`), and the check requires them to be present and non-empty — Codkit does not embed the canonical texts of other parties' licences (`LIC-OTHER-TEXTS-PRESENCE-ONLY`). @status:spec/done",
-      "line": 84,
+      "line": 85,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-LICENSES-DIR"
     },
     {
@@ -8145,7 +8154,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "For licences other than the own one, the presence and non-emptiness of `LICENSES/<ID>.txt` is checked, not its verbatimness: embedding the texts of every allowed licence into Codkit would be data nobody verifies; the verbatimness of another party's text is confirmed by `reuse download <ID>` when the file is added (`LIC-CHECK-CALLSITES`). @status:spec/done",
-      "line": 85,
+      "line": 86,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-OTHER-TEXTS-PRESENCE-ONLY"
     },
     {
@@ -8154,7 +8163,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The canonical text of UPL-1.0 — the file `text/UPL-1.0.txt` of the SPDX licence list (1837 bytes, sha256 `2f81e75033a0c872ab9725b36081e363f0c9e6c45585c35930edb66043fdc576`) — is embedded verbatim in `packages/codkit/src/lib/licenseTexts.ts` as a string constant; this is the only oracle for \"the licence text has not been changed\" (the acceptance \"a LICENSE with a changed word → 1\"). @status:spec/done",
-      "line": 86,
+      "line": 87,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CANONICAL-TEXT-EMBEDDED"
     },
     {
@@ -8163,7 +8172,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Normalization before licence texts are compared: the quotation marks `“ ” „ \"` and `‘ ’ '` are folded to the ASCII `\"` and `'`; any run of whitespace (line breaks included) becomes one space; leading and trailing spaces are dropped. The reason: the SPDX text carries typographic quotation marks in one place (`“Larger Work”`), while the line wrapping in `LICENSE` is editorial; the SPDX matching rules count such variants as equivalent. @status:spec/done",
-      "line": 87,
+      "line": 88,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-TEXT-NORMALIZATION"
     },
     {
@@ -8172,7 +8181,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`THIRD-PARTY-NOTICES.md` is generated by `codkit license notices` from the registry annotations whose holder is outside `holders`, in exactly this shape: the four-line notice header of the package in `<!-- -->`, the heading `# Third-party notices`, the paragraph `This package includes the following third-party components. Each keeps its own copyright notice and license; the license texts are in \\`LICENSES/\\`.` and the table `| Path | Copyright | License | Source |` with one row per annotation (`Path` — the annotation paths in backticks, comma-separated; `Source` — the `SPDX-FileComment` without the `third-party; ` prefix), the rows in the order of the annotations in the file. The file is not edited by hand: a divergence from the generated one is `LICENSE-THIRD-PARTY` (\"stale\"), its absence with a non-empty registry is `LICENSE-THIRD-PARTY`, and its presence with an empty registry is `LICENSE-PACKAGE`. @status:spec/done",
-      "line": 88,
+      "line": 89,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NOTICES-FILE"
     },
     {
@@ -8181,7 +8190,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The header templates are four lines, unchanged in substance for every own file (only the year and the comment markers vary). What each is for: the first is the notice of copyright (the word `Copyright`, the year, the name — the form accepted both by 17 U.S.C. §401 and by Art. 1271 of the Civil Code of the Russian Federation); the second is the \"reference to the UPL\", the minimal condition of the UPL itself in the wording Oracle uses; the third is the same reference in Russian (`LIC-NOTICE-BILINGUAL`); the fourth is the only thing scanners and SBOM tools understand. `All rights reserved` is not written. @status:spec/done",
-      "line": 90,
+      "line": 91,
       "uri": "spec://codkit/modules/codkit/PROP-014#lic-header-templates-lead"
     },
     {
@@ -8190,7 +8199,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Comment styles by extension for `license annotate` (a minimal set, extended only by editing this table and the code together): `#` — toml, yaml, yml, py, sh, bash, zsh, Dockerfile, Makefile, gitignore, gitattributes, editorconfig, properties, ini, conf, rb, pl, r, ps1; `//` — java, kt, kts, go, js, mjs, cjs, ts, tsx, jsx, c, h, cpp, hpp, cs, rs, swift, dart, scala, groovy, gradle, proto; `/* … */` — css, scss, less; `<!-- … -->` — md, html, htm, xml, xsl, xsd, svg, xhtml, vue; `--` — sql, lua, hs; `;` — clj, cljs, edn, lisp, el; `%` — tex, sty; `REM` — bat, cmd. Every other extension and every file without an extension takes a sidecar. TOML/YAML/JSON parsers drop comments, so any Codkit code that reads and rewrites such a file through a parser must either copy it byte for byte or insert the header again (`LIC-NEVER-REWRITE-THROUGH-A-PARSER`). @status:spec/done",
-      "line": 105,
+      "line": 106,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-COMMENT-STYLES"
     },
     {
@@ -8199,7 +8208,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "In an XML specification the header comment stands between `<?xml …?>` and the root element; vibe copies the file into `vibedeps` byte for byte (the comment is preserved), while the generated `STATIC` lane carries no comment — it is a cache, not a copy of the file, and it is not a carrier. @status:spec/done",
-      "line": 106,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-XML-HEADER-PLACEMENT"
     },
     {
@@ -8208,7 +8217,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The sidecar of the own file `codkit.png.license` (the same four lines without comment markers) and the sidecar of the third-party file `package.svg.license` (the holder and the licence of the original source, none of our lines; the `Source:` line is free text, ignored by the check, and people need it): @status:spec/done",
-      "line": 107,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-014#lic-sidecar-sample"
     },
     {
@@ -8217,7 +8226,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The `REUSE.toml` of the shipped package: @status:spec/done",
-      "line": 115,
+      "line": 116,
       "uri": "spec://codkit/modules/codkit/PROP-014#lic-reuse-toml-sample"
     },
     {
@@ -8226,7 +8235,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Never change the UPL text and never start a `LICENSE-ADDONS` with \"corrections\": a changed UPL is no longer the UPL. Additional permissions, should they be needed, go into a separate file that only widens the rights; other conditions mean a licence of our own, `LicenseRef-*`, named honestly. @status:spec/done",
-      "line": 127,
+      "line": 128,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NEVER-MODIFY-THE-UPL-TEXT"
     },
     {
@@ -8235,7 +8244,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Never put our copyright on a third-party file and never remove other parties' notices; our substantial edits go on a separate line `Modifications Copyright (c) <year> <holder>`, and the licence of the file stays the original one. @status:spec/done",
-      "line": 128,
+      "line": 129,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NEVER-CLAIM-A-THIRD-PARTY-FILE"
     },
     {
@@ -8244,7 +8253,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Never write `All rights reserved` in the headers of the package. @status:spec/done",
-      "line": 129,
+      "line": 130,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NEVER-WRITE-ALL-RIGHTS-RESERVED"
     },
     {
@@ -8253,7 +8262,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Never give `standards load` a flag that bypasses the check; the only way to \"allow\" a file is to mark it up and declare it by the rules, that is, to take responsibility for it. @status:spec/done",
-      "line": 130,
+      "line": 131,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NEVER-BYPASS"
     },
     {
@@ -8262,7 +8271,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Never rewrite a file of the package through a parser that loses comments: a copy is byte for byte; `annotate --third-party` **appends** an `[[annotations]]` entry at the end of `REUSE.toml` instead of reserializing it. @status:spec/done",
-      "line": 131,
+      "line": 132,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NEVER-REWRITE-THROUGH-A-PARSER"
     },
     {
@@ -8271,7 +8280,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Never edit `THIRD-PARTY-NOTICES.md` by hand — only `codkit license notices`. @status:spec/done",
-      "line": 132,
+      "line": 133,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NEVER-EDIT-NOTICES-BY-HAND"
     },
     {
@@ -8280,7 +8289,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Never create `lrgrwrks.txt` — the Larger Works mechanism of the UPL needs a separate owner decision. @status:spec/done",
-      "line": 133,
+      "line": 134,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NEVER-CREATE-LRGRWRKS"
     },
     {
@@ -8289,7 +8298,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "3. The check: the `license check` algorithm; the `annotate` and `notices` commands",
-      "line": 136,
+      "line": 137,
       "uri": "spec://codkit/modules/codkit/PROP-014#check"
     },
     {
@@ -8298,7 +8307,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The input is a package directory (by default the standards package in toolRoot). The steps: (1) load the policy and the SPDX list; (2) walk the directory recursively, with the paths sorted lexicographically by UTF-8 in POSIX form, excluding `.git`; a symbolic link is a `LICENSE-PACKAGE` error and the enumeration continues (every error, not the first); (3) read every `REUSE.toml` of the tree (`LIC-THIRD-PARTY-REGISTRY`, `LIC-REGISTRY-NESTED`; a parse error is `LICENSE-PACKAGE`); (4) exclude `LIC-UNSCANNED-SET`; (5) for every file choose the carrier by `LIC-CARRIER-PRECEDENCE`, taking `LIC-CARRIER-ANNOTATION` into account: binariness is a zero byte in the first 8 KiB; a file that cannot be decoded, or a file without a comment style that has neither a sidecar nor an annotation, is an error; (6) extract the copyright lines from the block (`LIC-HEADER-BLOCK-ENDS-AT-SPDX`) and the SPDX line of the carrier (for an annotation — its fields); the errors: no copyright line; two SPDX lines; an invalid identifier; (7) classify the file (`LIC-FILE-CLASSIFICATION`, `LIC-ANNOTATION-OWN`): own — a year and exactly `ownLicense`; third-party — an annotation, agreement of the licences, the allowlist, the ban on `LicenseRef-*`/`NOASSERTION`; (8) orphan sidecars: every `*.license` must have an owning file; (9) consistency of the package: `LIC-MANIFEST-FIELD`, `LIC-LICENSE-FILE-SHAPE`, `LIC-LICENSES-DIR`, `LIC-NOTICES-FILE`; (9a) for a directory that is not a vibe package (the runtime library, PROP-015 `RT-EVERY-FILE-CARRIES-THE-BANNER`) the call passes `packageShape: false`: step (9) and the notices check are skipped, and the file carriers are checked as usual; (10) the report `LIC-CHECK-REPORT` — every row of `checked[]` has a `carrier` field (`header` | `sidecar` | `annotation`) and the registry path for an annotation. The check writes nothing and runs no git. @status:spec/done",
-      "line": 137,
+      "line": 138,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CHECK-ALGORITHM"
     },
     {
@@ -8307,7 +8316,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Every problem is a separate line `error CK-E-LICENSE-HEADER: <path>: <reason>` (the carrier of a file), `error CK-E-LICENSE-THIRD-PARTY: <path>: <reason>` (a third-party file: undeclared, a licence outside the allowlist, a divergence from the annotation, `LicenseRef`/`NOASSERTION`; the notices absent or stale) or `error CK-E-LICENSE-PACKAGE: <path>: <reason>` (the package level) with a `hint`, then the total `N files checked, M problems`; under `--json` — `data: {dir, files, checked: [{path, carrier: \"header\"|\"sidecar\"|\"annotation\", kind: \"own\"|\"third-party\", license}], problems: [{code, file, message}], licences: {own: […], thirdParty: […]}, policy: {holders, ownLicense, allowedThirdParty}}`; the paths are relative to the package directory, with the POSIX separator. @status:spec/done",
-      "line": 138,
+      "line": 139,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CHECK-REPORT"
     },
     {
@@ -8316,7 +8325,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The codes: 0 — clean; 1 — there are problems; 2 — a startup error (the directory does not exist or is not a directory, the policy or the SPDX list is broken, a file is unreadable by permissions). @status:spec/done",
-      "line": 139,
+      "line": 140,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CHECK-EXIT-CODES"
     },
     {
@@ -8325,7 +8334,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The call sites: (1) the unit test `shippedStandards.test.ts` in `npm run floor` — the check of the shipped package, red on any problem (this is the CI of the package repository); (2) `codkit standards load` — the first action, before any write; (3) `codkit standards check` — on the installed copy; (4) a manual `codkit license check [<dir>]`. `reuse lint` (the pip package `reuse`) is an optional manual cross-check: on a clean package it must give a clean verdict, and `reuse download <ID>` is the source of the verbatim texts of other parties' licences; there is no runtime dependency on Python. @status:spec/done",
-      "line": 140,
+      "line": 141,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CHECK-CALLSITES"
     },
     {
@@ -8334,7 +8343,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The reference implementation of the algorithm is `tools/license-reference.py` (Python ≥ 3.11, `tomllib`) with the fixture oracle `tools/license-fixtures.py` (the cases S29 (a)–(s), one defect each on copies of a package of the same layout — synthetic in the tests, the shipped one in acceptance); the TypeScript implementation must give the same codes on the same fixtures — this is asserted by the differential test `licenseReference.test.ts`, which is skipped with an explicit reason when `python3` ≥ 3.11 is unavailable and never counts as passed when skipped. The reference run of 2026-09-06 on the shipped package: 11 files checked, 0 problems; 20 cases of the oracle (the clean package and 19 defects) — all with the expected verdict. @status:spec/done",
-      "line": 141,
+      "line": 142,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-REFERENCE-IMPLEMENTATION"
     },
     {
@@ -8343,7 +8352,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`codkit license annotate [--dir <package>] <paths…> [--dry-run] [--year <YYYY>] [--holder <name>]` gives an own file its carrier: a header in the comment style of its extension (`LIC-COMMENT-STYLES`), inserted right after the prelude, or a sidecar for binary and comment-less formats; four lines from the templates (the year — `--year`, the current one by default; the holder — `--holder`, the first of `holders` by default, and it must be in the policy). It is idempotent: a file whose carrier already resolves is `unchanged`, and a repeat run changes nothing (`git diff` is empty). A third-party file (`--third-party --holder <holder> --license <SPDX-ID> --source <text>`): a sidecar or a header with the other party's holder and licence (without our lines), the licence must be on the allowlist and in the SPDX list, and an `[[annotations]]` entry is appended at the end of `REUSE.toml` with `path` = the exact path, `precedence = \"closest\"`, `SPDX-FileCopyrightText`, `SPDX-License-Identifier`, `SPDX-FileComment = \"third-party; <source>\"` (a `REUSE.toml` that has no `version = 1` is created); the command does not download `LICENSES/<ID>.txt` — it prints the hint `reuse download <ID>` or manual copying of the verbatim SPDX text. The paths are inside `--dir` (default `.`), otherwise `CK-E-CONFIG`. `--dry-run` prints the plan without writing. The codes: 0; 1 (a file outside the directory, an unknown licence, a holder outside the policy without `--third-party`); 2 (the environment). @status:spec/done",
-      "line": 142,
+      "line": 143,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-ANNOTATE"
     },
     {
@@ -8352,7 +8361,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`codkit license notices [--dir <package>] [--dry-run]` generates `THIRD-PARTY-NOTICES.md` by `LIC-NOTICES-FILE` from the registry: with a non-empty registry it writes the file atomically (a byte-identical one is not rewritten, and `unchanged` is printed); with an empty registry the file is not created, and an existing one is deleted with a line printed (it is a generated artifact). `--dry-run` prints the result to stdout without writing. The codes: 0; 1 (`REUSE.toml` does not parse); 2 (the environment). @status:spec/done",
-      "line": 143,
+      "line": 144,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-NOTICES"
     },
     {
@@ -8361,7 +8370,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "4. The managed block of the product manifest",
-      "line": 145,
+      "line": 146,
       "uri": "spec://codkit/modules/codkit/PROP-014#manifest"
     },
     {
@@ -8370,7 +8379,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The canonical block is exactly these bytes (the version is substituted; the line breaks are LF): @status:spec/done",
-      "line": 146,
+      "line": 147,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-MANIFEST-BLOCK-FORM"
     },
     {
@@ -8379,7 +8388,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Codkit does not parse and does not reserialize the product `vibe.toml`: the block is found by a deterministic byte scan over whole marker lines (`# codkit:begin standards` / `# codkit:end standards`, with no trailing spaces), and everything outside the block belongs to someone else and is not touched by a single byte (`managed-blocks`: \"Own exactly one delimited block; never touch a byte outside it\"). A full table header `[requires.packages.\"org.vibevm.codkit/standards\"]` inside the block is valid at any position in the file — checked with `tomllib` on two consumer manifests of different shapes: one ending with a `[requires.packages]` table and one ending with a `[[registry]]` element (`DECISION-STD-MANIFEST-BLOCK`). @status:spec/done",
-      "line": 154,
+      "line": 155,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-MANIFEST-NO-TOML-PARSER"
     },
     {
@@ -8388,7 +8397,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The states: **absent** — not a single marker → the block is appended at the end of the file: when the last byte is not LF, an LF is added, then an empty line, then the block with a trailing LF; **present** — exactly one begin, exactly one end, begin before end → the bytes from the start of the begin line to the end of the end line inclusive are compared with the canonical block: equal — the file is not rewritten; different — they are replaced atomically (`writeContainedFileAtomic`); **malformed** — any other combination (one marker, a repeat, end before begin) → `CK-E-CONFIG`, exit 1, an exact report (the line numbers), nothing written; there is no auto-repair. @status:spec/done",
-      "line": 155,
+      "line": 156,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-MANIFEST-STATE-MACHINE"
     },
     {
@@ -8397,7 +8406,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A line containing `\"org.vibevm.codkit/standards\"` outside the block (a table of its own or an inline key in `[requires.packages]`) is `CK-E-CONFIG`, exit 1, with the line number and the hint \"remove your entry; the dependencies are kept by the codkit block\": a second table with the same name would break the TOML, and an inline key would state the version twice. @status:spec/done",
-      "line": 156,
+      "line": 157,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-MANIFEST-ENTRY-OUTSIDE-BLOCK"
     },
     {
@@ -8406,7 +8415,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`vibe.toml` must exist in patchesDir as a regular file (the contained reader), be UTF-8 without CR (a CR is `CK-E-CRLF`, exit 1) and contain the line `[project]` — otherwise `CK-E-CONFIG`, exit 2, hint \"run vibe init in the patch set first; codkit does not create vibevm projects\". @status:spec/done",
-      "line": 157,
+      "line": 158,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-MANIFEST-PRECONDITIONS"
     },
     {
@@ -8415,7 +8424,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The block opens a TOML table; keys a human appends after `# codkit:end standards` without a header `[…]` of their own land in the dependency table. `standards check` prints a warning (without a code) when there is a non-empty line that is not a comment between the end of the block and the next header; the product documentation (`13-standards.md`) names this rule. @status:spec/done",
-      "line": 158,
+      "line": 159,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-MANIFEST-TAIL-CAVEAT"
     },
     {
@@ -8424,7 +8433,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "4a. The file LICENSE-CODKIT.md",
-      "line": 161,
+      "line": 162,
       "uri": "spec://codkit/modules/codkit/PROP-014#notice"
     },
     {
@@ -8433,7 +8442,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Codkit ships the notice file `toolRoot/config/LICENSE-CODKIT.md` (owner decisions of 2026-09-06 and 2026-09-07): a heading; two scope paragraphs — English and Russian — **by paths** (`STD-NOTICE-SCOPE-BY-PATHS`); the managed components block (`STD-NOTICE-COMPONENTS-BLOCK`, empty in the shipped file); two paragraphs about the copies vibe builds (`STD-NOTICE-VIBE-COPIES`); the four notice lines (the copyright, the English and the Russian links; there is no SPDX line — the file is a notice, not a carrier for the check) and the text of UPL 1.0 (the body after the first empty line following the notice equals the canonical text by `LIC-TEXT-NORMALIZATION`; asserted by `shippedStandards.test.ts`). The file is part of `files` through `config`. @status:spec/done",
-      "line": 162,
+      "line": 163,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-FILE"
     },
     {
@@ -8442,7 +8451,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The copies of the notice live in two roots of the product repository: `<patchesDir>/LICENSE-CODKIT.md` and `<patchesDir>/delta/own/codkit/LICENSE-CODKIT.md` (the directories are created when absent; the path under the `codkit/` prefix — `DECISION-STD-NOTICE-UNDER-PREFIX`). Both delivering commands — `standards load` and `runtime load` (PROP-015 §4) — write each copy as a render of the template with the components block computed for this product (`STD-LOAD-STEP-WRITE-NOTICE`). The states of a copy are `absent` / `identical` (equal to the render) / `drift`; `drift` is `CK-E-STANDARDS-DRIFT` with the path and the hint `delete the copy and run codkit standards load`; `--dry-run` shows both copies in the plan; `standards check` and `runtime check` check both. @status:spec/done",
-      "line": 163,
+      "line": 164,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-TARGETS"
     },
     {
@@ -8451,7 +8460,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The scope of the notice is set **by paths**, not by listing the components in prose: everything Codkit delivers into a product lies only under the declared prefixes — `vibevm/vibepacks/org.vibevm.codkit/**` and its projection `vibevm/vibedeps/org.vibevm.codkit.*/**` (the packages), `delta/own/codkit/**` (the runtime library and the copy of the notice; `codkit load` materializes it into `src/vs/<ownDirName>/codkit/**` of the fork tree), and the single file `LICENSE-CODKIT.md` in the product root. The paragraphs of the notice name these prefixes and say that outside them the notice licenses nothing, and that the lines in the marked managed blocks of the product files (`vibe.toml`, `vibevm/scrape/contract.toml`) are generated configuration, not licensed material. Three rules keep the claim by paths true, and `verify` checks them: Codkit writes only under the prefixes, the root notice and the marked blocks; the product does not place its own files under the prefixes (PROP-005 `OWN-CODKIT-PREFIX-RESERVED`); what is installed changes only as a whole, by version. The licence carriers in the files (headers, sidecars, annotations) remain: the path says what here belongs to Codkit, the carrier makes a single file self-sufficient. @status:spec/done",
-      "line": 164,
+      "line": 165,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-SCOPE-BY-PATHS"
     },
     {
@@ -8460,7 +8469,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The notice carries a managed block between the lines `<!-- codkit:begin components -->` and `<!-- codkit:end components -->`; inside it there is one line per installed component: `<name>  <version>  <path>/` (for example `standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/`, `runtime-vscode  1.0.0  delta/own/codkit/`), sorted by name. The block is computed from what stands in the product: the directories `vibevm/vibepacks/org.vibevm.codkit/<name>/v*/` (every version present, each on its own line) and the version literal of `delta/own/codkit/common/version.ts` (PROP-015 `RT-VERSION-LITERAL`). A package names itself by its directory; the runtime library cannot, because the directory it is installed in is the same `delta/own/codkit/` whatever type delivered it (`RT-DIRECTORY-IS-CODKIT`), so the name it is listed under is the identifier of the runtime package the project type delivers (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-RUNTIME`) — `runtime` until the runtime became a package of the type. A type with no runtime library lists no runtime component. Both delivering commands rewrite the block every time; `check` compares the copy with a fresh render, so `standards check` and `runtime check` give one result. The shipped template carries an empty block. @status:spec/done",
-      "line": 165,
+      "line": 166,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-COMPONENTS-BLOCK"
     },
     {
@@ -8469,7 +8478,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Separate paragraphs (EN and RU) permit explicitly: `vibe install` compiles the snippets of the package into the generated files of the boot lane (`vibevm/vibespecs/boot/STATIC.*`, `INDEX.md`), builds the projection of the package under `vibevm/vibedeps/` and may convert files (`README.md` → `README.xml`); these files are copies and derivative works of the package permitted by the licence; the reference to the UPL for them is vibe's provenance comment naming the package, together with the notice itself; the repository owner has no other obligation in connection with them. This is a statement of the holder that removes a doubt where the UPL permits anyway (owner decision of 2026-09-07). @status:spec/done",
-      "line": 166,
+      "line": 167,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-VIBE-COPIES"
     },
     {
@@ -8478,7 +8487,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The copy at the legacy path of edition 2, `delta/own/LICENSE-CODKIT.md`: both delivering commands remove it after writing the copy under the prefix and print `moved`; when it is present, `check` prints `legacy-copy` (a warning, not a finding); the name `LICENSE-CODKIT.md` stays in the set of files delivered by Codkit (PROP-005 `OWN-DELIVERED-BY-CODKIT`) so that the legacy copy does not give a false `OWN-UNCOVERED`. @status:spec/done",
-      "line": 167,
+      "line": 168,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-LEGACY-COPY"
     },
     {
@@ -8487,7 +8496,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Besides the template and the recommendations, `codkit standards license` prints a ready `[[annotations]]` entry for the product's own `REUSE.toml`: `path` with the four paths of the scope (`LICENSE-CODKIT.md`, `vibevm/vibepacks/org.vibevm.codkit/**`, `vibevm/vibedeps/org.vibevm.codkit.*/**`, `delta/own/codkit/**`), `precedence = \"aggregate\"`, `SPDX-FileCopyrightText` with the holder from the Codkit policy, `SPDX-License-Identifier = \"UPL-1.0\"`, `SPDX-FileComment = \"third-party; delivered by Codkit, see LICENSE-CODKIT.md\"`. The product adds the entry at its own wish (`REUSE-TOML-FOLLOWS-THE-SAME-RULE`); Codkit does not write the product's `REUSE.toml`. `--json`: `data.reuseAnnotation`. @status:spec/done",
-      "line": 168,
+      "line": 169,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LICENSE-PRINTS-REUSE-ROWS"
     },
     {
@@ -8496,7 +8505,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`delta/own/LICENSE-CODKIT.md` is a delivered own file: `load` copies it into `src/vs/<ownDirName>/LICENSE-CODKIT.md` of the tree, `save` mirrors it back, `ci` commits it into the own commit of its generated branch — like any own file (`isDeliveredOwnFile` does not change). Two exceptions: (1) unit coverage — the name `LICENSE-CODKIT.md` is in the \"not own code\" set of the manifest (`NOT_OWN_CODE` in `layers/ownManifest.ts`, next to `patchset.delta.json` and `.gitkeep`), and `verify` requires neither a unit nor a manifest entry for it (PROP-005 §3 `OWN-MANIFEST`, a refinement of campaign STANDARDS); (2) the release branch — `STD-NOTICE-RELEASE-EXCLUSION`. In everything else `verify`, `load`, `save` and `cycle` do not tell it apart. @status:spec/done",
-      "line": 169,
+      "line": 170,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-IS-A-DELIVERED-OWN-FILE"
     },
     {
@@ -8505,7 +8514,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The release branch of the fork that `codkit publish` builds (PROP-007 §18 `PUBLISH-GENERATED-ORDER`, step (2) — the own commit) does **not** carry `src/vs/<ownDirName>/LICENSE-CODKIT.md`: the own snapshot of a publication is built by the predicate \"a delivered own file, except `LICENSE-CODKIT.md`\". Only `publish`: the generated `ci` branch (any profile), the cycle branch and the dev tree after `load` carry the file as usual — they are working trees, not a release. The predicate is one for the three functions of `generatedBranch.ts` (`assertGeneratedTargetOwnership`, `generatedHistoryFingerprint`, `appendGeneratedOwnCommit`) and is switched on by the option `omitLicenceNotice`, which `buildGeneratedTip` receives from `publish` and from nobody else; with the option on, the history fingerprint (`GENERATED-HISTORY-FINGERPRINT`) includes the marker `omit-licence-notice`, so that the `ci` tip and the `publish` tip never share a fingerprint. An own snapshot consisting of the notice alone is empty at publication — the own commit is skipped, the way any empty layer is skipped. @status:spec/done",
-      "line": 170,
+      "line": 171,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-RELEASE-EXCLUSION"
     },
     {
@@ -8514,7 +8523,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The links to the file — from the product README, from a patch-set intervention in the fork's README — are placed by the product owner deliberately and at their own wish; Codkit does not edit a README. Codkit prints the text of the file and the recommendations: at install time (`STD-LOAD-NOTICE-PRINT`) and by `codkit standards license` (PROP-007 §24 `CMD-STANDARDS-LICENSE`); the rows of the scrape contract Codkit keeps in the product contract itself (`STD-SCRAPE-CONTRACT-ROWS`). @status:spec/done",
-      "line": 171,
+      "line": 172,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-LINKS-ARE-THE-PRODUCTS-CHOICE"
     },
     {
@@ -8523,7 +8532,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A clean export of the product repository is made by `vibe scrape` (PROP-056 of vibevm) by the product contract `vibevm/scrape/contract.toml`; so that the export does not carry the Codkit notice, the contract holds a `[[classify]]` row of kind delete with `patterns = [\"LICENSE-CODKIT.md\", \"delta/own/LICENSE-CODKIT.md\", \"delta/own/codkit/LICENSE-CODKIT.md\"]` (the legacy path of edition 2 stays in the list — an export is cleaned of old copies as well), `owner = \"vibe\"` (the only owner value for delete in schema 1), `proof = \"contract-assertion-v1\"`, `modified = \"delete\"`, `require_match = false`, and an `[[assert]]` row of kind `paths-absent-v1` with the same paths. **Codkit keeps these rows in the product contract itself** — in the managed block `STD-SCRAPE-BLOCK-FORM` on every `standards load`, because a product may have a contract of its own and a human will forget the rows (owner decision of 2026-09-06, `DECISION-STD-SCRAPE-ROWS`). Codkit does not create a contract from scratch (the schema requires the product's health checks): when the file is absent — `STD-SCRAPE-NO-CONTRACT`. A contract at a non-standard path (`vibe scrape --contract`) is unknown to Codkit — for it the rows are printed by `codkit standards license`. @status:spec/done",
-      "line": 172,
+      "line": 173,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SCRAPE-CONTRACT-ROWS"
     },
     {
@@ -8532,7 +8541,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The canonical block in `vibevm/scrape/contract.toml` is exactly these bytes (LF): @status:spec/done",
-      "line": 173,
+      "line": 174,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SCRAPE-BLOCK-FORM"
     },
     {
@@ -8541,7 +8550,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The same state machine as the manifest block (`STD-MANIFEST-STATE-MACHINE`), with the markers `# codkit:begin scrape` / `# codkit:end scrape`: **absent** → the block is appended at the end of the file (LF normalization, an empty line, the block with a trailing LF — `[[classify]]` and `[[assert]]` elements at the end of the file after any table are valid, checked with `tomllib` and `vibe scrape contract check`, `STD-SCRAPE-VERIFIED`); **present** — equal to the canonical one → the file is not rewritten, different → the replacement happens only inside the block; **malformed** → `CK-E-CONFIG`, exit 1, the line numbers, nothing written. A file with a CR is `CK-E-CRLF`. Both blocks — the manifest one and the contract one — are implemented by one module `managedBlock.ts` with parameters (the marker names, the canonical text, the \"needles\" for finding foreign entries). @status:spec/done",
-      "line": 190,
+      "line": 191,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SCRAPE-STATE-MACHINE"
     },
     {
@@ -8550,7 +8559,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A line outside the block that is not a comment (after trimming the spaces it does not begin with `#`) and contains any of the needles `remove-codkit-licence-notice`, `codkit-licence-notice-absent` or `LICENSE-CODKIT.md` is `CK-E-CONFIG`, exit 1, with the line number and the hint \"the scrape rows for the codkit licence notice are kept by codkit inside its block; remove your row\": a second row with the same id breaks the schema (ids are unique), and a row of your own with the same path gives a conflict in the classification lattice (keep shadows delete) — Codkit does not parse the contract and does not guess which one would win. @status:spec/done",
-      "line": 191,
+      "line": 192,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SCRAPE-ENTRY-OUTSIDE-BLOCK"
     },
     {
@@ -8559,7 +8568,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The file `vibevm/scrape/contract.toml` is absent → `standards load` writes nothing, prints `scrape contract: none - run vibe scrape contract init, then codkit standards load again to record the licence-notice rows` and continues (exit 0); `data.scrape.action = \"no-contract\"`. In this state `standards check` prints the same as information and does not change its exit code because of it: the absence of a contract is a state of the product, not a defect of the installation. @status:spec/done",
-      "line": 192,
+      "line": 193,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SCRAPE-NO-CONTRACT"
     },
     {
@@ -8568,7 +8577,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Checked on 2026-09-06 (`vibe 1.0.0`, Linux): after `vibe scrape contract init` the block `STD-SCRAPE-BLOCK-FORM`, appended at the end of the contract (the file ends with a `[[healthcheck]]` element), parses with `tomllib` (the `classify` ids: `remove-vibevm`, `remove-vibe-state`, `remove-codkit-licence-notice`; the `assert` ids: `vibe-paths-absent`, `codkit-licence-notice-absent`), while `vibe scrape contract check` shows both copies of `LICENSE-CODKIT.md` with the disposition `delete-unknown`, `rule_ids: [\"remove-codkit-licence-notice\"]`, and registers the assert; not one finding names our rows — the blockers belong to the default rows of the contract (`modified = \"refuse\"` on `vibe.toml` and on the contract itself), to the product's health check and to `scrape-platform-unsupported` (the mutation in epoch 1 is Windows only). @status:spec/done",
-      "line": 193,
+      "line": 194,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-SCRAPE-VERIFIED"
     },
     {
@@ -8577,7 +8586,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "At install time `standards load` prints, after the licence note, a block of recommendations (the heading `licence notice file:`; where the two copies live; that they are not edited; that the links to the file are the owner's choice, from the product README and from an intervention in the fork's README; that Codkit keeps the scrape contract rows in `vibevm/scrape/contract.toml` itself, and what to do when there is no contract; that the full text of the file and the rows are printed by `codkit standards license`). The full text of the file is printed in the same run only when at least one copy was created; on `up to date` — the recommendations only. Under `--json` — `data.noticeFiles: [{path, action}]`, `data.recommendations: [...]`, and `data.noticeText` only on creation. @status:spec/done",
-      "line": 194,
+      "line": 195,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-NOTICE-PRINT"
     },
     {
@@ -8586,7 +8595,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "5. The `standards load` algorithm",
-      "line": 196,
+      "line": 197,
       "uri": "spec://codkit/modules/codkit/PROP-014#load"
     },
     {
@@ -8595,7 +8604,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Find the package (`STD-PACKAGE-LOCATION`); under the build condition `codkit-test` the variable `CODKIT_TEST_STANDARDS_SOURCE=<directory>` substitutes the location of the package (the test build only, modelled on `CODKIT_TEST_SAVE_REPLAY_CRASH_AT`). @status:spec/done",
-      "line": 198,
+      "line": 199,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-SOURCE"
     },
     {
@@ -8604,7 +8613,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Run `LIC-CHECK-ALGORITHM` on the package; any problem → the full report, exit 1, **not one write** into patchesDir. This is the first action after the policy is read. @status:spec/done",
-      "line": 199,
+      "line": 200,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-LICENSE-GATE"
     },
     {
@@ -8613,7 +8622,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Check `STD-MANIFEST-PRECONDITIONS`, classify the manifest block (`STD-MANIFEST-STATE-MACHINE`), check `STD-MANIFEST-ENTRY-OUTSIDE-BLOCK`; when `vibevm/scrape/contract.toml` exists — classify the scrape block (`STD-SCRAPE-STATE-MACHINE`) and check `STD-SCRAPE-ENTRY-OUTSIDE-BLOCK`; a refusal comes before any write. @status:spec/done",
-      "line": 200,
+      "line": 201,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-MANIFEST-PRECHECK"
     },
     {
@@ -8622,7 +8631,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Classify the target `patchesDir/vibevm/vibepacks/org.vibevm.codkit/standards/v<version>/`: **absent**; **identical** — the same set of relative paths and the same bytes in every file (a symbolic link in the target is drift); **drift** — otherwise, with the list of `modified` / `extra` / `missing` paths. Classify both copies of `LICENSE-CODKIT.md` (`STD-NOTICE-TARGETS`) the same way: `absent` / `identical` / `drift`. The `.codkit-load-*` directories under `standards/` are unfinished Codkit runs: they are removed recursively before the classification, and each one is printed. Other `v*` directories are listed as `otherVersions` and are not touched. @status:spec/done",
-      "line": 201,
+      "line": 202,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-TARGET-STATE"
     },
     {
@@ -8631,7 +8640,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**drift** of the package or of any `LICENSE-CODKIT.md` copy → `CK-E-STANDARDS-DRIFT`, exit 1, the list of paths with their class, the hint \"the installed standards package and the LICENSE-CODKIT.md copies are codkit-owned: move local edits into your own specs, delete <directory/file> and run codkit standards load again\"; nothing is written and the manifest block is untouched. @status:spec/done",
-      "line": 202,
+      "line": 203,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-DRIFT-REFUSAL"
     },
     {
@@ -8640,7 +8649,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`--dry-run` gives the same plan (the files: create/unchanged; the manifest: append/update/unchanged; otherVersions; the `.codkit-load-*` to be removed) and the same exit code a real run would give, without a single write and without removing the temporary directories. @status:spec/done",
-      "line": 203,
+      "line": 204,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-DRY-RUN"
     },
     {
@@ -8649,7 +8658,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**absent** → create the temporary directory `patchesDir/vibevm/vibepacks/org.vibevm.codkit/standards/.codkit-load-<pid>-<random suffix>/` (the parent directories must be real directories, a symlink component is a refusal, as with the administrative directories of PROP-002), write every file of the package byte for byte with an atomic write, then rename the directory to `v<version>` (atomically within the parent; the target must not exist — it appeared between the check and the rename → a repeated classification: identical — the temporary directory is removed, otherwise `CK-E-STANDARDS-DRIFT`). **identical** → no file is written. @status:spec/done",
-      "line": 204,
+      "line": 205,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-WRITE-FILES"
     },
     {
@@ -8658,7 +8667,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Write the notice into both roots (`STD-NOTICE-TARGETS`) with an atomic write: the text is a render of the shipped template with the components block computed for this product **after** the package or the library has been written (`STD-NOTICE-COMPONENTS-BLOCK`); a copy already equal to the render is not rewritten; a copy that differs from the render only in the content of the block (another version of a component) is rewritten — that is not drift; any other difference is `drift`, refused earlier. Then remove the legacy copy `delta/own/LICENSE-CODKIT.md` when there is one (`STD-NOTICE-LEGACY-COPY`). The step is shared by `standards load` and `runtime load` (the function `writeNoticeCopies`). @status:spec/done",
-      "line": 205,
+      "line": 206,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-WRITE-NOTICE"
     },
     {
@@ -8667,7 +8676,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Write the manifest block by `STD-MANIFEST-STATE-MACHINE`; a file whose result is byte-identical to the original is not rewritten. @status:spec/done",
-      "line": 206,
+      "line": 207,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-WRITE-MANIFEST"
     },
     {
@@ -8676,7 +8685,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Write the scrape contract block by `STD-SCRAPE-STATE-MACHINE` (the prechecks `STD-SCRAPE-ENTRY-OUTSIDE-BLOCK` and malformed run at the step `STD-LOAD-STEP-MANIFEST-PRECHECK` together with the manifest — a refusal comes before any write); when there is no contract — `STD-SCRAPE-NO-CONTRACT`. @status:spec/done",
-      "line": 207,
+      "line": 208,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-WRITE-SCRAPE"
     },
     {
@@ -8685,7 +8694,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The summary: the package `(group, name, version)`, the source, the target, the files (`created`/`unchanged`), the copies of the notice (`created`/`unchanged`), the manifest (`appended`/`updated`/`unchanged`), the scrape contract (`appended`/`updated`/`unchanged`/`no-contract`), `otherVersions`, the licence line of the package (`licences loaded: UPL-1.0 (own, N files); MIT (third-party, M files); notices: THIRD-PARTY-NOTICES.md` — from the `LIC-CHECK-REPORT` report), the next command `vibe install --offline` (Codkit does not invoke vibe — `DECISION-STD-NO-VIBE-INVOCATION`); `--json`: `data: {package:{group,name,version}, source, target, files:{created,unchanged}, noticeFiles:[{path, action}], manifest:{path, action}, scrape:{path, action}, otherVersions:[…], removedScratch:[…], licences:{own, thirdParty, notices}, next:\"vibe install --offline\", notes:[…], recommendations:[…], noticeText?}`. @status:spec/done",
-      "line": 208,
+      "line": 209,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-STEP-REPORT"
     },
     {
@@ -8694,7 +8703,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "After the summary — on any outcome with exit 0, `up to date` and `--dry-run` included — the command prints a fixed licence note (owner decision of 2026-09-06: «вывести про это чёткую рекомендацию в консоли»), four lines, verbatim: `licence note: the package under vibevm/vibepacks/org.vibevm.codkit/standards/ carries its own LICENSE and REUSE.toml; they describe the package only.` / `licence note: this repository's own licence file is untouched and is never copied anywhere by codkit.` / `licence note: the fork tree's licence files and the product.json licence fields are upstream files - change them with a delta artifact in this patch set, never by hand.` / `licence note: a REUSE.toml for the fork tree is a delta artifact too.` Under `--json` the same lines are `data.notes: [...]`; in `messages` their level is `info`. @status:spec/done",
-      "line": 209,
+      "line": 210,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-LICENCE-NOTE"
     },
     {
@@ -8703,7 +8712,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Every package the patch set is due in one run** — the universal set plus the packages its project type names (`STD-SHIPPED-PACKAGES`, `STD-PACKAGES-OF-THE-TYPE`): the steps of the source, the licence gate, the classification of the target and the write run for every package in turn, in the order of the names; a refusal of any package before the first write stops the whole run with nothing written; the managed block of `vibe.toml` is one, between the same markers, with one `[requires.packages.\"org.vibevm.codkit/<name>\"]` table per package (the needle for a foreign entry is taken per name); the summary is per package; the `next:` lines are `vibe install --offline`, then `vibe skill install` when at least one delivered package declares a `[[skill]]`. @status:spec/done",
-      "line": 211,
+      "line": 212,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-ALL-PACKAGES"
     },
     {
@@ -8712,7 +8721,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`codkit standards load --upgrade` — when the target is in the `drift` state (or when another version of the same package is installed) it replaces the package directory as a whole on the explicit flag: the plan lists the `replace`/`remove` paths, the write goes through a temporary directory and a rename, and the copies of the notice and the manifest block are updated as in an ordinary delivery; without the flag `drift` stays a `CK-E-STANDARDS-DRIFT` refusal with the hint \"run codkit standards load --upgrade to take the shipped copy, or move your edits out\". A version directory of the same package other than the shipped one is **removed** by `--upgrade` and named in the plan as `<parent>/v<version>/` under `remove`, and in the report under `removedVersions`; a run without the flag keeps it and only lists it as `otherVersions`, so the move of the packages to the development version 1.0.0 (`DEV-VERSION-IS-1-0-0`) leaves `v0.2.0` and `v0.1.0` standing in a product until `--upgrade` is given. The form and the semantics are those of `runtime load --upgrade` (PROP-015 `RT-LOAD-UPGRADE`). @status:spec/done",
-      "line": 212,
+      "line": 213,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-UPGRADE"
     },
     {
@@ -8721,7 +8730,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "A repeat run after a success is a no-op: `identical` plus the block `unchanged`, `up to date` printed, exit 0, not one byte changed (the sha256 of the files before and after are compared). An interruption leaves either the temporary directory `.codkit-load-*` (removed by the next run) or a finished `v<version>` without the block (the next run appends the block) — the next command recognizes both states. @status:spec/done",
-      "line": 213,
+      "line": 214,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-IDEMPOTENT"
     },
     {
@@ -8730,7 +8739,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "The command needs patchesDir and `codkit.json` (`configMode: 'load'`), and nothing else: the fork tree is neither required nor read, and the tree lock is not taken. The configuration is read for exactly one answer — the project type, and therefore which packages this patch set is due (`STD-PACKAGES-OF-THE-TYPE`) — so a patch set with no configuration is `CK-E-CONFIG` saying there is no project type to ask, exit 2, with nothing written; `standards check` refuses the same way, and `standards license` still needs no root at all. Under `--ci` the command is allowed (there is no network). Until the split of the packages per type the command read no configuration at all, and a patch set could load the standards before declaring what it forks. @status:spec/done",
-      "line": 214,
+      "line": 215,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LOAD-ROOTS"
     },
     {
@@ -8739,7 +8748,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "6. The `standards check` algorithm",
-      "line": 216,
+      "line": 217,
       "uri": "spec://codkit/modules/codkit/PROP-014#std-check"
     },
     {
@@ -8748,7 +8757,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "Read-only, **for every package the patch set is due** (`STD-SHIPPED-PACKAGES`, `STD-PACKAGES-OF-THE-TYPE`): (1) the state of the target by `STD-LOAD-STEP-TARGET-STATE` — `absent` / `identical` / `drift` with the list; (2) `LIC-CHECK-ALGORITHM` on the installed copy when there is one; (3) the state of both `LICENSE-CODKIT.md` copies against the render with the current components block (`STD-NOTICE-TARGETS`), plus `legacy-copy` for the legacy path; (4) the state of the manifest block — `absent` / `current` (equal to the canonical one for the version of the package) / `stale` (present but different — another version, for example) / `malformed` / `entry-outside-block`; (5) the state of the scrape contract block — `no-contract` (information, not a finding) / `absent` / `current` / `stale` / `malformed` / `entry-outside-block`; (6) `STD-MANIFEST-TAIL-CAVEAT`; (7) `otherVersions`. Exit 0 only when the package and both copies are `identical`, the licence check is clean, the manifest is `current` and the scrape block is `current` or `no-contract`; 1 otherwise, every finding on its own line (`CK-E-STANDARDS-DRIFT` for the target and the copies, `CK-E-LICENSE-*` for the copy of the package, `CK-E-CONFIG` for both blocks, the hint \"run codkit standards load\"; for a notice copy in the drift state the hint is \"delete the copy and run codkit standards load\"); 2 — the environment. `--json`: `data: {target:{state, paths}, license:{problems}, noticeFiles:[{path, state}], manifest:{state, path}, scrape:{state, path}, otherVersions}`. @status:spec/done",
-      "line": 217,
+      "line": 218,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-CHECK-ALGORITHM"
     },
     {
@@ -8757,7 +8766,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "7. Components",
-      "line": 219,
+      "line": 220,
       "uri": "spec://codkit/modules/codkit/PROP-014#components"
     },
     {
@@ -8766,34 +8775,34 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "`CommandDefinition` gains the field `roots?: 'patches' | 'none'` (default `'patches'`): `main.ts` requires patchesDir only under `'patches'`; `where` and `license check` declare `'none'` — the earlier check by the name `'where'` is replaced by this field. @status:spec/done",
-      "line": 239,
+      "line": 240,
       "uri": "spec://codkit/modules/codkit/PROP-014#COMP-ROOTS-NONE"
     },
     {
       "anchor": "decisions",
-      "content_hash": "sha256:3218b46b9ffe5cd0cc5267c9f13179ec2b7c1ca17662352923306bf8bab49484",
+      "content_hash": "sha256:5e54f6723af45eb43423aa141840015854406569b450f74a57bfb5e589ac23e1",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "8. Decisions",
-      "line": 241,
+      "line": 242,
       "uri": "spec://codkit/modules/codkit/PROP-014#decisions"
     },
     {
       "anchor": "DECISION-STD-MUTABLE-EDITION",
-      "content_hash": "sha256:f7b16d3f6bc3eebfe7658514f67606a0675d4678e58bc6ffb4186e2ca82f5dde",
+      "content_hash": "sha256:5e944c0b4a4ae3ef08c82078901b7019614fa73e82cf1bd122621ef5f1262540",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "**Decision:** until an explicit word from the owner, the standards edition and the version of the runtime library are **mutable**: the content is extended in place under the same version number, the way the package manager itself does with its own packages at version 1.0.0 during development. **Why:** the owner ruling of 2026-09-07 («пока также следовать этой практике; когда нужно будет вернуться к честному перевыпуску — скажу явно»); a re-release for every change to young standards is version noise with no benefit. **Mechanics:** an installed copy whose bytes differ from the shipped ones is still `drift` for `standards check` (by the bytes the tool cannot tell an edit of the product from an update of the tool); `codkit standards load --upgrade` replaces the package directory as a whole on the explicit flag, like `runtime load --upgrade` (`STD-LOAD-UPGRADE`); then `vibe install --offline --force` rebuilds the projection. **Considered and rejected:** a silent replacement on `load` (loses the product's edits without a word); a forced version bump (contradicts the ruling). **The number:** owner ruling of 2026-09-08 fixed it at **1.0.0** for every package the tool ships - the standards edition, the agent skills and the runtime library - so the mutable content lives under one number instead of a number left over from the last honest release (`DEV-VERSION-IS-1-0-0` in the conventions; the directories `standards/v0.2.0`, `agent-skills/v0.1.0` and `runtime/v0.1.1` moved to `v1.0.0` with no change of content). **When to revisit:** an explicit instruction from the owner to bring re-releases back — then `THE-SET-IS-AN-EDITION` applies literally and `--upgrade` stays only for a change of version. @status:spec/plan",
-      "line": 242,
+      "heading": "**Decision:** until an explicit word from the owner, the standards edition and the version of the runtime library are **mutable**: the content is extended in place under the same version number, the way the package manager itself does with its own packages at version 1.0.0 during development. **Why:** the owner ruling of 2026-09-07 («пока также следовать этой практике; когда нужно будет вернуться к честному перевыпуску — скажу явно»); a re-release for every change to young standards is version noise with no benefit. **Mechanics:** an installed copy whose bytes differ from the shipped ones is still `drift` for `standards check` (by the bytes the tool cannot tell an edit of the product from an update of the tool); `codkit standards load --upgrade` replaces the package directory as a whole on the explicit flag, like `runtime load --upgrade` (`STD-LOAD-UPGRADE`); then `vibe install --offline --force` rebuilds the projection. **Considered and rejected:** a silent replacement on `load` (loses the product's edits without a word); a forced version bump (contradicts the ruling). **The number:** owner ruling of 2026-09-08 fixed it at **1.0.0** for every package the tool ships - the standards edition, the agent skills and the runtime library - so the mutable content lives under one number instead of a number left over from the last honest release (`DEV-VERSION-IS-1-0-0` in the conventions; the directories `standards/v0.2.0`, `agent-skills/v0.1.0` and `runtime/v0.1.1` moved to `v1.0.0` with no change of content). **When to revisit:** an explicit instruction from the owner to bring re-releases back — then `THE-SET-IS-AN-EDITION` applies literally and `--upgrade` stays only for a change of version. @status:spec/done",
+      "line": 243,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-MUTABLE-EDITION"
     },
     {
       "anchor": "DECISION-STD-SKILLS-PACKAGE",
-      "content_hash": "sha256:5bbd05846e18899fe2107d70da1ef11890267c20a603fcbf68c43cddeba09f88",
+      "content_hash": "sha256:ce8e5f98ff6eeabf8fe87a9fd8309cac40c0cfdecb27ba6d1ae4c9e1d114cd65",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "**Decision:** the agent skills are a separate package `agent-skills` with `[[skill]]`, delivered by the same `standards load` and projected by `vibe skill install`; `packages/codkit/claude/skills/` is abolished. **Why:** VibeVM can already project skills into every harness (PROP-018 §2.6, `vibe skill list|install`), while a hand-written profile for one harness is a second source of the same procedure; the version of a norm must not change because a procedure was edited. **Considered and rejected:** the skills inside the standards package; a separate command `codkit skills load`; keeping `packages/codkit/claude/skills/` as the source and generating the package from it (the source must live where `vibe` reads it). **When to revisit:** VibeVM learns to project subagents/hooks (then `agents/` and `rules/` move into the package as well), or the `package` phase of the lifecycle becomes `impl`. @status:spec/plan",
-      "line": 243,
+      "heading": "**Decision:** the agent skills are a separate package `agent-skills` with `[[skill]]`, delivered by the same `standards load` and projected by `vibe skill install`; `packages/codkit/claude/skills/` is abolished. **Why:** VibeVM can already project skills into every harness (PROP-018 §2.6, `vibe skill list|install`), while a hand-written profile for one harness is a second source of the same procedure; the version of a norm must not change because a procedure was edited. **Considered and rejected:** the skills inside the standards package; a separate command `codkit skills load`; keeping `packages/codkit/claude/skills/` as the source and generating the package from it (the source must live where `vibe` reads it). **When to revisit:** VibeVM learns to project subagents/hooks (then `agents/` and `rules/` move into the package as well), or the `package` phase of the lifecycle becomes `impl`. @status:spec/done",
+      "line": 244,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-SKILLS-PACKAGE"
     },
     {
@@ -8802,7 +8811,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the standards are an ordinary vibe package of kind `flow`, which lives in the `vibevm/vibepacks/` of toolRoot and in the `vibevm/vibepacks/` of the product, and is materialized by `vibe install` itself.\n\n**Why:** the spike of 2026-09-06 in a scratch project: `vibe install --offline --assume-yes` found the package in `vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/` without a `path` field, wrote `source_kind = \"local\"` into `vibe.lock`, copied the files into `vibevm/vibedeps/org.vibevm.codkit.standards/0.1.0/` byte for byte (the extensionless `LICENSE` and the XML header comment included), compiled the snippet into `STATIC.md`, `vibe check` — clean, a repeat installation — \"re-copy skipped\". Not one line of new machinery on the vibe side.\n\n**Considered and rejected:**\n- copying the specifications straight into the product's `vibevm/vibespecs/` — they become the product's \"own\" files, get edited and diverge, and the anchors lose their provenance;\n- publishing the package to a registry and installing it with `vibe install org.vibevm.codkit/standards` — that needs a registry and a network; Codkit works without a network, and the edition must match the installed version of Codkit;\n- a git-source dependency — a network and a separate repository for the sake of one directory.\n\n**When to revisit:** the package gains a consumer without Codkit (observed as a request to install it from a registry) — then publishing to a registry becomes a second delivery channel. @status:spec/done",
-      "line": 244,
+      "line": 245,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-PACKAGE-IS-A-VIBE-FLOW"
     },
     {
@@ -8811,7 +8820,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the dependency is written by a managed block between marker comments at the end of `vibe.toml`, by a byte scan, without a TOML parser.\n\n**Why:** the same law as for the tree's `info/exclude` (`# codkit:begin managed`) and for the managed-blocks practice: one block, not a byte outside it, a deterministic search, no auto-repair. The form was checked with `tomllib`: the block appended at the end of a consumer manifest ending with a `[requires.packages]` table, and at the end of Codkit's own manifest ending with a `[[registry]]` element, gives a valid document in both cases, with `requires.packages[\"org.vibevm.codkit/standards\"] = {version: \"=0.1.0\", link: \"static\"}`.\n\n**Considered and rejected:**\n- parsing the TOML and reserializing it — loses the user's comments and order (`LIC-NEVER-REWRITE-THROUGH-A-PARSER`) and pulls in a dependency;\n- calling `vibe install org.vibevm.codkit/standards` — `DECISION-STD-NO-VIBE-INVOCATION`;\n- an inline key inside an existing `[requires.packages]` — the end of the table cannot be found without a parser.\n\n**When to revisit:** vibe starts rejecting the dependency table after `[[registry]]` or demands another form of entry (observed as a red `vibe install` on a manifest that carries the block). @status:spec/done",
-      "line": 254,
+      "line": 255,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-MANIFEST-BLOCK"
     },
     {
@@ -8820,7 +8829,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** Codkit does not invoke `vibe`; `standards load` prints the next command, `vibe install --offline`.\n\n**Why:** the NFR `NFR-SECURITY` — Codkit executes no foreign code apart from the npm build scripts; `vibe` may be absent from a CI container (PROP-011), and `--ci` forbids the network that `vibe install` without `--offline` may use. Two commands in a row are the price of one line in the report.\n\n**Considered and rejected:**\n- a `--install` flag that runs vibe — a second road to the same result with new refusals (no vibe, the vibe version, the network);\n- writing `vibe.lock` and `vibedeps` ourselves — a duplication of vibe with a guaranteed divergence.\n\n**When to revisit:** operators accumulate incidents of \"forgot the `vibe install`\" (observed through `standards check`, where the copy is there but the `vibedeps` slot is not — then `check` must learn to name that). @status:spec/done",
-      "line": 264,
+      "line": 265,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NO-VIBE-INVOCATION"
     },
     {
@@ -8829,7 +8838,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** third-party files are supported from the first revision, in full, by the owner's document on licences: the allowlist and the exceptions in the policy, the `REUSE.toml` registry, the REUSE precedence of carriers, a `LICENSES/<ID>.txt` per licence, a generated `THIRD-PARTY-NOTICES.md` with a staleness check, the commands `license annotate` and `license notices`, the SPDX list.\n\n**Why:** the owner ruling of 2026-09-06 on RP-4 of the campaign plan, verbatim: «реализовать все сразу по документу. для теста сгенерить какую-нибудь иконку для codkit и запиллтировать на ней». The pilot is a permanent fixture in the shipped package (`STD-PACKAGE-PILOT-ASSETS`): an own binary file with a sidecar and a real third-party file under MIT with a registry and notices; the reference implementation in Python and the oracle of 19 fixtures (`LIC-REFERENCE-IMPLEMENTATION`) give the worker checkable behaviour before the first line of TypeScript.\n\n**Considered and rejected:**\n- revision 1 for own files only (the earlier decision of this anchor) — cancelled by the ruling;\n- the half-measure \"a foreign file by its header without a registry\" — without a registry there is no provenance and no notices, and the check stops being strict.\n\n**When to revisit:** the first incident where `reuse lint` and `codkit license check` disagree in their verdict on one package (observed by the manual cross-check of `LIC-CHECK-CALLSITES`) — then the divergence is examined as a defect on one of the two sides. @status:spec/done",
-      "line": 273,
+      "line": 274,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-THIRD-PARTY-NOW"
     },
     {
@@ -8838,7 +8847,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** `REUSE.toml` is read by the library `smol-toml` (BSD-3-Clause, no dependencies; version 1.8.0 — the licence confirmed against the installed package on 2026-09-07), a new runtime dependency of Codkit; no parser of our own is written; `vibe.toml` and the scrape contract are still not parsed (the managed blocks are a byte scan).\n\n**Why:** the registry is a foreign format (the REUSE specification), and the files come not only from us (`annotate` appends, a human edits); a strict parser of the full TOML grammar is not written in 200 lines without defects, and a weak worker is not able to find such a defect. Dependencies are allowed, permissive-only (`DEPENDENCIES-PERMISSIVE`); the licence scan of the closure is as for `imageset` (`DECISION-IMAGESET-PERMISSIVE-LICENCES`): the output goes into the campaign report.\n\n**Considered and rejected:**\n- a subset of TOML by our own hands — a refusal on any unforeseen construct of a foreign file and hidden defects in parsing strings and escapes;\n- parsing `REUSE.toml` with regular expressions — the same risk without an honest name;\n- applying the parser to `vibe.toml` and to the contract as well — reserialization loses the comments and the order (`LIC-NEVER-REWRITE-THROUGH-A-PARSER`), and a byte scan is enough.\n\n**When to revisit:** `smol-toml` goes 24 months without a release or changes its licence (observed in `npm-shrinkwrap.json`). @status:spec/done",
-      "line": 282,
+      "line": 283,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-TOML-PARSER"
     },
     {
@@ -8847,7 +8856,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the list of SPDX identifiers is the data file `toolRoot/config/spdx-license-ids.json` (739 identifiers, list version `01b8052` of 2026-09-03) with a `CC0-1.0` sidecar, regenerated by a script from the SPDX `json/licenses.json`; not a constant in the code and not a network request.\n\n**Why:** the list changes several times a year and a human must update it deliberately; a data file diffs and is reviewed, a constant in the code is not; the network is forbidden under `--ci` (`NFR-NETWORK`).\n\n**Considered and rejected:**\n- the npm package `spdx-license-ids` — one more dependency for the sake of a single array, and its version lags behind the list;\n- downloading it during the check — the network is forbidden in CI.\n\n**When to revisit:** an identifier that is absent from the list appears in the package (observed as `not an SPDX identifier` on a valid fresh identifier) — then a regeneration. @status:spec/done",
-      "line": 292,
+      "line": 293,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-SPDX-LIST-AS-DATA"
     },
     {
@@ -8856,7 +8865,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** copyright lines are read only from the block up to and including the `SPDX-License-Identifier` line (`LIC-HEADER-BLOCK-ENDS-AT-SPDX`).\n\n**Why:** the reference run of 2026-09-06 on the shipped package: the table header line `| Path | Copyright | License | Source |` of `THIRD-PARTY-NOTICES.md` (the ninth non-empty line) matched the regular expression of a copyright line as \"the holder `| License | Source |`\", and an own file became \"third-party without an annotation\". The same sample from §7.7 of the owner's document would have failed the same way in any implementation without the block-boundary rule.\n\n**Considered and rejected:**\n- making the year mandatory on every copyright line — third-party lines without a year are legitimate under REUSE;\n- narrowing the window to N lines — twenty lines are needed for preludes and long headers;\n- requiring the word `Copyright` at the start of the line — the table header begins with it too, after `| Path | `.\n\n**When to revisit:** a carrier in which the copyright line stands **after** the SPDX line (observed as a false `no copyright line`) — then the rule changes to \"the block is the contiguous group of lines that contains the SPDX line\". @status:spec/done",
-      "line": 301,
+      "line": 302,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-HEADER-BLOCK"
     },
     {
@@ -8865,7 +8874,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the pilot assets are the Codkit logo (the icon and the mark without a background in SVG with a header, the 512 and 128 rasters in PNG with sidecars, all from one geometry by the script `tools/make-logo.py`) and one third-party Feather Icons icon (`package`, tag `v4.29.1`, MIT) with a registry and notices.\n\n**Why:** the owner rulings of 2026-09-06 («сгенерить какую-нибудь иконку для codkit и запилотировать на ней»; «иконку сгенери прямо сейчас сама… нарисуй сразу хорошую, это будет логотип нашего продукта»). The mark carries the meaning of the tool — a delta held by markers — and reads from 512 down to 32 px (inspected on a contact sheet of 512/128/64/32/16). The own PNGs prove the \"a binary file plus a sidecar\" path and the copying of the pair by `standards load`; the third-party icon proves the \"a registry plus the allowlist plus notices plus `LICENSES/MIT.txt`\" path on a real foreign file; Feather is the example from the owner's document. The rasters are made with Pillow by supersampling from the same numbers as the SVG: `@resvg/resvg-js` is not installed in the Codkit checkout, and this machine's ImageMagick lost the contours (`fill=\"none\"` plus `stroke`); one geometry for the SVG and the PNG rules out a divergence between them.\n\n**Considered and rejected:**\n- own assets only — the third-party path would have been left without real bytes and a real foreign holder;\n- composing the mark from a Feather glyph — a file with two holders and the expression `UPL-1.0 AND MIT` complicates the classification for the sake of a picture;\n- rasterizing the SVG with an external tool — on this machine not one of them drew the contours correctly, and the version of the tool would make the bytes irreproducible.\n\n**When to revisit:** the owner replaces the logo — then the assets and the sha256 in this anchor change in one commit, and the redrawing script with them. @status:spec/done",
-      "line": 311,
+      "line": 312,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-PILOT-ASSETS"
     },
     {
@@ -8874,7 +8883,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the standards package is English (the prose, the boot snippet, the README); the licence notice is bilingual, English and Russian; the UPL text is English only; the Codkit specifications stay Russian until a separate full translation into English; Codkit does not determine the language of a product's specifications.\n\n**Why:** the owner ruling of 2026-09-06, verbatim: «Включить предупреждение о лицензии два раза - на русском и английском языке. Оригинальная лицензия UPL лежит в репозитории на английском языке. Пакет на английском языке.» and «Спеки Codkit мы в будущем переведем на английский язык целиком.» The package is the surface a product receives and may pass on; its licence is English, and a second normative language would be a second copy of every norm without a gate proving that the copies agree.\n\n**Considered and rejected:**\n- Russian prose in the package (the first draft of the campaign) — cancelled by the ruling: the package is distributed, not only read by the owner;\n- bilingual specifications — two diverging copies;\n- writing PROP-014 in English right away — one English document among thirteen Russian ones breaks the convention of the repository; the translation is done in full by separate work.\n\n**When to revisit:** at the full translation of the Codkit specifications into English (then PROP-014 moves together with all of them) and when a consumer of the package appears for whom English is not enough. @status:spec/done",
-      "line": 321,
+      "line": 322,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-LANGUAGE"
     },
     {
@@ -8883,7 +8892,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** three new codes — `LICENSE-HEADER` (a per-file carrier problem), `LICENSE-PACKAGE` (the consistency of the package), `STANDARDS-DRIFT` (the installed copy differs); problems of the manifest block use the existing `CONFIG`.\n\n**Why:** the registry of codes is a unit of test coverage (`COVERAGE-ERROR-CODES`) and a row of the FAQ; one code per class of refusal keeps both lists readable, while the reason for each problem lives in the text of the message, as with `OVERLAY-SCHEMA`.\n\n**Considered and rejected:**\n- a code per reason (no copyright, no SPDX, holder, orphan…) — seven codes without a machine consumer that would tell them apart;\n- one code `LICENSE` for everything — it mixes \"fix the file\" with \"fix the package\".\n\n**When to revisit:** a machine consumer appears that branches on a specific reason (an `annotate` that repairs only \"no header\", for example). @status:spec/done",
-      "line": 331,
+      "line": 332,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-ERROR-CODES"
     },
     {
@@ -8892,7 +8901,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the files are written into the temporary directory `.codkit-load-*` and renamed to `v<version>` by one `rename`.\n\n**Why:** the \"identical/drift\" classification of the target must not see half of the written files: an interrupted run that left `v0.1.0` with half its files would otherwise refuse with `CK-E-STANDARDS-DRIFT` against itself forever.\n\n**Considered and rejected:**\n- writing straight into `v<version>` with an incompleteness marker file — the marker has to be removed last, and the window between removing the marker and the last write is there anyway;\n- counting a partial directory as drift and asking for a manual deletion — the tool must not ask anyone to repair what it left behind itself.\n\n**When to revisit:** renaming a directory within its parent stops being atomic on any supported OS (observed as a flake of the e2e `standards.test.ts`). @status:spec/done",
-      "line": 340,
+      "line": 341,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-TEMP-DIR-RENAME"
     },
     {
@@ -8901,7 +8910,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the Codkit licence notice is the file `LICENSE-CODKIT.md`, which `standards load` places in the root of the product repository and in the root of the own code in the delta; it reaches the fork tree as an ordinary delivered own file, exempted from unit coverage.\n\n**Why:** the owner ruling of 2026-09-06, verbatim: «я бы сделал чтобы файл с лицензией codkit копировался в корень <репозитория продукта>, и в корень \"собственного кода\" в дельте. Тогда он скопируется и в VSCode тоже автоматически. Назывался как-то типа LICENSE-CODKIT.md» (in the quotation the owner named the product; here the name is replaced with a placeholder — the tool repository carries no product names, and the substitution is marked rather than made silently). Delivery through the own root needs not one piece of new machinery: `load` already mirrors own into the tree, `ci`/`publish` already commit own; the only edit is one name in the \"not own code\" set of the manifest, so that `verify` does not require a unit.\n\n**Considered and rejected:**\n- a resource-file layer — it needs an entry in the map with a guard test and a target that exists at the pin; the notice does not exist at the pin;\n- an add-file patch into the root of the tree — a patch for the sake of one file and a hunk that has to be carried over at every pin;\n- the product root only, without the own root — the file would not have reached the fork, and that is exactly what the owner wants.\n\n**When to revisit:** the fork hygiene (`hygiene`/the pin lint) starts rejecting a `.md` in the own directory — observed as a red `ci --profile build` at the hygiene step with this path. @status:spec/done",
-      "line": 349,
+      "line": 350,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-FILE"
     },
     {
@@ -8910,7 +8919,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the recommendations are printed on every `standards load`; the full text of the file only in a run where a copy was created or updated, and always by the command `codkit standards license`.\n\n**Why:** the owner ruling: «шаблон этого файла лучше 1) выдавать при выполнении установки пакета в консоли и 2) сделать команду codkit standards license которая печатает этот шаблон и рекомендации». The full text is almost two kilobytes of UPL; on a repeat `up to date` it would eclipse the summary, while the command gives it on demand at any moment.\n\n**Considered and rejected:**\n- printing the full text always — noise on every repeat; the owner can bring it back with one flag of a decision, should they see fit;\n- not printing it at install time at all — contradicts the ruling.\n\n**When to revisit:** the first incident of \"the file was placed but no link was made, because nobody noticed\" — then the full text is printed always. @status:spec/done",
-      "line": 359,
+      "line": 360,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-PRINT"
     },
     {
@@ -8919,7 +8928,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the rows of the `vibe scrape` contract that take `LICENSE-CODKIT.md` off a clean export are kept by Codkit in the product's `vibevm/scrape/contract.toml` itself — in a managed block on every `standards load`; a contract is not created from scratch; for a contract at a non-standard path the rows are printed by `standards license`.\n\n**Why:** the owner ruling of 2026-09-06, verbatim: «у продукта <продукта> может быть собственный контракт scrape, так что наше правило туда лучше вписывать алгоритмически» (the product name is replaced with a placeholder — the tool repository carries no product names). Checked live (`STD-SCRAPE-VERIFIED`): the block at the end of a contract created by `vibe scrape contract init` parses, `contract check` shows both copies under our rule and issues not one finding against our rows. The state machine of the block is the one of the manifest — one module for two files.\n\n**Considered and rejected:**\n- printing the rows only (the first revision of this decision) — a product with a contract of its own edits it by hand, and the rows are forgotten; cancelled by the ruling;\n- creating the contract when it is absent — schema 1 requires `[health]` and at least one mandatory health check of the product, which Codkit does not know; without a contract there is no export anyway;\n- `proof = \"sha256-v1\"` with a `[[baseline]]` for both copies and `modified = \"refuse\"` — stricter (scrape would refuse to delete an edited copy), but the schema requires exactly one baseline per selected existing file, and the behaviour with an absent copy has not been checked; deferred (DEF in the plan) with the trigger below.\n\n**When to revisit:** the first real `vibe scrape --in-place`/`--output` of a product (observed in the scrape report): if the export carried away an edited copy of the notice or refused on our rows — a move to `sha256-v1`; or an open extension table for packages appears in the contract schema. @status:spec/done",
-      "line": 368,
+      "line": 369,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-SCRAPE-ROWS"
     },
     {
@@ -8928,7 +8937,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the `publish` release branch does not carry `LICENSE-CODKIT.md`; a clean export of the product repository through `vibe scrape` takes it off by the contract rows — both mechanisms, each on its own side.\n\n**Why:** the owner ruling of 2026-09-06 on the question \"the fork's release branch or the product's export\": «сделать оба». The fork tree is a materialization of the patch set: a file deleted in the tree by a foreign tool would be read by `status`/`save` as work, and `load` would refuse over it; the release branch is built by `publish` from an immutable patch-set commit, so the only honest place for the exclusion is the own snapshot of the publication. The export of the product repository is the area of `vibe scrape`, and there the file is taken off by the contract (`STD-SCRAPE-CONTRACT-ROWS`).\n\n**Considered and rejected:**\n- excluding it in `ci` as well — `ci` checks the developer's tree; `publish --profile build` repeats the profile of checks on the release build itself (PROP-007 §18), so the release bytes are checked where they are born;\n- deleting the file from the fork tree by running `vibe scrape --in-place` over the tree — a conflict with the ownership of the tree (`DRIFT-GUARD-PREDICATE`), plus a mutating scrape outside Windows refuses today (RP-10 of the plan);\n- not placing the file into `delta/own/` at all — cancels the ruling about delivering the notice into the fork.\n\n**When to revisit:** `ci --profile build` starts counting as a release build (a profile that publishes artifacts appears) — then the option is switched on there as well; or upstream hygiene rejects a `.md` in the own directory (the trigger of `DECISION-STD-NOTICE-FILE`). @status:spec/done",
-      "line": 378,
+      "line": 379,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-RELEASE-EXCLUSION"
     },
     {
@@ -8937,7 +8946,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the scope of the notice is set by paths plus the generated components block and the paragraph about the vibe copies (`STD-NOTICE-SCOPE-BY-PATHS`, `STD-NOTICE-COMPONENTS-BLOCK`, `STD-NOTICE-VIBE-COPIES`).\n\n**Why:** a path covers files of any type without sidecars, is checked mechanically and is clear to a human; a static list of components lies as soon as the components become optional (a product with the library alone, a product with the standards alone); the compiled vibe lane lies outside the package directory and without an explicit reservation would contradict the rule by paths (owner decision of 2026-09-07).\n\n**Considered and rejected:**\n- the reservation \"the licence applies only if the files exist\" — the licence applies only to what is in the copy anyway, and the reservation adds nothing;\n- recognizing the files by the header alone — impossible for images and data;\n- listing the components in prose — it goes stale at the first optional component.\n\n**When to revisit:** a fourth delivery root appears. @status:spec/done",
-      "line": 388,
+      "line": 389,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-SCOPE-BY-PATHS"
     },
     {
@@ -8946,7 +8955,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** the copy of the notice in the delta lies under the prefix `delta/own/codkit/`, the root copy stays; the legacy copy of edition 2 is removed by the delivering commands.\n\n**Why:** one prefix is one truth about what belongs to Codkit; a `vibe scrape` export removes `vibevm/**` as a whole, so of Codkit's material only `delta/own/codkit/**` with its headers stays in the export, and excluding the notice from the release and from the export stays lawful.\n\n**Considered and rejected:** removing the root copy — a reader of the repository needs it; keeping the copy at the own root — a second path for one thing.\n\n**When to revisit:** together with `DECISION-STD-NOTICE-SCOPE-BY-PATHS`. @status:spec/done",
-      "line": 398,
+      "line": 399,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-UNDER-PREFIX"
     },
     {
@@ -8955,7 +8964,7 @@
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "**Decision:** a `REUSE.toml` annotation (a nested one included) is a carrier in its own right for files without a comment style; for source files the header is mandatory (`LIC-CARRIER-ANNOTATION`, `LIC-REGISTRY-NESTED`, `LIC-ANNOTATION-OWN`).\n\n**Why:** a distribution carries hundreds of images and tables (a product's new interface), and a sidecar for each one is not the right form; the root of the fork tree belongs to upstream, so the registry of the own directory must be a nested one; a source file without a header stops being self-sufficient when a single file is copied.\n\n**Considered and rejected:** a sidecar for every file as the only path; an annotation instead of a header in source files.\n\n**When to revisit:** at a change of the REUSE specification. @status:spec/done",
-      "line": 405,
+      "line": 406,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-LIC-ANNOTATION-CARRIER"
     },
     {
@@ -10992,7 +11001,7 @@
     {
       "code": "long-section",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "line": 241,
+      "line": 242,
       "message": "section `8. Decisions` spans 172 lines (threshold 120) — long sections read poorly and churn often; split into smaller leaves"
     }
   ]
