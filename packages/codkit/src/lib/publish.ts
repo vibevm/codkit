@@ -5,7 +5,7 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEPS_REQUIRED_ROOTS, runCi } from './ciEngine.ts';
+import { runCi } from './ciEngine.ts';
 import type { CiProfile, CiResult } from './ciEngine.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import { CONFIG_FILE_NAME, parseBaseConfig } from './configFile.ts';
@@ -88,7 +88,13 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 	const handle = acquireLock(options.patchesDir, treeId(options.resolution.path), 'publish', (text) => options.out.warn(text));
 	let workspace: PublishWorkspace | null = null;
 	try {
-		workspace = materializeWorkspace(options.patchesDir, patchSetSha, options.resolution, snapshotConfig);
+		workspace = materializeWorkspace(
+			options.patchesDir,
+			patchSetSha,
+			options.resolution,
+			snapshotConfig,
+			options.type.build.dependencyRoots
+		);
 		const checks = await runCi({
 			patchesDir: workspace.patchesDir,
 			resolution: workspace.resolution,
@@ -236,7 +242,13 @@ type PublishWorkspace = {
 	readonly release: () => void;
 };
 
-function materializeWorkspace(patchesDir: string, sha: string, source: ForkDirResolution, config: CodkitConfig): PublishWorkspace {
+function materializeWorkspace(
+	patchesDir: string,
+	sha: string,
+	source: ForkDirResolution,
+	config: CodkitConfig,
+	dependencyRoots: readonly string[]
+): PublishWorkspace {
 	const root = mkdtempSync(join(tmpdir(), `codkit-publish-${sha.slice(0, 12)}-`));
 	const snapshot = join(root, 'patchset');
 	const index = join(root, 'patchset.index');
@@ -260,7 +272,7 @@ function materializeWorkspace(patchesDir: string, sha: string, source: ForkDirRe
 		});
 		if (cloned.status !== 0) throw ckError('CONFIG', `cannot create disposable publish fork: ${firstLine(cloned.stderr)}`);
 		mustLocalGit(fork, ['checkout', '--quiet', '--detach', config.pin.sha], {}, `cannot check out publish pin ${config.pin.sha}`);
-		copySupplyKit(source.path, fork);
+		copySupplyKit(source.path, fork, dependencyRoots);
 	} catch (error) {
 		release();
 		throw error;
@@ -278,8 +290,13 @@ function mustLocalGit(cwd: string, args: readonly string[], env: Readonly<Record
 	if (result.status !== 0) throw ckError('CONFIG', `${message}: ${firstLine(result.stderr)}`);
 }
 
-function copySupplyKit(sourceTree: string, disposableTree: string): void {
-	for (const relative of DEPS_REQUIRED_ROOTS) {
+/**
+ * The dependency roots of the type, carried into the disposable fork as they
+ * are. Which directories those are is the type's answer (PROP-016
+ * ##TYPE-AREA-BUILD); this run only copies them.
+ */
+function copySupplyKit(sourceTree: string, disposableTree: string, dependencyRoots: readonly string[]): void {
+	for (const relative of dependencyRoots) {
 		const source = join(sourceTree, ...relative.split('/'));
 		if (!existsSync(source)) continue;
 		const target = join(disposableTree, ...relative.split('/'));

@@ -129,6 +129,13 @@ export const entryModule: EntryModuleLocator = {
 /** The dependency install of the tree. */
 export const INSTALL: readonly BuildCommand[] = [{ label: 'install', command: 'npm', args: ['ci'] }];
 
+/**
+ * Two dependency roots, because one root would not exercise the engine at all:
+ * a build profile has to refuse over a tree that restored the first and not the
+ * second, and has to say which one is missing.
+ */
+export const DEPENDENCY_ROOTS: readonly string[] = ['node_modules', 'vendor/node_modules'];
+
 /** The hygiene and lint gates, in the order they must run. */
 export const HYGIENE: readonly BuildCommand[] = [
 	{ label: 'hygiene', command: 'npm', args: ['run', 'hygiene'] },
@@ -259,6 +266,7 @@ const base: ProjectType = {
 	layers: { overlayTargets, ownExtensions, serviceOverride, entryModule },
 	build: {
 		install: INSTALL,
+		dependencyRoots: DEPENDENCY_ROOTS,
 		hygiene: HYGIENE,
 		ownTests,
 		packageBuild: PACKAGE_BUILD,

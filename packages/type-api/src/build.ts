@@ -18,6 +18,17 @@ export type BuildCommand = {
 export type BuildArea = {
 	/** Installing the tree's dependencies. */
 	readonly install: readonly BuildCommand[];
+	/**
+	 * The directories of the fork tree that hold installed dependencies, from
+	 * the tree root. One family installs into a single `node_modules/`; another
+	 * has a second install root beside it, and a third could have none at all.
+	 *
+	 * `ci --profile build` refuses when the npm receipt of any of them is
+	 * missing, and `publish` carries exactly these directories into its
+	 * disposable fork. The engine never installs them - the supply kit does
+	 * (PROP-011) - so all it needs from the type is their names.
+	 */
+	readonly dependencyRoots: readonly string[];
 	/** The hygiene and lint gates of the upstream, in the order they must run. */
 	readonly hygiene: readonly BuildCommand[];
 	/**

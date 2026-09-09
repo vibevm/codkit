@@ -25,6 +25,7 @@ function bareType(overrides: Partial<ProjectType> = {}): ProjectType {
 		layers: { overlayTargets: [], ownExtensions: null, serviceOverride: null, entryModule: null },
 		build: {
 			install: [],
+			dependencyRoots: [],
 			hygiene: [],
 			ownTests: () => null,
 			packageBuild: [],

@@ -10,17 +10,14 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import {
-	CI_GITCONFIG_PATH,
-	DEPS_HASH_PATH,
-	DEPS_REQUIRED_RECEIPTS,
-	checkDeps,
-	depsHash,
-	writeCiGitConfig
-} from '../../src/lib/ciEngine.ts';
+import { CI_GITCONFIG_PATH, DEPS_HASH_PATH, checkDeps, depsHash, depsReceiptsOf, writeCiGitConfig } from '../../src/lib/ciEngine.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
+
+/** A family with two dependency roots: enough to tell "one of them" from "none". */
+const ROOTS: readonly string[] = ['node_modules', 'build/node_modules'];
+const RECEIPTS = depsReceiptsOf(ROOTS);
 
 describe('the dependency fast path', () => {
 	it('refuses a tree without node_modules, whatever the manifests say', () => {
@@ -28,10 +25,31 @@ describe('the dependency fast path', () => {
 		const tree = makeTempRoot('deps-tree');
 		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
 
-		expect(checkDeps(patchesDir, tree).kind).toBe('missing');
+		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('missing');
 		// Nothing was recorded: there is nothing to remember about a tree whose
 		// dependencies never arrived.
 		expect(existsSync(join(patchesDir, ...DEPS_HASH_PATH.split('/')))).toBe(false);
+	});
+
+	it('names the receipt that is missing, not the root the tree already has', () => {
+		const patchesDir = makeTempRoot('deps-patchset-partial');
+		const tree = makeTempRoot('deps-tree-partial');
+		const first = RECEIPTS[0] as string;
+		mkdirSync(join(tree, ...first.split('/'), '..'), { recursive: true });
+		writeFileSync(join(tree, ...first.split('/')), '{"lockfileVersion":3}\n', 'utf8');
+
+		// The tree has node_modules; only the second install root never arrived,
+		// and that is what the report has to say.
+		expect(checkDeps(patchesDir, tree, ROOTS)).toEqual({ kind: 'missing', hash: '', missing: [RECEIPTS[1]] });
+	});
+
+	it('asks a type with one dependency root for one receipt only', () => {
+		const patchesDir = makeTempRoot('deps-patchset-single');
+		const tree = makeTempRoot('deps-tree-single');
+		mkdirSync(join(tree, 'node_modules'), { recursive: true });
+		writeFileSync(join(tree, 'node_modules', '.package-lock.json'), '{"lockfileVersion":3}\n', 'utf8');
+
+		expect(checkDeps(patchesDir, tree, ['node_modules']).kind).toBe('recorded');
 	});
 
 	it('records the lock state once, then keeps answering "unchanged"', () => {
@@ -41,9 +59,9 @@ describe('the dependency fast path', () => {
 		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
 		writeFileSync(join(tree, '.nvmrc'), '24.18.0\n', 'utf8');
 
-		const first = checkDeps(patchesDir, tree);
+		const first = checkDeps(patchesDir, tree, ROOTS);
 		expect(first.kind).toBe('recorded');
-		expect(checkDeps(patchesDir, tree)).toEqual({ kind: 'fresh', hash: first.hash });
+		expect(checkDeps(patchesDir, tree, ROOTS)).toEqual({ kind: 'fresh', hash: first.hash, missing: [] });
 
 		const record = JSON.parse(readFileSync(join(patchesDir, ...DEPS_HASH_PATH.split('/')), 'utf8')) as {
 			codkitDepsHash: number;
@@ -62,19 +80,19 @@ describe('the dependency fast path', () => {
 		const lock = join(tree, 'package-lock.json');
 		writeFileSync(lock, '{"lockfileVersion": 3}\n', 'utf8');
 
-		const before = checkDeps(patchesDir, tree).hash;
-		expect(checkDeps(patchesDir, tree).kind).toBe('fresh');
+		const before = checkDeps(patchesDir, tree, ROOTS).hash;
+		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('fresh');
 
 		writeFileSync(lock, '{"lockfileVersion": 3, "packages": {"": {"name": "x"}}}\n', 'utf8');
 		expect(depsHash(tree)).not.toBe(before);
-		expect(checkDeps(patchesDir, tree).kind).toBe('changed');
+		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('changed');
 		// The record moved with it, so the warning is raised once per change.
-		expect(checkDeps(patchesDir, tree).kind).toBe('fresh');
+		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('fresh');
 
 		// The node version is part of the same verdict: a toolchain change is a
 		// dependency change (PROP-011 sec. 3, the cache key).
 		writeFileSync(join(tree, '.nvmrc'), '26.0.0\n', 'utf8');
-		expect(checkDeps(patchesDir, tree).kind).toBe('changed');
+		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('changed');
 	});
 
 	it('keeps the verdicts of two trees apart', () => {
@@ -86,11 +104,11 @@ describe('the dependency fast path', () => {
 			writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
 		}
 
-		expect(checkDeps(patchesDir, one).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, one, ROOTS).kind).toBe('recorded');
 		// The record names one tree; the other one has never been seen, whatever
 		// its manifests hash to.
-		expect(checkDeps(patchesDir, two).kind).toBe('recorded');
-		expect(checkDeps(patchesDir, one).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, two, ROOTS).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, one, ROOTS).kind).toBe('recorded');
 	});
 
 	it('rejects empty mountpoints even when the cached lock hash is fresh', () => {
@@ -98,17 +116,17 @@ describe('the dependency fast path', () => {
 		const tree = makeTempRoot('deps-tree-empty-mount');
 		provideDependencies(tree);
 		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
-		expect(checkDeps(patchesDir, tree).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('recorded');
 
-		for (const relative of DEPS_REQUIRED_RECEIPTS) {
+		for (const relative of RECEIPTS) {
 			unlinkSync(join(tree, ...relative.split('/')));
 		}
-		expect(checkDeps(patchesDir, tree)).toEqual({ kind: 'missing', hash: '' });
+		expect(checkDeps(patchesDir, tree, ROOTS)).toEqual({ kind: 'missing', hash: '', missing: RECEIPTS });
 	});
 });
 
 function provideDependencies(tree: string): void {
-	for (const relative of DEPS_REQUIRED_RECEIPTS) {
+	for (const relative of RECEIPTS) {
 		const path = join(tree, ...relative.split('/'));
 		mkdirSync(join(path, '..'), { recursive: true });
 		writeFileSync(path, '{"lockfileVersion":3}\n', 'utf8');

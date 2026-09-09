@@ -83,16 +83,21 @@ export const DEPS_HASH_SCHEMA_VERSION = 1;
 /** Files whose content decides whether the tree's dependencies are current. */
 export const DEPS_MANIFESTS: readonly string[] = ['package-lock.json', '.nvmrc'];
 
-/** Dependency roots that a build/publish supply kit must preserve together. */
-export const DEPS_REQUIRED_ROOTS: readonly string[] = ['node_modules', 'build/node_modules'];
-
 /**
- * npm install receipts whose presence proves that both dependency roots were
- * actually restored. Checking the directory alone is insufficient for bind
- * mounts: Docker commonly leaves an empty mountpoint behind, and a stale
- * deps-hash record must never turn that empty directory green.
+ * The npm install receipt inside a dependency root. Its presence proves that the
+ * root was actually restored; checking the directory alone is insufficient for
+ * bind mounts, because Docker commonly leaves an empty mountpoint behind and a
+ * stale deps-hash record must never turn that empty directory green.
+ *
+ * Which roots a supply kit has to restore is the project type's answer
+ * (PROP-016 ##TYPE-AREA-BUILD): one family installs twice, another once.
  */
-export const DEPS_REQUIRED_RECEIPTS: readonly string[] = DEPS_REQUIRED_ROOTS.map((root) => `${root}/.package-lock.json`);
+export const DEPS_RECEIPT_FILE = '.package-lock.json';
+
+/** The receipts a build or publish run of this type demands, in the type's order. */
+export function depsReceiptsOf(dependencyRoots: readonly string[]): readonly string[] {
+	return dependencyRoots.map((root) => `${root}/${DEPS_RECEIPT_FILE}`);
+}
 
 /** How many dirty paths the disposable-tree guard lists before summarizing. */
 const DIRTY_LIST_LIMIT = 20;
@@ -348,12 +353,17 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	if (profile === 'build') {
 		// 5. Dependencies of the tree. `ci` never installs them: the air gap makes
 		// that a step of the job outside the container (PROP-011 sec. 7).
-		const deps = checkDeps(patchesDir, tree);
+		const deps = checkDeps(patchesDir, tree, options.type.build.dependencyRoots);
 		if (deps.kind === 'missing') {
-			steps.record('dependencies', 'failed', 'no node_modules in the fork tree');
+			// The report names the receipt that is not there rather than
+			// `node_modules`: a family with two dependency roots leaves a tree with
+			// the first one restored looking perfectly installed, and a message that
+			// asks for what is already present sends the reader nowhere.
+			const named = deps.missing.join(', ');
+			steps.record('dependencies', 'failed', `no ${named} in the fork tree`);
 			out.addError({
 				code: 'DEPS-MISSING',
-				message: 'dependencies missing; provide node_modules via cache/mount (air-gapped supply kit)',
+				message: `dependencies missing; provide ${named} via cache/mount (air-gapped supply kit)`,
 				hint:
 					`install them outside the container and mount them into ${tree}, or restore the CI cache keyed by ` +
 					'pin.sha and the lock files (PROP-011 sec. 7)'
@@ -819,6 +829,13 @@ export type DepsVerdict = {
 	readonly kind: DepsVerdictKind;
 	/** Hash of the manifests; empty when there was nothing to hash. */
 	readonly hash: string;
+	/**
+	 * The receipts the tree does not carry, in the type's order; empty unless the
+	 * verdict is `missing`. A run that refuses says which root is not there, so
+	 * that a tree with one of two roots restored is not reported as a tree
+	 * without dependencies at all.
+	 */
+	readonly missing: readonly string[];
 };
 
 const depsRecordSchema = z.object({
@@ -835,25 +852,26 @@ const depsRecordSchema = z.object({
  * reports. It never installs anything - in `--ci` that would need the network,
  * and the supply kit exists precisely so it does not have to.
  */
-export function checkDeps(patchesDir: string, treeDir: string): DepsVerdict {
-	if (DEPS_REQUIRED_RECEIPTS.some((relative) => !existsSync(join(treeDir, ...relative.split('/'))))) {
-		return { kind: 'missing', hash: '' };
+export function checkDeps(patchesDir: string, treeDir: string, dependencyRoots: readonly string[]): DepsVerdict {
+	const missing = depsReceiptsOf(dependencyRoots).filter((relative) => !existsSync(join(treeDir, ...relative.split('/'))));
+	if (missing.length > 0) {
+		return { kind: 'missing', hash: '', missing };
 	}
 	const hash = depsHash(treeDir);
 	const id = treeId(treeDir);
 	const record = readDepsRecord(patchesDir, id);
 	if (record === null) {
 		writeDepsRecord(patchesDir, id, treeDir, hash);
-		return { kind: 'recorded', hash };
+		return { kind: 'recorded', hash, missing: [] };
 	}
 	if (record.hash === hash) {
-		return { kind: 'fresh', hash };
+		return { kind: 'fresh', hash, missing: [] };
 	}
 	// Recorded even though nothing was installed: the record says what the last
 	// run saw, so the warning is raised once per change of the lock rather than
 	// on every run until somebody refreshes the mount.
 	writeDepsRecord(patchesDir, id, treeDir, hash);
-	return { kind: 'changed', hash };
+	return { kind: 'changed', hash, missing: [] };
 }
 
 /** sha256 over the manifests that decide whether dependencies are current. */

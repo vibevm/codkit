@@ -9,7 +9,8 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { DEPS_REQUIRED_RECEIPTS } from '../../src/lib/ciEngine.ts';
+import { projectType as theiaType } from '@codkit/type-theia';
+import { depsReceiptsOf } from '../../src/lib/ciEngine.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
 import { makeTheiaUpstream } from '../fixtures/makeTheiaUpstream.ts';
@@ -81,7 +82,7 @@ export function excludeTheiaRuntimeState(fixture: TheiaFixture): void {
  * the tool excludes from git is invisible to `lerna --scope` (##THEIA-LINT).
  */
 export function provideTheiaTreeDependencies(fixture: TheiaFixture): void {
-	for (const relative of DEPS_REQUIRED_RECEIPTS) {
+	for (const relative of depsReceiptsOf(theiaType.build.dependencyRoots)) {
 		const path = fixture.treePath(relative);
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, '{"lockfileVersion":3}\n', 'utf8');

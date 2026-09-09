@@ -189,6 +189,12 @@ describe('build', () => {
 		expect(makeBuild(CONFIG).install).toEqual([{ label: 'install', command: 'npm', args: ['ci'] }]);
 	});
 
+	it('names one dependency root, because this monorepo installs once', () => {
+		// ##THEIA-DEPENDENCY-ROOTS: no `build/` install root exists in this
+		// upstream, so a build profile must not wait for a receipt inside one.
+		expect(makeBuild(CONFIG).dependencyRoots).toEqual(['node_modules']);
+	});
+
 	it('lints the own package by its workspace first, and then the whole tree', () => {
 		// ##THEIA-LINT: `lerna --scope` cannot see a package the tool excludes
 		// from git, so the own package is run by workspace; the full-tree run is

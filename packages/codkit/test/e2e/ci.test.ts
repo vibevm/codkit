@@ -9,7 +9,8 @@
 // The build profile runs the same stub watchers the build tests use, so a
 // "compilation pass" costs milliseconds and its outcome is chosen by STUB_MODE.
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
@@ -43,8 +44,12 @@ function steps(envelope: { data: Record<string, unknown> }): Step[] {
 	return (envelope.data as { steps: Step[] }).steps;
 }
 
+function stepOf(envelope: { data: Record<string, unknown> }, name: string): Step | undefined {
+	return steps(envelope).find((entry) => entry.name === name);
+}
+
 function stateOf(envelope: { data: Record<string, unknown> }, name: string): string {
-	const step = steps(envelope).find((entry) => entry.name === name);
+	const step = stepOf(envelope, name);
 	if (step === undefined) {
 		throw new Error(`no step named ${name}`);
 	}
@@ -270,10 +275,34 @@ describe('codkit ci --profile build', () => {
 
 		expect(run.status).toBe(2);
 		expect(envelope.errors.map((error) => error.code)).toEqual(['CK-E-DEPS-MISSING']);
-		expect(envelope.errors[0]?.message).toContain('dependencies missing; provide node_modules via cache/mount (air-gapped supply kit)');
+		// The message names the receipts of the type's own dependency roots, both
+		// of them here, and not a directory the engine assumed.
+		expect(envelope.errors[0]?.message).toBe(
+			'dependencies missing; provide node_modules/.package-lock.json, vendor/node_modules/.package-lock.json ' +
+				'via cache/mount (air-gapped supply kit)'
+		);
 		expect(stateOf(envelope, 'dependencies')).toBe('failed');
 		// Nothing was compiled: the run stopped before the daemons.
 		expect(steps(envelope).some((step) => step.name === 'compile')).toBe(false);
+	});
+
+	it('names only the dependency root the tree is missing when the other one is there', () => {
+		// The defect this covers: a tree with `node_modules` restored and a second
+		// install root absent was told to "provide node_modules", which is exactly
+		// what it already had.
+		const receipt = fixture.treePath('node_modules/.package-lock.json');
+		mkdirSync(dirname(receipt), { recursive: true });
+		writeFileSync(receipt, '{"lockfileVersion":3}\n', 'utf8');
+
+		const { run, envelope } = fixture.json(['ci', '--profile', 'build', ...TIMEOUT]);
+
+		expect(run.status).toBe(2);
+		expect(envelope.errors[0]?.message).toBe(
+			'dependencies missing; provide vendor/node_modules/.package-lock.json via cache/mount (air-gapped supply kit)'
+		);
+		expect(stepOf(envelope, 'dependencies')?.detail).toBe('no vendor/node_modules/.package-lock.json in the fork tree');
+
+		rmSync(receipt, { force: true });
 	});
 
 	it('runs one pass through the daemons and stops them', () => {

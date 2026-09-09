@@ -42,6 +42,14 @@ export function watchProfileOf(compile: GenericChannels): unknown {
 	};
 }
 
+/**
+ * The one dependency root a plain npm upstream has. A patch set of this type
+ * declares its install command itself, but where an install lands is not a free
+ * choice: npm writes into `node_modules/` of the directory it runs in, and the
+ * build profile runs it at the tree root.
+ */
+export const DEPENDENCY_ROOTS: readonly string[] = ['node_modules'];
+
 /** One declared command as the build skeleton wants it. */
 export function toCommand(label: string, declared: string | readonly string[]): BuildCommand | null {
 	const argv = argvOf(declared);
@@ -60,6 +68,7 @@ export function makeBuild(config: GenericTypeConfig): BuildArea {
 	const watchProfile = watchProfileOf(commands.compile);
 	return {
 		install: install === null ? [] : [install],
+		dependencyRoots: DEPENDENCY_ROOTS,
 		hygiene: lint,
 		/**
 		 * The own tests of the patch set, restricted to its own root. A runner

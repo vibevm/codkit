@@ -22,6 +22,12 @@ describe('the declared commands', () => {
 		expect(build.watchProfile).toBeUndefined();
 	});
 
+	it('still names the one dependency root npm writes into', () => {
+		// Where an install lands is not a declaration of the patch set: npm writes
+		// into `node_modules/` of the directory the build profile runs it in.
+		expect(makeBuild({ ownRoot: 'own' }).dependencyRoots).toEqual(['node_modules']);
+	});
+
 	it('turns the declared install and lint commands into the steps of the skeleton', () => {
 		const build = makeBuild({
 			ownRoot: 'own',

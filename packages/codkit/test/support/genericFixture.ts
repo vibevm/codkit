@@ -9,7 +9,8 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { DEPS_REQUIRED_RECEIPTS } from '../../src/lib/ciEngine.ts';
+import { projectType as genericType } from '@codkit/type-generic';
+import { depsReceiptsOf } from '../../src/lib/ciEngine.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
 import { makeGenericUpstream } from '../fixtures/makeGenericUpstream.ts';
@@ -75,7 +76,7 @@ export function excludeGenericRuntimeState(fixture: GenericFixture): void {
 
 /** Materialize the npm receipts that stand in for an offline dependency cache. */
 export function provideGenericTreeDependencies(fixture: GenericFixture): void {
-	for (const relative of DEPS_REQUIRED_RECEIPTS) {
+	for (const relative of depsReceiptsOf(genericType.build.dependencyRoots)) {
 		const path = fixture.treePath(relative);
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, '{"lockfileVersion":3}\n', 'utf8');

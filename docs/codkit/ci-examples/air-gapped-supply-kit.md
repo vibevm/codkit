@@ -32,8 +32,10 @@ The supplier should accompany each delivery with a signed/checksummed manifest m
 
 After import, perform read-only presence checks, restore the Codkit and fork
 dependency sets, and confirm that the fork cache contains npm's
-`node_modules/.package-lock.json` and `build/node_modules/.package-lock.json`
-receipts. An empty bind-mount directory is not a restored cache. Then run:
+`.package-lock.json` receipt inside every dependency root the project type
+names (`node_modules/` always; a family whose build toolchain installs
+separately names that root too). An empty bind-mount directory is not a
+restored cache. Then run:
 
 ```bash
 docker run --rm --network none --read-only \

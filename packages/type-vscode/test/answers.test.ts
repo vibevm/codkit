@@ -63,6 +63,12 @@ describe('build and test', () => {
 		expect(build.hygiene.map((command) => command.args.join(' '))).toEqual(['run hygiene', 'run eslint']);
 	});
 
+	it('names both install roots of the distribution', () => {
+		// ##VSCODE-DEPENDENCY-ROOTS: the tree installs twice, so a supply kit that
+		// restored only the first root has not restored the dependencies.
+		expect(build.dependencyRoots).toEqual(['node_modules', 'build/node_modules']);
+	});
+
 	it('runs the own tests over the leaf of the own root, in the layers node can load', () => {
 		const command = build.ownTests('src/vs/patchset');
 		expect(command?.args).toEqual(['run', 'test-node', '--', '--runGlob', 'vs/patchset/**/test/{common,node}/**/*.test.js']);

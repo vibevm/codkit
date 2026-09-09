@@ -32,6 +32,15 @@ import type { TheiaTypeConfig } from './configSchema.ts';
 /** ##THEIA-INSTALL: the whole install of this family is one command. */
 export const INSTALL: readonly BuildCommand[] = [{ label: 'install', command: 'npm', args: ['ci'] }];
 
+/**
+ * ##THEIA-DEPENDENCY-ROOTS: one install, one dependency root. This monorepo is a
+ * single npm workspace - every package of it, the build tooling included, is
+ * hoisted into the `node_modules/` of the tree root - and there is no second
+ * install root anywhere: a `build/` directory does not exist at the root of this
+ * upstream at all.
+ */
+export const DEPENDENCY_ROOTS: readonly string[] = ['node_modules'];
+
 /** The npm scripts of the tree root the watch channels of this family start. */
 export const DEFAULT_TYPECHECK_SCRIPT = 'watch:compile';
 export const DEFAULT_BUNDLE_SCRIPT = 'watch:bundle';
@@ -126,6 +135,7 @@ export function makeBuild(config: TheiaTypeConfig): BuildArea {
 	const ownTests = ownTestsOf(config.ownRoot);
 	return {
 		install: INSTALL,
+		dependencyRoots: DEPENDENCY_ROOTS,
 		hygiene: hygieneOf(config.ownRoot),
 		ownTests: () => ownTests,
 		packageBuild: packageBuildOf(config.applicationRoot),

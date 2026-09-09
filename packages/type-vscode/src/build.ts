@@ -18,6 +18,13 @@ export const INSTALL: readonly BuildCommand[] = [
 	{ label: 'install build', command: 'npm', args: ['ci', '--prefix', 'build'] }
 ];
 
+/**
+ * ##VSCODE-DEPENDENCY-ROOTS: this distribution installs twice - the tree root
+ * and the build toolchain under `build/` - so a tree with only the first one
+ * restored is not ready for a build profile.
+ */
+export const DEPENDENCY_ROOTS: readonly string[] = ['node_modules', 'build/node_modules'];
+
 /** ##VSCODE-BUILD-STEPS: the hygiene and lint gates, in the order they must run. */
 export const HYGIENE: readonly BuildCommand[] = [
 	{ label: 'hygiene', command: 'npm', args: ['run', 'hygiene'] },
@@ -84,6 +91,7 @@ export function ownTests(ownRoot: string): BuildCommand | null {
 
 export const build: BuildArea = {
 	install: INSTALL,
+	dependencyRoots: DEPENDENCY_ROOTS,
 	hygiene: HYGIENE,
 	ownTests,
 	packageBuild: PACKAGE_BUILD,

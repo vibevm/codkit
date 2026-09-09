@@ -11,11 +11,11 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEPS_REQUIRED_RECEIPTS } from '../../src/lib/ciEngine.ts';
+import { depsReceiptsOf } from '../../src/lib/ciEngine.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
 import type { PublicErrorPayload } from '../../src/lib/messages.ts';
-import { STUB_TYPE_ID, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
+import { DEPENDENCY_ROOTS, STUB_TYPE_ID, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { makePatchSet } from '../fixtures/makePatchSet.ts';
@@ -130,9 +130,12 @@ export function makeCliFixture(label: string): CliFixture {
 	};
 }
 
-/** Materialize the npm receipts that stand in for an offline dependency cache. */
+/**
+ * Materialize the npm receipts that stand in for an offline dependency cache -
+ * one per dependency root the stub type names.
+ */
 export function provideTreeDependencies(fixture: CliFixture): void {
-	for (const relative of DEPS_REQUIRED_RECEIPTS) {
+	for (const relative of depsReceiptsOf(DEPENDENCY_ROOTS)) {
 		const path = fixture.treePath(relative);
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, '{"lockfileVersion":3}\n', 'utf8');

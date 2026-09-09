@@ -649,7 +649,7 @@ const faqEntries = {
 	],
 	'DEPS-MISSING': [
 		'Required runtime dependencies or their npm cache receipts are absent.',
-		'Install/restore Codkit dependencies in the tool root; for `ci --profile build`, also supply tree `node_modules` and `build/node_modules` through the air-gapped cache/mount. The patch set is not the tool installation, and empty bind-mount directories do not count as restored caches.'
+		'Install/restore Codkit dependencies in the tool root; for `ci --profile build`, also supply every dependency root the project type names (the message lists the missing `.package-lock.json` receipts) through the air-gapped cache/mount. The patch set is not the tool installation, and empty bind-mount directories do not count as restored caches.'
 	],
 	'LICENSE-HEADER': [
 		'A file of the standards package has no licence carrier, or a wrong one: no copyright line, no year on an own file, no `SPDX-License-Identifier`, an identifier that is not SPDX, an own file under a licence other than `UPL-1.0`, a binary or JSON without its `.license` sidecar, or a sidecar without its file.',
