@@ -175,7 +175,7 @@ contract holds). Brave and GitLab Web IDE come later; see §7.
 | P2 | `ProjectType` interface; the `vscode` type extracted; `type` in the configuration (schema 2, schema 1 reads as vscode); `codkit types`, `where` and the envelope report it | floor green; the product's own gates unchanged: `verify`, `status`, `ci --profile build`, static proof, dev and package UI proofs |
 | P3 | the `generic` type and the generic polygon; capability refusals | FEAT-002 scenarios for the generic polygon end to end |
 | P4 | packages split (standards core, `seams-vscode`, `runtime-vscode`); skills type-neutral; delivery to the product | product `vibe check` 0, standards and runtime checks current |
-| P5 | Theia spike on master (`research/theia-facts-<version>`: layout, DI, build, test, packaging, application model), then `@codkit/type-theia`, then the product **downstream product Editor** (`downstream product`): its patch set repository, managed tree on a pinned master commit, identity, boot lane, steward context, proofs - the same way the VS Code product was started | the second real type passes the same scenarios as the first; `downstream product` loads, verifies, builds and runs |
+| P5 | Theia spike on master (`research/theia-facts-<version>`: layout, DI, build, test, packaging, application model), then `@codkit/type-theia`, then the owner's Theia-based product (named only in its own repository): its patch set repository, managed tree on a pinned master commit, identity, boot lane, steward context, proofs - the same way the VS Code product was started | the second real type passes the same scenarios as the first; `downstream product` loads, verifies, builds and runs |
 | later | Brave: Chromium `patches/` and `chromium_src/` overrides mapped onto the layers - the closest kin to this model; GitLab Web IDE: a VS Code fork, so the `vscode` type with its own product configuration and, if its layout diverged, a type variant | spikes first |
 
 Each phase leaves the VS Code product working unchanged; the product's proofs are the
@@ -186,7 +186,7 @@ regression net for the whole programme.
 1. The word is **`type`**: the configuration field is `"type"`, the packages are `@codkit/type-*`, the verb is `codkit types`, the refusal code is `CK-E-TYPE-CAPABILITY`.
 2. The module is **`modules/vscode`**, next to `modules/codkit`.
 3. The generic polygon is a **synthetic repository** in the fixtures.
-4. Theia is the second real type, taken from **Theia master**, and it is not a scratch: it becomes a real product the owner develops - **downstream product Editor** (directory and console command `downstream product`), a patch set of type `theia` with its own repository, managed tree, specifications and proofs, built the way the VS Code product was built.
+4. Theia is the second real type, taken from **Theia master**, and it is not a scratch: it becomes a real product the owner develops, named only in its own repository (the clean room of this tool names no consumer product), a patch set of type `theia` with its own repository, managed tree, specifications and proofs, built the way the VS Code product was built.
 5. Types are **separate packages from the start**, so that the procedure of splitting is done once (§5).
 6. The own root: the field is `typeConfig.ownRoot`, a path from the tree root; the VS Code type derives it from a schema-1 `ownDirName` as `src/vs/<name>`.
 
