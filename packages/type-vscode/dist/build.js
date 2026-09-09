@@ -1,0 +1,81 @@
+/** @scope spec://codkit/modules/vscode/PROP-004#VSCODE-BUILD-STEPS */
+// Area 4: which command each step of the universal build skeleton runs, where
+// the pass boundaries of a watch channel are, and what a packaged build has to
+// have stamped.
+//
+// The order of the steps, the profiles, the transactions and the exit codes are
+// the engine's; the names of the scripts are this type's answer.
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+/** ##VSCODE-BUILD-STEPS: the dependency install of the tree and of `build/`. */
+export const INSTALL = [
+    { label: 'install', command: 'npm', args: ['ci'] },
+    { label: 'install build', command: 'npm', args: ['ci', '--prefix', 'build'] }
+];
+/** ##VSCODE-BUILD-STEPS: the hygiene and lint gates, in the order they must run. */
+export const HYGIENE = [
+    { label: 'hygiene', command: 'npm', args: ['run', 'hygiene'] },
+    { label: 'eslint', command: 'npm', args: ['run', 'eslint'] }
+];
+/**
+ * ##VSCODE-BUILD-STEPS: the package build is the upstream `gulp vscode-*` task.
+ * The task carries the platform and the architecture in its name, so a type can
+ * only state a default; the release protocol names the one it wants. Nothing in
+ * `ci` runs it - `ci --profile build` stops at the compile channels and the
+ * tests - so this is the declared default and not an executed step.
+ */
+export const PACKAGE_BUILD = [
+    { label: 'package', command: 'npm', args: ['run', 'gulp', '--', 'vscode-linux-x64'] }
+];
+/**
+ * ##BUILD-COMMIT-COMES-FROM-THE-TREE-HEAD: a managed tree is a linked worktree,
+ * so the packaging step cannot read `.git/HEAD` as a directory and has to be
+ * told the commit; without it the packaged product carries no `commit` and the
+ * NLS loader does not read language packs.
+ */
+export const PACKAGE_STAMPS = [
+    { name: 'BUILD_SOURCEVERSION', source: 'tree-head' },
+    { name: 'VSCODE_QUALITY', source: 'pin-tag' }
+];
+/**
+ * ##DAEMON-TRAPS: argv fragments that mean somebody else's watcher already
+ * runs over this tree. The upstream watch scripts and the channels of this type
+ * are mutually exclusive writers of `out/`.
+ */
+export const FOREIGN_WATCHER_MARKERS = ['build/next/index.ts transpile --watch', 'gulp watch-'];
+/**
+ * The pass-boundary profile of the watch channels, as an absolute path inside
+ * this package. The engine reads and validates it exactly as it reads a profile
+ * a patch set declares for itself (##FALSE-END-GUARDS).
+ */
+export const WATCH_PROFILE_PATH = join(packageRoot, 'config', 'build-watch.json');
+/**
+ * ##TESTS-LAYER-SPLIT: `--runGlob` bypasses the layer exclusion of the upstream
+ * node runner, and a suite that brings up the workbench pulls in stylesheets
+ * node cannot load; the node runner therefore takes the `common` and `node`
+ * layers, and the browser suites are a protocol step outside `ci`.
+ */
+export function ownTests(ownRoot) {
+    const leaf = ownRoot
+        .split('/')
+        .filter((segment) => segment !== '')
+        .at(-1) ?? '';
+    if (leaf === '') {
+        return null;
+    }
+    return {
+        label: 'product tests',
+        command: 'npm',
+        args: ['run', 'test-node', '--', '--runGlob', `vs/${leaf}/**/test/{common,node}/**/*.test.js`]
+    };
+}
+export const build = {
+    install: INSTALL,
+    hygiene: HYGIENE,
+    ownTests,
+    packageBuild: PACKAGE_BUILD,
+    packageStamps: PACKAGE_STAMPS,
+    watchProfilePath: WATCH_PROFILE_PATH,
+    foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
+};

@@ -9905,7 +9905,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:40c5309b3eb3b8a180b60ba672bd3ffa5deceb517857cb0a3f2e1f105c3fe50e",
+      "content_hash": "sha256:b65ebd5d33fb09299c40fefd04cb0b8734947a3fbe4387aba121087070283505",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
       "heading": "vscode PROP-001: The `vscode` project type - overview and module map",
@@ -9914,10 +9914,10 @@
     },
     {
       "anchor": "VSCODE-TYPE-IS-AN-ANSWER-SET",
-      "content_hash": "sha256:6df54ee3e8aed00c1c7427dbf9261e37c448c225f8cc709cafb8f90cc9fb99dd",
+      "content_hash": "sha256:620551a5cf74465a294a5811b8016eaec177be27b731953028038eb07fd401de",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
-      "heading": "`vscode` is the project type (`spec://codkit/modules/codkit/PROP-016#TYPE-TERM`) that carries the tool's knowledge of the Visual Studio Code family of upstreams: where own code lives, which file is the product manifest, how a service is overridden, how the tree is built and tested, which images a distribution carries, which library the runtime capability delivers. The engine of `modules/codkit` asks the nine questions of the contract (`spec://codkit/modules/codkit/PROP-016#TYPE-CONTRACT-IS-CLOSED`); this module is the set of answers, and nothing here is a fact about the engine. @status:spec/plan",
+      "heading": "`vscode` is the project type (`spec://codkit/modules/codkit/PROP-016#TYPE-TERM`) that carries the tool's knowledge of the Visual Studio Code family of upstreams: where own code lives, which file is the product manifest, how a service is overridden, how the tree is built and tested, which images a distribution carries, which library the runtime capability delivers. The engine of `modules/codkit` asks the nine questions of the contract (`spec://codkit/modules/codkit/PROP-016#TYPE-CONTRACT-IS-CLOSED`); this module is the set of answers, and nothing here is a fact about the engine. @status:spec/done",
       "line": 5,
       "uri": "spec://codkit/modules/vscode/PROP-001#VSCODE-TYPE-IS-AN-ANSWER-SET"
     },
@@ -9932,7 +9932,7 @@
     },
     {
       "anchor": "map",
-      "content_hash": "sha256:1b7a7378aa75fac638cf2687f9aabed6d081e04187df5b0f7e53f72facf4df10",
+      "content_hash": "sha256:55fa0e4dc354204fae5606df16e24b949b46b58c864442c328f1d612447fb02c",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
       "heading": "1. Module map",
@@ -9941,16 +9941,16 @@
     },
     {
       "anchor": "VSCODE-MODULE-MAP",
-      "content_hash": "sha256:8c943a356edd61cfd2e0b2235f52a5eabe28861abb3ec522d51c705c9241bbdb",
+      "content_hash": "sha256:8065a5528fa2f0f3028af099483528c707a60c886b313e29d5869958f10ce7f8",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
-      "heading": "Module contents: PROP-001 the type and this map; PROP-002 tree layout - the own root, own extensions, the cleanup whitelist, the forbidden patch targets; PROP-003 layers - the `product.json` overlay with its `product.overrides.json` dev channel, the built-in extensions, the `registerSingleton` service override, the entry modules; PROP-004 build and test - the dependency install, hygiene and eslint, the watch channels and their pass boundaries, the test runners and the package build with its stamps; PROP-005 the readers of the upgrade advisory; PROP-006 the brand image set - the target table and the artwork families; PROP-007 the runtime library delivered by the `runtime-library` capability; PROP-008 the generators - the feature skeleton, the brand table and the `nls.ts` hook; PROP-009 the conventions defaults - the subsystems of intervention ids and the forbidden service ids. The contract these answer is `modules/codkit/PROP-016`; the neighbouring measurement of the upstream is `research/vscode-facts-1.135`. @status:spec/plan",
+      "heading": "Module contents: PROP-001 the type and this map; PROP-002 tree layout - the own root, own extensions, the cleanup whitelist, the forbidden patch targets; PROP-003 layers - the `product.json` overlay with its `product.overrides.json` dev channel, the built-in extensions, the `registerSingleton` service override, the entry modules; PROP-004 build and test - the dependency install, hygiene and eslint, the watch channels and their pass boundaries, the test runners and the package build with its stamps; PROP-005 the readers of the upgrade advisory; PROP-006 the brand image set - the target table and the artwork families; PROP-007 the runtime library delivered by the `runtime-library` capability; PROP-008 the generators - the feature skeleton, the brand table and the `nls.ts` hook; PROP-009 the conventions defaults - the subsystems of intervention ids and the forbidden service ids. The contract these answer is `modules/codkit/PROP-016`; the neighbouring measurement of the upstream is `research/vscode-facts-1.135`. @status:spec/done",
       "line": 8,
       "uri": "spec://codkit/modules/vscode/PROP-001#VSCODE-MODULE-MAP"
     },
     {
       "anchor": "capabilities",
-      "content_hash": "sha256:0ae7f2e96d035ff34b32a36cb280c27ee43dafca189b26eb9c525b335ad02a23",
+      "content_hash": "sha256:1802c733cf7d9c62630bb0be5a90f6410560092c7831328f668dcd0d44768116",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
       "heading": "2. Declared capabilities",
@@ -9959,16 +9959,16 @@
     },
     {
       "anchor": "VSCODE-CAPABILITIES",
-      "content_hash": "sha256:a7f5093bac8898f2535f90efe62318b24c186e404c4eaa008e25e943454adf22",
+      "content_hash": "sha256:503130d854f928074a6ccb5649c39ba360476e9e1be64b726afea7e392f8e69d",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
-      "heading": "The type declares every optional capability of `spec://codkit/modules/codkit/PROP-016#TYPE-TERM-CAPABILITY`: `brand-images`, `gen-brand`, `build-channels`, `runtime-library`, `own-extensions`, `service-override`, `entry-module`, `config-overlay`, `dev-channel`, `upgrade-advisory`. No verb of the roster refuses over a `vscode` patch set for want of a capability, which is what makes the extraction invisible to the existing product. @status:spec/plan",
+      "heading": "The type declares every optional capability of `spec://codkit/modules/codkit/PROP-016#TYPE-TERM-CAPABILITY`: `brand-images`, `gen-brand`, `build-channels`, `runtime-library`, `own-extensions`, `service-override`, `entry-module`, `config-overlay`, `dev-channel`, `upgrade-advisory`. No verb of the roster refuses over a `vscode` patch set for want of a capability, which is what makes the extraction invisible to the existing product. @status:spec/done",
       "line": 11,
       "uri": "spec://codkit/modules/vscode/PROP-001#VSCODE-CAPABILITIES"
     },
     {
       "anchor": "identity",
-      "content_hash": "sha256:40a0cb11c071a85607de270f39353a9e53296820d7690532886148e2c8c32021",
+      "content_hash": "sha256:24b1136e6b1bbe28d8f6dba25e77a5beda4daa2e322da8b8c7038f7b81de6916",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
       "heading": "3. Upstream identity",
@@ -9977,10 +9977,10 @@
     },
     {
       "anchor": "VSCODE-UPSTREAM-IDENTITY",
-      "content_hash": "sha256:43cfccb8d9f29da2e3fe2b4a7b919ff5aae94147f5bf015810a3db06f7a75054",
+      "content_hash": "sha256:0cd3db5e26652b64eae6a44c37fd57e65d5c9e441e68045aa1b139b895e8cfaa",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
-      "heading": "The type's answer to the identity question (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-IDENTITY`): the pin tag is an upstream release tag of the form `<major>.<minor>.<patch>` (`1.135.0`); a healthy tree carries `product.json` and `package.json` at its root and `src/vs/` below it; the origin is proved by the reachability of the anchor commit of the microsoft/vscode history, and the anchor policy is the engine's `ANCHOR-COMMIT-RULE` computed once per patch set. The resolution of a pin into `tag@sha@date` is universal and stays the engine's. @status:spec/plan",
+      "heading": "The type's answer to the identity question (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-IDENTITY`): the pin tag is an upstream release tag of the form `<major>.<minor>.<patch>` (`1.135.0`); a healthy tree carries `product.json` and `package.json` at its root and `src/vs/` below it; the origin is proved by the reachability of the anchor commit of the microsoft/vscode history, and the anchor policy is the engine's `ANCHOR-COMMIT-RULE` computed once per patch set. The resolution of a pin into `tag@sha@date` is universal and stays the engine's. @status:spec/done",
       "line": 14,
       "uri": "spec://codkit/modules/vscode/PROP-001#VSCODE-UPSTREAM-IDENTITY"
     },
