@@ -177,7 +177,7 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 
 	// (h4) The own-extension layer: the section describes materializable
 	// extensions, and what the tree carries is what the delta holds
-	// (PROP-005 ##OWN-EXTENSION-UNIT).
+	// (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
 	checkOwnExtensionLayer(patchesDir, tree, config, manifest, findings);
 
 	// (h3) The graft budget: a patch of type `hook` creates a seam and nothing

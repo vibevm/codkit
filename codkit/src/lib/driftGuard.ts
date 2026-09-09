@@ -72,7 +72,7 @@ export type DriftResult = {
 	/** Half (b) on its own, classified; includes the harmless class. */
 	readonly own: readonly OwnDivergence[];
 	/**
-	 * Half (b) for the own-extension layer (PROP-005 ##OWN-EXTENSION-UNIT):
+	 * Half (b) for the own-extension layer (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT):
 	 * `extensions/<name>/` is materialized from the delta exactly like own code,
 	 * so git says nothing about it either and only a byte comparison can.
 	 */
@@ -142,7 +142,7 @@ export type DriftBaseOptions = {
 	/**
 	 * Tree prefixes (with a trailing slash) that another layer supplies and git
 	 * therefore may not judge - today the materialized own extensions
-	 * (PROP-005 ##OWN-EXTENSION-UNIT). They are filtered out for the same reason
+	 * (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT). They are filtered out for the same reason
 	 * the own directory is: their bytes come from the delta.
 	 */
 	readonly ownedPrefixes?: readonly string[];
@@ -261,7 +261,7 @@ export function upstreamDirt(treeDir: string, ownDirName: string, options: Drift
  * `git status --porcelain` reports one line for a wholly untracked directory -
  * `extensions/` rather than `extensions/<name>/package.json` - and a prefix
  * filter cannot see through that: the materialized own extension would read as
- * unextracted work in the upstream zone (PROP-005 ##OWN-EXTENSION-UNIT). Only
+ * unextracted work in the upstream zone (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT). Only
  * an entry that is an ancestor of an owned prefix is re-listed, so a tree with
  * no own extensions gets exactly the listing it got before, and litter beside
  * the owned path keeps its own name and stays dirt.

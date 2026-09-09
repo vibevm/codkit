@@ -2,11 +2,11 @@
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">PROP-000: Codkit foundations</title>
   <status stage="spec" state="done"/>
-  <p><CODKIT-IS-STANDALONE fact="true" status="spec/done">Codkit is a standalone product for maintaining a structured patch set over any fork of Visual Studio Code.</CODKIT-IS-STANDALONE></p>
+  <p><CODKIT-IS-STANDALONE fact="true" status="spec/done">Codkit is a standalone product for maintaining a structured patch set over any fork of an upstream its project type describes (`spec://codkit/modules/codkit/PROP-016#TYPE-TERM`).</CODKIT-IS-STANDALONE></p>
   <boundaries title="Independent locations">
     <facts ordered="false">
       <TOOL-ROOT fact="true" status="spec/done">The Codkit installation contains only tool code, specifications, documentation, and tests.</TOOL-ROOT>
-      <FORK-DIR fact="true" status="spec/done">The managed fork tree is an external VS Code checkout selected by the operator.</FORK-DIR>
+      <FORK-DIR fact="true" status="spec/done">The managed fork tree is an external upstream checkout selected by the operator.</FORK-DIR>
       <PATCHES-DIR fact="true" status="spec/done">The patch-set directory is external and owns the pin, intervention artifacts, inventory, history, and runtime state.</PATCHES-DIR>
       <NO-LAYOUT-INFERENCE fact="true" status="spec/done">No location is inferred from the current directory or from a neighbouring path.</NO-LAYOUT-INFERENCE>
       <ROOTS-ARE-DISJOINT fact="true" status="spec/done">`toolRoot`, `patchesDir`, and `forkDir` must be pairwise disjoint: no two may be equal and none may contain another. Resolution canonicalizes existing path prefixes before enforcing this invariant.</ROOTS-ARE-DISJOINT>

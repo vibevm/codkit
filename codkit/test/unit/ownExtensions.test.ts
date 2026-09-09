@@ -1,4 +1,4 @@
-// unit: the own-extension layer (PROP-005 sec. 13, ##OWN-EXTENSION-UNIT).
+// unit: the own-extension layer (modules/vscode/PROP-002 sec. 2, ##OWN-EXTENSION-UNIT).
 //
 // The layer is the own layer applied to a second pair of roots, so the three
 // things worth proving separately are the three it does not share with own

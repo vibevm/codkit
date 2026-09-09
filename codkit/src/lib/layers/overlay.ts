@@ -39,7 +39,7 @@ export const PRODUCT_JSON_TARGET = 'product.json';
 
 /**
  * Top-level keys of product.json that the upstream packaging step stamps by
- * itself (PROP-010 ##PRODUCT-OVERLAY-FACTS). An overlay operation on one of them
+ * itself (modules/vscode/PROP-003 ##PRODUCT-OVERLAY-FACTS). An overlay operation on one of them
  * is not refused - it is announced, because whatever it writes is overwritten at
  * packaging time and the intervention would be silently ineffective.
  */
@@ -773,7 +773,7 @@ export function overlayDriftErrors(drift: readonly OverlayDrift[]): readonly CkE
 	);
 }
 
-/** The advisory of PROP-010 ##PRODUCT-OVERLAY-FACTS, or null when none applies. */
+/** The advisory of modules/vscode/PROP-003 ##PRODUCT-OVERLAY-FACTS, or null when none applies. */
 function stampedKeyWarning(overlay: Overlay, operation: OverlayOperation): string | null {
 	if (overlay.target !== PRODUCT_JSON_TARGET) {
 		return null;

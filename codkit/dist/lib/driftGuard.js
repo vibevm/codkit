@@ -149,7 +149,7 @@ export function upstreamDirt(treeDir, ownDirName, options = {}) {
  * `git status --porcelain` reports one line for a wholly untracked directory -
  * `extensions/` rather than `extensions/<name>/package.json` - and a prefix
  * filter cannot see through that: the materialized own extension would read as
- * unextracted work in the upstream zone (PROP-005 ##OWN-EXTENSION-UNIT). Only
+ * unextracted work in the upstream zone (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT). Only
  * an entry that is an ancestor of an owned prefix is re-listed, so a tree with
  * no own extensions gets exactly the listing it got before, and litter beside
  * the owned path keeps its own name and stays dirt.

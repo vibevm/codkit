@@ -6,7 +6,7 @@
     <facts ordered="false">
       <ROLE-CODKIT fact="true" status="spec/done">The Codkit repository is the distributable tool and does not contain a consumer fork's patch artifacts or product history.</ROLE-CODKIT>
       <ROLE-PATCH-SET fact="true" status="spec/done">The patch-set directory is a Git work tree that owns `codkit.json`, delta layers, cycle records, inventory, and review history.</ROLE-PATCH-SET>
-      <ROLE-FORK-TREE fact="true" status="spec/done">The managed fork tree contains upstream VS Code history plus generated Codkit refs; direct human commits there are forbidden.</ROLE-FORK-TREE>
+      <ROLE-FORK-TREE fact="true" status="spec/done">The managed fork tree contains the upstream history of the patch set's project type plus generated Codkit refs; direct human commits there are forbidden.</ROLE-FORK-TREE>
     </facts>
   </topology>
   <workflow title="Workflow">

@@ -1,4 +1,4 @@
-/** @scope spec://codkit/modules/codkit/PROP-015#GEN-FEATURE */
+/** @scope spec://codkit/modules/vscode/PROP-008#GEN-FEATURE */
 // The generators behind `codkit gen feature` and `codkit gen brand`
 // (PROP-015 sec. 5).
 //

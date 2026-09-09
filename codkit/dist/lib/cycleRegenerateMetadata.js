@@ -80,7 +80,7 @@ function updateOwn(options) {
     const serviceOverrides = options.inventory.own.serviceOverrides.map((entry) => metadataEntry(entry, 'service-override'));
     // The `extensions` section carries no `cause` and no transition pin of its
     // own to rewrite here; it is round-tripped so the regenerated manifest keeps
-    // every byte the layer put there (PROP-005 ##OWN-EXTENSION-UNIT).
+    // every byte the layer put there (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
     const extensions = options.inventory.own.extensions;
     if (changed)
         options.desired.set(OWN_MANIFEST_PATH, encodeUtf8(serializeOwnManifest({ units, serviceOverrides, extensions })));

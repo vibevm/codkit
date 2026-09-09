@@ -1,4 +1,4 @@
-/** @scope spec://codkit/modules/codkit/PROP-005#OWN-EXTENSION-UNIT */
+/** @scope spec://codkit/modules/vscode/PROP-002#OWN-EXTENSION-UNIT */
 // own-extension: a built-in extension of the product carried as a unit of the
 // own layer (PROP-005 sec. 13).
 //

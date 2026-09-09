@@ -43,7 +43,7 @@ export const ERROR_CODES = [
 	// OWN-UNCOVERED, which is about own *files* nobody declared.
 	'GUARD-MISSING',
 	// Own code re-registers a decorator that must not be overridden
-	// (PROP-005 ##SO-FORBIDDEN-IDS).
+	// (modules/vscode/PROP-003 ##SO-FORBIDDEN-IDS).
 	'FORBIDDEN-SERVICE',
 	'OVERLAY-SCHEMA',
 	'OVERLAY-DRIFT',
@@ -107,10 +107,10 @@ export const ERROR_CODES = [
 	// The `extensions` section of the own manifest does not describe a
 	// materializable extension: a malformed or duplicated name, a directory
 	// without its package.json, a directory nobody declared, or a name the pin
-	// already ships as a built-in extension (PROP-005 ##OWN-EXTENSION-UNIT).
+	// already ships as a built-in extension (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
 	'OWN-EXTENSION-MANIFEST',
 	// The materialized `extensions/<name>/` of the fork tree no longer matches
-	// `delta/own-extensions/<name>/` (PROP-005 ##OWN-EXTENSION-UNIT).
+	// `delta/own-extensions/<name>/` (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
 	'OWN-EXTENSION-DRIFT'
 ] as const;
 

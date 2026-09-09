@@ -117,7 +117,7 @@ async function run(ctx) {
     // 2. Own code, per file and per side (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
     const own = classifyOwn(ctx.patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
     reportOwn(ctx.out, own, config.ownDirName);
-    // 2a. Own extensions (PROP-005 ##OWN-EXTENSION-UNIT): materialized under
+    // 2a. Own extensions (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT): materialized under
     // `extensions/<name>/`, they are own code in the upstream zone - drift is
     // reported here, and their paths never count as upstream dirt below.
     //

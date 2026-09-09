@@ -11,7 +11,7 @@
 //
 // S62 is the state after the record goes away: the directory stays in the tree
 // until `load --fresh` sweeps it, and `status` says so instead of leaving it to
-// be discovered (PROP-005 ##OWN-EXTENSION-STRANDED).
+// be discovered (modules/vscode/PROP-002 ##OWN-EXTENSION-STRANDED).
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

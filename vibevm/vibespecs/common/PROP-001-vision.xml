@@ -2,10 +2,10 @@
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">PROP-001: Codkit vision</title>
   <status stage="spec" state="done"/>
-  <p><CODKIT-DEFINITION fact="true" status="spec/done">Codkit turns a VS Code fork upgrade into a repeatable operation: move the upstream pin, reapply a machine-readable patch set, resolve the explicit red list, verify, and regenerate.</CODKIT-DEFINITION></p>
+  <p><CODKIT-DEFINITION fact="true" status="spec/done">Codkit turns a fork upgrade into a repeatable operation, for any family of upstreams a project type describes (`spec://codkit/modules/codkit/PROP-016#TYPE-TERM`): move the upstream pin, reapply a machine-readable patch set, resolve the explicit red list, verify, and regenerate.</CODKIT-DEFINITION></p>
   <goals title="Goals">
     <facts ordered="false">
-      <GOAL-ANY-FORK fact="true" status="spec/done">The same Codkit installation can operate on unrelated VS Code forks and unrelated patch sets.</GOAL-ANY-FORK>
+      <GOAL-ANY-FORK fact="true" status="spec/done">The same Codkit installation can operate on unrelated forks and unrelated patch sets, of one project type or of several.</GOAL-ANY-FORK>
       <GOAL-VISIBLE-DELTA fact="true" status="spec/done">Every downstream difference has an owner, reason, intervention layer, and verification evidence.</GOAL-VISIBLE-DELTA>
       <GOAL-CHEAP-UPGRADE fact="true" status="spec/done">Upgrade cost is proportional to the maintained intervention inventory, not to upstream repository history.</GOAL-CHEAP-UPGRADE>
       <GOAL-PORTABLE fact="true" status="spec/done">Linux, macOS, and Windows are supported targets, and offline CI is a first-class target. A target is not accepted merely because platform-neutral code exists: native execution evidence is required.</GOAL-PORTABLE>

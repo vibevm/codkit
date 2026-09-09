@@ -6,12 +6,12 @@
     <facts ordered="false">
       <PRODUCT-AND-TOOL-NAMES fact="true" status="spec/done">The tool is Codkit; a consumer product and its fork-specific namespace are external inputs.</PRODUCT-AND-TOOL-NAMES>
       <INTERVENTION-ID-FORMAT fact="true" status="spec/done">Intervention ids use `CK-&lt;area&gt;-&lt;number&gt;` and are unique within a patch set.</INTERVENTION-ID-FORMAT>
-      <OWN-DIRECTORY-CONFIGURED fact="true" status="spec/done">The downstream-owned source directory below `src/vs/` is configured per patch set and has no product-specific default.</OWN-DIRECTORY-CONFIGURED>
+      <OWN-DIRECTORY-CONFIGURED fact="true" status="spec/done">The downstream-owned source directory is configured per patch set as `typeConfig.ownRoot`, inside the bounds the project type sets, and has no product-specific default.</OWN-DIRECTORY-CONFIGURED>
     </facts>
   </identifiers>
   <terms title="Terms">
     <facts ordered="false">
-      <TERM-UPSTREAM fact="true" status="spec/done">Upstream is the VS Code history consumed by a managed fork; a pin is an exact tag and commit.</TERM-UPSTREAM>
+      <TERM-UPSTREAM fact="true" status="spec/done">Upstream is the history consumed by a managed fork, of the family the patch set's project type describes; a pin is an exact tag and commit.</TERM-UPSTREAM>
       <TERM-PATCH-SET fact="true" status="spec/done">A patch set is the complete machine-readable downstream delta plus its configuration, state, and inventory.</TERM-PATCH-SET>
       <TERM-FORK-TREE fact="true" status="spec/done">A managed fork tree is the reproducible checkout to which Codkit applies a patch set.</TERM-FORK-TREE>
       <TERM-INTERVENTION fact="true" status="spec/done">An intervention is one attributable downstream change represented by a Codkit layer.</TERM-INTERVENTION>

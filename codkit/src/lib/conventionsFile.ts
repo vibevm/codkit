@@ -31,7 +31,7 @@ export type Conventions = {
 	readonly layers: readonly string[];
 	readonly forbiddenPatchTargets: readonly string[];
 	/**
-	 * Decorator ids own code may never re-register (PROP-005 ##SO-FORBIDDEN-IDS):
+	 * Decorator ids own code may never re-register (modules/vscode/PROP-003 ##SO-FORBIDDEN-IDS):
 	 * these singletons are set explicitly before the workbench exists, so a later
 	 * registration is ignored - silently - and the product breaks at load.
 	 */

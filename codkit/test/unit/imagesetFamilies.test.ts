@@ -1,5 +1,5 @@
 // The whole brand surface, not just the application icon: how a target names
-// its family and its artwork (PROP-007 ##IMAGESET-ARTWORK), how masters are
+// its family and its artwork (modules/vscode/PROP-006 ##IMAGESET-ARTWORK), how masters are
 // found under a family folder (##IMAGESET-MASTERS), and how a vector target
 // is delivered without being rasterised (##IMAGESET-SVG-PASSTHROUGH).
 //

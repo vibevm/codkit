@@ -9,7 +9,7 @@
 //
 // The relative specifiers are counted from the materialized location, not from
 // the patch set: `delta/own/**` becomes `src/vs/<ownDirName>/**` in the fork
-// tree (PROP-005 ##OWN-UNDER-SRC-VS), so a file in
+// tree (modules/vscode/PROP-002 ##OWN-UNDER-SRC-VS), so a file in
 // `delta/own/contrib/<name>/browser/` reaches upstream with four `..` segments
 // and the runtime library with three; the test sits two directories deeper
 // (##GEN-TEST-LIVES-WITH-THE-FEATURE) and reaches upstream with five.

@@ -1,4 +1,4 @@
-/** @scope spec://codkit/modules/codkit/PROP-007#IMAGESET-TARGET-DISCOVERY */
+/** @scope spec://codkit/modules/vscode/PROP-006#IMAGESET-TARGET-DISCOVERY */
 // Target discovery (IMAGESET-TARGET-DISCOVERY): which image files of the fork
 // tree belong to the product's icon set, and what structure each one carries.
 //

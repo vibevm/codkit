@@ -222,7 +222,7 @@ export type SyncEngineOptions = {
 	readonly discardWorktreeEdits?: boolean;
 	/**
 	 * Only the `load` command sets this (PROP-008 ##DRIFT-GUARD-PREDICATE, the
-	 * stranded exception of PROP-005 ##OWN-EXTENSION-STRANDED). It hands the
+	 * stranded exception of modules/vscode/PROP-002 ##OWN-EXTENSION-STRANDED). It hands the
 	 * guard the one predicate that says which untracked directory under
 	 * `extensions/` is a materialization nobody declares any more, so a plain
 	 * `load` passes over it instead of refusing over a directory it neither

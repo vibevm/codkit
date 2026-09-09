@@ -72,7 +72,7 @@ async function run(ctx) {
             discardWorktreeEdits: discard && fresh,
             // PROP-008 ##DRIFT-GUARD-PREDICATE: `load` is the one command
             // that passes over a materialization nobody declares any more
-            // (PROP-005 ##OWN-EXTENSION-STRANDED). It is set here rather
+            // (modules/vscode/PROP-002 ##OWN-EXTENSION-STRANDED). It is set here rather
             // than inside the engine because it is a property of the
             // command, not of the run: every other caller of the engine
             // keeps the rule about a new file in the upstream zone.

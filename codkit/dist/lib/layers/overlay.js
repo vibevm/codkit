@@ -31,7 +31,7 @@ export const PRODUCT_OVERRIDES_FILE = 'product.overrides.json';
 export const PRODUCT_JSON_TARGET = 'product.json';
 /**
  * Top-level keys of product.json that the upstream packaging step stamps by
- * itself (PROP-010 ##PRODUCT-OVERLAY-FACTS). An overlay operation on one of them
+ * itself (modules/vscode/PROP-003 ##PRODUCT-OVERLAY-FACTS). An overlay operation on one of them
  * is not refused - it is announced, because whatever it writes is overwritten at
  * packaging time and the intervention would be silently ineffective.
  */
@@ -518,7 +518,7 @@ export function overlayDriftErrors(drift) {
     return drift.map((entry) => ckError('OVERLAY-DRIFT', `${entry.overlayId}: ${entry.target}:${renderPath(entry.path)} at the pin is ${renderValue(entry.actual)}, ` +
         `but the overlay expects ${entry.expectedAbsent ? 'no such key' : renderValue(entry.expected)}`, 'upstream changed the key this intervention is written against: review the overlay and update expectUpstream', entry.artifactPath));
 }
-/** The advisory of PROP-010 ##PRODUCT-OVERLAY-FACTS, or null when none applies. */
+/** The advisory of modules/vscode/PROP-003 ##PRODUCT-OVERLAY-FACTS, or null when none applies. */
 function stampedKeyWarning(overlay, operation) {
     if (overlay.target !== PRODUCT_JSON_TARGET) {
         return null;
