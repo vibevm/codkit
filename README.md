@@ -1,8 +1,10 @@
 # Codkit
 
-Codkit is a standalone tool for maintaining a structured patch set over an
-arbitrary fork of Visual Studio Code. The Codkit checkout, the managed fork
-tree, and the patch-set directory are independent locations.
+Codkit is a standalone tool for maintaining a structured patch set over a fork
+of an upstream. Which family of upstreams a patch set belongs to is its
+**project type**, declared in `codkit.json` and implemented by a package the
+installation carries (`codkit types` prints them). The Codkit checkout, the
+managed fork tree, and the patch-set directory are independent locations.
 
 Configure the two external locations with command-line flags, environment
 variables, or `~/.codkit/settings.json`:
@@ -21,7 +23,7 @@ precedence over the settings file:
 - `--fork-dir` / `CODKIT_FORK_DIR` / `forkDir`
 - `--patches-dir` / `CODKIT_PATCHES_DIR` / `patchesDir`
 
-The managed tree contains the applied VS Code checkout. The patch-set directory
+The managed tree contains the applied upstream checkout. The patch-set directory
 contains the pin, intervention artifacts, inventory, and Codkit runtime state.
 Neither path is inferred from the Codkit installation directory or the current
 working directory.
@@ -42,6 +44,13 @@ settings, rules, agents) ships under `packages/codkit/claude/`; see the
 repository itself carries no agent perimeter. Current accepted
 evidence and open external risks are tracked in the
 [risk register](docs/codkit/proofs/RISK-REGISTER.md).
+
+The repository is an npm workspace: `packages/codkit` (the CLI and the engine),
+`packages/type-api` (the contract a project type answers) and
+`packages/type-vscode` (the `vscode` type). `npm run kit` builds the air-gapped
+supply kit — one tarball per package plus `kit-manifest.json` with the version
+and sha256 of each — which installs as one offline `npm install` (human
+protocol page 15 and [DEVELOPMENT.md](DEVELOPMENT.md)).
 
 Two UPL-1.0 vibe packages ship under `packages/codkit/vibevm/vibepacks/org.vibevm.codkit/`:
 `standards`, the default norms for a patch set, and `agent-skills`, the agent

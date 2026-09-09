@@ -6,7 +6,8 @@ An air-gapped run is the primary Codkit CI mode. Codkit does not make `ci` insta
 
 | Input | Supplier-side preparation | Air-gapped use |
 | --- | --- | --- |
-| Codkit installation | Export an immutable Codkit source/archive plus its lock checksum; prepare tool-root `node_modules` from the approved registry/cache. | Mount the complete tool root read-only and invoke `/opt/codkit/bin/codkit`. |
+| Codkit packages (CLI + project types) | Build the kit with `npm run kit`: one `npm pack` tarball per workspace package plus `kit-manifest.json` naming each with its version and sha256. | Verify every sha256 against the manifest, then run the manifest's `install.command` — one offline `npm install` of every tarball — in an empty directory. |
+| Codkit third-party dependencies | Mirror the closure of the shipped `npm-shrinkwrap.json` files in the internal registry, or prepare an npm cache/`node_modules` from it. | `npm install --offline` resolves them from that cache/registry; with neither, the install stops at the first package with `ENOTCACHED`. |
 | Patch-set repository | Export the selected patch-set commit with `codkit.json`, delta, cycle records, and required Git refs. | Mount separately from the tool and fork; provide a writable `.codkit` runtime. |
 | Fork repository | Export a bundle/mirror containing upstream history, generated refs, the configured pin, and required future/base refs. Include LFS objects. | Import into internal Git hosting or materialize the mounted fork-tree checkout. |
 | Fork-tree npm dependencies | Mirror every upstream workspace package in an internal npm registry and/or prepare a cache keyed by pin SHA plus lock-file hash. | Restore/mount tree `node_modules` before `ci --profile build`. Codkit never installs it. |
@@ -21,7 +22,7 @@ The fork-tree dependency cache key is the configured pin SHA plus the hash of it
 
 The supplier should accompany each delivery with a signed/checksummed manifest maintained by the organization’s release process. At minimum record:
 
-- Codkit commit/version, source checksum, `npm-shrinkwrap.json` checksum, and dependency-cache identity;
+- Codkit commit/version, the `kit-manifest.json` of the delivered kit (every package name, version and sha256), `npm-shrinkwrap.json` checksum, and dependency-cache identity;
 - patch-set commit and `codkit.json` checksum;
 - fork bundle/mirror identity, configured pin tag/SHA, and LFS-object completeness;
 - dependency-cache keys and lock-file checksums for Codkit and the fork tree;
@@ -51,6 +52,25 @@ The three mounts must be pairwise disjoint. The resolver rejects nesting or
 aliasing before loading patch-set configuration.
 
 Use `--profile build` only after the fork tree’s `node_modules` and build inputs are present. A missing tree dependency produces `CK-E-DEPS-MISSING` and exit 2; Codkit will not fall back to an external registry.
+
+## Installing the Codkit kit
+
+The kit installs as one unit. A patch set names its project type, the type is a
+package the CLI package depends on, and no registry answers for `@codkit/*` in
+the circuit — so every tarball the manifest lists goes into the same command:
+
+```bash
+cd /import/codkit-kit
+sha256sum --check kit-manifest.sha256   # or compare against kit-manifest.json
+npm install --offline \
+  ./codkit-<version>.tgz ./codkit-type-api-<version>.tgz ./codkit-type-vscode-<version>.tgz
+./node_modules/.bin/codkit types
+```
+
+`codkit types` prints one row per registered type with its package, version and
+capabilities; that row set is the acceptance check that the delivery is
+complete. Installing the CLI tarball alone fails with `ENOTCACHED` on
+`@codkit/type-api`: the missing tarball, not a broken package.
 
 ## Network and publication boundaries
 

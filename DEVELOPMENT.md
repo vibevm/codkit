@@ -16,6 +16,57 @@
 npm ci
 ```
 
+## Раскладка workspace
+
+Репозиторий — npm workspace из трёх публикуемых пакетов
+([PROP-016 §3](vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml)):
+
+| Пакет | Что это |
+| --- | --- |
+| `packages/codkit` | CLI и движок, бинарь `codkit`, реестр типов |
+| `packages/type-api` | контракт типа проекта: интерфейс, кодек PNG обмена, форма отказа |
+| `packages/type-vscode` | тип `vscode` — знание об одном семействе апстримов |
+
+Движок слеп к семейству: он спрашивает тип и не называет его фактов. Гейт —
+`git grep` апстримных токенов по `packages/codkit/src` печатает `0`.
+
+## Как добавить тип
+
+1. Заведи `packages/type-<id>/` по образцу `packages/type-vscode`:
+   `package.json` (`@codkit/type-<id>`, версия `1.0.0`, зависимость
+   `@codkit/type-api`), `tsconfig.json`, `tsconfig.runtime.json`,
+   `vitest.config.ts`, `LICENSE.md`, `README.md`.
+2. Реализуй `ProjectType` и экспортируй его как `projectType`; тесты ответов
+   типа живут в этом же пакете.
+3. Добавь строку в `TYPE_REGISTRY` (`packages/codkit/src/types/registry.ts`) и
+   зависимость на пакет в `packages/codkit/package.json`.
+4. Допиши tsconfig нового пакета в `typecheck` и `runtime:build` корневого
+   `package.json`.
+5. `npm install` (обновит `npm-shrinkwrap.json`), затем `npm run floor`.
+6. `npm run kit` — комплект обязан нести новый пакет; сборка комплекта
+   отказывает, когда реестр называет пакет, которого нет в workspace.
+
+## Комплект поставки
+
+`npm run kit` кладёт в `target/supply-kit/` тарбол каждого публикуемого пакета
+(`npm pack`) и `kit-manifest.json`: версия CLI-пакета и строка на каждый
+тарбол — имя пакета, версия, идентификатор типа, роль, файл, размер, sha256, —
+плюс готовая строка `install.command`. Комплект ставится целиком одной
+командой в пустом каталоге, без сети:
+
+```sh
+npm run kit
+cd target/supply-kit
+npm install --offline ./codkit-1.0.0.tgz ./codkit-type-api-1.0.0.tgz ./codkit-type-vscode-1.0.0.tgz
+./node_modules/.bin/codkit types
+```
+
+Тарболы типов нужны в той же команде: `@codkit/type-*` не лежат ни в одном
+реестре, и установка одного CLI-тарбола уходит за ними в сеть. Сторонние
+зависимости `--offline` берёт из npm-кэша или внутреннего реестра — их пины
+лежат в `npm-shrinkwrap.json` внутри тарболов. Человеческая процедура приёмки —
+[08-release-ci](docs/codkit/protocol/human/08-release-ci.md).
+
 ## Проверки
 
 Перед коммитом выполните:

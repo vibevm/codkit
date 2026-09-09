@@ -2,8 +2,10 @@
 
 ## Repository boundary
 
-- Codkit, the patch-set directory, and the managed VS Code fork tree are three
-  independent locations.
+- Codkit, the patch-set directory, and the managed fork tree are three
+  independent locations. Which family of upstreams the tree belongs to is the
+  project type the patch set declares; `codkit --json where` carries it as
+  `codkit.type`.
 - Invoke the installed `codkit` command from `PATH` (or the absolute
   `<codkit-tool-root>/bin/codkit` launcher). Never look for a launcher or a
   `package.json` in the patch-set directory.
@@ -23,7 +25,10 @@
   `<codkit-tool-root>/config/conventions.json` and
   `<codkit-tool-root>/docs/codkit/protocol/human/03-interventions.md`. The layers are `own`,
   `service-override`, `entry-module`, `config-overlay`, `resource-file`,
-  `rewrite-rule`, then `patch`.
+  `rewrite-rule`, then `patch`. Which of them exist is the project type's
+  answer: `codkit --json types` prints the capabilities, and a verb or an
+  artifact outside them refuses with `CK-E-TYPE-CAPABILITY` and `exitCode: 2` -
+  that is a stop, not a reason to pick another layer.
 - Upstream text changes are allowed only inside paired `codkit:begin` /
   `codkit:end` blocks whose id matches the `CK-...` convention. Preserve
   upstream lines. The inventory classifies own/follow/hide behavior.

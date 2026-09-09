@@ -13,6 +13,7 @@
 | Резолв blocker | [форматы задания/результата/журнала](01-journal-format.md), [upgrade cycle](../human/05-upgrade-cycle.md) |
 | Верификация/ревью | [форматы отчётов](01-journal-format.md), [инвентарь и review](../human/03-interventions.md) |
 | Изменение agent protocol | [evals](02-evals.md), [memory policy](03-memory-policy.md), [maintenance](../human/12-maintenance.md) |
+| Выбор слоя и отказы по типу проекта | [тип проекта](../human/15-project-types.md), [вмешательства](../human/03-interventions.md) |
 
 Исходники пяти профилей находятся в [`docs/codkit/agents`](../../agents/).
 Поставляемый профиль [`packages/codkit/claude/`](../../../../packages/codkit/claude/) —
@@ -22,6 +23,23 @@
 `node tools/sync-codkit-agents.mjs --check`. Навыки в профиле не лежат: они
 поставляются пакетом `org.vibevm.codkit/agent-skills` и попадают в репозиторий
 продукта через `vibe skill install` (PROP-014 §1a).
+
+## Тип проекта
+
+Patch set объявляет тип проекта — знание Codkit об одном семействе апстримов.
+Агент его не выбирает и не меняет: `type` и `typeConfig` живут в `codkit.json`,
+а запись туда не разрешена ни одному kind задания (Write открыт только в
+проверенные `outputs[]`).
+
+1. `codkit --json where` — поле `codkit.type` называет тип текущего patch set;
+   `null` означает, что конфигурация не прочитана, и работа не начинается.
+2. `codkit --json types` — `data.types[]` с `capabilities`: какие слои и глаголы
+   вообще существуют в этой установке.
+3. Глагол или артефакт слоя вне способностей типа — `CK-E-TYPE-CAPABILITY`,
+   `exitCode: 2`, ничего не записано. Это останов и отчёт, а не выбор другого
+   слоя по своей инициативе: лестница слоёв [03](../human/03-interventions.md)
+   сужается ровно на то, чего тип не отвечает
+   ([15](../human/15-project-types.md)).
 
 ## Где действует периметр
 
@@ -89,6 +107,8 @@ Journal helper `ck-resolve` вызывается только по пути пр
 | --- | --- | --- |
 | Нет прямого commit/push | `permissions.deny` + PreToolUse | tool denied до запуска |
 | Нет Edit/Write без задания | hook каждый раз читает `codkit --json where` и task | нет/битый task → deny везде |
+| Тип проекта не выбирается агентом | `type`/`typeConfig` в `codkit.json`; Write только в проверенные `outputs[]` | попытка записи вне `outputs[]` → deny до запуска |
+| Глагол вне способностей типа не подменяется другим слоем | проверка возможности в движке до первой записи | `CK-E-TYPE-CAPABILITY`, `exitCode: 2` |
 | Нет перенаправления корней агентом | hook запрещает `--patches-dir` и `--fork-dir`; агент принимает schema-2 roots | попытка выбрать другой root → deny до запуска |
 | Только периметр blocker | realpath/symlink-проверка против `blockers[].paths` | путь вне списка/root → deny |
 | Нет прямой компиляции | deny + shell policy | `tsc`/compile → deny; использовать `build` |

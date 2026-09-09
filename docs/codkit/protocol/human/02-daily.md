@@ -5,7 +5,10 @@
 ## Получить дерево
 
 1. `codkit --json where` печатает schema-2 конверт с `roots.tool`,
-   `roots.patches`, `roots.fork`, их источниками и `exists`, exit `0`.
+   `roots.patches`, `roots.fork`, их источниками и `exists`, а также `codkit.type`
+   — тип проекта этого patch set ([15](15-project-types.md)); exit `0`.
+   Exit `2` с `CK-E-CONFIG` о `type`/`typeConfig` либо с `CK-E-TYPE-UNKNOWN` —
+   конфигурация не объявляет тип этой установки; чини по [15](15-project-types.md#отказы-и-что-по-ним-делать).
 2. При `exists: no` выполни `codkit clone --from <approved-url>`.
    Ожидается checkout пина и exit `0`; `--ci` для clone запрещён и даёт `CK-E-NET-FORBIDDEN`, exit `2`.
 3. `codkit check-tree --require-clean` → таблица из `ok`, exit `0`.
@@ -25,7 +28,8 @@ fork roots должны быть попарно непересекающимис
    Отказ покрывает и правки, и коммиты дерева: строка `N commit(s) in the fork tree ...` — та же незаизвлечённая работа.
    Exit `1` + `CK-E-ARTIFACT-BROKEN` → не редактируй артефакт вслепую; владелец исправляет названный артефакт в patchset.
    Exit `2` → исполни точный `hint` и повтори шаг 2.
-3. Редактируй только пути own manifest в дереве. Для апстримного файла сначала
+3. Редактируй только пути own manifest в дереве; корень собственного кода —
+   `typeConfig.ownRoot`, и его границы задаёт тип проекта. Для апстримного файла сначала
    выполни дерево решений [03](03-interventions.md).
 4. `codkit status` → exit `1` при ожидаемой неизвлечённой работе; сверь каждый названный путь.
    Неожиданный путь — остановка: верни/сохрани его отдельно до шага 5.

@@ -1,6 +1,7 @@
 # Codkit
 
-Codkit maintains a structured patch set over a separate VS Code fork tree. It
+Codkit maintains a structured patch set over a separate fork tree of the
+upstream family its project type names (`codkit types`). It
 resolves both external directories explicitly, applies the configured upstream
 pin and patch set, detects unextracted work, and saves valid changes back into
 the patch set.

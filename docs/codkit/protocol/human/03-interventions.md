@@ -5,6 +5,13 @@
 
 ## Дерево решений слоя
 
+Какие листы существуют, отвечает тип проекта ([15](15-project-types.md)):
+`own`, `patch`, `resource-file` и `rewrite-rule` есть всегда, а
+`own-extension`, `service-override`, `entry-module` и `config-overlay` — только
+когда тип объявил соответствующую возможность. Матрицу печатает
+`codkit types`; артефакт слоя, которого у типа нет, `verify` отклоняет
+`CK-E-TYPE-CAPABILITY`, exit `2`, ничего не записав.
+
 Иди сверху вниз; первый ответ «да» — терминальный лист.
 
 ```text

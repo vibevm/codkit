@@ -44,7 +44,8 @@ mount остаётся контрактом runner.
 | Компонент | Доставка без внешней сети | Единственный писатель |
 | --- | --- | --- |
 | Fork Git + generated refs + LFS objects | внутреннее mirror/bundle | зеркальный бот; publish-бот только release refs |
-| Codkit tool + npm dependencies | immutable tool archive/checkout и внутренний registry либо готовый tool-root cache | dependency image/cache job |
+| Codkit: CLI-пакет и пакеты типов | тарболы комплекта (`npm pack` каждого пакета workspace) и `kit-manifest.json` с версией и sha256 каждого | сборка релиза инструмента |
+| npm-зависимости Codkit | внутренний registry либо заранее наполненный npm-кэш; пины — `npm-shrinkwrap.json` внутри тарболов | dependency image/cache job |
 | Patch set | repository bundle/checkout с config, delta и refs; отдельный writable `.codkit` при read-only source | source mirror job |
 | Tree npm dependencies (60+ каталогов) | внутренний registry/cache/mount | main cache job |
 | Electron/Node artifacts | внутренние feeds или `.build/` cache | supply-kit job |
@@ -53,6 +54,27 @@ mount остаётся контрактом runner.
 | Extension marketplace | внутренний gallery service через overlay | product platform |
 
 Новый advisory цикла меняет supply-kit manifest/cache key. Внешняя сеть доступна только зеркальному и publish bot.
+
+### Установка комплекта Codkit
+
+1. Поставщик выполняет `npm run kit` в репозитории инструмента → каталог с
+   тарболом на каждый пакет workspace и `kit-manifest.json`: `codkitSupplyKit: 1`,
+   версия CLI-пакета и строка на каждый тарбол (`name`, `version`, `type` для
+   пакета типа, `role`, `file`, `bytes`, `sha256`), плюс готовая строка
+   `install.command`.
+2. Приёмка на стороне потребителя: sha256 каждого файла совпадает со строкой
+   манифеста. Расхождение — останов приёмки, а не переустановка.
+3. В пустом каталоге выполняется ровно `install.command`:
+   `npm install --offline ./codkit-<версия>.tgz ./codkit-type-<имя>-<версия>.tgz ...`.
+   Комплект ставится целиком: установка одного CLI-тарбола уходит в реестр за
+   `@codkit/type-api` и падает `npm error code ENOTCACHED`.
+4. Сторонние зависимости `--offline` не скачивает: их даёт внутренний registry
+   или заранее наполненный npm-кэш. Пустой кэш даёт тот же `ENOTCACHED` на
+   первом стороннем пакете — это отсутствующая половина поставки, а не дефект
+   комплекта.
+5. Проверка установки: `node_modules/.bin/codkit types` → строка на каждый
+   поставленный тип, exit `0`; `codkit --patches-dir <patchset> where` →
+   `project type: <id>`, exit `0`. Что означают отказы этих команд — [15](15-project-types.md).
 
 ## Холодная сборка и зависимости
 
@@ -102,6 +124,7 @@ electron-раннер апстрима отдельным шагом релиз�
 - [ ] `ci --profile build --pin-guard-base <main-ref>` → exit `0`.
 - [ ] Cycle terminal receipt/status валиден либо релиз осознанно идёт с прежнего зелёного пина.
 - [ ] Supply-kit manifest соответствует advisory и cache key.
+- [ ] sha256 каждого тарбола комплекта совпадает с `kit-manifest.json`, и `codkit types` из установленного комплекта → exit `0`.
 - [ ] Publish bot output содержит immutable patchset SHA, pin SHA, branch и tag.
 - [ ] Повтор publish того же commit/tag → exit `0`, та же вершина.
 

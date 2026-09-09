@@ -2,7 +2,8 @@
 
 Статус: рабочая норма standalone Codkit. Натурные доказательства хранятся в
 репозитории конкретного patch set, а не в установке Codkit.
-Определения данных задаёт только [conventions.json](../../../../packages/codkit/config/conventions.json);
+Определения данных задаёт только [conventions.json](../../../../packages/codkit/config/conventions.json)
+(движковая половина плюс defaults объявленного типа);
 контракты команд — [PROP-007](../../../../vibevm/vibespecs/modules/codkit/PROP-007-cli.xml).
 
 ## Launcher и корни
@@ -15,7 +16,9 @@
 
 Перед процедурой выполни `codkit --json where`. Конверт должен содержать
 `codkit.schema: 2` и три попарно непересекающихся корня:
-`roots.tool.path`, `roots.patches.path`, `roots.fork.path`. Внешние корни
+`roots.tool.path`, `roots.patches.path`, `roots.fork.path`. Поле `codkit.type`
+называет тип проекта, объявленный patch set ([15](15-project-types.md)): от него
+зависит, какие слои и глаголы вообще существуют. Внешние корни
 выбираются независимо: flag → environment → `~/.codkit/settings.json`.
 Человеческий запуск может передать `--patches-dir`/`--fork-dir`; агентский не
 может перенаправлять уже выбранные корни.
@@ -31,10 +34,10 @@ profile выбранного проекта: его strict channel schema тре
 
 | Роль | Обязательно | По событию |
 | --- | --- | --- |
-| Разработчик | [01](01-quickstart.md), [02](02-daily.md) | [03](03-interventions.md), [04](04-team.md), [13](13-standards.md), [14](14-runtime.md) |
+| Разработчик | [01](01-quickstart.md), [02](02-daily.md) | [03](03-interventions.md), [04](04-team.md), [13](13-standards.md), [14](14-runtime.md), [15](15-project-types.md) |
 | Ревьюер вмешательств | [03](03-interventions.md), [10](10-roles.md) | [11](11-metrics.md) |
 | DRI / команда апгрейда | [05](05-upgrade-cycle.md), [06](06-history.md), [07](07-upstream-watch.md), [09](09-incidents.md), [10](10-roles.md) | [08](08-release-ci.md), [11](11-metrics.md) |
-| Релиз-инженер | [08](08-release-ci.md), [10](10-roles.md) | [09](09-incidents.md) |
+| Релиз-инженер | [08](08-release-ci.md), [10](10-roles.md) | [09](09-incidents.md), [15](15-project-types.md) |
 | Мейнтейнер протокола | [12](12-maintenance.md) и весь протокол | шаблоны ниже |
 
 Изменения форка подчиняются той же дисциплине: сначала выбирается верхний допустимый слой,
@@ -58,6 +61,7 @@ profile выбранного проекта: его strict channel schema тре
 | [12-maintenance](12-maintenance.md) | Как менять сам протокол? |
 | [13-standards](13-standards.md) | Как продукт берёт пакет стандартов и уведомление о лицензии? |
 | [14-runtime](14-runtime.md) | Как продукт берёт рантайм фичефлагов и объявляет фичу? |
+| [15-project-types](15-project-types.md) | Какой тип проекта объявляет patch set и что от него зависит? |
 
 ## Норма → механизм → текст
 
@@ -75,6 +79,7 @@ profile выбранного проекта: его strict channel schema тре
 | Цикл возобновляем | durable records + `cycle status/continue`; receipt нельзя редактировать | [05: восстановление](05-upgrade-cycle.md#возобновление-и-штатные-восстановления) |
 | Метрики связаны с финалом | terminal finalization связывает SHA256 JSONL, Markdown и CSV | [11](11-metrics.md) |
 | Доставленный код остаётся кодом Codkit | `runtime check`/`verify` — `CK-E-RUNTIME-DRIFT`; `save` — `CK-E-DELIVERED-EDIT`; прививка не больше трёх строк — `CK-E-HOOK-TOO-LARGE` | [14: что нельзя](14-runtime.md#что-нельзя) |
+| Patch set объявляет тип проекта, а движок не догадывается | схема 2 требует `type` и `typeConfig.ownRoot`; реестр типов — `CK-E-TYPE-UNKNOWN`; глагол вне способностей типа — `CK-E-TYPE-CAPABILITY` | [15](15-project-types.md) |
 | Ссылки и лимиты документации проверяются | `node docs/codkit/protocol/human/check.mjs` | [12](12-maintenance.md) |
 
 Если новая текстовая норма не имеет команды, хука или CI-проверки, это дефект механизации:

@@ -2138,7 +2138,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:6c704b14182396d33dcf14386040b259c3911b4e93127ab3bc1611218d6cef69",
+      "content_hash": "sha256:9bf97d32d54991cc5d90fca36f92ff8abcc9d8637eb3d90b83729f9f4acd0e88",
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "codkit FEAT-003: Requirements for the human working protocol",
@@ -2264,7 +2264,7 @@
     },
     {
       "anchor": "sections",
-      "content_hash": "sha256:dee7b9fa73064769e1fd37dff4d635feec22853f73fb545780e9178d40ed1b20",
+      "content_hash": "sha256:0bebe6014140c08e3192aa43b170b980de15757a830cfcca7c8d87056ec03e85",
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "4. Requirements for the sections (goal / content / acceptance)",
@@ -2380,12 +2380,21 @@
       "uri": "spec://codkit/modules/codkit/FEAT-003#HP-MAINTENANCE"
     },
     {
+      "anchor": "HP-TYPES-PAGE",
+      "content_hash": "sha256:a9ffa40e0b7b2115d707ab05a64d3df6ad612639439efd40e990bab5c7b65ad2",
+      "doc_path": "modules/codkit/FEAT-003",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
+      "heading": "**15-project-types** (added in phase P2-4 of the project-types campaign, together with 13 and 14 the pages written after the layout of §2 was fixed) - the project type a patch set declares; the content is `spec://codkit/modules/codkit/PROP-012#DOC-TYPES-PAGE`. The executable caps of the checker for the pages beyond §2: 13 - 125 lines, 14 - 140, 15 - 200. The rule of §2 holds for it: the page states procedures and refusals and refers to the mechanism (`codkit types`, the schema-2 fields, `CK-E-TYPE-*`) instead of retelling it. @status:impl/done",
+      "line": 65,
+      "uri": "spec://codkit/modules/codkit/FEAT-003#HP-TYPES-PAGE"
+    },
+    {
       "anchor": "HP-PRODUCT-NOTE",
       "content_hash": "sha256:0c63bf2d691dc60e338b2d97e7584315d1e20e304151f69928a02d7305fc108b",
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "No separate section about product work is created: work on the features of the product follows the same discipline of layers, markers and review — `00-index.md` carries one paragraph with this norm and a reference to 03. @status:spec/done",
-      "line": 65,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HP-PRODUCT-NOTE"
     },
     {
@@ -2394,7 +2403,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "5. The order of writing and acceptance",
-      "line": 68,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/FEAT-003#order"
     },
     {
@@ -2403,7 +2412,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "It is written after the first manual polygon cycle: 05 first (while the traces of the cycle are fresh), then 02/03/04 (following the traces of filling the polygon), then the rest; 01 comes last (the digest). @status:spec/done",
-      "line": 70,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPO-ORDER"
     },
     {
@@ -2412,7 +2421,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "The field tests of acceptance (02, 01, 05, 08) are mandatory and are part of the criterion of milestone M3. @status:spec/done",
-      "line": 71,
+      "line": 72,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPO-FIELD-TESTS"
     },
     {
@@ -2421,7 +2430,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "The `templates/` are created together with the document that uses them. Before the commit of every document — the clean-room check and the self-check of §1. @status:spec/done",
-      "line": 72,
+      "line": 73,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPO-TEMPLATES"
     },
     {
@@ -2430,7 +2439,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "6. Open questions (recommendation + status)",
-      "line": 75,
+      "line": 76,
       "uri": "spec://codkit/modules/codkit/FEAT-003#open"
     },
     {
@@ -2439,7 +2448,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "**The rotation of the DRI**: the term and the order are not decided. Recommendation: a DRI for one cycle, rotation around the upgrade team, and the new DRI assists the previous one for one cycle. **Requires an owner decision** (organizational). @status:spec/plan",
-      "line": 77,
+      "line": 78,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPOQ-DRI-ROTATION"
     },
     {
@@ -2448,7 +2457,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "**The numeric intervention budgets and the threshold alerts**: no values are assigned before the baseline exists. Recommendation: after two cycles the budget = the current value for the subsystem, and the alert is any growth of the rule and patch layers two cycles in a row. Decided by the subsystem owners + the DRI; recorded in 11-metrics. @status:spec/plan",
-      "line": 78,
+      "line": 79,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPOQ-BUDGETS"
     },
     {
@@ -2457,7 +2466,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "**The period of de-intrusion iterations**: the recommendation is every fourth cycle; decided together with the budgets. @status:spec/plan",
-      "line": 79,
+      "line": 80,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPOQ-DEINTRUSION-PERIOD"
     },
     {
@@ -2466,7 +2475,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "**The cadence** is decided (weekly) — the protocol does not discuss it, it only executes it; the batching parameter is «no more than two tags, only by a DRI decision» and is recorded in 05. @status:spec/done",
-      "line": 80,
+      "line": 81,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPOQ-BATCHING"
     },
     {
@@ -2475,7 +2484,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "**The boundaries of agent rights** are the subject of FEAT-004; the human protocol only refers to the journal of agent decisions and to the role of the reviewer of agent resolutions. @status:spec/done",
-      "line": 81,
+      "line": 82,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPOQ-AGENT-BOUNDARIES"
     },
     {
@@ -2484,7 +2493,7 @@
       "doc_path": "modules/codkit/FEAT-003",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-003-human-protocol.xml",
       "heading": "**The pre-commit hook in the fork tree** — the open choice was closed by an owner decision of 2026-08-31: every `load` tries to restore the owned hook, but the guard counts as active only when Git demonstrably executes its exact current bytes. In an ordinary checkout a manual commit is rejected and the internal path is separated by `CODKIT_INTERNAL_COMMIT=1`; a linked worktree, a custom/global/system `core.hooksPath`, `/dev/null`, a foreign hook or an unresolvable effective path give an explicit warning/false, without a promise of blocking (PROP-012 §5). @status:impl/done",
-      "line": 82,
+      "line": 83,
       "uri": "spec://codkit/modules/codkit/FEAT-003#HPOQ-TREE-HOOK"
     },
     {
@@ -7196,7 +7205,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b62f9702a6dab319a1cd1c04896d142fb685c7bb6f4eb7764e7a7f74ef5f3d4c",
+      "content_hash": "sha256:9fa45129d7832582fd0b14535995f836c128d442c3d29978ed19e07d771a5a7e",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "codkit PROP-012: Output and messages, NFRs, documentation, open decision points",
@@ -7286,7 +7295,7 @@
     },
     {
       "anchor": "docs",
-      "content_hash": "sha256:27facd708badbba889105851fd1839c996e3486c1cc906ed16b89158fa1ff03c",
+      "content_hash": "sha256:3e674148ef5d08a6f596a6151a0d324a9a3faeebbd173c543547db54babed53b",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "4. The documentation shipped with the code",
@@ -7366,12 +7375,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-012#DOC-RUNTIME-PAGE"
     },
     {
+      "anchor": "DOC-TYPES-PAGE",
+      "content_hash": "sha256:8494801be436141622e0b84d408f46f6d5a6dffdd9f2398964c95b8a8adee0cf",
+      "doc_path": "modules/codkit/PROP-012",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
+      "heading": "`docs/codkit/protocol/human/15-project-types.md` - the project type of a patch set: what a type is, the two configuration fields (`type`, `typeConfig.ownRoot`), what `codkit types` and the `codkit.type` of `where` print, the refusals `CK-E-TYPE-UNKNOWN`, `CK-E-TYPE-CAPABILITY` and the schema-1 `CK-E-CONFIG` with what to do about each, the capability table with the verb that refuses without each one, and the procedure of starting a patch set of a given type. The pages it changes the ladder of - 02, 03, 08, 13, 14 - refer to it instead of repeating it. @status:spec/done",
+      "line": 50,
+      "uri": "spec://codkit/modules/codkit/PROP-012#DOC-TYPES-PAGE"
+    },
+    {
       "anchor": "DOC-PROTOCOLS-POINTER",
-      "content_hash": "sha256:de73751f93a69bb0b33d3b36a1c98a2d50797f14f05f894e90e59839119f3565",
+      "content_hash": "sha256:b6f43fe6b5b52b1eb13b1788859231f9b6e651174ca1ad6b05bbd0ca07c1334d",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "The human and the agent protocol are separate slices, FEAT-003/FEAT-004 (only the links are here). @status:spec/done",
-      "line": 50,
+      "line": 51,
       "uri": "spec://codkit/modules/codkit/PROP-012#DOC-PROTOCOLS-POINTER"
     },
     {
@@ -7380,7 +7398,7 @@
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "5. Open decision points (the work continues on the default)",
-      "line": 53,
+      "line": 54,
       "uri": "spec://codkit/modules/codkit/PROP-012#open-forks"
     },
     {
@@ -7389,7 +7407,7 @@
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "**The pre-commit hook in the fork tree is the NORM, rewritten by the owner decision RP-1 of campaign TREE-COMMITS-SAVE (the ruling verbatim: «вместо запрета сделать напоминание»; the original norm of 2026-08-31, «согласен с обеими утверждениями», installed a rejecting hook and is cancelled by this decision).** The hook NEVER rejects a commit: a commit in the tree is work (PROP-008 §4 `##TREE-COMMITS-ARE-WORK`), since phases 2–4 of the campaign it is not lost - the destructive commands refuse over it (`##DRIFT-GUARD-PREDICATE`) and `save` extracts it - so a refusal protected nothing. The hook prints a reminder to stderr: on a `codkit/applied/*` branch, «codkit: this commit is work in the fork tree; it reaches patchset only when you run codkit save or codkit sync»; off it, with the branch in existence (a detached HEAD included), «codkit: HEAD is not on codkit/applied/<tag>; codkit save will refuse until you switch back (git switch codkit/applied/<tag>)» with the concrete `<tag>` of this tree substituted at installation time (`save` will refuse there with `CK-E-TREE-HEAD`, decision D8). `CODKIT_INTERNAL_COMMIT=1` suppresses the reminder (only codkit's own git calls set it; load, however, builds the branch through commit-tree/update-ref, which the hook does not interfere with by construction). `load` installs the script only into the repository's own administrative path - `hooks/pre-commit` under the absolute git directory of the tree (an ordinary tree: `<tree>/.git/hooks/pre-commit`; the rule of the administrative paths is PROP-008 §3 `##TREE-HOOK-STEP`), never following `core.hooksPath` outside the administrative directory of the repository; the hook is restored by every `load` with the current branch name. Exception 1: in a linked worktree the hook is not installed and `load` issues a warning - the hooks are shared by the whole repository, and the reminder would speak in the name of the branch of one tree even in the sibling worktrees that codkit does not manage; the protection there is the refusal of `load`/`save` over foreign commits (the implementation is PROP-008 §3). Exception 2: when a configured `core.hooksPath` (of ANY scope - local/global/system; both are checked, REPAIR-006) leads the git hooks away from the hooks directory of the repository, the administrative copy is installed but git keeps executing the configured hook - `load` warns and `writeTreeHook()` returns false: the reminder is unavailable and unprovable while that configuration stands (honest diagnostics instead of a silent copy that does not work; a refusal to resolve the path - `core.hooksPath=/dev/null`, for instance - is also unavailable-with-a-warning and never «active»; the location of the configured hook is not codkit's business). Exception 3: a FOREIGN `hooks/pre-commit` (without the ownership marker `# codkit-hook v1`) is neither overwritten nor chained to: a warning, false, and the bytes are preserved exactly - the same ownership discipline as for the patch-set hooks (REPAIR-006). AN OPEN ARCHITECTURAL POINT (with the owner for consideration): a worktree-scoped hook requires `extensions.worktreeConfig` and management of a per-worktree `core.hooksPath`; it is not authorized in this task. Upstream installs no hooks (the `hooks/` of the effective location is empty apart from LFS) - the place is free. The implementation is a step of `load` (PROP-008 §3), acceptance scenario S20. @status:impl/done",
-      "line": 55,
+      "line": 56,
       "uri": "spec://codkit/modules/codkit/PROP-012#FORK-TREE-PRECOMMIT-HOOK"
     },
     {
@@ -7398,7 +7416,7 @@
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "**The naming scheme of the published release refs.** The `codkit/release/…` namespace and the trailers are defined; the final versioning scheme of the product is not. The default: the branches `codkit/release/<short-sha patchset>+<pin.tag>`, the release tags `patchset-v<semver>+<pin.tag>` (both coordinates in the name). **It requires an owner decision** once a real release process of the product appears. @status:spec/plan",
-      "line": 56,
+      "line": 57,
       "uri": "spec://codkit/modules/codkit/PROP-012#RELEASE-REF-NAMING"
     },
     {
