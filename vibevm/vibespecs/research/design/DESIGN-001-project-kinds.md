@@ -84,6 +84,8 @@ list of questions the inventory found - no more:
    "how upstream builds it" list of `ck-intervene` come from the type.
 9. **Conventions.** Subsystems for intervention ids, forbidden service ids, defaults the
    product's `conventionsExtensionFile` may extend.
+10. **Generators.** The skeletons of `gen feature` and the funnel graft of `gen brand` (added 2026-09-09 when
+   the extraction showed them to be type knowledge and the Theia type needs different ones).
 
 Everything not on this list stays in the engine and is forbidden to know the type: the
 graft budget, the marker grammar, the drift guard's predicate, the sacrifice-by-name of
