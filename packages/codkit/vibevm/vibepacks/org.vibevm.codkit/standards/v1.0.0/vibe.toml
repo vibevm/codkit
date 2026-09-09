@@ -22,3 +22,7 @@ requires_kinds = []
 [boot_snippet]
 source = "vibevm/vibespecs/boot/75-flow-codkit-standards.xml"
 category = "flow"
+# The seam map is a norm of this standard (`LAW-SEAM-MAP-PER-PIN`): the product keeps
+# one per pin, whatever it forks. The catalogue a map is filled in from belongs to the
+# project type and declares the same lexeme, so neither package reads as borrowing it.
+concepts = ["seam map"]
