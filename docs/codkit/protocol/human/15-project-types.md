@@ -95,6 +95,7 @@ patch set по шагам — [02](02-daily.md#патч-сет-над-апстр
 | `ownPackageName` | npm-имя собственного пакета: им `lerna run <скрипт> --scope` выбирает пакет для линта и тестов |
 | `applicationRoot` | каталог приложения: **второй владеемый каталог** (роль `application`, дельта `delta/own-roots/application/`), его `package.json` — цель overlay, его сборка — package build |
 | `watchScripts.typecheck`, `watchScripts.bundle` | имена корневых npm-скриптов двух каналов наблюдения; по умолчанию `watch:compile` и `watch:bundle` |
+| `packageScript` | необязательное имя npm-скрипта манифеста приложения: с ним package build — это `theia build`, а затем `npm run <скрипт> --workspace <applicationRoot>`, то есть `ci --profile build` доходит до дистрибутива продукта; без него сборка заканчивается собранным приложением |
 
 Возможности одинаковы у любого patch set этого семейства — `config-overlay`,
 `service-override`, `build-channels`, `upgrade-advisory`, — поэтому в

@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	CLEANUP_WHITELIST,
+	configSchema,
 	CORE_MANIFEST_PATH,
 	FORBIDDEN_PATCH_TARGETS,
 	fingerprints,
@@ -233,6 +234,30 @@ describe('build', () => {
 			'build'
 		]);
 		expect(makeBuild(CONFIG).packageStamps).toEqual([]);
+		// Nothing follows the built application unless the product says so.
+		expect(packageBuildOf('examples/electron')).toHaveLength(1);
+		expect(makeBuild(CONFIG).packageBuild).toHaveLength(1);
+	});
+
+	it('continues into the packaging script the product declares, and only then', () => {
+		// ##THEIA-PACKAGE-BUILD: upstream ships no packager, so the second step
+		// exists only when `typeConfig.packageScript` names one; what it runs is
+		// the product's business and the type never names a packager.
+		const commands = packageBuildOf('examples/electron', 'package:linux');
+		expect(commands).toHaveLength(2);
+		expect(commands[1]).toEqual({
+			label: 'package distributable',
+			command: 'npm',
+			args: ['run', 'package:linux', '--workspace', 'examples/electron']
+		});
+		expect(makeBuild({ ...CONFIG, packageScript: 'package:linux' }).packageBuild).toEqual(commands);
+	});
+
+	it('rejects an empty packaging script rather than running npm run with no name', () => {
+		expect(configSchema.safeParse({ ...CONFIG, packageScript: '' }).success).toBe(false);
+		expect(configSchema.safeParse({ ...CONFIG, packageScript: 'package:linux' }).success).toBe(true);
+		// The section stays closed: an unknown field is still a refusal.
+		expect(configSchema.safeParse({ ...CONFIG, packageScripts: 'package:linux' }).success).toBe(false);
 	});
 
 	it('answers two watch channels as data, with the boundaries of the two compilers', () => {

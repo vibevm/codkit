@@ -11,9 +11,10 @@
 // no graft into an entry module, and a Theia extension is own code rather than
 // a built-in extension of a distribution.
 //
-// Three of the answers are a function of the patch set's own configuration -
+// Several of the answers are a function of the patch set's own configuration -
 // where the own package sits, what it is called, which directory is the
-// application - so this type answers `configure` and the engine asks the result
+// application, whether the product packages more than the built application -
+// so this type answers `configure` and the engine asks the result
 // everything afterwards (##TYPE-CONFIGURED). The capabilities are the same
 // either way: every Theia patch set has an application manifest to overlay, a
 // `rebind` to verify, two watch channels and an upgrade advisory.

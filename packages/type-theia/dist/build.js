@@ -111,11 +111,25 @@ export function ownTestsOf(ownRoot) {
  * electron-builder configuration, no signing, no installer - and its contract
  * with a packager is the built `lib/` of the application. The package build of
  * this type is therefore `theia build` of the application, run inside the
- * application directory through the workspace it is; the installer is a product
- * artifact and the product declares it in its own delta.
+ * application directory through the workspace it is.
+ *
+ * The installer is a product artifact, and the product declares it: with
+ * `typeConfig.packageScript` the build continues into that npm script of the
+ * application's manifest, so `ci --profile build` reaches the distributable the
+ * product actually ships. Which packager the script runs, and what it is
+ * configured with, stays entirely in the product's delta - the type never names
+ * one.
  */
-export function packageBuildOf(applicationRoot) {
-    return [{ label: 'package', command: 'npm', args: ['exec', '--no', '--workspace', applicationRoot, '--', 'theia', 'build'] }];
+export function packageBuildOf(applicationRoot, packageScript) {
+    const build = {
+        label: 'package',
+        command: 'npm',
+        args: ['exec', '--no', '--workspace', applicationRoot, '--', 'theia', 'build']
+    };
+    if (packageScript === undefined) {
+        return [build];
+    }
+    return [build, { label: 'package distributable', command: 'npm', args: ['run', packageScript, '--workspace', applicationRoot] }];
 }
 export function makeBuild(config) {
     const ownTests = ownTestsOf(config.ownRoot);
@@ -124,7 +138,7 @@ export function makeBuild(config) {
         dependencyRoots: DEPENDENCY_ROOTS,
         hygiene: hygieneOf(config.ownRoot),
         ownTests: () => ownTests,
-        packageBuild: packageBuildOf(config.applicationRoot),
+        packageBuild: packageBuildOf(config.applicationRoot, config.packageScript),
         // ##THEIA-NO-STAMPS: nothing is stamped at build time in this family -
         // no sha, no date, no quality channel. What is baked into `src-gen/` is
         // the declared configuration and the extension inventory, and a product

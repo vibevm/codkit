@@ -13,7 +13,9 @@
 //   * which directory holds the application whose `package.json` is the overlay
 //     target and whose bundle is the package build (`applicationRoot`);
 //   * which npm scripts of the tree root start the two watch channels
-//     (`watchScripts`), because a fork writes those scripts itself.
+//     (`watchScripts`), because a fork writes those scripts itself;
+//   * whether the product packages more than the built application
+//     (`packageScript`), because upstream packages no application at all.
 //
 // The engine validates the universal fields of `codkit.json` and hands this the
 // rest; a refusal becomes `CK-E-CONFIG` naming the field.
@@ -80,7 +82,16 @@ export const configSchema = z
 				bundle: z.string().min(1).optional()
 			})
 			.strict()
-			.optional()
+			.optional(),
+		/**
+		 * ##THEIA-PACKAGE-BUILD: the npm script of the application's own manifest
+		 * that turns the built application into the product's distributable - an
+		 * installer, an archive, whatever the product's packager makes. Upstream
+		 * ships no packager at all, so the type knows the script only by the name
+		 * the product gives it; absent, and the package build ends at the built
+		 * application, which is where upstream's own contract with a packager ends.
+		 */
+		packageScript: z.string().min(1).optional()
 	})
 	.strict();
 

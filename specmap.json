@@ -10589,7 +10589,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:3680104900efcaddb1008b0340a2f19b7a93332cca9a380c06af48f7a5657b72",
+      "content_hash": "sha256:b0712cc9e96862d865fc30978317b9aea40c2b810e076336b158c966b526c33e",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
       "heading": "theia PROP-004: Build, watch, lint, test, packaging",
@@ -10652,10 +10652,10 @@
     },
     {
       "anchor": "THEIA-PACKAGE-BUILD",
-      "content_hash": "sha256:e2a665ada46b2258d9706d2f105d3bc49b3b0f33ef3117c67bfd5164594f8b7c",
+      "content_hash": "sha256:62c2dfb322c286fd69c508e1898973859b86309d04e01073504debb046ab8376",
       "doc_path": "modules/theia/PROP-004",
       "file": "vibevm/vibespecs/modules/theia/PROP-004-build-and-test.xml",
-      "heading": "Upstream packages no desktop application: no electron-builder configuration, no signing, no installer, no `.icns`/`.ico` generation; its release artefact is npm packages, and its contract with a packager is the built `lib/` of the application (`11-release-packaging.md`). The type's package build is therefore `theia build` of the application; the installer is a product artifact (the product declares its packager and its config in its own delta), and the type's `ci --profile build` ends at the built application unless the product declares more. @status:spec/done",
+      "heading": "Upstream packages no desktop application: no electron-builder configuration, no signing, no installer, no `.icns`/`.ico` generation; its release artefact is npm packages, and its contract with a packager is the built `lib/` of the application (`11-release-packaging.md`). The type's package build is therefore `theia build` of the application; the installer is a product artifact (the product declares its packager and its config in its own delta), and the type's `ci --profile build` ends at the built application unless the product declares more. **Implemented after the first real consumer:** «unless the product declares more» had no field to be declared in - the package build was always exactly `theia build` - so `ci --profile build` could never reach the product's own installer. `typeConfig.packageScript` (optional, an npm script of the application's manifest) is that field: when it is set the package build is `theia build` **and then** `npm run <packageScript> --workspace <applicationRoot>`. The type still names no packager: which one the script runs, and what configures it, live in the product's delta. @status:spec/done",
       "line": 12,
       "uri": "spec://codkit/modules/theia/PROP-004#THEIA-PACKAGE-BUILD"
     },
