@@ -9464,7 +9464,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:da894fe658b9483fb5a1b1d866e3fd74f744b33b341dd0dcae3370dc401cf03f",
+      "content_hash": "sha256:b7c1bb4ed1c9bcda5b59f7ddcadd9dff8d67e9e5a251c8dc98d2a1d3d2bf9e9a",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -9473,7 +9473,7 @@
     },
     {
       "anchor": "purpose",
-      "content_hash": "sha256:ab16679a8bc0c6577d88adbbf74007d9eb968a7a9721f5744321c642764b4daf",
+      "content_hash": "sha256:fb3d7048c70a0b2ddd517d62032d753152d73890b66ec559e641a3c0aea27969",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "1. Purpose and vocabulary",
@@ -9500,10 +9500,10 @@
     },
     {
       "anchor": "TYPE-TERM-CAPABILITY",
-      "content_hash": "sha256:6c2fb2e2cdb5870d5e45c6e9f3bf21f848a88f8e91b67d32a5b7711bd32c4f02",
+      "content_hash": "sha256:12919ebb830dd11e00fe0dcb9afe6a700d062bb324415c69a2828cba43811001",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "A **capability** is a named optional ability a type declares (`brand-images`, `gen-brand`, `build-channels`, `runtime-library`, `own-extensions`, `service-override`, `entry-module`, `config-overlay`, `dev-channel`, `upgrade-advisory`). A verb that needs a capability refuses when the type does not declare it (`TYPE-CAPABILITY-REFUSAL`). @status:spec/plan",
+      "heading": "A **capability** is a named optional ability a type declares (`brand-images`, `gen-brand`, `build-channels`, `runtime-library`, `own-extensions`, `service-override`, `entry-module`, `config-overlay`, `dev-channel`, `upgrade-advisory`). A verb that needs a capability refuses when the type does not declare it (`TYPE-CAPABILITY-REFUSAL`). @status:spec/done",
       "line": 9,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-TERM-CAPABILITY"
     },
@@ -9518,7 +9518,7 @@
     },
     {
       "anchor": "contract",
-      "content_hash": "sha256:cafc93678b7d50301600dcc40bf953f07b8e29c9f823e4a1e0fecf885118ffea",
+      "content_hash": "sha256:d850bb0f8c77d9342dc61c33c7339db1072ed144f0f11d9218da2387998248bb",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "2. The contract: nine questions a type answers",
@@ -9527,10 +9527,10 @@
     },
     {
       "anchor": "TYPE-CONTRACT-IS-CLOSED",
-      "content_hash": "sha256:700408c03c9a90701451d7b59665f3ac762eab34b58329dce9015e5836960389",
+      "content_hash": "sha256:6522b6ae738e5cf73b533809177dc521e95107131b337873597399920599f0f7",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "The contract is exactly the list of variation points measured in the engine (DESIGN-001 §1); a question is added to it only when a second type needs it, never in anticipation. Each area below is one object of small functions on the `ProjectType` interface of `@codkit/type-api`. @status:spec/plan",
+      "heading": "The contract is exactly the list of variation points measured in the engine (DESIGN-001 §1); a question is added to it only when a second type needs it, never in anticipation. Each area below is one object of small functions on the `ProjectType` interface of `@codkit/type-api`. @status:spec/done",
       "line": 14,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-CONTRACT-IS-CLOSED"
     },

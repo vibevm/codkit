@@ -11,7 +11,7 @@
 max_file_lines = 600
 
 [typescript]
-roots = ["packages/codkit/src", "packages/codkit/test"]
+roots = ["packages/codkit/src", "packages/codkit/test", "packages/type-api/src", "packages/type-api/test"]
 exclude_substrings = ["/fixtures/"]
 gated = []
 # codkit currently has module cells, not the `<cells_dir>/<cell>/index.ts`
