@@ -18,7 +18,7 @@ npm ci
 
 ## Раскладка workspace
 
-Репозиторий — npm workspace из трёх публикуемых пакетов
+Репозиторий — npm workspace из четырёх публикуемых пакетов
 ([PROP-016 §3](vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml)):
 
 | Пакет | Что это |
@@ -26,6 +26,7 @@ npm ci
 | `packages/codkit` | CLI и движок, бинарь `codkit`, реестр типов |
 | `packages/type-api` | контракт типа проекта: интерфейс, кодек PNG обмена, форма отказа |
 | `packages/type-vscode` | тип `vscode` — знание об одном семействе апстримов |
+| `packages/type-generic` | тип `generic` — простой git-апстрим без модели продукта |
 
 Движок слеп к семейству: он спрашивает тип и не называет его фактов. Гейт —
 `git grep` апстримных токенов по `packages/codkit/src` печатает `0`.
@@ -37,7 +38,10 @@ npm ci
    `@codkit/type-api`), `tsconfig.json`, `tsconfig.runtime.json`,
    `vitest.config.ts`, `LICENSE.md`, `README.md`.
 2. Реализуй `ProjectType` и экспортируй его как `projectType`; тесты ответов
-   типа живут в этом же пакете.
+   типа живут в этом же пакете. Если ответы типа зависят от `typeConfig`
+   (как у `generic`), объяви `configurableCapabilities` и `configure`:
+   движок вызывает его один раз после валидации секции и дальше спрашивает
+   результат.
 3. Добавь строку в `TYPE_REGISTRY` (`packages/codkit/src/types/registry.ts`) и
    зависимость на пакет в `packages/codkit/package.json`.
 4. Допиши tsconfig нового пакета в `typecheck` и `runtime:build` корневого
@@ -57,7 +61,8 @@ npm ci
 ```sh
 npm run kit
 cd target/supply-kit
-npm install --offline ./codkit-1.0.0.tgz ./codkit-type-api-1.0.0.tgz ./codkit-type-vscode-1.0.0.tgz
+npm install --offline ./codkit-1.0.0.tgz ./codkit-type-api-1.0.0.tgz \
+  ./codkit-type-generic-1.0.0.tgz ./codkit-type-vscode-1.0.0.tgz
 ./node_modules/.bin/codkit types
 ```
 

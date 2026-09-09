@@ -379,7 +379,7 @@ function renderCommands({ commands, globalFlags }, kinds) {
 	return (
 		generatedHeader('Command reference') +
 		`
-Codkit manages an external patch set and a separate VS Code fork tree. The public command and flag tables below are rendered from the output of the live CLI; command-flag arity is read from \`packages/codkit/src/lib/argv.ts\`.
+Codkit manages an external patch set and a separate fork tree; which family of upstreams that tree belongs to is the project type's answer (\`codkit types\`). The public command and flag tables below are rendered from the output of the live CLI; command-flag arity is read from \`packages/codkit/src/lib/argv.ts\`.
 
 Install the launcher as \`codkit\` on \`PATH\`, or invoke the explicit Bash launcher as \`<codkit-tool-root>/bin/codkit ...\` and the PowerShell launcher as \`& <codkit-tool-root>\\bin\\codkit.ps1 ...\`. Never look for a launcher or \`package.json\` in the patch-set directory. Running the launcher with no arguments prints the current help and exits 0. There is no global \`--help\`; \`codkit imageset --help\` is the one command-scoped help and it answers before any root is required, while passing \`--help\` to another command is a usage error (exit 2).
 
@@ -443,7 +443,9 @@ function renderConventions(conventions) {
 	return (
 		generatedHeader('Conventions reference') +
 		`
-This page is rendered from [\`packages/codkit/config/conventions.json\`](../../../packages/codkit/config/conventions.json), schema \`codkitConventions: ${conventions.codkitConventions}\`. Change the JSON source, then regenerate this page; do not hand-maintain copies of these values.
+This page is rendered from [\`packages/codkit/config/conventions.json\`](../../../packages/codkit/config/conventions.json), schema \`codkitConventions: ${conventions.codkitConventions}\`, plus the answers of the project type \`${vscodeType.id}\`. Change the JSON source, then regenerate this page; do not hand-maintain copies of these values.
+
+The marker forms, the intervention types, the categories and the order of the layers are the engine's and are the same for every project type. The subsystems an identifier may name, the forbidden service ids, the cleanup whitelist and the forbidden patch targets are the type's answer, so a patch set of another type reads its own values with \`codkit types\` and its own \`conventionsExtensionFile\`; the values below are the \`${vscodeType.id}\` ones.
 
 ## Intervention identity and metadata
 

@@ -46,8 +46,9 @@ evidence and open external risks are tracked in the
 [risk register](docs/codkit/proofs/RISK-REGISTER.md).
 
 The repository is an npm workspace: `packages/codkit` (the CLI and the engine),
-`packages/type-api` (the contract a project type answers) and
-`packages/type-vscode` (the `vscode` type). `npm run kit` builds the air-gapped
+`packages/type-api` (the contract a project type answers), `packages/type-vscode`
+(the `vscode` type) and `packages/type-generic` (the `generic` type, a plain git
+upstream with no product model). `npm run kit` builds the air-gapped
 supply kit — one tarball per package plus `kit-manifest.json` with the version
 and sha256 of each — which installs as one offline `npm install` (human
 protocol page 15 and [DEVELOPMENT.md](DEVELOPMENT.md)).

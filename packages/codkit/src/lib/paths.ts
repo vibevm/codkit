@@ -1,5 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
-/** Independent patch-set and VS Code fork location resolution. */
+/** Independent patch-set and fork-tree location resolution. */
 
 import { realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, parse, relative, resolve, sep } from 'node:path';

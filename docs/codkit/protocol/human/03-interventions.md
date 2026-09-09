@@ -35,6 +35,14 @@
                   └─ нет: один узкий шов в апстримном тексте → patch с marker
 ```
 
+Лестница сужается вместе с типом. У типа `generic`, например, нет ни
+`own-extension`, ни `service-override`, ни `entry-module`, а `config-overlay`
+существует ровно для тех JSON-файлов, которые patch set перечислил в
+`typeConfig.overlayTargets`: у такого апстрима остаются `own`, `patch`,
+`resource-file`, `rewrite-rule` и объявленный overlay. Ветку дерева решений,
+ведущую к несуществующему листу, читай как «нет» и иди дальше вниз; проверить,
+какие листы есть, — `codkit types`.
+
 Если сервис есть в `forbiddenServiceIds`, лист `service-override` закрыт: перепроектируй own-композицию
 или эскалируй дизайн-решение владельцу; `verify` вернёт `CK-E-FORBIDDEN-SERVICE`.
 

@@ -17,7 +17,7 @@
 // know whether a flag swallows the next token. Which command may use which flag
 // is enforced afterwards, in main.ts, against CommandDefinition.commandFlags.
 export const GLOBAL_FLAG_HELP = [
-    '--fork-dir <path>  path of the VS Code fork tree (source: flag)',
+    '--fork-dir <path>  path of the fork tree (source: flag)',
     '--patches-dir <path>  path of the Codkit patch-set repository (source: flag)',
     '--json             machine-readable output on stdout',
     '--ci               non-interactive mode, no network',

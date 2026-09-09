@@ -63,7 +63,8 @@ the circuit — so every tarball the manifest lists goes into the same command:
 cd /import/codkit-kit
 sha256sum --check kit-manifest.sha256   # or compare against kit-manifest.json
 npm install --offline \
-  ./codkit-<version>.tgz ./codkit-type-api-<version>.tgz ./codkit-type-vscode-<version>.tgz
+  ./codkit-<version>.tgz ./codkit-type-api-<version>.tgz \
+  ./codkit-type-generic-<version>.tgz ./codkit-type-vscode-<version>.tgz
 ./node_modules/.bin/codkit types
 ```
 

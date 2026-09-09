@@ -31,7 +31,7 @@ export type ArgvProblem = { readonly error: string; readonly hint: string };
 export type ArgvParseResult = { readonly ok: true; readonly value: ParsedArgv } | { readonly ok: false; readonly problem: ArgvProblem };
 
 export const GLOBAL_FLAG_HELP: readonly string[] = [
-	'--fork-dir <path>  path of the VS Code fork tree (source: flag)',
+	'--fork-dir <path>  path of the fork tree (source: flag)',
 	'--patches-dir <path>  path of the Codkit patch-set repository (source: flag)',
 	'--json             machine-readable output on stdout',
 	'--ci               non-interactive mode, no network',

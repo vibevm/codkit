@@ -20,6 +20,50 @@
 sibling fallback нет; личный settings-файл не коммитится. Tool, patch-set и
 fork roots должны быть попарно непересекающимися.
 
+## Патч-сет над апстримом без модели продукта
+
+Тип `generic` описывает простой git-апстрим: ни расширений, ни подмены
+сервисов, ни входного модуля, ни dev-канала, ни изображений, ни рантайма
+([15](15-project-types.md#тип-generic)). Всё, что он отвечает, объявляет сам
+patch set — секцией `typeConfig`.
+
+1. `codkit types` → строка `generic` с пустым списком возможностей и строкой
+   `from typeConfig: build-channels, config-overlay`; exit `0`.
+2. В `codkit.json` — `"type": "generic"` и секция:
+
+```json
+{
+	"typeConfig": {
+		"ownRoot": "src/own",
+		"commands": {
+			"install": "npm ci",
+			"lint": ["npm run lint"],
+			"test": { "command": "npm test", "ownGlobArg": "--" }
+		},
+		"overlayTargets": ["app.json"],
+		"cleanupWhitelist": ["node_modules/", "build/out/"],
+		"identity": { "manifest": { "path": "app.json", "nameField": "name" } }
+	}
+}
+```
+
+   `ownRoot` — любой каталог дерева. `commands` пустые — шаги сборки просто
+   ничего не запускают, а не угадывают имя скрипта. `overlayTargets` — JSON-файлы,
+   которые вообще разрешено трогать слою `config-overlay`; объявишь хотя бы
+   один — появится возможность `config-overlay`, не объявишь — `verify` над
+   overlay-артефактом отказывает `CK-E-TYPE-CAPABILITY`.
+3. `codkit where` → `project type: generic`, exit `0`;
+   `codkit check-tree --require-clean` → exit `0` (отпечаток — объявленный
+   манифест).
+4. Дальше — обычный [цикл дня](#цикл-дня): `load`, правка в дереве, `save`,
+   `verify`, `ci --profile verify`, `cycle` на следующий тег.
+5. Отличие в overlay: dev-канала у этого типа нет, поэтому `load` не трогает
+   цель, а материализует её `codkit overlay apply <файл>`; вернуть пин —
+   `codkit load --fresh`.
+6. `build up|down|status|errors` отказывает, пока в `commands.compile` не
+   объявлены каналы вместе с границами прохода — угадывать их инструмент не
+   станет ([PROP-010 §2](../../../../vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml)).
+
 ## Цикл дня
 
 1. `git status --short` в patchset должен быть пуст, либо показывать только осознанную незавершённую работу текущей ветки.

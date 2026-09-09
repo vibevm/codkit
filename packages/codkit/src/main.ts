@@ -303,7 +303,7 @@ function usageFail(problem: ArgvProblem): number {
 }
 
 function printHelp(): void {
-	const lines: string[] = ['codkit - manage a patch set over a VS Code fork tree', '', 'usage: codkit <command> [flags]', '', 'commands:'];
+	const lines: string[] = ['codkit - manage a patch set over a fork tree', '', 'usage: codkit <command> [flags]', '', 'commands:'];
 	for (const definition of COMMANDS.values()) {
 		const own = definition.commandFlags ?? [];
 		const suffix = own.length === 0 ? '' : ` (flags: ${own.join(', ')})`;
