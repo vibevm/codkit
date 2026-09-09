@@ -1908,6 +1908,7 @@
 			"license": "UPL-1.0",
 			"dependencies": {
 				"@codkit/type-api": "1.0.0",
+				"typescript": "^7.0.2",
 				"zod": "^4.5.4"
 			},
 			"engines": {

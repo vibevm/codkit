@@ -17,6 +17,7 @@
 		"config",
 		"dist",
 		"src",
+		"npm-shrinkwrap.json",
 		"README.md",
 		"LICENSE.md"
 	],

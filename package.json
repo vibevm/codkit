@@ -12,6 +12,7 @@
 	},
 	"scripts": {
 		"codkit": "node packages/codkit/bin/codkit.mjs",
+		"kit": "node tools/build-supply-kit.mjs",
 		"runtime:build": "tsc -p packages/codkit/tsconfig.runtime.json && tsc -p packages/type-api/tsconfig.runtime.json && tsc -p packages/type-vscode/tsconfig.runtime.json",
 		"runtime:check": "node tools/check-codkit-runtime.mjs",
 		"format:check": "prettier --check packages/*/src packages/*/test",
