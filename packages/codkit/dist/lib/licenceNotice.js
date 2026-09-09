@@ -36,8 +36,15 @@ export const SCOPE_PATHS = [
     'vibevm/vibedeps/org.vibevm.codkit.*/**',
     `${RUNTIME_PREFIX}/**`
 ];
-/** ##STD-NOTICE-COMPONENTS-BLOCK: what is installed, by name then version. */
-export function discoverComponents(patchesDir) {
+/**
+ * ##STD-NOTICE-COMPONENTS-BLOCK: what is installed, by name then version. The
+ * packages name themselves by their directories; the runtime library is always
+ * installed under the same directory whatever type delivered it, so its name in
+ * the block is the identifier of the runtime package the project type names
+ * (PROP-016 ##TYPE-AREA-RUNTIME). `runtimePackageId` is null for a type with no
+ * runtime library, and then no runtime component is listed.
+ */
+export function discoverComponents(patchesDir, runtimePackageId) {
     const components = [];
     const packages = join(patchesDir, ...PACKAGES_PREFIX.split('/'));
     if (statIfPresent(packages)?.isDirectory()) {
@@ -53,9 +60,9 @@ export function discoverComponents(patchesDir) {
         }
     }
     const runtime = join(patchesDir, ...RUNTIME_PREFIX.split('/'));
-    if (statIfPresent(join(runtime, 'common', 'version.ts')) !== null) {
+    if (runtimePackageId !== null && statIfPresent(join(runtime, 'common', 'version.ts')) !== null) {
         try {
-            components.push({ name: 'runtime', version: readVersionLiteral(runtime).version, path: `${RUNTIME_PREFIX}/` });
+            components.push({ name: runtimePackageId, version: readVersionLiteral(runtime).version, path: `${RUNTIME_PREFIX}/` });
         }
         catch {
             // A runtime directory without a readable literal is drift, reported by
@@ -97,8 +104,8 @@ export function noticeTemplate(toolRoot) {
     }
 }
 /** The notice as it must read in this product right now. */
-export function renderedNotice(toolRoot, patchesDir) {
-    return renderNotice(noticeTemplate(toolRoot), discoverComponents(patchesDir));
+export function renderedNotice(toolRoot, patchesDir, runtimePackageId) {
+    return renderNotice(noticeTemplate(toolRoot), discoverComponents(patchesDir, runtimePackageId));
 }
 export function noticeCopyState(rendered, target) {
     if (statIfPresent(target) === null)
@@ -108,8 +115,8 @@ export function noticeCopyState(rendered, target) {
         return 'identical';
     return withoutBlock(existing) === withoutBlock(rendered) ? 'stale' : 'drift';
 }
-export function surveyNotice(toolRoot, patchesDir) {
-    const rendered = renderedNotice(toolRoot, patchesDir);
+export function surveyNotice(toolRoot, patchesDir, runtimePackageId) {
+    const rendered = renderedNotice(toolRoot, patchesDir, runtimePackageId);
     return {
         rendered,
         copies: NOTICE_TARGET_PATHS.map((path) => ({ path, state: noticeCopyState(rendered, join(patchesDir, ...path.split('/'))) })),
@@ -121,8 +128,8 @@ export function surveyNotice(toolRoot, patchesDir) {
  * absent or stale, leaves an identical copy alone and never touches a drifted
  * one (the caller refused before calling), then removes the legacy copy.
  */
-export function writeNoticeCopies(toolRoot, patchesDir, dryRun) {
-    const survey = surveyNotice(toolRoot, patchesDir);
+export function writeNoticeCopies(toolRoot, patchesDir, runtimePackageId, dryRun) {
+    const survey = surveyNotice(toolRoot, patchesDir, runtimePackageId);
     const written = [];
     for (const copy of survey.copies) {
         if (copy.state === 'identical' || copy.state === 'drift')

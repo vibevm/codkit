@@ -30,7 +30,15 @@ function makePatchSet(label: string): string {
 const TYPE_PACKAGES = ['seams-vscode'];
 
 function options(patchesDir: string, upgrade = false) {
-	return { toolRoot, patchesDir, typePackages: TYPE_PACKAGES, sourceOverride: null, dryRun: false, upgrade };
+	return {
+		toolRoot,
+		patchesDir,
+		typePackages: TYPE_PACKAGES,
+		runtimePackageId: 'runtime-vscode',
+		sourceOverride: null,
+		dryRun: false,
+		upgrade
+	};
 }
 
 function codeOf(run: () => unknown): string | null {

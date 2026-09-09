@@ -3,9 +3,12 @@
 // and report on the copy that is there.
 // Contract: PROP-007 sec. 25, algorithm PROP-015 sec. 4.
 //
-// Both subcommands need the patch-set root and nothing else: no fork tree, no
-// codkit.json to run, no tree lock (##RUNTIME-NAMESPACE). The pin is read when
-// it happens to be there, for the compatibility warning alone.
+// Both subcommands need the patch-set root and the configuration, and nothing
+// else: no fork tree and no tree lock (##RUNTIME-NAMESPACE). The configuration
+// names the project type, and the type names the runtime package to deliver
+// (PROP-016 ##TYPE-AREA-RUNTIME); a type with no runtime library refuses with
+// `CK-E-TYPE-CAPABILITY` before anything is read. The pin is read when it
+// happens to be there, for the compatibility warning alone.
 import { requireCapability } from '../types/capability.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot, requireProjectType } from '../lib/command.js';
 import { NOTICE_LEGACY_PATH } from '../lib/licenceNotice.js';
@@ -19,12 +22,20 @@ async function runNamespace() {
 function noticeAction(outcome, path) {
     return outcome.noticesWritten.find((notice) => notice.path === path)?.action ?? 'unchanged';
 }
+/**
+ * ##RT-SHIPPED-LOCATION: which library is delivered is the type's answer, and
+ * `requireCapability` above has already refused a type that has none - so the
+ * area is there by the time this is asked (PROP-016 ##TYPE-AREA-RUNTIME).
+ */
+function runtimePackageId(ctx) {
+    return requireProjectType(ctx).runtime?.packageId ?? '';
+}
 async function runLoad(ctx) {
     requireCapability(ctx.type, 'runtime-library', 'runtime load');
     const patchesDir = patchesRoot(ctx);
     const dryRun = commandFlagGiven(ctx.commandFlags, DRY_RUN);
     const upgrade = commandFlagGiven(ctx.commandFlags, UPGRADE);
-    const outcome = runRuntimeLoad({ toolRoot: ctx.toolRoot, patchesDir, dryRun, upgrade });
+    const outcome = runRuntimeLoad({ toolRoot: ctx.toolRoot, patchesDir, packageId: runtimePackageId(ctx), dryRun, upgrade });
     const plan = outcome.plan;
     // ##RT-LOAD-STEPS step 2: a library that fails its own licence check is never
     // copied, and there is no flag that changes that.
@@ -38,12 +49,18 @@ async function runLoad(ctx) {
             });
         }
         ctx.out.info(`${plan.problems.length} problems; nothing was written`);
-        ctx.out.setData({ version: plan.runtime.version, target: plan.targetPath, problems: plan.problems.length });
+        ctx.out.setData({
+            version: plan.runtime.version,
+            package: runtimePackageId(ctx),
+            target: plan.targetPath,
+            problems: plan.problems.length
+        });
         return EXIT_ENVIRONMENT;
     }
     for (const name of outcome.removedScratch)
         ctx.out.info(`removed interrupted run ${name}`);
     ctx.out.info(`runtime: ${plan.runtime.version} -> ${plan.targetPath}`);
+    ctx.out.info(`package: ${runtimePackageId(ctx)} (project type ${requireProjectType(ctx).id})`);
     ctx.out.info(`state: ${outcome.state}${dryRun ? ' (dry run: nothing written)' : ''}`);
     ctx.out.info(`files: ${outcome.filesWritten} written, ${outcome.filesRemoved} removed`);
     // ##RT-LOAD-UPGRADE: a replacement says which paths it takes over and which
@@ -68,6 +85,7 @@ async function runLoad(ctx) {
         ctx.out.info(line);
     ctx.out.setData({
         version: plan.runtime.version,
+        package: runtimePackageId(ctx),
         target: plan.targetPath,
         state: outcome.state,
         files: { written: outcome.filesWritten, removed: outcome.filesRemoved },
@@ -85,7 +103,7 @@ async function runLoad(ctx) {
 async function runCheck(ctx) {
     requireCapability(ctx.type, 'runtime-library', 'runtime check');
     const patchesDir = patchesRoot(ctx);
-    const report = runRuntimeCheck({ toolRoot: ctx.toolRoot, patchesDir });
+    const report = runRuntimeCheck({ toolRoot: ctx.toolRoot, patchesDir, packageId: runtimePackageId(ctx) });
     const plan = report.plan;
     // ##RT-CHECK: an absent library is a state, not a failure - the product may
     // simply not have asked for it yet.
@@ -106,6 +124,7 @@ async function runCheck(ctx) {
     // `noticeFiles` is the key `standards check` already answers with, so the
     // two commands answer the same question with the same shape (##RT-CHECK).
     ctx.out.setData({
+        package: runtimePackageId(ctx),
         target: {
             state: report.targetState,
             version: report.installedVersion,

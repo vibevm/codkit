@@ -22,7 +22,9 @@ afterAll(cleanupTempRoots);
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // The version the tool ships right now: the scenarios describe the delivery,
 // not a number, so they read it the way `runtime load` does.
-const shipped = shippedRuntime(packageRoot);
+/** ##RT-SHIPPED-LOCATION: the runtime package the `vscode` type of the fixture names. */
+const RUNTIME_PACKAGE_ID = 'runtime-vscode';
+const shipped = shippedRuntime(packageRoot, RUNTIME_PACKAGE_ID);
 const SHIPPED_VERSION = shipped.version;
 const shippedRuntimeDir = shipped.directory;
 const shippedNotice = join(packageRoot, 'config', 'LICENSE-CODKIT.md');
@@ -104,7 +106,7 @@ function expectedNotice(): string {
 	// both packages `standards load` delivers, and the runtime library.
 	return renderNotice(readFileSync(shippedNotice, 'utf8'), [
 		{ name: 'agent-skills', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/' },
-		{ name: 'runtime', version: SHIPPED_VERSION, path: `${INSTALLED}/` },
+		{ name: RUNTIME_PACKAGE_ID, version: SHIPPED_VERSION, path: `${INSTALLED}/` },
 		{ name: 'seams-vscode', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/' },
 		{ name: 'standards', version: '1.0.0', path: `${STANDARDS}/` }
 	]);
@@ -128,7 +130,11 @@ describe('S42 - runtime load delivers the library and rewrites the notice', () =
 		const notice = expectedNotice();
 		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);
 		expect(readFileSync(join(patchesDir, ...INSTALLED.split('/'), 'LICENSE-CODKIT.md'), 'utf8')).toBe(notice);
-		expect(notice).toContain(`runtime  ${SHIPPED_VERSION}  delta/own/codkit/`);
+		expect(notice).toContain(`${RUNTIME_PACKAGE_ID}  ${SHIPPED_VERSION}  delta/own/codkit/`);
+		// ##RT-SHIPPED-LOCATION: the library is delivered under the identifier the
+		// project type names, and the run says which one and on whose word.
+		expect((loaded.envelope.data as { package: string }).package).toBe(RUNTIME_PACKAGE_ID);
+		expect(run(patchesDir, ['runtime', 'load']).stdout).toContain(`package: ${RUNTIME_PACKAGE_ID} (project type vscode)`);
 		expect(notice).toContain('standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/');
 
 		// ##RT-LOAD-STEPS step 7: the three things to do next.

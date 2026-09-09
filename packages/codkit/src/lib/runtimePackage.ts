@@ -1,10 +1,14 @@
 /** @scope spec://codkit/modules/codkit/PROP-015#RT-SHIPPED-LOCATION */
 // Finding the runtime library that ships with this codkit (PROP-015 sec. 1).
 //
-// ##RT-SHIPPED-LOCATION: exactly one `v*` directory lives under
-// `toolRoot/runtime/`; ##RT-VERSION-LITERAL: its name is the version the
-// literal `CODKIT_RUNTIME_VERSION` in `common/version.ts` states. Anything else
-// is a damaged installation (`CK-E-RUNTIME-PACKAGE`), not something a rerun fixes.
+// ##RT-SHIPPED-LOCATION: a runtime library is a package of a project type, and
+// the installation may carry several - one `toolRoot/runtime/<packageId>/`
+// directory per type that has one. Which of them is delivered is the type's
+// answer (PROP-016 ##TYPE-AREA-RUNTIME); the engine never picks a library by
+// looking at what is there. Under the named directory exactly one `v*`
+// directory lives; ##RT-VERSION-LITERAL: its name is the version the literal
+// `CODKIT_RUNTIME_VERSION` in `common/version.ts` states. Anything else is a
+// damaged installation (`CK-E-RUNTIME-PACKAGE`), not something a rerun fixes.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -12,8 +16,13 @@ import { fileURLToPath } from 'node:url';
 import { statIfPresent } from './containedPath.ts';
 import { ckError } from './messages.ts';
 
-/** Where the shipped library sits, relative to toolRoot. */
-export const RUNTIME_PACKAGE_PARENT = 'runtime';
+/** Where the runtime packages sit, relative to toolRoot. */
+export const RUNTIME_PACKAGES_PARENT = 'runtime';
+
+/** Where one runtime package sits, relative to toolRoot (##RT-SHIPPED-LOCATION). */
+export function runtimePackageParent(packageId: string): string {
+	return `${RUNTIME_PACKAGES_PARENT}/${packageId}`;
+}
 
 /**
  * The immutable Codkit root, derived from this module the way main.ts derives
@@ -44,18 +53,21 @@ export type RuntimePackage = {
 };
 
 /**
- * The shipped runtime library. `override` replaces its location for tests,
- * the way `CODKIT_TEST_STANDARDS_SOURCE` does for the standards package.
+ * The runtime package the project type names. `override` replaces its location
+ * for tests, the way `CODKIT_TEST_STANDARDS_SOURCE` does for the standards
+ * package. A `packageId` this installation does not carry is a damaged
+ * installation (or a type built against another codkit), never a silent skip.
  */
-export function shippedRuntime(toolRoot: string, override?: string | null): RuntimePackage {
-	const parent = override ?? join(toolRoot, ...RUNTIME_PACKAGE_PARENT.split('/'));
+export function shippedRuntime(toolRoot: string, packageId: string, override?: string | null): RuntimePackage {
+	const where = runtimePackageParent(packageId);
+	const parent = override ?? join(toolRoot, ...where.split('/'));
 	const shape = statIfPresent(parent);
 	if (shape === null || !shape.isDirectory()) {
 		throw ckError(
 			'RUNTIME-PACKAGE',
-			`shipped runtime not found under ${RUNTIME_PACKAGE_PARENT}`,
-			'restore the codkit installation from the approved supply',
-			RUNTIME_PACKAGE_PARENT
+			`the project type delivers ${packageId}, and this installation ships no runtime under ${where}`,
+			'restore the codkit installation from the approved supply, or install a codkit that carries the runtime of this type',
+			where
 		);
 	}
 	const versions = readdirSync(parent, { withFileTypes: true })
@@ -66,9 +78,9 @@ export function shippedRuntime(toolRoot: string, override?: string | null): Runt
 	if (versions.length !== 1 || only === undefined) {
 		throw ckError(
 			'RUNTIME-PACKAGE',
-			`${versions.length} version directories under ${RUNTIME_PACKAGE_PARENT}, expected exactly one`,
+			`${versions.length} version directories under ${where}, expected exactly one`,
 			'restore the codkit installation from the approved supply',
-			RUNTIME_PACKAGE_PARENT
+			where
 		);
 	}
 	const directory = join(parent, only);
@@ -79,7 +91,7 @@ export function shippedRuntime(toolRoot: string, override?: string | null): Runt
 			'RUNTIME-PACKAGE',
 			`the runtime directory says ${version} and ${RUNTIME_VERSION_FILE} says ${literal.version}`,
 			'restore the codkit installation from the approved supply',
-			`${RUNTIME_PACKAGE_PARENT}/${only}/${RUNTIME_VERSION_FILE}`
+			`${where}/${only}/${RUNTIME_VERSION_FILE}`
 		);
 	}
 	return { directory, version, verifiedUpstream: literal.verifiedUpstream };

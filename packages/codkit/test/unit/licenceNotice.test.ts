@@ -24,6 +24,12 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
 
+/**
+ * ##STD-NOTICE-COMPONENTS-BLOCK: the installed library is named after the
+ * runtime package the project type delivers, not after the directory it sits in.
+ */
+const RUNTIME_ID = 'runtime-vscode';
+
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 function product(label: string): string {
@@ -65,8 +71,8 @@ describe('the licence notice', () => {
 		installRuntime(root, '0.1.0');
 		mkdirSync(join(root, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'notes'), { recursive: true });
 
-		expect(discoverComponents(root)).toEqual([
-			{ name: 'runtime', version: '0.1.0', path: 'delta/own/codkit/' },
+		expect(discoverComponents(root, RUNTIME_ID)).toEqual([
+			{ name: RUNTIME_ID, version: '0.1.0', path: 'delta/own/codkit/' },
 			{ name: 'standards', version: '0.1.0', path: 'vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/' },
 			{ name: 'standards', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/' }
 		]);
@@ -89,7 +95,7 @@ describe('the licence notice', () => {
 	it('tells an identical copy from a stale one and from a drifted one', () => {
 		const root = product('states');
 		installStandards(root, '0.1.0');
-		const rendered = renderNotice(noticeTemplate(toolRoot), discoverComponents(root));
+		const rendered = renderNotice(noticeTemplate(toolRoot), discoverComponents(root, RUNTIME_ID));
 		const target = join(root, 'LICENSE-CODKIT.md');
 		expect(noticeCopyState(rendered, target)).toBe('absent');
 		writeFileSync(target, rendered, 'utf8');
@@ -106,34 +112,34 @@ describe('the licence notice', () => {
 		mkdirSync(join(root, 'delta', 'own'), { recursive: true });
 		writeFileSync(join(root, NOTICE_LEGACY_PATH), 'old copy\n', 'utf8');
 
-		const first = writeNoticeCopies(toolRoot, root, false);
+		const first = writeNoticeCopies(toolRoot, root, RUNTIME_ID, false);
 		expect(first.written).toEqual([
 			{ path: NOTICE_ROOT_PATH, action: 'created' },
 			{ path: NOTICE_OWN_PATH, action: 'created' }
 		]);
 		expect(first.legacyRemoved).toBe(true);
-		const rendered = renderNotice(noticeTemplate(toolRoot), discoverComponents(root));
+		const rendered = renderNotice(noticeTemplate(toolRoot), discoverComponents(root, RUNTIME_ID));
 		expect(readFileSync(join(root, NOTICE_ROOT_PATH), 'utf8')).toBe(rendered);
 		expect(readFileSync(join(root, NOTICE_OWN_PATH), 'utf8')).toBe(rendered);
-		expect(surveyNotice(toolRoot, root).legacy).toBe(false);
+		expect(surveyNotice(toolRoot, root, RUNTIME_ID).legacy).toBe(false);
 
 		// A new component arrives: the copies are stale and get updated, nothing else changes.
 		installRuntime(root, '0.1.0');
-		expect(surveyNotice(toolRoot, root).copies.map((copy) => copy.state)).toEqual(['stale', 'stale']);
-		const second = writeNoticeCopies(toolRoot, root, false);
+		expect(surveyNotice(toolRoot, root, RUNTIME_ID).copies.map((copy) => copy.state)).toEqual(['stale', 'stale']);
+		const second = writeNoticeCopies(toolRoot, root, RUNTIME_ID, false);
 		expect(second.written.map((entry) => entry.action)).toEqual(['updated', 'updated']);
-		expect(readFileSync(join(root, NOTICE_ROOT_PATH), 'utf8')).toContain('runtime  0.1.0  delta/own/codkit/');
+		expect(readFileSync(join(root, NOTICE_ROOT_PATH), 'utf8')).toContain(`${RUNTIME_ID}  0.1.0  delta/own/codkit/`);
 
-		const third = writeNoticeCopies(toolRoot, root, false);
+		const third = writeNoticeCopies(toolRoot, root, RUNTIME_ID, false);
 		expect(third.written).toEqual([]);
 	});
 
 	it('writes nothing on a dry run but reports what it would do', () => {
 		const root = product('dry');
 		installStandards(root, '0.1.0');
-		const outcome = writeNoticeCopies(toolRoot, root, true);
+		const outcome = writeNoticeCopies(toolRoot, root, RUNTIME_ID, true);
 		expect(outcome.written.map((entry) => entry.action)).toEqual(['created', 'created']);
-		expect(surveyNotice(toolRoot, root).copies.map((copy) => copy.state)).toEqual(['absent', 'absent']);
+		expect(surveyNotice(toolRoot, root, RUNTIME_ID).copies.map((copy) => copy.state)).toEqual(['absent', 'absent']);
 	});
 
 	it('prints a REUSE annotation naming the four scope paths', () => {

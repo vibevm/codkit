@@ -53,6 +53,13 @@ export type RuntimeLoadState = 'created' | 'upgraded' | 'unchanged';
 export type PlanOptions = {
 	readonly toolRoot: string;
 	readonly patchesDir: string;
+	/**
+	 * ##RT-SHIPPED-LOCATION: the runtime package the project type delivers. The
+	 * engine never picks a library by looking at the installation; it asks the
+	 * type for the identifier and reads that directory (PROP-016
+	 * ##TYPE-AREA-RUNTIME).
+	 */
+	readonly packageId: string;
 	/** Relocates the shipped library; the unit tests are its only caller. */
 	readonly sourceOverride?: string | null;
 };
@@ -93,7 +100,7 @@ export function runtimeNextSteps(type: ProjectType, ownRoot: string): readonly s
 /** Everything a run would do, computed without writing anything. */
 export function planRuntimeLoad(options: PlanOptions): RuntimePlan {
 	// (1) The source: exactly one version directory whose literal agrees with it.
-	const runtime = shippedRuntime(options.toolRoot, options.sourceOverride ?? null);
+	const runtime = shippedRuntime(options.toolRoot, options.packageId, options.sourceOverride ?? null);
 
 	// (2) The licence gate. `packageShape: false`: the library is a directory of
 	// files, not a vibe package - it has no manifest, no LICENSE and no registry
@@ -112,7 +119,7 @@ export function planRuntimeLoad(options: PlanOptions): RuntimePlan {
 		comparison.state === 'identical' ? [] : comparison.state === 'absent' ? shipped : [...comparison.modified, ...comparison.missing];
 	const removals = comparison.state === 'drift' ? comparison.extra : [];
 
-	const survey = check.problems.length > 0 ? null : surveyNotice(options.toolRoot, options.patchesDir);
+	const survey = check.problems.length > 0 ? null : surveyNotice(options.toolRoot, options.patchesDir, options.packageId);
 	const notices = survey === null ? NOTICE_TARGET_PATHS.map((path) => ({ path, state: 'absent' as const })) : survey.copies;
 
 	const pinTag = productPinTag(options.patchesDir);
@@ -224,7 +231,7 @@ export function runRuntimeLoad(options: RunOptions): RuntimeLoadOutcome {
 
 	// (6) The notice, in both roots, with the components block recomputed now
 	// that the library is installed (PROP-014 ##STD-LOAD-STEP-WRITE-NOTICE).
-	const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.dryRun);
+	const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.packageId, options.dryRun);
 
 	return {
 		plan,

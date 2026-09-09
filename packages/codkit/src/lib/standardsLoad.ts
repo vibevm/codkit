@@ -225,6 +225,12 @@ export type PlanOptions = {
 	 * upstream family has no package of its own.
 	 */
 	readonly typePackages: readonly string[];
+	/**
+	 * ##STD-NOTICE-COMPONENTS-BLOCK: the identifier of the runtime package the
+	 * type delivers, which is the name the components block gives the installed
+	 * library; null for a type with no runtime library.
+	 */
+	readonly runtimePackageId: string | null;
 	/** Value of the test seam, or null outside a test build. */
 	readonly sourceOverride: string | null;
 };
@@ -288,7 +294,7 @@ export function planStandardsLoad(options: PlanOptions): LoadPlan {
 	// The rendered text depends on what is installed, which this run may change;
 	// the plan looks at the copies as they are, the writer renders again after
 	// the packages landed (##STD-LOAD-STEP-WRITE-NOTICE).
-	const survey = clean ? surveyNotice(options.toolRoot, options.patchesDir) : null;
+	const survey = clean ? surveyNotice(options.toolRoot, options.patchesDir, options.runtimePackageId) : null;
 	const notices = survey === null ? NOTICE_TARGET_PATHS.map((path) => ({ path, state: 'absent' as NoticeState })) : survey.copies;
 
 	return {
@@ -435,7 +441,7 @@ export function runStandardsLoad(options: RunOptions): LoadOutcome {
 
 	const packages = plan.packages.map((entry) => deliver(options, entry));
 
-	const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.dryRun);
+	const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.runtimePackageId, options.dryRun);
 
 	if (!options.dryRun && plan.manifest.action !== 'unchanged') {
 		const manifestPath = join(options.patchesDir, MANIFEST_PATH);

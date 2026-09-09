@@ -53,8 +53,15 @@ export type NoticeComponent = {
 export type NoticeCopyState = 'absent' | 'identical' | 'stale' | 'drift';
 export type NoticeCopy = { readonly path: string; readonly state: NoticeCopyState };
 
-/** ##STD-NOTICE-COMPONENTS-BLOCK: what is installed, by name then version. */
-export function discoverComponents(patchesDir: string): readonly NoticeComponent[] {
+/**
+ * ##STD-NOTICE-COMPONENTS-BLOCK: what is installed, by name then version. The
+ * packages name themselves by their directories; the runtime library is always
+ * installed under the same directory whatever type delivered it, so its name in
+ * the block is the identifier of the runtime package the project type names
+ * (PROP-016 ##TYPE-AREA-RUNTIME). `runtimePackageId` is null for a type with no
+ * runtime library, and then no runtime component is listed.
+ */
+export function discoverComponents(patchesDir: string, runtimePackageId: string | null): readonly NoticeComponent[] {
 	const components: NoticeComponent[] = [];
 	const packages = join(patchesDir, ...PACKAGES_PREFIX.split('/'));
 	if (statIfPresent(packages)?.isDirectory()) {
@@ -68,9 +75,9 @@ export function discoverComponents(patchesDir: string): readonly NoticeComponent
 		}
 	}
 	const runtime = join(patchesDir, ...RUNTIME_PREFIX.split('/'));
-	if (statIfPresent(join(runtime, 'common', 'version.ts')) !== null) {
+	if (runtimePackageId !== null && statIfPresent(join(runtime, 'common', 'version.ts')) !== null) {
 		try {
-			components.push({ name: 'runtime', version: readVersionLiteral(runtime).version, path: `${RUNTIME_PREFIX}/` });
+			components.push({ name: runtimePackageId, version: readVersionLiteral(runtime).version, path: `${RUNTIME_PREFIX}/` });
 		} catch {
 			// A runtime directory without a readable literal is drift, reported by
 			// `runtime check`; the notice simply does not list it.
@@ -124,8 +131,8 @@ export function noticeTemplate(toolRoot: string): string {
 }
 
 /** The notice as it must read in this product right now. */
-export function renderedNotice(toolRoot: string, patchesDir: string): string {
-	return renderNotice(noticeTemplate(toolRoot), discoverComponents(patchesDir));
+export function renderedNotice(toolRoot: string, patchesDir: string, runtimePackageId: string | null): string {
+	return renderNotice(noticeTemplate(toolRoot), discoverComponents(patchesDir, runtimePackageId));
 }
 
 export function noticeCopyState(rendered: string, target: string): NoticeCopyState {
@@ -142,8 +149,8 @@ export type NoticeSurvey = {
 	readonly legacy: boolean;
 };
 
-export function surveyNotice(toolRoot: string, patchesDir: string): NoticeSurvey {
-	const rendered = renderedNotice(toolRoot, patchesDir);
+export function surveyNotice(toolRoot: string, patchesDir: string, runtimePackageId: string | null): NoticeSurvey {
+	const rendered = renderedNotice(toolRoot, patchesDir, runtimePackageId);
 	return {
 		rendered,
 		copies: NOTICE_TARGET_PATHS.map((path) => ({ path, state: noticeCopyState(rendered, join(patchesDir, ...path.split('/'))) })),
@@ -161,8 +168,13 @@ export type NoticeWriteOutcome = {
  * absent or stale, leaves an identical copy alone and never touches a drifted
  * one (the caller refused before calling), then removes the legacy copy.
  */
-export function writeNoticeCopies(toolRoot: string, patchesDir: string, dryRun: boolean): NoticeWriteOutcome {
-	const survey = surveyNotice(toolRoot, patchesDir);
+export function writeNoticeCopies(
+	toolRoot: string,
+	patchesDir: string,
+	runtimePackageId: string | null,
+	dryRun: boolean
+): NoticeWriteOutcome {
+	const survey = surveyNotice(toolRoot, patchesDir, runtimePackageId);
 	const written: { path: string; action: 'created' | 'updated' }[] = [];
 	for (const copy of survey.copies) {
 		if (copy.state === 'identical' || copy.state === 'drift') continue;

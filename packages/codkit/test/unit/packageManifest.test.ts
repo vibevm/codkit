@@ -85,9 +85,11 @@ const REQUIRED: ReadonlyMap<string, readonly string[]> = new Map([
 			'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/vibe.toml',
 			'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/vibevm/vibespecs/flows/standards/seam-catalogue.xml',
 			'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/vibevm/vibespecs/boot/77-flow-codkit-seams-vscode.xml',
-			'runtime/v1.0.0/README.md',
-			'runtime/v1.0.0/common/version.ts',
-			'runtime/v1.0.0/browser/featureFlags.contribution.ts'
+			// The runtime library is a package of the project type too, under the
+			// identifier the type names (PROP-015 ##RT-SHIPPED-LOCATION).
+			'runtime/runtime-vscode/v1.0.0/README.md',
+			'runtime/runtime-vscode/v1.0.0/common/version.ts',
+			'runtime/runtime-vscode/v1.0.0/browser/featureFlags.contribution.ts'
 		]
 	]
 ]);

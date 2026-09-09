@@ -7745,7 +7745,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:41af08ed6098afa8cc04307f13b9e8ae77e633244b26dccfab429be210d7a712",
+      "content_hash": "sha256:248f7ac575afc36c70bf89f337224e4c870de48905087fc8db19082804cc6f6f",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: The standards package and licence markup",
@@ -8420,7 +8420,7 @@
     },
     {
       "anchor": "notice",
-      "content_hash": "sha256:2e16ce47388350aeaeb05e1954ee87e717a0caa328061d1e5c4d9255086e1b02",
+      "content_hash": "sha256:45518cbe792f1f8c9d6446ea484206099d043a2ec3dcb8236cecc48f705ea6c1",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "4a. The file LICENSE-CODKIT.md",
@@ -8456,10 +8456,10 @@
     },
     {
       "anchor": "STD-NOTICE-COMPONENTS-BLOCK",
-      "content_hash": "sha256:19b1674f068adcd33d549151d49dd50bc11ae0af4ea5d38611d794906105d661",
+      "content_hash": "sha256:e49ffec0340b0b52c682a46f7f1838a9a3c9444a89c27fed3df811591a3b02ee",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "The notice carries a managed block between the lines `<!-- codkit:begin components -->` and `<!-- codkit:end components -->`; inside it there is one line per installed component: `<name>  <version>  <path>/` (for example `standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/`, `runtime  1.0.0  delta/own/codkit/`), sorted by name. The block is computed from what stands in the product: the directories `vibevm/vibepacks/org.vibevm.codkit/<name>/v*/` (every version present, each on its own line) and the version literal of `delta/own/codkit/common/version.ts` (PROP-015 `RT-VERSION-LITERAL`). Both delivering commands rewrite the block every time; `check` compares the copy with a fresh render, so `standards check` and `runtime check` give one result. The shipped template carries an empty block. @status:spec/done",
+      "heading": "The notice carries a managed block between the lines `<!-- codkit:begin components -->` and `<!-- codkit:end components -->`; inside it there is one line per installed component: `<name>  <version>  <path>/` (for example `standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/`, `runtime-vscode  1.0.0  delta/own/codkit/`), sorted by name. The block is computed from what stands in the product: the directories `vibevm/vibepacks/org.vibevm.codkit/<name>/v*/` (every version present, each on its own line) and the version literal of `delta/own/codkit/common/version.ts` (PROP-015 `RT-VERSION-LITERAL`). A package names itself by its directory; the runtime library cannot, because the directory it is installed in is the same `delta/own/codkit/` whatever type delivered it (`RT-DIRECTORY-IS-CODKIT`), so the name it is listed under is the identifier of the runtime package the project type delivers (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-RUNTIME`) — `runtime` until the runtime became a package of the type. A type with no runtime library lists no runtime component. Both delivering commands rewrite the block every time; `check` compares the copy with a fresh render, so `standards check` and `runtime check` give one result. The shipped template carries an empty block. @status:spec/done",
       "line": 165,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-NOTICE-COMPONENTS-BLOCK"
     },
@@ -8960,7 +8960,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ac0897356690a22f221f253686091d549d1c54c2bfd2d13fb77a42bc0286f402",
+      "content_hash": "sha256:bfbb33b15ba474fff8c132f671b89a132750f3ee8d8d9adfd613fb61fcb1d545",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "codkit PROP-015: The delivery of the Codkit runtime into the own layer of a product",
@@ -8969,7 +8969,7 @@
     },
     {
       "anchor": "purpose",
-      "content_hash": "sha256:078a03e6ed3123733186288ae084c926ceaa04b4eb02f7ba313b71abda79f201",
+      "content_hash": "sha256:3d0d82544a892e2723c6d84487c8442f106b164b53f4bc410fd815d859eba880",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "1. Purpose and the form of delivery",
@@ -9005,10 +9005,10 @@
     },
     {
       "anchor": "RT-SHIPPED-LOCATION",
-      "content_hash": "sha256:a7c00abddcee5b929b33cb5c82a28553f5bbcb014356530d1a0fe385c2236a60",
+      "content_hash": "sha256:9fc2c86d2914f6464830bf258e452c0c34891f61daf9714e3ed47a23ca9497ae",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "In toolRoot the library lives in `runtime/v<semver>/`, exactly one version directory (as in `STD-PACKAGE-LOCATION`); the directory is listed in the `files` of `package.json` and travels in the tarball. The content of the version directory is exactly the tree that lands in `delta/own/codkit/` (without the notice file, which belongs to PROP-014 §4a). @status:spec/done",
+      "heading": "A runtime library is a **package of a project type**: in toolRoot it lives in `runtime/<packageId>/v<semver>/`, exactly one version directory under the named package (as in `STD-PACKAGE-LOCATION`), and the installation may carry one such package per type that has a library at all. Which package is delivered is the type's answer and never a guess from the directory listing (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-RUNTIME`); the `vscode` type names `runtime-vscode`. A `packageId` the installation does not carry is `CK-E-RUNTIME-PACKAGE` naming the identifier and the expected directory — a damaged installation, or a type built against another codkit — and a type with no `runtime` area refuses earlier still, with `CK-E-TYPE-CAPABILITY` (`RT-LOAD-STEPS` step 0). The `runtime/` directory is listed in the `files` of `package.json` and travels in the tarball. The content of the version directory is exactly the tree that lands in `delta/own/codkit/` (without the notice file, which belongs to PROP-014 §4a). @status:spec/done",
       "line": 10,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-SHIPPED-LOCATION"
     },
@@ -9266,7 +9266,7 @@
     },
     {
       "anchor": "commands",
-      "content_hash": "sha256:5ae4989de737d7dd4d803263189dacf0387fc6dc203f8c7c96bf7644be97cba4",
+      "content_hash": "sha256:df2cce56130ac1efc6d6e4617324f6e64285538f52cc634763065f9b9ec44a85",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
       "heading": "4. The `runtime load|check` commands; delivered files in `verify`, `save`, `inventory`",
@@ -9275,10 +9275,10 @@
     },
     {
       "anchor": "RT-LOAD-STEPS",
-      "content_hash": "sha256:22e50ea3f448ea4ccea09a461976facd889b6007503983898317063d15419332",
+      "content_hash": "sha256:c674c2b9efef179b2698bfe4e87280f0ef306fb2f22d505b1bb2196e3209c120",
       "doc_path": "modules/codkit/PROP-015",
       "file": "vibevm/vibespecs/modules/codkit/PROP-015-runtime.xml",
-      "heading": "`codkit runtime load [--dry-run] [--upgrade]` (patchesDir only, the tree is not read): (1) the source is the single version directory in toolRoot and the version literal (`RT-VERSION-LITERAL`; otherwise `CK-E-RUNTIME-PACKAGE`, exit 2); (2) the licence gate is `LIC-CHECK-ALGORITHM` over the version directory with the policy of Codkit → 0 problems, otherwise `CK-E-LICENSE-PACKAGE` with the list, exit 2 and not a single write; (3) the target `delta/own/codkit/` without the notice file: `absent` / `identical` / `drift` by a comparison of the trees; a `drift` without `--upgrade` is `CK-E-RUNTIME-DRIFT` with the paths, exit 1 and not a single write; (4) `--dry-run` prints the plan (the created/replaced/removed paths) and exits 0; (5) the directory is written into a temporary directory and renamed as a whole, and the notice file in the target is preserved; (6) the notice goes into both roots per PROP-014 §4a (`STD-LOAD-STEP-WRITE-NOTICE`, the block of components); (7) the report `{ command: 'runtime load', version, target, state: 'created' | 'upgraded' | 'unchanged', files: { written, removed }, notice }` and three hints: the graft `import '../codkit/browser/featureFlags.contribution.js';` in the composition root of the product, the `code-import-patterns` block per `LAYERS.md`, and the first feature through `codkit gen feature`. @status:spec/done",
+      "heading": "`codkit runtime load [--dry-run] [--upgrade]` (patchesDir and `codkit.json`, the tree is not read): (0) the project type declares `runtime-library`, otherwise `CK-E-TYPE-CAPABILITY`, exit 2, and it names the runtime package to deliver; (1) the source is the single version directory under `runtime/<packageId>/` in toolRoot and the version literal (`RT-VERSION-LITERAL`; otherwise `CK-E-RUNTIME-PACKAGE`, exit 2); (2) the licence gate is `LIC-CHECK-ALGORITHM` over the version directory with the policy of Codkit → 0 problems, otherwise `CK-E-LICENSE-PACKAGE` with the list, exit 2 and not a single write; (3) the target `delta/own/codkit/` without the notice file: `absent` / `identical` / `drift` by a comparison of the trees; a `drift` without `--upgrade` is `CK-E-RUNTIME-DRIFT` with the paths, exit 1 and not a single write; (4) `--dry-run` prints the plan (the created/replaced/removed paths) and exits 0; (5) the directory is written into a temporary directory and renamed as a whole, and the notice file in the target is preserved; (6) the notice goes into both roots per PROP-014 §4a (`STD-LOAD-STEP-WRITE-NOTICE`, the block of components); (7) the report `{ command: 'runtime load', version, target, state: 'created' | 'upgraded' | 'unchanged', files: { written, removed }, notice }` and three hints: the graft `import '../codkit/browser/featureFlags.contribution.js';` in the composition root of the product, the `code-import-patterns` block per `LAYERS.md`, and the first feature through `codkit gen feature`. @status:spec/done",
       "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-015#RT-LOAD-STEPS"
     },
@@ -10535,7 +10535,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:2b9b7c6c14731c1be423587adb3cfcc5b9e87e34ca724e8021e1b00a15075221",
+      "content_hash": "sha256:82cfbd0c93a5db6d44e9c6f70c8ef9802dfadee3e53a3c571af4cac04a59f77a",
       "doc_path": "modules/vscode/PROP-007",
       "file": "vibevm/vibespecs/modules/vscode/PROP-007-runtime.xml",
       "heading": "vscode PROP-007: The runtime library - features, flags, brand engine",
@@ -10544,7 +10544,7 @@
     },
     {
       "anchor": "purpose",
-      "content_hash": "sha256:d218c2d5f41b04fd85155bfa5479c8aa9686ebfbaadf09394febe7e4f83648d6",
+      "content_hash": "sha256:898c51851dd5e9fa8ba4772866daa1ee80dfa49c6b74c872bab36958ef79a005",
       "doc_path": "modules/vscode/PROP-007",
       "file": "vibevm/vibespecs/modules/vscode/PROP-007-runtime.xml",
       "heading": "1. Purpose and the shape of the library",
@@ -10562,10 +10562,10 @@
     },
     {
       "anchor": "VSCODE-RUNTIME-IS-THE-TYPES-LIBRARY",
-      "content_hash": "sha256:37d05f902e000bf030cdd0a77be6799ddd448bd32a8f210cb4020a84a92018f5",
+      "content_hash": "sha256:8dfc01c433266c572f8078987667b6d12235034de9c41ae14c81d1e47e484440",
       "doc_path": "modules/vscode/PROP-007",
       "file": "vibevm/vibespecs/modules/vscode/PROP-007-runtime.xml",
-      "heading": "This library is what the `runtime-library` capability of the `vscode` type delivers; a second type delivers its own (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-RUNTIME`). Everything about **how** it is delivered - the managed copy, the single version directory in toolRoot, the version literal, `runtime load --upgrade`, `runtime check`, `CK-E-RUNTIME-DRIFT`, the refusal of `save` over a delivered edit and the synthetic inventory entry - is universal and stays with the engine (`spec://codkit/modules/codkit/PROP-015#RT-IS-A-MANAGED-COPY`, `spec://codkit/modules/codkit/PROP-015#RT-LOAD-STEPS`). Everything about **what** it contains is here. @status:spec/plan",
+      "heading": "This library is what the `runtime-library` capability of the `vscode` type delivers: it travels as the shipped runtime package **`runtime-vscode`**, and the type names that identifier (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-RUNTIME`). A second type delivers its own package under its own identifier, and a type with no library refuses `runtime load|check` with `CK-E-TYPE-CAPABILITY`. In the product the library is still installed at `delta/own/codkit/` — that directory name is universal (`RT-DIRECTORY-IS-CODKIT`) — and the components block of `LICENSE-CODKIT.md` lists it as `runtime-vscode`. Everything about **how** it is delivered - the managed copy, the single version directory in toolRoot, the version literal, `runtime load --upgrade`, `runtime check`, `CK-E-RUNTIME-DRIFT`, the refusal of `save` over a delivered edit and the synthetic inventory entry - is universal and stays with the engine (`spec://codkit/modules/codkit/PROP-015#RT-IS-A-MANAGED-COPY`, `spec://codkit/modules/codkit/PROP-015#RT-LOAD-STEPS`). Everything about **what** it contains is here. @status:spec/done",
       "line": 7,
       "uri": "spec://codkit/modules/vscode/PROP-007#VSCODE-RUNTIME-IS-THE-TYPES-LIBRARY"
     },

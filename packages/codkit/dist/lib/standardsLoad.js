@@ -160,7 +160,7 @@ export function planStandardsLoad(options) {
     // The rendered text depends on what is installed, which this run may change;
     // the plan looks at the copies as they are, the writer renders again after
     // the packages landed (##STD-LOAD-STEP-WRITE-NOTICE).
-    const survey = clean ? surveyNotice(options.toolRoot, options.patchesDir) : null;
+    const survey = clean ? surveyNotice(options.toolRoot, options.patchesDir, options.runtimePackageId) : null;
     const notices = survey === null ? NOTICE_TARGET_PATHS.map((path) => ({ path, state: 'absent' })) : survey.copies;
     return {
         packages,
@@ -269,7 +269,7 @@ export function runStandardsLoad(options) {
     }
     refuseOnDrift(plan, options.upgrade);
     const packages = plan.packages.map((entry) => deliver(options, entry));
-    const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.dryRun);
+    const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.runtimePackageId, options.dryRun);
     if (!options.dryRun && plan.manifest.action !== 'unchanged') {
         const manifestPath = join(options.patchesDir, MANIFEST_PATH);
         const applied = applyBlock(readFileSync(manifestPath, 'utf8'), canonicalManifestBlock(plan.packages.map((entry) => entry.package)), manifestMarkers(plan.packages.map((entry) => entry.package.name)));

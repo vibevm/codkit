@@ -48,6 +48,14 @@ function reportLicences(ctx, plan) {
 function typePackages(ctx) {
     return requireProjectType(ctx).standards.packages;
 }
+/**
+ * ##STD-NOTICE-COMPONENTS-BLOCK: the name the components block gives the
+ * installed runtime library, which is the identifier of the runtime package the
+ * type delivers; null for a type with no runtime library at all.
+ */
+function runtimePackageId(ctx) {
+    return requireProjectType(ctx).runtime?.packageId ?? null;
+}
 /** ##STD-LOAD-ALL-PACKAGES: one summary per package, in the order they are delivered. */
 function reportPackage(ctx, entry, outcome, upgrade, dryRun) {
     const done = outcome.packages.find((item) => item.name === entry.package.name);
@@ -100,6 +108,7 @@ async function runLoad(ctx) {
         toolRoot: ctx.toolRoot,
         patchesDir,
         typePackages: typePackages(ctx),
+        runtimePackageId: runtimePackageId(ctx),
         sourceOverride: sourceOverride(ctx),
         dryRun,
         upgrade
@@ -150,7 +159,7 @@ async function runLoad(ctx) {
     const created = outcome.noticesWritten.some((notice) => notice.action === 'created');
     if (created) {
         ctx.out.info('----- LICENSE-CODKIT.md (verbatim) -----');
-        ctx.out.info(renderedNotice(ctx.toolRoot, patchesDir).replace(/\n$/u, ''));
+        ctx.out.info(renderedNotice(ctx.toolRoot, patchesDir, runtimePackageId(ctx)).replace(/\n$/u, ''));
         ctx.out.info('----- end of LICENSE-CODKIT.md -----');
     }
     ctx.out.setData({
@@ -167,7 +176,7 @@ async function runLoad(ctx) {
         nextSteps: [...next],
         notes: [...LICENCE_NOTES],
         recommendations: [...NOTICE_RECOMMENDATIONS],
-        ...(created ? { noticeText: renderedNotice(ctx.toolRoot, patchesDir) } : {})
+        ...(created ? { noticeText: renderedNotice(ctx.toolRoot, patchesDir, runtimePackageId(ctx)) } : {})
     });
     return EXIT_OK;
 }
@@ -180,6 +189,7 @@ async function runCheck(ctx) {
         toolRoot: ctx.toolRoot,
         patchesDir,
         typePackages: typePackages(ctx),
+        runtimePackageId: runtimePackageId(ctx),
         sourceOverride: sourceOverride(ctx)
     });
     const plan = report.plan;

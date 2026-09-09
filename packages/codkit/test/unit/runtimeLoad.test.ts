@@ -18,6 +18,8 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 afterAll(cleanupTempRoots);
 
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+/** ##RT-SHIPPED-LOCATION: what the `vscode` type names; the override relocates it anyway. */
+const PACKAGE_ID = 'runtime-vscode';
 
 const BANNER = [
 	'// Copyright (c) 2026 Oleg Chirukhin',
@@ -75,7 +77,7 @@ describe('planRuntimeLoad', () => {
 	it('classifies an absent target as everything to write', () => {
 		const source = makeShipped('absent');
 		const patchesDir = makeProduct('absent');
-		const plan = planRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source });
+		const plan = planRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 
 		expect(plan.state).toBe('absent');
 		expect(plan.writes).toEqual(['browser/featureRegistry.ts', RUNTIME_VERSION_FILE]);
@@ -86,9 +88,9 @@ describe('planRuntimeLoad', () => {
 	it('classifies an installed copy that matches as identical, with nothing to do', () => {
 		const source = makeShipped('same');
 		const patchesDir = makeProduct('same');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 
-		const plan = planRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source });
+		const plan = planRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 		expect(plan.state).toBe('identical');
 		expect(plan.writes).toEqual([]);
 		expect(plan.removals).toEqual([]);
@@ -97,7 +99,7 @@ describe('planRuntimeLoad', () => {
 	it('names the modified, extra and missing paths of a drifted copy', () => {
 		const source = makeShipped('drift');
 		const patchesDir = makeProduct('drift');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		writeFileSync(
 			targetPath(patchesDir, RUNTIME_VERSION_FILE),
 			`${BANNER}\nexport const CODKIT_RUNTIME_VERSION = '0.1.0';\n// edited\n`,
@@ -105,7 +107,7 @@ describe('planRuntimeLoad', () => {
 		);
 		write(join(patchesDir, ...RUNTIME_TARGET_PATH.split('/')), 'browser/mine.ts', 'export const MINE = 1;\n');
 
-		const plan = planRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source });
+		const plan = planRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 		expect(plan.state).toBe('drift');
 		expect(plan.writes).toEqual([RUNTIME_VERSION_FILE]);
 		expect(plan.removals).toEqual(['browser/mine.ts']);
@@ -114,10 +116,10 @@ describe('planRuntimeLoad', () => {
 	it('does not read the licence notice as a file of the library', () => {
 		const source = makeShipped('notice');
 		const patchesDir = makeProduct('notice');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 
 		expect(readFileSync(targetPath(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toContain('codkit:begin components');
-		expect(planRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source }).state).toBe('identical');
+		expect(planRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source }).state).toBe('identical');
 	});
 });
 
@@ -125,10 +127,10 @@ describe('refuseOnDrift', () => {
 	it('refuses with CK-E-RUNTIME-DRIFT and names every path', () => {
 		const source = makeShipped('refuse');
 		const patchesDir = makeProduct('refuse');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		writeFileSync(targetPath(patchesDir, RUNTIME_VERSION_FILE), `${BANNER}\n// edited\n`, 'utf8');
 
-		const plan = planRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source });
+		const plan = planRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 		let message = '';
 		try {
 			refuseOnDrift(plan);
@@ -144,22 +146,22 @@ describe('runRuntimeLoad', () => {
 	it('writes the library and the notice, and says created', () => {
 		const source = makeShipped('create');
 		const patchesDir = makeProduct('create');
-		const outcome = runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		const outcome = runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 
 		expect(outcome.state).toBe('created');
 		expect(outcome.filesWritten).toBe(2);
 		expect(outcome.filesRemoved).toBe(0);
 		expect(installedFiles(patchesDir)).toEqual(['LICENSE-CODKIT.md', 'browser/featureRegistry.ts', RUNTIME_VERSION_FILE]);
-		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toContain('runtime  0.1.0  delta/own/codkit/');
+		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).toContain(`${PACKAGE_ID}  0.1.0  delta/own/codkit/`);
 	});
 
 	it('is a no-op the second time and does not touch a single byte', () => {
 		const source = makeShipped('again');
 		const patchesDir = makeProduct('again');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		const stamp = statSync(targetPath(patchesDir, RUNTIME_VERSION_FILE)).mtimeMs;
 
-		const second = runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		const second = runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		expect(second.state).toBe('unchanged');
 		expect(second.filesWritten).toBe(0);
 		expect(second.noticesWritten).toEqual([]);
@@ -169,25 +171,25 @@ describe('runRuntimeLoad', () => {
 	it('refuses drift without --upgrade and writes nothing', () => {
 		const source = makeShipped('no-upgrade');
 		const patchesDir = makeProduct('no-upgrade');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		writeFileSync(targetPath(patchesDir, RUNTIME_VERSION_FILE), `${BANNER}\n// edited\n`, 'utf8');
 		const before = readFileSync(targetPath(patchesDir, RUNTIME_VERSION_FILE), 'utf8');
 
-		expect(codeOf(() => runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false }))).toBe(
-			'RUNTIME-DRIFT'
-		);
+		expect(
+			codeOf(() => runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false }))
+		).toBe('RUNTIME-DRIFT');
 		expect(readFileSync(targetPath(patchesDir, RUNTIME_VERSION_FILE), 'utf8')).toBe(before);
 	});
 
 	it('replaces the directory under --upgrade and keeps the notice', () => {
 		const source = makeShipped('upgrade');
 		const patchesDir = makeProduct('upgrade');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		writeFileSync(targetPath(patchesDir, RUNTIME_VERSION_FILE), `${BANNER}\n// edited\n`, 'utf8');
 		write(join(patchesDir, ...RUNTIME_TARGET_PATH.split('/')), 'browser/mine.ts', 'export const MINE = 1;\n');
 		const notice = readFileSync(targetPath(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
 
-		const outcome = runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: true });
+		const outcome = runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: true });
 		expect(outcome.state).toBe('upgraded');
 		expect(outcome.filesRemoved).toBe(1);
 		expect(installedFiles(patchesDir)).toEqual(['LICENSE-CODKIT.md', 'browser/featureRegistry.ts', RUNTIME_VERSION_FILE]);
@@ -197,7 +199,7 @@ describe('runRuntimeLoad', () => {
 	it('writes nothing under --dry-run, plan or no plan', () => {
 		const source = makeShipped('dry');
 		const patchesDir = makeProduct('dry');
-		const outcome = runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: true, upgrade: false });
+		const outcome = runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: true, upgrade: false });
 
 		expect(outcome.state).toBe('created');
 		expect(outcome.filesWritten).toBe(2);
@@ -209,7 +211,7 @@ describe('runRuntimeCheck', () => {
 	it('says absent for a product that never installed the library', () => {
 		const source = makeShipped('check-absent');
 		const patchesDir = makeProduct('check-absent');
-		const report = runRuntimeCheck({ toolRoot, patchesDir, sourceOverride: source });
+		const report = runRuntimeCheck({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 
 		expect(report.targetState).toBe('absent');
 		expect(report.findings).toEqual([]);
@@ -219,9 +221,9 @@ describe('runRuntimeCheck', () => {
 	it('says identical for a copy that matches, and reports the version', () => {
 		const source = makeShipped('check-same');
 		const patchesDir = makeProduct('check-same');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 
-		const report = runRuntimeCheck({ toolRoot, patchesDir, sourceOverride: source });
+		const report = runRuntimeCheck({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 		expect(report.targetState).toBe('identical');
 		expect(report.installedVersion).toBe('0.1.0');
 		expect(report.findings).toEqual([]);
@@ -230,10 +232,10 @@ describe('runRuntimeCheck', () => {
 	it('reports drift as a finding with the path', () => {
 		const source = makeShipped('check-drift');
 		const patchesDir = makeProduct('check-drift');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		writeFileSync(targetPath(patchesDir, 'browser/featureRegistry.ts'), `${BANNER}\n// edited\n`, 'utf8');
 
-		const report = runRuntimeCheck({ toolRoot, patchesDir, sourceOverride: source });
+		const report = runRuntimeCheck({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 		expect(report.targetState).toBe('drift');
 		expect(report.findings).toEqual([{ code: 'RUNTIME-DRIFT', message: 'modified browser/featureRegistry.ts' }]);
 		expect(report.driftPaths).toEqual(['browser/featureRegistry.ts']);
@@ -242,10 +244,10 @@ describe('runRuntimeCheck', () => {
 	it('reports an edited notice copy under the standards code', () => {
 		const source = makeShipped('check-notice');
 		const patchesDir = makeProduct('check-notice');
-		runRuntimeLoad({ toolRoot, patchesDir, sourceOverride: source, dryRun: false, upgrade: false });
+		runRuntimeLoad({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source, dryRun: false, upgrade: false });
 		writeFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'not the notice\n', 'utf8');
 
-		const report = runRuntimeCheck({ toolRoot, patchesDir, sourceOverride: source });
+		const report = runRuntimeCheck({ toolRoot, patchesDir, packageId: PACKAGE_ID, sourceOverride: source });
 		expect(report.targetState).toBe('identical');
 		expect(report.findings).toEqual([{ code: 'STANDARDS-DRIFT', message: 'LICENSE-CODKIT.md: drift' }]);
 	});

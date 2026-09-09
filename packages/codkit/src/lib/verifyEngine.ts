@@ -212,7 +212,7 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	// library is byte-equal to the shipped one, and no record of the product
 	// claims a path inside the root that belongs to codkit (PROP-015 sec. 4,
 	// PROP-005 ##OWN-CODKIT-PREFIX-RESERVED).
-	checkDeliveredRuntime(patchesDir, options.toolRoot ?? CODKIT_TOOL_ROOT, findings);
+	checkDeliveredRuntime(patchesDir, options.toolRoot ?? CODKIT_TOOL_ROOT, options.type.runtime?.packageId ?? null, findings);
 	checkCodkitRootIsReserved(manifest, findings);
 
 	// (h4) The own-extension layer: the section describes materializable
@@ -841,14 +841,16 @@ function checkOwn(type: ProjectType, patchesDir: string, conventions: Convention
  * legal state - and the licence notice inside the directory belongs to another
  * command (PROP-014 sec. 4a), so it is left out of the comparison.
  */
-function checkDeliveredRuntime(patchesDir: string, toolRoot: string, findings: Finding[]): void {
+function checkDeliveredRuntime(patchesDir: string, toolRoot: string, packageId: string | null, findings: Finding[]): void {
 	const target = join(patchesDir, ...RUNTIME_TARGET_PATH.split('/'));
-	if (!existsSync(target)) {
+	// A type with no runtime library ships none to compare against; the directory
+	// under `delta/own/codkit/` is then the notice file's and nothing else.
+	if (packageId === null || !existsSync(target)) {
 		return;
 	}
 	let shipped: string;
 	try {
-		shipped = shippedRuntime(toolRoot).directory;
+		shipped = shippedRuntime(toolRoot, packageId).directory;
 	} catch (error) {
 		if (!isCkError(error)) {
 			throw error;

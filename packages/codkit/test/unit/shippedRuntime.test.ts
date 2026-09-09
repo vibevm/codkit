@@ -12,11 +12,13 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { checkLicenseCarriers } from '../../src/lib/licenseCheck.ts';
 import { loadLicensePolicy } from '../../src/lib/licensePolicy.ts';
-import { RUNTIME_PACKAGE_PARENT, shippedRuntime } from '../../src/lib/runtimePackage.ts';
+import { runtimePackageParent, shippedRuntime } from '../../src/lib/runtimePackage.ts';
 import { loadSpdxLicenseIds } from '../../src/lib/spdxIds.ts';
 
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const shipped = shippedRuntime(toolRoot);
+/** ##RT-SHIPPED-LOCATION: the runtime package of the `vscode` type. */
+const PACKAGE_ID = 'runtime-vscode';
+const shipped = shippedRuntime(toolRoot, PACKAGE_ID);
 
 const BANNER_TS = [
 	'// Copyright (c) 2026 Oleg Chirukhin',
@@ -89,7 +91,7 @@ function resolveSpecifier(file: string, specifier: string): string {
 
 describe('the shipped runtime library', () => {
 	it('sits at exactly one version directory whose name is the version literal', () => {
-		const parent = join(toolRoot, ...RUNTIME_PACKAGE_PARENT.split('/'));
+		const parent = join(toolRoot, ...runtimePackageParent(PACKAGE_ID).split('/'));
 		const versions = readdirSync(parent, { withFileTypes: true }).filter((entry) => entry.isDirectory() && entry.name.startsWith('v'));
 
 		expect(versions).toHaveLength(1);

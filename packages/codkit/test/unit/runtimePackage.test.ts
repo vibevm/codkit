@@ -43,7 +43,7 @@ function makeSource(label: string, version = '0.1.0', literal = version): { read
 describe('shippedRuntime', () => {
 	it('takes the version from the directory and proves it against the literal', () => {
 		const source = makeSource('good');
-		const found = shippedRuntime('unused', source.parent);
+		const found = shippedRuntime('unused', 'runtime-vscode', source.parent);
 
 		expect(found.version).toBe('0.1.0');
 		expect(found.directory).toBe(source.dir);
@@ -52,29 +52,29 @@ describe('shippedRuntime', () => {
 
 	it('refuses a parent with no version directory', () => {
 		const empty = makeTempRoot('rt-none');
-		expect(codeOf(() => shippedRuntime('unused', join(empty, 'missing')))).toBe('RUNTIME-PACKAGE');
-		expect(codeOf(() => shippedRuntime('unused', empty))).toBe('RUNTIME-PACKAGE');
+		expect(codeOf(() => shippedRuntime('unused', 'runtime-vscode', join(empty, 'missing')))).toBe('RUNTIME-PACKAGE');
+		expect(codeOf(() => shippedRuntime('unused', 'runtime-vscode', empty))).toBe('RUNTIME-PACKAGE');
 	});
 
 	it('refuses two version directories rather than choosing one', () => {
 		const two = makeSource('two');
 		mkdirSync(join(two.parent, 'v0.2.0'));
-		expect(codeOf(() => shippedRuntime('unused', two.parent))).toBe('RUNTIME-PACKAGE');
+		expect(codeOf(() => shippedRuntime('unused', 'runtime-vscode', two.parent))).toBe('RUNTIME-PACKAGE');
 	});
 
 	it('refuses a literal that disagrees with the directory name', () => {
 		const mismatched = makeSource('mismatch', '0.1.0', '9.9.9');
-		expect(codeOf(() => shippedRuntime('unused', mismatched.parent))).toBe('RUNTIME-PACKAGE');
+		expect(codeOf(() => shippedRuntime('unused', 'runtime-vscode', mismatched.parent))).toBe('RUNTIME-PACKAGE');
 	});
 
 	it('refuses a version file that states no literal, and one that is not there', () => {
 		const broken = makeSource('broken');
 		writeFileSync(join(broken.dir, ...RUNTIME_VERSION_FILE.split('/')), 'export const OTHER = 1;\n', 'utf8');
-		expect(codeOf(() => shippedRuntime('unused', broken.parent))).toBe('RUNTIME-PACKAGE');
+		expect(codeOf(() => shippedRuntime('unused', 'runtime-vscode', broken.parent))).toBe('RUNTIME-PACKAGE');
 
 		const gone = makeSource('gone');
 		rmSync(join(gone.dir, ...RUNTIME_VERSION_FILE.split('/')));
-		expect(codeOf(() => shippedRuntime('unused', gone.parent))).toBe('RUNTIME-PACKAGE');
+		expect(codeOf(() => shippedRuntime('unused', 'runtime-vscode', gone.parent))).toBe('RUNTIME-PACKAGE');
 	});
 });
 

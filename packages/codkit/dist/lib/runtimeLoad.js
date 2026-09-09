@@ -45,7 +45,7 @@ export function runtimeNextSteps(type, ownRoot) {
 /** Everything a run would do, computed without writing anything. */
 export function planRuntimeLoad(options) {
     // (1) The source: exactly one version directory whose literal agrees with it.
-    const runtime = shippedRuntime(options.toolRoot, options.sourceOverride ?? null);
+    const runtime = shippedRuntime(options.toolRoot, options.packageId, options.sourceOverride ?? null);
     // (2) The licence gate. `packageShape: false`: the library is a directory of
     // files, not a vibe package - it has no manifest, no LICENSE and no registry
     // (##RT-ONLY-TS-AND-MD).
@@ -59,7 +59,7 @@ export function planRuntimeLoad(options) {
         : classifyTarget(compareTrees(runtime.directory, target, { ignoreInTarget: NOT_PART_OF_THE_LIBRARY }), shipped.length);
     const writes = comparison.state === 'identical' ? [] : comparison.state === 'absent' ? shipped : [...comparison.modified, ...comparison.missing];
     const removals = comparison.state === 'drift' ? comparison.extra : [];
-    const survey = check.problems.length > 0 ? null : surveyNotice(options.toolRoot, options.patchesDir);
+    const survey = check.problems.length > 0 ? null : surveyNotice(options.toolRoot, options.patchesDir, options.packageId);
     const notices = survey === null ? NOTICE_TARGET_PATHS.map((path) => ({ path, state: 'absent' })) : survey.copies;
     const pinTag = productPinTag(options.patchesDir);
     return {
@@ -150,7 +150,7 @@ export function runRuntimeLoad(options) {
     }
     // (6) The notice, in both roots, with the components block recomputed now
     // that the library is installed (PROP-014 ##STD-LOAD-STEP-WRITE-NOTICE).
-    const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.dryRun);
+    const noticeOutcome = writeNoticeCopies(options.toolRoot, options.patchesDir, options.packageId, options.dryRun);
     return {
         plan,
         state,

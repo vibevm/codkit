@@ -99,7 +99,7 @@ patch set по шагам — [02](02-daily.md#патч-сет-над-апстр
 | `brand-images` | набор изображений дистрибутива | `imageset gen/index/verify` |
 | `gen-brand` | таблица бренда и прививка строкового шва | `gen brand` |
 | `build-channels` | каналы компиляции за обёрткой | `build up/down/status/errors` |
-| `runtime-library` | поставляемый рантайм ([14](14-runtime.md)) | `runtime load/check` |
+| `runtime-library` | поставляемый рантайм — тип называет пакет ([14](14-runtime.md)) | `runtime load/check` |
 | `config-overlay` | лист `config-overlay` дерева решений [03](03-interventions.md) | `verify` над артефактом overlay |
 | `own-extensions` | лист `own-extension` | `verify` над записью расширения |
 | `service-override` | лист `service-override` | `verify` над записью подмены |
@@ -148,7 +148,8 @@ patch set.
 - `standards load` и `standards check` читают `codkit.json`: без него нет типа,
   которого можно спросить, — `CK-E-CONFIG`, exit `2`, ни одного записанного байта;
 - пакет, который не назвал ни один тип, не доставляется никому: лишний каталог в
-  установке — не «пакет по умолчанию»;
+  установке — не «пакет по умолчанию»; то же правило у рантайма — библиотека
+  берётся из `runtime/<пакет типа>/`, а не «та единственная, что лежит»;
 - если тип называет пакет, которого в установке нет, это `CK-E-INTERNAL`
   (повреждённая установка), а не молчаливо укороченная доставка.
 
