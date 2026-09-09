@@ -34,8 +34,18 @@ export function preferenceId(id) {
 }
 /** The own package's source layout: the browser folder of the closed set of runtime folders. */
 export const FEATURE_PARENT = 'delta/own/src/browser';
+/**
+ * The indentation of this family: four spaces. Its lint refuses a tab outright
+ * (`configs/errors.eslintrc.json`, `no-tabs`), so a skeleton written with tabs
+ * would be red on the first `lerna run lint` - measured on a real clone in P5.
+ */
+const INDENT = '    ';
 function preferencesModule(request, constant, preferenceConstant) {
+    const imports = request.setting
+        ? ["import { PreferenceSchema } from '@theia/core/lib/common';", "import { nls } from '@theia/core/lib/common/nls';", '']
+        : [];
     const lines = [
+        ...imports,
         `// Identifiers of the ${request.title} feature.`,
         '//',
         '// They live in the browser folder beside the contribution because that is',
@@ -45,8 +55,11 @@ function preferencesModule(request, constant, preferenceConstant) {
         `export const ${constant} = '${request.id}';`
     ];
     if (request.setting) {
-        lines.push('', `export const ${preferenceConstant} = '${preferenceId(request.id)}';`, '', '/**', ' * The preference the flag of this feature is read from. It is contributed as', ' * a schema, so the setting shows up in the preference view like any other.', ' */', 'export const preferenceSchema: PreferenceSchema = {', "\tscope: 'application',", '\tproperties: {', `\t\t[${preferenceConstant}]: {`, "\t\t\ttype: 'boolean',", `\t\t\tdescription: nls.localize('${request.id}.enabled', 'Enables ${request.title}.'),`, '\t\t\tdefault: false', '\t\t}', '\t}', '};');
-        lines.splice(5, 0, "import { PreferenceSchema } from '@theia/core/lib/browser/preferences';", "import { nls } from '@theia/core/lib/common/nls';", '');
+        lines.push('', `export const ${preferenceConstant} = '${preferenceId(request.id)}';`, '', '/**', ' * The preference the flag of this feature is read from. It is contributed as', ' * a schema, so the setting shows up in the preference view like any other.', ' */', 'export const preferenceSchema: PreferenceSchema = {', 
+        // No `scope`: the field is typed by the family's own enum, and the
+        // default scope is what a product's flag wants anyway (measured on a
+        // real clone in P5 - a string literal there does not compile).
+        `${INDENT}properties: {`, `${INDENT.repeat(2)}[${preferenceConstant}]: {`, `${INDENT.repeat(3)}type: 'boolean',`, `${INDENT.repeat(3)}description: nls.localize('${request.id}.enabled', 'Enables ${request.title}.'),`, `${INDENT.repeat(3)}default: false`, `${INDENT.repeat(2)}}`, `${INDENT}}`, '};');
     }
     return `${lines.join('\n')}\n`;
 }
@@ -58,19 +71,25 @@ function contributionModule(request, constant, preferenceConstant) {
         ? 'The flag is read once, when the frontend starts: a cold feature is what it was at startup for the life of the window.'
         : 'The flag is read on every use, so turning the preference off takes effect without a reload.';
     const enabled = request.setting
-        ? ['\tprotected get enabled(): boolean {', `\t\treturn this.preferences.get<boolean>(${preferenceConstant}, false) === true;`, '\t}']
-        : ['\tprotected get enabled(): boolean {', '\t\treturn true;', '\t}'];
+        ? [
+            `${INDENT}protected get enabled(): boolean {`,
+            `${INDENT.repeat(2)}return this.preferences.get<boolean>(${preferenceConstant}, false) === true;`,
+            `${INDENT}}`
+        ]
+        : [`${INDENT}protected get enabled(): boolean {`, `${INDENT.repeat(2)}return true;`, `${INDENT}}`];
     const imports = [
         "import { injectable, inject, interfaces } from '@theia/core/shared/inversify';",
         "import { FrontendApplicationContribution } from '@theia/core/lib/browser';",
-        ...(request.setting ? ["import { PreferenceContribution, PreferenceService } from '@theia/core/lib/browser/preferences';"] : []),
+        ...(request.setting ? ["import { PreferenceContribution, PreferenceService } from '@theia/core/lib/common';"] : []),
         `import { ${identifiers} } from './${request.name}-preferences';`
     ];
-    const fields = request.setting ? ['\t@inject(PreferenceService)', '\tprotected readonly preferences: PreferenceService;', ''] : [];
+    const fields = request.setting
+        ? [`${INDENT}@inject(PreferenceService)`, `${INDENT}protected readonly preferences: PreferenceService;`, '']
+        : [];
     const bindings = [
-        `\tbind(${className}).toSelf().inSingletonScope();`,
-        `\tbind(FrontendApplicationContribution).toService(${className});`,
-        ...(request.setting ? [`\tbind(PreferenceContribution).toConstantValue({ schema: preferenceSchema });`] : [])
+        `${INDENT}bind(${className}).toSelf().inSingletonScope();`,
+        `${INDENT}bind(FrontendApplicationContribution).toService(${className});`,
+        ...(request.setting ? [`${INDENT}bind(PreferenceContribution).toConstantValue({ schema: preferenceSchema });`] : [])
     ];
     return `${[
         ...imports,
@@ -82,19 +101,24 @@ function contributionModule(request, constant, preferenceConstant) {
         ' */',
         '@injectable()',
         `export class ${className} implements FrontendApplicationContribution {`,
+        // The id is the class's own, so a `when` clause, a test or another
+        // feature names the feature through the class - and the compiler of this
+        // family, which refuses an unread import, sees the identifier used.
+        `${INDENT}static readonly ID = ${constant};`,
+        '',
         ...fields,
-        '\tonStart(): void {',
-        '\t\tif (!this.enabled) {',
-        '\t\t\treturn;',
-        '\t\t}',
-        `\t\t// everything ${request.id} does starts here`,
-        '\t}',
+        `${INDENT}onStart(): void {`,
+        `${INDENT.repeat(2)}if (!this.enabled) {`,
+        `${INDENT.repeat(3)}return;`,
+        `${INDENT.repeat(2)}}`,
+        `${INDENT.repeat(2)}// everything ${request.id} does starts here`,
+        `${INDENT}}`,
         '',
         ...enabled,
         '}',
         '',
         '/**',
-        ` * Bound from the container module of the own package; nothing upstream is`,
+        ' * Bound from the container module of the own package; nothing upstream is',
         ' * patched to reach it, because the application loads the own package by one',
         ' * line in its own dependencies.',
         ' */',
@@ -109,9 +133,9 @@ function specModule(request, constant) {
         `import { ${constant} } from '../${request.name}-preferences';`,
         '',
         `describe('${request.id}', () => {`,
-        `\tit('declares the id its contribution is bound under', () => {`,
-        `\t\tassert.strictEqual(${constant}, '${request.id}');`,
-        '\t});',
+        `${INDENT}it('declares the id its contribution is bound under', () => {`,
+        `${INDENT.repeat(2)}assert.strictEqual(${constant}, '${request.id}');`,
+        `${INDENT}});`,
         '});'
     ].join('\n')}\n`;
 }

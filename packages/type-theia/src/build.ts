@@ -6,14 +6,25 @@
 // which command each step runs is this type's answer, and every one of them is
 // a command of upstream's own monorepo:
 //
-//   install        npm ci                                  (##THEIA-INSTALL)
-//   hygiene        lerna run lint --scope <own>, npm run lint   (##THEIA-LINT)
-//   own tests      lerna run test --scope <own>            (##THEIA-TEST-RUNNERS)
-//   package build  theia build in the application directory (##THEIA-PACKAGE-BUILD)
+//   install        npm ci                                       (##THEIA-INSTALL)
+//   hygiene        npm run lint -w <own root>, then npm run lint (##THEIA-LINT)
+//   own tests      npm run test -w <own root>                    (##THEIA-TEST-RUNNERS)
+//   package build  theia build in the application directory      (##THEIA-PACKAGE-BUILD)
 //
-// `lerna` and `theia` are dev dependencies of the tree, so every command that
-// needs one runs it through `npm exec --no`, which refuses rather than fetching
-// anything: the tool never reaches a registry on its own (PROP-011).
+// The scripts of the own package are run **by workspace and not through
+// `lerna --scope`**, and that is a measurement rather than a preference: the
+// tool excludes the own root from git (`.git/info/exclude`), lerna discovers
+// its packages with the git ignores applied, and `lerna run <script> --scope
+// <own package>` therefore ends in `EFILTER No packages remain after
+// filtering` on a real fork. npm reads the workspace globs of the manifest and
+// finds the package whatever git thinks of it. The full-tree `npm run lint`
+// stays as upstream wrote it, and it is the run that covers every upstream
+// package - it just cannot cover the own one, which is why the own package is
+// linted first and separately.
+//
+// `theia` is a dev dependency of the application, so the package build runs it
+// through `npm exec --no`, which refuses rather than fetching anything: the
+// tool never reaches a registry on its own (PROP-011).
 
 import type { BuildArea, BuildCommand } from '@codkit/type-api';
 import type { TheiaTypeConfig } from './configSchema.ts';
@@ -74,11 +85,9 @@ const TIME_STAMP = '(?:\\[\\d{1,2}:\\d{2}:\\d{2}(?: [AP]M)?\\] )?';
  */
 export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['tsc -b -w', 'theia build --watch'];
 
-/** One `npm exec` of a binary the tree's own dev dependencies carry. */
-function exec(label: string, args: readonly string[]): BuildCommand {
-	// `--no` is what keeps an air-gapped run air-gapped: npm refuses a binary
-	// the tree does not carry instead of fetching it (PROP-011 ##NET-FORBIDDEN).
-	return { label, command: 'npm', args: ['exec', '--no', '--', ...args] };
+/** One npm script of the own package, run by its workspace directory. */
+function ownScript(label: string, script: string, ownRoot: string): BuildCommand {
+	return { label, command: 'npm', args: ['run', script, '--workspace', ownRoot] };
 }
 
 /**
@@ -87,21 +96,18 @@ function exec(label: string, args: readonly string[]): BuildCommand {
  * `.eslintrc.js` and its own `tsconfig.json`, and a package without them is not
  * linted at all.
  */
-export function hygieneOf(ownPackageName: string): readonly BuildCommand[] {
-	return [
-		exec('lint own package', ['lerna', 'run', 'lint', '--scope', ownPackageName]),
-		{ label: 'lint', command: 'npm', args: ['run', 'lint'] }
-	];
+export function hygieneOf(ownRoot: string): readonly BuildCommand[] {
+	return [ownScript('lint own package', 'lint', ownRoot), { label: 'lint', command: 'npm', args: ['run', 'lint'] }];
 }
 
 /**
  * ##THEIA-TEST-RUNNERS: the unit tests of the own package - `theiaext test`,
  * which is nyc plus mocha over the compiled `lib/**&#47;*.spec.js` of the package.
- * The selection of this family is the package scope, not a path glob, so the own
- * root arrives and is not used: what names the package is its npm name.
+ * The selection of this family is a whole package and not a path glob, so the
+ * own root arrives and is used as the workspace the script runs in.
  */
-export function ownTestsOf(ownPackageName: string): BuildCommand {
-	return exec('own tests', ['lerna', 'run', 'test', '--scope', ownPackageName]);
+export function ownTestsOf(ownRoot: string): BuildCommand {
+	return ownScript('own tests', 'test', ownRoot);
 }
 
 /**
@@ -117,10 +123,10 @@ export function packageBuildOf(applicationRoot: string): readonly BuildCommand[]
 }
 
 export function makeBuild(config: TheiaTypeConfig): BuildArea {
-	const ownTests = ownTestsOf(config.ownPackageName);
+	const ownTests = ownTestsOf(config.ownRoot);
 	return {
 		install: INSTALL,
-		hygiene: hygieneOf(config.ownPackageName),
+		hygiene: hygieneOf(config.ownRoot),
 		ownTests: () => ownTests,
 		packageBuild: packageBuildOf(config.applicationRoot),
 		// ##THEIA-NO-STAMPS: nothing is stamped at build time in this family -

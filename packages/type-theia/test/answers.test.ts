@@ -172,26 +172,19 @@ describe('build', () => {
 		expect(makeBuild(CONFIG).install).toEqual([{ label: 'install', command: 'npm', args: ['ci'] }]);
 	});
 
-	it('lints the own package first and then the whole tree', () => {
-		// ##THEIA-LINT
-		const [own, all] = hygieneOf('@acme/theia-product');
-		expect(own?.args).toEqual(['exec', '--no', '--', 'lerna', 'run', 'lint', '--scope', '@acme/theia-product']);
+	it('lints the own package by its workspace first, and then the whole tree', () => {
+		// ##THEIA-LINT: `lerna --scope` cannot see a package the tool excludes
+		// from git, so the own package is run by workspace; the full-tree run is
+		// upstream's own and covers everything else.
+		const [own, all] = hygieneOf('packages/acme');
+		expect(own?.args).toEqual(['run', 'lint', '--workspace', 'packages/acme']);
 		expect(all?.args).toEqual(['run', 'lint']);
 	});
 
-	it('selects the own tests by package scope rather than by a path glob', () => {
+	it('runs the own tests as a whole package rather than over a path glob', () => {
 		// ##THEIA-TEST-RUNNERS
-		expect(ownTestsOf('@acme/theia-product').args).toContain('--scope');
-		expect(makeBuild(CONFIG).ownTests('packages/acme')?.args).toEqual([
-			'exec',
-			'--no',
-			'--',
-			'lerna',
-			'run',
-			'test',
-			'--scope',
-			'@acme/theia-product'
-		]);
+		expect(ownTestsOf('packages/acme').args).toEqual(['run', 'test', '--workspace', 'packages/acme']);
+		expect(makeBuild(CONFIG).ownTests('packages/acme')?.args).toEqual(['run', 'test', '--workspace', 'packages/acme']);
 	});
 
 	it('builds the application and stamps nothing into it', () => {

@@ -113,6 +113,7 @@ function rootFiles(): ReadonlyMap<string, string> {
 		['package.json', rootManifest()],
 		['lerna.json', lernaJson(OLD_VERSION)],
 		['build/stub-step.mjs', STUB_STEP],
+		['build/stub-own.mjs', STUB_OWN],
 		['build/stub-watch.mjs', STUB_WATCH],
 		[EXTENSION_PACKAGE_PATH, extensionPackageTs(false)],
 		[APPLICATION_PROPS_PATH, APPLICATION_PROPS_TS]
@@ -338,6 +339,24 @@ if (process.env.STUB_LINT_MODE === 'fail') {
 	process.exit(1);
 }
 console.log(step + ': fixture lint passed before the overlay was materialized');
+process.exit(0);
+`;
+
+/**
+ * The fixture counterpart of `theiaext lint` and `theiaext test`: the scripts of
+ * one package, run from that package's own directory by
+ * `npm run <script> --workspace <ownRoot>`. It reads nothing of the tree - what
+ * the ordering gate asserts is the business of the full-tree step - and it can
+ * be made red on demand, which is how the polygon proves a stop of the cycle.
+ */
+const STUB_OWN = `#!/usr/bin/env node
+const step = process.argv[2];
+const mode = step === 'test' ? process.env.STUB_TEST_MODE : process.env.STUB_LINT_MODE;
+if (mode === 'fail') {
+	console.error('own ' + step + ': fixture ' + step + ' failed');
+	process.exit(1);
+}
+console.log('own ' + step + ': fixture ' + step + ' passed');
 process.exit(0);
 `;
 

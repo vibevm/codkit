@@ -184,7 +184,13 @@ function ownPackageManifest(): unknown {
 		version: OLD_VERSION,
 		dependencies: { [SERVICE_OWNER_PACKAGE]: OLD_VERSION },
 		theiaExtensions: [{ frontend: 'lib/browser/acme-frontend-module' }],
-		scripts: { lint: 'theiaext lint', compile: 'theiaext compile', test: 'theiaext test' },
+		// The fixture counterparts of `theiaext lint|compile|test`: the scripts of
+		// the own package, which is how this type runs them (##THEIA-LINT).
+		scripts: {
+			lint: 'node ../../build/stub-own.mjs lint',
+			compile: 'node ../../build/stub-own.mjs compile',
+			test: 'node ../../build/stub-own.mjs test'
+		},
 		devDependencies: { '@theia/ext-scripts': OLD_VERSION }
 	};
 }

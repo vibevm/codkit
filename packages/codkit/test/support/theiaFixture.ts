@@ -7,7 +7,7 @@
 // executed as a subprocess through the shipped launcher, so what runs is the
 // real command with real argv parsing and real exit codes.
 
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DEPS_REQUIRED_RECEIPTS } from '../../src/lib/ciEngine.ts';
 import { runGit } from '../../src/lib/gitx.ts';
@@ -73,11 +73,12 @@ export function excludeTheiaRuntimeState(fixture: TheiaFixture): void {
 }
 
 /**
- * What the tree needs before a build profile runs over it: the npm receipts
- * that stand in for an offline dependency cache, and the `lerna` binary this
- * family runs its per-package lint and tests through. Both live under
- * `node_modules/`, which is in the cleanup whitelist of the type, so a fresh
- * pass leaves them where they are (##THEIA-CLEANUP-WHITELIST).
+ * What the tree needs before a build profile runs over it: the npm receipts that
+ * stand in for an offline dependency cache. They live under `node_modules/`,
+ * which is in the cleanup whitelist of the type, so a fresh pass leaves them
+ * where they are (##THEIA-CLEANUP-WHITELIST). Nothing here installs a `lerna`:
+ * the type runs the scripts of the own package by workspace, because a package
+ * the tool excludes from git is invisible to `lerna --scope` (##THEIA-LINT).
  */
 export function provideTheiaTreeDependencies(fixture: TheiaFixture): void {
 	for (const relative of DEPS_REQUIRED_RECEIPTS) {
@@ -85,35 +86,4 @@ export function provideTheiaTreeDependencies(fixture: TheiaFixture): void {
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, '{"lockfileVersion":3}\n', 'utf8');
 	}
-	const lerna = fixture.treePath('node_modules/.bin/lerna');
-	mkdirSync(dirname(lerna), { recursive: true });
-	writeFileSync(lerna, STUB_LERNA, 'utf8');
-	chmodSync(lerna, 0o755);
 }
-
-/**
- * The fixture counterpart of `lerna run <script> --scope <package>`: it asserts
- * that the scope really is the own package of the patch set, and it can be made
- * red on demand, which is how the polygon proves a stop of the cycle.
- */
-const STUB_LERNA = `#!/usr/bin/env node
-// CommonJS on purpose: it is executed as node_modules/.bin/lerna, and the
-// manifest of the fixture tree declares no module type.
-const { appendFileSync, mkdirSync } = require('node:fs');
-
-const [command, script, flag, scope] = process.argv.slice(2);
-mkdirSync('.fixture', { recursive: true });
-appendFileSync('.fixture/lerna.log', process.argv.slice(2).join(' ') + '\\n', 'utf8');
-
-if (command !== 'run' || flag !== '--scope' || !scope) {
-	console.error('stub lerna: expected run <script> --scope <package>, got ' + process.argv.slice(2).join(' '));
-	process.exit(2);
-}
-const mode = script === 'test' ? process.env.STUB_TEST_MODE : process.env.STUB_LINT_MODE;
-if (mode === 'fail') {
-	console.error('stub lerna: ' + script + ' failed for ' + scope);
-	process.exit(1);
-}
-console.log('stub lerna: ' + script + ' passed for ' + scope);
-process.exit(0);
-`;
