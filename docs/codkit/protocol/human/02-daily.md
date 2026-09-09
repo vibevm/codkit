@@ -67,7 +67,10 @@ patch set — секцией `typeConfig`.
 
 1. `git status --short` в patchset должен быть пуст, либо показывать только осознанную незавершённую работу текущей ветки.
 2. `codkit load` → `applied ...`/`up to date`, exit `0`; переходи к шагу 3.
-   Exit `1` + `CK-E-DIRTY-TREE` → `codkit status`, затем `codkit save`, затем повтор шага 2.
+   Exit `1` + `CK-E-DIRTY-TREE` → `codkit status` и выполни тот шаг, который он напечатал:
+   `codkit save` для правок, `codkit load --fresh` — если единственное отличие дерева
+   это материализованная overlay-цель (её оставляют `codkit overlay apply` и
+   `codkit package --keep-overlay`); затем повтор шага 2.
    Отказ покрывает и правки, и коммиты дерева: строка `N commit(s) in the fork tree ...` — та же незаизвлечённая работа.
    Exit `1` + `CK-E-ARTIFACT-BROKEN` → не редактируй артефакт вслепую; владелец исправляет названный артефакт в patchset.
    Exit `2` → исполни точный `hint` и повтори шаг 2.

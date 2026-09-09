@@ -33,12 +33,14 @@ import {
 import type { Materializer } from '../lib/layers/ownExtensions.ts';
 import type { OwnExtension } from '../lib/layers/ownManifest.ts';
 import { loadOwnManifest } from '../lib/layers/ownManifest.ts';
+import { loadOverlays } from '../lib/layers/overlay.ts';
 import { classifyAllOwn, ownMarkFilesOf } from '../lib/ownSides.ts';
 import { ownedRootsOf, ownedTreePrefixes } from '../lib/ownedRoots.ts';
 import type { OwnedRoot } from '../lib/ownedRoots.ts';
 import type { OwnSideClass, OwnSideKind } from '../lib/ownSides.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { listPendingHeaders } from '../lib/pendingHeader.ts';
+import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId } from '../lib/syncEngine.ts';
 import { readSyncTransaction } from '../lib/syncTransaction.ts';
 import { classifyTargets, loadedFrom, loadedFromLabel, movedArtifactsOf } from '../lib/syncMerge.ts';
 import { foreignCommits } from '../lib/treeCommits.ts';
@@ -219,6 +221,12 @@ async function run(ctx: CommandContext): Promise<number> {
 		ctx.out.info(`pending patch header(s): ${pending.length} (from codkit marker new)`);
 	}
 
+	// 3a. Of the changed upstream files, the ones that are not somebody's edit at
+	// all but the packaging state codkit itself writes (PROP-005
+	// ##OVERLAY-KNOWN-MATERIALIZATION). `save` has nothing to do with such a
+	// file - it is an overlay target, not a patch target - and the command that
+	// returns it is `load --fresh`, so the advice below has to say so.
+	const materializedTargets = knownMaterializations(ctx, config, tree, upstream);
 	const unextracted =
 		upstream.length + own.filter((entry) => entry.kind !== 'patchset-edited').length + extensionDrift.length + treeCommits.commits.length;
 	ctx.out.setData({
@@ -242,19 +250,73 @@ async function run(ctx: CommandContext): Promise<number> {
 			changed: upstream.length,
 			markerBlocks: blocks,
 			markerErrors,
-			files: upstream.map((file) => ({ path: file.path, status: file.status, blocks: file.blocks, markerErrors: file.markerErrors }))
+			files: upstream.map((file) => ({ path: file.path, status: file.status, blocks: file.blocks, markerErrors: file.markerErrors })),
+			materializedOverlayTargets: [...materializedTargets]
 		},
 		patchset: { uncommittedDelta: [...uncommitted] },
 		pendingHeaders: pending.map((entry) => entry.header.id)
 	});
 
 	if (unextracted > 0) {
-		ctx.out.info('run codkit save to extract the changes of the fork tree into patchset');
+		ctx.out.info(nextStepLine(unextracted, upstream, materializedTargets));
 	}
 	// A stranded materialization raises the code without joining `unextracted`:
 	// there is something to remove, but `save` is not what removes it, and the
 	// recipe stands beside the path itself.
 	return unextracted > 0 || stranded.length > 0 || markerErrors > 0 ? EXIT_CHECK_FAILED : EXIT_OK;
+}
+
+/**
+ * What to run about the work this tree carries.
+ *
+ * `save` is the answer for an edit somebody made, and the wrong answer for a
+ * materialized overlay target: that file is not a patch target, `save` refuses
+ * it or extracts nothing, and the state was written by `overlay apply` or by
+ * `codkit package --keep-overlay`. When the materializations are the ONLY thing
+ * this tree carries, the recipe is the one that withdraws them.
+ */
+function nextStepLine(unextracted: number, upstream: readonly UpstreamFile[], materialized: readonly string[]): string {
+	const onlyMaterialized = materialized.length > 0 && materialized.length === upstream.length && unextracted === upstream.length;
+	if (!onlyMaterialized) {
+		return 'run codkit save to extract the changes of the fork tree into patchset';
+	}
+	return (
+		`${materialized.join(', ')} carries the exact overlay materialization codkit itself writes, so codkit save is not what returns it; ` +
+		'run codkit load --fresh (codkit package --keep-overlay and codkit overlay apply are what leave this state behind)'
+	);
+}
+
+/**
+ * Which of the changed upstream files are exactly the strict composition of the
+ * configured overlays over the clean pin file - the bytes `overlay apply`
+ * writes. Read-only and never fatal: `status` is the command somebody runs
+ * *because* something looks wrong, so an unreadable pin or a broken overlay
+ * artifact costs the hint and nothing else.
+ */
+function knownMaterializations(
+	ctx: CommandContext,
+	config: CodkitConfig,
+	treeDir: string,
+	upstream: readonly UpstreamFile[]
+): readonly string[] {
+	if (upstream.length === 0) {
+		return [];
+	}
+	const found: string[] = [];
+	try {
+		const overlays = loadOverlays(ctx.patchesDir);
+		if (overlays.length === 0) {
+			return [];
+		}
+		const context = overlayVarContext(config, pinCommitDate(treeDir, config.pin.sha), patchSetCommitId(ctx.patchesDir));
+		const classify = overlayMaterializationClassifier(overlays, treeDir, config.pin.sha, context, found);
+		for (const file of upstream) {
+			classify(file.path);
+		}
+	} catch {
+		return [];
+	}
+	return found;
 }
 
 function requireConfig(config: CodkitConfig | null): CodkitConfig {

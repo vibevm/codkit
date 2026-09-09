@@ -137,6 +137,35 @@ describe('codkit status: a tree with work in it', () => {
 	});
 });
 
+describe('codkit status: a materialized overlay target', () => {
+	it('sends the reader to load --fresh rather than to save', () => {
+		// The defect: the one difference between the tree and the pin is a file
+		// codkit itself wrote, and `save` is not what withdraws it - it is an
+		// overlay target, not a patch target (PROP-005 ##OVERLAY-KNOWN-MATERIALIZATION).
+		const fixture = makeCliFixture('status-materialized-overlay');
+		expect(fixture.run(['load']).status).toBe(0);
+		expect(fixture.run(['overlay', 'apply', 'manifest.json']).status).toBe(0);
+
+		const outcome = fixture.json(['status']);
+
+		expect(outcome.run.status).toBe(1);
+		const upstream = section(outcome.envelope.data, 'upstream');
+		expect(upstream['changed']).toBe(1);
+		expect(upstream['materializedOverlayTargets']).toEqual(['manifest.json']);
+		const advice = outcome.envelope.messages.map((message) => message.text).filter((text) => text.includes('codkit load --fresh'));
+		expect(advice).toHaveLength(1);
+		expect(advice[0]).toContain('manifest.json carries the exact overlay materialization');
+		expect(outcome.envelope.messages.some((message) => message.text.startsWith('run codkit save'))).toBe(false);
+
+		// A real edit beside it brings the ordinary advice back: the recipe is
+		// only right while the materialization is the only thing there is.
+		writeFileSync(fixture.treePath(EXAMPLE_PART_PATH), `${readFileSync(fixture.treePath(EXAMPLE_PART_PATH), 'utf8')}// edited\n`, 'utf8');
+		const second = fixture.json(['status']);
+		expect(section(second.envelope.data, 'upstream')['materializedOverlayTargets']).toEqual(['manifest.json']);
+		expect(second.envelope.messages.some((message) => message.text.startsWith('run codkit save'))).toBe(true);
+	});
+});
+
 describe('codkit status: the other direction of truth', () => {
 	it('warns when delta/ is edited in patchset while the tree is clean', () => {
 		const fixture = makeCliFixture('status-patchset-side');

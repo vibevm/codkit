@@ -172,7 +172,7 @@ const commandGuidance = {
 	status: {
 		positional: '',
 		detail:
-			'Show the pin/generated branch and work in the fork tree that has not been extracted. The own-extension line also counts the stranded materializations - untracked `extensions/<name>/` directories that no record of the manifest declares and the pin does not ship, which only `codkit load --fresh` removes; each is listed with that recipe and raises the exit code to 1.'
+			'Show the pin/generated branch and work in the fork tree that has not been extracted. The own-extension line also counts the stranded materializations - untracked `extensions/<name>/` directories that no record of the manifest declares and the pin does not ship, which only `codkit load --fresh` removes; each is listed with that recipe and raises the exit code to 1. Changed upstream files that are exactly the overlay materialization codkit itself writes are reported in `data.upstream.materializedOverlayTargets`, and when they are the only thing the tree carries the printed next step is `codkit load --fresh` rather than `codkit save`, which is not what withdraws an overlay target.'
 	},
 	save: {
 		positional: '[path ...]',
