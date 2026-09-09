@@ -53,8 +53,7 @@ patch set — секцией `typeConfig`.
    один — появится возможность `config-overlay`, не объявишь — `verify` над
    overlay-артефактом отказывает `CK-E-TYPE-CAPABILITY`.
 3. `codkit where` → `project type: generic`, exit `0`;
-   `codkit check-tree --require-clean` → exit `0` (отпечаток — объявленный
-   манифест).
+   `codkit check-tree --require-clean` → exit `0`.
 4. Дальше — обычный [цикл дня](#цикл-дня): `load`, правка в дереве, `save`,
    `verify`, `ci --profile verify`, `cycle` на следующий тег.
 5. Отличие в overlay: dev-канала у этого типа нет, поэтому `load` не трогает

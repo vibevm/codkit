@@ -70,7 +70,7 @@ CLI-пакета, и ни один модуль не грузится из patch
 | `commands.test` | `{command, ownGlobArg?}`; глоб — `<ownRoot>/**/*.test.*` |
 | `overlayTargets` | JSON-цели слоя `config-overlay` (без dev-канала); объявлена хотя бы одна — есть возможность `config-overlay` |
 | `cleanupWhitelist` | что свежий проход вправе удалить |
-| `identity.manifest` | `{path, nameField?}` — отпечаток здорового дерева |
+| `identity.manifest` | `{path, nameField?}` — файл, который patch set называет доказательством своего апстрима (объявление; `check-tree` пока проверяет только git-условия) |
 
 Практические следствия: `imageset *`, `gen brand`, `runtime load|check` над
 таким patch set всегда отказывают `CK-E-TYPE-CAPABILITY`; `build *` отказывает,
