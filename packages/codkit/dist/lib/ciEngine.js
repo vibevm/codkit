@@ -941,8 +941,15 @@ function emitCommandOutput(out, label, text) {
 function renderCommand(command) {
     return [command.command, ...command.args].map((part) => (/\s/.test(part) ? JSON.stringify(part) : part)).join(' ');
 }
+/**
+ * A file of the own layer that is a product/contract test. Both suffixes of the
+ * two families the tool serves are accepted - `*.test.*` and `*.spec.*` - for
+ * the same reason both interfaces of the runner are (PROP-010
+ * ##CONTRACT-TESTS-MANDATE): the naming convention of a test belongs to the
+ * upstream family, and the engine only has to find the files a run would carry.
+ */
 function isProductTestFile(relative) {
-    return /(^|\/)test\/.*\.test\.(ts|js)$/.test(relative);
+    return /(^|\/)test\/.*\.(test|spec)\.(ts|js|tsx)$/.test(relative);
 }
 // ---------------------------------------------------------------------------
 // The summary
