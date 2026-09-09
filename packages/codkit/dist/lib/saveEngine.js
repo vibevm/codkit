@@ -26,6 +26,7 @@ import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunks
 import { parseMarkers } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { NO_OWN_EXTENSIONS, materializerOf, mirrorOwnExtensionsBack, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
+import { loadResourceMap } from './layers/resource.js';
 import { mirrorAllOwnBack } from './ownCopy.js';
 import { classifyAllOwn, ownMarkFilesOf } from './ownSides.js';
 import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.js';
@@ -169,6 +170,10 @@ export function runSave(options) {
         }
     }
     const conventions = loadConventions(options.type, patchesDir);
+    // ##SAVE-UPDATES-A-CARRIED-RESOURCE: the delta's resource-file layer, read
+    // once. A changed tree file the delta already carries as a resource is an
+    // update of that copy, not a patch and not a refusal.
+    const resources = loadResourceMap(patchesDir);
     // ##OWN-EXTENSION-UNIT: the tree roots the own-extension layer supplies. Like
     // the own directory they are never selected as upstream changes, and their
     // tree side is mirrored back into the delta instead.
@@ -237,7 +242,7 @@ export function runSave(options) {
     // directory, so naming one file inside it names the extension.
     const extensionsInScope = filterOwnExtensions(materializer, declaredExtensions, filters);
     const store = new ArtifactStore(patchesDir);
-    const planFor = (entry, state, planning) => planFile(entry, state, planning, options, conventions, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
+    const planFor = (entry, state, planning) => planFile(entry, state, planning, options, conventions, resources, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
     let own = NO_OWN;
     let ownExtensions = NO_OWN_EXTENSIONS;
     let planned = [];
@@ -528,7 +533,7 @@ function filterOwn(classes, filters) {
  * Throws the first diagnosed condition of that file; returns null when the file
  * has nothing to contribute (its patch stays exactly as it is on disk).
  */
-function planFile(entry, state, store, options, conventions, allowNewFile, out, headerOverride, entryModuleIds) {
+function planFile(entry, state, store, options, conventions, resources, allowNewFile, out, headerOverride, entryModuleIds) {
     const { patchesDir, config } = options;
     const tree = options.resolution.path;
     const target = entry.path;
@@ -539,6 +544,17 @@ function planFile(entry, state, store, options, conventions, allowNewFile, out, 
         throw ckError('DELETES-UPSTREAM-FILE', 'was deleted from the fork tree; a patch never removes an upstream file', 'restore the file and hide it from the product instead (PROP-005 sec. 8), then record the removal in delta/removed.json', target);
     }
     if (matchesPatternList(target, conventions.forbiddenPatchTargets)) {
+        // ##SAVE-UPDATES-A-CARRIED-RESOURCE: a target the delta already owns
+        // through the resource-file layer is not a target without an owner. The
+        // file is regenerated in the tree - a lockfile the install rewrites is the
+        // case this was measured on - and the delta carries the result as a
+        // resource, so the extraction updates that copy. Nothing about the layer
+        // changes: the target still reaches the tree by materialization, and the
+        // only path that ever refuses is one no layer of the delta names.
+        const carried = resources?.entries.find((resource) => resource.target === target);
+        if (carried !== undefined) {
+            return planCarriedResource(carried, target, bytesOf(tree, state, target), store, patchesDir);
+        }
         throw ckError('FORBIDDEN-TARGET', 'is a forbidden patch target', `conventions.json forbids patching it (forbiddenPatchTargets: ${conventions.forbiddenPatchTargets.join(', ')}); ` +
             'revert the change in the tree', target);
     }
@@ -609,6 +625,24 @@ function planFile(entry, state, store, options, conventions, allowNewFile, out, 
     };
 }
 /** ` D`, `D `, `AD`, ...: the file is gone from the work tree or from the index. */
+/**
+ * The tree's bytes into the resource copy the delta carries for this target. The
+ * source path is the map's own and was validated when the map was read, so this
+ * writes inside `delta/resources/files/` and nowhere else.
+ */
+function planCarriedResource(resource, target, curBytes, store, patchesDir) {
+    const artifact = resource.source;
+    const existing = store.read(artifact);
+    const unchanged = existing !== null && bytesEqual(existing, curBytes);
+    return {
+        target,
+        artifact,
+        artifactAbsolute: join(patchesDir, ...artifact.split('/')),
+        action: unchanged ? 'unchanged' : 'updated',
+        bytes: unchanged ? null : curBytes,
+        consumesPending: false
+    };
+}
 function isDeletion(status) {
     return status.includes('D');
 }

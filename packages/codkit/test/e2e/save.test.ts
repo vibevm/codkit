@@ -10,7 +10,7 @@
 
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { EXAMPLE_PART_PATH, STATUS_PART_PATH } from '../fixtures/makeUpstream.ts';
+import { EXAMPLE_PART_PATH, GENERATED_LOCK_PATH, STATUS_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
@@ -818,5 +818,85 @@ describe('codkit save: a mark from before the artifact map (R13)', () => {
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.messages.some((message) => message.text.includes('no delta artifact map'))).toBe(true);
 		expect(readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8')).toContain('// the tree side line');
+	});
+});
+
+describe('codkit save: a forbidden target the delta already carries as a resource', () => {
+	// ##SAVE-UPDATES-A-CARRIED-RESOURCE. The tree regenerates a file the type
+	// forbids patching - an install rewrites it - and the delta carries the
+	// version the product needs in the resource-file layer. `save` used to refuse
+	// with CK-E-FORBIDDEN-TARGET and tell the operator to revert the change,
+	// which threw away exactly the bytes the delta was supposed to receive.
+	const CARRIED_SOURCE = 'delta/resources/files/build-lock.json';
+	const CARRIED_ID = 'CK-product-903';
+
+	/** Give the delta a resource entry for the generated lock, and load it. */
+	function carryTheLock(fixture: CliFixture): void {
+		expect(fixture.json(['load']).run.status).toBe(0);
+		const mapPath = fixture.patchesPath('delta/resources/map.json');
+		const map = JSON.parse(readFileSync(mapPath, 'utf8')) as { entries: Record<string, unknown>[] };
+		const first = map.entries[0] as Record<string, unknown>;
+		map.entries.push({
+			...first,
+			id: CARRIED_ID,
+			target: GENERATED_LOCK_PATH,
+			source: CARRIED_SOURCE,
+			reason: 'the product needs its own build lock: the resource-file layer',
+			contractTests: ['fixture.guard.lock']
+		});
+		writeFileSync(mapPath, `${JSON.stringify(map, null, 2)}\n`, 'utf8');
+		writeFileSync(fixture.patchesPath(CARRIED_SOURCE), '{\n\t"generatedBy": "the product",\n\t"entries": []\n}\n', 'utf8');
+		expect(fixture.json(['load']).run.status).toBe(0);
+	}
+
+	it('updates the resource copy instead of refusing the patch', () => {
+		const fixture = makeCliFixture('save-carried-resource');
+		carryTheLock(fixture);
+
+		// What an install does in the tree: it rewrites the file.
+		const regenerated = '{\n\t"generatedBy": "the install",\n\t"entries": [\n\t\t"one"\n\t]\n}\n';
+		writeFileSync(fixture.treePath(GENERATED_LOCK_PATH), regenerated, 'utf8');
+
+		const saved = fixture.json(['save']);
+
+		expect(saved.run.status, saved.run.stderr).toBe(0);
+		expect(saved.envelope.errors).toEqual([]);
+		expect(readFileSync(fixture.patchesPath(CARRIED_SOURCE), 'utf8')).toBe(regenerated);
+		// The change went into the resource copy and not into a patch.
+		expect(existsSync(fixture.patchesPath('delta/patches/.config__generated__build-lock.json.ckpatch'))).toBe(false);
+		const files = saved.envelope.data['files'] as { target: string; artifact: string; action: string }[];
+		expect(files).toContainEqual({ target: GENERATED_LOCK_PATH, artifact: CARRIED_SOURCE, action: 'updated' });
+		// And nothing is left unextracted: the rebuilt branch materializes the
+		// resource it just received, so the tree matches it.
+		const status = fixture.json(['status']);
+		expect(status.run.status, status.run.stderr).toBe(0);
+		expect((status.envelope.data['upstream'] as Record<string, unknown>)['changed']).toBe(0);
+		expect(readFileSync(fixture.treePath(GENERATED_LOCK_PATH), 'utf8')).toBe(regenerated);
+	});
+
+	it('says "unchanged" when the tree wrote the bytes the delta already carries', () => {
+		const fixture = makeCliFixture('save-carried-resource-same');
+		carryTheLock(fixture);
+		const carried = readFileSync(fixture.patchesPath(CARRIED_SOURCE), 'utf8');
+		// The file is touched and put back byte for byte, as a re-run of the same
+		// install leaves it.
+		writeFileSync(fixture.treePath(GENERATED_LOCK_PATH), `${carried}`, 'utf8');
+
+		const saved = fixture.json(['save']);
+
+		expect(saved.run.status, saved.run.stderr).toBe(0);
+		expect(readFileSync(fixture.patchesPath(CARRIED_SOURCE), 'utf8')).toBe(carried);
+	});
+
+	it('still refuses a forbidden target no layer of the delta names', () => {
+		const fixture = makeCliFixture('save-forbidden-uncarried');
+		expect(fixture.json(['load']).run.status).toBe(0);
+		writeFileSync(fixture.treePath(GENERATED_LOCK_PATH), '{"generatedBy": "the install"}\n', 'utf8');
+
+		const refused = fixture.json(['save']);
+
+		expect(refused.run.status).toBe(1);
+		expect(refused.envelope.errors.map((error) => error.code)).toEqual(['CK-E-FORBIDDEN-TARGET']);
+		expect(refused.envelope.errors[0]?.hint).toContain('revert the change in the tree');
 	});
 });

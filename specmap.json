@@ -941,7 +941,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c39a576b67f0dc5dae6c43b64fd32e09b9dab716e3d2a444403bfe48901e8aec",
+      "content_hash": "sha256:6add1856c98b112722312337278f904386ba0810808649d879c1ffc13daa3de3",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: End-to-end acceptance scenarios S01–S28 (Given/When/Then)",
@@ -2333,6 +2333,24 @@
       "heading": "**Given**: the Theia polygon, whose type owns two directories - the own package and the application - and whose delta carries the application's bundler entry and its notice under `delta/own-roots/application/` (`spec://codkit/modules/codkit/PROP-005#OWN-ROOTS-IN-THE-DELTA`). **When**: `codkit load`. **Then**: exit 0; both directories are materialized, and the application's `package.json` - the file the pin ships inside that directory - is still upstream's, because inside an owned directory the pin is the boundary and that file is the overlay's target. **When**: `codkit load` again, then `codkit status` and `codkit verify`. **Then**: exit 0 each, `own.changed` is zero: the files the pin ships inside an owned directory are not own code the delta lost. **When**: the own package is compiled in place - `lib/**`, `*.tsbuildinfo`, `.eslintcache` inside the owned directory - and `codkit status`, `codkit load` and `codkit save` are run over the compiled tree. **Then**: exit 0 each; the build output is not counted as changed own code, the load leaves it where the build put it, and `save` extracts the edited source and none of the output (`spec://codkit/modules/theia/PROP-004#THEIA-OWN-ROOT-CARRIES-ITS-BUILD-OUTPUT`). **When**: `codkit load --fresh`. **Then**: exit 0, the build output is gone and the own sources are still there - the fresh pass is the one run that removes what a build wrote inside an owned directory. @status:spec/done",
       "line": 233,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S75"
+    },
+    {
+      "anchor": "s76",
+      "content_hash": "sha256:1a5f200ff310e171fac1691b3c9bfa5f68130a0fc9d43b58d68df2331e3879a6",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "S76 - a forbidden patch target the delta already carries as a resource",
+      "line": 235,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#s76"
+    },
+    {
+      "anchor": "S76",
+      "content_hash": "sha256:876a6031d8412c58fe49448a5575554e7e2c1bf3946bf73a215c438a4098d39f",
+      "doc_path": "modules/codkit/FEAT-002",
+      "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
+      "heading": "**Given**: a patch set whose type forbids patching a generated file the install rewrites, and whose delta carries that same path in the resource-file layer, over a loaded tree. **When**: the tree regenerates the file - an install writes new bytes into it - and `codkit save` runs. **Then**: exit 0; the copy under `delta/resources/files/` holds the tree's bytes, no patch artifact is written for the path, the report names the target with the resource copy as its artifact and the action `updated`, and the rebuilt branch materializes the resource, so `status` counts no changed upstream file afterwards (`spec://codkit/modules/codkit/PROP-005#SAVE-UPDATES-A-CARRIED-RESOURCE`). **When**: the tree writes back exactly the bytes the delta already carries. **Then**: exit 0 and the copy is untouched. **Given**: the same forbidden path with no entry in any layer of the delta. **When**: the tree changes it and `codkit save` runs. **Then**: exit 1, `CK-E-FORBIDDEN-TARGET` with the hint to revert the change in the tree - unchanged, because that path has no owner in the delta to receive it. @status:spec/done",
+      "line": 236,
+      "uri": "spec://codkit/modules/codkit/FEAT-002#S76"
     },
     {
       "anchor": "root",
@@ -4172,7 +4190,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:f597ff2965bae91f1fccca6bf42b7b97851e756cf3500ad6a3776b98791c0998",
+      "content_hash": "sha256:884ce8c746693c4da7eba23d81ff1be965aee9db6a52c6a5a9416c6efdeabf37",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Delta layers - formats, materialization, prohibitions",
@@ -4505,7 +4523,7 @@
     },
     {
       "anchor": "resource",
-      "content_hash": "sha256:638a894b4f8133ad29890234e60aa4f3927535c0781d3d9d27948a2f3cc619da",
+      "content_hash": "sha256:926f539e653125318411ff5febf927e82f3ccb3c93370b09457d7933b4e994ec",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "6. resource-file - replacement of binary/resource files",
@@ -4522,12 +4540,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-005#RESOURCE-MAP-FORMAT"
     },
     {
+      "anchor": "SAVE-UPDATES-A-CARRIED-RESOURCE",
+      "content_hash": "sha256:e1902e94b7f422bd8abf1ed63055bd20d7577655cf4665c233724a1f40b5bbcc",
+      "doc_path": "modules/codkit/PROP-005",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
+      "heading": "**A forbidden patch target the delta already carries as a resource is an update of that copy, not a refusal.** `save` extracts a changed upstream file as a patch, and a path on `forbiddenPatchTargets` has no patch to be extracted into: it used to end in `CK-E-FORBIDDEN-TARGET` with the hint «revert the change in the tree», which throws away exactly the bytes the delta was supposed to receive. Where the map of this layer already has an entry whose `target` is that path, the extraction writes the tree's bytes into that entry's `source` under `delta/resources/files/` instead; the report names the target with the resource copy as its artifact, and identical bytes are `unchanged`. Nothing else moves: the target still reaches the tree only by materialization, the drift guard and the sacrifice by name of `--discard` are untouched, and a forbidden path **no layer of the delta names** still refuses with the same code and the same hint. Measured by the first real consumer of the second type, whose lockfile is regenerated by every install and carried as a resource (`spec://codkit/modules/theia/PROP-004#THEIA-COMPILE`). @status:impl/done",
+      "line": 96,
+      "uri": "spec://codkit/modules/codkit/PROP-005#SAVE-UPDATES-A-CARRIED-RESOURCE"
+    },
+    {
       "anchor": "RESOURCE-GUARD-MANDATORY",
       "content_hash": "sha256:494ad37f2dd1d0e9856093a797af0a6b3f88607f0de5d66561e51288c7df7eb1",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "The `contractTests` of an entry is **mandatory and non-empty**: the guard test catches the \"silent loss of a binary\" at an upgrade (on this class a reference fork twice lost a branded file silently). An example entry: `{\"id\":\"CK-product-002\",\"target\":\"resources/linux/code.png\",\"source\":\"delta/resources/files/linux/app-icon.png\", …}`. @status:spec/done",
-      "line": 96,
+      "line": 97,
       "uri": "spec://codkit/modules/codkit/PROP-005#RESOURCE-GUARD-MANDATORY"
     },
     {
@@ -4536,7 +4563,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "7. rewrite-rule - the format (the engine comes later)",
-      "line": 98,
+      "line": 99,
       "uri": "spec://codkit/modules/codkit/PROP-005#rewrite-rule"
     },
     {
@@ -4545,7 +4572,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "A rule is a declarative operation over the text of a file on the clean pin; **the output of a rule is an ordinary `.ckpatch`** (the layer creates no new way of applying). The MVP implements the schema, validation, accounting in the inventory and the **expected-match counter** as a `verify` check; patch generation by the engine comes later. @status:spec/done",
-      "line": 99,
+      "line": 100,
       "uri": "spec://codkit/modules/codkit/PROP-005#RULE-SCOPE-IN-MVP"
     },
     {
@@ -4554,7 +4581,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "`delta/rules/*.ckrule.json`: `codkitRule: 2`; the metadata dictionary of PROP-003 §5; `target` is the path of an upstream file; `engine` is `\"line-ops\"` (the only MVP engine: line-wise operations); `expectedMatches` is the expected number of matches of all match operations (actual ≠ expected → the loud error `CK-E-RULE-DRIFT`, exit 1); `ops` are the operations. @status:spec/done",
-      "line": 100,
+      "line": 101,
       "uri": "spec://codkit/modules/codkit/PROP-005#RULE-FORMAT"
     },
     {
@@ -4563,7 +4590,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "The `line-ops` operations: `{\"match\": \"<exact line>\", \"action\": \"comment-out\"|\"append-after\"|\"insert-before\", \"text\": \"<line>\"?}`. `match` is an exact byte match of the whole line (no regular expressions in the MVP); `text` is mandatory for `append-after`/`insert-before`; every inserted line must lie inside a marker block that the rule adds itself (the first operation inserts `codkit:begin`, the last one `codkit:end`). The first candidate for use is the generation of an entry module (§4). M1 refinements: a rule without a single inserted line is illegal (there is nothing to frame with a marker - a schema error); `comment-out` with a `text` field is a refusal; the `contractTests` of a rule may be empty (guard tests are mandatory only for overlay/resource/hide/removed). M1 relaxation (polygon PG-09): with a single operation the requirements of the envelope (\"the first insertion carries `codkit:begin`, the last one `codkit:end`\") converge on one insertion, and `text` is then multi-line (the whole marker block as one value, lines separated by `\\n`); \"one inserted line per operation\" is the norm for multi-operation rules, but not an absolute. @status:spec/done",
-      "line": 101,
+      "line": 102,
       "uri": "spec://codkit/modules/codkit/PROP-005#RULE-LINE-OPS"
     },
     {
@@ -4572,7 +4599,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "8. hide - switch off without deleting",
-      "line": 103,
+      "line": 104,
       "uri": "spec://codkit/modules/codkit/PROP-005#hide"
     },
     {
@@ -4581,7 +4608,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "Implemented by the upper layers: a setting or a `when` context (any setting is the context key `config.<id>`), not including a module in our own entry, `deregisterViews`/`deregisterViewContainer` (the public APIs of the registries), overriding a configuration default (`registerDefaultConfigurations`). Every hide intervention is an entry of the `hide` category in the corresponding layer plus a **mandatory** guard test (an intervention outside the zone of the compiler). A patch for the sake of a hide is a last resort with a justification. @status:spec/done",
-      "line": 104,
+      "line": 105,
       "uri": "spec://codkit/modules/codkit/PROP-005#HIDE-MECHANISMS"
     },
     {
@@ -4590,7 +4617,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "9. New files in the upstream zone",
-      "line": 106,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-005#new-files"
     },
     {
@@ -4599,7 +4626,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "By the hierarchy, new files live in own. An add-file patch (PROP-004 §4) is admissible only when the file must lie in the upstream zone (for example a resource with a specific path); each one carries a justification in `reason` and an inventory entry. `save` creates an add-file patch only under the explicit flag `--allow-new-file <path>` (otherwise `CK-E-NEW-FILE-IN-UPSTREAM-ZONE` with a hint to move it into own). @status:spec/done",
-      "line": 107,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-005#NEW-FILES-LIVE-IN-OWN"
     },
     {
@@ -4608,7 +4635,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "10. removed-registry — delta/removed.json",
-      "line": 109,
+      "line": 110,
       "uri": "spec://codkit/modules/codkit/PROP-005#removed"
     },
     {
@@ -4617,7 +4644,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "A registry of deliberate removals (a dependency, a file, a registration, a setting) that cannot be expressed by a deleting patch (deletion is forbidden): `{\"codkitRemoved\":1,\"entries\":[{\"id\",\"kind\":\"file|dependency|registration|setting\",\"target\":\"<path|package name|registration id|setting key>\",\"how\":\"<which layer implements the switch-off>\",\"owner\",\"reason\",\"link\",\"pin\",\"contractTests\":[…]}]}`. @status:spec/done",
-      "line": 110,
+      "line": 111,
       "uri": "spec://codkit/modules/codkit/PROP-005#REMOVED-FORMAT"
     },
     {
@@ -4626,7 +4653,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "`verify` requires that every entry has a guard test and that the guard test checks that what was removed has not come back; otherwise upstream silently brings the removal back at an upgrade. @status:spec/done",
-      "line": 111,
+      "line": 112,
       "uri": "spec://codkit/modules/codkit/PROP-005#REMOVED-GUARD-MANDATORY"
     },
     {
@@ -4635,7 +4662,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "11. Linter and hygiene for the own directory",
-      "line": 113,
+      "line": 114,
       "uri": "spec://codkit/modules/codkit/PROP-005#linter"
     },
     {
@@ -4644,7 +4671,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-002#OWN-LINT-TARGET; the address stays for citations. @status:spec/done",
-      "line": 114,
+      "line": 115,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-LINT-TARGET"
     },
     {
@@ -4653,7 +4680,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "The set of interventions made to wire in own code is limited to the entry graft and only those build/hygiene registries that the current fork/pin actually requires. Its size does not grow with the volume of own code; empty or stale artifacts are forbidden. The target names and their number are checked at upgrade, not baked in from a consumer tree. @status:spec/done",
-      "line": 115,
+      "line": 116,
       "uri": "spec://codkit/modules/codkit/PROP-005#CONSTANT-GRAFT-SET"
     },
     {
@@ -4662,7 +4689,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "12. Files delivered by Codkit into own, and the hook-patch budget",
-      "line": 117,
+      "line": 118,
       "uri": "spec://codkit/modules/codkit/PROP-005#delivered"
     },
     {
@@ -4671,7 +4698,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "The set of own files **delivered by Codkit**: the notice file `LICENSE-CODKIT.md` (in any own directory) and any path whose first segment is `codkit/` (the runtime library, PROP-015). They are not product code: they are not covered by the units of the manifest (`OWN-MANIFEST`), they are not edited in the product (`save` refuses with `CK-E-DELIVERED-EDIT` when the tree differs from the delta under `src/vs/<ownDirName>/codkit/**`), they are updated only by Codkit commands (`standards load`, `runtime load`), and their drift from the shipped version is `CK-E-RUNTIME-DRIFT` in `verify` and `runtime check`. In the inventory the library is one synthetic entry `CK-codkit-runtime`. `isDeliveredByCodkit(relative)` is the only function that answers the question of whether a file is delivered; the former list `NOT_OWN_CODE` is a special case of it. @status:spec/done",
-      "line": 118,
+      "line": 119,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-DELIVERED-BY-CODKIT"
     },
     {
@@ -4680,7 +4707,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "The root `codkit/` inside own belongs to Codkit (PROP-015 `RT-DIRECTORY-IS-CODKIT`, PROP-014 `STD-NOTICE-SCOPE-BY-PATHS`): an own unit or a `serviceOverrides` entry with a root or a module inside `codkit/` is `CK-E-OWN-UNDER-CODKIT` in `verify`; otherwise product files would fall under a foreign licence by the text of the notice. @status:spec/done",
-      "line": 119,
+      "line": 120,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-CODKIT-PREFIX-RESERVED"
     },
     {
@@ -4689,7 +4716,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "A patch with `type = hook` in the `.ckpatch` header is a graft: between the markers (over all blocks of the patch in the file together, PROP-004 `MR-SEVERAL-BLOCKS-ONE-ID`) there are no more than three lines of code (empty lines and `//` comment lines do not count) and at least one line between the markers - any line, a comment line included - contains a path with the segment `<ownDirName>/` (usually an import or a call of own code; a comment naming an own path counts too: a graft may only say where it delegates); otherwise `verify` gives `CK-E-HOOK-TOO-LARGE` with the name of the patch and the number of lines (the standard `MI-PATCH-IS-A-GRAFT`: the logic lives in own, the patch only creates a seam). The budget is a constant; it can be widened only by editing this rule. @status:spec/done",
-      "line": 120,
+      "line": 121,
       "uri": "spec://codkit/modules/codkit/PROP-005#PATCH-HOOK-BUDGET"
     },
     {
@@ -4698,7 +4725,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "13. own-extension - a built-in extension as an own unit",
-      "line": 122,
+      "line": 123,
       "uri": "spec://codkit/modules/codkit/PROP-005#own-extension"
     },
     {
@@ -4707,7 +4734,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-002#OWN-EXTENSION-UNIT; the address stays for citations. @status:spec/done",
-      "line": 123,
+      "line": 124,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-EXTENSION-UNIT"
     },
     {
@@ -4716,7 +4743,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-002#OWN-EXTENSION-STRANDED; the address stays for citations. @status:spec/done",
-      "line": 124,
+      "line": 125,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-EXTENSION-STRANDED"
     },
     {
@@ -4725,7 +4752,7 @@
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-002#OWN-EXTENSION-WHY; the address stays for citations. @status:spec/done",
-      "line": 125,
+      "line": 126,
       "uri": "spec://codkit/modules/codkit/PROP-005#OWN-EXTENSION-WHY"
     },
     {

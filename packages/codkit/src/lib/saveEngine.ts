@@ -38,6 +38,8 @@ import {
 	ownExtensionTreePrefixes
 } from './layers/ownExtensions.ts';
 import type { Materializer, OwnExtensionSyncReport } from './layers/ownExtensions.ts';
+import { loadResourceMap } from './layers/resource.ts';
+import type { ResourceEntry, ResourceMap } from './layers/resource.ts';
 import { mirrorAllOwnBack } from './ownCopy.ts';
 import { classifyAllOwn, ownMarkFilesOf } from './ownSides.ts';
 import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.ts';
@@ -312,6 +314,10 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	}
 
 	const conventions = loadConventions(options.type, patchesDir);
+	// ##SAVE-UPDATES-A-CARRIED-RESOURCE: the delta's resource-file layer, read
+	// once. A changed tree file the delta already carries as a resource is an
+	// update of that copy, not a patch and not a refusal.
+	const resources = loadResourceMap(patchesDir);
 	// ##OWN-EXTENSION-UNIT: the tree roots the own-extension layer supplies. Like
 	// the own directory they are never selected as upstream changes, and their
 	// tree side is mirrored back into the delta instead.
@@ -396,7 +402,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 
 	const store = new ArtifactStore(patchesDir);
 	const planFor = (entry: StateChange, state: TreeState, planning: ArtifactStore): PlannedFile | null =>
-		planFile(entry, state, planning, options, conventions, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
+		planFile(entry, state, planning, options, conventions, resources, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
 
 	let own: OwnMirrorReport = NO_OWN;
 	let ownExtensions: OwnExtensionSyncReport = NO_OWN_EXTENSIONS;
@@ -717,6 +723,7 @@ function planFile(
 	store: ArtifactStore,
 	options: SaveEngineOptions,
 	conventions: Conventions,
+	resources: ResourceMap | null,
 	allowNewFile: readonly string[],
 	out: Output,
 	headerOverride: SavePatchHeaderOverride | undefined,
@@ -739,6 +746,17 @@ function planFile(
 	}
 
 	if (matchesPatternList(target, conventions.forbiddenPatchTargets)) {
+		// ##SAVE-UPDATES-A-CARRIED-RESOURCE: a target the delta already owns
+		// through the resource-file layer is not a target without an owner. The
+		// file is regenerated in the tree - a lockfile the install rewrites is the
+		// case this was measured on - and the delta carries the result as a
+		// resource, so the extraction updates that copy. Nothing about the layer
+		// changes: the target still reaches the tree by materialization, and the
+		// only path that ever refuses is one no layer of the delta names.
+		const carried = resources?.entries.find((resource) => resource.target === target);
+		if (carried !== undefined) {
+			return planCarriedResource(carried, target, bytesOf(tree, state, target), store, patchesDir);
+		}
 		throw ckError(
 			'FORBIDDEN-TARGET',
 			'is a forbidden patch target',
@@ -829,6 +847,31 @@ function planFile(
 }
 
 /** ` D`, `D `, `AD`, ...: the file is gone from the work tree or from the index. */
+/**
+ * The tree's bytes into the resource copy the delta carries for this target. The
+ * source path is the map's own and was validated when the map was read, so this
+ * writes inside `delta/resources/files/` and nowhere else.
+ */
+function planCarriedResource(
+	resource: ResourceEntry,
+	target: string,
+	curBytes: Uint8Array,
+	store: ArtifactStore,
+	patchesDir: string
+): PlannedFile {
+	const artifact = resource.source;
+	const existing = store.read(artifact);
+	const unchanged = existing !== null && bytesEqual(existing, curBytes);
+	return {
+		target,
+		artifact,
+		artifactAbsolute: join(patchesDir, ...artifact.split('/')),
+		action: unchanged ? 'unchanged' : 'updated',
+		bytes: unchanged ? null : curBytes,
+		consumesPending: false
+	};
+}
+
 function isDeletion(status: string): boolean {
 	return status.includes('D');
 }

@@ -190,6 +190,7 @@ function rootCommitFiles(): FileMap {
 		['build/stub-ci-step.mjs', STUB_CI_STEP],
 		['build/stub-watch.mjs', STUB_WATCH],
 		['resources/app-icon.bin', APP_ICON],
+		[GENERATED_LOCK_PATH, GENERATED_LOCK],
 		['source/base/common/util.ts', UTIL_TS],
 		['source/base/common/lifecycle.ts', LIFECYCLE_TS],
 		['source/base/common/event.ts', EVENT_TS],
@@ -503,6 +504,15 @@ if (mode === 'never-end') {
 
 /** The resource-file target of the fixture delta. */
 export const APP_ICON_PATH = 'resources/app-icon.bin';
+
+/**
+ * A file this layout generates rather than writes by hand: the install rewrites
+ * it in the tree, and the type forbids patching it for exactly that reason. A
+ * delta that has to carry a different one carries it as a resource.
+ */
+export const GENERATED_LOCK_PATH = '.config/generated/build-lock.json';
+
+const GENERATED_LOCK = `${JSON.stringify({ generatedBy: 'the install of the fixture upstream', entries: [] }, null, 2)}\n`;
 
 /** A short binary blob: NUL and high bytes, so it is never mistaken for text. */
 export const APP_ICON = new Uint8Array([0x00, 0x01, 0x02, 0x7f, 0x80, 0xfe, 0xff, 0x00, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0xff]);
