@@ -15,6 +15,7 @@ import {
 	makeAdvisory,
 	makeBuild,
 	makeLayout,
+	NATIVE_ADDON_BUILD_DIR,
 	ownTestsOf,
 	overrideProblems,
 	packageBuildOf,
@@ -98,6 +99,16 @@ describe('layout', () => {
 		expect(CLEANUP_WHITELIST).toContain('plugins/');
 		// The user-editable bundler entry of an application is not a build output.
 		expect(CLEANUP_WHITELIST.some((glob) => glob.includes('esbuild.mjs') && !glob.includes('gen-esbuild'))).toBe(false);
+	});
+
+	it('keeps the build directory of the one native addon this upstream has', () => {
+		// ##THEIA-NATIVE-ADDON-BUILD: the install compiles it from the `binding.gyp`
+		// of `dev-packages/ffmpeg`, a fresh pass that removed it cost a full
+		// reinstall, and no other package of the monorepo has one.
+		expect(NATIVE_ADDON_BUILD_DIR).toBe('dev-packages/ffmpeg/build/');
+		expect(CLEANUP_WHITELIST).toContain(NATIVE_ADDON_BUILD_DIR);
+		// It is one named package and not every directory called build.
+		expect(CLEANUP_WHITELIST).not.toContain('**/build/');
 	});
 
 	it('owns the own package and the application, and names what a build writes inside each', () => {

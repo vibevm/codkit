@@ -24,7 +24,14 @@ import {
 	PATCH_ID,
 	writeEntryModulePatch
 } from '../fixtures/makeTheiaPatchSet.ts';
-import { APPLICATION_MANIFEST, APPLICATION_ROOT, CORE_MODULE_PATH, NEW_VERSION, OLD_VERSION } from '../fixtures/makeTheiaUpstream.ts';
+import {
+	APPLICATION_MANIFEST,
+	APPLICATION_ROOT,
+	CORE_MODULE_PATH,
+	NATIVE_ADDON_ROOT,
+	NEW_VERSION,
+	OLD_VERSION
+} from '../fixtures/makeTheiaUpstream.ts';
 import { excludeTheiaRuntimeState, makeTheiaFixture, provideTheiaTreeDependencies } from '../support/theiaFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
@@ -298,6 +305,34 @@ describe('S75 - the second owned directory, and the build output inside an owned
 		expect(fresh.run.status, fresh.run.stderr).toBe(0);
 		expect(existsSync(fixture.treePath(`${OWN_ROOT}/lib/browser/acme-editor-manager.js`))).toBe(false);
 		expect(existsSync(fixture.treePath(`${OWN_ROOT}/src/browser/acme-editor-manager.ts`))).toBe(true);
+	}, 60_000);
+
+	it('keeps the compiled native addon of the install across a fresh pass', () => {
+		// ##THEIA-NATIVE-ADDON-BUILD: `dev-packages/ffmpeg/build/` is written by
+		// `npm ci` from the `binding.gyp` beside it and is untracked, so the fresh
+		// pass used to take it with the rest of the litter - after which the next
+		// bundle of the application died on `Cannot find module
+		// '../build/Debug/ffmpeg.node'` and only a full reinstall brought it back.
+		const fixture = makeTheiaFixture('theia-native-addon');
+		provideTheiaTreeDependencies(fixture);
+		expect(fixture.json(['load']).run.status).toBe(0);
+
+		const addon = fixture.treePath(`${NATIVE_ADDON_ROOT}/build/Release/ffmpeg.node`);
+		mkdirSync(dirname(addon), { recursive: true });
+		writeFileSync(addon, 'a compiled addon\n', 'utf8');
+		writeFileSync(fixture.treePath(`${NATIVE_ADDON_ROOT}/build/Makefile`), '# written by node-gyp\n', 'utf8');
+		// Litter of the same shape somewhere else stays litter: the list names one
+		// package, not every directory called build.
+		const litter = fixture.treePath('packages/core/build/Release/scratch.node');
+		mkdirSync(dirname(litter), { recursive: true });
+		writeFileSync(litter, 'not an answer of the type\n', 'utf8');
+
+		const fresh = fixture.json(['load', '--fresh']);
+		expect(fresh.run.status, fresh.run.stderr).toBe(0);
+		expect(existsSync(addon)).toBe(true);
+		expect(existsSync(fixture.treePath(`${NATIVE_ADDON_ROOT}/build/Makefile`))).toBe(true);
+		expect(existsSync(fixture.treePath(`${NATIVE_ADDON_ROOT}/binding.gyp`))).toBe(true);
+		expect(existsSync(litter)).toBe(false);
 	}, 60_000);
 });
 

@@ -122,6 +122,7 @@ export {
 	FORBIDDEN_PATCH_TARGETS,
 	layout,
 	makeLayout,
+	NATIVE_ADDON_BUILD_DIR,
 	OWN_BUILD_OUTPUTS,
 	ownRootProblem,
 	WORKSPACE_PARENTS

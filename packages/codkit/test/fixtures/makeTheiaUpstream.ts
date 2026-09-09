@@ -50,6 +50,13 @@ export const CORE_SERVICE_PATH = 'packages/core/src/browser/editor-manager.ts';
 export const EXTENSION_PACKAGE_PATH = 'dev-packages/application-package/src/extension-package.ts';
 /** The upstream source the advisory reads the manifest schema from. */
 export const APPLICATION_PROPS_PATH = 'dev-packages/application-package/src/application-props.ts';
+/**
+ * The one package of this family whose install compiles a native addon. Its
+ * `binding.gyp` is upstream's; the `build/` directory beside it is written by
+ * the install and is untracked, which is what makes it interesting to a fresh
+ * pass (##THEIA-NATIVE-ADDON-BUILD).
+ */
+export const NATIVE_ADDON_ROOT = 'dev-packages/ffmpeg';
 
 const FIRST_COMMIT_ISO = '2026-04-01T00:00:00Z';
 
@@ -116,7 +123,9 @@ function rootFiles(): ReadonlyMap<string, string> {
 		['build/stub-own.mjs', STUB_OWN],
 		['build/stub-watch.mjs', STUB_WATCH],
 		[EXTENSION_PACKAGE_PATH, extensionPackageTs(false)],
-		[APPLICATION_PROPS_PATH, APPLICATION_PROPS_TS]
+		[APPLICATION_PROPS_PATH, APPLICATION_PROPS_TS],
+		[`${NATIVE_ADDON_ROOT}/package.json`, NATIVE_ADDON_MANIFEST],
+		[`${NATIVE_ADDON_ROOT}/binding.gyp`, NATIVE_ADDON_BINDING_GYP]
 	]);
 }
 
@@ -134,6 +143,12 @@ function versionedFiles(version: string): ReadonlyMap<string, string> {
 		[APPLICATION_MANIFEST, applicationManifest(version)]
 	]);
 }
+
+/** The manifest of the package whose install compiles the native addon. */
+const NATIVE_ADDON_MANIFEST = `${JSON.stringify({ name: '@theia/ffmpeg', version: '0.0.0', private: true }, null, 2)}\n`;
+
+/** Upstream's own node-gyp descriptor; the fixture never runs node-gyp. */
+const NATIVE_ADDON_BINDING_GYP = `${JSON.stringify({ targets: [{ target_name: 'ffmpeg', sources: ['src/main.cc'] }] }, null, 2)}\n`;
 
 const GITIGNORE = `node_modules/
 lib/

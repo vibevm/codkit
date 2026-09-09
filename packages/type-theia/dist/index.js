@@ -84,5 +84,5 @@ export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.js
 export { bindFunctionName, featureClassName, featureConstant, featureSkeleton, generators, preferenceId } from './generators.js';
 export { CORE_MANIFEST_PATH, CORE_PACKAGE_NAME, fingerprints, identity, LERNA_MANIFEST_PATH, MONOREPO_NAME, monorepoVersion, REQUIRED_WORKSPACE_GLOBS, ROOT_MANIFEST_PATH, TAG_PATTERN } from './identity.js';
 export { importedPackageOf, makeLayers, overlayTargetsOf, overrideProblems, packageNameOf, serviceOverride } from './layers.js';
-export { APPLICATION_BUILD_OUTPUTS, CLEANUP_WHITELIST, FORBIDDEN_PATCH_TARGETS, layout, makeLayout, OWN_BUILD_OUTPUTS, ownRootProblem, WORKSPACE_PARENTS } from './layout.js';
+export { APPLICATION_BUILD_OUTPUTS, CLEANUP_WHITELIST, FORBIDDEN_PATCH_TARGETS, layout, makeLayout, NATIVE_ADDON_BUILD_DIR, OWN_BUILD_OUTPUTS, ownRootProblem, WORKSPACE_PARENTS } from './layout.js';
 export { standards, STANDARDS_PACKAGES } from './standards.js';

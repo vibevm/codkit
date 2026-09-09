@@ -22,11 +22,24 @@ export const WORKSPACE_PARENTS: readonly string[] = ['packages', 'dev-packages',
 export const DEFAULT_OWN_PARENT = 'packages';
 
 /**
- * ##THEIA-CLEANUP-WHITELIST: the build outputs of this family a fresh pass may
- * remove without asking. Everything here is written by a build, an install or a
- * download and is reproduced by running them again; the user-editable
- * `esbuild.mjs` of an application is deliberately absent, because it is a file
- * a product owns and a build only regenerates when it is gone.
+ * ##THEIA-NATIVE-ADDON-BUILD: where `node-gyp` puts the compiled native addon of
+ * this upstream. The monorepo has exactly one package with a `binding.gyp` -
+ * `dev-packages/ffmpeg`, the codec check of the Electron distribution - and its
+ * `build/` directory is written by the install, is ignored by git, and is the
+ * only thing standing between the tree and `Cannot find module
+ * '../build/Debug/ffmpeg.node'` on the next bundle. Rebuilding it costs a full
+ * `npm ci`, which is why a fresh pass keeps it exactly as it keeps
+ * `node_modules/`: both are the install's output and neither is litter.
+ */
+export const NATIVE_ADDON_BUILD_DIR = 'dev-packages/ffmpeg/build/';
+
+/**
+ * ##THEIA-CLEANUP-WHITELIST: the untracked content of this family a fresh pass
+ * keeps; everything outside this list it removes. Each entry is written by an
+ * install, a build or a download and is expensive enough to be worth keeping -
+ * the user-editable `esbuild.mjs` of an application is deliberately absent,
+ * because a build only regenerates it when it is gone, so it is a file the
+ * product owns rather than an output.
  */
 export const CLEANUP_WHITELIST: readonly string[] = [
 	'node_modules/',
@@ -40,7 +53,8 @@ export const CLEANUP_WHITELIST: readonly string[] = [
 	'**/.nyc_output/',
 	'**/coverage/',
 	'*.tsbuildinfo',
-	'**/*.tsbuildinfo'
+	'**/*.tsbuildinfo',
+	NATIVE_ADDON_BUILD_DIR
 ];
 
 /**
