@@ -75,10 +75,12 @@ export function makeBuild(config) {
             const tail = test.ownGlobArg === undefined ? [glob] : [test.ownGlobArg, glob];
             return { ...base, args: [...base.args, ...tail] };
         },
-        // A plain upstream has no distributable this tool knows how to build, and
-        // nothing to stamp into one.
+        // A plain upstream has no distributable this tool knows how to build,
+        // nothing to stamp into one, and no place to look for the result.
         packageBuild: [],
+        packageDistributable: [],
         packageStamps: [],
+        packageOutputs: [],
         watchProfilePath: null,
         ...(watchProfile === undefined ? {} : { watchProfile }),
         foreignWatcherMarkers: []

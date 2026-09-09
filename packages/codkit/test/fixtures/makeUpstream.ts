@@ -188,6 +188,7 @@ function rootCommitFiles(): FileMap {
 		['package.json', PACKAGE_JSON],
 		['manifest.json', MANIFEST_JSON],
 		['build/stub-ci-step.mjs', STUB_CI_STEP],
+		['build/stub-package.mjs', STUB_PACKAGE],
 		['build/stub-watch.mjs', STUB_WATCH],
 		['resources/app-icon.bin', APP_ICON],
 		[GENERATED_LOCK_PATH, GENERATED_LOCK],
@@ -242,6 +243,8 @@ const PACKAGE_JSON = `{
 		"hygiene": "node build/stub-ci-step.mjs hygiene",
 		"eslint": "node build/stub-ci-step.mjs eslint",
 		"test-own": "node build/stub-ci-step.mjs product-tests",
+		"package": "node build/stub-package.mjs build",
+		"package-distributable": "node build/stub-package.mjs distributable",
 		"watch-transpile": "node build/stub-watch.mjs transpile",
 		"watch-compile": "node build/stub-watch.mjs typecheck",
 		"watch-addons": "node build/stub-watch.mjs addons",
@@ -302,6 +305,38 @@ if (step === 'product-tests') {
 
 console.error('unknown fixture CI step: ' + String(step));
 process.exit(2);
+`;
+
+const STUB_PACKAGE = `#!/usr/bin/env node
+// Fixture stand-in for the packager of this layout, in two halves: the build the
+// type names and the distributable step the product declares. Each one asserts
+// what \`codkit package\` promises to have done before it runs - the overlay
+// target materialized, the stamps of the type in the environment - and writes a
+// file into every declared package output, so the command has something to find.
+
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+
+const half = process.argv[2];
+const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
+
+console.log(half + ': BUILD_SOURCE_VERSION=' + String(process.env.BUILD_SOURCE_VERSION ?? ''));
+console.log(half + ': BUILD_QUALITY=' + String(process.env.BUILD_QUALITY ?? ''));
+
+if (manifest.displayName !== 'Fixture PatchSet') {
+	console.error(half + ': the overlay target was not materialized before the package build');
+	process.exit(1);
+}
+if (process.env.STUB_PACKAGE_MODE === 'fail-' + half) {
+	console.error(half + ': fixture packaging failed');
+	process.exit(3);
+}
+
+mkdirSync('.build/package', { recursive: true });
+writeFileSync('.build/package/app.bin', half + '\\n', 'utf8');
+if (half === 'distributable') {
+	writeFileSync('.build/app-1.tar', 'fixture distributable\\n', 'utf8');
+}
+console.log(half + ': fixture packaging finished');
 `;
 
 // addonGallery is nested on purpose: the dev channel of the config-overlay

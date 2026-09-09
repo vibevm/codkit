@@ -29,7 +29,9 @@ function bareType(overrides: Partial<ProjectType> = {}): ProjectType {
 			hygiene: [],
 			ownTests: () => null,
 			packageBuild: [],
+			packageDistributable: [],
 			packageStamps: [],
+			packageOutputs: [],
 			watchProfilePath: 'config/build-watch.json',
 			foreignWatcherMarkers: []
 		},

@@ -20,7 +20,9 @@ import {
 	ownTestsOf,
 	overrideProblems,
 	packageBuildOf,
+	packageDistributableOf,
 	packageNameOf,
+	packageOutputsOf,
 	ROOT_MANIFEST_PATH,
 	serviceOverride,
 	standards,
@@ -242,23 +244,34 @@ describe('build', () => {
 			'build'
 		]);
 		expect(makeBuild(CONFIG).packageStamps).toEqual([]);
-		// Nothing follows the built application unless the product says so.
+		// The family's build is one command whatever the product declares; what
+		// follows it is the separate answer below.
 		expect(packageBuildOf('examples/electron')).toHaveLength(1);
 		expect(makeBuild(CONFIG).packageBuild).toHaveLength(1);
+		expect(makeBuild({ ...CONFIG, packageScript: 'package:linux' }).packageBuild).toHaveLength(1);
 	});
 
 	it('continues into the packaging script the product declares, and only then', () => {
-		// ##THEIA-PACKAGE-BUILD: upstream ships no packager, so the second step
+		// ##THEIA-PACKAGE-BUILD: upstream ships no packager, so the product's half
 		// exists only when `typeConfig.packageScript` names one; what it runs is
 		// the product's business and the type never names a packager.
-		const commands = packageBuildOf('examples/electron', 'package:linux');
-		expect(commands).toHaveLength(2);
-		expect(commands[1]).toEqual({
-			label: 'package distributable',
-			command: 'npm',
-			args: ['run', 'package:linux', '--workspace', 'examples/electron']
-		});
-		expect(makeBuild({ ...CONFIG, packageScript: 'package:linux' }).packageBuild).toEqual(commands);
+		expect(packageDistributableOf('examples/electron')).toEqual([]);
+		expect(makeBuild(CONFIG).packageDistributable).toEqual([]);
+		const commands = packageDistributableOf('examples/electron', 'package:linux');
+		expect(commands).toEqual([
+			{
+				label: 'package distributable',
+				command: 'npm',
+				args: ['run', 'package:linux', '--workspace', 'examples/electron']
+			}
+		]);
+		expect(makeBuild({ ...CONFIG, packageScript: 'package:linux' }).packageDistributable).toEqual(commands);
+	});
+
+	it('names the application directory the packager writes its result into', () => {
+		// ##THEIA-PACKAGE-OUTPUTS: inside the tree, so `codkit package` can print it.
+		expect(packageOutputsOf('examples/electron')).toEqual(['examples/electron/dist/']);
+		expect(makeBuild(CONFIG).packageOutputs).toEqual([`${CONFIG.applicationRoot}/dist/`]);
 	});
 
 	it('rejects an empty packaging script rather than running npm run with no name', () => {

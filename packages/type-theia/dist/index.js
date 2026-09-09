@@ -79,7 +79,7 @@ function configure(typeConfig) {
 export const projectType = projectTypeFor(PLACEHOLDER_CONFIG);
 export default projectType;
 export { APPLICATION_PROPS_PATH, EXTENSION_PACKAGE_PATH, LOCK_PATH, makeAdvisory, readersFor } from './advisory.js';
-export { DEFAULT_BUNDLE_SCRIPT, DEFAULT_TYPECHECK_SCRIPT, FOREIGN_WATCHER_MARKERS, hygieneOf, INSTALL, makeBuild, ownTestsOf, packageBuildOf, watchProfileOf } from './build.js';
+export { DEFAULT_BUNDLE_SCRIPT, DEFAULT_TYPECHECK_SCRIPT, FOREIGN_WATCHER_MARKERS, hygieneOf, INSTALL, makeBuild, ownTestsOf, packageBuildOf, packageDistributableOf, packageOutputsOf, watchProfileOf } from './build.js';
 export { configSchema, PLACEHOLDER_CONFIG } from './configSchema.js';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.js';
 export { bindFunctionName, featureClassName, featureConstant, featureSkeleton, generators, preferenceId } from './generators.js';

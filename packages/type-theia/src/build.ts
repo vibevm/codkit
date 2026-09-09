@@ -124,25 +124,42 @@ export function ownTestsOf(ownRoot: string): BuildCommand {
  * electron-builder configuration, no signing, no installer - and its contract
  * with a packager is the built `lib/` of the application. The package build of
  * this type is therefore `theia build` of the application, run inside the
- * application directory through the workspace it is.
- *
- * The installer is a product artifact, and the product declares it: with
- * `typeConfig.packageScript` the build continues into that npm script of the
- * application's manifest, so `ci --profile build` reaches the distributable the
- * product actually ships. Which packager the script runs, and what it is
- * configured with, stays entirely in the product's delta - the type never names
- * one.
+ * application directory through the workspace it is. The installer is a product
+ * artifact and is the second, separately answered half below.
  */
-export function packageBuildOf(applicationRoot: string, packageScript?: string): readonly BuildCommand[] {
-	const build: BuildCommand = {
-		label: 'package',
-		command: 'npm',
-		args: ['exec', '--no', '--workspace', applicationRoot, '--', 'theia', 'build']
-	};
+export function packageBuildOf(applicationRoot: string): readonly BuildCommand[] {
+	return [
+		{
+			label: 'package',
+			command: 'npm',
+			args: ['exec', '--no', '--workspace', applicationRoot, '--', 'theia', 'build']
+		}
+	];
+}
+
+/**
+ * ##THEIA-PACKAGE-BUILD: the product's own half of the packaging. With
+ * `typeConfig.packageScript` the run continues into that npm script of the
+ * application's manifest, so `codkit package` reaches the distributable the
+ * product actually ships; without it there is no such step and the answer is
+ * empty. Which packager the script runs, and what it is configured with, stays
+ * entirely in the product's delta - the type never names one.
+ */
+export function packageDistributableOf(applicationRoot: string, packageScript?: string): readonly BuildCommand[] {
 	if (packageScript === undefined) {
-		return [build];
+		return [];
 	}
-	return [build, { label: 'package distributable', command: 'npm', args: ['run', packageScript, '--workspace', applicationRoot] }];
+	return [{ label: 'package distributable', command: 'npm', args: ['run', packageScript, '--workspace', applicationRoot] }];
+}
+
+/**
+ * ##THEIA-PACKAGE-OUTPUTS: both halves above write inside the application
+ * directory, and what a packager of this family leaves behind is its `dist/`
+ * (##THEIA-PACKAGER-OUTPUT). It is inside the managed tree, so `codkit package`
+ * can name it.
+ */
+export function packageOutputsOf(applicationRoot: string): readonly string[] {
+	return [`${applicationRoot}/dist/`];
 }
 
 export function makeBuild(config: TheiaTypeConfig): BuildArea {
@@ -152,7 +169,9 @@ export function makeBuild(config: TheiaTypeConfig): BuildArea {
 		dependencyRoots: DEPENDENCY_ROOTS,
 		hygiene: hygieneOf(config.ownRoot),
 		ownTests: () => ownTests,
-		packageBuild: packageBuildOf(config.applicationRoot, config.packageScript),
+		packageBuild: packageBuildOf(config.applicationRoot),
+		packageDistributable: packageDistributableOf(config.applicationRoot, config.packageScript),
+		packageOutputs: packageOutputsOf(config.applicationRoot),
 		// ##THEIA-NO-STAMPS: nothing is stamped at build time in this family -
 		// no sha, no date, no quality channel. What is baked into `src-gen/` is
 		// the declared configuration and the extension inventory, and a product

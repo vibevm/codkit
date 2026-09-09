@@ -116,7 +116,11 @@ export const ERROR_CODES = [
     // A verb needs an ability the declared project type does not have, or
     // `verify` was asked about an artifact of a layer that type does not provide
     // (PROP-016 ##TYPE-CAPABILITY-REFUSAL).
-    'TYPE-CAPABILITY'
+    'TYPE-CAPABILITY',
+    // A command of the package build the project type names exited non-zero, or
+    // could not be run at all; `codkit package` reports the code and the tail of
+    // its output rather than the whole log a second time (PROP-007 ##CMD-PACKAGE).
+    'PACKAGE-FAILED'
 ];
 export const publicErrorCodeSchema = z.templateLiteral(['CK-E-', z.enum(ERROR_CODES)]);
 export const WARNING_CODES = ['MARK-RO', 'PATCHSET-SIDE-EDIT', 'EMPTY-BLOCK'];

@@ -252,6 +252,11 @@ const commandGuidance = {
 		detail:
 			'Run the no-network container threshold. Profile defaults to `verify`; `build` additionally requires supplied tree `node_modules`. Pin-guard/effective-diff refs must already exist locally.'
 	},
+	package: {
+		positional: '',
+		detail:
+			'Build the distributable out of the already loaded tree: the drift guard of `load`, then the overlay targets materialized into the tree, the stamps the project type names put into the environment, the package build of the type, the packaging step the patch set declared, and finally the targets this run materialized put back and the dev channel rewritten. `--keep-overlay` leaves them materialized for a hand check (`codkit load --fresh` takes them back); `--skip-type-build` runs only the product step over a tree the watch channels already built; `--timeout <seconds>` bounds each command. Where the artifact lands is the type\'s answer, and a type whose packager writes beside the managed tree names none. A failing command is exit 1 `CK-E-PACKAGE-FAILED` with the tail of its output; there is no `--discard`.'
+	},
 	publish: {
 		positional: '<immutable-patchset-ref>',
 		requiredFlags: ['--yes-i-am-publish-bot'],
@@ -710,6 +715,10 @@ const faqEntries = {
 	'TYPE-CAPABILITY': [
 		'The command needs an ability the declared project type does not have - brand images, the brand generator, the build channels, the runtime library - or `verify` was asked about an artifact of a layer that type does not provide.',
 		'Nothing was written. Use the verbs the type answers (`codkit types` prints the capability matrix), or move the artifact to a layer the type provides.'
+	],
+	'PACKAGE-FAILED': [
+		'A command of the package build the project type names exited non-zero, or could not be started at all; the message carries the exit code and the tail of what the command printed.',
+		'Run the command named in the hint inside the fork tree and read its own output. The fork tree was already put back: `codkit package` restores the overlay targets it materialized whatever the verdict.'
 	]
 };
 

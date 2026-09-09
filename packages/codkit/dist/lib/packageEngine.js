@@ -1,0 +1,381 @@
+/** @scope spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE */
+// The package engine: build the product's distributable out of the managed
+// tree, and put the tree back the way it was found.
+// Contract: PROP-007 sec. 27 (##CMD-PACKAGE); the answers it runs: PROP-016
+// ##TYPE-AREA-BUILD.
+//
+// `ci --profile build` stops at the compile channels and the tests, so until
+// this engine existed the `packageBuild` of every type was a field nothing read
+// and the packaging of a fork was a sequence of commands typed by hand. The
+// sequence is short and its two ends are what people got wrong:
+//
+//   * before the build, the overlay targets have to be materialized - a packaged
+//     product reads the target file itself, not the dev-channel sidecar
+//     (PROP-005 sec. 5) - and the stamps the family names have to be in the
+//     environment;
+//   * after the build, the tree has to come back to dev mode, or the next
+//     ordinary `load` refuses over bytes codkit itself wrote.
+//
+// Both ends are this engine's, and the second one runs in a `finally`: a build
+// that fails halfway is exactly the run whose tree nobody wants to repair by
+// hand. What it puts back is only what it materialized itself - a target that
+// was already materialized when the run started belongs to whoever left it
+// there - and it never touches a build output or a dependency directory: this
+// is not a fresh pass, and the artifact it just produced is the point of it.
+//
+// The drift guard is the one `load` uses, with the one exemption `load --fresh`
+// makes (##OVERLAY-KNOWN-MATERIALIZATION): unextracted work still stops the run,
+// and `--discard` is not a flag of this command - giving up somebody's edits is
+// never a side effect of packaging.
+import { spawnSync } from 'node:child_process';
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
+import { driftDirty } from './driftGuard.js';
+import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/overlay.js';
+import { materializerOf } from './layers/ownExtensions.js';
+import { ownedRootsOf } from './ownedRoots.js';
+import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId, restoreToTip } from './syncEngine.js';
+import { revParse } from './treeCache.js';
+import { treeHeadError } from './treeCommits.js';
+/** How many dirty paths the guard lists before summarizing. */
+const DIRTY_LIST_LIMIT = 20;
+/** Output of one packaging command that is kept for the diagnostic. */
+const FAILURE_TAIL_LINES = 20;
+/**
+ * The steps a run with these flags will take, before it takes any of them.
+ *
+ * The order is the contract, and it is stated here rather than being implicit
+ * in the control flow of `runPackage` so that a test can read it: the guard
+ * before any write, the overlay before the build (a packaged product reads the
+ * target), the stamps before the commands that need them, and the restore last
+ * and unconditionally - `--keep-overlay` is the one thing that removes it.
+ */
+export function packageStepPlan(type, flags) {
+    const steps = ['drift guard', 'overlay apply', 'stamps'];
+    if (!flags.skipTypeBuild && type.build.packageBuild.length > 0) {
+        steps.push('package build');
+    }
+    if (type.build.packageDistributable.length > 0) {
+        steps.push('package distributable');
+    }
+    steps.push('outputs');
+    if (!flags.keepOverlay) {
+        steps.push('restore');
+    }
+    return steps;
+}
+/** One package run over an already loaded tree. The caller holds the tree lock. */
+export function runPackage(options) {
+    const { out, config, patchesDir, type } = options;
+    const tree = options.resolution.path;
+    const steps = [];
+    const materialized = [];
+    const commands = [];
+    let restored = [];
+    let outputs = [];
+    const record = (name, state, detail) => {
+        steps.push({ name, state, detail });
+        out.info(`package ${name}: ${state}${detail === '' ? '' : ` (${detail})`}`);
+    };
+    out.info(`package plan: ${packageStepPlan(type, options.flags).join(' -> ')}`);
+    const overlays = loadOverlays(patchesDir);
+    const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir));
+    const stamps = packageStamps(type, config, tree);
+    const guard = guardStep(options, overlays, context);
+    if (guard !== null) {
+        record('drift guard', 'failed', guard.detail);
+        out.addError(guard.error);
+        return { exitCode: guard.exitCode, steps, materialized, restored, stamps, commands, outputs };
+    }
+    record('drift guard', 'ok', 'the fork tree carries no unextracted work');
+    // From here on the tree carries bytes this run wrote, so the restore is a
+    // `finally`: a build that fails halfway must not leave a developer's tree in
+    // packaging state (R14 - what was announced is what happens).
+    let exitCode = EXIT_OK;
+    try {
+        for (const group of overlayTargets(overlays)) {
+            if (applyOverlaysToTree(group.overlays, tree, config.pin.sha, context).changed) {
+                materialized.push(group.target);
+            }
+        }
+        record('overlay apply', 'ok', materialized.length === 0 ? 'every target was already materialized' : materialized.join(', '));
+        record('stamps', 'ok', Object.keys(stamps).length === 0 ? `the project type ${type.id} stamps nothing` : Object.keys(stamps).join(', '));
+        for (const [name, value] of Object.entries(stamps)) {
+            out.info(`stamp ${name}=${value}`);
+        }
+        if (options.flags.skipTypeBuild) {
+            out.info(`skip-type-build: the application build of ${type.id} is not run; the tree is taken as already built`);
+        }
+        const halves = [
+            { name: 'package build', build: options.flags.skipTypeBuild ? [] : type.build.packageBuild },
+            { name: 'package distributable', build: type.build.packageDistributable }
+        ];
+        for (const half of halves) {
+            if (half.build.length === 0) {
+                continue;
+            }
+            const outcome = runCommands(options, half.build, stamps, commands);
+            record(half.name, outcome.state, outcome.detail);
+            if (outcome.error !== null) {
+                out.addError(outcome.error);
+                exitCode = outcome.exitCode;
+                break;
+            }
+        }
+        if (exitCode === EXIT_OK) {
+            outputs = packageOutputPaths(tree, type.build.packageOutputs, (text) => {
+                out.warn(text);
+            });
+            record('outputs', 'ok', outputsDetail(type, outputs));
+            for (const path of outputs) {
+                out.info(`artifact ${path}`);
+            }
+        }
+    }
+    finally {
+        restored = restoreOverlayTargets(options, overlays, context, materialized);
+        if (options.flags.keepOverlay) {
+            out.info(`keep-overlay: ${materialized.length} materialized target(s) stay in the fork tree; codkit load --fresh returns them`);
+        }
+        else {
+            record('restore', 'ok', restored.length === 0 ? 'this run materialized nothing to put back' : restored.join(', '));
+        }
+    }
+    return { exitCode, steps, materialized, restored, stamps, commands, outputs };
+}
+/** What the outputs step says when it found something, and when it did not. */
+function outputsDetail(type, outputs) {
+    if (outputs.length > 0) {
+        return outputs.join(', ');
+    }
+    return type.build.packageOutputs.length === 0
+        ? `the project type ${type.id} names no package output inside the tree`
+        : 'no declared output exists in the tree';
+}
+/** The drift guard of `load`, with the exemption `load --fresh` makes. */
+function guardStep(options, overlays, context) {
+    const { config, out, patchesDir, type } = options;
+    const tree = options.resolution.path;
+    const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+    const known = [];
+    const drift = driftDirty(materializerOf(type), tree, ownedRootsOf(type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), patchesDir, {
+        generated: { pinSha: config.pin.sha, branch },
+        isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, known)
+    });
+    const head = treeHeadError(drift.treeCommits, branch);
+    if (head !== null) {
+        return {
+            detail: 'HEAD of the tree is not on the generated branch while it carries commits',
+            error: head.toPayload(),
+            exitCode: EXIT_CHECK_FAILED
+        };
+    }
+    if (known.length > 0) {
+        out.info(`${known.join(', ')} already carries the exact overlay materialization; this run keeps it`);
+    }
+    if (!drift.dirty) {
+        return null;
+    }
+    for (const path of drift.files.slice(0, DIRTY_LIST_LIMIT)) {
+        out.info(`  dirty: ${path}`);
+    }
+    if (drift.files.length > DIRTY_LIST_LIMIT) {
+        out.info(`  ... and ${drift.files.length - DIRTY_LIST_LIMIT} more`);
+    }
+    const commits = drift.commits.length;
+    return {
+        detail: commits > 0
+            ? `${commits} commit(s) in the fork tree are not in patchset`
+            : `${drift.files.length} path(s) differ from what patchset carries`,
+        error: {
+            code: 'DIRTY-TREE',
+            message: commits > 0
+                ? `${commits} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
+                : `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`,
+            hint: 'run codkit save, or codkit status; packaging never gives up work of the tree on its own'
+        },
+        exitCode: EXIT_CHECK_FAILED
+    };
+}
+/** The overlays of the delta, grouped by target, in target order. */
+function overlayTargets(overlays) {
+    const byTarget = new Map();
+    for (const overlay of overlays) {
+        const bucket = byTarget.get(overlay.target);
+        if (bucket === undefined) {
+            byTarget.set(overlay.target, [overlay]);
+            continue;
+        }
+        bucket.push(overlay);
+    }
+    return [...byTarget.keys()].sort().map((target) => ({ target, overlays: byTarget.get(target) ?? [] }));
+}
+/**
+ * Put back exactly the targets this run materialized, and rewrite the dev
+ * channel over them - which is what a tree in dev mode carries
+ * (PROP-005 ##OVERLAY-TWO-CHANNELS). A target somebody else materialized is
+ * left alone: this run did not write it, and `load --fresh` is the command that
+ * owns that state.
+ */
+function restoreOverlayTargets(options, overlays, context, materialized) {
+    if (options.flags.keepOverlay || materialized.length === 0) {
+        return [];
+    }
+    const tree = options.resolution.path;
+    restoreToTip(tree, materialized);
+    writeDevChannel(options.type, tree, overlays, context, options.config.pin.sha, (text) => {
+        options.out.warn(text);
+    });
+    return [...materialized];
+}
+/** The environment the family asks for, filled from the pin and the tree head. */
+export function packageStamps(type, config, treeDir) {
+    const stamps = {};
+    for (const stamp of type.build.packageStamps) {
+        if (stamp.source === 'tree-head') {
+            stamps[stamp.name] = revParse(treeDir, 'HEAD') ?? '';
+            continue;
+        }
+        stamps[stamp.name] = stamp.source === 'pin-tag' ? config.pin.tag : config.pin.date;
+    }
+    return stamps;
+}
+function runCommands(options, build, stamps, into) {
+    const run = options.runCommand ?? defaultPackageCommandRunner;
+    const tree = options.resolution.path;
+    for (const declared of build) {
+        const command = {
+            label: declared.label,
+            command: declared.command === 'npm' ? npmCommand() : declared.command,
+            args: [...declared.args],
+            cwd: tree,
+            env: stamps,
+            timeoutMs: options.timeoutMs
+        };
+        const rendered = renderCommand(command);
+        options.out.info(`--- ${command.label}: ${rendered}`);
+        into.push(rendered);
+        let result;
+        try {
+            result = run(command);
+        }
+        catch (error) {
+            result = { status: null, stdout: '', stderr: '', error: error instanceof Error ? error : new Error(String(error)) };
+        }
+        const lines = [...outputLines(result.stdout), ...outputLines(result.stderr)];
+        for (const line of lines) {
+            options.out.info(`[${command.label}] ${line}`);
+        }
+        if (result.status === EXIT_OK && result.error === undefined) {
+            continue;
+        }
+        const couldNotRun = result.status === null || result.error !== undefined;
+        const why = couldNotRun ? failureReason(result) : `exited ${result.status}`;
+        const tail = lines.slice(-FAILURE_TAIL_LINES);
+        return {
+            state: 'failed',
+            detail: `${command.label}: ${why}`,
+            error: {
+                code: 'PACKAGE-FAILED',
+                message: `${command.label}: ${why}${tail.length === 0 ? '' : `; last output: ${tail.join(' | ')}`}`,
+                hint: `run the command in the fork tree to see it fail on its own: ${rendered}`
+            },
+            exitCode: couldNotRun ? EXIT_ENVIRONMENT : EXIT_CHECK_FAILED
+        };
+    }
+    return { state: 'ok', detail: `${build.length} command(s) passed`, error: null, exitCode: EXIT_OK };
+}
+/** The declared outputs that exist in the tree, in pattern order then path order. */
+export function packageOutputPaths(treeDir, patterns, onWarn) {
+    const found = [];
+    for (const pattern of patterns) {
+        const directoryOnly = pattern.endsWith('/');
+        const segments = (directoryOnly ? pattern.slice(0, -1) : pattern).split('/');
+        if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
+            onWarn(`the project type names an unusable package output pattern and it was skipped: ${pattern}`);
+            continue;
+        }
+        for (const relative of expand(treeDir, segments)) {
+            const absolute = join(treeDir, ...relative.split('/'));
+            const isDirectory = statSync(absolute).isDirectory();
+            if (directoryOnly && !isDirectory) {
+                continue;
+            }
+            const shown = isDirectory ? `${relative}/` : relative;
+            if (!found.includes(shown)) {
+                found.push(shown);
+            }
+        }
+    }
+    return found;
+}
+/** Every existing tree-relative path the segments match; `*` never crosses a `/`. */
+function expand(treeDir, segments) {
+    let matches = [''];
+    for (const segment of segments) {
+        const next = [];
+        for (const prefix of matches) {
+            const parent = prefix === '' ? treeDir : join(treeDir, ...prefix.split('/'));
+            if (!segment.includes('*')) {
+                const candidate = prefix === '' ? segment : `${prefix}/${segment}`;
+                if (existsSync(join(parent, segment))) {
+                    next.push(candidate);
+                }
+                continue;
+            }
+            const expression = segmentExpression(segment);
+            let entries;
+            try {
+                entries = readdirSync(parent).sort();
+            }
+            catch {
+                continue;
+            }
+            for (const entry of entries) {
+                if (expression.test(entry)) {
+                    next.push(prefix === '' ? entry : `${prefix}/${entry}`);
+                }
+            }
+        }
+        matches = next;
+    }
+    return matches;
+}
+function segmentExpression(segment) {
+    const source = segment
+        .split('*')
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
+        .join('[^/]*');
+    return new RegExp(`^${source}$`, 'u');
+}
+function defaultPackageCommandRunner(command) {
+    const result = spawnSync(command.command, [...command.args], {
+        cwd: command.cwd,
+        env: { ...process.env, ...command.env },
+        encoding: 'utf8',
+        shell: false,
+        windowsHide: true,
+        maxBuffer: 256 * 1024 * 1024,
+        ...(command.timeoutMs === null ? {} : { timeout: command.timeoutMs })
+    });
+    const base = { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+    return result.error === undefined ? base : { ...base, error: result.error };
+}
+function npmCommand() {
+    return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+}
+function outputLines(text) {
+    const normalized = text.replace(/\r\n/gu, '\n').replace(/\r/gu, '\n');
+    const lines = normalized.endsWith('\n') ? normalized.slice(0, -1).split('\n') : normalized.split('\n');
+    return lines.length === 1 && lines[0] === '' ? [] : lines;
+}
+function failureReason(result) {
+    if (result.error !== undefined) {
+        return result.error.message;
+    }
+    return 'the command did not finish (killed by a signal or by --timeout)';
+}
+function renderCommand(command) {
+    return [command.command, ...command.args].map((part) => (/\s/u.test(part) ? JSON.stringify(part) : part)).join(' ');
+}

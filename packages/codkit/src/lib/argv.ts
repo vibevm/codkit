@@ -79,6 +79,9 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--channel', 'value'],
 	['--mine', 'boolean'],
 	['--timeout', 'value'],
+	// package (PROP-007 sec. 27); --timeout above is shared with build and ci
+	['--keep-overlay', 'boolean'],
+	['--skip-type-build', 'boolean'],
 	// ci (PROP-007 sec. 17, PROP-011)
 	['--profile', 'value'],
 	['--effective-diff', 'value'],

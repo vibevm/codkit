@@ -39,10 +39,33 @@ export type BuildArea = {
 	/** Building the distributable package, after the compile channels are clean. */
 	readonly packageBuild: readonly BuildCommand[];
 	/**
+	 * What turns the built application into the artifact the product ships -
+	 * an installer, an archive, a signed bundle - or an empty list when this
+	 * family has no such step or the patch set declared none.
+	 *
+	 * It is a separate answer from `packageBuild` because the two have different
+	 * authors: the build above is the family's, this one is the product's, and
+	 * `codkit package --skip-type-build` runs only this half over an application
+	 * the watch channels already built. Which packager it is stays entirely in
+	 * the patch set's own configuration; the engine only runs what it is given.
+	 */
+	readonly packageDistributable: readonly BuildCommand[];
+	/**
 	 * Environment variables the package build needs stamped, with the meaning of
 	 * each; the engine fills them from the pin and the tree head.
 	 */
 	readonly packageStamps: readonly BuildStamp[];
+	/**
+	 * Where a package build leaves its artifacts, as path patterns from the tree
+	 * root: `codkit package` prints the ones that exist when the build is done.
+	 *
+	 * A pattern is matched segment by segment and `*` never crosses a `/`; a
+	 * trailing `/` names a directory. The patterns stay inside the tree - a
+	 * `..` segment is refused - so a family whose packager writes beside the
+	 * managed tree rather than into it answers with an empty list rather than
+	 * pointing the engine at a path it does not manage.
+	 */
+	readonly packageOutputs: readonly string[];
 	/**
 	 * The default pass-boundary profile of the watch channels, as a path inside
 	 * the type package, or null when this family ships no file of its own. The

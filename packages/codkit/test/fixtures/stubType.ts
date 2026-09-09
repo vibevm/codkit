@@ -142,8 +142,20 @@ export const HYGIENE: readonly BuildCommand[] = [
 	{ label: 'eslint', command: 'npm', args: ['run', 'eslint'] }
 ];
 
-/** The distributable build; nothing in `ci` runs it. */
+/** The distributable build of this layout; nothing in `ci` runs it. */
 export const PACKAGE_BUILD: readonly BuildCommand[] = [{ label: 'package', command: 'npm', args: ['run', 'package'] }];
+
+/** The product's own packaging step, after the layout's build made the application. */
+export const PACKAGE_DISTRIBUTABLE: readonly BuildCommand[] = [
+	{ label: 'package distributable', command: 'npm', args: ['run', 'package-distributable'] }
+];
+
+/**
+ * Where the two commands above leave their artifacts. One plain directory and
+ * one pattern with a wildcard, so the engine's matcher is exercised by both
+ * shapes a type may answer with.
+ */
+export const PACKAGE_OUTPUTS: readonly string[] = ['.build/package/', '.build/app-*.tar'];
 
 /** Argv fragments that mean somebody else's watcher already runs over this tree. */
 export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['build/watch.mjs transpile --watch', 'foreign watch-'];
@@ -270,6 +282,8 @@ const base: ProjectType = {
 		hygiene: HYGIENE,
 		ownTests,
 		packageBuild: PACKAGE_BUILD,
+		packageDistributable: PACKAGE_DISTRIBUTABLE,
+		packageOutputs: PACKAGE_OUTPUTS,
 		packageStamps: [
 			{ name: 'BUILD_SOURCE_VERSION', source: 'tree-head' },
 			{ name: 'BUILD_QUALITY', source: 'pin-tag' }

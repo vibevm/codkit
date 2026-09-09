@@ -98,6 +98,8 @@ export {
 	makeBuild,
 	ownTestsOf,
 	packageBuildOf,
+	packageDistributableOf,
+	packageOutputsOf,
 	watchProfileOf
 } from './build.ts';
 export { configSchema, PLACEHOLDER_CONFIG } from './configSchema.ts';

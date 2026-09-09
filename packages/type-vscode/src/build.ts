@@ -43,6 +43,22 @@ export const PACKAGE_BUILD: readonly BuildCommand[] = [
 ];
 
 /**
+ * ##VSCODE-PACKAGE-OUTPUTS: the task above writes its result **beside** the
+ * managed tree, in a sibling directory whose name carries the platform and the
+ * architecture. `packageOutputs` is tree-relative by contract - a pattern that
+ * left the tree would point `codkit package` at a directory the tool neither
+ * manages nor guards - so this type states honestly that it can name none, and
+ * the operator reads the location from the packager's own output.
+ */
+export const PACKAGE_OUTPUTS: readonly string[] = [];
+
+/**
+ * ##VSCODE-PACKAGE-OUTPUTS: the task above is the whole packaging of this
+ * family; there is no second, product-supplied step to run after it.
+ */
+export const PACKAGE_DISTRIBUTABLE: readonly BuildCommand[] = [];
+
+/**
  * ##BUILD-COMMIT-COMES-FROM-THE-TREE-HEAD: a managed tree is a linked worktree,
  * so the packaging step cannot read `.git/HEAD` as a directory and has to be
  * told the commit; without it the packaged product carries no `commit` and the
@@ -95,7 +111,9 @@ export const build: BuildArea = {
 	hygiene: HYGIENE,
 	ownTests,
 	packageBuild: PACKAGE_BUILD,
+	packageDistributable: PACKAGE_DISTRIBUTABLE,
 	packageStamps: PACKAGE_STAMPS,
+	packageOutputs: PACKAGE_OUTPUTS,
 	watchProfilePath: WATCH_PROFILE_PATH,
 	foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
 };

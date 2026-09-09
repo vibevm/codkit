@@ -21,6 +21,7 @@ import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNot
 import { loadCommand } from './commands/load.js';
 import { markerNewCommand } from './commands/markerNew.js';
 import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.js';
+import { packageCommand } from './commands/package.js';
 import { publishCommand } from './commands/publish.js';
 import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.js';
 import { reresolveCommand } from './commands/reresolve.js';
@@ -78,6 +79,7 @@ const COMMANDS = new Map([
     forecastCommand,
     rebaseOntoPinCommand,
     ciCommand,
+    packageCommand,
     publishCommand,
     hooksCommand,
     imagesetCommand,

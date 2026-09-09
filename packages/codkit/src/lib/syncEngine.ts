@@ -934,7 +934,7 @@ function overlayArtifacts(overlays: readonly Overlay[]): readonly OverlayArtifac
  * the drift check of step 2 has already read the same pin base for every overlay
  * that could reach here.
  */
-function overlayMaterializationClassifier(
+export function overlayMaterializationClassifier(
 	overlays: readonly Overlay[],
 	treeDir: string,
 	pinSha: string,
@@ -1420,7 +1420,7 @@ function moveWorkTree(treeDir: string, branch: string): readonly string[] {
  * where it was. Only the paths of the plan are passed, so nothing else in the
  * tree can be reached from here.
  */
-function restoreToTip(treeDir: string, paths: readonly string[]): void {
+export function restoreToTip(treeDir: string, paths: readonly string[]): void {
 	for (const batch of batches(paths)) {
 		gitOk(
 			{ args: ['checkout', 'HEAD', '--', ...batch], cwd: treeDir },

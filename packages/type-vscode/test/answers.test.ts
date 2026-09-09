@@ -89,6 +89,14 @@ describe('build and test', () => {
 		]);
 	});
 
+	it('names no package output, because its packager writes beside the managed tree', () => {
+		// ##VSCODE-PACKAGE-OUTPUTS: the gulp task of this family writes a sibling
+		// directory of the tree, and the contract keeps the patterns inside it.
+		expect(build.packageOutputs).toEqual([]);
+		expect(build.packageDistributable).toEqual([]);
+		expect(build.packageBuild).toHaveLength(1);
+	});
+
 	it('knows the argv of a watcher somebody else started over the same tree', () => {
 		expect(build.foreignWatcherMarkers).toEqual(['build/next/index.ts transpile --watch', 'gulp watch-']);
 	});

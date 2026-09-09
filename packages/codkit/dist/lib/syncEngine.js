@@ -660,7 +660,7 @@ function overlayArtifacts(overlays) {
  * the drift check of step 2 has already read the same pin base for every overlay
  * that could reach here.
  */
-function overlayMaterializationClassifier(overlays, treeDir, pinSha, context, recognized) {
+export function overlayMaterializationClassifier(overlays, treeDir, pinSha, context, recognized) {
     const byTarget = new Map();
     for (const artifact of overlayArtifacts(overlays)) {
         byTarget.set(artifact.target, artifact.overlays);
@@ -1024,7 +1024,7 @@ function moveWorkTree(treeDir, branch) {
  * where it was. Only the paths of the plan are passed, so nothing else in the
  * tree can be reached from here.
  */
-function restoreToTip(treeDir, paths) {
+export function restoreToTip(treeDir, paths) {
     for (const batch of batches(paths)) {
         gitOk({ args: ['checkout', 'HEAD', '--', ...batch], cwd: treeDir }, {
             code: 'ARTIFACT-BROKEN',
