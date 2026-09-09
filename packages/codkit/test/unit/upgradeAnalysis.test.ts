@@ -72,10 +72,11 @@ function makeFixture(label: string): Fixture {
 	fixtureCommit(root, 'fixture: frozen forecast inventory', '2026-07-03T00:00:00Z');
 
 	const config: CodkitConfig = {
-		codkitConfig: 1,
+		codkitConfig: 2,
 		pin: { tag: 't1', sha: t1, date: commitDate(tree, t1) },
 		upstreamAnchorCommit: t1,
-		ownDirName: 'patchset',
+		type: 'vscode',
+		typeConfig: { ownRoot: 'src/vs/patchset' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',

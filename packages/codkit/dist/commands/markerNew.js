@@ -19,7 +19,6 @@ import { withLock } from '../lib/lock.js';
 import { markerFormFor, parseMarkers } from '../lib/markers.js';
 import { ckError, isCkError } from '../lib/messages.js';
 import { OWNERS_PATH, loadOwnerKeys } from '../lib/owners.js';
-import { ownTargetRelativeDir } from '../lib/ownCopy.js';
 import { DEFAULT_PATCH_LAYER, PATCH_FILE_SUFFIX, encodePatchName } from '../lib/patchFormat.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { PENDING_DIR, listPendingHeaders, pendingFileName, readPendingHeader, removePendingHeader, writePendingHeader } from '../lib/pendingHeader.js';
@@ -83,7 +82,7 @@ function locateTarget(treeDir, config, given, conventions) {
     if (!existsSync(absolute)) {
         throw ckError('FORBIDDEN-TARGET', 'does not exist in the fork tree', `create the file first, or check the path; paths are relative to ${treeDir}`, target);
     }
-    const ownPrefix = `${ownTargetRelativeDir(config.ownDirName)}/`;
+    const ownPrefix = `${config.typeConfig.ownRoot}/`;
     if (target === ownPrefix.slice(0, -1) || target.startsWith(ownPrefix)) {
         throw ckError('FORBIDDEN-TARGET', 'is own code, not an upstream file', `own code lives in patchset under delta/own/ and needs no marker; edit it there and run codkit save`, target);
     }

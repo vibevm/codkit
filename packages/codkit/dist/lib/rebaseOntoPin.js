@@ -62,7 +62,7 @@ export function rebaseOntoPin(options) {
             desiredTree,
             patchsetHead: graph.head,
             allowedOwnBeforeTree: sourceBaseline,
-            allowedIgnoredPrefix: `src/vs/${graph.targetConfig.ownDirName}/`,
+            allowedIgnoredPrefix: `${graph.targetConfig.typeConfig.ownRoot}/`,
             allowedIgnoredPaths: [PRODUCT_OVERRIDES_FILE],
             allowCompletedRollover: !hasRebasePendingRecords(options.patchesDir),
             completedCheckpoint: () => options.checkpoint?.('after-complete'),

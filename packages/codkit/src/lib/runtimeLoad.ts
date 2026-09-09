@@ -83,7 +83,7 @@ export type RuntimePlan = {
 /** ##RT-LOAD-STEPS step 7: the three lines a person needs after a successful load. */
 export const RUNTIME_NEXT_STEPS: readonly string[] = [
 	"next: import the library once from the product's composition root: import '../codkit/browser/featureFlags.contribution.js';",
-	`next: add the code-import-patterns block for src/vs/<ownDirName>/codkit/~ from the library's LAYERS.md`,
+	`next: add the code-import-patterns block for src/vs/<ownRoot>/codkit/~ from the library's LAYERS.md`,
 	'next: declare the first feature with codkit gen feature <id> --title <text>'
 ];
 

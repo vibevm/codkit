@@ -25,10 +25,11 @@ describe('concrete cycle stabilization cleanup', () => {
 	it('keeps every daemon cleanup failure in deterministic channel order', async () => {
 		const { runConcreteStabilization } = await import('../../src/lib/cycleStabilize.ts');
 		const config = {
-			codkitConfig: 1,
+			codkitConfig: 2,
 			pin: { tag: 't2', sha: '2'.repeat(40), date: '2026-08-02' },
 			upstreamAnchorCommit: '1'.repeat(40),
-			ownDirName: 'patchset',
+			type: 'vscode',
+			typeConfig: { ownRoot: 'src/vs/patchset' },
 			generatedBranchPrefix: 'codkit/applied/',
 			cycleBranchPrefix: 'codkit/cycle/',
 			releaseRefPrefix: 'codkit/release/',

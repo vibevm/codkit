@@ -21,6 +21,7 @@ import { OWN_UNIT_ID, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
 
@@ -393,6 +394,7 @@ async function invoke(fixture: CliFixture, options: InvocationOptions = {}): Pro
 		commandFlags,
 		env: {},
 		config,
+		type: vscodeType,
 		out
 	};
 	let exitCode: number;

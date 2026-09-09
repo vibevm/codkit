@@ -1,7 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
 // Copying own code between patchset and the fork tree (PROP-008 ##OWN-COPY-ALGORITHM).
 //
-// `delta/own/**` is the source of truth; `<tree>/src/vs/<ownDirName>/**` is a
+// `delta/own/**` is the source of truth; `<tree>/<ownRoot>/**` is a
 // materialization of it (PROP-005 ##OWN-SOURCE-OF-TRUTH). The copy is rsync-like
 // and content-addressed on purpose:
 //
@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path';
 import { bytesEqual } from './bytes.js';
 import { LICENCE_NOTICE_NAME, OWN_MANIFEST_NAME } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
-import { resolveContainedPath, safeBasenameProblem } from './pathSafety.js';
+import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
 /** Own code inside patchset, relative to the patchset root. */
 export const OWN_SOURCE_DIR = 'delta/own';
 /** Placeholder that only exists to keep an empty directory in git. */
@@ -33,7 +33,7 @@ export const GITKEEP_NAME = '.gitkeep';
  * Two kinds of file live there and are not delivered: the placeholders git
  * needs to carry an empty directory, and the unit manifest. The manifest is a
  * statement of patchset *about* own code, not a module of it (PROP-005 sec. 3), and
- * mirroring it would materialize it in `src/vs/<ownDirName>/`, from where the
+ * mirroring it would materialize it in the own root of the tree, from where the
  * transpiler of the tree carries it into `out/` as if it were product code.
  *
  * The same predicate governs the comparison of the two sides: a file that is
@@ -59,11 +59,13 @@ export function isReleasedOwnFile(relative) {
 export function ownSourceRoot(patchesDir) {
     return join(patchesDir, ...OWN_SOURCE_DIR.split('/'));
 }
-export function ownTargetRelativeDir(ownDirName) {
-    return `src/vs/${ownDirName}`;
-}
-export function ownTargetRoot(treeDir, ownDirName) {
-    return join(treeDir, 'src', 'vs', ownDirName);
+/**
+ * The materialized own directory of a fork tree, absolute. The own root is a
+ * full path from the tree root and comes from `typeConfig.ownRoot`
+ * (PROP-016 ##TYPE-OWN-ROOT); to this module it is an opaque directory.
+ */
+export function ownTargetRoot(treeDir, ownRoot) {
+    return join(treeDir, ...ownRoot.split('/'));
 }
 /**
  * Relative POSIX paths of every file under `root`, sorted.
@@ -97,10 +99,10 @@ export function fileContentEqual(left, right) {
     return bytesEqual(readFileSync(left), readFileSync(right));
 }
 /** Paths (relative to the own root) that differ between patchset and the tree. */
-export function compareOwn(patchesDir, treeDir, ownDirName) {
+export function compareOwn(patchesDir, treeDir, ownRoot) {
     const source = ownSourceRoot(patchesDir);
-    const target = ownTargetRoot(treeDir, ownDirName);
-    assertOwnRootsSafe(patchesDir, treeDir, ownDirName);
+    const target = ownTargetRoot(treeDir, ownRoot);
+    assertOwnRootsSafe(patchesDir, treeDir, ownRoot);
     const sourceFiles = listOwnFiles(source, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
     const targetFiles = listOwnFiles(target, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
     const diverged = [];
@@ -131,13 +133,13 @@ export function compareOwn(patchesDir, treeDir, ownDirName) {
  * the tree: it is no longer copied, so the next run finds it in the mirror
  * without a source and deletes it like any other leftover.
  */
-export function syncOwnCode(patchesDir, treeDir, ownDirName) {
+export function syncOwnCode(patchesDir, treeDir, ownRoot) {
     const source = ownSourceRoot(patchesDir);
-    const target = ownTargetRoot(treeDir, ownDirName);
+    const target = ownTargetRoot(treeDir, ownRoot);
     // Validate both complete trees before the first copy/delete. In particular, a
     // symlink on the materialized side must not redirect a later write outside the
     // fork tree, and a symlink found after one copy must not leave a partial load.
-    assertOwnRootsSafe(patchesDir, treeDir, ownDirName);
+    assertOwnRootsSafe(patchesDir, treeDir, ownRoot);
     const sourceFiles = listOwnFiles(source, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
     const targetFiles = listOwnFiles(target, { refuseSymlinks: true });
     let copied = 0;
@@ -180,10 +182,10 @@ export function ownStateOfPatchSet(patchesDir) {
     assertContainedOwnRoot(patchesDir, OWN_SOURCE_DIR, 'own source');
     return ownStateOf(ownSourceRoot(patchesDir));
 }
-export function ownStateOfTree(treeDir, ownDirName) {
-    assertSafeOwnDirName(ownDirName);
-    assertContainedOwnRoot(treeDir, ownTargetRelativeDir(ownDirName), 'materialized own target');
-    return ownStateOf(ownTargetRoot(treeDir, ownDirName));
+export function ownStateOfTree(treeDir, ownRoot) {
+    assertSafeOwnRoot(ownRoot);
+    assertContainedOwnRoot(treeDir, ownRoot, 'materialized own target');
+    return ownStateOf(ownTargetRoot(treeDir, ownRoot));
 }
 /**
  * The state of one side. Both sides are read through the same filter: a file
@@ -211,9 +213,9 @@ function sha256File(absolute) {
  * from a mark written before the map existed - and every difference then falls
  * into `unknown` rather than being guessed at.
  */
-export function classifyOwn(patchesDir, treeDir, ownDirName, markFiles) {
+export function classifyOwn(patchesDir, treeDir, ownRoot, markFiles) {
     const patchset = ownStateOfPatchSet(patchesDir).files;
-    const tree = ownStateOfTree(treeDir, ownDirName).files;
+    const tree = ownStateOfTree(treeDir, ownRoot).files;
     const paths = [...new Set([...Object.keys(patchset), ...Object.keys(tree)])].sort((left, right) => Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8')));
     const out = [];
     for (const relative of paths) {
@@ -247,8 +249,8 @@ function classifyOne(inPatchSet, inTree, markFiles, relative) {
  * function - the caller stops at CK-E-BOTH-SIDES-EDITED before anything is
  * written.
  */
-export function mirrorOwnBack(patchesDir, treeDir, ownDirName, classes) {
-    const source = ownTargetRoot(treeDir, ownDirName);
+export function mirrorOwnBack(patchesDir, treeDir, ownRoot, classes) {
+    const source = ownTargetRoot(treeDir, ownRoot);
     const target = ownSourceRoot(patchesDir);
     let copied = 0;
     let removed = 0;
@@ -321,15 +323,20 @@ function isDirectory(absolute) {
         return false;
     }
 }
-function assertOwnRootsSafe(patchesDir, treeDir, ownDirName) {
-    assertSafeOwnDirName(ownDirName);
+function assertOwnRootsSafe(patchesDir, treeDir, ownRoot) {
+    assertSafeOwnRoot(ownRoot);
     assertContainedOwnRoot(patchesDir, OWN_SOURCE_DIR, 'own source');
-    assertContainedOwnRoot(treeDir, ownTargetRelativeDir(ownDirName), 'materialized own target');
+    assertContainedOwnRoot(treeDir, ownRoot, 'materialized own target');
 }
-function assertSafeOwnDirName(ownDirName) {
-    const problem = safeBasenameProblem(ownDirName);
+/**
+ * The own root reaches here from the configuration, so it is checked as a path
+ * before it is joined: the type states where the root may sit, the engine
+ * states only that it stays inside the tree (##TYPE-OWN-ROOT).
+ */
+function assertSafeOwnRoot(ownRoot) {
+    const problem = repoRelativePathProblem(ownRoot);
     if (problem !== null) {
-        throw ckError('CONFIG', `ownDirName "${ownDirName}" is unsafe: ${problem}`, 'set ownDirName to one directory basename, normally "patchset"');
+        throw ckError('CONFIG', `typeConfig.ownRoot "${ownRoot}" is unsafe: ${problem}`, 'set typeConfig.ownRoot to a path from the tree root, without a leading slash or a dot-dot segment');
     }
 }
 function assertContainedOwnRoot(repositoryRoot, relative, label) {

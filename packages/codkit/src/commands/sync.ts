@@ -29,7 +29,7 @@ import { runGit } from '../lib/gitx.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { withLock } from '../lib/lock.ts';
 import { ckError, isCkError } from '../lib/messages.ts';
-import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.ts';
+import { classifyOwn } from '../lib/ownCopy.ts';
 import type { OwnSideClass } from '../lib/ownCopy.ts';
 import { encodePatchName } from '../lib/patchFormat.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
@@ -235,7 +235,7 @@ function runTwoWay(input: TwoWayInput): TwoWayResult {
 		pinSha: config.pin.sha,
 		base: treeState.base,
 		mark,
-		ownDirName: config.ownDirName,
+		ownRoot: config.typeConfig.ownRoot,
 		commits: treeState.commits
 	});
 	if (classes.unknown) {
@@ -252,10 +252,12 @@ function runTwoWay(input: TwoWayInput): TwoWayResult {
 	// 5. Own code, file by file (##PATCHSET-SIDE-EDIT-RULE): own code has no
 	// marker blocks to materialize a merge into, so a both-sided own file keeps
 	// the choose-a-side refusal.
-	const ownClasses = classifyOwn(patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+	const ownClasses = classifyOwn(patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter(
+		(entry) => entry.kind !== 'same'
+	);
 	const ownBoth = ownClasses.filter((entry) => entry.kind === 'both-edited');
 	if (ownBoth.length > 0) {
-		const prefix = ownTargetRelativeDir(config.ownDirName);
+		const prefix = config.typeConfig.ownRoot;
 		const sides = ownBoth.map((entry) => ({ artifact: `delta/own/${entry.relative}`, target: `${prefix}/${entry.relative}` }));
 		out.addError(bothSidesConflictError(sides, restoreRef).toPayload());
 		return blocked(classes, treeState.commits.length);
@@ -271,7 +273,7 @@ function runTwoWay(input: TwoWayInput): TwoWayResult {
 	const bothSides: readonly BothSideTarget[] = classes.both.map((artifact) => ({ artifact, target: artifactTarget(artifact) }));
 	const conflictTargets = flags.discard
 		? bothSides
-				.filter((side) => uncommittedChanges(tree, treeState, config.ownDirName).some((change) => change.path === side.target))
+				.filter((side) => uncommittedChanges(tree, treeState, config.typeConfig.ownRoot).some((change) => change.path === side.target))
 				.map((side) => side.target)
 		: bothSides.map((side) => side.target);
 	if (flags.discard && conflictTargets.length > 0) {
@@ -282,7 +284,7 @@ function runTwoWay(input: TwoWayInput): TwoWayResult {
 
 	// 7. --dry-run: the classification is the answer; nothing is written.
 	if (flags.dryRun) {
-		const paths = changesSince(tree, treeState.base, { kind: 'worktree' }, config.ownDirName).map((change) => change.path);
+		const paths = changesSince(tree, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot).map((change) => change.path);
 		reportSyncPlan(out, classes, treeState.commits.length, paths);
 		return ok('dry-run', classes, treeState.commits.length);
 	}
@@ -300,7 +302,7 @@ function runTwoWay(input: TwoWayInput): TwoWayResult {
 	// 9. Is there anything to merge at all? With both sides still, the load
 	// engine alone answers - usually from its fast path - and no transaction is
 	// written, because nothing is about to mutate.
-	const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, config.ownDirName);
+	const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
 	const hasTreeWork =
 		treeState.commits.length > 0 ||
 		changes.length > 0 ||
@@ -412,7 +414,7 @@ function openRecord(
 		treeArtifacts: changes.map((change) => `${PATCHES_DIR}/${encodePatchName(change.path)}`),
 		patchsetTargets: patchsetOnly.map(artifactTarget),
 		ownRelatives: ownClasses.map((entry) => entry.relative),
-		ownTargetPrefix: ownTargetRelativeDir(config.ownDirName),
+		ownTargetPrefix: config.typeConfig.ownRoot,
 		conflictTargets
 	});
 }
@@ -441,8 +443,8 @@ function buildData(result: TwoWayResult): JsonValue {
 // ---------------------------------------------------------------------------
 
 /** Changes the working tree carries on top of its own HEAD: the part `--discard` may not drop. */
-function uncommittedChanges(tree: string, treeState: TreeCommits, ownDirName: string): readonly StateChange[] {
-	return changesSince(tree, treeState.head, { kind: 'worktree' }, ownDirName);
+function uncommittedChanges(tree: string, treeState: TreeCommits, ownRoot: string): readonly StateChange[] {
+	return changesSince(tree, treeState.head, { kind: 'worktree' }, ownRoot);
 }
 
 /** Whether delta paths of the patchset carry uncommitted modifications right now. */

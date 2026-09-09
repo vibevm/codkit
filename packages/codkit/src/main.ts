@@ -41,6 +41,8 @@ import { Output, readCodkitVersion } from './lib/jsonOut.ts';
 import { isCkError } from './lib/messages.ts';
 import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocations } from './lib/paths.ts';
 import { loadSettings } from './lib/settingsFile.ts';
+import { resolveProjectType } from './types/registry.ts';
+import { assertTypeConfig } from './types/typeConfig.ts';
 
 /** Longest command name in words; `marker new` and `overlay check` make this 2. */
 const MAX_COMMAND_WORDS = 2;
@@ -181,6 +183,14 @@ async function main(argv: readonly string[]): Promise<number> {
 		const patchRoot = patches?.path ?? '';
 		if (needsPatches && patches !== null) out.info(formatPatchesLine(patches));
 		const config = matched.definition.configMode === 'none' || helpOnly ? null : loadConfig(patchRoot);
+		// PROP-016 ##TYPE-REGISTRY: the type is resolved once, here, and handed to
+		// the command with everything else it needs. A configuration always names
+		// one - schema 2 requires it - so a resolved config means a resolved type,
+		// and every engine below asks the type instead of stating its facts.
+		const type = config === null ? null : await resolveProjectType(config.type);
+		if (config !== null && type !== null) {
+			assertTypeConfig(type, config);
+		}
 		const exitCode = await matched.definition.run({
 			toolRoot,
 			locations,
@@ -190,6 +200,7 @@ async function main(argv: readonly string[]): Promise<number> {
 			commandFlags,
 			env: process.env,
 			config,
+			type,
 			out
 		});
 		return out.finish(exitCode);

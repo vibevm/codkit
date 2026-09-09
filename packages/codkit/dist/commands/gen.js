@@ -66,16 +66,16 @@ function headerStyleOf(style) {
     return known;
 }
 /**
- * `ownDirName` shapes the import specifiers a person is asked to write by hand.
+ * `ownRoot` shapes the import specifiers a person is asked to write by hand.
  * The command reads no configuration to run (##GEN-NAMESPACE), so a patch set
  * without one gets the placeholder rather than a refusal.
  */
-function ownDirName(patchesDir) {
+function ownRoot(patchesDir) {
     try {
-        return loadBaseConfig(patchesDir)?.ownDirName ?? '<ownDirName>';
+        return loadBaseConfig(patchesDir)?.typeConfig.ownRoot ?? '<ownRoot>';
     }
     catch {
-        return '<ownDirName>';
+        return '<ownRoot>';
     }
 }
 /**
@@ -146,7 +146,7 @@ async function runBrand(ctx) {
     if (refusal !== null)
         return refusal;
     writeGenerated(patchesDir, outcome.files);
-    const own = ownDirName(patchesDir);
+    const own = ownRoot(patchesDir);
     const hookText = brandHookText(own);
     const reminders = brandReminders(own);
     for (const file of outcome.files)

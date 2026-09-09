@@ -47,7 +47,6 @@ import type { DaemonRecord } from './buildRuntime.ts';
 import { acquireDaemonChannelLock, assertDaemonChannelLock } from './daemonChannelLock.ts';
 import type { DaemonChannelLock } from './daemonChannelLock.ts';
 import { ckError, isCkError } from './messages.ts';
-import { ownTargetRelativeDir } from './ownCopy.ts';
 import { resolveContainedPath } from './pathSafety.ts';
 
 export {
@@ -1753,8 +1752,7 @@ export type InventoryTargetSource = {
  * an inventory entry names, with the own layers mapped from their place inside
  * `delta/own/` to where they land in the tree.
  */
-export function inventoryTargets(inventory: InventoryTargetSource, ownDirName: string): ReadonlySet<string> {
-	const ownRoot = ownTargetRelativeDir(ownDirName);
+export function inventoryTargets(inventory: InventoryTargetSource, ownRoot: string): ReadonlySet<string> {
 	const targets = new Set<string>();
 	for (const entry of inventory.entries) {
 		const inOwn = entry.layer === 'own' || entry.layer === 'service-override';
@@ -1766,9 +1764,8 @@ export function inventoryTargets(inventory: InventoryTargetSource, ownDirName: s
 }
 
 /** Own code by construction, or a file the inventory names (PROP-007 section 13). */
-export function isMine(relativePath: string, ownDirName: string, targets: ReadonlySet<string>): boolean {
-	const ownRoot = `${ownTargetRelativeDir(ownDirName)}/`;
-	return relativePath.startsWith(ownRoot) || targets.has(relativePath);
+export function isMine(relativePath: string, ownRoot: string, targets: ReadonlySet<string>): boolean {
+	return relativePath.startsWith(`${ownRoot}/`) || targets.has(relativePath);
 }
 
 // ---------------------------------------------------------------------------

@@ -411,7 +411,9 @@ function continueStoppedSync(input: TwoWayInput, record: SyncTransaction): TwoWa
 		return blocked(classified.classes, treeState.commits.length, { transaction: record.id });
 	}
 	const classes = classified.classes;
-	const ownClasses = classifyOwn(patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+	const ownClasses = classifyOwn(patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter(
+		(entry) => entry.kind !== 'same'
+	);
 	if (ownClasses.some((entry) => entry.kind === 'both-edited')) {
 		out.addError(
 			ckError(
@@ -436,7 +438,7 @@ function continueStoppedSync(input: TwoWayInput, record: SyncTransaction): TwoWa
 	// an abort after a crash in the continuation must cover them too.
 	const live = extendRecordSnapshots(input, record, treeState);
 
-	const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, config.ownDirName);
+	const changes = changesSince(tree, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
 	const hasTreeWork =
 		treeState.commits.length > 0 ||
 		changes.length > 0 ||
@@ -511,7 +513,7 @@ function differsFromSnapshot(treeDir: string, path: string, record: SyncTransact
 /** Snapshots the artifacts of every changed tree file the record does not carry yet. */
 function extendRecordSnapshots(input: TwoWayInput, record: SyncTransaction, treeState: TreeCommits): SyncTransaction {
 	const { patchesDir, resolution, config } = input;
-	const changes = changesSince(resolution.path, treeState.base, { kind: 'worktree' }, config.ownDirName);
+	const changes = changesSince(resolution.path, treeState.base, { kind: 'worktree' }, config.typeConfig.ownRoot);
 	const artifacts = changes.map((change) => `${PATCHES_DIR}/${encodePatchName(change.path)}`);
 	const fresh = artifacts.filter((artifact) => recordedRewriteOf(record, 'patchset', artifact) === null);
 	if (fresh.length === 0) {
@@ -567,7 +569,7 @@ function classifySides(
 		pinSha: input.config.pin.sha,
 		base: treeState.base,
 		mark,
-		ownDirName: input.config.ownDirName,
+		ownRoot: input.config.typeConfig.ownRoot,
 		commits: treeState.commits
 	});
 	if (classes.unknown) {

@@ -38,7 +38,7 @@ function generated(): DriftOptions['generated'] {
 }
 
 function guard(): ReturnType<typeof driftDirty> {
-	return driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, { generated: generated() });
+	return driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, { generated: generated() });
 }
 
 /** Change something in the tree, look, put it back. */
@@ -84,7 +84,7 @@ describe('driftDirty', () => {
 		expect(result.dirty).toBe(true);
 		// git says nothing about it: the own directory is excluded locally.
 		expect(result.upstream).toEqual([]);
-		expect(upstreamDirt(fixture.treeDir, fixture.config.ownDirName)).toEqual([]);
+		expect(upstreamDirt(fixture.treeDir, fixture.config.typeConfig.ownRoot)).toEqual([]);
 		expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'both' });
 		expect(result.files.some((path) => path.startsWith(OWN_IN_TREE) && path.includes(OWN_IN_PATCHSET))).toBe(true);
 	});
@@ -113,7 +113,7 @@ describe('driftDirty', () => {
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
 			expect(guard().files).toContain('left-behind.txt');
-			const fresh = driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+			const fresh = driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 				untrackedIsDirt: false,
 				generated: generated()
 			});
@@ -131,7 +131,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 	it('drops a tracked path the caller certifies, and only that path', () => {
 		const result = whileChanged(EXAMPLE_PART_PATH, '// replaced by hand\n', () =>
 			whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+				driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 					generated: generated(),
 					isKnownMaterialization: (path) => path === 'product.json'
 				})
@@ -145,7 +145,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 
 	it('keeps the path dirt when the predicate answers no', () => {
 		const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-			driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+			driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 				generated: generated(),
 				isKnownMaterialization: () => false
 			})
@@ -162,7 +162,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
 			const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+				driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 					generated: generated(),
 					isKnownMaterialization: (path) => {
 						asked.push(path);
@@ -188,7 +188,7 @@ describe('driftDirty: the stranded-materialization exception (##DRIFT-GUARD-PRED
 	/** The guard as a plain `load` arms it, recording every path the hook saw. */
 	function guardPassingStranded(asked: string[]): ReturnType<typeof driftDirty> {
 		const classify = strandedExtensionClassifier(fixture.treeDir, fixture.config.pin.sha, loadOwnManifest(fixture.patchesDir).extensions);
-		return driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+		return driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 			generated: generated(),
 			isStrandedExtension: (entry) => {
 				asked.push(entry.path);

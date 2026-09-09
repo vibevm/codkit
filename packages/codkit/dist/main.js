@@ -38,6 +38,8 @@ import { Output, readCodkitVersion } from './lib/jsonOut.js';
 import { isCkError } from './lib/messages.js';
 import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocations } from './lib/paths.js';
 import { loadSettings } from './lib/settingsFile.js';
+import { resolveProjectType } from './types/registry.js';
+import { assertTypeConfig } from './types/typeConfig.js';
 /** Longest command name in words; `marker new` and `overlay check` make this 2. */
 const MAX_COMMAND_WORDS = 2;
 /** Width of the name column in `codkit --help`; the longest name plus two. */
@@ -163,6 +165,14 @@ async function main(argv) {
         if (needsPatches && patches !== null)
             out.info(formatPatchesLine(patches));
         const config = matched.definition.configMode === 'none' || helpOnly ? null : loadConfig(patchRoot);
+        // PROP-016 ##TYPE-REGISTRY: the type is resolved once, here, and handed to
+        // the command with everything else it needs. A configuration always names
+        // one - schema 2 requires it - so a resolved config means a resolved type,
+        // and every engine below asks the type instead of stating its facts.
+        const type = config === null ? null : await resolveProjectType(config.type);
+        if (config !== null && type !== null) {
+            assertTypeConfig(type, config);
+        }
         const exitCode = await matched.definition.run({
             toolRoot,
             locations,
@@ -172,6 +182,7 @@ async function main(argv) {
             commandFlags,
             env: process.env,
             config,
+            type,
             out
         });
         return out.finish(exitCode);

@@ -116,10 +116,11 @@ function fixture(): Fixture {
 	];
 	const classifications = classifyArtifacts({ treeDir: tree, artifacts, oldPin, newRef: targetPin });
 	const config: CodkitConfig = {
-		codkitConfig: 1,
+		codkitConfig: 2,
 		pin: { tag: 't2', sha: targetPin, date: '2026-03-01' },
 		upstreamAnchorCommit: oldPin,
-		ownDirName: 'patchset',
+		type: 'vscode',
+		typeConfig: { ownRoot: 'src/vs/patchset' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',

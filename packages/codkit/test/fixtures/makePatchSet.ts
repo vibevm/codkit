@@ -43,10 +43,11 @@ export function makePatchSet(dir: string, upstream: UpstreamFixture): PatchSetFi
 	mkdirSync(dir, { recursive: true });
 
 	writeJson(join(dir, 'codkit.json'), {
-		codkitConfig: 1,
+		codkitConfig: 2,
 		pin: { tag: upstream.t1.tag, sha: upstream.t1.sha, date: pinDate(upstream.t1.dateIso) },
 		upstreamAnchorCommit: upstream.anchorSha,
-		ownDirName: 'patchset',
+		type: 'vscode',
+		typeConfig: { ownRoot: 'src/vs/patchset' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',

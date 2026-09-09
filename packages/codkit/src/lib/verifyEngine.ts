@@ -77,7 +77,7 @@ import { BEGIN_TOKEN, END_TOKEN, parseMarkers } from './markers.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkErrorPayload, ErrorCode } from './messages.ts';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.ts';
-import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot, ownTargetRelativeDir } from './ownCopy.ts';
+import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.ts';
 import { CODKIT_TOOL_ROOT, shippedRuntime } from './runtimePackage.ts';
 import { RUNTIME_TARGET_PATH } from './runtimeLoad.ts';
@@ -948,7 +948,11 @@ const HOOK_CODE_LINE_BUDGET = 3;
  * least one of them has to name own code, or the patch grafts nothing.
  */
 function checkHookBudget(config: CodkitConfig, patches: readonly PatchArtifact[], findings: Finding[]): void {
-	const ownSegment = `${config.ownDirName}/`;
+	// A graft is written as an import or a call, and those spell own code
+	// relatively (`../../<own>/x.js`), so the segment a line has to carry is the
+	// name of the own root and not the whole path from the tree root.
+	const ownRoot = config.typeConfig.ownRoot;
+	const ownSegment = `${ownRoot.split('/').at(-1) ?? ownRoot}/`;
 	for (const entry of patches) {
 		if (entry.patch.header.type !== 'hook') {
 			continue;
@@ -1201,7 +1205,7 @@ function checkCompleteness(
 	// with the own atom and only there, so it is judged by the same rule and
 	// reported in the same words - `ci`, which built the branch, recognises the
 	// finding as its own and drops it.
-	const ownPrefixes = [`${ownTargetRelativeDir(config.ownDirName)}/`, ...ownExtensionTreePrefixes(loadOwnManifest(patchesDir).extensions)];
+	const ownPrefixes = [`${config.typeConfig.ownRoot}/`, ...ownExtensionTreePrefixes(loadOwnManifest(patchesDir).extensions)];
 
 	for (const path of changed) {
 		if (ownPrefixes.some((prefix) => path.startsWith(prefix))) {

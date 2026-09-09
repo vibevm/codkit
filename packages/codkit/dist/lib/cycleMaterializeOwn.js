@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { CYCLE_STATE_PATH } from './cycleState.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
-import { fileContentEqual, isDeliveredOwnFile, listOwnFiles, OWN_SOURCE_DIR, ownSourceRoot, ownTargetRelativeDir, ownTargetRoot } from './ownCopy.js';
+import { fileContentEqual, isDeliveredOwnFile, listOwnFiles, OWN_SOURCE_DIR, ownSourceRoot, ownTargetRoot } from './ownCopy.js';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
 import { createRebaseCheckoutContext, rebaseTreeEntry, releaseRebaseCheckoutContext } from './rebaseOntoPinCheckout.js';
 /**
@@ -15,12 +15,12 @@ import { createRebaseCheckoutContext, rebaseTreeEntry, releaseRebaseCheckoutCont
  * what makes an interrupted delivery resumable without turning a rename into
  * permission to overwrite arbitrary ignored files.
  */
-export function assertCycleOwnPreflight(patchesDir, tree, ownDirName, generatedOwnTargets, renameAuthority) {
+export function assertCycleOwnPreflight(patchesDir, tree, ownRoot, generatedOwnTargets, renameAuthority) {
     const source = ownSourceRoot(patchesDir);
-    const target = ownTargetRoot(tree, ownDirName);
+    const target = ownTargetRoot(tree, ownRoot);
     strictOwnRoot(source, 'own source', true);
     strictOwnRoot(target, 'materialized own target', true);
-    const relatives = ownRelatives(generatedOwnTargets, ownDirName);
+    const relatives = ownRelatives(generatedOwnTargets, ownRoot);
     const accepted = acceptedOwnTransitions(patchesDir, relatives, renameAuthority);
     const sourceSet = new Set(relatives);
     const targetFiles = listOwnFiles(target, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
@@ -32,7 +32,7 @@ export function assertCycleOwnPreflight(patchesDir, tree, ownDirName, generatedO
     }
     for (const relative of relatives) {
         const sourcePath = contained(source, relative, false);
-        const targetPath = contained(tree, `${ownTargetRelativeDir(ownDirName)}/${relative}`, true);
+        const targetPath = contained(tree, `${ownRoot}/${relative}`, true);
         if (!targetSet.has(relative) || fileContentEqual(sourcePath, targetPath))
             continue;
         const transition = accepted.get(relative);
@@ -119,8 +119,8 @@ function assertCanonicalRenameCommit(patchesDir, authority) {
         throw broken('rename commit changed paths differ from its canonical plan and cycle state');
     }
 }
-function ownRelatives(targets, ownDirName) {
-    const prefix = `${ownTargetRelativeDir(ownDirName)}/`;
+function ownRelatives(targets, ownRoot) {
+    const prefix = `${ownRoot}/`;
     const relatives = targets.map((target) => {
         if (!target.startsWith(prefix))
             throw broken(`generated own evidence contains foreign target ${target}`);

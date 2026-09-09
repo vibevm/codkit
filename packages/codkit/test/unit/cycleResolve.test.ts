@@ -118,10 +118,11 @@ function harness(
 	const tree = makeTempRoot('cycle-resolve-tree');
 	const current = overrides.state ?? state();
 	const config: CodkitConfig = {
-		codkitConfig: 1,
+		codkitConfig: 2,
 		pin: current.targetPin,
 		upstreamAnchorCommit: current.sourcePin.sha,
-		ownDirName: 'patchset',
+		type: 'vscode',
+		typeConfig: { ownRoot: 'src/vs/patchset' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',

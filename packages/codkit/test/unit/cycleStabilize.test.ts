@@ -337,10 +337,11 @@ function fixture(advisoryChanged: boolean, phase: CycleState['phase'] = 'deps-ad
 		renames: []
 	};
 	const config: CodkitConfig = {
-		codkitConfig: 1,
+		codkitConfig: 2,
 		pin: targetPin,
 		upstreamAnchorCommit: sourceSha,
-		ownDirName: 'patchset',
+		type: 'vscode',
+		typeConfig: { ownRoot: 'src/vs/patchset' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',

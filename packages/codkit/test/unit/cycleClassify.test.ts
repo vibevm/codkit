@@ -569,10 +569,11 @@ function cycleFixture(tree: string, oldPin: string, newPin: string): Fixture {
 		renames: []
 	};
 	const config: CodkitConfig = {
-		codkitConfig: 1,
+		codkitConfig: 2,
 		pin: targetPin,
 		upstreamAnchorCommit: oldPin,
-		ownDirName: 'patchset',
+		type: 'vscode',
+		typeConfig: { ownRoot: 'src/vs/patchset' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',

@@ -183,7 +183,7 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
         channels = selectChannels(watch, requested, DEFAULT_UP_CHANNELS);
     }
     const mine = commandFlagGiven(ctx.commandFlags, MINE);
-    const targets = mine ? inventoryTargets(buildInventory(ctx.patchesDir, { config }), config.ownDirName) : new Set();
+    const targets = mine ? inventoryTargets(buildInventory(ctx.patchesDir, { config }), config.typeConfig.ownRoot) : new Set();
     const rows = [];
     let worst = EXIT_OK;
     for (const channel of channels) {
@@ -208,7 +208,7 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
             }
             ctx.out.warn(`${channel.name}: the daemon is gone (${state.detail}); showing the finished pass from the log ` +
                 `(${logPath(ctx.patchesDir, channel.name)}); hint: run codkit build up --channel ${channel.name} to watch the tree again`);
-            const reportedOfGone = mine ? mineOnly(finished.errors, treeDir, config.ownDirName, targets) : finished.errors;
+            const reportedOfGone = mine ? mineOnly(finished.errors, treeDir, config.typeConfig.ownRoot, targets) : finished.errors;
             printPass(ctx, channel, finished, reportedOfGone, mine);
             rows.push(rowOf(channel, finished, reportedOfGone, mine, true));
             if (reportedOfGone.length > 0 || (!mine && finished.errorCount > 0)) {
@@ -232,7 +232,7 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
             continue;
         }
         const report = outcome.report;
-        const reported = mine ? mineOnly(report.errors, treeDir, config.ownDirName, targets) : report.errors;
+        const reported = mine ? mineOnly(report.errors, treeDir, config.typeConfig.ownRoot, targets) : report.errors;
         printPass(ctx, channel, report, reported, mine);
         rows.push(rowOf(channel, report, reported, mine, false));
         if (reported.length > 0 || (!mine && report.errorCount > 0)) {
@@ -242,8 +242,8 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
     ctx.out.setData({ channels: rows, mine });
     return worst;
 }
-function mineOnly(errors, treeDir, ownDirName, targets) {
-    return errors.filter((error) => isMine(treeRelativePath(error.file, treeDir), ownDirName, targets));
+function mineOnly(errors, treeDir, ownRoot, targets) {
+    return errors.filter((error) => isMine(treeRelativePath(error.file, treeDir), ownRoot, targets));
 }
 /**
  * The finished pass of a channel whose daemon is gone, or null when there is

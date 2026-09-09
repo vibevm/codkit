@@ -102,10 +102,11 @@ function declareBuildWatch(root: string): void {
 	writeFileSync(
 		join(root, 'codkit.json'),
 		`${JSON.stringify({
-			codkitConfig: 1,
+			codkitConfig: 2,
 			pin: { tag: '1.0.0', sha: '1'.repeat(40), date: '2026-01-01' },
 			upstreamAnchorCommit: '0'.repeat(40),
-			ownDirName: 'patchset',
+			type: 'vscode',
+			typeConfig: { ownRoot: 'src/vs/patchset' },
 			generatedBranchPrefix: 'codkit/applied/',
 			cycleBranchPrefix: 'codkit/cycle/',
 			releaseRefPrefix: 'codkit/release/',
@@ -212,10 +213,11 @@ describe('build-watch.json', () => {
 			writeFileSync(
 				join(root, 'codkit.json'),
 				`${JSON.stringify({
-					codkitConfig: 1,
+					codkitConfig: 2,
 					pin: { tag: '1.0.0', sha: '1'.repeat(40), date: '2026-01-01' },
 					upstreamAnchorCommit: '0'.repeat(40),
-					ownDirName: 'patchset',
+					type: 'vscode',
+					typeConfig: { ownRoot: 'src/vs/patchset' },
 					generatedBranchPrefix: 'codkit/applied/',
 					cycleBranchPrefix: 'codkit/cycle/',
 					releaseRefPrefix: 'codkit/release/',
@@ -593,7 +595,7 @@ describe('--mine', () => {
 			{ layer: 'own', files: ['hello.ts', 'test/fixture.test.ts'] }
 		]
 	};
-	const targets = inventoryTargets(inventory, 'patchset');
+	const targets = inventoryTargets(inventory, 'src/vs/patchset');
 
 	it('maps own files to where they land in the tree', () => {
 		expect([...targets].sort()).toEqual([
@@ -606,12 +608,12 @@ describe('--mine', () => {
 	});
 
 	it('keeps own code and inventory targets, and drops everything else', () => {
-		expect(isMine('src/vs/patchset/anything/at/all.ts', 'patchset', new Set())).toBe(true);
-		expect(isMine('src/vs/workbench/browser/parts/example/examplePart.ts', 'patchset', targets)).toBe(true);
-		expect(isMine('product.json', 'patchset', targets)).toBe(true);
-		expect(isMine('src/vs/base/common/util.ts', 'patchset', targets)).toBe(false);
+		expect(isMine('src/vs/patchset/anything/at/all.ts', 'src/vs/patchset', new Set())).toBe(true);
+		expect(isMine('src/vs/workbench/browser/parts/example/examplePart.ts', 'src/vs/patchset', targets)).toBe(true);
+		expect(isMine('product.json', 'src/vs/patchset', targets)).toBe(true);
+		expect(isMine('src/vs/base/common/util.ts', 'src/vs/patchset', targets)).toBe(false);
 		// A sibling directory whose name merely starts the same way is not own code.
-		expect(isMine('src/vs/patchset-extra/thing.ts', 'patchset', targets)).toBe(false);
+		expect(isMine('src/vs/patchset-extra/thing.ts', 'src/vs/patchset', targets)).toBe(false);
 	});
 
 	it('brings the path of a diagnostic to the tree-relative form first', () => {
@@ -621,7 +623,7 @@ describe('--mine', () => {
 		expect(treeRelativePath('src/vs/patchset/hello.ts', tree)).toBe('src/vs/patchset/hello.ts');
 		// A path outside the tree stays as it is, and is nobody's.
 		expect(treeRelativePath('/elsewhere/hello.ts', tree)).toBe('/elsewhere/hello.ts');
-		expect(isMine(treeRelativePath('/elsewhere/hello.ts', tree), 'patchset', targets)).toBe(false);
+		expect(isMine(treeRelativePath('/elsewhere/hello.ts', tree), 'src/vs/patchset', targets)).toBe(false);
 	});
 });
 

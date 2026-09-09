@@ -40,10 +40,11 @@ function makePatchSet(label: string, pinTag = VERIFIED_TAG): string {
 		join(root, 'codkit.json'),
 		`${JSON.stringify(
 			{
-				codkitConfig: 1,
+				codkitConfig: 2,
 				pin: { tag: pinTag, sha: '0'.repeat(40), date: '2026-01-01' },
 				upstreamAnchorCommit: '1'.repeat(40),
-				ownDirName: 'patchset',
+				type: 'vscode',
+				typeConfig: { ownRoot: 'src/vs/patchset' },
 				generatedBranchPrefix: 'codkit/applied/',
 				cycleBranchPrefix: 'codkit/cycle/',
 				releaseRefPrefix: 'codkit/release/',

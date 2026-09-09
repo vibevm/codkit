@@ -36,7 +36,7 @@ import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, se
 import { BEGIN_TOKEN, END_TOKEN, parseMarkers } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.js';
-import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot, ownTargetRelativeDir } from './ownCopy.js';
+import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.js';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
 import { CODKIT_TOOL_ROOT, shippedRuntime } from './runtimePackage.js';
 import { RUNTIME_TARGET_PATH } from './runtimeLoad.js';
@@ -598,7 +598,11 @@ const HOOK_CODE_LINE_BUDGET = 3;
  * least one of them has to name own code, or the patch grafts nothing.
  */
 function checkHookBudget(config, patches, findings) {
-    const ownSegment = `${config.ownDirName}/`;
+    // A graft is written as an import or a call, and those spell own code
+    // relatively (`../../<own>/x.js`), so the segment a line has to carry is the
+    // name of the own root and not the whole path from the tree root.
+    const ownRoot = config.typeConfig.ownRoot;
+    const ownSegment = `${ownRoot.split('/').at(-1) ?? ownRoot}/`;
     for (const entry of patches) {
         if (entry.patch.header.type !== 'hook') {
             continue;
@@ -792,7 +796,7 @@ function checkCompleteness(patchesDir, treeDir, config, patches, overlays, resou
     // with the own atom and only there, so it is judged by the same rule and
     // reported in the same words - `ci`, which built the branch, recognises the
     // finding as its own and drops it.
-    const ownPrefixes = [`${ownTargetRelativeDir(config.ownDirName)}/`, ...ownExtensionTreePrefixes(loadOwnManifest(patchesDir).extensions)];
+    const ownPrefixes = [`${config.typeConfig.ownRoot}/`, ...ownExtensionTreePrefixes(loadOwnManifest(patchesDir).extensions)];
     for (const path of changed) {
         if (ownPrefixes.some((prefix) => path.startsWith(prefix))) {
             // ##OWN-EXCLUDED-LOCALLY: own code is committed on the generated branch

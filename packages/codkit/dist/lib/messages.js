@@ -107,9 +107,16 @@ export const ERROR_CODES = [
     // without its package.json, a directory nobody declared, or a name the pin
     // already ships as a built-in extension (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
     'OWN-EXTENSION-MANIFEST',
-    // The materialized `extensions/<name>/` of the fork tree no longer matches
+    // The materialized own-extension directory of the fork tree no longer matches
     // `delta/own-extensions/<name>/` (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
-    'OWN-EXTENSION-DRIFT'
+    'OWN-EXTENSION-DRIFT',
+    // The `type` of the patch set is not in the registry of this codkit, or the
+    // package the registry names is not installed (PROP-016 ##TYPE-UNKNOWN).
+    'TYPE-UNKNOWN',
+    // A verb needs an ability the declared project type does not have, or
+    // `verify` was asked about an artifact of a layer that type does not provide
+    // (PROP-016 ##TYPE-CAPABILITY-REFUSAL).
+    'TYPE-CAPABILITY'
 ];
 export const publicErrorCodeSchema = z.templateLiteral(['CK-E-', z.enum(ERROR_CODES)]);
 export const WARNING_CODES = ['MARK-RO', 'PATCHSET-SIDE-EDIT', 'EMPTY-BLOCK'];

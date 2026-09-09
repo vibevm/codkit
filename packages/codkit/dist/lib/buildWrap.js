@@ -31,7 +31,6 @@ import { errnoOf, sameEffectivePath } from './containedPath.js';
 import { DAEMON_RECORD_SCHEMA_VERSION, closeLog, createReservation, daemonRecordBytes, finalizeReservation, logPath, openLogAppend, readLog as readRuntimeLog, readRecordState, recordPath, removeRecord, rotateLog } from './buildRuntime.js';
 import { acquireDaemonChannelLock, assertDaemonChannelLock } from './daemonChannelLock.js';
 import { ckError, isCkError } from './messages.js';
-import { ownTargetRelativeDir } from './ownCopy.js';
 import { resolveContainedPath } from './pathSafety.js';
 export { BUILD_DIR, DAEMON_RECORD_SCHEMA_VERSION, buildDir, logPath, recordPath, removeRecord, rotateLog, rotatedLogPath } from './buildRuntime.js';
 // ---------------------------------------------------------------------------
@@ -1370,8 +1369,7 @@ export function treeRelativePath(file, treeDir) {
  * an inventory entry names, with the own layers mapped from their place inside
  * `delta/own/` to where they land in the tree.
  */
-export function inventoryTargets(inventory, ownDirName) {
-    const ownRoot = ownTargetRelativeDir(ownDirName);
+export function inventoryTargets(inventory, ownRoot) {
     const targets = new Set();
     for (const entry of inventory.entries) {
         const inOwn = entry.layer === 'own' || entry.layer === 'service-override';
@@ -1382,9 +1380,8 @@ export function inventoryTargets(inventory, ownDirName) {
     return targets;
 }
 /** Own code by construction, or a file the inventory names (PROP-007 section 13). */
-export function isMine(relativePath, ownDirName, targets) {
-    const ownRoot = `${ownTargetRelativeDir(ownDirName)}/`;
-    return relativePath.startsWith(ownRoot) || targets.has(relativePath);
+export function isMine(relativePath, ownRoot, targets) {
+    return relativePath.startsWith(`${ownRoot}/`) || targets.has(relativePath);
 }
 // ---------------------------------------------------------------------------
 // build errors

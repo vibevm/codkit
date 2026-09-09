@@ -25,7 +25,6 @@ import { markerFormFor, parseMarkers } from '../lib/markers.ts';
 import type { MarkerForm } from '../lib/markers.ts';
 import { ckError, isCkError } from '../lib/messages.ts';
 import { OWNERS_PATH, loadOwnerKeys } from '../lib/owners.ts';
-import { ownTargetRelativeDir } from '../lib/ownCopy.ts';
 import { DEFAULT_PATCH_LAYER, PATCH_FILE_SUFFIX, encodePatchName } from '../lib/patchFormat.ts';
 import type { PatchLayer } from '../lib/patchFormat.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
@@ -133,7 +132,7 @@ function locateTarget(treeDir: string, config: CodkitConfig, given: string, conv
 			target
 		);
 	}
-	const ownPrefix = `${ownTargetRelativeDir(config.ownDirName)}/`;
+	const ownPrefix = `${config.typeConfig.ownRoot}/`;
 	if (target === ownPrefix.slice(0, -1) || target.startsWith(ownPrefix)) {
 		throw ckError(
 			'FORBIDDEN-TARGET',

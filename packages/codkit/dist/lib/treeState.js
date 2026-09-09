@@ -19,7 +19,6 @@ import { expandCollapsedUntracked, porcelainZEntries } from './driftGuard.js';
 import { runGit, runGitBytes } from './gitx.js';
 import { ckError } from './messages.js';
 import { repoRelativePathProblem } from './pathSafety.js';
-import { ownTargetRelativeDir } from './ownCopy.js';
 import { toPosix } from './syncEngine.js';
 /**
  * The paths in which `state` differs from `base` (D4): the worktree's final
@@ -28,8 +27,8 @@ import { toPosix } from './syncEngine.js';
  * `forcedPaths` are internal addressed targets that must be regenerated even
  * when the tree already carries their bytes, appended as modified when absent.
  */
-export function changesSince(treeDir, base, state, ownDirName, forcedPaths = [], ownedPrefixes = []) {
-    const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
+export function changesSince(treeDir, base, state, ownRoot, forcedPaths = [], ownedPrefixes = []) {
+    const ownPrefix = `${ownRoot}/`;
     // ##OWN-EXTENSION-UNIT: `extensions/<name>/` of a declared own extension is
     // supplied by the delta too, so it is no more an upstream file than the own
     // directory is - and without this a materialized extension would be selected

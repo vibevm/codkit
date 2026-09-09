@@ -52,17 +52,17 @@ import { runGit } from './gitx.js';
 import { EXTENSIONS_TREE_DIR, OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
-import { OWN_SOURCE_DIR, compareOwn, ownTargetRelativeDir } from './ownCopy.js';
+import { OWN_SOURCE_DIR, compareOwn } from './ownCopy.js';
 import { foreignCommits } from './treeCommits.js';
 /** Marker appended to own-code entries of the list. */
 export const OWN_DIVERGENCE_NOTE = 'own code differs from';
-export function driftDirty(treeDir, ownDirName, patchesDir, options) {
+export function driftDirty(treeDir, ownRoot, patchesDir, options) {
     const declared = declaredExtensions(patchesDir);
-    const upstream = upstreamDirt(treeDir, ownDirName, { ...options, ownedPrefixes: ownExtensionTreePrefixes(declared) });
-    const own = compareOwn(patchesDir, treeDir, ownDirName);
+    const upstream = upstreamDirt(treeDir, ownRoot, { ...options, ownedPrefixes: ownExtensionTreePrefixes(declared) });
+    const own = compareOwn(patchesDir, treeDir, ownRoot);
     const extensions = compareOwnExtensions(patchesDir, treeDir, declared);
     const treeCommits = foreignCommits(treeDir, options.generated.pinSha, options.generated.branch);
-    const ownPrefix = ownTargetRelativeDir(ownDirName);
+    const ownPrefix = ownRoot;
     const files = [...upstream];
     for (const divergence of own) {
         if (divergence.kind === 'patchset-only') {
@@ -109,7 +109,7 @@ function declaredExtensions(patchesDir) {
  * minus the tracked paths the caller certified as its own known materialization,
  * minus the tracked paths the caller was told by name to throw away.
  */
-export function upstreamDirt(treeDir, ownDirName, options = {}) {
+export function upstreamDirt(treeDir, ownRoot, options = {}) {
     const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
     if (status.status !== 0) {
         throw ckError('NOT-A-REPO', `git status failed in ${treeDir}: ${firstLine(status.stderr)}`, 'check that the fork tree is a healthy git work tree');
@@ -118,7 +118,7 @@ export function upstreamDirt(treeDir, ownDirName, options = {}) {
     const classify = options.isKnownMaterialization;
     const discardable = options.isDiscardable;
     const stranded = options.isStrandedExtension;
-    const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
+    const ownPrefix = `${ownRoot}/`;
     const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
     // The stranded question is asked per top-level directory of `extensions/`,
     // and a wholly untracked `extensions/` is one collapsed entry that hides

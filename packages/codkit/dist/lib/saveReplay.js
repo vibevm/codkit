@@ -120,7 +120,7 @@ function planEntriesOf(input, state, store, commit, errors) {
     // direct path, so the tree roots the own-extension layer supplies are not
     // upstream files here either.
     const ownedPrefixes = ownExtensionTreePrefixes(loadOwnManifest(input.patchesDir).extensions);
-    for (const entry of changesSince(input.tree, input.base, state, input.ownDirName, input.forcedPaths, ownedPrefixes)) {
+    for (const entry of changesSince(input.tree, input.base, state, input.ownRoot, input.forcedPaths, ownedPrefixes)) {
         try {
             const plan = input.planFile(entry, state, store);
             if (plan !== null) {

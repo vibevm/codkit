@@ -10,7 +10,7 @@ import { OWN_EXTENSIONS_DIR, ownExtensionFiles } from './layers/ownExtensions.ts
 import type { OwnExtensionFile } from './layers/ownExtensions.ts';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.ts';
 import { ckError } from './messages.ts';
-import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot, ownTargetRelativeDir } from './ownCopy.ts';
+import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
 
 export const GENERATED_HISTORY_FINGERPRINT_VERSION = 1;
 
@@ -19,7 +19,7 @@ export type GeneratedOwnCommitOptions = {
 	readonly treeDir: string;
 	readonly indexFile: string;
 	readonly parent: string;
-	readonly ownDirName: string;
+	readonly ownRoot: string;
 	readonly pinTag: string;
 	readonly pinSha: string;
 	readonly pinDateIso: string;
@@ -70,11 +70,10 @@ function ownPredicate(omitLicenceNotice: boolean): (relative: string) => boolean
 /** Fail before object/ref/worktree mutation when two generated layers claim one target. */
 export function assertGeneratedTargetOwnership(
 	patchesDir: string,
-	ownDirName: string,
+	ownRoot: string,
 	layerTargets: readonly GeneratedLayerTarget[],
 	omitLicenceNotice = false
 ): GeneratedOwnEvidence {
-	const ownRoot = ownTargetRelativeDir(ownDirName);
 	const ownTargets = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })
 		.filter(ownPredicate(omitLicenceNotice))
 		.map((relative) => `${ownRoot}/${relative}`);
@@ -155,7 +154,7 @@ export function generatedHistoryFingerprint(deltaFingerprint: string, patchesDir
  */
 export function appendGeneratedOwnCommit(options: GeneratedOwnCommitOptions): GeneratedOwnCommit {
 	const indexEnv: GitEnv = { GIT_INDEX_FILE: options.indexFile };
-	const targetRoot = ownTargetRelativeDir(options.ownDirName);
+	const targetRoot = options.ownRoot;
 	const sourceRoot = ownSourceRoot(options.patchesDir);
 	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(options.omitLicenceNotice ?? false));
 	// ##OWN-EXTENSION-UNIT: the own extensions ride in the same atom. `ci` and

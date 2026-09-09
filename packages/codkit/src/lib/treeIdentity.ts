@@ -333,7 +333,7 @@ function checkClean(topLevel: string, config: CodkitConfig, checks: TreeCheck[])
 	}
 	// Own code lives in the tree but is owned by patchset: it is expected to differ
 	// from the upstream pin and is never "dirt" (PROP-008 ##ID-CHECK-CLEAN).
-	const ownPrefix = `src/vs/${config.ownDirName}/`;
+	const ownPrefix = `${config.typeConfig.ownRoot}/`;
 	const dirtyFiles = parsePorcelain(status.stdout).filter((path) => !path.startsWith(ownPrefix));
 	const ok = dirtyFiles.length === 0;
 	checks.push(makeCheck('clean', ok, ok ? `no changes outside ${ownPrefix}` : `${dirtyFiles.length} path(s) changed outside ${ownPrefix}`));

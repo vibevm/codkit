@@ -75,10 +75,11 @@ export function makeImagesetPatchSet(label: string, tree: ImagesetTreeFixture): 
 		join(dir, 'codkit.json'),
 		`${JSON.stringify(
 			{
-				codkitConfig: 1,
+				codkitConfig: 2,
 				pin: { tag: tree.pin.tag, sha: tree.pin.sha, date: tree.pin.date },
 				upstreamAnchorCommit: tree.pin.sha,
-				ownDirName: 'patchset',
+				type: 'vscode',
+				typeConfig: { ownRoot: 'src/vs/patchset' },
 				generatedBranchPrefix: 'codkit/applied/',
 				cycleBranchPrefix: 'codkit/cycle/',
 				releaseRefPrefix: 'codkit/release/',

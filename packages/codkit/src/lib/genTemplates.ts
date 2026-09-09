@@ -8,7 +8,7 @@
 // and how to put a header the caller supplied in front of it.
 //
 // The relative specifiers are counted from the materialized location, not from
-// the patch set: `delta/own/**` becomes `src/vs/<ownDirName>/**` in the fork
+// the patch set: `delta/own/**` becomes `<ownRoot>/**` in the fork
 // tree (modules/vscode/PROP-002 ##OWN-UNDER-SRC-VS), so a file in
 // `delta/own/contrib/<name>/browser/` reaches upstream with four `..` segments
 // and the runtime library with three; the test sits two directories deeper
@@ -240,11 +240,11 @@ export function brandModule(): string {
  * written: `nls.ts` is upstream text, so the seam is a patch of the product
  * (PROP-005 ##PATCH-HOOK-BUDGET), and codkit does not author a patch here.
  */
-export function brandHookText(ownDirName: string): string {
+export function brandHookText(ownRoot: string): string {
 	return `${[
 		'// at the top of src/vs/nls.ts, inside a codkit marker block:',
 		'// codkit:begin <ID>',
-		`import { brandMessage } from './${ownDirName}/common/brand.js';`,
+		`import { brandMessage } from './${underSourceRoot(ownRoot)}/common/brand.js';`,
 		'// codkit:end <ID>',
 		'',
 		'// and around the value _format returns, inside a second block with the same id:',
@@ -255,9 +255,20 @@ export function brandHookText(ownDirName: string): string {
 }
 
 /** ##GEN-BRAND: the two things a person has to know before writing that patch. */
-export function brandReminders(ownDirName: string): readonly string[] {
+export function brandReminders(ownRoot: string): readonly string[] {
 	return [
 		'the graft is a patch of the product with `type = hook` in its header: at most three lines of code between the markers, one of them naming own code (PROP-005 hook budget)',
-		`the code-import-patterns target for src/vs/{monaco.d.ts,nls.ts} must allow vs/${ownDirName}/common/~, or the fork's lint refuses the import`
+		`the code-import-patterns target for src/vs/{monaco.d.ts,nls.ts} must allow vs/${underSourceRoot(ownRoot)}/common/~, or the fork's lint refuses the import`
 	];
+}
+
+/**
+ * The own root as the import machinery of this template family spells it -
+ * relative to the source root the templates are written against. The remaining
+ * knowledge of that source root is the open half of the extraction and moves
+ * with the generator templates themselves (PROP-016 ##TYPE-ENGINE-IS-BLIND).
+ */
+function underSourceRoot(ownRoot: string): string {
+	const prefix = 'src/vs/';
+	return ownRoot.startsWith(prefix) ? ownRoot.slice(prefix.length) : ownRoot;
 }

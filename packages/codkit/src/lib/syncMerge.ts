@@ -175,7 +175,7 @@ export type ClassifyInput = {
 	/** The base of the tree's selection, as `save` reads it (D4). */
 	readonly base: string;
 	readonly mark: TreeMark | null;
-	readonly ownDirName: string;
+	readonly ownRoot: string;
 	/** Foreign commits of the HEAD line, oldest first: the replay's states. */
 	readonly commits: readonly TreeCommit[];
 };
@@ -207,7 +207,7 @@ export function classifyTargets(input: ClassifyInput): TargetClasses {
 	// The tree side, as the selection of a save reads it (D4): the worktree's
 	// final state against the same base, target paths keyed by their artifact.
 	const targetByArtifact = new Map<string, string>();
-	for (const change of changesSince(input.treeDir, input.base, { kind: 'worktree' }, input.ownDirName)) {
+	for (const change of changesSince(input.treeDir, input.base, { kind: 'worktree' }, input.ownRoot)) {
 		targetByArtifact.set(`${PATCHES_DIR}/${encodePatchName(change.path)}`, change.path);
 	}
 

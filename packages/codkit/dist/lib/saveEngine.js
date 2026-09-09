@@ -26,7 +26,7 @@ import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunks
 import { parseMarkers } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { NO_OWN_EXTENSIONS, mirrorOwnExtensionsBack, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
-import { classifyOwn, mirrorOwnBack, ownTargetRelativeDir } from './ownCopy.js';
+import { classifyOwn, mirrorOwnBack } from './ownCopy.js';
 import { isDeliveredByCodkit, loadOwnManifest } from './layers/ownManifest.js';
 import { encodePatchName, extractHeaderText, formatPatchHeader, parseCkpatch, serializeCkpatch } from './patchFormat.js';
 import { regeneratePatch } from './patchGenerate.js';
@@ -139,7 +139,7 @@ export function runSave(options) {
             pinSha: config.pin.sha,
             base: treeState.base,
             mark,
-            ownDirName: config.ownDirName,
+            ownRoot: config.typeConfig.ownRoot,
             commits: treeState.commits
         });
         if (classes.unknown) {
@@ -177,7 +177,7 @@ export function runSave(options) {
         ...new Set([...(options.forcedPaths ?? []), ...listRebasePendingRecords(patchesDir).map((entry) => entry.targetPath)])
     ];
     if (headerOverrides.size > 0) {
-        const addressed = new Set(changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths, ownedPrefixes)
+        const addressed = new Set(changesSince(tree, treeState.base, selection, config.typeConfig.ownRoot, forcedPaths, ownedPrefixes)
             .filter((entry) => matchesFilters(entry.path, filters))
             .map((entry) => entry.path));
         const unused = [...headerOverrides.keys()].filter((target) => !addressed.has(target));
@@ -200,7 +200,7 @@ export function runSave(options) {
     // been validated - a refusal must leave patchset without new commits *and*
     // without new own bytes. The mark itself was read at 1d, before the
     // moved-check needed it.
-    const classes = classifyOwn(patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+    const classes = classifyOwn(patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
     // ##RT-SAVE-REFUSES-DELIVERED-EDITS: a file codkit delivered is not the
     // product's to edit, and `save` extracts nothing at all over such an edit -
     // not the delivered file and not the rest, so the refusal leaves one state to
@@ -211,7 +211,7 @@ export function runSave(options) {
     // editing it. The next `codkit load` carries the new bytes into the tree.
     const deliveredEdits = classes.filter((entry) => entry.tree !== null && entry.tree !== entry.patchset && entry.kind !== 'patchset-edited' && isDeliveredByCodkit(entry.relative));
     if (deliveredEdits.length > 0) {
-        const paths = deliveredEdits.map((entry) => `${ownTargetRelativeDir(config.ownDirName)}/${entry.relative}`);
+        const paths = deliveredEdits.map((entry) => `${config.typeConfig.ownRoot}/${entry.relative}`);
         out.addError(ckError('DELIVERED-EDIT', `${paths.length} file(s) delivered by codkit were changed in the fork tree:\n  ${paths.join('\n  ')}`, 'delivered by codkit; change it in codkit and run codkit runtime load --upgrade, then codkit load - nothing was extracted', paths[0]).toPayload());
         return result('blocked', 1, { branch });
     }
@@ -220,7 +220,7 @@ export function runSave(options) {
         out.addError(bothSidesError(conflict.relative).toPayload());
         return result('blocked', 1, { branch });
     }
-    const ownInScope = filterOwn(classes, filters, config.ownDirName);
+    const ownInScope = filterOwn(classes, filters, config.typeConfig.ownRoot);
     // An addressed save mirrors only the extensions its paths name, the way it
     // mirrors only the own files they name. An extension is mirrored as a whole
     // directory, so naming one file inside it names the extension.
@@ -242,7 +242,7 @@ export function runSave(options) {
             patchesDir,
             tree,
             base: treeState.base,
-            ownDirName: config.ownDirName,
+            ownRoot: config.typeConfig.ownRoot,
             forcedPaths,
             commits: treeState.commits,
             planFile: planFor
@@ -267,7 +267,7 @@ export function runSave(options) {
             // committed (D5) - a refusal higher above never wrote any of it. The
             // worktree remainder writes below read a store that pass 2 has already
             // put on disk, so their 'unchanged' verdicts describe the real files.
-            own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
+            own = mirrorOwnBack(patchesDir, tree, config.typeConfig.ownRoot, ownInScope);
             ownExtensions = mirrorOwnExtensionsBack(patchesDir, tree, extensionsInScope);
             reportOwn(out, own);
             reportOwnExtensions(out, ownExtensions);
@@ -280,14 +280,14 @@ export function runSave(options) {
     // actions ('updated' against the pre-save artifact, not 'unchanged' against
     // the store's copy of the last state).
     if (!replayEligible || (squashing && errors.length === 0)) {
-        own = mirrorOwnBack(patchesDir, tree, config.ownDirName, ownInScope);
+        own = mirrorOwnBack(patchesDir, tree, config.typeConfig.ownRoot, ownInScope);
         ownExtensions = mirrorOwnExtensionsBack(patchesDir, tree, extensionsInScope);
         reportOwn(out, own);
         reportOwnExtensions(out, ownExtensions);
         // 3. Upstream files: everything the tree's final state holds outside the own
         // directory, relative to the last applied tip - not `git status`, which is
         // blind to everything a commit already carries (D4).
-        const changed = changesSince(tree, treeState.base, selection, config.ownDirName, forcedPaths, ownedPrefixes);
+        const changed = changesSince(tree, treeState.base, selection, config.typeConfig.ownRoot, forcedPaths, ownedPrefixes);
         dirty = changed.filter((entry) => matchesFilters(entry.path, filters));
         if (options.verbose) {
             out.diag(`changed upstream file(s): ${dirty.length === 0 ? 'none' : dirty.map((entry) => entry.path).join(', ')}`);
@@ -497,11 +497,11 @@ function filterOwnExtensions(extensions, filters) {
     });
 }
 /** Own divergences narrowed by the positional paths, which name tree paths. */
-function filterOwn(classes, filters, ownDirName) {
+function filterOwn(classes, filters, ownRoot) {
     if (filters.length === 0) {
         return classes;
     }
-    const prefix = ownTargetRelativeDir(ownDirName);
+    const prefix = ownRoot;
     return classes.filter((entry) => matchesFilters(`${prefix}/${entry.relative}`, filters));
 }
 // ---------------------------------------------------------------------------
@@ -537,7 +537,7 @@ function planFile(entry, state, store, options, conventions, allowNewFile, out, 
     const pinBytes = bytesAtPin(tree, config.pin.sha, target);
     const isAddFile = pinBytes === null;
     if (isAddFile && !allowNewFile.includes(target) && existing?.isAddFile !== true) {
-        throw ckError('NEW-FILE-IN-UPSTREAM-ZONE', 'is a new file in the upstream zone: the pin does not carry it', `new files belong to own code (delta/own/, materialized as src/vs/${config.ownDirName}/); ` +
+        throw ckError('NEW-FILE-IN-UPSTREAM-ZONE', 'is a new file in the upstream zone: the pin does not carry it', `new files belong to own code (delta/own/, materialized as src/vs/${config.typeConfig.ownRoot}/); ` +
             `if this one has to live at this exact path, say so: codkit save --allow-new-file ${target}`, target);
     }
     // The working bytes come from the selection state (D4): the worktree today,

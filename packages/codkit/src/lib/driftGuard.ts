@@ -55,7 +55,7 @@ import type { OwnExtensionDivergence } from './layers/ownExtensions.ts';
 import { loadOwnManifest } from './layers/ownManifest.ts';
 import type { OwnExtension } from './layers/ownManifest.ts';
 import { ckError } from './messages.ts';
-import { OWN_SOURCE_DIR, compareOwn, ownTargetRelativeDir } from './ownCopy.ts';
+import { OWN_SOURCE_DIR, compareOwn } from './ownCopy.ts';
 import type { OwnDivergence } from './ownCopy.ts';
 import { foreignCommits } from './treeCommits.ts';
 import type { TreeCommit, TreeCommits } from './treeCommits.ts';
@@ -157,13 +157,13 @@ export type DriftOptions = DriftBaseOptions & {
 	readonly generated: { readonly pinSha: string; readonly branch: string };
 };
 
-export function driftDirty(treeDir: string, ownDirName: string, patchesDir: string, options: DriftOptions): DriftResult {
+export function driftDirty(treeDir: string, ownRoot: string, patchesDir: string, options: DriftOptions): DriftResult {
 	const declared = declaredExtensions(patchesDir);
-	const upstream = upstreamDirt(treeDir, ownDirName, { ...options, ownedPrefixes: ownExtensionTreePrefixes(declared) });
-	const own = compareOwn(patchesDir, treeDir, ownDirName);
+	const upstream = upstreamDirt(treeDir, ownRoot, { ...options, ownedPrefixes: ownExtensionTreePrefixes(declared) });
+	const own = compareOwn(patchesDir, treeDir, ownRoot);
 	const extensions = compareOwnExtensions(patchesDir, treeDir, declared);
 	const treeCommits = foreignCommits(treeDir, options.generated.pinSha, options.generated.branch);
-	const ownPrefix = ownTargetRelativeDir(ownDirName);
+	const ownPrefix = ownRoot;
 
 	const files: string[] = [...upstream];
 	for (const divergence of own) {
@@ -214,7 +214,7 @@ function declaredExtensions(patchesDir: string): readonly OwnExtension[] {
  * minus the tracked paths the caller certified as its own known materialization,
  * minus the tracked paths the caller was told by name to throw away.
  */
-export function upstreamDirt(treeDir: string, ownDirName: string, options: DriftBaseOptions = {}): readonly string[] {
+export function upstreamDirt(treeDir: string, ownRoot: string, options: DriftBaseOptions = {}): readonly string[] {
 	const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
 	if (status.status !== 0) {
 		throw ckError(
@@ -227,7 +227,7 @@ export function upstreamDirt(treeDir: string, ownDirName: string, options: Drift
 	const classify = options.isKnownMaterialization;
 	const discardable = options.isDiscardable;
 	const stranded = options.isStrandedExtension;
-	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
+	const ownPrefix = `${ownRoot}/`;
 	const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
 	// The stranded question is asked per top-level directory of `extensions/`,
 	// and a wholly untracked `extensions/` is one collapsed entry that hides

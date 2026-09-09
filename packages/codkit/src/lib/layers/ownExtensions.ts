@@ -61,7 +61,7 @@ export function ownExtensionTargetRoot(treeDir: string, name: string): string {
  * The tree prefixes the own-extension layer supplies, with a trailing slash.
  *
  * Everything that judges "an upstream file changed" filters them out for the
- * same reason it filters `src/vs/<ownDirName>/`: these paths come from the
+ * same reason it filters `src/vs/<ownRoot>/`: these paths come from the
  * delta, so they are neither upstream text nor a new file somebody added in the
  * upstream zone.
  */

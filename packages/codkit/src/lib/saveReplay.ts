@@ -136,7 +136,7 @@ export type PlanStatesInput = {
 	readonly tree: string;
 	/** The last applied tip; every state is read as a diff against it (D4). */
 	readonly base: string;
-	readonly ownDirName: string;
+	readonly ownRoot: string;
 	readonly forcedPaths: readonly string[];
 	readonly commits: readonly TreeCommit[];
 	readonly planFile: PlanFileFn;
@@ -187,7 +187,7 @@ function planEntriesOf(
 	// direct path, so the tree roots the own-extension layer supplies are not
 	// upstream files here either.
 	const ownedPrefixes = ownExtensionTreePrefixes(loadOwnManifest(input.patchesDir).extensions);
-	for (const entry of changesSince(input.tree, input.base, state, input.ownDirName, input.forcedPaths, ownedPrefixes)) {
+	for (const entry of changesSince(input.tree, input.base, state, input.ownRoot, input.forcedPaths, ownedPrefixes)) {
 		try {
 			const plan = input.planFile(entry, state, store);
 			if (plan !== null) {

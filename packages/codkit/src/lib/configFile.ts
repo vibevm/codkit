@@ -18,8 +18,15 @@ import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.ts';
 export const CONFIG_FILE_NAME = 'codkit.json';
 export const LOCAL_CONFIG_FILE_NAME = 'codkit.local.json';
 
-/** Schema version this tool reads and writes. */
-export const CONFIG_SCHEMA_VERSION = 1;
+/** Schema version this tool reads and writes (##CFG-TYPE-AND-TYPECONFIG). */
+export const CONFIG_SCHEMA_VERSION = 2;
+
+/**
+ * The two fields schema 2 adds and schema 1 lacks. A file without them is
+ * refused naming exactly these and nothing else (##CFG-SCHEMA-1-IS-REFUSED):
+ * there is no compatibility layer, and no code path infers a type.
+ */
+export const SCHEMA_2_FIELDS = 'type, typeConfig.ownRoot';
 
 export type PinConfig = {
 	readonly tag: string;
@@ -27,11 +34,25 @@ export type PinConfig = {
 	readonly date: string;
 };
 
+/**
+ * The section the project type validates with its own schema. `ownRoot` is the
+ * one field the engine reads by itself - the own root is a full path from the
+ * tree root and every engine that mirrors, excludes or names the own layer
+ * needs it (##CFG-TYPE-AND-TYPECONFIG, PROP-016 ##TYPE-OWN-ROOT). Everything
+ * else in the section belongs to the type and reaches the engine as opaque.
+ */
+export type TypeConfig = {
+	readonly ownRoot: string;
+	readonly [field: string]: unknown;
+};
+
 export type CodkitConfig = {
 	readonly codkitConfig: number;
 	readonly pin: PinConfig;
 	readonly upstreamAnchorCommit: string;
-	readonly ownDirName: string;
+	/** The identifier of the project type this patch set declares. */
+	readonly type: string;
+	readonly typeConfig: TypeConfig;
 	readonly generatedBranchPrefix: string;
 	readonly cycleBranchPrefix: string;
 	readonly releaseRefPrefix: string;
@@ -56,14 +77,24 @@ const pinSchema = z.object({
 	date: z.string().regex(ISO_DATE)
 });
 
+const typeConfigSchema = z
+	.object({
+		ownRoot: z
+			.string()
+			.min(1)
+			.refine((value) => repoRelativePathProblem(value) === null)
+	})
+	.loose();
+
 const configSchema = z.object({
 	codkitConfig: z.literal(CONFIG_SCHEMA_VERSION),
 	pin: pinSchema,
 	upstreamAnchorCommit: z.string().regex(SHA40),
-	ownDirName: z
+	type: z
 		.string()
 		.min(1)
 		.refine((value) => safeBasenameProblem(value) === null),
+	typeConfig: typeConfigSchema,
 	generatedBranchPrefix: z.string().min(1),
 	cycleBranchPrefix: z.string().min(1),
 	releaseRefPrefix: z.string().min(1),
@@ -74,11 +105,7 @@ const configSchema = z.object({
 
 /** codkit.local.json: same field vocabulary, everything optional. */
 const localConfigSchema = z.object({
-	ownDirName: z
-		.string()
-		.min(1)
-		.refine((value) => safeBasenameProblem(value) === null)
-		.optional(),
+	typeConfig: typeConfigSchema.optional(),
 	generatedBranchPrefix: z.string().min(1).optional(),
 	cycleBranchPrefix: z.string().min(1).optional(),
 	releaseRefPrefix: z.string().min(1).optional(),
@@ -91,7 +118,8 @@ const CONFIG_KEYS: readonly string[] = [
 	'codkitConfig',
 	'pin',
 	'upstreamAnchorCommit',
-	'ownDirName',
+	'type',
+	'typeConfig',
 	'generatedBranchPrefix',
 	'cycleBranchPrefix',
 	'releaseRefPrefix',
@@ -104,7 +132,7 @@ const PIN_KEYS: readonly string[] = ['tag', 'sha', 'date'];
 
 /** Fields codkit.local.json may carry; the rest are pin-bearing and refused. */
 const LOCAL_ALLOWED_KEYS: readonly string[] = [
-	'ownDirName',
+	'typeConfig',
 	'generatedBranchPrefix',
 	'cycleBranchPrefix',
 	'releaseRefPrefix',
@@ -112,7 +140,14 @@ const LOCAL_ALLOWED_KEYS: readonly string[] = [
 ];
 
 /** Fields that exist in the base config but must never be overridden locally. */
-const LOCAL_REFUSED_KEYS: readonly string[] = ['codkitConfig', 'pin', 'upstreamAnchorCommit', 'buildWatchFile', 'conventionsExtensionFile'];
+const LOCAL_REFUSED_KEYS: readonly string[] = [
+	'codkitConfig',
+	'pin',
+	'upstreamAnchorCommit',
+	'type',
+	'buildWatchFile',
+	'conventionsExtensionFile'
+];
 
 type FieldDoc = { readonly required: string; readonly invalid: string; readonly hint: string };
 
@@ -152,10 +187,20 @@ const FIELD_DOCS: Readonly<Record<string, FieldDoc>> = {
 		invalid: 'upstreamAnchorCommit must be a full 40-hex commit sha',
 		hint: 'run: git rev-list --max-parents=0 <pin.sha> in the fork tree (lowest sha if several)'
 	},
-	ownDirName: {
-		required: 'ownDirName is required (directory name of own code under src/vs/)',
-		invalid: 'ownDirName must be one safe directory basename without path separators',
-		hint: 'set "ownDirName": "patchset"'
+	type: {
+		required: 'type is required (the identifier of the project type this patch set declares)',
+		invalid: 'type must be one safe identifier without path separators',
+		hint: 'set "type": "vscode"   (run: codkit types   for the registered identifiers)'
+	},
+	typeConfig: {
+		required: 'typeConfig is required (the section the project type validates, starting with ownRoot)',
+		invalid: 'typeConfig must be an object whose ownRoot is a path from the tree root',
+		hint: 'set "typeConfig": { "ownRoot": "<path from the tree root>" }'
+	},
+	'typeConfig.ownRoot': {
+		required: 'typeConfig.ownRoot is required (the own root, a full path from the tree root)',
+		invalid: 'typeConfig.ownRoot must be a safe path from the tree root, without a leading slash or a dot-dot segment',
+		hint: 'set "typeConfig": { "ownRoot": "<path from the tree root>" }'
 	},
 	generatedBranchPrefix: {
 		required: 'generatedBranchPrefix is required (branch namespace of generated branches)',
@@ -264,6 +309,7 @@ function parseJsonText(bytes: Uint8Array, fileLabel: string): unknown {
 export function parseBaseConfig(raw: unknown, fileLabel: string): CodkitConfig {
 	const object = expectObject(raw, fileLabel);
 	assertSchemaVersion(object, fileLabel);
+	assertSchemaTwo(object, fileLabel);
 	assertKnownKeys(object, CONFIG_KEYS, fileLabel, '');
 	const pin = object['pin'];
 	if (isPlainObject(pin)) {
@@ -307,7 +353,8 @@ export function mergeLocal(base: CodkitConfig, local: LocalConfig): CodkitConfig
 		codkitConfig: base.codkitConfig,
 		pin: base.pin,
 		upstreamAnchorCommit: base.upstreamAnchorCommit,
-		ownDirName: overrideOrKeep(base.ownDirName, local.ownDirName),
+		type: base.type,
+		typeConfig: local.typeConfig ?? base.typeConfig,
 		generatedBranchPrefix: overrideOrKeep(base.generatedBranchPrefix, local.generatedBranchPrefix),
 		cycleBranchPrefix: overrideOrKeep(base.cycleBranchPrefix, local.cycleBranchPrefix),
 		releaseRefPrefix: overrideOrKeep(base.releaseRefPrefix, local.releaseRefPrefix),
@@ -324,7 +371,8 @@ export function serializeBaseConfig(config: CodkitConfig): string {
 		codkitConfig: parsed.codkitConfig,
 		pin: { tag: parsed.pin.tag, sha: parsed.pin.sha, date: parsed.pin.date },
 		upstreamAnchorCommit: parsed.upstreamAnchorCommit,
-		ownDirName: parsed.ownDirName,
+		type: parsed.type,
+		typeConfig: parsed.typeConfig,
 		generatedBranchPrefix: parsed.generatedBranchPrefix,
 		cycleBranchPrefix: parsed.cycleBranchPrefix,
 		releaseRefPrefix: parsed.releaseRefPrefix,
@@ -382,6 +430,27 @@ function assertSchemaVersion(object: Readonly<Record<string, unknown>>, fileLabe
 			fileLabel
 		);
 	}
+}
+
+/**
+ * ##CFG-SCHEMA-1-IS-REFUSED: a file that declares schema 1, or carries no
+ * `type` at all, is schema 1 and is refused naming the two fields to add and
+ * nothing else. There is no compatibility layer and no inference of a type from
+ * the schema-1 field it replaces.
+ */
+function assertSchemaTwo(object: Readonly<Record<string, unknown>>, fileLabel: string): void {
+	const declared = object['codkitConfig'];
+	const isSchemaOne = declared === 1 || !Object.prototype.hasOwnProperty.call(object, 'type');
+	if (!isSchemaOne) {
+		return;
+	}
+	throw ckError(
+		'CONFIG',
+		`is schema 1: schema ${CONFIG_SCHEMA_VERSION} adds ${SCHEMA_2_FIELDS}, and this tool reads schema ${CONFIG_SCHEMA_VERSION} only`,
+		`set "codkitConfig": ${CONFIG_SCHEMA_VERSION}, add "type": "<identifier>" and "typeConfig": { "ownRoot": "<path from the tree root>" }, ` +
+			'and remove "ownRoot"',
+		fileLabel
+	);
 }
 
 function assertKnownKeys(object: Readonly<Record<string, unknown>>, known: readonly string[], fileLabel: string, prefix: string): void {

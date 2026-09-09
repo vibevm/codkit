@@ -20,7 +20,6 @@ import { expandCollapsedUntracked, porcelainZEntries } from './driftGuard.ts';
 import { runGit, runGitBytes } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { repoRelativePathProblem } from './pathSafety.ts';
-import { ownTargetRelativeDir } from './ownCopy.ts';
 import { toPosix } from './syncEngine.ts';
 
 /** Which state of the tree a selection or a byte read is about. */
@@ -40,11 +39,11 @@ export function changesSince(
 	treeDir: string,
 	base: string,
 	state: TreeState,
-	ownDirName: string,
+	ownRoot: string,
 	forcedPaths: readonly string[] = [],
 	ownedPrefixes: readonly string[] = []
 ): readonly StateChange[] {
-	const ownPrefix = `${ownTargetRelativeDir(ownDirName)}/`;
+	const ownPrefix = `${ownRoot}/`;
 	// ##OWN-EXTENSION-UNIT: `extensions/<name>/` of a declared own extension is
 	// supplied by the delta too, so it is no more an upstream file than the own
 	// directory is - and without this a materialized extension would be selected

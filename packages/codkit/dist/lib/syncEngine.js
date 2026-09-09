@@ -34,7 +34,7 @@ import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
 import { OVERLAYS_DIR, checkOverlay, isExactOverlayMaterialization, loadOverlays, overlayDriftErrors, renderOverlayTarget, writeProductOverridesDev } from './layers/overlay.js';
 import { RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, resourceSourcePath } from './layers/resource.js';
 import { ckError, isCkError } from './messages.js';
-import { OWN_SOURCE_DIR, classifyOwn, ownStateOfPatchSet, ownTargetRelativeDir, syncOwnCode } from './ownCopy.js';
+import { OWN_SOURCE_DIR, classifyOwn, ownStateOfPatchSet, syncOwnCode } from './ownCopy.js';
 import { PATCH_FILE_SUFFIX, encodePatchName, parseCkpatch } from './patchFormat.js';
 import { checkTree, formatCheckLine } from './treeIdentity.js';
 import { TREE_CACHE_SCHEMA_VERSION, TREE_MARK_SCHEMA_VERSION, effectiveGitPath, fastPathOk, gitCommonDirOf, gitDirOf, readTreeCache, readTreeMark, writeTreeCache, writeTreeMark } from './treeCache.js';
@@ -134,7 +134,7 @@ export function runSync(options) {
         }
     }
     if (options.forceApply === true) {
-        const drift = driftDirty(tree, config.ownDirName, patchesDir, { generated: { pinSha: config.pin.sha, branch } });
+        const drift = driftDirty(tree, config.typeConfig.ownRoot, patchesDir, { generated: { pinSha: config.pin.sha, branch } });
         const head = treeHeadError(drift.treeCommits, branch);
         if (head !== null) {
             out.addError(head.toPayload());
@@ -156,7 +156,7 @@ export function runSync(options) {
     // rewriting work-tree files.
     let excludePlan;
     try {
-        excludePlan = planExclude(tree, config.ownDirName);
+        excludePlan = planExclude(tree, config.typeConfig.ownRoot);
     }
     catch (error) {
         return reportBroken(out, error, branch);
@@ -185,7 +185,7 @@ export function runSync(options) {
     try {
         prebuiltConventions = loadConventions(patchesDir);
         prebuiltPlan = buildPlan(patchesDir, prebuiltConventions, overlays, warnFrom(out));
-        ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, config.ownDirName, layerTargets(prebuiltPlan), omitLicenceNotice);
+        ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, config.typeConfig.ownRoot, layerTargets(prebuiltPlan), omitLicenceNotice);
     }
     catch (error) {
         return reportBroken(out, error, branch);
@@ -241,7 +241,7 @@ export function runSync(options) {
         // set. `--fresh` does not need it, and no other caller sets the option.
         const materialized = [];
         const passStranded = options.passStrandedExtensions === true && !options.fresh;
-        const drift = driftDirty(tree, config.ownDirName, patchesDir, {
+        const drift = driftDirty(tree, config.typeConfig.ownRoot, patchesDir, {
             untrackedIsDirt: !options.fresh,
             generated: { pinSha: config.pin.sha, branch },
             ...(options.fresh
@@ -306,7 +306,7 @@ export function runSync(options) {
             return refuseDrift(`${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`);
         }
         if (drift.dirty) {
-            const verdict = judgeOwnSides(drift, patchesDir, tree, config.ownDirName, mark, fingerprint);
+            const verdict = judgeOwnSides(drift, patchesDir, tree, config.typeConfig.ownRoot, mark, fingerprint);
             if (verdict.kind === 'both-sides') {
                 out.addError(verdict.error.toPayload());
                 return result('dirty', 1, { branch, dirtyFiles: drift.files });
@@ -359,7 +359,7 @@ export function runSync(options) {
     // writes nothing - and reports nothing as discarded either, because nothing
     // was.
     if (dryRun && discardWorktreeEdits) {
-        driftDirty(tree, config.ownDirName, patchesDir, {
+        driftDirty(tree, config.typeConfig.ownRoot, patchesDir, {
             untrackedIsDirt: false,
             generated: { pinSha: config.pin.sha, branch },
             isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, []),
@@ -391,7 +391,7 @@ export function runSync(options) {
         // Own code is verified on every run: locally it is not part of the
         // branch commits, so the branch cannot vouch for it. The own extensions
         // are materialized on the same terms (##OWN-EXTENSION-UNIT).
-        const own = syncOwnCode(patchesDir, tree, config.ownDirName);
+        const own = syncOwnCode(patchesDir, tree, config.typeConfig.ownRoot);
         const ownExtensions = syncOwnExtensions(patchesDir, tree, declaredOwnExtensions(patchesDir));
         writeExcludePlan(excludePlan);
         writeTreeHook(tree, branch, out);
@@ -513,7 +513,7 @@ export function runSync(options) {
         out.info(`discarded ${discardedPaths.length} working-tree edit(s)`);
     }
     // 10. Own code, dev overlay, exclude, hook, mark, cache.
-    const own = syncOwnCode(patchesDir, tree, config.ownDirName);
+    const own = syncOwnCode(patchesDir, tree, config.typeConfig.ownRoot);
     // ##OWN-EXTENSION-UNIT: the second pair of own roots, mirrored on the same
     // terms and in the same step, so `extensions/<name>/` and `src/vs/<own>/`
     // are never half a load apart.
@@ -724,7 +724,7 @@ function listPatchFiles(patchesDir) {
 }
 function buildBranch(options, plan, context, id) {
     const { patchesDir, config, out } = options;
-    assertGeneratedTargetOwnership(patchesDir, config.ownDirName, layerTargets(plan));
+    assertGeneratedTargetOwnership(patchesDir, config.typeConfig.ownRoot, layerTargets(plan));
     const tree = options.resolution.path;
     const scratch = join(patchesDir, '.codkit', 'tmp');
     mkdirSync(scratch, { recursive: true });
@@ -757,7 +757,7 @@ function buildBranch(options, plan, context, id) {
                 treeDir: tree,
                 indexFile,
                 parent,
-                ownDirName: config.ownDirName,
+                ownRoot: config.typeConfig.ownRoot,
                 pinTag: config.pin.tag,
                 pinSha: config.pin.sha,
                 pinDateIso,
@@ -845,7 +845,7 @@ export function buildAppliedTip(options) {
     const conventions = loadConventions(options.patchesDir);
     const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir) : [];
     const plan = buildPlan(options.patchesDir, conventions, overlays, warn);
-    assertGeneratedTargetOwnership(options.patchesDir, options.config.ownDirName, layerTargets(plan), options.omitLicenceNotice === true);
+    assertGeneratedTargetOwnership(options.patchesDir, options.config.typeConfig.ownRoot, layerTargets(plan), options.omitLicenceNotice === true);
     const context = overlayVarContext(options.config, pinCommitDate(tree, options.config.pin.sha), options.patchSetCommit ?? patchSetCommitId(options.patchesDir));
     return buildBranch(engine, plan, context, treeId(tree)).top;
 }
@@ -1062,7 +1062,7 @@ export function cleanUntracked(treeDir, config, conventions) {
         ...listUntracked(treeDir, ['--others', '--exclude-standard', '-z']),
         ...listUntracked(treeDir, ['--others', '--ignored', '--exclude-standard', '-z'])
     ]);
-    const ownDir = ownTargetRelativeDir(config.ownDirName);
+    const ownDir = config.typeConfig.ownRoot;
     const emptied = new Set();
     let removed = 0;
     for (const path of [...listed].sort()) {
@@ -1120,12 +1120,12 @@ function pruneEmptyDirectories(root, candidates) {
         }
     }
 }
-export function writeExclude(treeDir, ownDirName, checkpoints) {
-    const plan = planExclude(treeDir, ownDirName, checkpoints?.afterOpen);
+export function writeExclude(treeDir, ownRoot, checkpoints) {
+    const plan = planExclude(treeDir, ownRoot, checkpoints?.afterOpen);
     checkpoints?.afterPlan?.();
     writeExcludePlan(plan, checkpoints);
 }
-function planExclude(treeDir, ownDirName, afterOpen) {
+function planExclude(treeDir, ownRoot, afterOpen) {
     const listings = listWorktrees(treeDir);
     if (listings === null) {
         // Keep the historical lower-level fallback for a path that is not a git
@@ -1146,10 +1146,10 @@ function planExclude(treeDir, ownDirName, afterOpen) {
             treeDir,
             adminRoot,
             adminSegments: segments,
-            ...planManagedBlock(path, existing, `/${ownTargetRelativeDir(ownDirName)}/`)
+            ...planManagedBlock(path, existing, `/${ownRoot}/`)
         };
     }
-    const body = `/${ownTargetRelativeDir(ownDirName)}/`;
+    const body = `/${ownRoot}/`;
     if (listings.length > 1) {
         return planWorktreeExclude(treeDir, body);
     }
@@ -1675,7 +1675,7 @@ function reportBroken(out, error, branch) {
  * map: the fingerprint is then the only evidence that patchset is the side that
  * moved.
  */
-function judgeOwnSides(drift, patchesDir, treeDir, ownDirName, mark, fingerprint) {
+function judgeOwnSides(drift, patchesDir, treeDir, ownRoot, mark, fingerprint) {
     if (drift.upstream.length > 0) {
         return { kind: 'unextracted' };
     }
@@ -1688,7 +1688,7 @@ function judgeOwnSides(drift, patchesDir, treeDir, ownDirName, mark, fingerprint
         return { kind: 'unextracted' };
     }
     const map = mark?.ownFiles ?? null;
-    const classes = classifyOwn(patchesDir, treeDir, ownDirName, map).filter((entry) => entry.kind !== 'same');
+    const classes = classifyOwn(patchesDir, treeDir, ownRoot, map).filter((entry) => entry.kind !== 'same');
     const bothSides = classes.find((entry) => entry.kind === 'both-edited');
     if (bothSides !== undefined) {
         return { kind: 'both-sides', error: bothSidesError(bothSides.relative) };

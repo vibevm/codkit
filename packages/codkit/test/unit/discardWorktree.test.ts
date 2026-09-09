@@ -46,7 +46,7 @@ function generated(): DriftOptions['generated'] {
 function classify(spy?: (entry: PorcelainEntry) => void): { plan: WorktreeDiscardPlan; drift: DriftResult } {
 	const plan = emptyWorktreeDiscardPlan();
 	const decide = worktreeDiscardClassifier(fixture.treeDir, conventions, plan);
-	const drift = driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+	const drift = driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 		untrackedIsDirt: false,
 		generated: generated(),
 		isDiscardable: (entry) => {

@@ -20,6 +20,7 @@ import { runSync } from '../../src/lib/syncEngine.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 // prettier-ignore
 const TARGETS = { clean: 'src/clean.ts', shifted: 'src/shifted.ts', merged: 'src/merged.ts', conflict: 'src/conflict.ts', deleted: 'src/deleted.ts', rename: 'src/rename-old.ts' } as const;
 const RENAMED = 'src/rename-new.ts';
@@ -218,7 +219,7 @@ function writeSourceOwn(root: string, pin: string): void {
 }
 function configOf(tree: string, sha: string, tag: string, anchor: string): CodkitConfig {
 	// prettier-ignore
-	return { codkitConfig: 1, pin: { tag, sha, date: fixtureGit(tree, ['show', '-s', '--format=%cs', sha]).stdout.trim() }, upstreamAnchorCommit: anchor, ownDirName: 'patchset', generatedBranchPrefix: 'codkit/applied/', cycleBranchPrefix: 'codkit/cycle/', releaseRefPrefix: 'codkit/release/', publishRemoteUrl: null, buildWatchFile: null, conventionsExtensionFile: null };
+	return { codkitConfig: 2, pin: { tag, sha, date: fixtureGit(tree, ['show', '-s', '--format=%cs', sha]).stdout.trim() }, upstreamAnchorCommit: anchor, type: 'vscode', typeConfig: { ownRoot: 'src/vs/patchset' }, generatedBranchPrefix: 'codkit/applied/', cycleBranchPrefix: 'codkit/cycle/', releaseRefPrefix: 'codkit/release/', publishRemoteUrl: null, buildWatchFile: null, conventionsExtensionFile: null };
 }
 function resolution(tree: string): ForkDirResolution {
 	return { path: tree, source: 'settings', exists: true, warning: null };
@@ -239,6 +240,7 @@ function output(): Output {
 }
 function commandContext(fixture: Fixture): CommandContext {
 	return {
+		type: vscodeType,
 		toolRoot: fixture.root,
 		locations: {
 			patchesDir: { path: fixture.root, source: 'flag', exists: true, warning: null },

@@ -7,7 +7,7 @@ import { gitOk, runGit } from './gitx.js';
 import { OWN_EXTENSIONS_DIR, ownExtensionFiles } from './layers/ownExtensions.js';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
-import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot, ownTargetRelativeDir } from './ownCopy.js';
+import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.js';
 export const GENERATED_HISTORY_FINGERPRINT_VERSION = 1;
 /**
  * Which own files the generated snapshot carries. A release branch leaves the
@@ -18,8 +18,7 @@ function ownPredicate(omitLicenceNotice) {
     return omitLicenceNotice ? isReleasedOwnFile : isDeliveredOwnFile;
 }
 /** Fail before object/ref/worktree mutation when two generated layers claim one target. */
-export function assertGeneratedTargetOwnership(patchesDir, ownDirName, layerTargets, omitLicenceNotice = false) {
-    const ownRoot = ownTargetRelativeDir(ownDirName);
+export function assertGeneratedTargetOwnership(patchesDir, ownRoot, layerTargets, omitLicenceNotice = false) {
     const ownTargets = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })
         .filter(ownPredicate(omitLicenceNotice))
         .map((relative) => `${ownRoot}/${relative}`);
@@ -85,7 +84,7 @@ export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, omitLi
  */
 export function appendGeneratedOwnCommit(options) {
     const indexEnv = { GIT_INDEX_FILE: options.indexFile };
-    const targetRoot = ownTargetRelativeDir(options.ownDirName);
+    const targetRoot = options.ownRoot;
     const sourceRoot = ownSourceRoot(options.patchesDir);
     const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(options.omitLicenceNotice ?? false));
     // ##OWN-EXTENSION-UNIT: the own extensions ride in the same atom. `ci` and

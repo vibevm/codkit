@@ -7,15 +7,7 @@ import { join } from 'node:path';
 import { CYCLE_STATE_PATH } from './cycleState.ts';
 import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
-import {
-	fileContentEqual,
-	isDeliveredOwnFile,
-	listOwnFiles,
-	OWN_SOURCE_DIR,
-	ownSourceRoot,
-	ownTargetRelativeDir,
-	ownTargetRoot
-} from './ownCopy.ts';
+import { fileContentEqual, isDeliveredOwnFile, listOwnFiles, OWN_SOURCE_DIR, ownSourceRoot, ownTargetRoot } from './ownCopy.ts';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.ts';
 import { createRebaseCheckoutContext, rebaseTreeEntry, releaseRebaseCheckoutContext } from './rebaseOntoPinCheckout.ts';
 
@@ -39,15 +31,15 @@ type AcceptedOwnTransition = {
 export function assertCycleOwnPreflight(
 	patchesDir: string,
 	tree: string,
-	ownDirName: string,
+	ownRoot: string,
 	generatedOwnTargets: readonly string[],
 	renameAuthority?: CycleOwnRenameAuthority
 ): void {
 	const source = ownSourceRoot(patchesDir);
-	const target = ownTargetRoot(tree, ownDirName);
+	const target = ownTargetRoot(tree, ownRoot);
 	strictOwnRoot(source, 'own source', true);
 	strictOwnRoot(target, 'materialized own target', true);
-	const relatives = ownRelatives(generatedOwnTargets, ownDirName);
+	const relatives = ownRelatives(generatedOwnTargets, ownRoot);
 	const accepted = acceptedOwnTransitions(patchesDir, relatives, renameAuthority);
 	const sourceSet = new Set(relatives);
 	const targetFiles = listOwnFiles(target, { refuseSymlinks: true }).filter(isDeliveredOwnFile);
@@ -58,7 +50,7 @@ export function assertCycleOwnPreflight(
 	}
 	for (const relative of relatives) {
 		const sourcePath = contained(source, relative, false);
-		const targetPath = contained(tree, `${ownTargetRelativeDir(ownDirName)}/${relative}`, true);
+		const targetPath = contained(tree, `${ownRoot}/${relative}`, true);
 		if (!targetSet.has(relative) || fileContentEqual(sourcePath, targetPath)) continue;
 		const transition = accepted.get(relative);
 		if (
@@ -151,8 +143,8 @@ function assertCanonicalRenameCommit(patchesDir: string, authority: CycleOwnRena
 	}
 }
 
-function ownRelatives(targets: readonly string[], ownDirName: string): readonly string[] {
-	const prefix = `${ownTargetRelativeDir(ownDirName)}/`;
+function ownRelatives(targets: readonly string[], ownRoot: string): readonly string[] {
+	const prefix = `${ownRoot}/`;
 	const relatives = targets.map((target) => {
 		if (!target.startsWith(prefix)) throw broken(`generated own evidence contains foreign target ${target}`);
 		const relative = target.slice(prefix.length);

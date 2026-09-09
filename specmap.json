@@ -3353,7 +3353,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ba7e4495c68860a9efd0e2388960bf89374f62e78e0da6c8207cce3096572163",
+      "content_hash": "sha256:80a9db10a99206ed516e7c72f9fdf7dff131f51560fee32c494c94fd5a5c2b3b",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "codkit PROP-003: Configuration, data conventions, the owners map, common format rules",
@@ -3470,7 +3470,7 @@
     },
     {
       "anchor": "config",
-      "content_hash": "sha256:90601735c153be3e6b6cfca64d004a9d802cea5e9fe22ee8fc07f41ca147abf5",
+      "content_hash": "sha256:cb8a00550fef9d5519395832f6e93f548f901deddfa3a82ac4fe19babf584c90",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "3. The patch-set configuration - codkit.json (+ codkit.local.json)",
@@ -3483,34 +3483,34 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "`upstreamAnchorCommit` is the SHA by whose reachability the tree is recognized as «the microsoft/vscode history» (the origin is checked by the reachability of a known commit, not by the name of a remote). The value is computed once when the configuration is created: `git rev-list --max-parents=0 <pin.sha>` (the root commit of the history; if there are several roots, the lexicographically smallest SHA is taken). It is committed in `codkit.json` and does not change when the pin is raised. @status:spec/done",
-      "line": 39,
+      "line": 41,
       "uri": "spec://codkit/modules/codkit/PROP-003#ANCHOR-COMMIT-RULE"
     },
     {
       "anchor": "CFG-TYPE-AND-TYPECONFIG",
-      "content_hash": "sha256:06f3065216d9eca14722ea39fb301f2e61cf3b6eecec224e194e9f323cd5680a",
+      "content_hash": "sha256:91910cc52d65d16ef58256ca1812a728677bc8ce62b5213a00ac01a28c78f9a4",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
-      "heading": "**Schema 2 (PROP-016).** `codkit.json` carries `\"codkitConfig\": 2`, the required `\"type\": \"<identifier>\"` and the required `\"typeConfig\": { ... }`, whose first field is `ownRoot` - a full path from the tree root. The engine validates the universal fields of the table above and hands `typeConfig` to the type, which validates it with its own schema and refuses with `CK-E-CONFIG` naming the field (`spec://codkit/modules/codkit/PROP-016#TYPE-CONFIG-FIELD`, `spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`). One patch set, one type. The row `ownDirName` of the table above is the schema-1 field it replaces. @status:spec/plan",
-      "line": 40,
+      "heading": "**Schema 2 (PROP-016).** `codkit.json` carries `\"codkitConfig\": 2`, the required `\"type\": \"<identifier>\"` and the required `\"typeConfig\": { ... }`, whose first field is `ownRoot` - a full path from the tree root. The engine validates the universal fields of the table above and hands `typeConfig` to the type, which validates it with its own schema and refuses with `CK-E-CONFIG` naming the field (`spec://codkit/modules/codkit/PROP-016#TYPE-CONFIG-FIELD`, `spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`). One patch set, one type. The row `ownDirName` of the table above is the schema-1 field it replaces. @status:spec/done",
+      "line": 42,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-TYPE-AND-TYPECONFIG"
     },
     {
       "anchor": "CFG-SCHEMA-1-IS-REFUSED",
-      "content_hash": "sha256:4425082d1dc71a1ecd8e1f86bea299edee3cb7400705cc179baa31fc5786a461",
+      "content_hash": "sha256:b75e3f33de3ae1f4d533b735bc710c7539975249ef31ccc3e3ec82174ded2e4c",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
-      "heading": "**There is no compatibility layer.** A `codkit.json` without `type` is schema 1 and is refused with `CK-E-CONFIG` that names the two fields to add - `type` and `typeConfig.ownRoot` - and nothing else; no command reads schema 1 and no code path infers a type from `ownDirName` (`spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED`, `spec://codkit/modules/codkit/PROP-016#DECISION-NO-COMPATIBILITY-LAYER`). The single existing consumer is migrated inside the campaign, with its own gates as the proof. @status:spec/plan",
-      "line": 41,
+      "heading": "**There is no compatibility layer.** A `codkit.json` without `type` is schema 1 and is refused with `CK-E-CONFIG` that names the two fields to add - `type` and `typeConfig.ownRoot` - and nothing else; no command reads schema 1 and no code path infers a type from `ownDirName` (`spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED`, `spec://codkit/modules/codkit/PROP-016#DECISION-NO-COMPATIBILITY-LAYER`). The single existing consumer is migrated inside the campaign, with its own gates as the proof. @status:spec/done",
+      "line": 43,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-SCHEMA-1-IS-REFUSED"
     },
     {
       "anchor": "LOCAL-CONFIG-RULE",
-      "content_hash": "sha256:a509a743ad0f732eadb5e31f2adab4ebb66cc00987ecfa38adb9af137907c1ad",
+      "content_hash": "sha256:1712625b16a5ef74e1a382fe0c24f07d401e0a565e698a26e1bccf23bd93d1fe",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
-      "heading": "`codkit.local.json` contains only optional non-pin operational overrides (`ownDirName`, the branch/ref prefixes, `publishRemoteUrl`). It does not accept `pin`, `upstreamAnchorCommit`, the schema field, the location roots or references to a safety/build policy. The root paths belong to the CLI, the environment and the user settings alone. @status:spec/done",
-      "line": 42,
+      "heading": "`codkit.local.json` contains only optional non-pin operational overrides (`typeConfig`, the branch/ref prefixes, `publishRemoteUrl`; in schema 1 the first of them was `ownDirName`). The `type` itself is not overridable locally: one patch set declares one type and it is a shared invariant of the repository. It does not accept `pin`, `upstreamAnchorCommit`, the schema field, the location roots or references to a safety/build policy. The root paths belong to the CLI, the environment and the user settings alone. @status:spec/done",
+      "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-003#LOCAL-CONFIG-RULE"
     },
     {
@@ -3519,7 +3519,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "After the initial bootstrap of a patch set the pin changes only by the canonical commit of an upgrade cycle. @status:spec/done",
-      "line": 43,
+      "line": 45,
       "uri": "spec://codkit/modules/codkit/PROP-003#PIN-CHANGES-ONLY-BY-CYCLE"
     },
     {
@@ -3528,7 +3528,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "A valid sample (the `upstreamAnchorCommit` value is a placeholder of the example; in a real file it is the computed SHA): @status:spec/done",
-      "line": 44,
+      "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-003#config-valid-sample"
     },
     {
@@ -3537,7 +3537,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "An invalid sample and the expected diagnostics: a file with `\"pin\": {\"tag\": \"1.135.0\"}` (no `sha`) → exit 2, the message `CK-E-CONFIG: codkit.json: pin.sha is required (full 40-hex commit sha of the pin tag)`. @status:spec/done",
-      "line": 57,
+      "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONFIG-INVALID-SAMPLE"
     },
     {
@@ -3546,7 +3546,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "4. Data conventions and safe extension",
-      "line": 59,
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/PROP-003#conventions-data"
     },
     {
@@ -3555,7 +3555,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The mandatory base policy lives only in `toolRoot/config/conventions.json`; the CLI, the checks, the CI and the agent protocols read it. A file with the same path under patchesDir never shadows the installed policy. @status:spec/done",
-      "line": 60,
+      "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONVENTIONS-SINGLE-DEFINITION"
     },
     {
@@ -3564,7 +3564,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-009#FORBIDDEN-SERVICES-SEED; the address stays for citations. @status:spec/done",
-      "line": 74,
+      "line": 77,
       "uri": "spec://codkit/modules/codkit/PROP-003#FORBIDDEN-SERVICES-SEED"
     },
     {
@@ -3573,7 +3573,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "If `conventionsExtensionFile` is given, the path must stay inside patchesDir after symlinks are resolved. The strict schema `codkitConventionsExtension:1` may add `subsystems` (the effective idPattern is derived from the union), additional `forbiddenPatchTargets`, `forbiddenServiceIds` and `markerComment` for new file extensions only. It cannot delete, replace or weaken the base prohibitions, change the layer order, an existing marker form, the intervention types/categories or the cleanup policy. @status:spec/done",
-      "line": 75,
+      "line": 78,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONVENTIONS-EXTENSION"
     },
     {
@@ -3582,7 +3582,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "A patch-set file `codkit/config/conventions.json` without an explicit `conventionsExtensionFile` is ignored. Even with an explicit reference the content is treated as an additive extension, not as a replacement of the shipped policy. @status:spec/done",
-      "line": 76,
+      "line": 79,
       "uri": "spec://codkit/modules/codkit/PROP-003#NO-HIDDEN-POLICY-OVERRIDE"
     },
     {
@@ -3591,7 +3591,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "By default the build wrapper reads `toolRoot/config/build-watch.json`. Only an explicit `buildWatchFile` selects the strict versioned profile of a particular fork; the patch set is the project policy chosen by the user, but a hidden copy under the same name is not taken into account. The path must be relative and contained inside patchesDir. Every channel must have at least one `errorLine` or `errorCountLine`; unknown fields are forbidden. The author of a custom profile keeps green/red log fixtures and confirms that an error does not become exit 0. @status:spec/done",
-      "line": 77,
+      "line": 80,
       "uri": "spec://codkit/modules/codkit/PROP-003#BUILD-WATCH-SELECTION"
     },
     {
@@ -3600,7 +3600,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "5. The owners map - delta/owners.json",
-      "line": 79,
+      "line": 82,
       "uri": "spec://codkit/modules/codkit/PROP-003#owners"
     },
     {
@@ -3609,7 +3609,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The format: `{\"codkitOwners\":1,\"owners\":{\"workbench-core\":{\"contact\":\"<team-or-login>\",\"paths\":[\"src/vs/workbench/**\"]}, …}}`. @status:spec/done",
-      "line": 80,
+      "line": 83,
       "uri": "spec://codkit/modules/codkit/PROP-003#OWNERS-FORMAT"
     },
     {
@@ -3618,7 +3618,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The `owner` value of any artifact must be a key of `owners`; otherwise `verify` gives exit 1, `CK-E-OWNER-UNKNOWN`. @status:spec/done",
-      "line": 82,
+      "line": 85,
       "uri": "spec://codkit/modules/codkit/PROP-003#OWNER-MUST-EXIST"
     },
     {
@@ -3627,7 +3627,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The CODEOWNERS file of the hosting is generated from this map (the command is not in the MVP; the map itself is already in the MVP: the inventory needs the «subsystem → owner» routing). @status:spec/done",
-      "line": 83,
+      "line": 86,
       "uri": "spec://codkit/modules/codkit/PROP-003#CODEOWNERS-GENERATED-LATER"
     },
     {
@@ -3636,7 +3636,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "6. Artifact metadata - the common dictionary",
-      "line": 86,
+      "line": 89,
       "uri": "spec://codkit/modules/codkit/PROP-003#artifact-metadata"
     },
     {
@@ -3645,7 +3645,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "Every layer gives the inventory the same set of fields: `id`, `layer`, `type`, `category`, `owner`, `reason`, `link`, `cause`, `pin`, `contract-tests`, plus the computed `subsystem` (from the id) and `files` (the targets of the intervention). The carrier for a patch is the `.ckpatch` header (PROP-004 §3); for an overlay/resource/rule it is the fields of their JSON (PROP-005); for own and entry-module it is the records in `delta/own/patchset.delta.json` (PROP-005 §3). @status:spec/done",
-      "line": 87,
+      "line": 90,
       "uri": "spec://codkit/modules/codkit/PROP-003#ARTIFACT-METADATA-DICTIONARY"
     },
     {
@@ -7187,7 +7187,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:0ab4c552d99ace2db35dc3c6ed4cd14f3e0111e04e08d6904c4e66976d7ecce3",
+      "content_hash": "sha256:b62f9702a6dab319a1cd1c04896d142fb685c7bb6f4eb7764e7a7f74ef5f3d4c",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "codkit PROP-012: Output and messages, NFRs, documentation, open decision points",
@@ -7214,7 +7214,7 @@
     },
     {
       "anchor": "errors",
-      "content_hash": "sha256:574b53794bd2aaef7c1a492663c5e4c5937b28e7429f28ed3ad26fb44ce85c0b",
+      "content_hash": "sha256:73debfff8a283d98c5e7cfb110e2efe83366abe7b033b366ea045d23ec1f6b79",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
       "heading": "2. Human-readable errors and the code registry",
@@ -7232,10 +7232,10 @@
     },
     {
       "anchor": "ERROR-REGISTRY",
-      "content_hash": "sha256:cab349b16eb614fb94614a41b1abd1b49bdaaa7f7215a43bccd554778321badb",
+      "content_hash": "sha256:f0ae5767390c54e0600e7bb2cff3ad6bc8c1dc1eae4adceed8adf595b82357a0",
       "doc_path": "modules/codkit/PROP-012",
       "file": "vibevm/vibespecs/modules/codkit/PROP-012-output-quality-docs.xml",
-      "heading": "The full registry of the codes is kept in `packages/codkit/src/lib/messages.ts` (the single definition). The codes required by the specifications: `CONFIG`, `NOT-A-REPO`, `NOT-UPSTREAM`, `PIN-UNREACHABLE`, `LFS`, `LOCKED`, `DIRTY-TREE`, `CRLF`, `EOF-NEWLINE`, `ENCODING`, `MARKER-MALFORMED`, `MARKER-NESTED`, `MARKER-UNBALANCED`, `MARKER-UNCLOSED`, `MARKER-DUP-ID`, `MARKER-BAD-ID`, `HUNK-OUTSIDE-MARKER`, `DELETES-UPSTREAM-LINE`, `DELETES-UPSTREAM-FILE`, `NEW-FILE-IN-UPSTREAM-ZONE`, `FORBIDDEN-TARGET`, `MARKER-ARTIFACT-MISMATCH`, `UNTRACKED-INTERVENTION`, `STALE-ARTIFACT`, `OWN-UNCOVERED`, `OWNER-UNKNOWN`, `OVERLAY-SCHEMA`, `OVERLAY-DRIFT`, `RULE-DRIFT`, `ARTIFACT-BROKEN`, `NET-FORBIDDEN`, `LOG-INCOMPLETE`, `BOTH-SIDES-EDITED`, `WORKTREE-REF-SHARED` (the generated branch is one for all the worktrees of the repository; load/cycle refuse to move it while a sibling worktree stands on it - both trees are named, every ref, index and worktree is left untouched; PROP-008 §3 `##GENERATED-REF-WORKTREE-PREFLIGHT`), `TREE-HEAD` (the HEAD of the fork tree is off the generated branch while there are foreign commits on its line, or the history under the generated tip has been rewritten; `load` and `save` refuse with a recipe for getting back - exit 1, nothing touched; PROP-008 §4 `##TREE-COMMITS-ARE-WORK`, decision D8 of campaign TREE-COMMITS-SAVE), `SYNC-IN-PROGRESS` (the two-way `codkit sync` did not finish and left a transaction record - the tree and the patch set are half in one state and half in the other; `load`/`save`/`sync` refuse and `status` names the record; PROP-008 §5a `##SYNC-TRANSACTION`, PROP-006 §1 `##SYNC-TRANSACTION-FILE`, decision D20 of campaign TREE-COMMITS-SAVE), `INTERNAL` (an uncaught error - a bug, exit 2, the hint is to attach `--verbose`), `DEPS-MISSING` (no runtime dependencies - restore the installed Codkit from the approved supply; a source checkout may run `npm ci`), `TREE-READONLY` (no right to write into the tree or `.git/codkit` - the check `##ID-CHECK-WRITE`), `HEADER-MISSING` (a new patch without a draft header - PROP-007 §8 `##PENDING-HEADER-MECHANISM`), `GUARD-MISSING` (the mandatory guard test is missing, or its id is not declared in the own tests - verify), `FORBIDDEN-SERVICE` (own code overrides a bootstrap service from forbiddenServiceIds - verify), `LICENSE-HEADER` (a file of the package without a carrier of the licence information, or with a wrong carrier - PROP-014 §3), `LICENSE-THIRD-PARTY` (a third-party file breaks the rules of the registry: it is not covered by a `REUSE.toml` annotation, its licence is outside the allowlist, the carrier and the annotation diverge, the notices are stale - PROP-014 §2–3), `LICENSE-PACKAGE` (the package is not consistent: the manifest, `LICENSE`, `LICENSES/`, the symbolic link - PROP-014 §3), `STANDARDS-DRIFT` (the installed copy of the standards package or the copy of the notice differs from the shipped one - `standards load` refuses without writing anything; PROP-014 §5), `RUNTIME-DRIFT` (the installed copy of the runtime library differs from the shipped one - `runtime load` without `--upgrade`, `runtime check`, `verify`; PROP-015 §4), `RUNTIME-PACKAGE` (toolRoot holds not exactly one runtime version directory, or the version literal does not match the name of the directory; PROP-015 §1), `DELIVERED-EDIT` (`save` found an edit of a delivered Codkit file in the tree; PROP-005 §12), `OWN-UNDER-CODKIT` (an own unit whose root is inside `codkit/`; PROP-005 §12), `HOOK-TOO-LARGE` (a patch of type hook exceeds the graft budget; PROP-005 §12), `GEN-EXISTS` (the generator does not overwrite an existing file; PROP-015 §5), `GEN-ID` (a feature identifier not of the required form; PROP-015 §5), `OWN-EXTENSION-MANIFEST` (the `extensions` section of the manifest is invalid, there is no `package.json`, or the name coincides with an upstream extension; PROP-005 §13), `OWN-EXTENSION-DRIFT` (the extension in the tree differs from the delta; PROP-005 §13); the warnings `CK-W-*` (at the minimum: `MARK-RO`, `PATCHSET-SIDE-EDIT`, `EMPTY-BLOCK`). @status:spec/done",
+      "heading": "The full registry of the codes is kept in `packages/codkit/src/lib/messages.ts` (the single definition). The codes required by the specifications: `CONFIG`, `NOT-A-REPO`, `NOT-UPSTREAM`, `PIN-UNREACHABLE`, `LFS`, `LOCKED`, `DIRTY-TREE`, `CRLF`, `EOF-NEWLINE`, `ENCODING`, `MARKER-MALFORMED`, `MARKER-NESTED`, `MARKER-UNBALANCED`, `MARKER-UNCLOSED`, `MARKER-DUP-ID`, `MARKER-BAD-ID`, `HUNK-OUTSIDE-MARKER`, `DELETES-UPSTREAM-LINE`, `DELETES-UPSTREAM-FILE`, `NEW-FILE-IN-UPSTREAM-ZONE`, `FORBIDDEN-TARGET`, `MARKER-ARTIFACT-MISMATCH`, `UNTRACKED-INTERVENTION`, `STALE-ARTIFACT`, `OWN-UNCOVERED`, `OWNER-UNKNOWN`, `OVERLAY-SCHEMA`, `OVERLAY-DRIFT`, `RULE-DRIFT`, `ARTIFACT-BROKEN`, `NET-FORBIDDEN`, `LOG-INCOMPLETE`, `BOTH-SIDES-EDITED`, `WORKTREE-REF-SHARED` (the generated branch is one for all the worktrees of the repository; load/cycle refuse to move it while a sibling worktree stands on it - both trees are named, every ref, index and worktree is left untouched; PROP-008 §3 `##GENERATED-REF-WORKTREE-PREFLIGHT`), `TREE-HEAD` (the HEAD of the fork tree is off the generated branch while there are foreign commits on its line, or the history under the generated tip has been rewritten; `load` and `save` refuse with a recipe for getting back - exit 1, nothing touched; PROP-008 §4 `##TREE-COMMITS-ARE-WORK`, decision D8 of campaign TREE-COMMITS-SAVE), `SYNC-IN-PROGRESS` (the two-way `codkit sync` did not finish and left a transaction record - the tree and the patch set are half in one state and half in the other; `load`/`save`/`sync` refuse and `status` names the record; PROP-008 §5a `##SYNC-TRANSACTION`, PROP-006 §1 `##SYNC-TRANSACTION-FILE`, decision D20 of campaign TREE-COMMITS-SAVE), `INTERNAL` (an uncaught error - a bug, exit 2, the hint is to attach `--verbose`), `DEPS-MISSING` (no runtime dependencies - restore the installed Codkit from the approved supply; a source checkout may run `npm ci`), `TREE-READONLY` (no right to write into the tree or `.git/codkit` - the check `##ID-CHECK-WRITE`), `HEADER-MISSING` (a new patch without a draft header - PROP-007 §8 `##PENDING-HEADER-MECHANISM`), `GUARD-MISSING` (the mandatory guard test is missing, or its id is not declared in the own tests - verify), `FORBIDDEN-SERVICE` (own code overrides a bootstrap service from forbiddenServiceIds - verify), `LICENSE-HEADER` (a file of the package without a carrier of the licence information, or with a wrong carrier - PROP-014 §3), `LICENSE-THIRD-PARTY` (a third-party file breaks the rules of the registry: it is not covered by a `REUSE.toml` annotation, its licence is outside the allowlist, the carrier and the annotation diverge, the notices are stale - PROP-014 §2–3), `LICENSE-PACKAGE` (the package is not consistent: the manifest, `LICENSE`, `LICENSES/`, the symbolic link - PROP-014 §3), `STANDARDS-DRIFT` (the installed copy of the standards package or the copy of the notice differs from the shipped one - `standards load` refuses without writing anything; PROP-014 §5), `RUNTIME-DRIFT` (the installed copy of the runtime library differs from the shipped one - `runtime load` without `--upgrade`, `runtime check`, `verify`; PROP-015 §4), `RUNTIME-PACKAGE` (toolRoot holds not exactly one runtime version directory, or the version literal does not match the name of the directory; PROP-015 §1), `DELIVERED-EDIT` (`save` found an edit of a delivered Codkit file in the tree; PROP-005 §12), `OWN-UNDER-CODKIT` (an own unit whose root is inside `codkit/`; PROP-005 §12), `HOOK-TOO-LARGE` (a patch of type hook exceeds the graft budget; PROP-005 §12), `GEN-EXISTS` (the generator does not overwrite an existing file; PROP-015 §5), `GEN-ID` (a feature identifier not of the required form; PROP-015 §5), `OWN-EXTENSION-MANIFEST` (the `extensions` section of the manifest is invalid, there is no `package.json`, or the name coincides with an upstream extension; PROP-005 §13), `OWN-EXTENSION-DRIFT` (the extension in the tree differs from the delta; PROP-005 §13), `TYPE-UNKNOWN` (the `type` of `codkit.json` is not in the registry of this codkit, or the package the registry names for it is not installed; PROP-016 `##TYPE-UNKNOWN`), `TYPE-CAPABILITY` (a verb needs an ability the declared project type does not have, or `verify` was asked about an artifact of a layer that type does not provide; PROP-016 `##TYPE-CAPABILITY-REFUSAL`); the warnings `CK-W-*` (at the minimum: `MARK-RO`, `PATCHSET-SIDE-EDIT`, `EMPTY-BLOCK`). @status:spec/done",
       "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-012#ERROR-REGISTRY"
     },
@@ -9464,7 +9464,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b7c1bb4ed1c9bcda5b59f7ddcadd9dff8d67e9e5a251c8dc98d2a1d3d2bf9e9a",
+      "content_hash": "sha256:491daa34a0a04595be55cb3fb6e7dc334cc958887ee8d9e9684a2eb7e9602682",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -9626,7 +9626,7 @@
     },
     {
       "anchor": "packaging",
-      "content_hash": "sha256:28d81751ad9069c5a7b3fa411cc6d45d812e9abb9bd55ae5b0fd8449be6a0870",
+      "content_hash": "sha256:2ea3e44dfe9397946351f1824d7375f2072e88ef9dd39682c8cecd200f8dcd20",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "3. Types are packages",
@@ -9644,19 +9644,19 @@
     },
     {
       "anchor": "TYPE-REGISTRY",
-      "content_hash": "sha256:2357bc52e9c15a1385d810f97c6206310683ff908f57f3243c43f447582d2c1c",
+      "content_hash": "sha256:15c1044bbbcb0c9ffa0e95d2e3465c53cfab441564d8d79befd79f8a97addf66",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "The engine holds a **registry of the package names it will load**, keyed by type identifier (`vscode` → `@codkit/type-vscode`). A type is resolved by a dynamic import of that package from the CLI package's own dependencies; the official types are regular dependencies of the CLI package. No module is loaded from a patch set or from an arbitrary path: determinism, the air-gapped circuit and the clean room all want the set of loadable code fixed by the tool's own release. Adding a type is publishing its package and adding its name to the registry. @status:spec/plan",
+      "heading": "The engine holds a **registry of the package names it will load**, keyed by type identifier (`vscode` → `@codkit/type-vscode`). A type is resolved by a dynamic import of that package from the CLI package's own dependencies; the official types are regular dependencies of the CLI package. No module is loaded from a patch set or from an arbitrary path: determinism, the air-gapped circuit and the clean room all want the set of loadable code fixed by the tool's own release. Adding a type is publishing its package and adding its name to the registry. @status:spec/done",
       "line": 31,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-REGISTRY"
     },
     {
       "anchor": "TYPE-UNKNOWN",
-      "content_hash": "sha256:2ef53a671f3adf4f7d1af815de0bdebecee305bd2e87fd7e6a7a39cd2c51a45f",
+      "content_hash": "sha256:abf1f8387f37f53354943372c334019a2cc78b62630f5466a7ec9399147e0645",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "A `type` the registry does not know, or whose package is not installed, is `CK-E-TYPE-UNKNOWN`, exit 2, naming the identifier and the package the registry expected; no command proceeds without a type. @status:spec/plan",
+      "heading": "A `type` the registry does not know, or whose package is not installed, is `CK-E-TYPE-UNKNOWN`, exit 2, naming the identifier and the package the registry expected; no command proceeds without a type. @status:spec/done",
       "line": 32,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-UNKNOWN"
     },
@@ -9680,7 +9680,7 @@
     },
     {
       "anchor": "configuration",
-      "content_hash": "sha256:d41c2ef22a239115691a925040c4a299e570aa0bc4ce8c7c32bbae222d626160",
+      "content_hash": "sha256:519de30a6ccac0b0ce0455a7c923d92a456bbf833e6b1663f8c06a8b116a11d2",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "4. Configuration",
@@ -9689,28 +9689,28 @@
     },
     {
       "anchor": "TYPE-CONFIG-FIELD",
-      "content_hash": "sha256:01e16576bbd93522e7fbd8e064b3b57b8f769a630648c17da64fcc7922647141",
+      "content_hash": "sha256:2915c00690b20c4993c716be0e4899e58b6eacd35d7a7de02e6c2aac4cb39b11",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "`codkit.json` schema 2 has `\"type\": \"<identifier>\"` and `\"typeConfig\": { ... }`. The engine validates the universal fields; the type validates `typeConfig` with its own schema and refuses with `CK-E-CONFIG` naming the field. One patch set, one type. @status:spec/plan",
+      "heading": "`codkit.json` schema 2 has `\"type\": \"<identifier>\"` and `\"typeConfig\": { ... }`. The engine validates the universal fields; the type validates `typeConfig` with its own schema and refuses with `CK-E-CONFIG` naming the field. One patch set, one type. @status:spec/done",
       "line": 39,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-CONFIG-FIELD"
     },
     {
       "anchor": "TYPE-SCHEMA-2-REQUIRED",
-      "content_hash": "sha256:c60899ac9a3b3d6515f7ec39e28e9db2c9a6f6c52367f0e640ce6bb95a529349",
+      "content_hash": "sha256:5739527df2f99235f4e7208c0e860ec699db70deac567f96bbe3985e14b9aed0",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "Schema 2 is the only schema: a `codkit.json` without `type` (schema 1) is refused with `CK-E-CONFIG` that names the two fields to add (`type`, `typeConfig.ownRoot`) and nothing else; no command reads schema 1 and no code path infers a type. There is one consumer of the tool today and it is migrated in the campaign (phase P2: its `codkit.json` gets `\"type\": \"vscode\"` and `\"typeConfig\": {\"ownRoot\": \"src/vs/patchset\"}`, and its gates - `verify`, `status`, `ci --profile build`, the static proof, the dev and package UI proofs - run on the migrated configuration). Owner ruling of 2026-09-09. @status:spec/plan",
+      "heading": "Schema 2 is the only schema: a `codkit.json` without `type` (schema 1) is refused with `CK-E-CONFIG` that names the two fields to add (`type`, `typeConfig.ownRoot`) and nothing else; no command reads schema 1 and no code path infers a type. There is one consumer of the tool today and it is migrated in the campaign (phase P2: its `codkit.json` gets `\"type\": \"vscode\"` and `\"typeConfig\": {\"ownRoot\": \"src/vs/patchset\"}`, and its gates - `verify`, `status`, `ci --profile build`, the static proof, the dev and package UI proofs - run on the migrated configuration). Owner ruling of 2026-09-09. @status:spec/done",
       "line": 40,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED"
     },
     {
       "anchor": "TYPE-OWN-ROOT",
-      "content_hash": "sha256:eb33b886149dd615f099b34ce6b7fd24aac1eb3952d4145d62593b350da3d97b",
+      "content_hash": "sha256:8078d86985e6f7380583a916e77b870dd7cfc30e656159b9b80b87491490b154",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "The own root is a **full path from the tree root** in `typeConfig.ownRoot`; the field is required, the type supplies its constraints (VS Code: under `src/vs/`; Theia: a workspace package directory) and refuses a root outside them with `CK-E-CONFIG`. The engine treats the own root as an opaque directory: mirrored by content, excluded from the drift guard, named in the inventory. @status:spec/plan",
+      "heading": "The own root is a **full path from the tree root** in `typeConfig.ownRoot`; the field is required, the type supplies its constraints (VS Code: under `src/vs/`; Theia: a workspace package directory) and refuses a root outside them with `CK-E-CONFIG`. The engine treats the own root as an opaque directory: mirrored by content, excluded from the drift guard, named in the inventory. @status:spec/done",
       "line": 41,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT"
     },
@@ -9869,7 +9869,7 @@
     },
     {
       "anchor": "decisions",
-      "content_hash": "sha256:23ba0e11866b2ce48767e24e63938eb274bd69c3113c87da5a87a096c2332065",
+      "content_hash": "sha256:77499747b188b7e2ee26dd42da207104fdca41aeda056b005daf98e917139561",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "9. Decisions",
@@ -9878,19 +9878,19 @@
     },
     {
       "anchor": "DECISION-TYPE-IS-A-PACKAGE",
-      "content_hash": "sha256:991ae7d44f3cf30279e9dc28089e19bf5ba5e65bf73411a0b2736c569e4351a8",
+      "content_hash": "sha256:8a568bc9c462e603678de73f7daa4de0cc60e7920a96a6ec284080117c13b4f4",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Decision:** a type is a separate npm package from the first day, resolved through a registry of names. **Why:** the owner's ruling - the procedure of splitting is done once; a package boundary that exists only in a directory drifts back into the engine. **Considered and rejected:** in-tree directories under one package (cheaper now, a second split later); arbitrary plugin loading from a patch set (breaks determinism, the air-gapped kit and the clean room). **When to revisit:** a third party ships a type - then the registry becomes a declared list in the tool's configuration rather than a constant. @status:spec/plan",
+      "heading": "**Decision:** a type is a separate npm package from the first day, resolved through a registry of names. **Why:** the owner's ruling - the procedure of splitting is done once; a package boundary that exists only in a directory drifts back into the engine. **Considered and rejected:** in-tree directories under one package (cheaper now, a second split later); arbitrary plugin loading from a patch set (breaks determinism, the air-gapped kit and the clean room). **When to revisit:** a third party ships a type - then the registry becomes a declared list in the tool's configuration rather than a constant. @status:spec/done",
       "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-TYPE-IS-A-PACKAGE"
     },
     {
       "anchor": "DECISION-NO-COMPATIBILITY-LAYER",
-      "content_hash": "sha256:03a98c577299273adc424eacde4b98b23f5b5761caedd690621e5c32ff1a3cce",
+      "content_hash": "sha256:e3f2ddbad6c99c6574c9ee4cbf982185c2b4854d5c4194dd808cc2a6558a701b",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Decision:** no compatibility layer for the old configuration schema: schema 2 is required, schema 1 is refused with a migration hint. **Why:** the owner's ruling of 2026-09-09 - the tool has one consumer, and fixing it is cheaper than building a compatibility layer and maintaining it afterwards; the consumer is migrated inside the campaign with its gates as the proof. **Considered and rejected:** reading schema 1 as `vscode` (a second code path, a second set of tests, and a rule that would outlive its only reason). **When to revisit:** never for schema 1; a future schema change gets the same treatment while the consumers can be counted on one hand. @status:spec/plan",
+      "heading": "**Decision:** no compatibility layer for the old configuration schema: schema 2 is required, schema 1 is refused with a migration hint. **Why:** the owner's ruling of 2026-09-09 - the tool has one consumer, and fixing it is cheaper than building a compatibility layer and maintaining it afterwards; the consumer is migrated inside the campaign with its gates as the proof. **Considered and rejected:** reading schema 1 as `vscode` (a second code path, a second set of tests, and a rule that would outlive its only reason). **When to revisit:** never for schema 1; a future schema change gets the same treatment while the consumers can be counted on one hand. @status:spec/done",
       "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-016#DECISION-NO-COMPATIBILITY-LAYER"
     },
@@ -9986,7 +9986,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:d0e5cadd9cde9652f7f3313a1adb30218c8dd28099b168aac5541dd966a11247",
+      "content_hash": "sha256:63130c903c0784046c5d81a86ce836158e8fd5d09afd6539e72a9cf9eb35b42b",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
       "heading": "vscode PROP-002: Tree layout - the own root, own extensions, cleanup, forbidden targets",
@@ -9995,7 +9995,7 @@
     },
     {
       "anchor": "own-root",
-      "content_hash": "sha256:13f15d425bb05b0bb42585b400668dd5bc081427e7c2a71d0359f2bfff77ba90",
+      "content_hash": "sha256:ce56f4083c7f9bd3d3396e48115ac4700d9e3ca201ce46e393ebea4efbb03d21",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
       "heading": "1. Where own code lives",
@@ -10013,10 +10013,10 @@
     },
     {
       "anchor": "VSCODE-OWN-ROOT-CONSTRAINT",
-      "content_hash": "sha256:832c7c5f15edf314115a45f9d03884aebffd6314b9f844b6f44012b5be408b54",
+      "content_hash": "sha256:be40901ccbaff8d2f7174e568efab0f51ae433734a4037f7fc0b09e143e8b952",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
-      "heading": "The type's constraint on `typeConfig.ownRoot` is that the own root lies under `src/vs/` (`spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`); a root outside it is `CK-E-CONFIG` naming the constraint. The field is required and has no default - schema 2 is the only schema (`spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED`). The engine treats the root as an opaque directory - mirrored by content, excluded from the drift guard, named in the inventory - and only this type knows why it has to sit under `src/vs/`: the tsconfig, layering, test and nls globs of the distribution are anchored there. @status:spec/plan",
+      "heading": "The type's constraint on `typeConfig.ownRoot` is that the own root lies under `src/vs/` (`spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`); a root outside it is `CK-E-CONFIG` naming the constraint. The field is required and has no default - schema 2 is the only schema (`spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED`). The engine treats the root as an opaque directory - mirrored by content, excluded from the drift guard, named in the inventory - and only this type knows why it has to sit under `src/vs/`: the tsconfig, layering, test and nls globs of the distribution are anchored there. @status:spec/done",
       "line": 7,
       "uri": "spec://codkit/modules/vscode/PROP-002#VSCODE-OWN-ROOT-CONSTRAINT"
     },

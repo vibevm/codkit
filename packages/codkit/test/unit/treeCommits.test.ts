@@ -251,7 +251,7 @@ describe('the third half inside the drift guard', () => {
 		const first = humanCommit('guard sees the first', '2026-09-06T10:10:00Z');
 		const second = humanCommit('guard sees the second', '2026-09-06T10:11:00Z');
 		try {
-			const drift = driftDirty(fixture.treeDir, fixture.config.ownDirName, fixture.patchesDir, {
+			const drift = driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 				generated: { pinSha: fixture.config.pin.sha, branch: branch() }
 			});
 			expect(drift.upstream).toEqual([]);

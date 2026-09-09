@@ -32,7 +32,7 @@ import {
 } from '../lib/layers/ownExtensions.ts';
 import type { OwnExtension } from '../lib/layers/ownManifest.ts';
 import { loadOwnManifest } from '../lib/layers/ownManifest.ts';
-import { classifyOwn, ownTargetRelativeDir } from '../lib/ownCopy.ts';
+import { classifyOwn } from '../lib/ownCopy.ts';
 import type { OwnSideClass, OwnSideKind } from '../lib/ownCopy.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { listPendingHeaders } from '../lib/pendingHeader.ts';
@@ -134,7 +134,7 @@ async function run(ctx: CommandContext): Promise<number> {
 			pinSha: config.pin.sha,
 			base: treeCommits.base,
 			mark,
-			ownDirName: config.ownDirName,
+			ownRoot: config.typeConfig.ownRoot,
 			commits: treeCommits.commits
 		})
 	);
@@ -149,8 +149,8 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	// 2. Own code, per file and per side (PROP-008 ##PATCHSET-SIDE-EDIT-RULE).
-	const own = classifyOwn(ctx.patchesDir, tree, config.ownDirName, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
-	reportOwn(ctx.out, own, config.ownDirName);
+	const own = classifyOwn(ctx.patchesDir, tree, config.typeConfig.ownRoot, mark?.ownFiles ?? null).filter((entry) => entry.kind !== 'same');
+	reportOwn(ctx.out, own, config.typeConfig.ownRoot);
 
 	// 2a. Own extensions (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT): materialized under
 	// `extensions/<name>/`, they are own code in the upstream zone - drift is
@@ -183,7 +183,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	// 3. Upstream files: what git sees outside the own directory and outside
 	// the declared own extensions, and whether the markers of those files are
 	// still valid.
-	const upstream = upstreamFiles(tree, config.ownDirName, conventions, ownExtensionTreePrefixes(declared));
+	const upstream = upstreamFiles(tree, config.typeConfig.ownRoot, conventions, ownExtensionTreePrefixes(declared));
 	const blocks = upstream.reduce((sum, file) => sum + file.blocks, 0);
 	const markerErrors = upstream.reduce((sum, file) => sum + file.markerErrors, 0);
 	ctx.out.info(`upstream files: ${upstream.length} changed, ${blocks} marker block(s) in them, ${markerErrors} marker error(s)`);
@@ -271,13 +271,13 @@ function firstUnmet(conditions: readonly { ok: boolean; reason: string }[]): str
 	return conditions.find((condition) => !condition.ok)?.reason ?? '';
 }
 
-function reportOwn(out: Output, own: readonly OwnSideClass[], ownDirName: string): void {
+function reportOwn(out: Output, own: readonly OwnSideClass[], ownRoot: string): void {
 	const counts = countKinds(own);
 	out.info(
 		`own code: ${own.length} changed file(s) - ${counts['tree-edited']} in the tree, ${counts['patchset-edited']} in patchset, ` +
 			`${counts['both-edited']} on both sides, ${counts['unknown']} undecidable`
 	);
-	const prefix = ownTargetRelativeDir(ownDirName);
+	const prefix = ownRoot;
 	for (const entry of own.slice(0, LIST_LIMIT)) {
 		out.info(`  ${entry.kind} ${prefix}/${entry.relative}`);
 	}
@@ -309,7 +309,7 @@ function countKinds(own: readonly OwnSideClass[]): Record<OwnSideKind, number> {
 /** Changed upstream files, with the marker verdict of each readable one. */
 function upstreamFiles(
 	treeDir: string,
-	ownDirName: string,
+	ownRoot: string,
 	conventions: Conventions,
 	ownedPrefixes: readonly string[]
 ): readonly UpstreamFile[] {
@@ -321,7 +321,7 @@ function upstreamFiles(
 			'check that the fork tree is a healthy git work tree'
 		);
 	}
-	const owned = [`${ownTargetRelativeDir(ownDirName)}/`, ...ownedPrefixes];
+	const owned = [`${ownRoot}/`, ...ownedPrefixes];
 	const files: UpstreamFile[] = [];
 	for (const entry of expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), ownedPrefixes)) {
 		if (owned.some((prefix) => entry.path.startsWith(prefix))) {

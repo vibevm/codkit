@@ -236,7 +236,7 @@ async function runErrors(
 	}
 
 	const mine = commandFlagGiven(ctx.commandFlags, MINE);
-	const targets = mine ? inventoryTargets(buildInventory(ctx.patchesDir, { config }), config.ownDirName) : new Set<string>();
+	const targets = mine ? inventoryTargets(buildInventory(ctx.patchesDir, { config }), config.typeConfig.ownRoot) : new Set<string>();
 
 	const rows: JsonValue[] = [];
 	let worst = EXIT_OK;
@@ -264,7 +264,7 @@ async function runErrors(
 				`${channel.name}: the daemon is gone (${state.detail}); showing the finished pass from the log ` +
 					`(${logPath(ctx.patchesDir, channel.name)}); hint: run codkit build up --channel ${channel.name} to watch the tree again`
 			);
-			const reportedOfGone = mine ? mineOnly(finished.errors, treeDir, config.ownDirName, targets) : finished.errors;
+			const reportedOfGone = mine ? mineOnly(finished.errors, treeDir, config.typeConfig.ownRoot, targets) : finished.errors;
 			printPass(ctx, channel, finished, reportedOfGone, mine);
 			rows.push(rowOf(channel, finished, reportedOfGone, mine, true));
 			if (reportedOfGone.length > 0 || (!mine && finished.errorCount > 0)) {
@@ -294,7 +294,7 @@ async function runErrors(
 		}
 
 		const report = outcome.report;
-		const reported = mine ? mineOnly(report.errors, treeDir, config.ownDirName, targets) : report.errors;
+		const reported = mine ? mineOnly(report.errors, treeDir, config.typeConfig.ownRoot, targets) : report.errors;
 		printPass(ctx, channel, report, reported, mine);
 		rows.push(rowOf(channel, report, reported, mine, false));
 		if (reported.length > 0 || (!mine && report.errorCount > 0)) {
@@ -305,13 +305,8 @@ async function runErrors(
 	return worst;
 }
 
-function mineOnly(
-	errors: readonly ParsedError[],
-	treeDir: string,
-	ownDirName: string,
-	targets: ReadonlySet<string>
-): readonly ParsedError[] {
-	return errors.filter((error) => isMine(treeRelativePath(error.file, treeDir), ownDirName, targets));
+function mineOnly(errors: readonly ParsedError[], treeDir: string, ownRoot: string, targets: ReadonlySet<string>): readonly ParsedError[] {
+	return errors.filter((error) => isMine(treeRelativePath(error.file, treeDir), ownRoot, targets));
 }
 
 /**

@@ -158,7 +158,7 @@ export async function runCi(options) {
         }
         throw error;
     }
-    const drift = driftDirty(tree, config.ownDirName, patchesDir, {
+    const drift = driftDirty(tree, config.typeConfig.ownRoot, patchesDir, {
         untrackedIsDirt: false,
         generated: { pinSha: config.pin.sha, branch }
     });
@@ -309,7 +309,7 @@ export async function runCi(options) {
     }
     // Own product and contract tests, through the upstream node runner and the
     // same runGlob that was verified on the real polygon in FEAT-001.
-    const tests = productTestsStep(patchesDir, tree, config.ownDirName, out, options.runCommand);
+    const tests = productTestsStep(patchesDir, tree, config.typeConfig.ownRoot, out, options.runCommand);
     steps.record('product tests', tests.state, tests.detail);
     if (tests.error !== null) {
         out.addError(tests.error);
@@ -805,7 +805,7 @@ export function upstreamHygieneStep(treeDir, out, run = defaultCiCommandRunner) 
  * a feature folder run with the product's own; using the tree's `test-node`
  * script preserves the upstream runner's own mandatory flags.
  */
-export function productTestsStep(patchesDir, treeDir, ownDirName, out, run = defaultCiCommandRunner) {
+export function productTestsStep(patchesDir, treeDir, ownRoot, out, run = defaultCiCommandRunner) {
     const root = ownSourceRoot(patchesDir);
     const tests = listOwnFiles(root, { refuseSymlinks: true }).filter((relative) => isProductTestFile(relative));
     if (tests.length === 0) {
@@ -824,7 +824,7 @@ export function productTestsStep(patchesDir, treeDir, ownDirName, out, run = def
     // and a suite that drives the workbench pulls stylesheets node cannot load;
     // the node runner therefore takes the common and node layers only, and the
     // browser suites are the electron runner's (PROP-010 sec. 4).
-    const glob = `vs/${ownDirName}/**/test/{common,node}/**/*.test.js`;
+    const glob = `vs/${ownRoot.split('/').at(-1) ?? ownRoot}/**/test/{common,node}/**/*.test.js`;
     const result = runCommandSequence(out, [
         {
             label: 'product tests',

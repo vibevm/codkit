@@ -26,10 +26,11 @@ function resolution(path: string): ForkDirResolution {
 
 function configFor(fixture: UpstreamFixture): CodkitConfig {
 	return {
-		codkitConfig: 1,
+		codkitConfig: 2,
 		pin: { tag: fixture.t1.tag, sha: fixture.t1.sha, date: pinDate(fixture.t1.dateIso) },
 		upstreamAnchorCommit: fixture.anchorSha,
-		ownDirName: 'patchset',
+		type: 'vscode',
+		typeConfig: { ownRoot: 'src/vs/patchset' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -179,10 +180,11 @@ describe('checkTree git-lfs check', () => {
 		const sha = fixtureCommit(tree, 'lfs fixture', '2026-01-03T00:00:00Z');
 
 		const config: CodkitConfig = {
-			codkitConfig: 1,
+			codkitConfig: 2,
 			pin: { tag: 'lfs-fixture', sha, date: '2026-01-03' },
 			upstreamAnchorCommit: sha,
-			ownDirName: 'patchset',
+			type: 'vscode',
+			typeConfig: { ownRoot: 'src/vs/patchset' },
 			generatedBranchPrefix: 'codkit/applied/',
 			cycleBranchPrefix: 'codkit/cycle/',
 			releaseRefPrefix: 'codkit/release/',

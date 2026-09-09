@@ -5,6 +5,7 @@
 // the libraries; each receives an already-resolved context and returns an exit
 // code, so a command can be exercised without a process.
 
+import type { ProjectType } from '@codkit/type-api';
 import type { CodkitConfig } from './configFile.ts';
 import type { Output } from './jsonOut.ts';
 import { requireForkDir, requirePatchesDir } from './paths.ts';
@@ -66,6 +67,12 @@ export type CommandContext = {
 	readonly env: ResolverEnv;
 	/** null when codkit.json is absent and the command tolerates that. */
 	readonly config: CodkitConfig | null;
+	/**
+	 * The project type the configuration declares, resolved once per run
+	 * (PROP-016 ##TYPE-REGISTRY). null exactly when `config` is null: a patch set
+	 * that has a configuration always has a type, because schema 2 requires one.
+	 */
+	readonly type: ProjectType | null;
 	readonly out: Output;
 };
 

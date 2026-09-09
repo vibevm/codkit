@@ -13,7 +13,7 @@ import { classifyOwn, mirrorOwnBack, ownStateOfTree, ownStateOfPatchSet, syncOwn
 import type { OwnFileMap } from '../../src/lib/ownCopy.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const OWN_DIR = 'patchset';
+const OWN_DIR = 'src/vs/patchset';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -29,7 +29,7 @@ function makeSides(label: string, patchset: Record<string, string>, tree: Record
 		write(join(patchesDir, 'delta', 'own', relative), content);
 	}
 	for (const [relative, content] of Object.entries(tree)) {
-		write(join(treeDir, 'src', 'vs', OWN_DIR, relative), content);
+		write(join(treeDir, OWN_DIR, relative), content);
 	}
 	return { patchesDir, treeDir };
 }
@@ -96,7 +96,7 @@ describe('classifyOwn', () => {
 	it('gives the same fingerprint to the same content and a different one otherwise', () => {
 		const sides = makeSides('fingerprint', { 'a.ts': 'x\n' }, { 'a.ts': 'x\n' });
 		expect(ownStateOfPatchSet(sides.patchesDir).fingerprint).toBe(ownStateOfTree(sides.treeDir, OWN_DIR).fingerprint);
-		write(join(sides.treeDir, 'src', 'vs', OWN_DIR, 'a.ts'), 'y\n');
+		write(join(sides.treeDir, OWN_DIR, 'a.ts'), 'y\n');
 		expect(ownStateOfPatchSet(sides.patchesDir).fingerprint).not.toBe(ownStateOfTree(sides.treeDir, OWN_DIR).fingerprint);
 	});
 });
@@ -169,12 +169,12 @@ describe('syncOwnCode path safety', () => {
 		const outside = makeTempRoot('own-target-symlink-outside');
 		const victim = join(outside, 'victim.ts');
 		writeFileSync(victim, 'outside bytes\n', 'utf8');
-		const link = join(sides.treeDir, 'src', 'vs', OWN_DIR, 'linked.ts');
+		const link = join(sides.treeDir, OWN_DIR, 'linked.ts');
 		mkdirSync(dirname(link), { recursive: true });
 		symlinkSync(victim, link);
 
 		expect(() => syncOwnCode(sides.patchesDir, sides.treeDir, OWN_DIR)).toThrow(/symlink/i);
 		expect(readFileSync(victim, 'utf8')).toBe('outside bytes\n');
-		expect(existsSync(join(sides.treeDir, 'src', 'vs', OWN_DIR, 'other.ts'))).toBe(false);
+		expect(existsSync(join(sides.treeDir, OWN_DIR, 'other.ts'))).toBe(false);
 	});
 });

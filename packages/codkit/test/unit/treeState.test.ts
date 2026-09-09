@@ -57,7 +57,7 @@ function base(): string {
 }
 
 function changes(forcedPaths: readonly string[] = []): readonly StateChange[] {
-	return changesSince(fixture.treeDir, base(), { kind: 'worktree' }, fixture.config.ownDirName, forcedPaths);
+	return changesSince(fixture.treeDir, base(), { kind: 'worktree' }, fixture.config.typeConfig.ownRoot, forcedPaths);
 }
 
 function statusOf(path: string): string {
@@ -135,9 +135,9 @@ describe('changesSince over the worktree state', () => {
 		try {
 			// The porcelain view over a commit is empty; the selector is not.
 			expect(runGit({ args: ['status', '--porcelain'], cwd: fixture.treeDir }).stdout).toBe('');
-			expect(changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, fixture.config.ownDirName).map((entry) => entry.path)).toEqual(
-				[TARGET]
-			);
+			expect(
+				changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, fixture.config.typeConfig.ownRoot).map((entry) => entry.path)
+			).toEqual([TARGET]);
 		} finally {
 			gitLocal({ args: ['reset', '--quiet', '--hard', `refs/heads/${branch()}`], cwd: fixture.treeDir });
 		}
@@ -148,7 +148,7 @@ describe('changesSince over the worktree state', () => {
 		commitWithLine('// committed half', 'committed half');
 		writeFileSync(treePath(TARGET), `${readTarget()}// uncommitted half\n`, 'utf8');
 		try {
-			const changes = changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, fixture.config.ownDirName);
+			const changes = changesSince(fixture.treeDir, appliedTip, { kind: 'worktree' }, fixture.config.typeConfig.ownRoot);
 			expect(changes.map((entry) => entry.path)).toEqual([TARGET]);
 			// The selection carries the final state; the byte read proves it.
 			expect(Buffer.from(bytesOf(fixture.treeDir, { kind: 'worktree' }, TARGET)).toString('utf8')).toContain('// uncommitted half');
@@ -158,7 +158,7 @@ describe('changesSince over the worktree state', () => {
 	});
 
 	it('filters the own directory out of the untracked union', () => {
-		const ownPath = join('src', 'vs', fixture.config.ownDirName, 'probe.ts');
+		const ownPath = join(fixture.config.typeConfig.ownRoot, 'probe.ts');
 		mkdirSync(dirname(treePath(ownPath)), { recursive: true });
 		writeFileSync(treePath(ownPath), '// own side\n', 'utf8');
 		try {
@@ -181,7 +181,7 @@ describe('changesSince over the worktree state', () => {
 	});
 
 	it('refuses a forced path under the own prefix', () => {
-		const ownForced = join('src', 'vs', fixture.config.ownDirName, 'probe.ts');
+		const ownForced = join(fixture.config.typeConfig.ownRoot, 'probe.ts');
 		let thrown: unknown;
 		try {
 			changes([ownForced]);
@@ -200,7 +200,7 @@ describe('changesSince over a commit state', () => {
 		// An edit the commit does not hold separates the two byte sources.
 		writeFileSync(treePath(TARGET), `${readTarget()}// after the commit\n`, 'utf8');
 		try {
-			const committed = changesSince(fixture.treeDir, appliedTip, { kind: 'commit', sha }, fixture.config.ownDirName);
+			const committed = changesSince(fixture.treeDir, appliedTip, { kind: 'commit', sha }, fixture.config.typeConfig.ownRoot);
 			expect(committed.map((entry) => entry.path)).toEqual([TARGET]);
 			const blob = Buffer.from(bytesOf(fixture.treeDir, { kind: 'commit', sha }, TARGET)).toString('utf8');
 			expect(blob).toContain('// state of one commit');

@@ -24,10 +24,11 @@ afterEach(cleanupTempRoots);
 
 /** The valid sample of PROP-003 sec. 2, as a configured patch-set root. */
 const SAMPLE = {
-	codkitConfig: 1,
+	codkitConfig: 2,
 	pin: { tag: '1.135.0', sha: '08d4889f9ec4a1685d257b9b95de036c8e1ce1e5', date: '2026-08-25' },
 	upstreamAnchorCommit: '0000000000000000000000000000000000000000',
-	ownDirName: 'patchset',
+	type: 'vscode',
+	typeConfig: { ownRoot: 'src/vs/patchset' },
 	generatedBranchPrefix: 'codkit/applied/',
 	cycleBranchPrefix: 'codkit/cycle/',
 	releaseRefPrefix: 'codkit/release/',
@@ -44,7 +45,7 @@ function configuredRoot(label: string): string {
 
 /** The edit a human or a tool makes while the pin update is between its steps. */
 function plantNewerEdit(root: string): Uint8Array {
-	const newer = `${JSON.stringify({ ...SAMPLE, ownDirName: 'newer-external-edit' }, null, 2)}\n`;
+	const newer = `${JSON.stringify({ ...SAMPLE, typeConfig: { ownRoot: 'src/vs/newer-external-edit' } }, null, 2)}\n`;
 	writeFileSync(join(root, CONFIG_FILE_NAME), newer, 'utf8');
 	return new Uint8Array(Buffer.from(newer));
 }
