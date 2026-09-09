@@ -10,7 +10,7 @@
 // Every violation is printed on its own line, with its code, its artifact and a
 // hint. One run tells the whole story: an upgrade that broke five artifacts is
 // one report, not five runs.
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.js';
 import { ckError, serializeErrorPayload } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { checkTree } from '../lib/treeIdentity.js';
@@ -36,7 +36,7 @@ async function run(ctx) {
         ctx.out.addError(identity.fatal.toPayload());
         return EXIT_ENVIRONMENT;
     }
-    const result = runVerify({ patchesDir: ctx.patchesDir, resolution, config });
+    const result = runVerify({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
     report(ctx, result);
     ctx.out.setData(dataOf(result, { staged: null }));
     if (result.findings.length === 0) {
@@ -52,7 +52,7 @@ async function run(ctx) {
  * forgiven - the hook must never make a repository uncommittable.
  */
 function stagedFast(ctx, config, resolution) {
-    const result = runStagedFast({ patchesDir: ctx.patchesDir, resolution, config });
+    const result = runStagedFast({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
     report(ctx, result);
     ctx.out.setData(dataOf(result, { staged: result.staged }));
     if (result.findings.length === 0) {

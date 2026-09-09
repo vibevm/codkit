@@ -29,6 +29,7 @@ import { saveCommand } from './commands/save.js';
 import { standardsCheckCommand, standardsCommand, standardsLicenseCommand, standardsLoadCommand } from './commands/standards.js';
 import { statusCommand } from './commands/status.js';
 import { syncCommand } from './commands/sync.js';
+import { typesCommand } from './commands/types.js';
 import { verifyCommand } from './commands/verify.js';
 import { whereCommand } from './commands/where.js';
 import { parseArgv, GLOBAL_FLAG_HELP } from './lib/argv.js';
@@ -54,6 +55,7 @@ const GLOBAL_FLAG_HELP_NAME = '--help';
 const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT', 'RUNTIME-DRIFT']);
 const COMMANDS = new Map([
     whereCommand,
+    typesCommand,
     checkTreeCommand,
     cloneCommand,
     loadCommand,
@@ -173,6 +175,7 @@ async function main(argv) {
         if (config !== null && type !== null) {
             assertTypeConfig(type, config);
         }
+        out.setProjectType(type?.id ?? null);
         const exitCode = await matched.definition.run({
             toolRoot,
             locations,

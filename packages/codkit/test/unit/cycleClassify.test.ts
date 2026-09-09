@@ -15,6 +15,7 @@ import { acquireLock } from '../../src/lib/lock.ts';
 import { formatPatchHeader, encodePatchName } from '../../src/lib/patchFormat.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const EMPTY_ARTIFACTS: CycleState['artifacts'] = {
 	clean: [],
@@ -585,7 +586,7 @@ function cycleFixture(tree: string, oldPin: string, newPin: string): Fixture {
 }
 
 function options(current: Fixture) {
-	return { patchesDir: current.root, treeDir: current.tree, config: current.config, state: current.state };
+	return { patchesDir: current.root, treeDir: current.tree, config: current.config, type: vscodeType, state: current.state };
 }
 
 function renameFixture(label: string, stem: string): Fixture {

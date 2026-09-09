@@ -6,6 +6,11 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_NEEDS_HUMAN, EXIT_OK } from '../packages/codkit/src/lib/command.ts';
 import { loadConventions } from '../packages/codkit/src/lib/conventionsFile.ts';
+// The conventions reference documents the effective policy of a patch set, and
+// that is the engine's half composed with a project type's defaults. The
+// generated page is written against the type the tool's own polygon uses
+// (PROP-016 ##TYPE-AREA-CONVENTIONS); a second type would get its own page.
+import { projectType as vscodeType } from '@codkit/type-vscode';
 import { ERROR_CODES, WARNING_CODES } from '../packages/codkit/src/lib/messages.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,7 +25,7 @@ function main() {
 	const help = codkitHelp();
 	const parsedHelp = parseHelp(help);
 	const flagKinds = readFlagKinds();
-	const conventions = loadConventions(root);
+	const conventions = loadConventions(vscodeType, root);
 	const outputs = new Map([
 		[join(root, 'docs/codkit/reference/commands.md'), renderCommands(parsedHelp, flagKinds)],
 		[join(root, 'docs/codkit/reference/conventions.md'), renderConventions(conventions)],
@@ -144,7 +149,12 @@ const commandGuidance = {
 	where: {
 		positional: '',
 		detail:
-			'Resolve the external roots without loading patch-set configuration and report schema-2 `roots.tool`, `roots.patches`, and `roots.fork` with their winning sources.'
+			'Resolve the external roots and report schema-2 `roots.tool`, `roots.patches`, and `roots.fork` with their winning sources, plus the project type the patch set declares.'
+	},
+	types: {
+		positional: '',
+		detail:
+			'Print the project types this installation carries: the identifier a `codkit.json` may declare, the package that implements it, its version and the capabilities it answers. Needs no patch set.'
 	},
 	'check-tree': {
 		positional: '',

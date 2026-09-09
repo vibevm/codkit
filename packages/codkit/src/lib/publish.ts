@@ -17,6 +17,7 @@ import type { Output } from './jsonOut.ts';
 import { acquireLock } from './lock.ts';
 import { ckError } from './messages.ts';
 import type { ForkDirResolution } from './paths.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 const ZERO_SHA = '0'.repeat(40);
 const SHA = /^[0-9a-f]{40}$/;
@@ -30,6 +31,8 @@ export type PublishOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below are handed it. */
+	readonly type: ProjectType;
 	readonly out: Output;
 	readonly patchSetRef: string;
 	readonly profile: CiProfile;
@@ -90,6 +93,7 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			patchesDir: workspace.patchesDir,
 			resolution: workspace.resolution,
 			config: snapshotConfig,
+			type: options.type,
 			out: options.out,
 			profile: options.profile,
 			effectiveDiffBase: null,

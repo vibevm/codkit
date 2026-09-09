@@ -9464,7 +9464,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:491daa34a0a04595be55cb3fb6e7dc334cc958887ee8d9e9684a2eb7e9602682",
+      "content_hash": "sha256:0638d8a55f2942f143728bd63e9b310df4c7afdc73bc36e4ce30e9fed68378ad",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -9473,7 +9473,7 @@
     },
     {
       "anchor": "purpose",
-      "content_hash": "sha256:fb3d7048c70a0b2ddd517d62032d753152d73890b66ec559e641a3c0aea27969",
+      "content_hash": "sha256:7220ec4e74f71074c0328048642b4c1166404f509c5a20a8e579e6c575b560e4",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "1. Purpose and vocabulary",
@@ -9491,10 +9491,10 @@
     },
     {
       "anchor": "TYPE-TERM",
-      "content_hash": "sha256:7d875484666fd1b257b26eae13eeb319f63b4453f7b758e94dad26317c2eac1e",
+      "content_hash": "sha256:dd9ac69d877fd843894a21751869d0330b15b8992d1bb28d3528cec38c80080d",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "A **project type** (short: type) is the tool's knowledge of one family of upstreams, shipped as one package and named by one identifier: `vscode`, `generic`, `theia`, later others. A patch set declares exactly one type. The engine asks the type; it never states a type's facts itself. @status:spec/plan",
+      "heading": "A **project type** (short: type) is the tool's knowledge of one family of upstreams, shipped as one package and named by one identifier: `vscode`, `generic`, `theia`, later others. A patch set declares exactly one type. The engine asks the type; it never states a type's facts itself. @status:spec/done",
       "line": 8,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-TERM"
     },
@@ -9518,7 +9518,7 @@
     },
     {
       "anchor": "contract",
-      "content_hash": "sha256:d850bb0f8c77d9342dc61c33c7339db1072ed144f0f11d9218da2387998248bb",
+      "content_hash": "sha256:d7089e07f9b3025ddd41667d890e41ac2e2028f6e84e7e44156a03e428cabdba",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "2. The contract: nine questions a type answers",
@@ -9536,82 +9536,82 @@
     },
     {
       "anchor": "TYPE-AREA-IDENTITY",
-      "content_hash": "sha256:d3982d7b92dbc4cf721c82c85af5f095923db086c0a0957b80a101df489fd156",
+      "content_hash": "sha256:9bcfddb1d7cb5dc5f635387b3057deaed0ab92b202703d9781c3952f74be20cc",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Upstream identity.** The tag pattern a pin may use, how a pin resolves to `tag@sha@date` (universal form), the fingerprints `check-tree` requires of a healthy tree (manifest name, marker files), the anchor policy. @status:spec/plan",
+      "heading": "**Upstream identity.** The tag pattern a pin may use, how a pin resolves to `tag@sha@date` (universal form), the fingerprints `check-tree` requires of a healthy tree (manifest name, marker files), the anchor policy. @status:spec/done",
       "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-IDENTITY"
     },
     {
       "anchor": "TYPE-AREA-LAYOUT",
-      "content_hash": "sha256:1dde6638939b6b91b6778af90d0024e7df3b1994880e8b7e9b25570c23610c37",
+      "content_hash": "sha256:2e4a11b6bc7cc301ca3c403e7e60ac05baf3336a1bc3f9701ade05e10fd0beea",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Tree layout.** The own root (`typeConfig.ownRoot`, a path from the tree root: `src/vs/<name>` for VS Code, a workspace package for Theia), whether own extensions exist and where they materialize, the cleanup whitelist of build outputs the fresh pass may remove, the forbidden patch targets, type-specific marker comment forms if any. @status:spec/plan",
+      "heading": "**Tree layout.** The own root (`typeConfig.ownRoot`, a path from the tree root: `src/vs/<name>` for VS Code, a workspace package for Theia), whether own extensions exist and where they materialize, the cleanup whitelist of build outputs the fresh pass may remove, the forbidden patch targets, type-specific marker comment forms if any. @status:spec/done",
       "line": 17,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYOUT"
     },
     {
       "anchor": "TYPE-AREA-LAYERS",
-      "content_hash": "sha256:e517c515fc1da51a25254fd8caac7f57918b5a203e66b3a09bcc5d0659d4438b",
+      "content_hash": "sha256:c0d53c6598036166380c226ec3e9a42fc18bb85a4e314d52bcde2e38ea348385",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Layers.** `own`, `patch`, `resource-file` and `rewrite-rule` are universal and always present. `config-overlay` takes its targets and its optional dev channel from the type (VS Code: `product.json` with `product.overrides.json`). `own-extension` takes its materializer from the type (VS Code: `extensions/<name>`). `service-override` takes its verifier from the type (VS Code: `registerSingleton`; Theia: an inversify `rebind` in a container module). `entry-module` takes its locator from the type (VS Code: `workbench.common.main.ts`; Theia: the application's module list). A layer the type does not provide is absent for that patch set: `verify` refuses an artifact of that layer with `CK-E-TYPE-CAPABILITY`. @status:spec/plan",
+      "heading": "**Layers.** `own`, `patch`, `resource-file` and `rewrite-rule` are universal and always present. `config-overlay` takes its targets and its optional dev channel from the type (VS Code: `product.json` with `product.overrides.json`). `own-extension` takes its materializer from the type (VS Code: `extensions/<name>`). `service-override` takes its verifier from the type (VS Code: `registerSingleton`; Theia: an inversify `rebind` in a container module). `entry-module` takes its locator from the type (VS Code: `workbench.common.main.ts`; Theia: the application's module list). A layer the type does not provide is absent for that patch set: `verify` refuses an artifact of that layer with `CK-E-TYPE-CAPABILITY`. @status:spec/done",
       "line": 18,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS"
     },
     {
       "anchor": "TYPE-AREA-BUILD",
-      "content_hash": "sha256:9d9c443ea76aa498617dfa3b31b94b51a035b5dfdec4dee7c46d18f98d71ba07",
+      "content_hash": "sha256:8fef26b914b63cba44279043f3c966d2dd129601e9a34d76b6c9bbcd41f2d7d9",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Build and test.** The dependency install, the hygiene and lint scripts, the compile channels behind `build up|down|status|errors` and the foreign-watcher markers, the test runner with an own-root glob, the package build and the stamps it needs. `ci --profile build` is one universal skeleton (PROP-011) whose steps call these answers. @status:spec/plan",
+      "heading": "**Build and test.** The dependency install, the hygiene and lint scripts, the compile channels behind `build up|down|status|errors` and the foreign-watcher markers, the test runner with an own-root glob, the package build and the stamps it needs. `ci --profile build` is one universal skeleton (PROP-011) whose steps call these answers. @status:spec/done",
       "line": 19,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-BUILD"
     },
     {
       "anchor": "TYPE-AREA-ADVISORY",
-      "content_hash": "sha256:a333876db74436a5e48d57685489af7e9f0096f45a37f102b31426fbe1fd908f",
+      "content_hash": "sha256:faba220219d2d8d5a2d89567183f60ff9aabc3f412726365997ce356d0abb7bd",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Upgrade advisory.** The semantic readers the cycle runs between two pins (VS Code: built-in extensions of `product.json`, Electron and TypeScript versions). The advisory's frame - what changed, what it means, what to do - is the engine's. @status:spec/plan",
+      "heading": "**Upgrade advisory.** The semantic readers the cycle runs between two pins (VS Code: built-in extensions of `product.json`, Electron and TypeScript versions). The advisory's frame - what changed, what it means, what to do - is the engine's. @status:spec/done",
       "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-ADVISORY"
     },
     {
       "anchor": "TYPE-AREA-BRAND-IMAGES",
-      "content_hash": "sha256:3be185d622b1e7f7c97a549242db7e037d99674a42d2fef5a1b3526f4b6dc120",
+      "content_hash": "sha256:bff7e34db97a60cc432acb3f0904e47e0dc392c5de2ab544a70b7f433f803f0a",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Brand images** (capability `brand-images`). The target table of the distribution's icons and image forms; the generator, the index and the verifier are the engine's. @status:spec/plan",
+      "heading": "**Brand images** (capability `brand-images`). The target table of the distribution's icons and image forms; the generator, the index and the verifier are the engine's. @status:spec/done",
       "line": 21,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-BRAND-IMAGES"
     },
     {
       "anchor": "TYPE-AREA-RUNTIME",
-      "content_hash": "sha256:73b506ab9b376c5efb3669bd3295d52f035b4838427142e62935d12da6e7fd74",
+      "content_hash": "sha256:13e38c1b89ca763228babfb838e898bc48019d1a218133e3da330c16ee83f96e",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Runtime library** (capability `runtime-library`). Which shipped runtime package the type delivers with `codkit runtime load` (today's library becomes `runtime-vscode`). @status:spec/plan",
+      "heading": "**Runtime library** (capability `runtime-library`). Which shipped runtime package the type delivers with `codkit runtime load` (today's library becomes `runtime-vscode`). @status:spec/done",
       "line": 22,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-RUNTIME"
     },
     {
       "anchor": "TYPE-AREA-STANDARDS",
-      "content_hash": "sha256:395555c689f5bb939d7b41a63436bc6fdb7cc437aa0e316ce4fba9cdda1e74d4",
+      "content_hash": "sha256:43aebe9e7ce9d256c110a831657907fdcf9cd2bdbe8971df9d5f1f5238dd1b06",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Standards and skills.** The standard `minimal-intervention` is universal; the seam catalogue and the list \"how upstream would build it\" that `ck-intervene` routes through come from the type's packages (`seams-vscode`). @status:spec/plan",
+      "heading": "**Standards and skills.** The standard `minimal-intervention` is universal; the seam catalogue and the list \"how upstream would build it\" that `ck-intervene` routes through come from the type's packages (`seams-vscode`). @status:spec/done",
       "line": 23,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-STANDARDS"
     },
     {
       "anchor": "TYPE-AREA-CONVENTIONS",
-      "content_hash": "sha256:4a8fce428c9aa35e16a3fff5bebf340f05165f93a995b6bf1f78ce4a33d33d04",
+      "content_hash": "sha256:465d4979f8e67f07a1c1f1c33e0fe3a0e0bcdd1b178570726dba7593b6aece4c",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Conventions.** The subsystems of intervention ids, the forbidden service ids, the defaults of `conventions.json` a product may extend through `conventionsExtensionFile`; the marker grammar and the id pattern's shape stay the engine's. @status:spec/plan",
+      "heading": "**Conventions.** The subsystems of intervention ids, the forbidden service ids, the defaults of `conventions.json` a product may extend through `conventionsExtensionFile`; the marker grammar and the id pattern's shape stay the engine's. @status:spec/done",
       "line": 24,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-CONVENTIONS"
     },
@@ -9680,7 +9680,7 @@
     },
     {
       "anchor": "configuration",
-      "content_hash": "sha256:519de30a6ccac0b0ce0455a7c923d92a456bbf833e6b1663f8c06a8b116a11d2",
+      "content_hash": "sha256:e27b88d5ea5c36dc2682fd35675a19cc256516d698cd3cace8a268014280a812",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "4. Configuration",
@@ -9716,16 +9716,16 @@
     },
     {
       "anchor": "TYPE-MANY-FORKS",
-      "content_hash": "sha256:988ee147d558dbdcd5ec3f7a37bf9b08b81ec241f6523fd295157f9f3d07a94b",
+      "content_hash": "sha256:b14a79367acbf566ab2cbe67a517674b3f98589e52ebf8669360b610f15d64d7",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "Several forks are several patch sets, each bound to its own fork tree per command (`--patches-dir`, `--fork-dir`, the local config), exactly as today (`GOAL-ANY-FORK`). Two forks of one upstream are two patch sets of one type; forks of different upstreams are patch sets of different types. Sharing between forks travels through packages (standards, runtime, skills), never through the tool's configuration. A workspace file naming several patch sets is a later convenience and is not part of phases P1-P5. @status:spec/plan",
+      "heading": "Several forks are several patch sets, each bound to its own fork tree per command (`--patches-dir`, `--fork-dir`, the local config), exactly as today (`GOAL-ANY-FORK`). Two forks of one upstream are two patch sets of one type; forks of different upstreams are patch sets of different types. Sharing between forks travels through packages (standards, runtime, skills), never through the tool's configuration. A workspace file naming several patch sets is a later convenience and is not part of phases P1-P5. @status:spec/done",
       "line": 42,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-MANY-FORKS"
     },
     {
       "anchor": "cli",
-      "content_hash": "sha256:5e3e59ac6c19d44fb634f66c906a486ebc75bbffb659ef04a1d914dbd85a116e",
+      "content_hash": "sha256:01aca2e8012f3dd6dc80bd96426c381e6c12c55ab6b22e9765b49b48da0a18d8",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "5. CLI",
@@ -9734,37 +9734,37 @@
     },
     {
       "anchor": "TYPE-VERBS-UNIVERSAL",
-      "content_hash": "sha256:620a945d39f3c6a8e5d46007e6c85943dbd2626d7da468aa49ccdef94d8807e9",
+      "content_hash": "sha256:f2c5c393e5eb6c0fbb89aa4c6ad038f8e10c38954c82b72f1729cfbf931d79f3",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "The verbs of the roster (PROP-007 `COMMAND-ROSTER`) are universal and keep their names, flags and exit codes. Their output names the type where it matters: `where` prints it, the JSON envelope carries `codkit.type`. @status:spec/plan",
+      "heading": "The verbs of the roster (PROP-007 `COMMAND-ROSTER`) are universal and keep their names, flags and exit codes. Their output names the type where it matters: `where` prints it, the JSON envelope carries `codkit.type`. @status:spec/done",
       "line": 47,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-VERBS-UNIVERSAL"
     },
     {
       "anchor": "TYPE-CAPABILITY-REFUSAL",
-      "content_hash": "sha256:500fb762a6288fc3e35e4ffd52ea276a8ed9487679a3acadc600efc7e9455f65",
+      "content_hash": "sha256:c1b743f5f6175320381bcadd08f8b0ddabfafd0002a26a94a274c755c6de72e3",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "A verb that needs a capability the type does not declare refuses with `CK-E-TYPE-CAPABILITY`, exit 2, naming the type and the capability, before any write; no verb silently does something else. The verbs that need one: `imageset *` (`brand-images`), `gen brand` (`gen-brand`), `build *` (`build-channels`), `runtime load|check` (`runtime-library`), and `verify` over an artifact of a layer the type does not provide. @status:spec/plan",
+      "heading": "A verb that needs a capability the type does not declare refuses with `CK-E-TYPE-CAPABILITY`, exit 2, naming the type and the capability, before any write; no verb silently does something else. The verbs that need one: `imageset *` (`brand-images`), `gen brand` (`gen-brand`), `build *` (`build-channels`), `runtime load|check` (`runtime-library`), and `verify` over an artifact of a layer the type does not provide. @status:spec/done",
       "line": 48,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-CAPABILITY-REFUSAL"
     },
     {
       "anchor": "CMD-TYPES",
-      "content_hash": "sha256:70a4821c07ee1f66b263f66c5ea5aebe542c3302a3fa453540b436808fa8f095",
+      "content_hash": "sha256:28eba9ad2aed58cec9c5feb7a957937be0f422455aa4a94dccd2009201376be0",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "`codkit types` - print the registered types, their package and version, and the capability matrix; `--json`: `data: {types: [{id, package, version, installed, capabilities}]}`. Read-only, no patch set required. @status:spec/plan",
+      "heading": "`codkit types` - print the registered types, their package and version, and the capability matrix; `--json`: `data: {types: [{id, package, version, installed, capabilities}]}`. Read-only, no patch set required. @status:spec/done",
       "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-016#CMD-TYPES"
     },
     {
       "anchor": "TYPE-ERROR-CODES",
-      "content_hash": "sha256:ebdcd6099cab129129b5b9d9e060bc5e5384614f09007d0024b2e762f28c1be6",
+      "content_hash": "sha256:7bbddd71d7d31da4764c24b88b01f9cf2c774e202c1ee4b498b15512751adae9",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "New codes: `CK-E-TYPE-UNKNOWN` (type not registered or package not installed), `CK-E-TYPE-CAPABILITY` (verb or layer outside the type's capabilities). A type may add codes only under its own prefix (`CK-E-VSCODE-…`) for facts the engine cannot state; every code has an FAQ entry (PROP-012). @status:spec/plan",
+      "heading": "New codes: `CK-E-TYPE-UNKNOWN` (type not registered or package not installed), `CK-E-TYPE-CAPABILITY` (verb or layer outside the type's capabilities). A type may add codes only under its own prefix (`CK-E-VSCODE-…`) for facts the engine cannot state; every code has an FAQ entry (PROP-012). @status:spec/done",
       "line": 50,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-ERROR-CODES"
     },
@@ -9986,7 +9986,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:63130c903c0784046c5d81a86ce836158e8fd5d09afd6539e72a9cf9eb35b42b",
+      "content_hash": "sha256:be0666614f082c5ea4044a7a4b3407bc19c5477eb5eebd2691a6646b44b9668d",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
       "heading": "vscode PROP-002: Tree layout - the own root, own extensions, cleanup, forbidden targets",
@@ -10076,7 +10076,7 @@
     },
     {
       "anchor": "cleanup",
-      "content_hash": "sha256:086de3662f954f0e4ef726160ea72b5713224132eaccbfe191c9c7367f4d6940",
+      "content_hash": "sha256:61b662f3fc1b0a32430b3d0dbb20945856b88d34f522a4faf91f6d1dc7747360",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
       "heading": "4. The cleanup whitelist and the forbidden patch targets",
@@ -10085,25 +10085,25 @@
     },
     {
       "anchor": "VSCODE-CLEANUP-WHITELIST",
-      "content_hash": "sha256:35da8693eb9d160910a132d6838833b9876eec534012123530834bd4b5ca5e6f",
+      "content_hash": "sha256:1dde764558e214293edd94ba22caf9bcb649b09d652687a69f665bfbb447c306",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
-      "heading": "The build outputs the fresh pass may remove without asking, that is the value of `cleanupWhitelist` for this type: `node_modules/` at any level, `.build/`, the anchored `/out*/`, `extensions/*/out/`, `extensions/*/dist/`, `.eslintcache`, `*.tsbuildinfo`. The pattern semantics, the algorithm that computes the untracked set and the discipline \"what is not in the list is deleted\" are the engine's (`spec://codkit/modules/codkit/PROP-011#CLEANUP-WHITELIST-CONTENT`); which paths a build of this distribution actually leaves behind is the type's answer, and a second type names its own. @status:spec/plan",
+      "heading": "The build outputs the fresh pass may remove without asking, that is the value of `cleanupWhitelist` for this type: `node_modules/` at any level, `.build/`, the anchored `/out*/`, `extensions/*/out/`, `extensions/*/dist/`, `.eslintcache`, `*.tsbuildinfo`. The pattern semantics, the algorithm that computes the untracked set and the discipline \"what is not in the list is deleted\" are the engine's (`spec://codkit/modules/codkit/PROP-011#CLEANUP-WHITELIST-CONTENT`); which paths a build of this distribution actually leaves behind is the type's answer, and a second type names its own. @status:spec/done",
       "line": 18,
       "uri": "spec://codkit/modules/vscode/PROP-002#VSCODE-CLEANUP-WHITELIST"
     },
     {
       "anchor": "VSCODE-FORBIDDEN-PATCH-TARGETS",
-      "content_hash": "sha256:a5f23af7e0943ed7b06a57b33e81a7de6f1a24e9aff180ac02ab1b3dd8fa4717",
+      "content_hash": "sha256:d826491acebc96cd41a88beab3086bf4df76e27d0960884b349e93027baa3c3e",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
-      "heading": "The forbidden patch targets of this type, that is the value of `forbiddenPatchTargets`: `.config/1espt/**` (a file with mixed line endings that no deterministic patch can carry) together with the overlay targets of PROP-003. The field itself, its additive extension through `conventionsExtensionFile` and the refusal `CK-E-FORBIDDEN-TARGET` are the engine's (`spec://codkit/modules/codkit/PROP-003#CONV-FORBIDDEN-TARGETS`). @status:spec/plan",
+      "heading": "The forbidden patch targets of this type, that is the value of `forbiddenPatchTargets`: `.config/1espt/**` (a file with mixed line endings that no deterministic patch can carry) together with the overlay targets of PROP-003. The field itself, its additive extension through `conventionsExtensionFile` and the refusal `CK-E-FORBIDDEN-TARGET` are the engine's (`spec://codkit/modules/codkit/PROP-003#CONV-FORBIDDEN-TARGETS`). @status:spec/done",
       "line": 19,
       "uri": "spec://codkit/modules/vscode/PROP-002#VSCODE-FORBIDDEN-PATCH-TARGETS"
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:50b00ef4d376716bef082f0218b8bc9c699dea8c7b5a817f4a345fd978355abc",
+      "content_hash": "sha256:8ced18db9b245ed5833d4ea446e1cc389a3b48d91a89bdc3fb977693409bd469",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "vscode PROP-003: Layers - the product.json overlay, built-in extensions, service overrides, entry modules",
@@ -10112,7 +10112,7 @@
     },
     {
       "anchor": "overlay",
-      "content_hash": "sha256:12b0adead2129e422928765c638c140f0dd8ffdde04d974e2b17051c93954ce8",
+      "content_hash": "sha256:7accc0231a1acfaa301b6b646fc5cfbc5d6b6d24c302120c52ace0826b617122",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "1. config-overlay: the targets and the dev channel",
@@ -10121,10 +10121,10 @@
     },
     {
       "anchor": "VSCODE-OVERLAY-TARGETS",
-      "content_hash": "sha256:60b377881f60226784239c5c56d9617197147197b537e0c700b2794bc7f2b4d5",
+      "content_hash": "sha256:c6a41e60af45246f1ed5bd122516b82927431175bf9e101e73c0e3a5042f04ae",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
-      "heading": "The overlay targets of this type and their channels: `product.json` is the product manifest and the only target with a **dev channel** - the sidecar `product.overrides.json` the bootstrap reads under `VSCODE_DEV`; the `package.json` of the tree is a target without a dev channel and admits the addition of `scripts` keys only. The two-channel machinery, the composition of several overlays of one target, `expectUpstream` and `CK-E-OVERLAY-DRIFT` are the engine's (`spec://codkit/modules/codkit/PROP-005#OVERLAY-TWO-CHANNELS`, `spec://codkit/modules/codkit/PROP-005#OVERLAY-NON-PRODUCT-TARGETS`); which file is the manifest, and whether a dev channel exists at all, is the type's answer. @status:spec/plan",
+      "heading": "The overlay targets of this type and their channels: `product.json` is the product manifest and the only target with a **dev channel** - the sidecar `product.overrides.json` the bootstrap reads under `VSCODE_DEV`; the `package.json` of the tree is a target without a dev channel and admits the addition of `scripts` keys only. The two-channel machinery, the composition of several overlays of one target, `expectUpstream` and `CK-E-OVERLAY-DRIFT` are the engine's (`spec://codkit/modules/codkit/PROP-005#OVERLAY-TWO-CHANNELS`, `spec://codkit/modules/codkit/PROP-005#OVERLAY-NON-PRODUCT-TARGETS`); which file is the manifest, and whether a dev channel exists at all, is the type's answer. @status:spec/done",
       "line": 6,
       "uri": "spec://codkit/modules/vscode/PROP-003#VSCODE-OVERLAY-TARGETS"
     },
@@ -10202,7 +10202,7 @@
     },
     {
       "anchor": "entry-module",
-      "content_hash": "sha256:f36d78a4addb229338b8bd6e7a110714b0d862f955ecb2c6bee4635fd4971b2c",
+      "content_hash": "sha256:d59adf4db706cec111e0e1ea788f2dbd3d060ab332704d39cefbde977d9febff",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "4. entry-module: the locator",
@@ -10211,16 +10211,16 @@
     },
     {
       "anchor": "VSCODE-ENTRY-MODULE-LOCATOR",
-      "content_hash": "sha256:0d473ea43a1e279becf0238f1099fb2a058c67829445429358c011a9cae9f7ca",
+      "content_hash": "sha256:ce9cb62e3fdb1888c2223b7612ac0c14cc8f2b6e62f55dbda5ecea7861a528dc",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
-      "heading": "The entry modules of this type: the renderer entry is `src/vs/workbench/workbench.common.main.ts` with its desktop and web continuations, and the service assembly functions of the processes that do not read the `registerSingleton` registry (`createServices`/`initServices` of the Electron main process, of the shared process, of the server and of the CLI) are the entries a graft targets there. The upstream precedent of a forked import list is `src/vs/sessions/sessions.common.main.ts`. The layer itself - the two forms of the layer, the marker discipline, the `# layer: entry-module` carrier and the rewrite-rule candidacy - is the engine's (`spec://codkit/modules/codkit/PROP-005#EM-PURPOSE`, `spec://codkit/modules/codkit/PROP-005#EM-TWO-FORMS`); the concrete entry is confirmed against the actual chain of the selected fork at every pin. @status:spec/plan",
+      "heading": "The entry modules of this type: the renderer entry is `src/vs/workbench/workbench.common.main.ts` with its desktop and web continuations, and the service assembly functions of the processes that do not read the `registerSingleton` registry (`createServices`/`initServices` of the Electron main process, of the shared process, of the server and of the CLI) are the entries a graft targets there. The upstream precedent of a forked import list is `src/vs/sessions/sessions.common.main.ts`. The layer itself - the two forms of the layer, the marker discipline, the `# layer: entry-module` carrier and the rewrite-rule candidacy - is the engine's (`spec://codkit/modules/codkit/PROP-005#EM-PURPOSE`, `spec://codkit/modules/codkit/PROP-005#EM-TWO-FORMS`); the concrete entry is confirmed against the actual chain of the selected fork at every pin. @status:spec/done",
       "line": 19,
       "uri": "spec://codkit/modules/vscode/PROP-003#VSCODE-ENTRY-MODULE-LOCATOR"
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:6afc8cc269905e3c2b2976409d859d6d4c6a62852d02e698d074470a709a08ed",
+      "content_hash": "sha256:9e042ec1c6e57e15ed20ff25a51ad15906684dbf163397c6ace8023207d834c2",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "vscode PROP-004: Build and test - install, hygiene, watch channels, runners, packaging stamps",
@@ -10229,7 +10229,7 @@
     },
     {
       "anchor": "steps",
-      "content_hash": "sha256:630f47311c367685f8fe9663babef805e4ba4e81efb400b8c6e4e60c188737fc",
+      "content_hash": "sha256:976e231f27afbee95e9a4c72613d8a1d52e042016065f4eecc99c9fd961525ad",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "1. The commands of the type",
@@ -10238,10 +10238,10 @@
     },
     {
       "anchor": "VSCODE-BUILD-STEPS",
-      "content_hash": "sha256:bd12df344e4bcae3b63478d6d3e008480ee38bcfd1cf9eeea36940191abb851b",
+      "content_hash": "sha256:07dc9f102af650cb4f87e29f43f90238cf76efb9160b0e187fbbbc3f4ea24cf1",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
-      "heading": "The commands the universal `ci --profile build` skeleton calls for this type (`spec://codkit/modules/codkit/PROP-011#PROFILE-BUILD`, `spec://codkit/modules/codkit/PROP-007#CMD-CI-IMPL`): the dependency install is `npm ci` of the tree and of `build/` (in CI it is supplied out of band and only its receipts are probed); the hygiene script is `npm run hygiene` and the lint script is `npm run eslint`, and both run **before** the overlay targets are materialized, because upstream hygiene is strict about the manifest it checks; the product and contract tests are `npm run test-node -- --runGlob vs/<ownRoot leaf>/**/test/{common,node}/**/*.test.js`; the package build is the upstream `gulp vscode-*` task. The order of the steps, the profiles and the exit codes are the engine's; the names of the scripts are this type's answer. @status:spec/plan",
+      "heading": "The commands the universal `ci --profile build` skeleton calls for this type (`spec://codkit/modules/codkit/PROP-011#PROFILE-BUILD`, `spec://codkit/modules/codkit/PROP-007#CMD-CI-IMPL`): the dependency install is `npm ci` of the tree and of `build/` (in CI it is supplied out of band and only its receipts are probed); the hygiene script is `npm run hygiene` and the lint script is `npm run eslint`, and both run **before** the overlay targets are materialized, because upstream hygiene is strict about the manifest it checks; the product and contract tests are `npm run test-node -- --runGlob vs/<ownRoot leaf>/**/test/{common,node}/**/*.test.js`; the package build is the upstream `gulp vscode-*` task. The order of the steps, the profiles and the exit codes are the engine's; the names of the scripts are this type's answer. @status:spec/done",
       "line": 6,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-BUILD-STEPS"
     },
@@ -10805,7 +10805,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:51a6c37b74377a6f267cdf3d24bb35c9ec48831aace69bdc587a5e79bee0922c",
+      "content_hash": "sha256:d098845b37fa14e01f30437bf0d4eaf93d7a5f667de1a5c4cd8688a117f072ed",
       "doc_path": "modules/vscode/PROP-009",
       "file": "vibevm/vibespecs/modules/vscode/PROP-009-conventions.xml",
       "heading": "vscode PROP-009: Conventions defaults - subsystems, forbidden services",
@@ -10814,7 +10814,7 @@
     },
     {
       "anchor": "subsystems",
-      "content_hash": "sha256:cc18790a3793a3e2d4551d9c89bc0c3e2e1a24fe2612e8210c0dc929e8797a49",
+      "content_hash": "sha256:8adb773f3a024a80e54d077ee730f384b32bd0ecd449b22344d52f54630bf9bd",
       "doc_path": "modules/vscode/PROP-009",
       "file": "vibevm/vibespecs/modules/vscode/PROP-009-conventions.xml",
       "heading": "1. Subsystems and the id pattern",
@@ -10823,10 +10823,10 @@
     },
     {
       "anchor": "VSCODE-CONVENTIONS-DEFAULTS",
-      "content_hash": "sha256:b0fe4d33f77c0b48d45e84f051f9d76dddd46d4a1238aca4e44f1bf8d9f77f10",
+      "content_hash": "sha256:3106faeb700f65ead0b651d478bc488d4937a384e08bf3a7ad371b0928f2aad2",
       "doc_path": "modules/vscode/PROP-009",
       "file": "vibevm/vibespecs/modules/vscode/PROP-009-conventions.xml",
-      "heading": "The defaults this type contributes to `conventions.json`: the subsystems admitted in an intervention id are `workbench`, `editor`, `platform`, `extensions`, `build`, `product`, `base`, `server`, `test` - the top-level areas of the distribution's own source tree - and the effective `idPattern` is the engine's shape `^CK-(<subsystems joined by |>)-[0-9]{3}$` over that list. The field names, the shape of the pattern, the intervention types, the categories, the layer order and the marker forms are the engine's (`spec://codkit/modules/codkit/PROP-003#CONV-SUBSYSTEMS`, `spec://codkit/modules/codkit/PROP-003#CONV-ID-PATTERN`); a product extends the list additively through `conventionsExtensionFile` and may not shrink it. @status:spec/plan",
+      "heading": "The defaults this type contributes to `conventions.json`: the subsystems admitted in an intervention id are `workbench`, `editor`, `platform`, `extensions`, `build`, `product`, `base`, `server`, `test` - the top-level areas of the distribution's own source tree - and the effective `idPattern` is the engine's shape `^CK-(<subsystems joined by |>)-[0-9]{3}$` over that list. The field names, the shape of the pattern, the intervention types, the categories, the layer order and the marker forms are the engine's (`spec://codkit/modules/codkit/PROP-003#CONV-SUBSYSTEMS`, `spec://codkit/modules/codkit/PROP-003#CONV-ID-PATTERN`); a product extends the list additively through `conventionsExtensionFile` and may not shrink it. @status:spec/done",
       "line": 6,
       "uri": "spec://codkit/modules/vscode/PROP-009#VSCODE-CONVENTIONS-DEFAULTS"
     },

@@ -21,8 +21,7 @@
 import { randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
-import { delimiter, dirname, isAbsolute, join, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { basename, delimiter, dirname, isAbsolute, join, sep } from 'node:path';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.js';
 import { validateChannelSet } from './buildChannel.js';
@@ -36,6 +35,7 @@ export { BUILD_DIR, DAEMON_RECORD_SCHEMA_VERSION, buildDir, logPath, recordPath,
 // ---------------------------------------------------------------------------
 // Channel configuration
 // ---------------------------------------------------------------------------
+/** How the pass-boundary profile is named in a diagnostic. */
 export const BUILD_WATCH_RELATIVE_PATH = 'config/build-watch.json';
 /** Channels `up` starts when no `--channel` is given (PROP-007 section 13). */
 export const DEFAULT_UP_CHANNELS = ['transpile', 'typecheck'];
@@ -64,8 +64,6 @@ const buildWatchSchema = z
     channels: z.record(z.string(), channelSchema)
 })
     .strict();
-/** Where this module sits, so the shipped configuration can be found from it. */
-const codkitRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const watchCache = new Map();
 /**
  * Read the shipped pass-boundary profile, or a strict profile explicitly
@@ -74,8 +72,8 @@ const watchCache = new Map();
  * ##CONTAINED-FILE-IO): a symlinked leaf or parent refuses instead of being
  * followed, with no check-then-open window.
  */
-export function loadBuildWatch(patchesDir) {
-    const location = buildWatchLocation(patchesDir);
+export function loadBuildWatch(type, patchesDir) {
+    const location = buildWatchLocation(type, patchesDir);
     const path = join(location.root, ...location.relative.split('/'));
     const cached = watchCache.get(path);
     if (cached !== undefined)
@@ -131,12 +129,16 @@ export function loadBuildWatch(patchesDir) {
     return watch;
 }
 /** Where the profile is read from, as root plus contained relative path. */
-function buildWatchLocation(patchesDir) {
+function buildWatchLocation(type, patchesDir) {
+    // The default profile is the type's: the channels and their pass boundaries
+    // are facts about one family of upstreams, and the engine only reads them
+    // (##TYPE-AREA-BUILD). A patch set may declare a stricter profile of its own.
+    const shipped = { root: dirname(type.build.watchProfilePath), relative: basename(type.build.watchProfilePath) };
     if (patchesDir === undefined)
-        return { root: codkitRoot, relative: 'config/build-watch.json' };
+        return shipped;
     const configured = loadBaseConfig(patchesDir)?.buildWatchFile ?? null;
     if (configured === null)
-        return { root: codkitRoot, relative: 'config/build-watch.json' };
+        return shipped;
     const resolved = resolveContainedPath(patchesDir, configured);
     if (!resolved.ok) {
         throw ckError('CONFIG', `buildWatchFile is unsafe or unreadable: ${resolved.reason}`, 'point buildWatchFile at a real non-symlink JSON file inside the patch-set repository', 'codkit.json');
@@ -248,10 +250,10 @@ function readProcArgs(pid, root) {
  * Whether a command line still carries the token the record expects.
  *
  * Two forms have to be accepted, because npm rewrites its own process title:
- * the argv it was started with (`npm`, `run`, `watch-client`) and the single
- * string it replaces argv with (`npm run watch-client`). Both are compared word
- * by word, never as substrings - `watch-client` is a prefix of
- * `watch-client-transpile`, and probing one must never accept the other.
+ * the argv it was started with (`npm`, `run`, `<script>`) and the single string
+ * it replaces argv with (`npm run <script>`). Both are compared word by word,
+ * never as substrings - one script name is often a prefix of another, and
+ * probing one must never accept the other.
  */
 export function argsMatch(args, expected) {
     return args.some((arg) => arg === expected || arg.split(/\s+/).includes(expected));
@@ -574,13 +576,21 @@ export function statusOf(patchesDir, channel, probe = {}) {
  * (PROP-010 section 2). They are mutually exclusive with our channels: two
  * watchers over one tree fight over `out/`.
  */
-export const FOREIGN_WATCHER_MARKERS = ['build/next/index.ts transpile --watch', 'gulp watch-'];
+/**
+ * Argv fragments that mean somebody else's watcher already runs over the tree.
+ * Which fragments those are is the type's answer (##TYPE-AREA-BUILD): they name
+ * the watch scripts of one family of upstreams.
+ */
+export function foreignWatcherMarkers(type) {
+    return type.build.foreignWatcherMarkers;
+}
 /**
  * Watch processes over `treeDir` that codkit did not start. Everything in the
  * process groups of our own live channels is ours by construction - a daemon we
  * started leads its group, and the compiler it runs is inside it.
  */
-export function foreignWatchers(treeDir, ourGroups, probe = {}) {
+export function foreignWatchers(type, treeDir, ourGroups, probe = {}) {
+    const markers = foreignWatcherMarkers(type);
     const found = [];
     const platform = probe.platform ?? process.platform;
     for (const info of processTable(probe)) {
@@ -588,7 +598,7 @@ export function foreignWatchers(treeDir, ourGroups, probe = {}) {
             continue;
         }
         const commandLine = info.args.join(' ');
-        if (!FOREIGN_WATCHER_MARKERS.some((marker) => commandLine.includes(marker))) {
+        if (!markers.some((marker) => commandLine.includes(marker))) {
             continue;
         }
         if (!concernsTree(info, commandLine, treeDir, platform)) {

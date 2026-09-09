@@ -2,7 +2,7 @@
 // Thin command surface for the library transaction.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { ckError, isCkError } from '../lib/messages.ts';
@@ -54,6 +54,7 @@ async function run(ctx: CommandContext): Promise<number> {
 					patchesDir: ctx.patchesDir,
 					resolution,
 					config,
+					type: requireProjectType(ctx),
 					out: ctx.out,
 					verbose: ctx.flags.verbose
 				});

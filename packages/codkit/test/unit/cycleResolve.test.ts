@@ -26,6 +26,7 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { PATCH_FILE_NAME, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const TAG = '1.135.0';
 const CAUSE = 'a'.repeat(40);
@@ -179,6 +180,7 @@ function harness(
 			patchesDir,
 			resolution: { path: tree, source: 'settings', exists: true, warning: null },
 			config,
+			type: vscodeType,
 			state: current,
 			journal: overrides.journal ?? [entry()],
 			artifacts: overrides.artifacts ?? [patchArtifact()],
@@ -439,6 +441,7 @@ describe('cycle resolve production adapter', () => {
 				patchesDir: fixture.patchesDir,
 				resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null } as const,
 				config,
+				type: vscodeType,
 				journal,
 				artifacts,
 				locks: { cycle, tree },
@@ -508,6 +511,7 @@ describe('cycle resolve production adapter', () => {
 				patchesDir: fixture.patchesDir,
 				resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 				config,
+				type: vscodeType,
 				state: current,
 				journal,
 				artifacts: [artifact],

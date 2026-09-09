@@ -14,7 +14,15 @@
 import { chmodSync, existsSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { extname, isAbsolute, join, relative as relativePath, resolve, sep } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.ts';
+import {
+	EXIT_CHECK_FAILED,
+	EXIT_ENVIRONMENT,
+	EXIT_OK,
+	commandFlagGiven,
+	commandFlagValue,
+	forkResolution,
+	requireProjectType
+} from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { loadConventions, matchesPatternList } from '../lib/conventionsFile.ts';
 import type { Conventions } from '../lib/conventionsFile.ts';
@@ -163,7 +171,7 @@ function locateTarget(treeDir: string, config: CodkitConfig, given: string, conv
 }
 
 function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, given: string, fields: MarkerFields): number {
-	const conventions = loadConventions(ctx.patchesDir);
+	const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
 	const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
 
 	// 2. The metadata: id shape, owner, type and category vocabularies.
@@ -290,7 +298,7 @@ function buildData(target: string, fields: MarkerFields, at: number, draft: stri
  * of a foreign intervention can never be opened here by mistake.
  */
 function addBlockTo(ctx: CommandContext, treeDir: string, config: CodkitConfig, given: string, fields: MarkerFields): number {
-	const conventions = loadConventions(ctx.patchesDir);
+	const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
 	const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
 	const artifact = `${PATCHES_DIR}/${encodePatchName(target)}`;
 	const pending = readPendingHeader(ctx.patchesDir, target);

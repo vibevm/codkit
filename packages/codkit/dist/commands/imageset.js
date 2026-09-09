@@ -13,7 +13,8 @@
 //
 // The root is a namespace and never generates: a bare `codkit imageset` that
 // quietly did work is exactly the dumping ground splitting the verbs avoids.
-import { EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.js';
+import { requireCapability } from '../types/capability.js';
+import { EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { runImageset } from '../lib/imagesetEngine.js';
 import { buildImagesetIndex, indexData, renderImagesetIndex } from '../lib/imagesetIndex.js';
 import { defaultBrandingDir } from '../lib/imagesetMasters.js';
@@ -106,6 +107,7 @@ async function runNamespace(ctx) {
     return EXIT_OK;
 }
 async function runGen(ctx) {
+    requireCapability(ctx.type, 'brand-images', 'imageset gen');
     const config = requireConfigForImageset(ctx.config, 'gen');
     const resolution = requireTree(ctx, 'gen');
     const brandingDir = brandingDirOf(ctx);
@@ -113,6 +115,7 @@ async function runGen(ctx) {
     return withLock(ctx.patchesDir, treeId(resolution.path), 'imageset gen', () => {
         const { exitCode, report } = runImageset({
             patchesDir: ctx.patchesDir,
+            type: requireProjectType(ctx),
             treeDir: resolution.path,
             brandingDir,
             pin: { tag: config.pin.tag, sha: config.pin.sha },
@@ -131,8 +134,10 @@ async function runGen(ctx) {
  * behind a run that may take minutes.
  */
 async function runIndex(ctx) {
+    requireCapability(ctx.type, 'brand-images', 'imageset index');
     const resolution = requireTree(ctx, 'index');
     const index = buildImagesetIndex({
+        type: requireProjectType(ctx),
         treeDir: resolution.path,
         brandingDir: brandingDirOf(ctx),
         onReport: (text) => ctx.out.info(text)
@@ -157,8 +162,10 @@ async function runIndex(ctx) {
  * directory it did not touch.
  */
 async function runVerify(ctx) {
+    requireCapability(ctx.type, 'brand-images', 'imageset verify');
     const resolution = requireTree(ctx, 'verify');
     const verification = verifyImageset({
+        type: requireProjectType(ctx),
         treeDir: resolution.path,
         brandingDir: brandingDirOf(ctx),
         onReport: (text) => ctx.out.info(text)

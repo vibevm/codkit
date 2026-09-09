@@ -34,6 +34,7 @@ import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { writeOwnManifestFixture } from '../support/ownManifestFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const CLEAN = 'src/clean.ts';
 const MERGED = 'src/merged.ts';
@@ -114,7 +115,7 @@ function fixture(): Fixture {
 		{ kind: 'overlay', overlay: cleanOverlay },
 		{ kind: 'overlay', overlay: brokenOverlay }
 	];
-	const classifications = classifyArtifacts({ treeDir: tree, artifacts, oldPin, newRef: targetPin });
+	const classifications = classifyArtifacts({ type: vscodeType, treeDir: tree, artifacts, oldPin, newRef: targetPin });
 	const config: CodkitConfig = {
 		codkitConfig: 2,
 		pin: { tag: 't2', sha: targetPin, date: '2026-03-01' },
@@ -272,6 +273,7 @@ function materialize(current: Fixture, overrides: Partial<Pick<CycleMaterializeO
 		patchesDir: current.patchesDir,
 		resolution: current.resolution,
 		config: current.config,
+		type: vscodeType,
 		sourcePin: current.sourcePin,
 		classifications: overrides.classifications ?? current.classifications,
 		out: current.output,
@@ -326,6 +328,7 @@ describe('materializeCycleApply', () => {
 					patchesDir: current.patchesDir,
 					resolution: current.resolution,
 					config: current.config,
+					type: vscodeType,
 					sourcePin: current.sourcePin,
 					classifications: current.classifications,
 					out: current.output
@@ -343,6 +346,7 @@ describe('materializeCycleApply', () => {
 			patchesDir: current.patchesDir,
 			resolution: current.resolution,
 			config: current.config,
+			type: vscodeType,
 			sourcePin: current.sourcePin,
 			classifications: current.classifications,
 			out: current.output
@@ -383,6 +387,7 @@ describe('materializeCycleApply', () => {
 			patchesDir: current.patchesDir,
 			resolution: current.resolution,
 			config: current.config,
+			type: vscodeType,
 			sourcePin: current.sourcePin,
 			classifications: current.classifications,
 			out: current.output
@@ -398,6 +403,7 @@ describe('materializeCycleApply', () => {
 					patchesDir: current.patchesDir,
 					resolution: current.resolution,
 					config: current.config,
+					type: vscodeType,
 					sourcePin: current.sourcePin,
 					classifications: current.classifications,
 					out: current.output
@@ -464,6 +470,7 @@ describe('materializeCycleApply', () => {
 					patchesDir: ignored.patchesDir,
 					resolution: ignored.resolution,
 					config: laterConfig,
+					type: vscodeType,
 					sourcePin: ignored.sourcePin,
 					classifications: ignored.classifications,
 					out: ignored.output
@@ -489,6 +496,7 @@ describe('materializeCycleApply', () => {
 			patchesDir: linked.patchesDir,
 			resolution: linked.resolution,
 			config: linkedConfig,
+			type: vscodeType,
 			sourcePin: linked.sourcePin,
 			classifications: linked.classifications,
 			out: linked.output

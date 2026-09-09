@@ -3,8 +3,8 @@
 // own layer (PROP-005 sec. 13).
 //
 // The mechanism is the own layer's, applied to a second pair of roots:
-// `delta/own-extensions/<name>/**` is the source of truth and
-// `<tree>/extensions/<name>/**` is its materialization, mirrored by content the
+// one unit directory of the delta root is the source of truth and its
+// materialized directory in the tree is its copy, mirrored by content the
 // way ##OWN-SOURCE-OF-TRUTH prescribes - `load` into the tree, `save` back,
 // `ci` into the aggregate own commit of the generated branch.
 //
@@ -25,55 +25,73 @@ import { runGit } from '../gitx.ts';
 import { ckError } from '../messages.ts';
 import { fileContentEqual } from '../ownCopy.ts';
 import { resolveContainedPath } from '../pathSafety.ts';
+import type { ExtensionMaterializer, ProjectType } from '@codkit/type-api';
 import { OWN_MANIFEST_PATH } from './ownManifest.ts';
 import type { OwnExtension } from './ownManifest.ts';
 
+/**
+ * Everything about the shape of this layer comes from the project type: where
+ * the units live in the patch set, where one materializes in the tree, what a
+ * unit name may look like and which file the upstream build needs to see an
+ * extension at all (##TYPE-AREA-LAYERS). The engine states none of it.
+ */
+export type Materializer = ExtensionMaterializer;
+
+/** The materializer of a type, or null when the family has no such layer. */
+export function materializerOf(type: ProjectType): Materializer | null {
+	return type.layers.ownExtensions;
+}
+
 /** Own extensions inside patchset, relative to the patchset root. */
-export const OWN_EXTENSIONS_DIR = 'delta/own-extensions';
-
-/** Where the upstream build looks for built-in extensions, from the tree root. */
-export const EXTENSIONS_TREE_DIR = 'extensions';
-
-/** The file without which the upstream build does not see an extension at all. */
-export const EXTENSION_PACKAGE_NAME = 'package.json';
-
-/** ##OWN-EXTENSION-UNIT: the form of an extension directory name. */
-export const EXTENSION_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-
-export function ownExtensionsSourceRoot(patchesDir: string): string {
-	return join(patchesDir, ...OWN_EXTENSIONS_DIR.split('/'));
+export function ownExtensionsDir(materializer: Materializer): string {
+	return materializer.deltaRoot;
 }
 
-export function ownExtensionSourceRoot(patchesDir: string, name: string): string {
-	return join(ownExtensionsSourceRoot(patchesDir), name);
+/**
+ * The directory the materializations of this type sit in, from the tree root.
+ * The engine needs it to ask git what is untracked there, and derives it from
+ * the materialized path of a probe name rather than knowing it.
+ */
+export function extensionsTreeDir(materializer: Materializer): string {
+	const probe = materializer.materializedPath('probe');
+	const cut = probe.lastIndexOf('/');
+	return cut === -1 ? '' : probe.slice(0, cut);
 }
 
-/** `extensions/<name>`, the materialized directory, relative to the tree root. */
-export function ownExtensionTargetRelativeDir(name: string): string {
-	return `${EXTENSIONS_TREE_DIR}/${name}`;
+export function ownExtensionsSourceRoot(materializer: Materializer, patchesDir: string): string {
+	return join(patchesDir, ...materializer.deltaRoot.split('/'));
 }
 
-export function ownExtensionTargetRoot(treeDir: string, name: string): string {
-	return join(treeDir, EXTENSIONS_TREE_DIR, name);
+export function ownExtensionSourceRoot(materializer: Materializer, patchesDir: string, name: string): string {
+	return join(ownExtensionsSourceRoot(materializer, patchesDir), name);
+}
+
+/** The materialized directory of one unit, relative to the tree root. */
+export function ownExtensionTargetRelativeDir(materializer: Materializer, name: string): string {
+	return materializer.materializedPath(name);
+}
+
+export function ownExtensionTargetRoot(materializer: Materializer, treeDir: string, name: string): string {
+	return join(treeDir, ...materializer.materializedPath(name).split('/'));
 }
 
 /**
  * The tree prefixes the own-extension layer supplies, with a trailing slash.
  *
  * Everything that judges "an upstream file changed" filters them out for the
- * same reason it filters `src/vs/<ownRoot>/`: these paths come from the
+ * same reason it filters the own root: these paths come from the
  * delta, so they are neither upstream text nor a new file somebody added in the
  * upstream zone.
  */
-export function ownExtensionTreePrefixes(extensions: readonly OwnExtension[]): readonly string[] {
+export function ownExtensionTreePrefixes(materializer: Materializer, extensions: readonly OwnExtension[]): readonly string[] {
 	return extensions
-		.filter((extension) => isSafeExtensionName(extension.name))
-		.map((extension) => `${ownExtensionTargetRelativeDir(extension.name)}/`);
+		.filter((extension) => isSafeExtensionName(materializer, extension.name))
+		.map((extension) => `${ownExtensionTargetRelativeDir(materializer, extension.name)}/`);
 }
 
 /** ##OWN-EXTENSION-UNIT: a name that may be turned into a path at all. */
-export function isSafeExtensionName(name: string): boolean {
-	return EXTENSION_NAME_PATTERN.test(name);
+export function isSafeExtensionName(materializer: Materializer, name: string): boolean {
+	return materializer.namePattern.test(name);
 }
 
 /** Relative POSIX paths under one extension directory, byte-sorted. */
@@ -87,7 +105,7 @@ export function listExtensionFiles(root: string): readonly string[] {
 /** One delivered file of the layer: where it comes from and where it goes. */
 export type OwnExtensionFile = {
 	readonly name: string;
-	/** Path under `delta/own-extensions/`, POSIX. */
+	/** Path under the delta root of the layer, POSIX. */
 	readonly relative: string;
 	/** Absolute path in patchset. */
 	readonly source: string;
@@ -100,19 +118,23 @@ export type OwnExtensionFile = {
  * byte-sorted inside each extension. A record whose name is unusable as a path
  * contributes nothing: `verify` refuses it, and no writer may act on it.
  */
-export function ownExtensionFiles(patchesDir: string, extensions: readonly OwnExtension[]): readonly OwnExtensionFile[] {
+export function ownExtensionFiles(
+	materializer: Materializer,
+	patchesDir: string,
+	extensions: readonly OwnExtension[]
+): readonly OwnExtensionFile[] {
 	const files: OwnExtensionFile[] = [];
 	for (const extension of extensions) {
-		if (!isSafeExtensionName(extension.name)) {
+		if (!isSafeExtensionName(materializer, extension.name)) {
 			continue;
 		}
-		const root = ownExtensionSourceRoot(patchesDir, extension.name);
+		const root = ownExtensionSourceRoot(materializer, patchesDir, extension.name);
 		for (const relative of listExtensionFiles(root)) {
 			files.push({
 				name: extension.name,
 				relative: `${extension.name}/${relative}`,
 				source: join(root, ...relative.split('/')),
-				target: `${ownExtensionTargetRelativeDir(extension.name)}/${relative}`
+				target: `${ownExtensionTargetRelativeDir(materializer, extension.name)}/${relative}`
 			});
 		}
 	}
@@ -133,7 +155,7 @@ export type OwnExtensionProblem = {
 /**
  * ##OWN-EXTENSION-UNIT: everything the `extensions` section has to satisfy.
  *
- * `upstreamHas` answers "does the pin already ship `extensions/<name>`". It is
+ * `upstreamHas` answers "does the pin already ship a unit of that name". It is
  * a callback rather than a path because the check itself is answered from
  * patchset alone; a caller with no tree to ask passes one that always answers
  * false and keeps the other three checks. The probe that reads the answer out
@@ -143,6 +165,7 @@ export type OwnExtensionProblem = {
  * pass, like every other layer.
  */
 export function checkOwnExtensions(
+	materializer: Materializer,
 	patchesDir: string,
 	extensions: readonly OwnExtension[],
 	upstreamHas: (name: string) => boolean
@@ -154,9 +177,9 @@ export function checkOwnExtensions(
 	// problem would send the reader after the wrong fix.
 	const claimed = new Set(extensions.map((extension) => extension.name));
 	for (const extension of extensions) {
-		if (!isSafeExtensionName(extension.name)) {
+		if (!isSafeExtensionName(materializer, extension.name)) {
 			problems.push({
-				message: `${extension.id}: extension name ${JSON.stringify(extension.name)} is not of the form ${EXTENSION_NAME_PATTERN.source}`,
+				message: `${extension.id}: extension name ${JSON.stringify(extension.name)} is not of the form ${materializer.namePattern.source}`,
 				hint: 'a built-in extension directory is named in lower-case letters, digits and hyphens, starting with a letter or a digit',
 				file: OWN_MANIFEST_PATH
 			});
@@ -174,36 +197,36 @@ export function checkOwnExtensions(
 		seen.set(extension.name, extension.id);
 		if (upstreamHas(extension.name)) {
 			problems.push({
-				message: `${extension.id}: name collides with an upstream extension (${ownExtensionTargetRelativeDir(extension.name)} exists at the pin)`,
+				message: `${extension.id}: name collides with an upstream extension (${ownExtensionTargetRelativeDir(materializer, extension.name)} exists at the pin)`,
 				hint: 'materializing over an upstream extension would replace it silently: rename the own extension, or change the upstream one through a patch',
 				file: OWN_MANIFEST_PATH
 			});
 			continue;
 		}
-		const manifest = join(ownExtensionSourceRoot(patchesDir, extension.name), EXTENSION_PACKAGE_NAME);
+		const manifest = join(ownExtensionSourceRoot(materializer, patchesDir, extension.name), materializer.manifestFile);
 		if (statOrNull(manifest) === null) {
 			problems.push({
-				message: `${extension.id}: ${OWN_EXTENSIONS_DIR}/${extension.name}/${EXTENSION_PACKAGE_NAME} is missing`,
+				message: `${extension.id}: ${materializer.deltaRoot}/${extension.name}/${materializer.manifestFile} is missing`,
 				hint: 'the upstream build finds a built-in extension by its package.json; add one, or remove the record',
-				file: `${OWN_EXTENSIONS_DIR}/${extension.name}/${EXTENSION_PACKAGE_NAME}`
+				file: `${materializer.deltaRoot}/${extension.name}/${materializer.manifestFile}`
 			});
 		}
 	}
-	for (const name of undeclaredDirectories(patchesDir, claimed)) {
+	for (const name of undeclaredDirectories(materializer, patchesDir, claimed)) {
 		problems.push({
-			message: `${OWN_EXTENSIONS_DIR}/${name}/ is declared by no record of the extensions section`,
+			message: `${materializer.deltaRoot}/${name}/ is declared by no record of the extensions section`,
 			hint: `add an extensions record for ${name} in ${OWN_MANIFEST_PATH}, or remove the directory; an undeclared extension is never materialized`,
-			file: `${OWN_EXTENSIONS_DIR}/${name}`
+			file: `${materializer.deltaRoot}/${name}`
 		});
 	}
 	return problems;
 }
 
-/** Directories under delta/own-extensions/ that no record claims, byte-sorted. */
-function undeclaredDirectories(patchesDir: string, declared: ReadonlySet<string>): readonly string[] {
+/** Directories under the delta root that no record claims, byte-sorted. */
+function undeclaredDirectories(materializer: Materializer, patchesDir: string, declared: ReadonlySet<string>): readonly string[] {
 	let entries: Dirent[];
 	try {
-		entries = readdirSync(ownExtensionsSourceRoot(patchesDir), { withFileTypes: true });
+		entries = readdirSync(ownExtensionsSourceRoot(materializer, patchesDir), { withFileTypes: true });
 	} catch {
 		// No own-extension directory at all is the state of every patchset that
 		// does not use the layer.
@@ -220,26 +243,26 @@ function undeclaredDirectories(patchesDir: string, declared: ReadonlySet<string>
 // ---------------------------------------------------------------------------
 
 /**
- * Whether the pin already carries `extensions/<name>`. Read from git objects, so
+ * Whether the pin already carries a materialization of that name. Read from git objects, so
  * a dirty tree answers exactly like a clean one; a tree that cannot answer at
  * all (no repository, unreachable pin) answers "no" and leaves that failure to
  * the checks whose subject it is.
  *
  * A name that is not an extension name is answered "no" without asking git: it
- * would go into a rev-spec, where `extensions/../x` resolves to `x` at the root
+ * would go into a rev-spec, where a dot-dot segment resolves to a path at the root
  * and the answer would be about a different path entirely.
  */
-export function pinShipsExtension(treeDir: string, pinSha: string, name: string): boolean {
-	if (!isSafeExtensionName(name)) {
+export function pinShipsExtension(materializer: Materializer, treeDir: string, pinSha: string, name: string): boolean {
+	if (!isSafeExtensionName(materializer, name)) {
 		return false;
 	}
-	const shown = runGit({ args: ['cat-file', '-t', `${pinSha}:${ownExtensionTargetRelativeDir(name)}`], cwd: treeDir });
+	const shown = runGit({ args: ['cat-file', '-t', `${pinSha}:${ownExtensionTargetRelativeDir(materializer, name)}`], cwd: treeDir });
 	return shown.status === 0 && shown.stdout.trim() === 'tree';
 }
 
 /**
- * ##OWN-EXTENSION-STRANDED: the first-level directories of `extensions/` that
- * are a materialization nobody owns any more, as `extensions/<name>/`.
+ * ##OWN-EXTENSION-STRANDED: the first-level directories of the materialization
+ * root that are a materialization nobody owns any more, with a trailing slash.
  *
  * Taking the declaration away does not take the directory away: `load`
  * mirrors the declared extensions and nothing else, so the retired one simply
@@ -250,17 +273,18 @@ export function pinShipsExtension(treeDir: string, pinSha: string, name: string)
  * a complete extension - it may be somebody's local experiment, which is
  * precisely why no command but `load --fresh` removes it.
  *
- * `untracked` is what git reports as untracked under `extensions/`, either as
+ * `untracked` is what git reports as untracked under the materialization root, either as
  * whole directories or as single files; the order of that report is kept, so
  * the caller lists the paths in the order `git status` names them. `pinShips`
  * is asked at most once per name.
  */
 export function strandedMaterializations(
+	materializer: Materializer,
 	untracked: readonly string[],
 	declared: readonly OwnExtension[],
 	pinShips: (name: string) => boolean
 ): readonly string[] {
-	const prefix = `${EXTENSIONS_TREE_DIR}/`;
+	const prefix = `${extensionsTreeDir(materializer)}/`;
 	// Every name a record mentions, well formed or not: a declared extension is
 	// somebody's, and a broken record is a problem `verify` names on its own.
 	const claimed = new Set(declared.map((extension) => extension.name));
@@ -272,7 +296,7 @@ export function strandedMaterializations(
 		}
 		const rest = path.slice(prefix.length);
 		const slash = rest.indexOf('/');
-		// A loose file straight under `extensions/` is litter in the upstream
+		// A loose file straight under the materialization root is litter in the upstream
 		// zone, not a materialization: only a directory can be one.
 		if (slash <= 0) {
 			continue;
@@ -283,7 +307,7 @@ export function strandedMaterializations(
 		}
 		decided.add(name);
 		if (!pinShips(name)) {
-			stranded.push(`${ownExtensionTargetRelativeDir(name)}/`);
+			stranded.push(`${ownExtensionTargetRelativeDir(materializer, name)}/`);
 		}
 	}
 	return stranded;
@@ -298,18 +322,23 @@ export function strandedMaterializations(
  * able to disagree about which directory that is. The pin is asked once per
  * name for the life of the returned predicate, which is one run of the guard.
  */
-export function strandedExtensionClassifier(treeDir: string, pinSha: string, declared: readonly OwnExtension[]): (path: string) => boolean {
+export function strandedExtensionClassifier(
+	materializer: Materializer,
+	treeDir: string,
+	pinSha: string,
+	declared: readonly OwnExtension[]
+): (path: string) => boolean {
 	const answered = new Map<string, boolean>();
 	const pinShips = (name: string): boolean => {
 		const known = answered.get(name);
 		if (known !== undefined) {
 			return known;
 		}
-		const ships = pinShipsExtension(treeDir, pinSha, name);
+		const ships = pinShipsExtension(materializer, treeDir, pinSha, name);
 		answered.set(name, ships);
 		return ships;
 	};
-	return (path) => strandedMaterializations([path], declared, pinShips).length > 0;
+	return (path) => strandedMaterializations(materializer, [path], declared, pinShips).length > 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -332,16 +361,25 @@ export const NO_OWN_EXTENSIONS: OwnExtensionSyncReport = { copied: 0, removed: 0
  * a file whose bytes already match is not rewritten, so its mtime does not move
  * and the watch daemons of the tree stay quiet.
  */
-export function syncOwnExtensions(patchesDir: string, treeDir: string, extensions: readonly OwnExtension[]): OwnExtensionSyncReport {
+export function syncOwnExtensions(
+	materializer: Materializer,
+	patchesDir: string,
+	treeDir: string,
+	extensions: readonly OwnExtension[]
+): OwnExtensionSyncReport {
 	let copied = 0;
 	let removed = 0;
 	let total = 0;
 	for (const extension of extensions) {
-		if (!isSafeExtensionName(extension.name)) {
+		if (!isSafeExtensionName(materializer, extension.name)) {
 			continue;
 		}
-		const source = ownExtensionSourceRoot(patchesDir, extension.name);
-		const target = assertContained(treeDir, ownExtensionTargetRelativeDir(extension.name), 'materialized own-extension target');
+		const source = ownExtensionSourceRoot(materializer, patchesDir, extension.name);
+		const target = assertContained(
+			treeDir,
+			ownExtensionTargetRelativeDir(materializer, extension.name),
+			'materialized own-extension target'
+		);
 		const report = mirror(source, target);
 		copied += report.copied;
 		removed += report.removed;
@@ -357,20 +395,25 @@ export function syncOwnExtensions(patchesDir: string, treeDir: string, extension
  * that is a tree which was never loaded, and "the tree has nothing" must not
  * read as "delete the delta".
  */
-export function mirrorOwnExtensionsBack(patchesDir: string, treeDir: string, extensions: readonly OwnExtension[]): OwnExtensionSyncReport {
+export function mirrorOwnExtensionsBack(
+	materializer: Materializer,
+	patchesDir: string,
+	treeDir: string,
+	extensions: readonly OwnExtension[]
+): OwnExtensionSyncReport {
 	let copied = 0;
 	let removed = 0;
 	let total = 0;
 	for (const extension of extensions) {
-		if (!isSafeExtensionName(extension.name)) {
+		if (!isSafeExtensionName(materializer, extension.name)) {
 			continue;
 		}
-		const source = ownExtensionTargetRoot(treeDir, extension.name);
+		const source = ownExtensionTargetRoot(materializer, treeDir, extension.name);
 		if (statOrNull(source) === null) {
-			total += listExtensionFiles(ownExtensionSourceRoot(patchesDir, extension.name)).length;
+			total += listExtensionFiles(ownExtensionSourceRoot(materializer, patchesDir, extension.name)).length;
 			continue;
 		}
-		const target = assertContained(patchesDir, `${OWN_EXTENSIONS_DIR}/${extension.name}`, 'own-extension source');
+		const target = assertContained(patchesDir, `${materializer.deltaRoot}/${extension.name}`, 'own-extension source');
 		const report = mirror(source, target);
 		copied += report.copied;
 		removed += report.removed;
@@ -385,7 +428,7 @@ export function mirrorOwnExtensionsBack(patchesDir: string, treeDir: string, ext
  * materialized yet" and carries no work, the other two do.
  */
 export type OwnExtensionDivergence = {
-	/** Path under `delta/own-extensions/`, POSIX: `<name>/<path>`. */
+	/** Path under the delta root of the layer, POSIX: `<name>/<path>`. */
 	readonly relative: string;
 	readonly kind: 'both' | 'tree-only' | 'patchset-only';
 };
@@ -397,17 +440,18 @@ export type OwnExtensionDivergence = {
  * fresh checkout red for no reason.
  */
 export function compareOwnExtensions(
+	materializer: Materializer,
 	patchesDir: string,
 	treeDir: string,
 	extensions: readonly OwnExtension[]
 ): readonly OwnExtensionDivergence[] {
 	const diverged: OwnExtensionDivergence[] = [];
 	for (const extension of extensions) {
-		if (!isSafeExtensionName(extension.name)) {
+		if (!isSafeExtensionName(materializer, extension.name)) {
 			continue;
 		}
-		const source = ownExtensionSourceRoot(patchesDir, extension.name);
-		const target = ownExtensionTargetRoot(treeDir, extension.name);
+		const source = ownExtensionSourceRoot(materializer, patchesDir, extension.name);
+		const target = ownExtensionTargetRoot(materializer, treeDir, extension.name);
 		if (statOrNull(target) === null) {
 			continue;
 		}
@@ -484,7 +528,7 @@ function walk(absoluteDir: string, relativeDir: string, into: string[]): void {
 				'ARTIFACT-BROKEN',
 				`symlinks are not allowed in an own extension: ${relative}`,
 				'replace the symlink with the file itself; an own extension must be self-contained in patchset',
-				`${OWN_EXTENSIONS_DIR}/${relative}`
+				relative
 			);
 		}
 		if (entry.isDirectory()) {

@@ -8,10 +8,11 @@
 // it happens to be there, for the compatibility warning alone.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot } from '../lib/command.ts';
+import { requireCapability } from '../types/capability.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot, requireProjectType } from '../lib/command.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { NOTICE_LEGACY_PATH } from '../lib/licenceNotice.ts';
-import { RUNTIME_NEXT_STEPS, driftPaths, runRuntimeCheck, runRuntimeLoad } from '../lib/runtimeLoad.ts';
+import { driftPaths, runRuntimeCheck, runRuntimeLoad, runtimeNextSteps } from '../lib/runtimeLoad.ts';
 import type { RuntimeLoadOutcome } from '../lib/runtimeLoad.ts';
 
 const DRY_RUN = '--dry-run';
@@ -27,6 +28,7 @@ function noticeAction(outcome: RuntimeLoadOutcome, path: string): string {
 }
 
 async function runLoad(ctx: CommandContext): Promise<number> {
+	requireCapability(ctx.type, 'runtime-library', 'runtime load');
 	const patchesDir = patchesRoot(ctx);
 	const dryRun = commandFlagGiven(ctx.commandFlags, DRY_RUN);
 	const upgrade = commandFlagGiven(ctx.commandFlags, UPGRADE);
@@ -68,7 +70,8 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 			`the pin ${plan.pinTag ?? 'unknown'} is not among the upstream tags this runtime was verified on (${plan.runtime.verifiedUpstream.join(', ')})`
 		);
 	}
-	for (const line of RUNTIME_NEXT_STEPS) ctx.out.info(line);
+	const nextSteps = runtimeNextSteps(requireProjectType(ctx), ctx.config?.typeConfig.ownRoot ?? '');
+	for (const line of nextSteps) ctx.out.info(line);
 
 	ctx.out.setData({
 		version: plan.runtime.version,
@@ -82,12 +85,13 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 		verifiedUpstream: plan.verifiedUpstream,
 		writes: [...plan.writes],
 		removals: [...plan.removals],
-		nextSteps: [...RUNTIME_NEXT_STEPS]
+		nextSteps: [...nextSteps]
 	} satisfies JsonValue);
 	return EXIT_OK;
 }
 
 async function runCheck(ctx: CommandContext): Promise<number> {
+	requireCapability(ctx.type, 'runtime-library', 'runtime check');
 	const patchesDir = patchesRoot(ctx);
 	const report = runRuntimeCheck({ toolRoot: ctx.toolRoot, patchesDir });
 	const plan = report.plan;
@@ -135,7 +139,7 @@ export const runtimeCommand: CommandDefinition = {
 export const runtimeLoadCommand: CommandDefinition = {
 	name: 'runtime load',
 	summary: 'deliver the codkit runtime library codkit ships into delta/own/codkit/',
-	configMode: 'none',
+	configMode: 'load',
 	roots: 'patches',
 	maxArgs: 0,
 	commandFlags: [DRY_RUN, UPGRADE],
@@ -145,7 +149,7 @@ export const runtimeLoadCommand: CommandDefinition = {
 export const runtimeCheckCommand: CommandDefinition = {
 	name: 'runtime check',
 	summary: 'report on the installed runtime library and the licence notice copies',
-	configMode: 'none',
+	configMode: 'load',
 	roots: 'patches',
 	maxArgs: 0,
 	run: runCheck

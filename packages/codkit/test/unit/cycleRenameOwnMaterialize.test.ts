@@ -14,6 +14,7 @@ import { STATUS_PART_PATH, STATUSBAR_PART_PATH, fixtureCommit } from '../fixture
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const REFERENCE = 'delta/own/test/rename-path.test.ts';
 const MATERIALIZED_REFERENCE = 'src/vs/patchset/test/rename-path.test.ts';
@@ -51,6 +52,7 @@ function preparedFixture(): CliFixture {
 		patchesDir: fixture.patchesDir,
 		forkDir: fixture.treeDir,
 		config: requiredConfig(fixture),
+		type: vscodeType,
 		target: fixture.upstream.t2.tag
 	});
 	return fixture;
@@ -99,6 +101,7 @@ function continueFixture(fixture: CliFixture, config: ReturnType<typeof required
 		patchesDir: fixture.patchesDir,
 		resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 		config,
+		type: vscodeType,
 		ci: true,
 		out: new Output({
 			command: 'cycle continue',

@@ -21,7 +21,12 @@ export type EnvelopeMessage = {
 };
 
 export type Envelope = {
-	codkit: { schema: 2; command: string; version: string };
+	/**
+	 * `type` is the project type of the patch set this run resolved, or null when
+	 * the run has no patch set to read one from (PROP-016 ##TYPE-VERBS-UNIVERSAL:
+	 * the roster is universal, and the output names the type where it matters).
+	 */
+	codkit: { schema: 2; command: string; version: string; type: string | null };
 	ok: boolean;
 	exitCode: number;
 	roots: {
@@ -63,6 +68,7 @@ export class Output {
 	private readonly errors: CkErrorPayload[];
 	private roots: Envelope['roots'];
 	private data: JsonValue;
+	private projectType: string | null;
 	private finished: boolean;
 
 	constructor(options: { command: string; version: string; jsonMode: boolean; streams?: OutputStreams }) {
@@ -74,6 +80,7 @@ export class Output {
 		this.errors = [];
 		this.roots = { tool: { path: '', source: 'install', exists: true }, patches: null, fork: null };
 		this.data = {};
+		this.projectType = null;
 		this.finished = false;
 	}
 
@@ -124,6 +131,11 @@ export class Output {
 		this.data = data;
 	}
 
+	/** The project type this run resolved; it is carried by every envelope. */
+	setProjectType(id: string | null): void {
+		this.projectType = id;
+	}
+
 	addError(payload: CkErrorPayload): void {
 		this.errors.push(payload);
 		if (!this.jsonMode) {
@@ -157,7 +169,8 @@ export class Output {
 			codkit: {
 				schema: ENVELOPE_SCHEMA_VERSION,
 				command: this.command,
-				version: this.version
+				version: this.version,
+				type: this.projectType
 			},
 			ok: exitCode === 0,
 			exitCode,

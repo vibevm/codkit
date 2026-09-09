@@ -20,7 +20,7 @@
 // Cloning is not a side effect of a typo: a missing tree is an error unless
 // --clone-if-missing says otherwise, and even then --ci refuses, because a
 // container run must never start downloading gigabytes.
-import { EXIT_ENVIRONMENT, commandFlagGiven, forkResolution } from '../lib/command.js';
+import { EXIT_ENVIRONMENT, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
@@ -64,6 +64,7 @@ async function run(ctx) {
             patchesDir: ctx.patchesDir,
             resolution,
             config,
+            type: requireProjectType(ctx),
             out: ctx.out,
             fresh,
             dryRun,

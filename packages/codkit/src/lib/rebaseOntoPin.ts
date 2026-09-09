@@ -13,7 +13,7 @@ import type { GitEnv } from './gitx.ts';
 import { applyUnified } from './applyUnified.ts';
 import { bytesEqual } from './bytes.ts';
 import { loadConventions } from './conventionsFile.ts';
-import { PRODUCT_OVERRIDES_FILE } from './layers/overlay.ts';
+import { devChannelFile } from './layers/overlay.ts';
 import { sha256 } from './renameFileState.ts';
 import type { Output } from './jsonOut.ts';
 import { ckError } from './messages.ts';
@@ -46,6 +46,8 @@ export type RebaseOntoPinOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: import('./configFile.ts').CodkitConfig;
+	/** The project type of the patch set; the dev-channel sidecar comes from it. */
+	readonly type: import('@codkit/type-api').ProjectType;
 	readonly out: Output;
 	readonly verbose?: boolean;
 	readonly similarity?: number;
@@ -84,13 +86,14 @@ type PreparedPatch = RebaseOntoPinPatch & {
 
 /** Execute one clean two-parent rebase without moving a real ref or index. */
 export function rebaseOntoPin(options: RebaseOntoPinOptions): RebaseOntoPinResult {
-	const graph = prepareRebaseGraph(options.patchesDir, options.resolution.path, options.config);
+	const graph = prepareRebaseGraph(options.patchesDir, options.type, options.resolution.path, options.config);
 	const scratch = createScratchFork(options.resolution.path);
 	try {
 		const sourceBaseline = buildGeneratedTip({
 			patchesDir: graph.sourcePatchesDir,
 			resolution: { path: scratch.dir, source: 'flag', exists: true, warning: null },
 			config: graph.sourceConfig,
+			type: options.type,
 			out: options.out,
 			verbose: options.verbose === true,
 			patchSetCommit: graph.featureParent,
@@ -100,6 +103,7 @@ export function rebaseOntoPin(options: RebaseOntoPinOptions): RebaseOntoPinResul
 			patchesDir: graph.targetPatchesDir,
 			resolution: { path: scratch.dir, source: 'flag', exists: true, warning: null },
 			config: graph.targetConfig,
+			type: options.type,
 			out: options.out,
 			verbose: options.verbose === true,
 			patchSetCommit: graph.targetParent,
@@ -126,6 +130,10 @@ export function rebaseOntoPin(options: RebaseOntoPinOptions): RebaseOntoPinResul
 		);
 		assertPatchSetArtifactStates(options, prepared, graph.targetConfig.pin.sha);
 		const desiredTree = buildDesiredTree(scratch.dir, baseline, prepared);
+		// The dev-channel sidecar of this family is written by `load` and ignored
+		// by the tree, so it is not unrelated dirt (##OVERLAY-TWO-CHANNELS).
+		const devChannel = devChannelFile(options.type);
+		const devChannelPaths = devChannel === null ? [] : [devChannel];
 		const move = materializeRebaseDesiredTree({
 			patchesDir: options.patchesDir,
 			treeDir: options.resolution.path,
@@ -134,7 +142,7 @@ export function rebaseOntoPin(options: RebaseOntoPinOptions): RebaseOntoPinResul
 			patchsetHead: graph.head,
 			allowedOwnBeforeTree: sourceBaseline,
 			allowedIgnoredPrefix: `${graph.targetConfig.typeConfig.ownRoot}/`,
-			allowedIgnoredPaths: [PRODUCT_OVERRIDES_FILE],
+			allowedIgnoredPaths: devChannelPaths,
 			allowCompletedRollover: !hasRebasePendingRecords(options.patchesDir),
 			completedCheckpoint: () => options.checkpoint?.('after-complete'),
 			...(options.moveCheckpoint === undefined ? {} : { checkpoint: options.moveCheckpoint }),
@@ -186,7 +194,7 @@ function assertPatchSetArtifactStates(
 	prepared: readonly PreparedPatch[],
 	targetPin: string
 ): ReadonlySet<string> {
-	const conventions = loadConventions(options.patchesDir);
+	const conventions = loadConventions(options.type, options.patchesDir);
 	const satisfied = new Set<string>();
 	for (const entry of prepared) {
 		const oldBytes = optionalFile(options.patchesDir, entry.mergedArtifactPath);
@@ -394,6 +402,7 @@ function saveAutomatic(
 		patchesDir: options.patchesDir,
 		resolution: options.resolution,
 		config,
+		type: options.type,
 		out: options.out,
 		paths: prepared.map((entry) => entry.targetPath),
 		allowNewFile: prepared.filter((entry) => !entry.replay.materials.baseExists).map((entry) => entry.targetPath),

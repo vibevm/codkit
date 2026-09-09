@@ -33,7 +33,7 @@ export function guardTestId(family) {
 export function runImageset(options) {
     const { patchesDir, treeDir, brandingDir, dryRun, onInfo, onWarn } = options;
     onInfo(`branding: ${brandingDir}`);
-    const targets = discoverTargets(treeDir, onInfo);
+    const targets = discoverTargets(options.type, treeDir, onInfo);
     const seeded = seedMasters(brandingDir, treeDir, targets, dryRun);
     for (const seed of seeded) {
         onInfo(`${dryRun ? 'would seed' : 'seeded'} branding/${seed.file} from ${seed.from} (${seed.width}x${seed.height})`);

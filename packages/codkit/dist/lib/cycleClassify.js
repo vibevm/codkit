@@ -37,7 +37,7 @@ export function applyCycleClassification(options) {
 }
 export function classifyUpgradeInventory(options) {
     const { treeDir, oldPin, newRef, mergeFile } = options;
-    const inventory = loadCycleClassificationInventory(options.patchesDir, options.expectedPin, options.layerRuntime);
+    const inventory = loadCycleClassificationInventory(options.patchesDir, options.type, options.expectedPin, options.layerRuntime);
     const detected = detectRenames({
         cwd: treeDir,
         oldPin,
@@ -45,7 +45,7 @@ export function classifyUpgradeInventory(options) {
         ...(options.similarity === undefined ? {} : { threshold: options.similarity })
     });
     const patchRenames = relevantPatchRenames(inventory, detected);
-    const classified = classifyLoadedUpgrade(treeDir, oldPin, newRef, inventory, detected, patchRenames, mergeFile);
+    const classified = classifyLoadedUpgrade(options.type, treeDir, oldPin, newRef, inventory, detected, patchRenames, mergeFile);
     return {
         inventory,
         renames: relevantCycleRenames(inventory, detected).map(({ from, to, similarity }) => ({ from, to, similarity })),
@@ -54,7 +54,7 @@ export function classifyUpgradeInventory(options) {
 }
 function classifyPrepared(options, apply) {
     const expectedPin = `${options.state.sourcePin.tag}@${options.state.sourcePin.sha}`;
-    const before = loadCycleClassificationInventory(options.patchesDir, expectedPin, options.layerRuntime);
+    const before = loadCycleClassificationInventory(options.patchesDir, options.type, expectedPin, options.layerRuntime);
     const detected = detectRenames({
         cwd: options.treeDir,
         oldPin: options.state.sourcePin.sha,
@@ -92,12 +92,12 @@ function classifyPrepared(options, apply) {
             throw broken('rename apply returned without exact completion');
         clearCycleClassifyRecovery(writeOptions.patchesDir, recovery);
     }
-    const loaded = apply ? loadCycleClassificationInventory(options.patchesDir, expectedPin, options.layerRuntime) : before;
+    const loaded = apply ? loadCycleClassificationInventory(options.patchesDir, options.type, expectedPin, options.layerRuntime) : before;
     return completeResult(options, loaded, detected, relevantRenames, patchRenames, renameBatch);
 }
 function completeResult(options, loaded, detected, relevantRenames, patchRenames, renameBatch) {
     const { sourcePin, targetPin } = options.state;
-    const classified = classifyLoadedUpgrade(options.treeDir, sourcePin.sha, targetPin.sha, loaded, detected, patchRenames);
+    const classified = classifyLoadedUpgrade(options.type, options.treeDir, sourcePin.sha, targetPin.sha, loaded, detected, patchRenames);
     return {
         renames: relevantRenames.map(({ from, to, similarity }) => ({ from, to, similarity })),
         ...classified,
@@ -106,9 +106,10 @@ function completeResult(options, loaded, detected, relevantRenames, patchRenames
         validated: loaded.validated
     };
 }
-function classifyLoadedUpgrade(treeDir, oldPin, newRef, loaded, detected, patchRenames, mergeFile) {
+function classifyLoadedUpgrade(type, treeDir, oldPin, newRef, loaded, detected, patchRenames, mergeFile) {
     const mapped = mapPatchTargets(loaded.artifacts, patchRenames);
     const artifactClassifications = classifyArtifacts({
+        type,
         treeDir,
         artifacts: mapped,
         oldPin,
@@ -316,7 +317,7 @@ function recoverRenameBeforeInventory(options) {
 }
 function rebuildRecoveryBatch(options, recovery) {
     const expectedPin = `${options.state.sourcePin.tag}@${options.state.sourcePin.sha}`;
-    const pristine = loadCycleClassificationInventory(options.patchesDir, expectedPin, options.layerRuntime);
+    const pristine = loadCycleClassificationInventory(options.patchesDir, options.type, expectedPin, options.layerRuntime);
     const patchRenames = relevantPatchRenames(pristine, recovery.detectedRenames);
     const pending = patchRenames.filter((rename) => pristine.patches.some((artifact) => artifact.patch.targetPath === rename.from));
     return buildRenameBatch(options, pristine, pending);

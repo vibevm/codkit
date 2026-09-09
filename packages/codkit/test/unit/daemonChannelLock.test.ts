@@ -31,6 +31,7 @@ import { loadBuildWatch } from '../../src/lib/buildWrap.ts';
 import { removeContainedFile, writeContainedFileExclusive } from '../../src/lib/containedFile.ts';
 import { linkContainedFileExclusive, removeContainedHardlinkGeneration } from '../../src/lib/containedGeneration.ts';
 import { cleanupDiskRoots, makeDiskRoot } from '../support/diskRoot.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupDiskRoots);
 
@@ -471,11 +472,11 @@ describe('the build channel namespace', () => {
 			errorLine: [`^${name}: (.+)$`]
 		});
 		writeFileSync(profile, `${JSON.stringify({ codkitBuildWatch: 1, channels: { Foo: channel('foo'), foo: channel('foo') } })}\n`, 'utf8');
-		expect(() => loadBuildWatch(root)).toThrow(/"Foo" and "foo" collide after ASCII case folding/);
+		expect(() => loadBuildWatch(vscodeType, root)).toThrow(/"Foo" and "foo" collide after ASCII case folding/);
 
 		// Nothing was cached by the refused load: the next call reads the repaired
 		// profile instead of replaying the invalid one.
 		writeFileSync(profile, `${JSON.stringify({ codkitBuildWatch: 1, channels: { transpile: channel('transpile') } })}\n`, 'utf8');
-		expect(loadBuildWatch(root).channels.map((entry) => entry.name)).toEqual(['transpile']);
+		expect(loadBuildWatch(vscodeType, root).channels.map((entry) => entry.name)).toEqual(['transpile']);
 	});
 });

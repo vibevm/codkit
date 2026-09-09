@@ -40,6 +40,11 @@ const DEVELOPMENT_ONLY = ['test/', 'discipline/', 'tools/', 'vibevm/vibedeps/', 
 
 /** The files each package must carry, keyed by package name. */
 const REQUIRED: ReadonlyMap<string, readonly string[]> = new Map([
+	// A type package ships its own answers as data next to its code: the
+	// pass-boundary profile of its watch channels is one of them (PROP-016
+	// ##TYPE-AREA-BUILD).
+	['@codkit/type-vscode', ['package.json', 'LICENSE.md', 'README.md', 'src/index.ts', 'dist/index.js', 'config/build-watch.json']],
+	['@codkit/type-api', ['package.json', 'LICENSE.md', 'README.md', 'src/index.ts', 'dist/index.js']],
 	[
 		'codkit',
 		[
@@ -53,7 +58,6 @@ const REQUIRED: ReadonlyMap<string, readonly string[]> = new Map([
 			'dist/main.js',
 			'src/main.ts',
 			'config/conventions.json',
-			'config/build-watch.json',
 			'config/license-policy.json',
 			'config/spdx-license-ids.json',
 			'hooks/pretool.mjs',

@@ -157,6 +157,7 @@ function renamesPhase(options, state, record, commits) {
             patchesDir: options.patchesDir,
             resolution: options.resolution,
             config: options.config,
+            type: options.type,
             sourcePin: state.sourcePin,
             classifications: artifactClassifications(current.classifications),
             renames: current.renames,
@@ -186,6 +187,7 @@ function regenerationPhase(options, state, record, commits) {
     if (current.checkpoint === 'materialized') {
         const regenerationOptions = {
             patchesDir: options.patchesDir,
+            type: options.type,
             state,
             classifications: current.classifications,
             causes: current.causes
@@ -247,6 +249,7 @@ function resolvePhase(options, state, record, locks, commits) {
         patchesDir: options.patchesDir,
         resolution: options.resolution,
         config: options.config,
+        type: options.type,
         state,
         journal,
         artifacts: resolveArtifacts(options, state, record, journal),
@@ -302,6 +305,7 @@ function baseClassifyOptions(options, state) {
         patchesDir: options.patchesDir,
         treeDir: options.resolution.path,
         config: options.config,
+        type: options.type,
         state,
         contractTestPaths: references.contractTests,
         ownPaths: references.own
@@ -371,7 +375,7 @@ function resolveArtifacts(options, state, record, journal) {
     const classifications = new Map(record.classifications.map((item) => [item.artifactPath, item]));
     const causes = new Map(record.causes.map((item) => [item.artifactPath, item.cause]));
     const latest = new Map(journal.map((entry) => [entry.artifact, entry]));
-    const inventory = buildInventory(options.patchesDir, { config: options.config });
+    const inventory = buildInventory(options.patchesDir, options.type, { config: options.config });
     const entries = new Map(inventory.entries.map((entry) => [entry.artifact, entry]));
     return RESOLVE_OUTCOMES.flatMap((outcome) => state.artifacts[outcome].map((artifactPath) => {
         const item = classifications.get(artifactPath);

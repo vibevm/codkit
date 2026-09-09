@@ -231,6 +231,7 @@ function materializationFixture(label: string, options: { readonly portableModes
 function moveOptions(current: MaterializationFixture): RebaseMoveOptions {
 	return {
 		patchesDir: current.patchset,
+
 		treeDir: current.tree,
 		scratchTree: current.tree,
 		desiredTree: current.desiredTree,

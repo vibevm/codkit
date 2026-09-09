@@ -14,6 +14,7 @@ import { chooseMaster, ignoredMasterFiles, knownMasterFiles } from './imagesetMa
 import type { DiscoveredTarget, TargetKind } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
 import type { JsonValue } from './jsonOut.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 /** Where one required size comes from on the next generation run. */
 export type SizeSource = 'master' | 'generated' | 'missing';
@@ -69,11 +70,13 @@ export type Totals = { readonly master: number; readonly generated: number; read
  * absent and names the command that would seed it.
  */
 export function buildImagesetIndex(options: {
+	/** The project type of the patch set: the image set is its answer. */
+	readonly type: ProjectType;
 	readonly treeDir: string;
 	readonly brandingDir: string;
 	readonly onReport: (text: string) => void;
 }): ImagesetIndex {
-	const discovered = discoverTargets(options.treeDir, options.onReport);
+	const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
 	const brandingDirExists = existsSync(options.brandingDir);
 	const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
 	const targets = discovered.map((target) => indexTarget(options.brandingDir, target));

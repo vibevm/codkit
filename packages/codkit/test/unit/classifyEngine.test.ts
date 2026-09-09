@@ -18,6 +18,7 @@ import { formatPatchHeader, parseCkpatch } from '../../src/lib/patchFormat.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const CLEAN = 'src/vs/classify/clean.ts';
 const SHIFTED = 'src/vs/classify/shifted.ts';
@@ -476,6 +477,8 @@ describe('classifyPatchArtifact', () => {
 		];
 
 		const results = classifyArtifacts({
+			type: vscodeType,
+
 			treeDir: fixture.dir,
 			artifacts,
 			oldPin: fixture.oldPin,

@@ -177,7 +177,13 @@ afterAll(() => cleanupTempRoots());
 describe('forecast surface', () => {
 	it('resolves an explicit ref and returns a deterministic owner-grouped red report', () => {
 		const fixture = makeFixture('forecast-explicit');
-		const result = forecastUpgrade({ patchesDir: fixture.root, treeDir: fixture.tree, config: fixture.config, ref: 't2' });
+		const result = forecastUpgrade({
+			patchesDir: fixture.root,
+			treeDir: fixture.tree,
+			config: fixture.config,
+			type: vscodeType,
+			ref: 't2'
+		});
 
 		expect(result.exitCode).toBe(1);
 		expect(result.report.ref).toEqual({ input: 't2', sha: fixture.t2, usedDefault: false });
@@ -207,7 +213,13 @@ describe('forecast surface', () => {
 
 	it('returns green at the current pin and uses the exact local default ref when omitted', async () => {
 		const fixture = makeFixture('forecast-default');
-		const current = forecastUpgrade({ patchesDir: fixture.root, treeDir: fixture.tree, config: fixture.config, ref: fixture.t1 });
+		const current = forecastUpgrade({
+			patchesDir: fixture.root,
+			treeDir: fixture.tree,
+			config: fixture.config,
+			type: vscodeType,
+			ref: fixture.t1
+		});
 		expect(current).toMatchObject({ exitCode: 0, report: { counts: { total: 3, nonClean: 0 }, owners: [] } });
 
 		fixtureGit(fixture.tree, ['update-ref', DEFAULT_FORECAST_REF, fixture.t2]);

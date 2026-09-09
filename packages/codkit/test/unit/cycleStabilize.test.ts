@@ -21,6 +21,7 @@ import type { ForkDirResolution } from '../../src/lib/paths.ts';
 import type { VerifyResult } from '../../src/lib/verifyEngine.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 type Fixture = {
 	readonly root: string;
@@ -267,7 +268,7 @@ describe('cycle dependency advisory and stabilization adapter', () => {
 	it('checks locks again after heavy work and exposes the concrete verify/build/contract/finally implementation', async () => {
 		const current = fixture(false, 'stabilize');
 		const source = readFileSync(join(import.meta.dirname, '../../src/lib/cycleStabilize.ts'), 'utf8');
-		expect(source).toContain('verify = runVerify(options)');
+		expect(source).toContain('verify = runVerify({ ...options, type: options.type })');
 		expect(source).toContain('build = await runCi({');
 		expect(source).toContain("profile: 'build'");
 		// The anchored teardown call carries its tree binding: the probe argument is
@@ -372,6 +373,7 @@ function options(
 		patchesDir: current.root,
 		resolution: current.resolution,
 		config: current.config,
+		type: vscodeType,
 		state: current.state,
 		locks,
 		ci: false,

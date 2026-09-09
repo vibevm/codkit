@@ -6,16 +6,20 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { gitOk, runGit } from './gitx.ts';
 import type { GitEnv } from './gitx.ts';
-import { OWN_EXTENSIONS_DIR, ownExtensionFiles } from './layers/ownExtensions.ts';
+import { materializerOf, ownExtensionFiles } from './layers/ownExtensions.ts';
+import type { Materializer } from './layers/ownExtensions.ts';
 import type { OwnExtensionFile } from './layers/ownExtensions.ts';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.ts';
 import { ckError } from './messages.ts';
 import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export const GENERATED_HISTORY_FINGERPRINT_VERSION = 1;
 
 export type GeneratedOwnCommitOptions = {
 	readonly patchesDir: string;
+	/** The project type of the patch set; the own-extension layer comes from it. */
+	readonly type: ProjectType;
 	readonly treeDir: string;
 	readonly indexFile: string;
 	readonly parent: string;
@@ -51,7 +55,7 @@ export type GeneratedOwnEvidence = {
 	/** Exact branch-relative paths supplied only by the delivered own layer. */
 	readonly ownTargets: readonly string[];
 	/**
-	 * ##OWN-EXTENSION-UNIT: the same, for `extensions/<name>/`. Kept apart from
+	 * ##OWN-EXTENSION-UNIT: the same, for a materialized own extension. Kept apart from
 	 * `ownTargets` because the upgrade cycle's own preflight is written against
 	 * the single own root and must keep judging exactly that root.
 	 */
@@ -70,6 +74,7 @@ function ownPredicate(omitLicenceNotice: boolean): (relative: string) => boolean
 /** Fail before object/ref/worktree mutation when two generated layers claim one target. */
 export function assertGeneratedTargetOwnership(
 	patchesDir: string,
+	type: ProjectType,
 	ownRoot: string,
 	layerTargets: readonly GeneratedLayerTarget[],
 	omitLicenceNotice = false
@@ -80,9 +85,10 @@ export function assertGeneratedTargetOwnership(
 	const claims = new Map(ownTargets.map((target) => [target, { layer: 'own', artifact: `delta/own/${target.slice(ownRoot.length + 1)}` }]));
 	const ids = new Map<string, string>();
 	const manifest = loadOwnManifest(patchesDir);
-	const extensionFiles = ownExtensionFiles(patchesDir, manifest.extensions);
+	const materializer = materializerOf(type);
+	const extensionFiles = materializer === null ? [] : ownExtensionFiles(materializer, patchesDir, manifest.extensions);
 	for (const file of extensionFiles) {
-		claims.set(file.target, { layer: 'own-extension', artifact: `${OWN_EXTENSIONS_DIR}/${file.relative}` });
+		claims.set(file.target, { layer: 'own-extension', artifact: `${materializer?.deltaRoot ?? ''}/${file.relative}` });
 	}
 	for (const entry of [
 		...manifest.units.map((unit) => ({ id: unit.id, label: `${OWN_MANIFEST_PATH} unit ${unit.id}` })),
@@ -129,7 +135,12 @@ export function assertGeneratedTargetOwnership(
 }
 
 /** Keep full and local branch/cache variants distinct without changing schemas. */
-export function generatedHistoryFingerprint(deltaFingerprint: string, patchesDir: string, omitLicenceNotice = false): string {
+export function generatedHistoryFingerprint(
+	deltaFingerprint: string,
+	patchesDir: string,
+	type: ProjectType,
+	omitLicenceNotice = false
+): string {
 	const sourceRoot = ownSourceRoot(patchesDir);
 	const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(omitLicenceNotice));
 	const hash = createHash('sha256')
@@ -141,8 +152,9 @@ export function generatedHistoryFingerprint(deltaFingerprint: string, patchesDir
 	for (const relative of files) hash.update(`\0${relative}\0${ownFileMode(patchesDir, relative)}`, 'utf8');
 	// ##OWN-EXTENSION-UNIT: the extensions are part of the snapshot, so a change
 	// to one of them has to change the fingerprint the fast path compares.
-	for (const file of extensionSnapshot(patchesDir))
-		hash.update(`\0${OWN_EXTENSIONS_DIR}/${file.relative}\0${fileMode(patchesDir, `${OWN_EXTENSIONS_DIR}/${file.relative}`)}`, 'utf8');
+	const deltaRoot = materializerOf(type)?.deltaRoot ?? '';
+	for (const file of extensionSnapshot(materializerOf(type), patchesDir))
+		hash.update(`\0${deltaRoot}/${file.relative}\0${fileMode(patchesDir, `${deltaRoot}/${file.relative}`)}`, 'utf8');
 	return hash.digest('hex');
 }
 
@@ -160,7 +172,8 @@ export function appendGeneratedOwnCommit(options: GeneratedOwnCommitOptions): Ge
 	// ##OWN-EXTENSION-UNIT: the own extensions ride in the same atom. `ci` and
 	// `publish` need the complete reproducible tree, and an extension the branch
 	// does not carry is an extension the build does not see.
-	const extensions = extensionSnapshot(options.patchesDir);
+	const materializer = materializerOf(options.type);
+	const extensions = extensionSnapshot(materializer, options.patchesDir);
 	// An own snapshot that is only the licence notice is empty for a release, and
 	// an empty layer is skipped exactly like any other.
 	if (files.length === 0 && extensions.length === 0) return { sha: null, files };
@@ -169,7 +182,7 @@ export function appendGeneratedOwnCommit(options: GeneratedOwnCommitOptions): Ge
 		stageGeneratedFile(options, indexEnv, join(sourceRoot, ...relative.split('/')), `${targetRoot}/${relative}`, `delta/own/${relative}`);
 	}
 	for (const file of extensions) {
-		stageGeneratedFile(options, indexEnv, file.source, file.target, `${OWN_EXTENSIONS_DIR}/${file.relative}`);
+		stageGeneratedFile(options, indexEnv, file.source, file.target, `${materializer?.deltaRoot ?? ''}/${file.relative}`);
 	}
 
 	const tree = gitOk(
@@ -218,8 +231,8 @@ function stageGeneratedFile(options: GeneratedOwnCommitOptions, indexEnv: GitEnv
 }
 
 /** The own-extension files of the delta, or none when the manifest is unusable. */
-function extensionSnapshot(patchesDir: string): readonly OwnExtensionFile[] {
-	return ownExtensionFiles(patchesDir, loadOwnManifest(patchesDir).extensions);
+function extensionSnapshot(materializer: Materializer | null, patchesDir: string): readonly OwnExtensionFile[] {
+	return materializer === null ? [] : ownExtensionFiles(materializer, patchesDir, loadOwnManifest(patchesDir).extensions);
 }
 
 function removeIndexedOwnTree(treeDir: string, targetRoot: string, indexEnv: GitEnv): void {

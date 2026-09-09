@@ -58,6 +58,7 @@ import { foreignCommits, treeHeadError } from './treeCommits.ts';
 import type { TreeCommits } from './treeCommits.ts';
 import { changesSince } from './treeState.ts';
 import { checkTree } from './treeIdentity.ts';
+import type { ProjectType } from '@codkit/type-api';
 import { assertGeneratedRefExclusive } from './worktrees.ts';
 
 // ---------------------------------------------------------------------------
@@ -107,6 +108,8 @@ export type TwoWayInput = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below ask it, not a constant. */
+	readonly type: ProjectType;
 	readonly out: Output;
 	readonly flags: {
 		readonly squash: boolean;
@@ -151,6 +154,7 @@ export function runWritePass(
 				patchesDir,
 				resolution,
 				config,
+				type: input.type,
 				out,
 				paths: [],
 				allowNewFile: [],
@@ -199,6 +203,7 @@ export function runWritePass(
 			patchesDir,
 			resolution,
 			config,
+			type: input.type,
 			out,
 			fresh: flags.fresh,
 			dryRun: false,
@@ -294,6 +299,7 @@ export function materializeConflicts(
 			patchesDir,
 			treeDir: tree,
 			pinSha: config.pin.sha,
+			type: input.type,
 			base: treeState.base,
 			treeHead: treeState.head,
 			target,
@@ -567,6 +573,7 @@ function classifySides(
 		patchesDir: input.patchesDir,
 		treeDir: input.resolution.path,
 		pinSha: input.config.pin.sha,
+		type: input.type,
 		base: treeState.base,
 		mark,
 		ownRoot: input.config.typeConfig.ownRoot,

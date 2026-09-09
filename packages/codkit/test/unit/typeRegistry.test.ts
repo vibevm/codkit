@@ -1,0 +1,81 @@
+// The registry of project types and the capability refusal (PROP-016
+// ##TYPE-REGISTRY, ##TYPE-UNKNOWN, ##TYPE-CAPABILITY-REFUSAL).
+//
+// The set of loadable code is fixed by the tool's own release: a type is a
+// package name in this table and nothing else can be loaded, so the test that
+// matters is what happens to an identifier the table does not carry.
+
+import type { Capability, ProjectType } from '@codkit/type-api';
+import { projectType as vscodeType } from '@codkit/type-vscode';
+import { describe, expect, it } from 'vitest';
+import { isCkError } from '../../src/lib/messages.ts';
+import { requireCapability } from '../../src/types/capability.ts';
+import { registeredTypes, resolveProjectType, TYPE_REGISTRY } from '../../src/types/registry.ts';
+
+/** A type that answers nothing optional, for the refusals. */
+function stub(capabilities: readonly Capability[]): ProjectType {
+	return { ...vscodeType, id: 'stub', capabilities: new Set(capabilities) };
+}
+
+async function refusal(id: string): Promise<{ code: string; message: string; hint: string }> {
+	try {
+		await resolveProjectType(id);
+	} catch (error) {
+		if (!isCkError(error)) throw error;
+		return { code: error.code, message: error.message, hint: error.hint ?? '' };
+	}
+	throw new Error(`resolving ${id} did not refuse`);
+}
+
+describe('the registry', () => {
+	it('resolves the identifier a patch set declares into the package that implements it', async () => {
+		expect(TYPE_REGISTRY.get('vscode')).toBe('@codkit/type-vscode');
+		const resolved = await resolveProjectType('vscode');
+		expect(resolved.id).toBe('vscode');
+	});
+
+	it('returns the same instance twice: a type is resolved once per run', async () => {
+		expect(await resolveProjectType('vscode')).toBe(await resolveProjectType('vscode'));
+	});
+
+	it('refuses an identifier it does not know, naming what it does know', async () => {
+		const outcome = await refusal('theia');
+		expect(outcome.code).toBe('TYPE-UNKNOWN');
+		expect(outcome.message).toContain('"theia"');
+		expect(outcome.hint).toContain('vscode');
+	});
+
+	it('prints one row per registered type, with its package, version and capabilities', async () => {
+		const rows = await registeredTypes();
+		expect(rows.map((row) => row.id)).toEqual(['vscode']);
+		expect(rows[0]?.installed).toBe(true);
+		expect(rows[0]?.version).toBe('1.0.0');
+		expect(rows[0]?.capabilities).toContain('brand-images');
+	});
+});
+
+describe('the capability refusal', () => {
+	it('lets a verb through when the type declares what it needs', () => {
+		expect(() => requireCapability(vscodeType, 'brand-images', 'imageset gen')).not.toThrow();
+	});
+
+	it('refuses, names the type and the capability, and says nothing was written', () => {
+		let thrown: unknown;
+		try {
+			requireCapability(stub([]), 'brand-images', 'imageset gen');
+		} catch (error) {
+			thrown = error;
+		}
+		expect(isCkError(thrown)).toBe(true);
+		if (!isCkError(thrown)) return;
+		expect(thrown.code).toBe('TYPE-CAPABILITY');
+		expect(thrown.message).toContain('imageset gen');
+		expect(thrown.message).toContain('brand-images');
+		expect(thrown.message).toContain('stub');
+		expect(thrown.hint).toContain('nothing was written');
+	});
+
+	it('asks nothing of a patch set that has no configuration, and therefore no type', () => {
+		expect(() => requireCapability(null, 'runtime-library', 'runtime load')).not.toThrow();
+	});
+});

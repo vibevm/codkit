@@ -8,6 +8,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { ProjectType } from '@codkit/type-api';
 import { applyUnified } from './applyUnified.ts';
 import { bytesEqual, encodeUtf8 } from './bytes.ts';
 import { runGit, runGitBytes } from './gitx.ts';
@@ -158,6 +159,8 @@ export type OverlayClassification = ClassificationIdentity & {
 export type ArtifactClassification = BatchPatchClassification | RuleClassification | OverlayClassification;
 
 export type ClassifyArtifactsOptions = {
+	/** The project type: the overlay half of the classification asks it. */
+	readonly type: ProjectType;
 	readonly treeDir: string;
 	readonly artifacts: readonly ClassificationArtifact[];
 	readonly oldPin: string;
@@ -267,7 +270,7 @@ export function classifyArtifacts(options: ClassifyArtifactsOptions): readonly A
 			case 'rule':
 				return classifyRule(options.treeDir, options.newRef, artifact.rule);
 			case 'overlay':
-				return classifyOverlay(options.treeDir, options.newRef, artifact.overlay);
+				return classifyOverlay(options.type, options.treeDir, options.newRef, artifact.overlay);
 		}
 	});
 }
@@ -413,7 +416,7 @@ function classifyRule(treeDir: string, newRef: string, rule: Rule): RuleClassifi
 	};
 }
 
-function classifyOverlay(treeDir: string, newRef: string, overlay: Overlay): OverlayClassification {
+function classifyOverlay(type: ProjectType, treeDir: string, newRef: string, overlay: Overlay): OverlayClassification {
 	const identity: ClassificationIdentity = {
 		artifactPath: overlay.artifactPath,
 		artifactId: overlay.id,
@@ -430,7 +433,7 @@ function classifyOverlay(treeDir: string, newRef: string, overlay: Overlay): Ove
 			report: null
 		};
 	}
-	const report = checkOverlay(overlay, { treeDir, pinSha: newRef, pinOnly: true });
+	const report = checkOverlay(overlay, { type, treeDir, pinSha: newRef, pinOnly: true });
 	return {
 		...identity,
 		kind: 'overlay',

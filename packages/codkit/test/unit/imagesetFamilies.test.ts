@@ -18,6 +18,7 @@ import { artworkKey, discoverTargets } from '../../src/lib/imagesetTargets.ts';
 import { loadResourceMap } from '../../src/lib/layers/resource.ts';
 import { makeImagesetPatchSet, makeImagesetTree, shippedIconBytes } from '../support/imagesetFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -28,7 +29,7 @@ const silent = () => {};
 /** The extended fixture tree and its discovered targets, keyed by path. */
 function extendedTree(label: string) {
 	const tree = makeImagesetTree(label, { extended: true });
-	const targets = discoverTargets(tree.dir, silent);
+	const targets = discoverTargets(vscodeType, tree.dir, silent);
 	return { tree, targets, byPath: new Map(targets.map((target) => [target.target, target])) };
 }
 
@@ -41,6 +42,8 @@ function run(label: string, options: { readonly brandingDir?: string; readonly d
 	const brandingDir = options.brandingDir ?? join(patchset.dir, 'branding');
 	const result = runImageset({
 		patchesDir: patchset.dir,
+		type: vscodeType,
+
 		treeDir: tree.dir,
 		brandingDir,
 		pin: tree.pin,
@@ -190,7 +193,7 @@ describe('the index summarises by family', () => {
 	it('counts drawings and sources per family, and the counts add up', () => {
 		const { tree } = extendedTree('families-index');
 		const brandingDir = join(makeTempRoot('families-index-branding'), 'branding');
-		const index = buildImagesetIndex({ treeDir: tree.dir, brandingDir, onReport: silent });
+		const index = buildImagesetIndex({ type: vscodeType, treeDir: tree.dir, brandingDir, onReport: silent });
 		const families = new Map(index.byFamily.map((entry) => [entry.family, entry]));
 		expect([...families.keys()].sort()).toEqual(['filetype', 'icon', 'installer-big', 'installer-small', 'letterpress']);
 		expect(families.get('filetype')?.artworks).toBe(2);

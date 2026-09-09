@@ -13,6 +13,7 @@ import { seedMasters } from '../../src/lib/imagesetMasters.ts';
 import { discoverTargets } from '../../src/lib/imagesetTargets.ts';
 import { makeImagesetTree } from '../support/imagesetFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
 
@@ -20,7 +21,7 @@ function indexOf(label: string, prepare?: (brandingDir: string, treeDir: string)
 	const tree = makeImagesetTree(label);
 	const brandingDir = join(makeTempRoot(`${label}-branding`), 'branding');
 	prepare?.(brandingDir, tree.dir);
-	return buildImagesetIndex({ treeDir: tree.dir, brandingDir, onReport: () => {} });
+	return buildImagesetIndex({ type: vscodeType, treeDir: tree.dir, brandingDir, onReport: () => {} });
 }
 
 /** A flat square PNG, the shape an operator hand-draws for a small size. */
@@ -62,7 +63,7 @@ describe('imageset index after seeding', () => {
 			seedMasters(
 				brandingDir,
 				treeDir,
-				discoverTargets(treeDir, () => {})
+				discoverTargets(vscodeType, treeDir, () => {})
 			);
 		});
 		expect(index.brandingDirExists).toBe(true);
@@ -84,7 +85,7 @@ describe('imageset index with a hand-made per-size master', () => {
 			seedMasters(
 				brandingDir,
 				treeDir,
-				discoverTargets(treeDir, () => {})
+				discoverTargets(vscodeType, treeDir, () => {})
 			);
 		};
 		const before = indexOf('index-flip-before', seed);
@@ -105,7 +106,7 @@ describe('imageset index with a hand-made per-size master', () => {
 			seedMasters(
 				brandingDir,
 				treeDir,
-				discoverTargets(treeDir, () => {})
+				discoverTargets(vscodeType, treeDir, () => {})
 			);
 			writeFileSync(join(brandingDir, 'sketch.jpeg'), 'not a master', 'utf8');
 		});
@@ -120,7 +121,7 @@ describe('one model, two renderings', () => {
 			seedMasters(
 				brandingDir,
 				treeDir,
-				discoverTargets(treeDir, () => {})
+				discoverTargets(vscodeType, treeDir, () => {})
 			);
 			writeFileSync(join(brandingDir, 'icon-16.png'), squarePng(16));
 		});

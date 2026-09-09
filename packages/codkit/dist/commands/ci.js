@@ -10,7 +10,7 @@
 //
 // The engine keeps the steps and their verdicts; this file is the flags, the
 // lock and the envelope.
-import { commandFlagValue, forkResolution } from '../lib/command.js';
+import { commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { CI_PROFILES, runCi } from '../lib/ciEngine.js';
 import { treeId } from '../lib/fingerprint.js';
 import { acquireLock } from '../lib/lock.js';
@@ -41,6 +41,7 @@ async function run(ctx) {
             patchesDir: ctx.patchesDir,
             resolution,
             config,
+            type: requireProjectType(ctx),
             out: ctx.out,
             profile,
             effectiveDiffBase: commandFlagValue(ctx.commandFlags, EFFECTIVE_DIFF),

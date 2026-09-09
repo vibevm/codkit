@@ -3,7 +3,7 @@
 // fork-tree file. All merge/ref decisions live in lib/reresolve.ts.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { commandFlagValue, EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution } from '../lib/command.ts';
+import { commandFlagValue, EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { loadConventions } from '../lib/conventionsFile.ts';
 import { treeId } from '../lib/fingerprint.ts';
@@ -54,7 +54,7 @@ function runLocked(ctx: CommandContext, treeDir: string, target: string): number
 			treeDir,
 			target,
 			explicitPatch: commandFlagValue(ctx.commandFlags, PATCH),
-			conventions: loadConventions(ctx.patchesDir)
+			conventions: loadConventions(requireProjectType(ctx), ctx.patchesDir)
 		});
 		ctx.out.setData(dataOf(result));
 		ctx.out.info(`${result.target}: ${result.outcome} from ${result.patchSource}`);

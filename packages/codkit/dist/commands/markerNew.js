@@ -12,7 +12,7 @@
 // not carry a patch, an owner nobody declared, an id that is already taken.
 import { chmodSync, existsSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { extname, isAbsolute, join, relative as relativePath, resolve, sep } from 'node:path';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { loadConventions, matchesPatternList } from '../lib/conventionsFile.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
@@ -96,7 +96,7 @@ function locateTarget(treeDir, config, given, conventions) {
     return { target, absolute, form };
 }
 function scaffold(ctx, treeDir, config, given, fields) {
-    const conventions = loadConventions(ctx.patchesDir);
+    const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
     const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
     // 2. The metadata: id shape, owner, type and category vocabularies.
     validateFields(ctx.patchesDir, fields, conventions);
@@ -200,7 +200,7 @@ function buildData(target, fields, at, draft, patchesDir) {
  * of a foreign intervention can never be opened here by mistake.
  */
 function addBlockTo(ctx, treeDir, config, given, fields) {
-    const conventions = loadConventions(ctx.patchesDir);
+    const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
     const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
     const artifact = `${PATCHES_DIR}/${encodePatchName(target)}`;
     const pending = readPendingHeader(ctx.patchesDir, target);

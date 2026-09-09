@@ -20,9 +20,13 @@ async function run(ctx: CommandContext): Promise<number> {
 		if (fork.warning !== null) ctx.out.warn(fork.warning);
 		ctx.out.info(`fork exists: ${fork.exists ? 'yes' : 'no'}`);
 	}
+	// ##TYPE-VERBS-UNIVERSAL: the verbs are the same for every type, so the
+	// output has to say which one the patch set declared.
+	ctx.out.info(ctx.type === null ? 'project type: none (no codkit.json in the patch set)' : `project type: ${ctx.type.id}`);
 	ctx.out.setData({
 		patches: patches === null ? null : { path: patches.path, source: patches.source, exists: patches.exists },
-		fork: fork === null ? null : { path: fork.path, source: fork.source, exists: fork.exists }
+		fork: fork === null ? null : { path: fork.path, source: fork.source, exists: fork.exists },
+		type: ctx.type?.id ?? null
 	});
 
 	// Always 0: an absent tree is a legitimate answer here. The only non-zero
@@ -33,8 +37,9 @@ async function run(ctx: CommandContext): Promise<number> {
 export const whereCommand: CommandDefinition = {
 	name: 'where',
 	summary: 'print the resolved fork tree path and the source of that path',
-	// A broken codkit.json is fatal (exit 2); an absent one is not an error.
-	configMode: 'none',
+	// A broken codkit.json is fatal (exit 2); an absent one is not an error. The
+	// configuration is read because the answer names the project type.
+	configMode: 'load',
 	roots: 'none',
 	maxArgs: 0,
 	run

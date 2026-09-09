@@ -12,7 +12,7 @@
 // it describes is inconsistent: the same checks `verify` runs, in report mode.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { EXIT_CHECK_FAILED, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { INVENTORY_JSON_PATH, INVENTORY_MD_PATH, buildInventory, diffInventoryAgainstRef, renderInventoryMarkdown, serializeInventory } from '../lib/inventory.js';
 import { ckError, serializeErrorPayload } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
@@ -34,13 +34,13 @@ async function run(ctx) {
     let findings = [];
     let warnings = [];
     if (treeUsable) {
-        const verified = runVerify({ patchesDir: ctx.patchesDir, resolution, config });
-        inventory = verified.inventory ?? buildInventory(ctx.patchesDir, { config });
+        const verified = runVerify({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
+        inventory = verified.inventory ?? buildInventory(ctx.patchesDir, requireProjectType(ctx), { config });
         findings = verified.findings;
         warnings = verified.warnings;
     }
     else {
-        inventory = buildInventory(ctx.patchesDir, { config });
+        inventory = buildInventory(ctx.patchesDir, requireProjectType(ctx), { config });
         ctx.out.warn(`the fork tree at ${resolution.path} cannot be used (${identity.fatal?.message ?? 'unusable'}), ` +
             'so the inventory was generated without the cross-checks; run codkit verify once the tree is available');
     }
@@ -50,7 +50,7 @@ async function run(ctx) {
     const ref = commandFlagValue(ctx.commandFlags, DIFF);
     // The inventory of another commit of patchset, built from a scratch checkout of
     // it: shared with `ci --effective-diff`, which reports the same document.
-    const diff = ref === null ? null : diffInventoryAgainstRef(ctx.patchesDir, inventory, ref).diff;
+    const diff = ref === null ? null : diffInventoryAgainstRef(ctx.patchesDir, requireProjectType(ctx), inventory, ref).diff;
     if (diff !== null) {
         printDiff(ctx.out, ref ?? '', diff);
     }

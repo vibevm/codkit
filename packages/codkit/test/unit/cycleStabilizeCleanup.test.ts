@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CodkitConfig } from '../../src/lib/configFile.ts';
 import type { ForkDirResolution } from '../../src/lib/paths.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const mocks = vi.hoisted(() => ({
 	down: vi.fn(async (_root: string, channel: string) => Promise.reject(new Error(`cannot stop ${channel}`)))
@@ -39,7 +40,7 @@ describe('concrete cycle stabilization cleanup', () => {
 		} satisfies CodkitConfig;
 		const resolution = { path: '/tree', source: 'flag', exists: true, warning: null } satisfies ForkDirResolution;
 
-		const result = await runConcreteStabilization({ patchesDir: '/patchset', resolution, config });
+		const result = await runConcreteStabilization({ patchesDir: '/patchset', resolution, config, type: vscodeType });
 
 		expect(mocks.down.mock.calls.map((call) => call[1])).toEqual(['transpile', 'typecheck']);
 		expect(result.cleanupErrors.map((error) => error.message)).toEqual(['cannot stop transpile', 'cannot stop typecheck']);

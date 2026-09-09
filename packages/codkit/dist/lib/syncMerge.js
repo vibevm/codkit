@@ -293,7 +293,7 @@ function reproducesTreeState(input, target, artifactPath) {
     }
     let applied;
     try {
-        applied = applyUnified(pinBytesOf(input.treeDir, input.pinSha, target) ?? new Uint8Array(0), parseCkpatch(bytes, loadConventions(input.patchesDir), artifactPath));
+        applied = applyUnified(pinBytesOf(input.treeDir, input.pinSha, target) ?? new Uint8Array(0), parseCkpatch(bytes, loadConventions(input.type, input.patchesDir), artifactPath));
     }
     catch {
         // An artifact that does not even apply against the pin is not a state

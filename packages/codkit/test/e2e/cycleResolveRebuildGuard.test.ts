@@ -17,6 +17,7 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { PATCH_FILE_NAME, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
 
@@ -31,6 +32,7 @@ describe('cycle resolve save rebuild guard', () => {
 				patchesDir: fixture.patchesDir,
 				resolution,
 				config,
+				type: vscodeType,
 				out: quietOutput(),
 				fresh: true,
 				dryRun: false,
@@ -92,6 +94,7 @@ describe('cycle resolve save rebuild guard', () => {
 				patchesDir: fixture.patchesDir,
 				resolution,
 				config,
+				type: vscodeType,
 				state: current,
 				journal,
 				artifacts: [artifact],

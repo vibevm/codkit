@@ -19,12 +19,14 @@ export function cycleResolveTreeCurrent(patchesDir, resolution, config) {
             deltaFingerprint: fingerprint
         }).ok);
 }
-export function recoverCycleResolveTree(patchesDir, resolution, config, out) {
+/** The forced load a clean-tree recovery performs (##PHASE-RESOLVE). */
+export function recoverCycleResolveTree(input) {
     const result = runSync({
-        patchesDir,
-        resolution,
-        config,
-        out,
+        patchesDir: input.patchesDir,
+        resolution: input.resolution,
+        config: input.config,
+        type: input.type,
+        out: input.out,
         fresh: false,
         dryRun: false,
         verbose: false,

@@ -22,6 +22,7 @@ export async function planStabilizationTransition(options, state, locks, commits
         patchesDir: options.patchesDir,
         resolution: options.resolution,
         config: options.config,
+        type: options.type,
         state,
         locks,
         ci: options.ci,
@@ -119,7 +120,7 @@ export function resumeCycleTransition(options, record, commits) {
 }
 export function planTerminalTransaction(options, state, commits) {
     try {
-        const inventory = buildInventory(options.patchesDir, { config: options.config });
+        const inventory = buildInventory(options.patchesDir, options.type, { config: options.config });
         const plan = planCycleFinalization({
             patchesDir: options.patchesDir,
             state,

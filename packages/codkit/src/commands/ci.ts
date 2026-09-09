@@ -12,7 +12,7 @@
 // lock and the envelope.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { commandFlagValue, forkResolution } from '../lib/command.ts';
+import { commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
 import { CI_PROFILES, runCi } from '../lib/ciEngine.ts';
 import type { CiProfile, CiResult } from '../lib/ciEngine.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
@@ -51,6 +51,7 @@ async function run(ctx: CommandContext): Promise<number> {
 			patchesDir: ctx.patchesDir,
 			resolution,
 			config,
+			type: requireProjectType(ctx),
 			out: ctx.out,
 			profile,
 			effectiveDiffBase: commandFlagValue(ctx.commandFlags, EFFECTIVE_DIFF),

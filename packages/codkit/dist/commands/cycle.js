@@ -1,7 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
 // codkit cycle - the resumable upgrade-cycle command surface.
 // Contract: PROP-007 sec. 14; state machine: PROP-009 sec. 4.
-import { EXIT_CHECK_FAILED, EXIT_OK, commandFlagGiven, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_OK, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.js';
 import { loadConfig } from '../lib/configFile.js';
 import { startCycle, cycleStatus, restartCycle } from '../lib/cycleControl.js';
 import { readCycleControlRecord } from '../lib/cycleControlRecord.js';
@@ -56,11 +56,12 @@ async function runUnsafe(ctx) {
             if (target === undefined) {
                 throw usage('cycle start needs exactly one target tag or sha', 'usage: codkit cycle start <tag-or-sha>');
             }
-            prepareCycleStart(ctx.patchesDir, resolution.path, config);
+            prepareCycleStart(ctx.patchesDir, resolution.path, config, requireProjectType(ctx));
             const started = startCycle({
                 patchesDir: ctx.patchesDir,
                 forkDir: resolution.path,
                 config,
+                type: requireProjectType(ctx),
                 target,
                 ...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
             });
@@ -105,6 +106,7 @@ async function runUnsafe(ctx) {
                 patchesDir: ctx.patchesDir,
                 forkDir: resolution.path,
                 config,
+                type: requireProjectType(ctx),
                 yes: commandFlagGiven(ctx.commandFlags, YES),
                 ...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
             });
@@ -141,10 +143,10 @@ function reportTransitionStatus(ctx, transition) {
         checkpoint: transition.checkpoint
     });
 }
-function prepareCycleStart(root, forkDir, config) {
+function prepareCycleStart(root, forkDir, config, type) {
     let status = cycleStatus(root, config);
     if (status.status === 'active' && status.transaction === 'restart') {
-        restartCycle({ patchesDir: root, forkDir, config, yes: true });
+        restartCycle({ patchesDir: root, forkDir, config, type, yes: true });
         status = cycleStatus(root, config);
     }
     if (status.status !== 'absent')
@@ -193,6 +195,7 @@ async function runContinuation(ctx, resolution, config, leadingCommits = [], cra
                 patchesDir: ctx.patchesDir,
                 resolution,
                 config,
+                type: requireProjectType(ctx),
                 ci: ctx.flags.ci,
                 out: ctx.out,
                 ...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
@@ -243,6 +246,7 @@ function resumeInterruptedInit(ctx, forkDir, config, crashCheckpoint) {
         patchesDir: ctx.patchesDir,
         forkDir,
         config,
+        type: requireProjectType(ctx),
         target: state.targetPin.sha,
         ...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
     });

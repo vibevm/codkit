@@ -7,6 +7,7 @@
 // `codkit load` like any other own file.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
+import { requireCapability } from '../types/capability.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, patchesRoot } from '../lib/command.ts';
 import { loadBaseConfig } from '../lib/configFile.ts';
 import {
@@ -166,6 +167,7 @@ async function runFeature(ctx: CommandContext): Promise<number> {
 }
 
 async function runBrand(ctx: CommandContext): Promise<number> {
+	requireCapability(ctx.type, 'gen-brand', 'gen brand');
 	const patchesDir = patchesRoot(ctx);
 	const outcome = planBrand({ patchesDir, header: headerOf(ctx, patchesDir) });
 
@@ -215,7 +217,7 @@ export const genFeatureCommand: CommandDefinition = {
 export const genBrandCommand: CommandDefinition = {
 	name: 'gen brand',
 	summary: 'write the brand rules table and print the graft for nls.ts',
-	configMode: 'none',
+	configMode: 'load',
 	roots: 'patches',
 	maxArgs: 0,
 	commandFlags: [...HEADER_FLAGS],

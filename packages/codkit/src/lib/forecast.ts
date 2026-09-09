@@ -9,6 +9,7 @@ import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { analyzeUpgrade } from './upgradeAnalysis.ts';
 import type { UpgradeAnalysisCounts } from './upgradeAnalysis.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export const DEFAULT_FORECAST_REF = 'refs/remotes/upstream/main';
 
@@ -16,6 +17,8 @@ export type ForecastOptions = {
 	readonly patchesDir: string;
 	readonly treeDir: string;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below are handed it. */
+	readonly type: ProjectType;
 	readonly ref?: string | null;
 	readonly similarity?: number;
 	readonly layerRuntime?: CycleLayerReadRuntime;
@@ -53,6 +56,7 @@ export function forecastUpgrade(options: ForecastOptions): ForecastResult {
 		patchesDir: options.patchesDir,
 		treeDir: options.treeDir,
 		config: options.config,
+		type: options.type,
 		newRef: sha,
 		...(options.similarity === undefined ? {} : { similarity: options.similarity }),
 		...(options.layerRuntime === undefined ? {} : { layerRuntime: options.layerRuntime }),

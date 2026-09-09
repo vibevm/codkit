@@ -63,13 +63,14 @@ function prepare(options, patchSetCommit) {
     const supplied = classificationMap(options.classifications);
     const rebound = bindRenameTargets(loaded.artifacts, supplied, options.renames ?? []);
     const recomputed = classifyArtifacts({
+        type: options.type,
         treeDir: options.resolution.path,
         artifacts: rebound,
         oldPin: loaded.oldPin,
         newRef: options.config.pin.sha
     });
     assertClassificationsEqual(recomputed, supplied);
-    const ownEvidence = assertGeneratedTargetOwnership(options.patchesDir, options.config.typeConfig.ownRoot, generatedLayerTargets(recomputed, loaded.resources));
+    const ownEvidence = assertGeneratedTargetOwnership(options.patchesDir, options.type, options.config.typeConfig.ownRoot, generatedLayerTargets(recomputed, loaded.resources));
     assertCycleOwnPreflight(options.patchesDir, options.resolution.path, options.config.typeConfig.ownRoot, ownEvidence.ownTargets, options.ownRenameAuthority);
     const stages = [];
     const conflicts = [];
@@ -96,7 +97,7 @@ function prepare(options, patchSetCommit) {
     };
 }
 function loadCurrent(options) {
-    const conventions = loadConventions(options.patchesDir);
+    const conventions = loadConventions(options.type, options.patchesDir);
     strictLayerDirectory(options.patchesDir, RULES_DIR);
     strictLayerDirectory(options.patchesDir, OVERLAYS_DIR);
     const patches = patchNames(options.patchesDir).map((name) => {

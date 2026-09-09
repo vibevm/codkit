@@ -9,6 +9,7 @@ import { loadConventions, matchesPatternList } from '../../src/lib/conventionsFi
 import { EXCLUDE_BEGIN, EXCLUDE_END, matchesCleanupWhitelist, toPosix, writeExclude } from '../../src/lib/syncEngine.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 /**
  * The shipped list (PROP-011 ##CLEANUP-WHITELIST-CONTENT), read as gitignore
@@ -24,7 +25,7 @@ afterAll(() => {
 
 describe('matchesCleanupWhitelist', () => {
 	it('is the list conventions.json ships', () => {
-		expect(loadConventions().cleanupWhitelist).toEqual(WHITELIST);
+		expect(loadConventions(vscodeType).cleanupWhitelist).toEqual(WHITELIST);
 	});
 
 	it('keeps node_modules at any level', () => {
@@ -112,7 +113,7 @@ describe('conventions ownership', () => {
 		const root = makeTempRoot('conventions-hidden-copy');
 		mkdirSync(join(root, 'codkit', 'config'), { recursive: true });
 		writeFileSync(join(root, 'codkit', 'config', 'conventions.json'), '{"codkitConventions":999}\n');
-		expect(loadConventions(root)).toBe(loadConventions());
+		expect(loadConventions(vscodeType, root)).toBe(loadConventions(vscodeType));
 	});
 
 	it('merges an explicit extension additively', () => {
@@ -123,7 +124,7 @@ describe('conventions ownership', () => {
 			forbiddenServiceIds: ['IVendorRootService'],
 			markerComment: { '.foo': { open: '# codkit:', close: '' } }
 		});
-		const conventions = loadConventions(root);
+		const conventions = loadConventions(vscodeType, root);
 		expect(new RegExp(conventions.idPattern).test('CK-vendor-001')).toBe(true);
 		expect(conventions.forbiddenPatchTargets).toContain('private/**');
 		expect(conventions.forbiddenServiceIds).toContain('IVendorRootService');
@@ -136,14 +137,17 @@ describe('conventions ownership', () => {
 			codkitConventionsExtension: 1,
 			markerComment: { '.ts': { open: '// unsafe:', close: '' } }
 		});
-		expect(() => loadConventions(root)).toThrow(/cannot replace a shipped marker form/);
+		expect(() => loadConventions(vscodeType, root)).toThrow(/cannot replace a shipped marker form/);
 	});
 });
 
 describe('matchesPatternList: forbiddenPatchTargets', () => {
 	it('matches the shipped forbidden target by its ** suffix', () => {
-		const forbidden = loadConventions().forbiddenPatchTargets;
-		expect(forbidden).toEqual(['.config/1espt/**']);
+		// The type's own forbidden targets, plus the targets of its configuration
+		// overlay: an overlay owns those files as data, and a patch over the same
+		// bytes would be a second, silent owner (PROP-003 ##CONV-FORBIDDEN-TARGETS).
+		const forbidden = loadConventions(vscodeType).forbiddenPatchTargets;
+		expect(forbidden).toEqual(['.config/1espt/**', 'product.json', 'package.json']);
 		expect(matchesPatternList('.config/1espt/PipelineAutobaseliningConfig.yml', forbidden)).toBe(true);
 		expect(matchesPatternList('.config/1espt/deep/nested.yml', forbidden)).toBe(true);
 		expect(matchesPatternList('.config/other.yml', forbidden)).toBe(false);

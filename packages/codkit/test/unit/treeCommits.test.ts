@@ -26,6 +26,8 @@ import { driftDirty } from '../../src/lib/driftGuard.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
+import { materializerOf } from '../../src/lib/layers/ownExtensions.ts';
 
 const IDENTITY: GitEnv = {
 	GIT_AUTHOR_NAME: 'human',
@@ -251,7 +253,7 @@ describe('the third half inside the drift guard', () => {
 		const first = humanCommit('guard sees the first', '2026-09-06T10:10:00Z');
 		const second = humanCommit('guard sees the second', '2026-09-06T10:11:00Z');
 		try {
-			const drift = driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+			const drift = driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 				generated: { pinSha: fixture.config.pin.sha, branch: branch() }
 			});
 			expect(drift.upstream).toEqual([]);
@@ -273,6 +275,7 @@ describe('the third half inside the drift guard', () => {
 					patchesDir: fixture.patchesDir,
 					resolution: fixture.resolution,
 					config: fixture.config,
+					type: vscodeType,
 					out,
 					fresh: false,
 					dryRun: false,
@@ -349,6 +352,7 @@ describe('the refusal order over a shared generated ref (D7 ruling of 2026-09-06
 				patchesDir: fixture.patchesDir,
 				resolution: fixture.resolution,
 				config: fixture.config,
+				type: vscodeType,
 				out,
 				fresh: false,
 				dryRun: false,

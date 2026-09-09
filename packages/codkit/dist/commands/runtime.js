@@ -6,9 +6,10 @@
 // Both subcommands need the patch-set root and nothing else: no fork tree, no
 // codkit.json to run, no tree lock (##RUNTIME-NAMESPACE). The pin is read when
 // it happens to be there, for the compatibility warning alone.
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot } from '../lib/command.js';
+import { requireCapability } from '../types/capability.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot, requireProjectType } from '../lib/command.js';
 import { NOTICE_LEGACY_PATH } from '../lib/licenceNotice.js';
-import { RUNTIME_NEXT_STEPS, driftPaths, runRuntimeCheck, runRuntimeLoad } from '../lib/runtimeLoad.js';
+import { driftPaths, runRuntimeCheck, runRuntimeLoad, runtimeNextSteps } from '../lib/runtimeLoad.js';
 const DRY_RUN = '--dry-run';
 const UPGRADE = '--upgrade';
 /** main.ts answers a bare namespace before this runs (##RUNTIME-NAMESPACE). */
@@ -19,6 +20,7 @@ function noticeAction(outcome, path) {
     return outcome.noticesWritten.find((notice) => notice.path === path)?.action ?? 'unchanged';
 }
 async function runLoad(ctx) {
+    requireCapability(ctx.type, 'runtime-library', 'runtime load');
     const patchesDir = patchesRoot(ctx);
     const dryRun = commandFlagGiven(ctx.commandFlags, DRY_RUN);
     const upgrade = commandFlagGiven(ctx.commandFlags, UPGRADE);
@@ -61,7 +63,8 @@ async function runLoad(ctx) {
     if (!plan.verifiedUpstream) {
         ctx.out.warn(`the pin ${plan.pinTag ?? 'unknown'} is not among the upstream tags this runtime was verified on (${plan.runtime.verifiedUpstream.join(', ')})`);
     }
-    for (const line of RUNTIME_NEXT_STEPS)
+    const nextSteps = runtimeNextSteps(requireProjectType(ctx), ctx.config?.typeConfig.ownRoot ?? '');
+    for (const line of nextSteps)
         ctx.out.info(line);
     ctx.out.setData({
         version: plan.runtime.version,
@@ -75,11 +78,12 @@ async function runLoad(ctx) {
         verifiedUpstream: plan.verifiedUpstream,
         writes: [...plan.writes],
         removals: [...plan.removals],
-        nextSteps: [...RUNTIME_NEXT_STEPS]
+        nextSteps: [...nextSteps]
     });
     return EXIT_OK;
 }
 async function runCheck(ctx) {
+    requireCapability(ctx.type, 'runtime-library', 'runtime check');
     const patchesDir = patchesRoot(ctx);
     const report = runRuntimeCheck({ toolRoot: ctx.toolRoot, patchesDir });
     const plan = report.plan;
@@ -125,7 +129,7 @@ export const runtimeCommand = {
 export const runtimeLoadCommand = {
     name: 'runtime load',
     summary: 'deliver the codkit runtime library codkit ships into delta/own/codkit/',
-    configMode: 'none',
+    configMode: 'load',
     roots: 'patches',
     maxArgs: 0,
     commandFlags: [DRY_RUN, UPGRADE],
@@ -134,7 +138,7 @@ export const runtimeLoadCommand = {
 export const runtimeCheckCommand = {
     name: 'runtime check',
     summary: 'report on the installed runtime library and the licence notice copies',
-    configMode: 'none',
+    configMode: 'load',
     roots: 'patches',
     maxArgs: 0,
     run: runCheck

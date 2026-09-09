@@ -44,7 +44,7 @@ export function changesSince(
 	ownedPrefixes: readonly string[] = []
 ): readonly StateChange[] {
 	const ownPrefix = `${ownRoot}/`;
-	// ##OWN-EXTENSION-UNIT: `extensions/<name>/` of a declared own extension is
+	// ##OWN-EXTENSION-UNIT: the materialization of a declared own extension is
 	// supplied by the delta too, so it is no more an upstream file than the own
 	// directory is - and without this a materialized extension would be selected
 	// as a new file in the upstream zone.

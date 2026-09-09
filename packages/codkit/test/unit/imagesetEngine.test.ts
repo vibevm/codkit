@@ -22,6 +22,7 @@ import { isCkError } from '../../src/lib/messages.ts';
 import { loadResourceMap } from '../../src/lib/layers/resource.ts';
 import { makeImagesetPatchSet, makeImagesetTree, shippedIconBytes } from '../support/imagesetFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -48,6 +49,8 @@ function run(label: string, options: Partial<Parameters<typeof runImageset>[0]> 
 	const brandingDir = options.brandingDir ?? join(patchset.dir, 'branding');
 	const result = runImageset({
 		patchesDir: patchset.dir,
+		type: vscodeType,
+
 		treeDir: tree.dir,
 		brandingDir,
 		pin: tree.pin,
@@ -96,6 +99,8 @@ describe('runImageset', () => {
 		const mapBefore = readFileSync(join(patchset.dir, 'delta', 'resources', 'map.json'));
 		const second = runImageset({
 			patchesDir: patchset.dir,
+			type: vscodeType,
+
 			treeDir: tree.dir,
 			brandingDir,
 			pin: tree.pin,
@@ -115,6 +120,8 @@ describe('runImageset', () => {
 		const info: string[] = [];
 		const outcome = runImageset({
 			patchesDir: patchset.dir,
+			type: vscodeType,
+
 			treeDir: tree.dir,
 			brandingDir,
 			pin: tree.pin,
@@ -138,6 +145,8 @@ describe('runImageset', () => {
 		const verdict = failure(() =>
 			runImageset({
 				patchesDir: patchset.dir,
+				type: vscodeType,
+
 				treeDir: tree.dir,
 				brandingDir,
 				pin: tree.pin,
@@ -162,6 +171,8 @@ describe('runImageset', () => {
 		const warnings: string[] = [];
 		const outcome = runImageset({
 			patchesDir: patchset.dir,
+			type: vscodeType,
+
 			treeDir: tree.dir,
 			brandingDir,
 			pin: tree.pin,
@@ -189,6 +200,8 @@ describe('runImageset', () => {
 		const info: string[] = [];
 		const { exitCode } = runImageset({
 			patchesDir: patchset.dir,
+			type: vscodeType,
+
 			treeDir: tree.dir,
 			brandingDir,
 			pin: tree.pin,
@@ -217,6 +230,8 @@ describe('runImageset', () => {
 		const warnings: string[] = [];
 		runImageset({
 			patchesDir: patchset.dir,
+			type: vscodeType,
+
 			treeDir: tree.dir,
 			brandingDir,
 			pin: tree.pin,

@@ -1,11 +1,17 @@
 /** @scope spec://codkit/modules/codkit/PROP-003#root */
-// Reading config/conventions.json of the tool root (PROP-003 sec. 3).
+// Reading config/conventions.json of the tool root (PROP-003 sec. 3), and
+// composing it with the defaults of the project type.
 //
-// ##CONVENTIONS-SINGLE-DEFINITION: the enumerations exist once, in that file,
-// and every consumer reads them from it - the marker forms, the id pattern, the
-// cleanup whitelist. Nothing in the code restates them.
+// ##CONVENTIONS-SINGLE-DEFINITION: the enumerations exist once and every
+// consumer reads them from here. They come from three places and from nowhere
+// else: the shipped file holds what is the engine's - the marker forms, the
+// intervention types, the categories, the layer order; the project type holds
+// what belongs to a family of upstreams - the subsystems an id may name, the
+// service ids own code may not re-register, the build outputs a fresh pass may
+// remove, the paths a patch may never target; and a patch set may extend the
+// family's lists additively through `conventionsExtensionFile`.
 //
-// The file ships with the tool and is looked up only next to the Codkit
+// The shipped file ships with the tool and is looked up only next to the Codkit
 // sources. A patch set is untrusted input and cannot weaken safety policy.
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,18 +21,23 @@ import { readContainedFile } from './containedFile.js';
 import { ckError } from './messages.js';
 import { resolveContainedPath } from './pathSafety.js';
 export const CONVENTIONS_RELATIVE_PATH = 'config/conventions.json';
+/**
+ * The shipped half. The type's half - subsystems, forbidden service ids, the
+ * cleanup whitelist and the forbidden patch targets - is not in this file and
+ * cannot be put there: it is a fact about a family of upstreams, and the engine
+ * has no way to know it.
+ */
 const conventionsSchema = z.object({
     codkitConventions: z.literal(1),
-    subsystems: z.array(z.string().min(1)).default([]),
-    idPattern: z.string().min(1),
     interventionTypes: z.array(z.string().min(1)).min(1),
     categories: z.array(z.string().min(1)).min(1),
     layers: z.array(z.string().min(1)).min(1),
-    forbiddenPatchTargets: z.array(z.string()).default([]),
-    forbiddenServiceIds: z.array(z.string().min(1)).default([]),
-    cleanupWhitelist: z.array(z.string().min(1)).default([]),
     markerComment: z.record(z.string(), z.unknown()).default({})
 });
+/** ##CONV-ID-PATTERN: the engine's shape over the subsystems the type names. */
+export function idPatternOf(subsystems) {
+    return `^CK-(?:${subsystems.map(escapeRegex).join('|')})-[0-9]{3}$`;
+}
 const extensionMarkerSchema = z.object({ open: z.string().min(1), close: z.string() }).strict();
 const conventionsExtensionSchema = z
     .object({
@@ -40,9 +51,16 @@ const conventionsExtensionSchema = z
 /** Where this module sits, so the shipped conventions can be found from it. */
 const codkitRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 let cachedShippedConventions = null;
+const composedCache = new Map();
 const extensionCache = new Map();
-export function loadConventions(patchesDir) {
-    const shipped = loadShippedConventions();
+/**
+ * The effective conventions of a patch set: the engine's shipped half, the
+ * defaults of its project type, and - when the patch set declares one - the
+ * additive extension of that patch set.
+ */
+export function loadConventions(type, patchesDir) {
+    const shipped = composedCache.get(type.id) ?? composeConventions(loadShippedConventions(), type);
+    composedCache.set(type.id, shipped);
     if (patchesDir === undefined)
         return shipped;
     const configured = loadBaseConfig(patchesDir)?.conventionsExtensionFile ?? null;
@@ -52,7 +70,7 @@ export function loadConventions(patchesDir) {
     if (!resolved.ok) {
         throw ckError('CONFIG', `conventionsExtensionFile is unsafe or unreadable: ${resolved.reason}`, 'point conventionsExtensionFile at a real non-symlink JSON file inside the patch-set repository', 'codkit.json');
     }
-    const cached = extensionCache.get(resolved.absolute);
+    const cached = extensionCache.get(`${type.id}\0${resolved.absolute}`);
     if (cached !== undefined)
         return cached;
     let raw;
@@ -83,13 +101,33 @@ export function loadConventions(patchesDir) {
     const merged = {
         ...shipped,
         subsystems,
-        idPattern: `^CK-(?:${subsystems.map(escapeRegex).join('|')})-[0-9]{3}$`,
+        idPattern: idPatternOf(subsystems),
         forbiddenPatchTargets: unique([...shipped.forbiddenPatchTargets, ...parsed.data.forbiddenPatchTargets]),
         forbiddenServiceIds: unique([...shipped.forbiddenServiceIds, ...parsed.data.forbiddenServiceIds]),
         markerComment: { ...shipped.markerComment, ...parsed.data.markerComment }
     };
-    extensionCache.set(resolved.absolute, merged);
+    extensionCache.set(`${type.id}\0${resolved.absolute}`, merged);
     return merged;
+}
+/**
+ * The shipped half plus the type's defaults. The forbidden patch targets of a
+ * family always include the targets of its configuration overlay: an overlay
+ * owns those files as data, and a patch over the same bytes would be a second,
+ * silent owner (##CONV-FORBIDDEN-TARGETS).
+ */
+function composeConventions(shipped, type) {
+    const subsystems = unique(type.conventions.subsystems);
+    return {
+        subsystems,
+        idPattern: idPatternOf(subsystems),
+        interventionTypes: shipped.interventionTypes,
+        categories: shipped.categories,
+        layers: shipped.layers,
+        forbiddenPatchTargets: unique([...type.layout.forbiddenPatchTargets, ...type.layers.overlayTargets.map((target) => target.path)]),
+        forbiddenServiceIds: unique(type.conventions.forbiddenServiceIds),
+        cleanupWhitelist: unique(type.layout.cleanupWhitelist),
+        markerComment: shipped.markerComment
+    };
 }
 function loadShippedConventions() {
     if (cachedShippedConventions !== null)

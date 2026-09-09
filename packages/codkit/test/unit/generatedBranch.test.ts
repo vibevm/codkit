@@ -15,6 +15,7 @@ import { OVERLAY_ID, OWN_UNIT_ID, PATCH_FILE_NAME, PATCH_ID, RESOURCE_ID } from 
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
 
@@ -100,6 +101,7 @@ describe('complete generated branch objects', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
+			type: vscodeType,
 			out,
 			fresh: true,
 			dryRun: false,
@@ -122,6 +124,7 @@ describe('complete generated branch objects', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
+			type: vscodeType,
 			out: ciOut,
 			profile: 'verify',
 			effectiveDiffBase: null,
@@ -164,6 +167,7 @@ describe('complete generated branch objects', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
+			type: vscodeType,
 			out,
 			fresh: true,
 			dryRun: false,
@@ -188,6 +192,7 @@ describe('full and local load modes', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
+			type: vscodeType,
 			out: output(),
 			profile: 'verify',
 			effectiveDiffBase: null,
@@ -251,6 +256,7 @@ describe('full and local load modes', () => {
 				patchesDir: checkout.dir,
 				resolution: fixture.resolution,
 				config: config ?? fixture.config,
+				type: vscodeType,
 				out: output(),
 				verbose: false,
 				patchSetCommit,
@@ -268,6 +274,7 @@ function buildGenerated(fixture: SyncFixture): string {
 		patchesDir: fixture.patchesDir,
 		resolution: fixture.resolution,
 		config: fixture.config,
+		type: vscodeType,
 		out: output(),
 		verbose: false
 	});
@@ -278,6 +285,7 @@ function runFullSync(fixture: SyncFixture) {
 		patchesDir: fixture.patchesDir,
 		resolution: fixture.resolution,
 		config: fixture.config,
+		type: vscodeType,
 		out: output(),
 		fresh: false,
 		dryRun: false,

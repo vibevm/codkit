@@ -2,7 +2,7 @@
 // codkit publish - guarded network publication of one immutable patchset commit.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.ts';
+import { commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
 import { CI_PROFILES } from '../lib/ciEngine.ts';
 import type { CiProfile } from '../lib/ciEngine.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
@@ -33,6 +33,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		patchesDir: ctx.patchesDir,
 		resolution,
 		config,
+		type: requireProjectType(ctx),
 		out: ctx.out,
 		patchSetRef: ctx.args[0],
 		profile: requireProfile(commandFlagValue(ctx.commandFlags, PROFILE)),

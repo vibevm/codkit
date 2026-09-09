@@ -8,6 +8,7 @@
 import type { ProjectType } from '@codkit/type-api';
 import type { CodkitConfig } from './configFile.ts';
 import type { Output } from './jsonOut.ts';
+import { ckError } from './messages.ts';
 import { requireForkDir, requirePatchesDir } from './paths.ts';
 import type { DirectoryResolution, ResolvedLocations, ResolverEnv } from './paths.ts';
 
@@ -81,7 +82,23 @@ export function patchesRoot(ctx: CommandContext): string {
 	return requirePatchesDir(ctx.locations).path;
 }
 
-/** Managed VS Code checkout required by commands that operate on the fork. */
+/**
+ * The project type of the patch set, required by every command that reads the
+ * delta: schema 2 makes a configuration and a type inseparable, so a command
+ * that has one has the other (PROP-016 ##TYPE-SCHEMA-2-REQUIRED).
+ */
+export function requireProjectType(ctx: CommandContext): ProjectType {
+	if (ctx.type === null) {
+		throw ckError(
+			'CONFIG',
+			'codkit.json was not found in the patch set, so there is no project type to ask',
+			'run the command from a patch-set checkout that carries codkit.json'
+		);
+	}
+	return ctx.type;
+}
+
+/** Managed fork checkout required by commands that operate on the fork. */
 export function forkResolution(ctx: CommandContext): DirectoryResolution {
 	return requireForkDir(ctx.locations);
 }

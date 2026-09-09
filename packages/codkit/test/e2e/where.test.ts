@@ -48,7 +48,8 @@ describe('codkit where', () => {
 		expect(envelope.roots.tool).toEqual({ path: toolRoot, source: 'install', exists: true });
 		expect(envelope.data).toEqual({
 			patches: { path: patches, source: 'env', exists: true },
-			fork: { path: fork, source: 'env', exists: true }
+			fork: { path: fork, source: 'env', exists: true },
+			type: null
 		});
 		expect(envelope.errors).toEqual([]);
 	});
@@ -71,7 +72,7 @@ describe('codkit where', () => {
 	it('reports unconfigured roots without inventing defaults', () => {
 		const run = runCli(['where', '--json']);
 		expect(run.status).toBe(0);
-		expect(parseEnvelope(run.stdout).data).toEqual({ patches: null, fork: null });
+		expect(parseEnvelope(run.stdout).data).toEqual({ patches: null, fork: null, type: null });
 	});
 
 	it('resolves relative CLI roots from cwd', () => {
@@ -80,7 +81,8 @@ describe('codkit where', () => {
 		const run = runCli(['where', '--json', '--patches-dir', relative(toolRoot, patches), '--fork-dir', relative(toolRoot, fork)]);
 		expect(parseEnvelope(run.stdout).data).toEqual({
 			patches: { path: patches, source: 'flag', exists: true },
-			fork: { path: fork, source: 'flag', exists: true }
+			fork: { path: fork, source: 'flag', exists: true },
+			type: null
 		});
 	});
 

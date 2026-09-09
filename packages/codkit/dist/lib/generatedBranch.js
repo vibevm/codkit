@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { gitOk, runGit } from './gitx.js';
-import { OWN_EXTENSIONS_DIR, ownExtensionFiles } from './layers/ownExtensions.js';
+import { materializerOf, ownExtensionFiles } from './layers/ownExtensions.js';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
 import { isDeliveredOwnFile, isReleasedOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.js';
@@ -18,16 +18,17 @@ function ownPredicate(omitLicenceNotice) {
     return omitLicenceNotice ? isReleasedOwnFile : isDeliveredOwnFile;
 }
 /** Fail before object/ref/worktree mutation when two generated layers claim one target. */
-export function assertGeneratedTargetOwnership(patchesDir, ownRoot, layerTargets, omitLicenceNotice = false) {
+export function assertGeneratedTargetOwnership(patchesDir, type, ownRoot, layerTargets, omitLicenceNotice = false) {
     const ownTargets = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true })
         .filter(ownPredicate(omitLicenceNotice))
         .map((relative) => `${ownRoot}/${relative}`);
     const claims = new Map(ownTargets.map((target) => [target, { layer: 'own', artifact: `delta/own/${target.slice(ownRoot.length + 1)}` }]));
     const ids = new Map();
     const manifest = loadOwnManifest(patchesDir);
-    const extensionFiles = ownExtensionFiles(patchesDir, manifest.extensions);
+    const materializer = materializerOf(type);
+    const extensionFiles = materializer === null ? [] : ownExtensionFiles(materializer, patchesDir, manifest.extensions);
     for (const file of extensionFiles) {
-        claims.set(file.target, { layer: 'own-extension', artifact: `${OWN_EXTENSIONS_DIR}/${file.relative}` });
+        claims.set(file.target, { layer: 'own-extension', artifact: `${materializer?.deltaRoot ?? ''}/${file.relative}` });
     }
     for (const entry of [
         ...manifest.units.map((unit) => ({ id: unit.id, label: `${OWN_MANIFEST_PATH} unit ${unit.id}` })),
@@ -58,7 +59,7 @@ export function assertGeneratedTargetOwnership(patchesDir, ownRoot, layerTargets
     return { ownTargets, extensionTargets: extensionFiles.map((file) => file.target) };
 }
 /** Keep full and local branch/cache variants distinct without changing schemas. */
-export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, omitLicenceNotice = false) {
+export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, type, omitLicenceNotice = false) {
     const sourceRoot = ownSourceRoot(patchesDir);
     const files = listOwnFiles(sourceRoot, { refuseSymlinks: true }).filter(ownPredicate(omitLicenceNotice));
     const hash = createHash('sha256')
@@ -72,8 +73,9 @@ export function generatedHistoryFingerprint(deltaFingerprint, patchesDir, omitLi
         hash.update(`\0${relative}\0${ownFileMode(patchesDir, relative)}`, 'utf8');
     // ##OWN-EXTENSION-UNIT: the extensions are part of the snapshot, so a change
     // to one of them has to change the fingerprint the fast path compares.
-    for (const file of extensionSnapshot(patchesDir))
-        hash.update(`\0${OWN_EXTENSIONS_DIR}/${file.relative}\0${fileMode(patchesDir, `${OWN_EXTENSIONS_DIR}/${file.relative}`)}`, 'utf8');
+    const deltaRoot = materializerOf(type)?.deltaRoot ?? '';
+    for (const file of extensionSnapshot(materializerOf(type), patchesDir))
+        hash.update(`\0${deltaRoot}/${file.relative}\0${fileMode(patchesDir, `${deltaRoot}/${file.relative}`)}`, 'utf8');
     return hash.digest('hex');
 }
 /**
@@ -90,7 +92,8 @@ export function appendGeneratedOwnCommit(options) {
     // ##OWN-EXTENSION-UNIT: the own extensions ride in the same atom. `ci` and
     // `publish` need the complete reproducible tree, and an extension the branch
     // does not carry is an extension the build does not see.
-    const extensions = extensionSnapshot(options.patchesDir);
+    const materializer = materializerOf(options.type);
+    const extensions = extensionSnapshot(materializer, options.patchesDir);
     // An own snapshot that is only the licence notice is empty for a release, and
     // an empty layer is skipped exactly like any other.
     if (files.length === 0 && extensions.length === 0)
@@ -100,7 +103,7 @@ export function appendGeneratedOwnCommit(options) {
         stageGeneratedFile(options, indexEnv, join(sourceRoot, ...relative.split('/')), `${targetRoot}/${relative}`, `delta/own/${relative}`);
     }
     for (const file of extensions) {
-        stageGeneratedFile(options, indexEnv, file.source, file.target, `${OWN_EXTENSIONS_DIR}/${file.relative}`);
+        stageGeneratedFile(options, indexEnv, file.source, file.target, `${materializer?.deltaRoot ?? ''}/${file.relative}`);
     }
     const tree = gitOk({ args: ['write-tree'], cwd: options.treeDir, env: indexEnv }, { code: 'ARTIFACT-BROKEN', message: 'cannot write the generated own-code tree' }).stdout.trim();
     const commitEnv = {
@@ -134,8 +137,8 @@ function stageGeneratedFile(options, indexEnv, source, target, deltaPath) {
     });
 }
 /** The own-extension files of the delta, or none when the manifest is unusable. */
-function extensionSnapshot(patchesDir) {
-    return ownExtensionFiles(patchesDir, loadOwnManifest(patchesDir).extensions);
+function extensionSnapshot(materializer, patchesDir) {
+    return materializer === null ? [] : ownExtensionFiles(materializer, patchesDir, loadOwnManifest(patchesDir).extensions);
 }
 function removeIndexedOwnTree(treeDir, targetRoot, indexEnv) {
     const listed = gitOk({ args: ['ls-files', '-z', '--', `${targetRoot}/`], cwd: treeDir, env: indexEnv }, { code: 'ARTIFACT-BROKEN', message: `cannot inspect the generated own-code subtree ${targetRoot}` }).stdout;

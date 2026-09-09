@@ -14,9 +14,9 @@ import { RULES_DIR, RULE_FILE_SUFFIX, parseRuleFile } from './layers/rule.js';
 import { ckError, isCkError } from './messages.js';
 import { encodePatchName, parseCkpatch, PATCH_FILE_SUFFIX } from './patchFormat.js';
 import { PATCHES_DIR } from './syncEngine.js';
-export function loadCycleClassificationInventory(patchesDir, expectedPin, runtime = {}) {
+export function loadCycleClassificationInventory(patchesDir, type, expectedPin, runtime = {}) {
     const patchFiles = artifactFiles(patchesDir, PATCHES_DIR, PATCH_FILE_SUFFIX);
-    const conventions = patchFiles.length === 0 ? null : loadConventions(patchesDir);
+    const conventions = patchFiles.length === 0 ? null : loadConventions(type, patchesDir);
     const patches = patchFiles.map(({ absolute, artifactPath, name }) => {
         if (conventions === null)
             throw broken('patch conventions disappeared while loading inventory');

@@ -19,6 +19,9 @@ import { OWN_UNIT_ID, PATCH_FILE_NAME, PATCH_ID, REMOVED_ID, RESOURCE_ID, RULE_I
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import type { Capability, ProjectType } from '@codkit/type-api';
+import { isCkError } from '../../src/lib/messages.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 let fixture: SyncFixture;
 
@@ -39,7 +42,18 @@ beforeAll(() => {
 afterAll(cleanupTempRoots);
 
 function verify(): readonly Finding[] {
-	return runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config }).findings;
+	return runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config, type: vscodeType }).findings;
+}
+
+/** The same run under a type that answers no optional layer at all. */
+function verifyUnder(capabilities: readonly Capability[]): unknown {
+	const type: ProjectType = { ...vscodeType, id: 'stub', capabilities: new Set(capabilities) };
+	try {
+		runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config, type });
+	} catch (error) {
+		return error;
+	}
+	return null;
 }
 
 /** Edit a delta file, verify, and put the file back whatever happens. */
@@ -83,7 +97,8 @@ describe('a healthy delta', () => {
 		const result = runVerify({
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
-			config: { ...fixture.config, pin: { ...fixture.config.pin, tag: 'never-synced' } }
+			config: { ...fixture.config, pin: { ...fixture.config.pin, tag: 'never-synced' } },
+			type: vscodeType
 		});
 		expect(result.warnings.join('\n')).toContain('run codkit load first');
 	});
@@ -212,7 +227,7 @@ describe('(g) overlays', () => {
 		const findings = withFile('delta/overlays/package.json.overlay.json', packageOverlay(['name']), verify);
 
 		expect(codes(findings)).toEqual(['OVERLAY-SCHEMA']);
-		expect(findings[0]?.message).toContain('only additions to scripts are allowed for tree package.json targets');
+		expect(findings[0]?.message).toContain('only additions under scripts are allowed for this target');
 	});
 
 	it('accepts an addition to scripts on that same target', () => {
@@ -320,7 +335,7 @@ describe('(h) own code', () => {
 		const mismatch = findings.filter((item) => item.code === 'ARTIFACT-BROKEN' && item.message.includes('service override declares'));
 
 		expect(mismatch).toHaveLength(1);
-		expect(mismatch[0]?.message).toContain('does not registerSingleton(IFixtureService)');
+		expect(mismatch[0]?.message).toContain('does not call registerSingleton(IFixtureService)');
 		expect(mismatch[0]?.file).toBe('delta/own/test/service.override.ts');
 	});
 
@@ -559,3 +574,18 @@ function addServiceOverride(text: string, module: string, serviceId = 'IFixtureS
 	});
 	return `${JSON.stringify(manifest, null, 2)}\n`;
 }
+
+describe('(m) the layers the project type does not provide', () => {
+	it('refuses an artifact of a layer this type has no capability for, before any finding', () => {
+		const refusal = verifyUnder([]);
+		expect(isCkError(refusal)).toBe(true);
+		if (!isCkError(refusal)) return;
+		expect(refusal.code).toBe('TYPE-CAPABILITY');
+		expect(refusal.message).toContain('config-overlay');
+		expect(refusal.message).toContain('stub');
+	});
+
+	it('passes the layer gate when the type declares every optional layer of the delta', () => {
+		expect(verifyUnder([...vscodeType.capabilities])).toBeNull();
+	});
+});

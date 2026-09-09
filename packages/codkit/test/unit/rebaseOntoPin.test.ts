@@ -240,7 +240,6 @@ function output(): Output {
 }
 function commandContext(fixture: Fixture): CommandContext {
 	return {
-		type: vscodeType,
 		toolRoot: fixture.root,
 		locations: {
 			patchesDir: { path: fixture.root, source: 'flag', exists: true, warning: null },
@@ -252,11 +251,18 @@ function commandContext(fixture: Fixture): CommandContext {
 		commandFlags: new Map(),
 		env: {},
 		config: fixture.config,
+		type: vscodeType,
 		out: output()
 	};
 }
 function run(fixture: Fixture) {
-	return rebaseOntoPin({ patchesDir: fixture.root, resolution: fixture.resolution, config: fixture.config, out: output() });
+	return rebaseOntoPin({
+		patchesDir: fixture.root,
+		resolution: fixture.resolution,
+		config: fixture.config,
+		type: vscodeType,
+		out: output()
+	});
 }
 function commitAndSync(fixture: Fixture, date: string) {
 	fixtureCommit(fixture.root, 'fixture: commit rebased patches', date);
@@ -264,6 +270,7 @@ function commitAndSync(fixture: Fixture, date: string) {
 		patchesDir: fixture.root,
 		resolution: fixture.resolution,
 		config: fixture.config,
+		type: vscodeType,
 		out: output(),
 		fresh: false,
 		dryRun: false,
@@ -354,6 +361,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
+				type: vscodeType,
 				out: output(),
 				paths: [TARGETS.conflict],
 				allowNewFile: [],
@@ -394,6 +402,7 @@ describe('rebaseOntoPin', () => {
 			patchesDir: fixture.root,
 			resolution: fixture.resolution,
 			config: fixture.config,
+			type: vscodeType,
 			out: output(),
 			paths: [TARGETS.conflict],
 			allowNewFile: [],
@@ -428,6 +437,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: changed.root,
 				resolution: changed.resolution,
 				config: changed.config,
+				type: vscodeType,
 				out: output(),
 				fresh: false,
 				dryRun: false,
@@ -445,6 +455,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: dirty.root,
 				resolution: dirty.resolution,
 				config: dirty.config,
+				type: vscodeType,
 				out: output(),
 				fresh: false,
 				dryRun: false,
@@ -502,6 +513,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
+				type: vscodeType,
 				out: output(),
 				moveTempCheckpoint(path) {
 					if (path === TARGET_ONLY) throw new Error('injected rebase move interruption');
@@ -524,6 +536,7 @@ describe('rebaseOntoPin', () => {
 					patchesDir: fixture.root,
 					resolution: fixture.resolution,
 					config: fixture.config,
+					type: vscodeType,
 					out: output(),
 					...(stage === 'artifact-temp'
 						? {
@@ -552,6 +565,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
+				type: vscodeType,
 				out: output(),
 				checkpoint(stage) {
 					if (stage === 'during-pending') throw new Error('injected pending interruption');
@@ -572,6 +586,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
+				type: vscodeType,
 				out: output(),
 				checkpoint(stage) {
 					if (stage === 'after-save') throw new Error('injected after-save tamper window');
@@ -592,6 +607,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
+				type: vscodeType,
 				out: output(),
 				checkpoint(stage) {
 					if (stage === 'after-save') throw new Error('injected after redundant removal');

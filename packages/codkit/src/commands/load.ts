@@ -22,7 +22,7 @@
 // container run must never start downloading gigabytes.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_ENVIRONMENT, commandFlagGiven, forkResolution } from '../lib/command.ts';
+import { EXIT_ENVIRONMENT, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { treeId } from '../lib/fingerprint.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
@@ -83,6 +83,7 @@ async function run(ctx: CommandContext): Promise<number> {
 				patchesDir: ctx.patchesDir,
 				resolution,
 				config,
+				type: requireProjectType(ctx),
 				out: ctx.out,
 				fresh,
 				dryRun,

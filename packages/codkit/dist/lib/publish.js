@@ -44,6 +44,7 @@ export async function runPublish(options) {
             patchesDir: workspace.patchesDir,
             resolution: workspace.resolution,
             config: snapshotConfig,
+            type: options.type,
             out: options.out,
             profile: options.profile,
             effectiveDiffBase: null,

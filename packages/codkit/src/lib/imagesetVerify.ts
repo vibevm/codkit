@@ -32,6 +32,7 @@ import type { DiscoveredTarget, TargetKind } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
 import type { JsonValue } from './jsonOut.ts';
 import { ckError } from './messages.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 /** The two containers that carry more than one layer, and so a round trip. */
 const LAYERED: ReadonlySet<TargetKind> = new Set<TargetKind>(['ico', 'icns']);
@@ -128,11 +129,13 @@ export type ImagesetVerification = {
  * every round trip is a layer of the shipped file itself.
  */
 export function verifyImageset(options: {
+	/** The project type of the patch set: the image set is its answer. */
+	readonly type: ProjectType;
 	readonly treeDir: string;
 	readonly brandingDir: string;
 	readonly onReport: (text: string) => void;
 }): ImagesetVerification {
-	const targets = discoverTargets(options.treeDir, options.onReport).map((target) => verifyTarget(options.treeDir, target));
+	const targets = discoverTargets(options.type, options.treeDir, options.onReport).map((target) => verifyTarget(options.treeDir, target));
 	return { treeDir: options.treeDir, brandingDir: options.brandingDir, targets, totals: totalsOf(targets) };
 }
 

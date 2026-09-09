@@ -27,11 +27,11 @@ import { driftDirty, porcelainPaths } from './driftGuard.js';
 import { MARKER_BLOCK_DISCARD_HINT, emptyWorktreeDiscardPlan, markerBlockDirtMessage, worktreeDiscardClassifier } from './discardWorktree.js';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.js';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.js';
-import { strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.js';
+import { NO_OWN_EXTENSIONS, materializerOf, strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
-import { OVERLAYS_DIR, checkOverlay, isExactOverlayMaterialization, loadOverlays, overlayDriftErrors, renderOverlayTarget, writeProductOverridesDev } from './layers/overlay.js';
+import { OVERLAYS_DIR, checkOverlay, isExactOverlayMaterialization, loadOverlays, overlayDriftErrors, renderOverlayTarget, writeDevChannel } from './layers/overlay.js';
 import { RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, resourceSourcePath } from './layers/resource.js';
 import { ckError, isCkError } from './messages.js';
 import { OWN_SOURCE_DIR, classifyOwn, ownStateOfPatchSet, syncOwnCode } from './ownCopy.js';
@@ -134,7 +134,9 @@ export function runSync(options) {
         }
     }
     if (options.forceApply === true) {
-        const drift = driftDirty(tree, config.typeConfig.ownRoot, patchesDir, { generated: { pinSha: config.pin.sha, branch } });
+        const drift = driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
+            generated: { pinSha: config.pin.sha, branch }
+        });
         const head = treeHeadError(drift.treeCommits, branch);
         if (head !== null) {
             out.addError(head.toPayload());
@@ -168,7 +170,7 @@ export function runSync(options) {
     let overlays;
     try {
         overlays = loadOverlays(patchesDir);
-        const drift = overlays.flatMap((overlay) => checkOverlay(overlay, { treeDir: tree, pinSha: config.pin.sha, pinOnly: true }).drift);
+        const drift = overlays.flatMap((overlay) => checkOverlay(overlay, { type: options.type, treeDir: tree, pinSha: config.pin.sha, pinOnly: true }).drift);
         if (drift.length > 0) {
             for (const error of overlayDriftErrors(drift)) {
                 out.addError(error.toPayload());
@@ -183,9 +185,9 @@ export function runSync(options) {
     let prebuiltConventions;
     let ownershipEvidence;
     try {
-        prebuiltConventions = loadConventions(patchesDir);
+        prebuiltConventions = loadConventions(options.type, patchesDir);
         prebuiltPlan = buildPlan(patchesDir, prebuiltConventions, overlays, warnFrom(out));
-        ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, config.typeConfig.ownRoot, layerTargets(prebuiltPlan), omitLicenceNotice);
+        ownershipEvidence = assertGeneratedTargetOwnership(patchesDir, options.type, config.typeConfig.ownRoot, layerTargets(prebuiltPlan), omitLicenceNotice);
     }
     catch (error) {
         return reportBroken(out, error, branch);
@@ -197,7 +199,7 @@ export function runSync(options) {
     // ##TREE-MARK).
     const deltaState = deltaFiles(patchesDir, config.pin.sha);
     const delta = deltaState.fingerprint;
-    const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, omitLicenceNotice) : delta;
+    const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, options.type, omitLicenceNotice) : delta;
     const id = treeId(tree);
     const warn = (text) => {
         out.warn(text);
@@ -235,19 +237,22 @@ export function runSync(options) {
         //
         // The one exemption a plain `load` does get is the other way round
         // (##DRIFT-GUARD-PREDICATE, the stranded exception): a directory under
-        // `extensions/` that no record declares is a materialization this run
+        // the materialization root that no record declares is a directory this run
         // neither writes into nor removes, so refusing over it would guard
         // nothing and lock the daily command after a legal change of the patch
         // set. `--fresh` does not need it, and no other caller sets the option.
         const materialized = [];
         const passStranded = options.passStrandedExtensions === true && !options.fresh;
-        const drift = driftDirty(tree, config.typeConfig.ownRoot, patchesDir, {
+        const driftMaterializer = materializerOf(options.type);
+        const drift = driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
             untrackedIsDirt: !options.fresh,
             generated: { pinSha: config.pin.sha, branch },
             ...(options.fresh
                 ? { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, materialized) }
                 : {}),
-            ...(passStranded ? { isStrandedExtension: strandedExtensionHook(patchesDir, tree, config.pin.sha) } : {}),
+            ...(passStranded && driftMaterializer !== null
+                ? { isStrandedExtension: strandedExtensionHook(driftMaterializer, patchesDir, tree, config.pin.sha) }
+                : {}),
             ...(discardWorktreeEdits ? { isDiscardable: worktreeDiscardClassifier(tree, prebuiltConventions, worktreePlan) } : {})
         });
         // The D8 refusals come before the dirt verdict: a rewritten line below
@@ -359,7 +364,7 @@ export function runSync(options) {
     // writes nothing - and reports nothing as discarded either, because nothing
     // was.
     if (dryRun && discardWorktreeEdits) {
-        driftDirty(tree, config.typeConfig.ownRoot, patchesDir, {
+        driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
             untrackedIsDirt: false,
             generated: { pinSha: config.pin.sha, branch },
             isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, []),
@@ -392,7 +397,8 @@ export function runSync(options) {
         // branch commits, so the branch cannot vouch for it. The own extensions
         // are materialized on the same terms (##OWN-EXTENSION-UNIT).
         const own = syncOwnCode(patchesDir, tree, config.typeConfig.ownRoot);
-        const ownExtensions = syncOwnExtensions(patchesDir, tree, declaredOwnExtensions(patchesDir));
+        const materializer = materializerOf(options.type);
+        const ownExtensions = materializer === null ? NO_OWN_EXTENSIONS : syncOwnExtensions(materializer, patchesDir, tree, declaredOwnExtensions(patchesDir));
         writeExcludePlan(excludePlan);
         writeTreeHook(tree, branch, out);
         reportOwn(out, own);
@@ -515,14 +521,15 @@ export function runSync(options) {
     // 10. Own code, dev overlay, exclude, hook, mark, cache.
     const own = syncOwnCode(patchesDir, tree, config.typeConfig.ownRoot);
     // ##OWN-EXTENSION-UNIT: the second pair of own roots, mirrored on the same
-    // terms and in the same step, so `extensions/<name>/` and `src/vs/<own>/`
+    // terms and in the same step, so the materialized extensions and the own root
     // are never half a load apart.
-    reportOwnExtensions(out, syncOwnExtensions(patchesDir, tree, declaredOwnExtensions(patchesDir)));
+    const loadMaterializer = materializerOf(options.type);
+    reportOwnExtensions(out, loadMaterializer === null ? NO_OWN_EXTENSIONS : syncOwnExtensions(loadMaterializer, patchesDir, tree, declaredOwnExtensions(patchesDir)));
     // The two channels of the config-overlay layer are alternatives, not layers
     // on top of each other: when the targets are materialized into the branch,
     // the dev-channel file has nothing left to say.
     if (!materializeOverlays) {
-        writeProductOverridesDev(patchesDir, tree, overlays, context, config.pin.sha, warn);
+        writeDevChannel(options.type, tree, overlays, context, config.pin.sha, warn);
     }
     writeExcludePlan(excludePlan);
     writeTreeHook(tree, branch, out);
@@ -724,7 +731,7 @@ function listPatchFiles(patchesDir) {
 }
 function buildBranch(options, plan, context, id) {
     const { patchesDir, config, out } = options;
-    assertGeneratedTargetOwnership(patchesDir, config.typeConfig.ownRoot, layerTargets(plan));
+    assertGeneratedTargetOwnership(patchesDir, options.type, config.typeConfig.ownRoot, layerTargets(plan));
     const tree = options.resolution.path;
     const scratch = join(patchesDir, '.codkit', 'tmp');
     mkdirSync(scratch, { recursive: true });
@@ -754,6 +761,7 @@ function buildBranch(options, plan, context, id) {
         const appendOwn = () => {
             const own = appendGeneratedOwnCommit({
                 patchesDir,
+                type: options.type,
                 treeDir: tree,
                 indexFile,
                 parent,
@@ -827,6 +835,7 @@ export function buildAppliedTip(options) {
         patchesDir: options.patchesDir,
         resolution: options.resolution,
         config: options.config,
+        type: options.type,
         out: options.out,
         fresh: false,
         dryRun: false,
@@ -842,10 +851,10 @@ export function buildAppliedTip(options) {
     const warn = (text) => {
         options.out.warn(text);
     };
-    const conventions = loadConventions(options.patchesDir);
+    const conventions = loadConventions(options.type, options.patchesDir);
     const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir) : [];
     const plan = buildPlan(options.patchesDir, conventions, overlays, warn);
-    assertGeneratedTargetOwnership(options.patchesDir, options.config.typeConfig.ownRoot, layerTargets(plan), options.omitLicenceNotice === true);
+    assertGeneratedTargetOwnership(options.patchesDir, options.type, options.config.typeConfig.ownRoot, layerTargets(plan), options.omitLicenceNotice === true);
     const context = overlayVarContext(options.config, pinCommitDate(tree, options.config.pin.sha), options.patchSetCommit ?? patchSetCommitId(options.patchesDir));
     return buildBranch(engine, plan, context, treeId(tree)).top;
 }
@@ -1056,8 +1065,8 @@ function* batches(paths) {
  */
 export function cleanUntracked(treeDir, config, conventions) {
     // File by file, never `--directory`: a collapsed directory entry would hide
-    // whitelisted content nested inside an untracked one (extensions/*/out/
-    // under an untracked extensions/, for instance) and take it down with it.
+    // whitelisted content nested inside an untracked one (a build output under an
+    // untracked materialization root, for instance) and take it down with it.
     const listed = new Set([
         ...listUntracked(treeDir, ['--others', '--exclude-standard', '-z']),
         ...listUntracked(treeDir, ['--others', '--ignored', '--exclude-standard', '-z'])
@@ -1787,7 +1796,7 @@ function declaredOwnExtensions(patchesDir) {
  * does; the parse failure is named a few steps later by the code whose subject
  * it is.
  */
-function strandedExtensionHook(patchesDir, treeDir, pinSha) {
+function strandedExtensionHook(materializer, patchesDir, treeDir, pinSha) {
     let declared = [];
     try {
         declared = declaredOwnExtensions(patchesDir);
@@ -1795,7 +1804,7 @@ function strandedExtensionHook(patchesDir, treeDir, pinSha) {
     catch {
         declared = [];
     }
-    const classify = strandedExtensionClassifier(treeDir, pinSha, declared);
+    const classify = strandedExtensionClassifier(materializer, treeDir, pinSha, declared);
     return (entry) => classify(entry.path);
 }
 /**

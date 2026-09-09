@@ -1,7 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#cmd-reresolve */
 // `codkit reresolve`: one locked replay of an old feature patch over the current
 // fork-tree file. All merge/ref decisions live in lib/reresolve.ts.
-import { commandFlagValue, EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution } from '../lib/command.js';
+import { commandFlagValue, EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.js';
 import { loadConventions } from '../lib/conventionsFile.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
@@ -34,7 +34,7 @@ function runLocked(ctx, treeDir, target) {
             treeDir,
             target,
             explicitPatch: commandFlagValue(ctx.commandFlags, PATCH),
-            conventions: loadConventions(ctx.patchesDir)
+            conventions: loadConventions(requireProjectType(ctx), ctx.patchesDir)
         });
         ctx.out.setData(dataOf(result));
         ctx.out.info(`${result.target}: ${result.outcome} from ${result.patchSource}`);

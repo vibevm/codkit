@@ -25,7 +25,7 @@ import { loadConfig } from './configFile.js';
 import { loadConventions } from './conventionsFile.js';
 import { gitOk, runGit } from './gitx.js';
 import { loadOverlays } from './layers/overlay.js';
-import { ownExtensionSourceRoot, isSafeExtensionName, listExtensionFiles } from './layers/ownExtensions.js';
+import { isSafeExtensionName, listExtensionFiles, materializerOf, ownExtensionSourceRoot } from './layers/ownExtensions.js';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.js';
 import { loadRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap } from './layers/resource.js';
@@ -93,8 +93,8 @@ export const DELIVERED_CATEGORY = 'delivered';
  * describe itself correctly fails here rather than producing a plausible-looking
  * document (##IB-READ-ARTIFACTS).
  */
-export function buildInventory(patchesDir, options = {}) {
-    const conventions = loadConventions(patchesDir);
+export function buildInventory(patchesDir, type, options = {}) {
+    const conventions = loadConventions(type, patchesDir);
     const patches = loadPatches(patchesDir, conventions);
     const overlays = loadOverlays(patchesDir);
     const rules = loadRules(patchesDir);
@@ -120,7 +120,7 @@ export function buildInventory(patchesDir, options = {}) {
             artifact: RESOURCE_MAP_PATH
         })),
         ...rules.map((rule) => ruleEntry(rule)),
-        ...ownEntries(patchesDir, manifest),
+        ...ownEntries(patchesDir, type, manifest),
         ...deliveredRuntimeEntry(patchesDir)
     ];
     entries.sort((left, right) => compareBytes(left.id, right.id));
@@ -384,10 +384,10 @@ export function resolvePatchSetRef(patchesDir, ref) {
  * `inventory --diff <ref>` and `ci --effective-diff <base-ref>`, which report
  * the same document in two places and must not compute it in two ways.
  */
-export function diffInventoryAgainstRef(patchesDir, current, ref) {
+export function diffInventoryAgainstRef(patchesDir, type, current, ref) {
     const checkout = checkoutPatchSetRef(patchesDir, ref);
     try {
-        return { sha: checkout.sha, diff: diffInventories(buildInventory(checkout.dir, { patchSetCommit: checkout.sha }), current) };
+        return { sha: checkout.sha, diff: diffInventories(buildInventory(checkout.dir, type, { patchSetCommit: checkout.sha }), current) };
     }
     finally {
         checkout.release();
@@ -509,7 +509,7 @@ function ruleEntry(rule) {
  * files those roots actually cover today - the point of the record is what own
  * code exists, not what a prefix could match.
  */
-function ownEntries(patchesDir, manifest) {
+function ownEntries(patchesDir, type, manifest) {
     const ownFiles = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true });
     const entries = [];
     for (const unit of manifest.units) {
@@ -531,9 +531,10 @@ function ownEntries(patchesDir, manifest) {
     }
     // ##OWN-EXTENSION-UNIT: one record per extension, in the own layer, naming the
     // files the directory holds today - the same rule the units follow.
+    const materializer = materializerOf(type);
     for (const extension of manifest.extensions) {
-        const files = isSafeExtensionName(extension.name)
-            ? listExtensionFiles(ownExtensionSourceRoot(patchesDir, extension.name)).map((relative) => `${extension.name}/${relative}`)
+        const files = materializer !== null && isSafeExtensionName(materializer, extension.name)
+            ? listExtensionFiles(ownExtensionSourceRoot(materializer, patchesDir, extension.name)).map((relative) => `${extension.name}/${relative}`)
             : [];
         entries.push({
             id: extension.id,
@@ -699,7 +700,7 @@ function countBy(values) {
 // ---------------------------------------------------------------------------
 // Small shared pieces
 // ---------------------------------------------------------------------------
-/** `CK-workbench-001` -> `workbench` (##IB-MAKE-ENTRIES). */
+/** `CK-<subsystem>-001` -> `<subsystem>` (##IB-MAKE-ENTRIES). */
 export function subsystemOf(id) {
     return id.split('-')[1] ?? '';
 }

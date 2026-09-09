@@ -25,6 +25,7 @@ import { isCkError } from '../../src/lib/messages.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const ARTIFACT = 'delta/overlays/product.json.overlay.json';
 
@@ -193,7 +194,7 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 					expectUpstream: { serviceUrl: 'https://gallery.fixture.invalid/api', itemUrl: 'https://gallery.fixture.invalid/item' }
 				}
 			]),
-			{ treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
+			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
 		);
 
 		expect(report.drift).toEqual([]);
@@ -209,7 +210,7 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 				{ op: 'set', path: ['applicationName'], value: 'patchset', expectUpstream: 'code-oss' },
 				{ op: 'set', path: ['dataFolderName'], value: '.patchset', expectUpstream: { $absent: true } }
 			]),
-			{ treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
+			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
 		);
 
 		expect(report.drift.map((entry) => entry.operationIndex)).toEqual([0, 2, 3]);
@@ -227,6 +228,8 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 	it('sees a key that is expected to be absent but is there', () => {
 		const fixture = upstreamAt('overlay-check-absent');
 		const report = checkOverlay(overlay([{ op: 'set', path: ['version'], value: '2', expectUpstream: { $absent: true } }]), {
+			type: vscodeType,
+
 			treeDir: fixture.dir,
 			pinSha: fixture.t1.sha
 		});
@@ -245,11 +248,11 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 					expectUpstream: { itemUrl: 'https://gallery.fixture.invalid/item', serviceUrl: 'https://gallery.fixture.invalid/api' }
 				}
 			]),
-			{ treeDir: fixture.dir, pinSha: fixture.t1.sha }
+			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
 		);
 		const different = checkOverlay(
 			overlay([{ op: 'remove', path: ['extensionsGallery'], expectUpstream: { serviceUrl: 'https://gallery.fixture.invalid/api' } }]),
-			{ treeDir: fixture.dir, pinSha: fixture.t1.sha }
+			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
 		);
 
 		expect(equal.drift).toEqual([]);
@@ -266,7 +269,7 @@ describe('checkOverlay: the keys packaging stamps', () => {
 				{ op: 'set', path: ['commit'], value: 'deadbeef' },
 				{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }
 			]),
-			{ treeDir: fixture.dir, pinSha: fixture.t1.sha }
+			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
 		);
 
 		expect(report.warnings.length).toBe(2);
@@ -279,6 +282,8 @@ describe('checkOverlay: the keys packaging stamps', () => {
 	it('says nothing about the same key on another target', () => {
 		const fixture = upstreamAt('overlay-check-stamped-other');
 		const report = checkOverlay(overlay([{ op: 'set', path: ['version'], value: '9.9.9' }], { target: 'package.json' }), {
+			type: vscodeType,
+
 			treeDir: fixture.dir,
 			pinSha: fixture.t1.sha
 		});
@@ -292,7 +297,7 @@ describe('checkOverlay: the file in the tree', () => {
 
 	it('reports nothing to compare while the target still equals the pin', () => {
 		const fixture = upstreamAt('overlay-check-clean');
-		const report = checkOverlay(overlay(OPERATIONS), { treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlay(overlay(OPERATIONS), { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
 		expect(report.materialization).toEqual({ present: true, differsFromPin: false, matches: null });
 	});
@@ -302,7 +307,7 @@ describe('checkOverlay: the file in the tree', () => {
 		const sample = overlay(OPERATIONS);
 		applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
 
-		const report = checkOverlay(sample, { treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlay(sample, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
 		expect(report.materialization?.differsFromPin).toBe(true);
 		expect(report.materialization?.matches).toBe(true);
@@ -315,7 +320,7 @@ describe('checkOverlay: the file in the tree', () => {
 		const path = join(fixture.dir, 'product.json');
 		writeFileSync(path, readFileSync(path, 'utf8').replace('"applicationName": "fixture-code"', '"applicationName": "by-hand"'), 'utf8');
 
-		const report = checkOverlay(sample, { treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlay(sample, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
 		expect(report.materialization?.differsFromPin).toBe(true);
 		expect(report.materialization?.matches).toBe(false);
@@ -327,7 +332,7 @@ describe('checkOverlay: the file in the tree', () => {
 		const fixture = upstreamAt('overlay-check-pinonly');
 		applyOverlayToTree(overlay(OPERATIONS), fixture.dir, fixture.t1.sha, CONTEXT);
 
-		const report = checkOverlay(overlay(OPERATIONS), { treeDir: fixture.dir, pinSha: fixture.t1.sha, pinOnly: true });
+		const report = checkOverlay(overlay(OPERATIONS), { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, pinOnly: true });
 
 		expect(report.materialization).toBeNull();
 	});
@@ -394,7 +399,7 @@ describe('checkOverlayTarget: a target several overlays contribute to', () => {
 			overlay([{ op: 'set', path: ['version'], value: '9.9.9' }], { id: 'CK-product-903' })
 		];
 
-		const report = checkOverlayTarget(drifting, { treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlayTarget(drifting, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
 		expect(report.target).toBe('product.json');
 		expect(report.reports.length).toBe(2);
@@ -407,8 +412,8 @@ describe('checkOverlayTarget: a target several overlays contribute to', () => {
 		// What `overlay apply` writes for this target: both overlays, in order.
 		writeFileSync(join(fixture.dir, 'product.json'), renderOverlayTarget(GROUP, fixture.dir, fixture.t1.sha, CONTEXT).text, 'utf8');
 
-		const composed = checkOverlayTarget(GROUP, { treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
-		const single = checkOverlay(GROUP[0] as Overlay, { treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const composed = checkOverlayTarget(GROUP, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const single = checkOverlay(GROUP[0] as Overlay, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
 		expect(composed.materialization?.matches).toBe(true);
 		// Checked alone, the same file looks wrong - which is why the command

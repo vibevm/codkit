@@ -3,7 +3,7 @@
 // Contract: PROP-007 sec. 14; state machine: PROP-009 sec. 4.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_OK, commandFlagGiven, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_OK, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { loadConfig } from '../lib/configFile.ts';
 import { startCycle, cycleStatus, restartCycle } from '../lib/cycleControl.ts';
@@ -23,6 +23,7 @@ import type { JsonValue } from '../lib/jsonOut.ts';
 import { ckError, isCkError } from '../lib/messages.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import type { DirectoryResolution } from '../lib/paths.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 const YES = '--yes';
 const ACTIONS = ['start', 'continue', 'status', 'restart'] as const;
@@ -68,11 +69,12 @@ async function runUnsafe(ctx: CommandContext): Promise<number> {
 			if (target === undefined) {
 				throw usage('cycle start needs exactly one target tag or sha', 'usage: codkit cycle start <tag-or-sha>');
 			}
-			prepareCycleStart(ctx.patchesDir, resolution.path, config);
+			prepareCycleStart(ctx.patchesDir, resolution.path, config, requireProjectType(ctx));
 			const started = startCycle({
 				patchesDir: ctx.patchesDir,
 				forkDir: resolution.path,
 				config,
+				type: requireProjectType(ctx),
 				target,
 				...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
 			});
@@ -118,6 +120,7 @@ async function runUnsafe(ctx: CommandContext): Promise<number> {
 				patchesDir: ctx.patchesDir,
 				forkDir: resolution.path,
 				config,
+				type: requireProjectType(ctx),
 				yes: commandFlagGiven(ctx.commandFlags, YES),
 				...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
 			});
@@ -157,10 +160,10 @@ function reportTransitionStatus(ctx: CommandContext, transition: NonNullable<Ret
 	});
 }
 
-function prepareCycleStart(root: string, forkDir: string, config: CodkitConfig): void {
+function prepareCycleStart(root: string, forkDir: string, config: CodkitConfig, type: ProjectType): void {
 	let status = cycleStatus(root, config);
 	if (status.status === 'active' && status.transaction === 'restart') {
-		restartCycle({ patchesDir: root, forkDir, config, yes: true });
+		restartCycle({ patchesDir: root, forkDir, config, type, yes: true });
 		status = cycleStatus(root, config);
 	}
 	if (status.status !== 'absent') return;
@@ -217,6 +220,7 @@ async function runContinuation(
 				patchesDir: ctx.patchesDir,
 				resolution,
 				config,
+				type: requireProjectType(ctx),
 				ci: ctx.flags.ci,
 				out: ctx.out,
 				...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
@@ -271,6 +275,7 @@ function resumeInterruptedInit(
 		patchesDir: ctx.patchesDir,
 		forkDir,
 		config,
+		type: requireProjectType(ctx),
 		target: state.targetPin.sha,
 		...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
 	});

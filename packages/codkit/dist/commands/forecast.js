@@ -1,6 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
 // Thin forecast command adapter.
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { forecastUpgrade } from '../lib/forecast.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
@@ -30,6 +30,7 @@ async function run(ctx) {
         patchesDir: ctx.patchesDir,
         treeDir: resolution.path,
         config,
+        type: requireProjectType(ctx),
         ref: requestedRef
     });
     render(ctx, result.report);

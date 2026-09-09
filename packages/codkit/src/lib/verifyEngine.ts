@@ -18,6 +18,8 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import type { ProjectType, ServiceOverrideVerifier } from '@codkit/type-api';
+import { requireCapability } from '../types/capability.ts';
 import { isCallExpression, isIdentifier, isImportDeclaration, isNamedImports } from 'typescript/unstable/ast';
 import type { Node, SourceFile } from 'typescript/unstable/ast';
 import { createVirtualFileSystem } from 'typescript/unstable/fs';
@@ -36,24 +38,25 @@ import type { Inventory, PatchArtifact } from './inventory.ts';
 import {
 	OVERLAYS_DIR,
 	OVERLAY_FILE_SUFFIX,
-	PRODUCT_JSON_TARGET,
 	checkOverlay,
 	devChannelIgnoreWarning,
+	devChannelTarget,
 	loadOverlays,
-	nonProductTargetViolations,
+	restrictedTargetViolations,
 	overlayDriftErrors,
 	parseOverlay,
 	serializeOverlay
 } from './layers/overlay.ts';
 import type { Overlay } from './layers/overlay.ts';
 import {
-	OWN_EXTENSIONS_DIR,
 	checkOwnExtensions,
 	compareOwnExtensions,
+	materializerOf,
 	ownExtensionTargetRelativeDir,
 	ownExtensionTreePrefixes,
 	pinShipsExtension
 } from './layers/ownExtensions.ts';
+import type { Materializer } from './layers/ownExtensions.ts';
 import {
 	OWN_CODKIT_ROOT,
 	OWN_MANIFEST_PATH,
@@ -108,6 +111,8 @@ export type VerifyOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; every family answer below comes from it. */
+	readonly type: ProjectType;
 	/**
 	 * The codkit installation the delivered runtime library is compared against
 	 * (##RT-DELIVERED-NOT-OWN). It defaults to the root this module was loaded
@@ -119,6 +124,40 @@ export type VerifyOptions = {
 };
 
 /**
+ * ##TYPE-CAPABILITY-REFUSAL: `verify` over an artifact of a layer the declared
+ * type does not provide.
+ *
+ * `own`, `patch`, `resource-file` and `rewrite-rule` are universal and ask the
+ * type nothing. The other four are the type's answer, and an artifact of one
+ * the type does not answer is not a violation to be collected - it is a patch
+ * set that cannot be checked at all by this type, so it refuses before any
+ * finding is produced.
+ */
+function assertLayerCapabilities(
+	type: ProjectType,
+	patches: readonly PatchArtifact[],
+	overlays: readonly Overlay[],
+	manifest: OwnManifest
+): void {
+	const first = overlays[0];
+	if (first !== undefined) {
+		requireCapability(type, 'config-overlay', `the config-overlay artifact ${first.artifactPath}`);
+	}
+	const override = manifest.serviceOverrides[0];
+	if (override !== undefined) {
+		requireCapability(type, 'service-override', `the service override ${override.id} of ${OWN_MANIFEST_PATH}`);
+	}
+	const extension = manifest.extensions[0];
+	if (extension !== undefined) {
+		requireCapability(type, 'own-extensions', `the own extension ${extension.id} of ${OWN_MANIFEST_PATH}`);
+	}
+	const entry = patches.find((artifact) => artifact.patch.header.layer === 'entry-module');
+	if (entry !== undefined) {
+		requireCapability(type, 'entry-module', `the entry-module patch ${entry.artifact}`);
+	}
+}
+
+/**
  * The whole check list of ##CMD-VERIFY, in the order a reviewer reads it: the
  * artifacts first, then what they say about each other, then what the tree says
  * about all of them.
@@ -126,7 +165,7 @@ export type VerifyOptions = {
 export function runVerify(options: VerifyOptions): VerifyResult {
 	const { patchesDir, config } = options;
 	const tree = options.resolution.path;
-	const conventions = loadConventions(patchesDir);
+	const conventions = loadConventions(options.type, patchesDir);
 
 	// (a) Everything parses. A schema failure is raised, not collected: an
 	// artifact that does not describe itself cannot be cross-checked at all.
@@ -137,7 +176,8 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	const removed = loadRemoved(patchesDir);
 	const resourceMap = loadResourceMap(patchesDir);
 	const resources = resourceMap?.entries ?? [];
-	const inventory = buildInventory(patchesDir, { config });
+	assertLayerCapabilities(options.type, patches, overlays, manifest);
+	const inventory = buildInventory(patchesDir, options.type, { config });
 
 	const findings: Finding[] = [];
 	const warnings: string[] = [];
@@ -162,11 +202,11 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	checkRules(tree, config, rules, findings);
 
 	// (g) Overlays: the pin side, and the rule for the non-product targets.
-	checkOverlays(tree, config, overlays, findings);
+	checkOverlays(options.type, tree, config, overlays, findings);
 
 	// (h) Own code: declared, not overlapping, and not overriding a bootstrap
 	// service.
-	checkOwn(patchesDir, conventions, manifest, findings);
+	checkOwn(options.type, patchesDir, conventions, manifest, findings);
 
 	// (h2) What codkit delivered into the own layer: the installed runtime
 	// library is byte-equal to the shipped one, and no record of the product
@@ -178,18 +218,19 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	// (h4) The own-extension layer: the section describes materializable
 	// extensions, and what the tree carries is what the delta holds
 	// (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
-	checkOwnExtensionLayer(patchesDir, tree, config, manifest, findings);
+	checkOwnExtensionLayer(materializerOf(options.type), patchesDir, tree, config, manifest, findings);
 
 	// (h3) The graft budget: a patch of type `hook` creates a seam and nothing
 	// more (PROP-005 ##PATCH-HOOK-BUDGET).
 	checkHookBudget(config, patches, findings);
 
 	// (i) "No intervention outside the inventory", against the generated branch.
-	checkCompleteness(patchesDir, tree, config, patches, overlays, resources, findings, warnings);
+	checkCompleteness(options.type, patchesDir, tree, config, patches, overlays, resources, findings, warnings);
 
 	// (l) The dev channel has to stay invisible to the tree's git.
-	if (overlays.some((overlay) => overlay.target === PRODUCT_JSON_TARGET)) {
-		const warning = devChannelIgnoreWarning(tree);
+	const devChannel = devChannelTarget(options.type);
+	if (devChannel !== null && overlays.some((overlay) => overlay.target === devChannel.path)) {
+		const warning = devChannelIgnoreWarning(options.type, tree);
 		if (warning !== null) {
 			warnings.push(warning);
 		}
@@ -206,6 +247,8 @@ export type StagedFastOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution | null;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set. */
+	readonly type: ProjectType;
 };
 
 export type StagedFastResult = VerifyResult & {
@@ -228,7 +271,7 @@ export type StagedFastResult = VerifyResult & {
  */
 export function runStagedFast(options: StagedFastOptions): StagedFastResult {
 	const { patchesDir, config } = options;
-	const conventions = loadConventions(patchesDir);
+	const conventions = loadConventions(options.type, patchesDir);
 	const staged = stagedDeltaPaths(patchesDir);
 	const findings: Finding[] = [];
 	const warnings: string[] = [];
@@ -691,13 +734,13 @@ function checkRules(treeDir: string, config: CodkitConfig, rules: readonly Rule[
 // (g) Overlays
 // ---------------------------------------------------------------------------
 
-function checkOverlays(treeDir: string, config: CodkitConfig, overlays: readonly Overlay[], findings: Finding[]): void {
+function checkOverlays(type: ProjectType, treeDir: string, config: CodkitConfig, overlays: readonly Overlay[], findings: Finding[]): void {
 	for (const overlay of overlays) {
-		const report = checkOverlay(overlay, { treeDir, pinSha: config.pin.sha, pinOnly: true });
+		const report = checkOverlay(overlay, { type, treeDir, pinSha: config.pin.sha, pinOnly: true });
 		for (const error of overlayDriftErrors(report.drift)) {
 			findings.push(toFinding(error, overlay.artifactPath));
 		}
-		for (const error of nonProductTargetViolations(overlay)) {
+		for (const error of restrictedTargetViolations(type, overlay)) {
 			findings.push(toFinding(error, overlay.artifactPath));
 		}
 	}
@@ -707,7 +750,7 @@ function checkOverlays(treeDir: string, config: CodkitConfig, overlays: readonly
 // (h) Own code
 // ---------------------------------------------------------------------------
 
-function checkOwn(patchesDir: string, conventions: Conventions, manifest: OwnManifest, findings: Finding[]): void {
+function checkOwn(type: ProjectType, patchesDir: string, conventions: Conventions, manifest: OwnManifest, findings: Finding[]): void {
 	const root = ownSourceRoot(patchesDir);
 	const ownFiles = listOwnFiles(root, { refuseSymlinks: true });
 	// One definition of "not own code", in the manifest module, rather than two
@@ -784,7 +827,7 @@ function checkOwn(patchesDir: string, conventions: Conventions, manifest: OwnMan
 		}
 	}
 
-	checkSingletonRegistrations(root, conventions, ownFiles, overrideModules, findings);
+	checkSingletonRegistrations(type.layers.serviceOverride, root, conventions, ownFiles, overrideModules, findings);
 }
 
 // ---------------------------------------------------------------------------
@@ -910,27 +953,36 @@ function checkCodkitRootIsReserved(manifest: OwnManifest, findings: Finding[]): 
  * match the delta byte for byte.
  */
 function checkOwnExtensionLayer(
+	materializer: Materializer | null,
 	patchesDir: string,
 	treeDir: string,
 	config: CodkitConfig,
 	manifest: OwnManifest,
 	findings: Finding[]
 ): void {
-	for (const problem of checkOwnExtensions(patchesDir, manifest.extensions, (name) => pinShipsExtension(treeDir, config.pin.sha, name))) {
+	if (materializer === null) {
+		// The type has no own-extension layer; `verify` refuses an artifact of an
+		// absent layer elsewhere, and there is nothing to compare here.
+		return;
+	}
+	const deltaRoot = materializer.deltaRoot;
+	for (const problem of checkOwnExtensions(materializer, patchesDir, manifest.extensions, (name) =>
+		pinShipsExtension(materializer, treeDir, config.pin.sha, name)
+	)) {
 		findings.push(finding('OWN-EXTENSION-MANIFEST', problem.message, problem.hint, problem.file));
 	}
 	const hint = 'the delta is the source of truth: extract the tree-side edit with codkit save, or restore the tree with codkit load';
-	for (const divergence of compareOwnExtensions(patchesDir, treeDir, manifest.extensions)) {
+	for (const divergence of compareOwnExtensions(materializer, patchesDir, treeDir, manifest.extensions)) {
 		const name = divergence.relative.slice(0, divergence.relative.indexOf('/'));
 		const inside = divergence.relative.slice(name.length + 1);
-		const target = `${ownExtensionTargetRelativeDir(name)}/${inside}`;
+		const target = `${ownExtensionTargetRelativeDir(materializer, name)}/${inside}`;
 		const message =
 			divergence.kind === 'tree-only'
-				? `${target} is not in ${OWN_EXTENSIONS_DIR}/${divergence.relative}`
+				? `${target} is not in ${deltaRoot}/${divergence.relative}`
 				: divergence.kind === 'patchset-only'
-					? `${target} is missing from the fork tree, and ${OWN_EXTENSIONS_DIR}/${divergence.relative} carries it`
-					: `${target} differs from ${OWN_EXTENSIONS_DIR}/${divergence.relative}`;
-		findings.push(finding('OWN-EXTENSION-DRIFT', message, hint, `${OWN_EXTENSIONS_DIR}/${divergence.relative}`));
+					? `${target} is missing from the fork tree, and ${deltaRoot}/${divergence.relative} carries it`
+					: `${target} differs from ${deltaRoot}/${divergence.relative}`;
+		findings.push(finding('OWN-EXTENSION-DRIFT', message, hint, `${deltaRoot}/${divergence.relative}`));
 	}
 }
 
@@ -1025,31 +1077,38 @@ function hookGraftLines(patch: ParsedPatch): { readonly all: readonly string[]; 
 
 /**
  * ##SO-FORBIDDEN-IDS: the bootstrap services are set explicitly before the
- * workbench exists, so a later registerSingleton for one of them is ignored
+ * the composition root is built, so a later registration for one of them is ignored
  * without a word and the product breaks at load. The syntax scan also proves
  * ##SO-MECHANISM: the module named by an override really registers its declared
  * decorator. One compiler snapshot parses the batch, separating calls from
  * comments and strings while still recognizing multiline calls.
  */
 function checkSingletonRegistrations(
+	verifier: ServiceOverrideVerifier | null,
 	root: string,
 	conventions: Conventions,
 	ownFiles: readonly string[],
 	overrideModules: ReturnType<typeof checkServiceOverrideModules>,
 	findings: Finding[]
 ): void {
-	const registrations = singletonRegistrations(root, ownFiles);
+	if (verifier === null) {
+		// The type has no service-override seam, so there is no registration to
+		// look for and nothing own code could re-register (##TYPE-AREA-LAYERS).
+		return;
+	}
+	const call = verifier.registrationCall;
+	const registrations = singletonRegistrations(verifier, root, ownFiles);
 	const forbidden = new Set(conventions.forbiddenServiceIds);
 	for (const [relative, calls] of registrations) {
-		for (const call of calls) {
-			if (forbidden.has(call.serviceId)) {
+		for (const registration of calls) {
+			if (forbidden.has(registration.serviceId)) {
 				findings.push(
 					finding(
 						'FORBIDDEN-SERVICE',
-						`registerSingleton(${call.serviceId}) overrides a service that is set before the workbench is created, so the registration is ignored`,
-						'pick another seam for this change: a bootstrap service cannot be replaced by a later registration',
+						`${call}(${registration.serviceId}) overrides a service the type protects: ${verifier.forbiddenReason}`,
+						verifier.forbiddenHint,
 						`${OWN_SOURCE_DIR}/${relative}`,
-						call.line
+						registration.line
 					)
 				);
 			}
@@ -1061,13 +1120,13 @@ function checkSingletonRegistrations(
 			continue;
 		}
 		const calls = registrations.get(item.module) ?? [];
-		if (calls.some((call) => call.serviceId === item.override.serviceId)) {
+		if (calls.some((registration) => registration.serviceId === item.override.serviceId)) {
 			continue;
 		}
 		findings.push(
 			finding(
 				'ARTIFACT-BROKEN',
-				`${item.override.id}: ${OWN_SOURCE_DIR}/${item.module} does not registerSingleton(${item.override.serviceId}) as its service override declares`,
+				`${item.override.id}: ${OWN_SOURCE_DIR}/${item.module} does not call ${call}(${item.override.serviceId}) as its service override declares`,
 				`make the module registration and serviceOverrides[].serviceId in ${OWN_MANIFEST_PATH} agree`,
 				`${OWN_SOURCE_DIR}/${item.module}`
 			)
@@ -1080,7 +1139,11 @@ type OwnSource = { readonly relative: string; readonly text: string };
 
 const SINGLETON_SCAN_ROOT = '/codkit-singleton-scan';
 
-function singletonRegistrations(root: string, ownFiles: readonly string[]): ReadonlyMap<string, readonly SingletonRegistration[]> {
+function singletonRegistrations(
+	verifier: ServiceOverrideVerifier,
+	root: string,
+	ownFiles: readonly string[]
+): ReadonlyMap<string, readonly SingletonRegistration[]> {
 	const sources: OwnSource[] = [];
 	for (const relative of ownFiles) {
 		if (!relative.endsWith('.ts')) {
@@ -1115,7 +1178,7 @@ function singletonRegistrations(root: string, ownFiles: readonly string[]): Read
 					continue;
 				}
 				const sourceFile = snapshot.getDefaultProjectForFile(path)?.program.getSourceFile(path);
-				registrations.set(source.relative, sourceFile === undefined ? [] : collectSingletonRegistrations(sourceFile));
+				registrations.set(source.relative, sourceFile === undefined ? [] : collectSingletonRegistrations(verifier, sourceFile));
 			}
 		} finally {
 			snapshot.dispose();
@@ -1126,9 +1189,9 @@ function singletonRegistrations(root: string, ownFiles: readonly string[]): Read
 	return registrations;
 }
 
-function collectSingletonRegistrations(sourceFile: SourceFile): readonly SingletonRegistration[] {
+function collectSingletonRegistrations(verifier: ServiceOverrideVerifier, sourceFile: SourceFile): readonly SingletonRegistration[] {
 	const registrations: SingletonRegistration[] = [];
-	const callees = singletonCalleeNames(sourceFile);
+	const callees = singletonCalleeNames(verifier, sourceFile);
 	const visit = (node: Node): void => {
 		if (isCallExpression(node) && node.questionDotToken === undefined && isIdentifier(node.expression)) {
 			const first = node.arguments[0];
@@ -1145,8 +1208,8 @@ function collectSingletonRegistrations(sourceFile: SourceFile): readonly Singlet
 	return registrations;
 }
 
-function singletonCalleeNames(sourceFile: SourceFile): ReadonlySet<string> {
-	const names = new Set<string>(['registerSingleton']);
+function singletonCalleeNames(verifier: ServiceOverrideVerifier, sourceFile: SourceFile): ReadonlySet<string> {
+	const names = new Set<string>([verifier.registrationCall]);
 	for (const statement of sourceFile.statements) {
 		if (!isImportDeclaration(statement)) {
 			continue;
@@ -1157,7 +1220,7 @@ function singletonCalleeNames(sourceFile: SourceFile): ReadonlySet<string> {
 		}
 		for (const element of bindings.elements) {
 			const imported = element.propertyName?.text ?? element.name.text;
-			if (imported === 'registerSingleton') {
+			if (imported === verifier.registrationCall) {
 				names.add(element.name.text);
 			}
 		}
@@ -1170,6 +1233,7 @@ function singletonCalleeNames(sourceFile: SourceFile): ReadonlySet<string> {
 // ---------------------------------------------------------------------------
 
 function checkCompleteness(
+	type: ProjectType,
 	patchesDir: string,
 	treeDir: string,
 	config: CodkitConfig,
@@ -1205,7 +1269,11 @@ function checkCompleteness(
 	// with the own atom and only there, so it is judged by the same rule and
 	// reported in the same words - `ci`, which built the branch, recognises the
 	// finding as its own and drops it.
-	const ownPrefixes = [`${config.typeConfig.ownRoot}/`, ...ownExtensionTreePrefixes(loadOwnManifest(patchesDir).extensions)];
+	const materializer = materializerOf(type);
+	const ownPrefixes = [
+		`${config.typeConfig.ownRoot}/`,
+		...(materializer === null ? [] : ownExtensionTreePrefixes(materializer, loadOwnManifest(patchesDir).extensions))
+	];
 
 	for (const path of changed) {
 		if (ownPrefixes.some((prefix) => path.startsWith(prefix))) {
@@ -1255,7 +1323,7 @@ function checkCompleteness(
 		checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, findings);
 	}
 	// Overlay targets are deliberately not required to appear: the local channel
-	// writes product.overrides.json and leaves the upstream file alone
+	// writes the dev channel of the type and leaves the upstream file alone
 	// (##OVERLAY-TWO-CHANNELS), so an absent overlay target is the normal state.
 }
 

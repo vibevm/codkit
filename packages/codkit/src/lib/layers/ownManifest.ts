@@ -76,12 +76,12 @@ export type ServiceOverride = {
 /**
  * ##OWN-EXTENSION-UNIT: one built-in extension carried as a unit of the own
  * layer. It declares itself and nothing about its files: the directory
- * `delta/own-extensions/<name>/` is the unit, so there are no roots to state
+ * one directory of the own-extension delta root is the unit, so there are no roots to state
  * and no way for two units to claim one file.
  */
 export type OwnExtension = {
 	readonly id: string;
-	/** Directory name under `delta/own-extensions/` and under `extensions/`. */
+	/** Directory name of the unit, in the delta and in its materialization. */
 	readonly name: string;
 	readonly owner: string;
 	readonly reason: string;
@@ -183,7 +183,7 @@ const FIELD_EXPECTATION: Readonly<Record<string, string>> = {
 	serviceId: 'must be the decorator id the override replaces',
 	module: 'must be the path of our module inside delta/own/',
 	extensions: 'must be a list of own extensions',
-	name: 'must be the directory name of the extension under delta/own-extensions/'
+	name: 'must be the directory name of the extension inside the own-extension delta root'
 };
 
 const HINT = 'see PROP-005 sec. 3 for the own manifest';

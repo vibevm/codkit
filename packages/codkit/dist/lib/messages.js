@@ -108,7 +108,7 @@ export const ERROR_CODES = [
     // already ships as a built-in extension (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
     'OWN-EXTENSION-MANIFEST',
     // The materialized own-extension directory of the fork tree no longer matches
-    // `delta/own-extensions/<name>/` (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
+    // its unit in the own-extension delta root (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
     'OWN-EXTENSION-DRIFT',
     // The `type` of the patch set is not in the registry of this codkit, or the
     // package the registry names is not installed (PROP-016 ##TYPE-UNKNOWN).

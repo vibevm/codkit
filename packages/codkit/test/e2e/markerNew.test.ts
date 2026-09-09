@@ -135,9 +135,15 @@ describe('codkit marker new: what it refuses', () => {
 	});
 
 	it('refuses a file whose extension has no marker form', () => {
-		const failure = refusal('product.json', 'CK-product-921');
+		const failure = refusal('resources/app-icon.bin', 'CK-product-921');
 		expect(failure.code).toBe('CK-E-FORBIDDEN-TARGET');
 		expect(failure.message).toContain('no marker form');
+	});
+
+	it('refuses a target the configuration overlay of the type owns', () => {
+		const failure = refusal('product.json', 'CK-product-922');
+		expect(failure.code).toBe('CK-E-FORBIDDEN-TARGET');
+		expect(failure.message).toContain('forbidden patch target');
 	});
 
 	it('refuses an id that does not match the pattern', () => {

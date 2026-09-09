@@ -14,6 +14,7 @@ import { runReresolve, selectPatchSource } from '../../src/lib/reresolve.ts';
 import type { ReresolveDependencies } from '../../src/lib/reresolve.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const TARGET = 'src/replay.ts';
 const BASE = 'a\nbase\nz\n';
@@ -199,10 +200,11 @@ function makeCore(label: string, patchTarget = TARGET): CoreFixture {
 function execute(current: CoreFixture, dependencies?: ReresolveDependencies) {
 	return runReresolve({
 		patchesDir: current.patchesDir,
+
 		treeDir: current.treeDir,
 		target: TARGET,
 		explicitPatch: 'saved/old.ckpatch',
-		conventions: loadConventions(current.patchesDir),
+		conventions: loadConventions(vscodeType, current.patchesDir),
 		...(dependencies === undefined ? {} : { dependencies })
 	});
 }

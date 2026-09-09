@@ -42,6 +42,7 @@ import { treeHeadError } from './treeCommits.js';
 import { checkTree, formatCheckLine } from './treeIdentity.js';
 import { runVerify } from './verifyEngine.js';
 import { assertGeneratedRefExclusive } from './worktrees.js';
+import { materializerOf } from './layers/ownExtensions.js';
 export const CI_PROFILES = ['verify', 'build'];
 /** The safe.directory file of the container (PROP-011 sec. 5). */
 export const CI_GITCONFIG_PATH = '.codkit/gitconfig-ci';
@@ -158,7 +159,7 @@ export async function runCi(options) {
         }
         throw error;
     }
-    const drift = driftDirty(tree, config.typeConfig.ownRoot, patchesDir, {
+    const drift = driftDirty(materializerOf(options.type), tree, config.typeConfig.ownRoot, patchesDir, {
         untrackedIsDirt: false,
         generated: { pinSha: config.pin.sha, branch }
     });
@@ -192,6 +193,7 @@ export async function runCi(options) {
         patchesDir,
         resolution,
         config,
+        type: options.type,
         out,
         fresh: true,
         dryRun: false,
@@ -231,7 +233,7 @@ export async function runCi(options) {
         }
         // 6. Both upstream static gates run against the non-overlay state. This is
         // the executable form of hygiene -> overlay apply from PROP-011 sec. 3.
-        const hygiene = upstreamHygieneStep(tree, out, options.runCommand);
+        const hygiene = upstreamHygieneStep(options.type, tree, out, options.runCommand);
         steps.record('upstream hygiene', hygiene.state, hygiene.detail);
         if (hygiene.error !== null) {
             out.addError(hygiene.error);
@@ -246,6 +248,7 @@ export async function runCi(options) {
             patchesDir,
             resolution,
             config,
+            type: options.type,
             out,
             fresh: true,
             dryRun: false,
@@ -264,7 +267,7 @@ export async function runCi(options) {
     }
     // Every integrity check of the materialized delta. In the build profile this
     // is deliberately after upstream hygiene and overlay application.
-    const verified = runVerify({ patchesDir, resolution, config });
+    const verified = runVerify({ patchesDir, resolution, config, type: options.type });
     const generatedOwnEvidence = new Set(generatedOwnPaths);
     const verifyFindings = verified.findings.filter((finding) => !isGeneratedOwnFinding(finding, generatedOwnEvidence, config));
     for (const warning of verified.warnings) {
@@ -309,7 +312,7 @@ export async function runCi(options) {
     }
     // Own product and contract tests, through the upstream node runner and the
     // same runGlob that was verified on the real polygon in FEAT-001.
-    const tests = productTestsStep(patchesDir, tree, config.typeConfig.ownRoot, out, options.runCommand);
+    const tests = productTestsStep(options.type, patchesDir, tree, config.typeConfig.ownRoot, out, options.runCommand);
     steps.record('product tests', tests.state, tests.detail);
     if (tests.error !== null) {
         out.addError(tests.error);
@@ -503,7 +506,7 @@ function effectiveDiffStep(options, tip) {
     try {
         // The inventory diff first: it needs no tree and is worth having even when
         // the base state turns out not to apply.
-        const inventoryDiff = diffInventories(buildInventory(checkout.dir, { patchSetCommit: checkout.sha }), buildInventory(patchesDir, { config: options.config }));
+        const inventoryDiff = diffInventories(buildInventory(checkout.dir, options.type, { patchSetCommit: checkout.sha }), buildInventory(patchesDir, options.type, { config: options.config }));
         const inventoryPath = writeOut(patchesDir, INVENTORY_DIFF_PATH, renderInventoryDiffMarkdown(base, inventoryDiff));
         out.info(`inventory diff against ${base}: +${inventoryDiff.added.length} -${inventoryDiff.removed.length} ` +
             `~${inventoryDiff.changed.length} -> ${INVENTORY_DIFF_PATH}`);
@@ -522,6 +525,7 @@ function effectiveDiffStep(options, tip) {
                 patchesDir: checkout.dir,
                 resolution,
                 config: baseConfig,
+                type: options.type,
                 out,
                 verbose: options.verbose,
                 patchSetCommit: checkout.sha,
@@ -688,7 +692,7 @@ function writeDepsRecord(patchesDir, id, treeDir, hash) {
 async function compileOnce(options, steps) {
     const { out, patchesDir, resolution } = options;
     const tree = resolution.path;
-    const watch = loadBuildWatch(patchesDir);
+    const watch = loadBuildWatch(options.type, patchesDir);
     const channels = selectChannels(watch, null, DEFAULT_UP_CHANNELS);
     const timeoutMs = options.passTimeoutMs ?? DEFAULT_ERRORS_TIMEOUT_MS;
     const inotify = inotifyWarning();
@@ -702,7 +706,7 @@ async function compileOnce(options, steps) {
             ourGroups.add(state.record.pid);
         }
     }
-    const foreign = foreignWatchers(tree, ourGroups);
+    const foreign = foreignWatchers(options.type, tree, ourGroups);
     if (foreign.length > 0) {
         for (const watcher of foreign) {
             out.warn(`foreign watcher over ${tree}: pid ${watcher.pid} (${watcher.commandLine})`);
@@ -790,22 +794,33 @@ async function compileOnce(options, steps) {
 // Build-profile native gates
 // ---------------------------------------------------------------------------
 const COMMAND_MAX_BUFFER = 64 * 1024 * 1024;
-/** Run the upstream hygiene and eslint scripts, in that order. */
-export function upstreamHygieneStep(treeDir, out, run = defaultCiCommandRunner) {
-    return runCommandSequence(out, [
-        { label: 'hygiene', command: npmCommand(), args: ['run', 'hygiene'], cwd: treeDir },
-        { label: 'eslint', command: npmCommand(), args: ['run', 'eslint'], cwd: treeDir }
-    ], run, 'hygiene and eslint passed');
+/**
+ * Run the hygiene gates of the upstream, in the order the type states them.
+ * Which scripts those are is the type's answer; that they run before the
+ * overlay targets are materialized is the engine's order (PROP-011 sec. 3).
+ */
+export function upstreamHygieneStep(type, treeDir, out, run = defaultCiCommandRunner) {
+    const steps = type.build.hygiene.map((command) => toCiCommand(command, treeDir));
+    return runCommandSequence(out, steps, run, `${steps.map((step) => step.label).join(' and ')} passed`);
+}
+/** One command of the type, resolved against this platform and this tree. */
+function toCiCommand(command, treeDir) {
+    return {
+        label: command.label,
+        command: command.command === 'npm' ? npmCommand() : command.command,
+        args: [...command.args],
+        cwd: treeDir
+    };
 }
 /**
- * Product tests live below `src/vs/<own>/**\/test/` and run through the upstream
+ * Product tests live below the own root and run through the runner of the type
  * node runner over compiled `out/` files (PROP-010 sec. 4). The selector takes
  * the `common` and `node` layers of every `test/` directory under the own
  * directory, so the suites of a delivered library (`<own>/codkit/test/`) and of
- * a feature folder run with the product's own; using the tree's `test-node`
- * script preserves the upstream runner's own mandatory flags.
+ * a feature folder run with the product's own; using a script of the tree
+ * preserves the upstream runner's own mandatory flags.
  */
-export function productTestsStep(patchesDir, treeDir, ownRoot, out, run = defaultCiCommandRunner) {
+export function productTestsStep(type, patchesDir, treeDir, ownRoot, out, run = defaultCiCommandRunner) {
     const root = ownSourceRoot(patchesDir);
     const tests = listOwnFiles(root, { refuseSymlinks: true }).filter((relative) => isProductTestFile(relative));
     if (tests.length === 0) {
@@ -820,20 +835,15 @@ export function productTestsStep(patchesDir, treeDir, ownRoot, out, run = defaul
             exitCode: EXIT_ENVIRONMENT
         };
     }
-    // `--runGlob` bypasses the node runner's own exclusion of the browser layers,
-    // and a suite that drives the workbench pulls stylesheets node cannot load;
-    // the node runner therefore takes the common and node layers only, and the
-    // browser suites are the electron runner's (PROP-010 sec. 4).
-    const glob = `vs/${ownRoot.split('/').at(-1) ?? ownRoot}/**/test/{common,node}/**/*.test.js`;
-    const result = runCommandSequence(out, [
-        {
-            label: 'product tests',
-            command: npmCommand(),
-            args: ['run', 'test-node', '--', '--runGlob', glob],
-            cwd: treeDir
-        }
-    ], run, `${tests.length} own test file(s); upstream node runner passed (${glob})`);
-    return result;
+    // Which runner takes the own tests, and over which selection, is the type's
+    // answer: a family whose own-root runner needs a layer split states it there
+    // (modules/vscode/PROP-004 ##TESTS-LAYER-SPLIT).
+    const command = type.build.ownTests(ownRoot);
+    if (command === null) {
+        return { state: 'skipped', detail: `the project type ${type.id} has no own-root test runner`, error: null, exitCode: EXIT_OK };
+    }
+    const step = toCiCommand(command, treeDir);
+    return runCommandSequence(out, [step], run, `${tests.length} own test file(s); the runner of ${type.id} passed (${step.args.join(' ')})`);
 }
 function runCommandSequence(out, commands, run, successDetail) {
     for (const command of commands) {

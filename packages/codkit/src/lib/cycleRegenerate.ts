@@ -52,6 +52,7 @@ import type { ParsedPatch } from './patchFormat.ts';
 import { regeneratePatch } from './patchGenerate.ts';
 import { resolveContainedPath } from './pathSafety.ts';
 import { PATCHES_DIR } from './syncEngine.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export { CYCLE_REGENERATE_RECOVERY_PATH } from './cycleRegenerateTransaction.ts';
 export type { CycleRegenerationPlan } from './cycleRegenerateTransaction.ts';
@@ -65,6 +66,8 @@ export type CycleRegenerationResult = {
 
 export type CycleRegenerationOptions = {
 	readonly patchesDir: string;
+	/** The project type of the patch set. */
+	readonly type: ProjectType;
 	readonly state: CycleState;
 	readonly classifications: readonly CycleApplyClassification[];
 	readonly causes: readonly CycleClassificationCause[];
@@ -103,7 +106,7 @@ function deriveCycleRegenerationPlan(
 	assertCanonicalInput(options.classifications, options.causes);
 	const sourcePin = pinValue(state.sourcePin);
 	const targetPin = pinValue(state.targetPin);
-	const inventory = loadInventory(options.patchesDir, recoveryBasis);
+	const inventory = loadInventory(options.patchesDir, options.type, recoveryBasis);
 	const classifications = classificationMap(options.classifications);
 	assertComplete(inventory, classifications);
 	const causes = causeMap(options.causes, classifications);
@@ -243,12 +246,12 @@ export function regenerateCycle(options: CycleRegenerationOptions, runtime: Cycl
 	return applyCycleRegenerationPlan(options, planCycleRegeneration(options), runtime, false);
 }
 
-function loadInventory(root: string, recoveryBasis: readonly RegenerationBasis[]): Inventory {
+function loadInventory(root: string, type: ProjectType, recoveryBasis: readonly RegenerationBasis[]): Inventory {
 	const override = new Map(recoveryBasis.map((item) => [item.path, item]));
 	const snapshots: Snapshot[] = [];
 	const patches = new Map<string, ParsedPatch>();
 	const patchFiles = files(root, PATCHES_DIR, PATCH_FILE_SUFFIX, override);
-	const conventions = patchFiles.length === 0 ? null : loadConventions(root);
+	const conventions = patchFiles.length === 0 ? null : loadConventions(type, root);
 	for (const path of patchFiles) {
 		const snap = snapshot(root, path, override);
 		if (conventions === null) throw broken('patch conventions disappeared');

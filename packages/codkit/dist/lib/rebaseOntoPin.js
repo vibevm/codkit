@@ -10,7 +10,7 @@ import { gitOk, runGit, runGitBytes } from './gitx.js';
 import { applyUnified } from './applyUnified.js';
 import { bytesEqual } from './bytes.js';
 import { loadConventions } from './conventionsFile.js';
-import { PRODUCT_OVERRIDES_FILE } from './layers/overlay.js';
+import { devChannelFile } from './layers/overlay.js';
 import { sha256 } from './renameFileState.js';
 import { ckError } from './messages.js';
 import { encodePatchName, parseCkpatch, serializeCkpatch } from './patchFormat.js';
@@ -23,13 +23,14 @@ import { runSave } from './saveEngine.js';
 import { PATCHES_DIR } from './syncEngine.js';
 /** Execute one clean two-parent rebase without moving a real ref or index. */
 export function rebaseOntoPin(options) {
-    const graph = prepareRebaseGraph(options.patchesDir, options.resolution.path, options.config);
+    const graph = prepareRebaseGraph(options.patchesDir, options.type, options.resolution.path, options.config);
     const scratch = createScratchFork(options.resolution.path);
     try {
         const sourceBaseline = buildGeneratedTip({
             patchesDir: graph.sourcePatchesDir,
             resolution: { path: scratch.dir, source: 'flag', exists: true, warning: null },
             config: graph.sourceConfig,
+            type: options.type,
             out: options.out,
             verbose: options.verbose === true,
             patchSetCommit: graph.featureParent,
@@ -39,6 +40,7 @@ export function rebaseOntoPin(options) {
             patchesDir: graph.targetPatchesDir,
             resolution: { path: scratch.dir, source: 'flag', exists: true, warning: null },
             config: graph.targetConfig,
+            type: options.type,
             out: options.out,
             verbose: options.verbose === true,
             patchSetCommit: graph.targetParent,
@@ -55,6 +57,10 @@ export function rebaseOntoPin(options) {
         const prepared = graph.featurePatches.map((feature) => preparePatch(options, graph.sourceConfig.pin.sha, graph.targetConfig.pin, scratch.dir, baseline, feature, renameByOld.get(feature.patch.targetPath)));
         assertPatchSetArtifactStates(options, prepared, graph.targetConfig.pin.sha);
         const desiredTree = buildDesiredTree(scratch.dir, baseline, prepared);
+        // The dev-channel sidecar of this family is written by `load` and ignored
+        // by the tree, so it is not unrelated dirt (##OVERLAY-TWO-CHANNELS).
+        const devChannel = devChannelFile(options.type);
+        const devChannelPaths = devChannel === null ? [] : [devChannel];
         const move = materializeRebaseDesiredTree({
             patchesDir: options.patchesDir,
             treeDir: options.resolution.path,
@@ -63,7 +69,7 @@ export function rebaseOntoPin(options) {
             patchsetHead: graph.head,
             allowedOwnBeforeTree: sourceBaseline,
             allowedIgnoredPrefix: `${graph.targetConfig.typeConfig.ownRoot}/`,
-            allowedIgnoredPaths: [PRODUCT_OVERRIDES_FILE],
+            allowedIgnoredPaths: devChannelPaths,
             allowCompletedRollover: !hasRebasePendingRecords(options.patchesDir),
             completedCheckpoint: () => options.checkpoint?.('after-complete'),
             ...(options.moveCheckpoint === undefined ? {} : { checkpoint: options.moveCheckpoint }),
@@ -109,7 +115,7 @@ export function rebaseOntoPin(options) {
     }
 }
 function assertPatchSetArtifactStates(options, prepared, targetPin) {
-    const conventions = loadConventions(options.patchesDir);
+    const conventions = loadConventions(options.type, options.patchesDir);
     const satisfied = new Set();
     for (const entry of prepared) {
         const oldBytes = optionalFile(options.patchesDir, entry.mergedArtifactPath);
@@ -302,6 +308,7 @@ function saveAutomatic(options, config, prepared) {
         patchesDir: options.patchesDir,
         resolution: options.resolution,
         config,
+        type: options.type,
         out: options.out,
         paths: prepared.map((entry) => entry.targetPath),
         allowNewFile: prepared.filter((entry) => !entry.replay.materials.baseExists).map((entry) => entry.targetPath),

@@ -33,10 +33,12 @@ import { sha256 } from './renameFileState.ts';
 import { pinBytesOf } from './syncMerge.ts';
 import { bytesOf } from './treeState.ts';
 import type { TreeState } from './treeState.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 /** The three sides of one both-sides target, and where each comes from (D19). */
 export type ConflictSidesInput = {
 	readonly patchesDir: string;
+	readonly type: ProjectType;
 	readonly treeDir: string;
 	readonly pinSha: string;
 	/** The base of the selection: the file as the load left it, at the generated tip. */
@@ -65,7 +67,11 @@ export type ConflictMerge = {
 export function mergeConflictSides(input: ConflictSidesInput): ConflictMerge {
 	const theirs = applyUnified(
 		pinBytesOf(input.treeDir, input.pinSha, input.target) ?? new Uint8Array(0),
-		parseCkpatch(readFileSync(join(input.patchesDir, ...input.artifact.split('/'))), loadConventions(input.patchesDir), input.artifact)
+		parseCkpatch(
+			readFileSync(join(input.patchesDir, ...input.artifact.split('/'))),
+			loadConventions(input.type, input.patchesDir),
+			input.artifact
+		)
 	);
 	let ours: Uint8Array;
 	try {

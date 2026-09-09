@@ -19,6 +19,7 @@ import { encodePatchName, parseCkpatch, PATCH_FILE_SUFFIX } from './patchFormat.
 import type { ParsedPatch } from './patchFormat.ts';
 import type { UpstreamRename } from './renames.ts';
 import { PATCHES_DIR } from './syncEngine.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export type LoadedCyclePatch = { readonly artifactPath: string; readonly patch: ParsedPatch };
 
@@ -49,11 +50,12 @@ export type CycleLayerReadRuntime = { readonly afterOptionalOpen?: (path: string
 
 export function loadCycleClassificationInventory(
 	patchesDir: string,
+	type: ProjectType,
 	expectedPin: string,
 	runtime: CycleLayerReadRuntime = {}
 ): LoadedCycleInventory {
 	const patchFiles = artifactFiles(patchesDir, PATCHES_DIR, PATCH_FILE_SUFFIX);
-	const conventions = patchFiles.length === 0 ? null : loadConventions(patchesDir);
+	const conventions = patchFiles.length === 0 ? null : loadConventions(type, patchesDir);
 	const patches = patchFiles.map(({ absolute, artifactPath, name }) => {
 		if (conventions === null) throw broken('patch conventions disappeared while loading inventory');
 		const patch = parseCkpatch(readArtifact(absolute, artifactPath), conventions, artifactPath);

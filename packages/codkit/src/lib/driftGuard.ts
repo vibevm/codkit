@@ -40,7 +40,7 @@
 // deliberately passes none (see the sync engine).
 //
 // A third refinement, the other way round (##OWN-EXTENSION-STRANDED): an
-// *untracked* top-level directory under `extensions/` that no manifest record
+// *untracked* top-level directory of the materialization root that no manifest record
 // declares and the pin does not ship is the materialization of an own extension
 // somebody withdrew. A plain `load` neither writes into it nor removes it, so
 // refusing over it guarded nothing and locked the daily command after a legal
@@ -50,7 +50,8 @@
 // the upstream zone.
 
 import { runGit } from './gitx.ts';
-import { EXTENSIONS_TREE_DIR, OWN_EXTENSIONS_DIR, compareOwnExtensions, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
+import { compareOwnExtensions, extensionsTreeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
+import type { Materializer } from './layers/ownExtensions.ts';
 import type { OwnExtensionDivergence } from './layers/ownExtensions.ts';
 import { loadOwnManifest } from './layers/ownManifest.ts';
 import type { OwnExtension } from './layers/ownManifest.ts';
@@ -73,7 +74,7 @@ export type DriftResult = {
 	readonly own: readonly OwnDivergence[];
 	/**
 	 * Half (b) for the own-extension layer (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT):
-	 * `extensions/<name>/` is materialized from the delta exactly like own code,
+	 * an own-extension directory is materialized from the delta exactly like own code,
 	 * so git says nothing about it either and only a byte comparison can.
 	 */
 	readonly extensions: readonly OwnExtensionDivergence[];
@@ -87,6 +88,13 @@ export type DriftResult = {
 export const OWN_DIVERGENCE_NOTE = 'own code differs from';
 
 export type DriftBaseOptions = {
+	/**
+	 * The directory the own-extension materializations of this type sit in, from
+	 * the tree root; empty when the type has no such layer. It is needed only to
+	 * open a collapsed untracked listing, and it comes from the type
+	 * (##TYPE-AREA-LAYERS).
+	 */
+	readonly materializationRoot?: string;
 	/**
 	 * Whether untracked paths count as dirt. They do by default: a new file in
 	 * the upstream zone is unextracted work (##CK-E-NEW-FILE-IN-UPSTREAM-ZONE).
@@ -122,7 +130,7 @@ export type DriftBaseOptions = {
 	/**
 	 * ##DRIFT-GUARD-PREDICATE, the stranded exception (PROP-005
 	 * ##OWN-EXTENSION-STRANDED): an untracked top-level directory under
-	 * `extensions/` that no manifest record declares and the pin does not ship
+	 * the materialization root that no manifest record declares and the pin does not ship
 	 * is not unextracted work for the one command that neither writes into it
 	 * nor removes it - a plain `load`. Withdrawing a record is a legal change of
 	 * the patch set, and the directory it leaves behind used to lock the daily
@@ -135,7 +143,7 @@ export type DriftBaseOptions = {
 	 * predicate exactly as it was. `load --fresh`, `ci`, `publish`, `cycle` and
 	 * the two-way `sync` pass nothing.
 	 *
-	 * Passing it also opens up a wholly untracked `extensions/`, which git
+	 * Passing it also opens up a wholly untracked materialization root, which git
 	 * reports as one entry that hides the directory names inside it.
 	 */
 	readonly isStrandedExtension?: (entry: PorcelainEntry) => boolean;
@@ -157,11 +165,22 @@ export type DriftOptions = DriftBaseOptions & {
 	readonly generated: { readonly pinSha: string; readonly branch: string };
 };
 
-export function driftDirty(treeDir: string, ownRoot: string, patchesDir: string, options: DriftOptions): DriftResult {
-	const declared = declaredExtensions(patchesDir);
-	const upstream = upstreamDirt(treeDir, ownRoot, { ...options, ownedPrefixes: ownExtensionTreePrefixes(declared) });
+export function driftDirty(
+	materializer: Materializer | null,
+	treeDir: string,
+	ownRoot: string,
+	patchesDir: string,
+	options: DriftOptions
+): DriftResult {
+	const declared = materializer === null ? [] : declaredExtensions(patchesDir);
+	const prefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, declared);
+	const upstream = upstreamDirt(treeDir, ownRoot, {
+		materializationRoot: materializer === null ? '' : extensionsTreeDir(materializer),
+		...options,
+		ownedPrefixes: prefixes
+	});
 	const own = compareOwn(patchesDir, treeDir, ownRoot);
-	const extensions = compareOwnExtensions(patchesDir, treeDir, declared);
+	const extensions = materializer === null ? [] : compareOwnExtensions(materializer, patchesDir, treeDir, declared);
 	const treeCommits = foreignCommits(treeDir, options.generated.pinSha, options.generated.branch);
 	const ownPrefix = ownRoot;
 
@@ -182,9 +201,9 @@ export function driftDirty(treeDir: string, ownRoot: string, patchesDir: string,
 		}
 		const note =
 			divergence.kind === 'tree-only'
-				? `own extension file is not in ${OWN_EXTENSIONS_DIR}/${divergence.relative}`
-				: `${OWN_DIVERGENCE_NOTE} ${OWN_EXTENSIONS_DIR}/${divergence.relative}`;
-		files.push(`extensions/${divergence.relative} (${note})`);
+				? `own extension file is not in ${materializer?.deltaRoot ?? ''}/${divergence.relative}`
+				: `${OWN_DIVERGENCE_NOTE} ${materializer?.deltaRoot ?? ''}/${divergence.relative}`;
+		files.push(`${materializer === null ? '' : extensionsTreeDir(materializer)}/${divergence.relative} (${note})`);
 	}
 	for (const commit of treeCommits.commits) {
 		files.push(`commit ${commit.sha.slice(0, 8)} "${commit.subject}" (not in patchset)`);
@@ -229,11 +248,12 @@ export function upstreamDirt(treeDir: string, ownRoot: string, options: DriftBas
 	const stranded = options.isStrandedExtension;
 	const ownPrefix = `${ownRoot}/`;
 	const owned = [ownPrefix, ...(options.ownedPrefixes ?? [])];
-	// The stranded question is asked per top-level directory of `extensions/`,
-	// and a wholly untracked `extensions/` is one collapsed entry that hides
+	// The stranded question is asked per top-level directory of the
+	// materialization root, and a wholly untracked one is a collapsed entry that hides
 	// exactly those names - so the caller that can answer them gets the listing
 	// opened up, the way a declared extension opens up its own prefix.
-	const opened = [...(options.ownedPrefixes ?? []), ...(stranded === undefined ? [] : [`${EXTENSIONS_TREE_DIR}/`])];
+	const root = options.materializationRoot ?? '';
+	const opened = [...(options.ownedPrefixes ?? []), ...(stranded === undefined || root === '' ? [] : [`${root}/`])];
 	return (
 		expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), opened)
 			.filter((entry) => untrackedIsDirt || entry.status !== '??')
@@ -259,7 +279,7 @@ export function upstreamDirt(treeDir: string, ownRoot: string, options: DriftBas
  * path another layer owns.
  *
  * `git status --porcelain` reports one line for a wholly untracked directory -
- * `extensions/` rather than `extensions/<name>/package.json` - and a prefix
+ * the materialization root rather than each file inside it - and a prefix
  * filter cannot see through that: the materialized own extension would read as
  * unextracted work in the upstream zone (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT). Only
  * an entry that is an ancestor of an owned prefix is re-listed, so a tree with

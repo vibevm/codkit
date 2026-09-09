@@ -12,7 +12,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { loadConventions } from '../lib/conventionsFile.ts';
 import type { Conventions } from '../lib/conventionsFile.ts';
@@ -23,13 +23,14 @@ import type { JsonValue, Output } from '../lib/jsonOut.ts';
 import { markerFormFor, parseMarkers } from '../lib/markers.ts';
 import { ckError } from '../lib/messages.ts';
 import {
-	EXTENSIONS_TREE_DIR,
-	OWN_EXTENSIONS_DIR,
 	compareOwnExtensions,
+	extensionsTreeDir,
+	materializerOf,
 	ownExtensionTreePrefixes,
 	pinShipsExtension,
 	strandedMaterializations
 } from '../lib/layers/ownExtensions.ts';
+import type { Materializer } from '../lib/layers/ownExtensions.ts';
 import type { OwnExtension } from '../lib/layers/ownManifest.ts';
 import { loadOwnManifest } from '../lib/layers/ownManifest.ts';
 import { classifyOwn } from '../lib/ownCopy.ts';
@@ -73,7 +74,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	const tree = resolution.path;
-	const conventions = loadConventions(ctx.patchesDir);
+	const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
 	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
 
 	// 0. A live two-way sync outranks every question below: while its
@@ -132,6 +133,7 @@ async function run(ctx: CommandContext): Promise<number> {
 			patchesDir: ctx.patchesDir,
 			treeDir: tree,
 			pinSha: config.pin.sha,
+			type: requireProjectType(ctx),
 			base: treeCommits.base,
 			mark,
 			ownRoot: config.typeConfig.ownRoot,
@@ -153,7 +155,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	reportOwn(ctx.out, own, config.typeConfig.ownRoot);
 
 	// 2a. Own extensions (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT): materialized under
-	// `extensions/<name>/`, they are own code in the upstream zone - drift is
+	// the materialization directory of the type, they are own code in the upstream zone - drift is
 	// reported here, and their paths never count as upstream dirt below.
 	//
 	// The third count is the one nobody owns any more (##OWN-EXTENSION-STRANDED):
@@ -161,17 +163,21 @@ async function run(ctx: CommandContext): Promise<number> {
 	// command but `load --fresh` removes. The line is printed even when all
 	// three counts are zero, like the own-code line above it: "no stranded
 	// materialization" is an answer, and silence would not be one.
-	const declared = declaredExtensionsOf(ctx.patchesDir);
-	const extensionDrift = compareOwnExtensions(ctx.patchesDir, tree, declared);
-	const stranded = strandedMaterializations(untrackedUnderExtensions(tree), declared, (name) =>
-		pinShipsExtension(tree, config.pin.sha, name)
-	);
+	const materializer = materializerOf(requireProjectType(ctx));
+	const declared = materializer === null ? [] : declaredExtensionsOf(ctx.patchesDir);
+	const extensionDrift = materializer === null ? [] : compareOwnExtensions(materializer, ctx.patchesDir, tree, declared);
+	const stranded =
+		materializer === null
+			? []
+			: strandedMaterializations(materializer, untrackedUnderExtensions(materializer, tree), declared, (name) =>
+					pinShipsExtension(materializer, tree, config.pin.sha, name)
+				);
 	ctx.out.info(
 		`own extensions: ${declared.length} declared, ${extensionDrift.length} path(s) differ between tree and patchset, ` +
 			`${stranded.length} stranded materialization(s)`
 	);
 	for (const entry of extensionDrift.slice(0, LIST_LIMIT)) {
-		ctx.out.info(`  ${entry.kind.padEnd(13)} ${OWN_EXTENSIONS_DIR}/${entry.relative}`);
+		ctx.out.info(`  ${entry.kind.padEnd(13)} ${materializer?.deltaRoot ?? ''}/${entry.relative}`);
 	}
 	for (const path of stranded.slice(0, LIST_LIMIT)) {
 		ctx.out.info(`  ${path} - codkit load --fresh removes it`);
@@ -183,7 +189,12 @@ async function run(ctx: CommandContext): Promise<number> {
 	// 3. Upstream files: what git sees outside the own directory and outside
 	// the declared own extensions, and whether the markers of those files are
 	// still valid.
-	const upstream = upstreamFiles(tree, config.typeConfig.ownRoot, conventions, ownExtensionTreePrefixes(declared));
+	const upstream = upstreamFiles(
+		tree,
+		config.typeConfig.ownRoot,
+		conventions,
+		materializer === null ? [] : ownExtensionTreePrefixes(materializer, declared)
+	);
 	const blocks = upstream.reduce((sum, file) => sum + file.blocks, 0);
 	const markerErrors = upstream.reduce((sum, file) => sum + file.markerErrors, 0);
 	ctx.out.info(`upstream files: ${upstream.length} changed, ${blocks} marker block(s) in them, ${markerErrors} marker error(s)`);
@@ -226,7 +237,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		own: ownData(own),
 		ownExtensions: {
 			declared: declared.length,
-			differing: extensionDrift.map((entry) => ({ path: `${OWN_EXTENSIONS_DIR}/${entry.relative}`, kind: entry.kind })),
+			differing: extensionDrift.map((entry) => ({ path: `${materializer?.deltaRoot ?? ''}/${entry.relative}`, kind: entry.kind })),
 			stranded: [...stranded]
 		},
 		upstream: {
@@ -343,22 +354,23 @@ function upstreamFiles(
 }
 
 /**
- * What git reports as untracked under `extensions/`, in its own order.
+ * What git reports as untracked under the materialization root, in its own order.
  *
  * The pathspec keeps the walk to the one directory the question is about. A
- * wholly untracked `extensions/` is reported as that one directory and hides
+ * wholly untracked materialization root is reported as that one directory and hides
  * the names inside it, so the same expansion the drift guard uses opens it up;
- * a tree whose `extensions/` carries tracked files gets the collapsed
- * `extensions/<name>/` entries and no second git call. A failing git status is
+ * a tree whose materialization root carries tracked files gets the collapsed
+ * per-unit entries and no second git call. A failing git status is
  * left silent here: the upstream half below runs the same command over the
  * whole tree and raises the real failure.
  */
-function untrackedUnderExtensions(treeDir: string): readonly string[] {
-	const status = runGit({ args: ['status', '--porcelain', '-z', '--', EXTENSIONS_TREE_DIR], cwd: treeDir });
+function untrackedUnderExtensions(materializer: Materializer, treeDir: string): readonly string[] {
+	const root = extensionsTreeDir(materializer);
+	const status = runGit({ args: ['status', '--porcelain', '-z', '--', root], cwd: treeDir });
 	if (status.status !== 0) {
 		return [];
 	}
-	return expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), [`${EXTENSIONS_TREE_DIR}/`])
+	return expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), [`${root}/`])
 		.filter((entry) => entry.status === '??')
 		.map((entry) => entry.path);
 }

@@ -8,6 +8,7 @@ import { chooseMaster, defaultBrandingDir, ignoredMasterFiles, seedMasters } fro
 import { discoverTargets } from '../../src/lib/imagesetTargets.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { makeImagesetTree, shippedIconBytes } from '../support/imagesetFixture.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -60,7 +61,7 @@ describe('ignoredMasterFiles', () => {
 describe('seedMasters', () => {
 	it('creates the directory and seeds it from the tree, reporting sources', () => {
 		const tree = makeImagesetTree('masters-seed');
-		const targets = discoverTargets(tree.dir, () => {});
+		const targets = discoverTargets(vscodeType, tree.dir, () => {});
 		const brandingDir = join(makeTempRoot('masters-seed-branding'), 'branding');
 		const seeded = seedMasters(brandingDir, tree.dir, targets);
 		expect(existsSync(brandingDir)).toBe(true);
@@ -78,7 +79,7 @@ describe('seedMasters', () => {
 
 	it('never touches an existing directory', () => {
 		const tree = makeImagesetTree('masters-exists');
-		const targets = discoverTargets(tree.dir, () => {});
+		const targets = discoverTargets(vscodeType, tree.dir, () => {});
 		const brandingDir = join(makeTempRoot('masters-exists-branding'), 'branding');
 		mkdirSync(brandingDir, { recursive: true });
 		writeFileSync(join(brandingDir, 'keep-me'), 'operator content');
@@ -88,7 +89,7 @@ describe('seedMasters', () => {
 
 	it('plans without writing under a dry run', () => {
 		const tree = makeImagesetTree('masters-dry');
-		const targets = discoverTargets(tree.dir, () => {});
+		const targets = discoverTargets(vscodeType, tree.dir, () => {});
 		const brandingDir = join(makeTempRoot('masters-dry-branding'), 'branding');
 		const seeded = seedMasters(brandingDir, tree.dir, targets, true);
 		expect(seeded.length).toBeGreaterThan(0);

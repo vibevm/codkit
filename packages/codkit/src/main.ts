@@ -30,6 +30,7 @@ import { saveCommand } from './commands/save.ts';
 import { standardsCheckCommand, standardsCommand, standardsLicenseCommand, standardsLoadCommand } from './commands/standards.ts';
 import { statusCommand } from './commands/status.ts';
 import { syncCommand } from './commands/sync.ts';
+import { typesCommand } from './commands/types.ts';
 import { verifyCommand } from './commands/verify.ts';
 import { whereCommand } from './commands/where.ts';
 import { parseArgv, GLOBAL_FLAG_HELP } from './lib/argv.ts';
@@ -63,6 +64,7 @@ const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT', 'RUNTIME-DRI
 const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 	[
 		whereCommand,
+		typesCommand,
 		checkTreeCommand,
 		cloneCommand,
 		loadCommand,
@@ -191,6 +193,7 @@ async function main(argv: readonly string[]): Promise<number> {
 		if (config !== null && type !== null) {
 			assertTypeConfig(type, config);
 		}
+		out.setProjectType(type?.id ?? null);
 		const exitCode = await matched.definition.run({
 			toolRoot,
 			locations,

@@ -20,6 +20,8 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
+import { materializerOf } from '../../src/lib/layers/ownExtensions.ts';
 
 /** A tracked upstream file no artifact of the delta touches: it carries no block. */
 const PLAIN_UPSTREAM = 'src/vs/base/common/lifecycle.ts';
@@ -31,7 +33,7 @@ let conventions: Conventions;
 beforeAll(() => {
 	fixture = makeSyncFixture('discard-worktree');
 	expect(fixture.sync().exitCode).toBe(0);
-	conventions = loadConventions(fixture.patchesDir);
+	conventions = loadConventions(vscodeType, fixture.patchesDir);
 });
 
 afterAll(() => {
@@ -46,7 +48,7 @@ function generated(): DriftOptions['generated'] {
 function classify(spy?: (entry: PorcelainEntry) => void): { plan: WorktreeDiscardPlan; drift: DriftResult } {
 	const plan = emptyWorktreeDiscardPlan();
 	const decide = worktreeDiscardClassifier(fixture.treeDir, conventions, plan);
-	const drift = driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+	const drift = driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 		untrackedIsDirt: false,
 		generated: generated(),
 		isDiscardable: (entry) => {

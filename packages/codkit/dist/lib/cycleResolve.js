@@ -47,6 +47,7 @@ export function runCycleResolve(options) {
             patchesDir: options.patchesDir,
             resolution: options.resolution,
             config: options.config,
+            type: options.type,
             out: options.out,
             paths: [target],
             allowNewFile: [],
@@ -121,6 +122,7 @@ function reconcileOrFinish(options, facts, plans) {
         patchesDir: options.patchesDir,
         resolution: options.resolution,
         config: options.config,
+        type: options.type,
         out: options.out,
         paths: targets,
         allowNewFile: [],
@@ -144,7 +146,7 @@ function recoverCleanTree(options, facts, artifact) {
         assertNoUnknownDirt(options, facts, artifact);
     else
         assertLiveLocks(options);
-    (options.runtime?.recoverTree ?? ((input) => recoverCycleResolveTree(input.patchesDir, input.resolution, input.config, input.out)))(options);
+    (options.runtime?.recoverTree ?? recoverCycleResolveTree)(options);
     const after = collectFacts(options);
     if (after.treeDirt.length > 0 || !treeIsCurrent(options))
         throw broken('forced load did not restore a clean current fork proof');
@@ -380,7 +382,7 @@ export const nodeCycleResolvePatchAdapter = {
         catch {
             return false;
         }
-        const patch = parseCkpatch(document, loadConventions(options.patchesDir), artifact.artifactPath);
+        const patch = parseCkpatch(document, loadConventions(options.type, options.patchesDir), artifact.artifactPath);
         if (patch.targetPath !== target ||
             patch.header.id !== artifact.artifactId ||
             patch.header.cause !== proof.cause.sha ||

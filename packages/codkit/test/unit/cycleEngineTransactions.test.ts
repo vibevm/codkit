@@ -30,6 +30,7 @@ import { STATUS_PART_PATH, STATUSBAR_PART_PATH, fixtureCommit, fixtureGit } from
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const stabilizationRunner = vi.hoisted(() => ({ calls: 0 }));
 
@@ -50,7 +51,7 @@ vi.mock('../../src/lib/cycleStabilize.ts', async (importOriginal) => {
 					options.runner ??
 					(async (runnerOptions) => {
 						stabilizationRunner.calls += 1;
-						const inventory = buildInventory(runnerOptions.patchesDir, { config: runnerOptions.config });
+						const inventory = buildInventory(runnerOptions.patchesDir, vscodeType, { config: runnerOptions.config });
 						const tip = runFixtureGit({
 							args: ['rev-parse', '--verify', 'HEAD^{commit}'],
 							cwd: runnerOptions.resolution.path
@@ -205,7 +206,7 @@ describe('cycle engine crash transactions', () => {
 		fixtureGit(fixture.upstream.dir, ['tag', 't3']);
 		const fetched = runGit({ args: ['fetch', '--quiet', '--tags', 'origin'], cwd: fixture.treeDir, netAllowed: true });
 		if (fetched.status !== 0) throw new Error(fetched.stderr);
-		startCycle({ patchesDir: fixture.patchesDir, forkDir: fixture.treeDir, config, target: 't3' });
+		startCycle({ patchesDir: fixture.patchesDir, forkDir: fixture.treeDir, config, type: vscodeType, target: 't3' });
 		expect(readCycleTerminalRecord(fixture.patchesDir)?.checkpoint).toBe('committed');
 		const newConfig = requiredConfig(fixture);
 		const next = await run(fixture, newConfig);
@@ -357,6 +358,7 @@ describe('cycle engine crash transactions', () => {
 				patchesDir: fixture.patchesDir,
 				forkDir: fixture.treeDir,
 				config,
+				type: vscodeType,
 				yes: true,
 				dependencies: {
 					checkpoint(name) {
@@ -397,6 +399,7 @@ function startFixture(label: string, review = false): CliFixture {
 		patchesDir: fixture.patchesDir,
 		forkDir: fixture.treeDir,
 		config,
+		type: vscodeType,
 		target: fixture.upstream.t2.tag
 	});
 	return fixture;
@@ -412,7 +415,7 @@ type FixtureDaemonTarget = Pick<CliFixture, 'patchesDir' | 'run'>;
 
 function stopFixtureDaemons(targets: readonly FixtureDaemonTarget[]): void {
 	for (const fixture of targets) {
-		const records = loadBuildWatch(fixture.patchesDir)
+		const records = loadBuildWatch(vscodeType, fixture.patchesDir)
 			.channels.map((channel) => readRecordState(fixture.patchesDir, channel.name))
 			.flatMap((observed) => (observed.state === 'valid' && observed.record.pid > 0 ? [observed.record] : []));
 		fixture.run(['build', 'down', '--channel', 'all']);
@@ -475,6 +478,7 @@ function run(fixture: CliFixture, config: ReturnType<typeof requiredConfig>, cra
 		patchesDir: fixture.patchesDir,
 		resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 		config,
+		type: vscodeType,
 		ci: true,
 		out,
 		...(crash === undefined

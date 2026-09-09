@@ -79,7 +79,8 @@ async function planStabilize(options) {
         execution = await (options.runner ?? runConcreteStabilization)({
             patchesDir: options.patchesDir,
             resolution: options.resolution,
-            config: options.config
+            config: options.config,
+            type: options.type
         });
     }
     catch (error) {
@@ -153,8 +154,8 @@ export async function runConcreteStabilization(options) {
     const failures = [];
     const cleanupFailures = [];
     try {
-        channels = loadBuildWatch(options.patchesDir).channels.map((channel) => channel.name);
-        verify = runVerify(options);
+        channels = loadBuildWatch(options.type, options.patchesDir).channels.map((channel) => channel.name);
+        verify = runVerify({ ...options, type: options.type });
         build = await runCi({
             ...options,
             out,

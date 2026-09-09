@@ -50,7 +50,7 @@ export function bandFor(size) {
  * every round trip is a layer of the shipped file itself.
  */
 export function verifyImageset(options) {
-    const targets = discoverTargets(options.treeDir, options.onReport).map((target) => verifyTarget(options.treeDir, target));
+    const targets = discoverTargets(options.type, options.treeDir, options.onReport).map((target) => verifyTarget(options.treeDir, target));
     return { treeDir: options.treeDir, brandingDir: options.brandingDir, targets, totals: totalsOf(targets) };
 }
 /** 0 when every asserted comparison is inside its band, 1 when one is not. */

@@ -29,6 +29,7 @@ export type Run = { readonly status: number; readonly stdout: string; readonly s
 
 /** The `--json` envelope of PROP-012 sec. 1, as the tests read it. */
 export type Envelope = {
+	codkit: { schema: number; command: string; version: string; type: string | null };
 	ok: boolean;
 	exitCode: number;
 	roots: {

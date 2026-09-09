@@ -30,6 +30,7 @@ import { CODKIT_E2E_TEST_BUILD, makeCliFixture } from '../support/cliFixture.ts'
 import type { CliFixture, Envelope, Run } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 import { SAVE_REPLAY_CRASH_ENV, SAVE_REPLAY_CRASH_EXIT_CODE } from '../../src/lib/saveReplay.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const UTIL_PATH = 'src/vs/base/common/util.ts';
 const UTIL_PATCH = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
@@ -168,7 +169,7 @@ function patchsetCommitsSince(fixture: CliFixture, since: string): readonly Patc
 /** Apply the artifact as it stands at patchset commit `sha` to the pin bytes. */
 function artifactStateAt(fixture: CliFixture, sha: string, artifact: string, pinSha: string): Uint8Array {
 	const bytes = fixture.patchGit(['show', `${sha}:${artifact}`]).stdout;
-	const parsed = parseCkpatch(Buffer.from(bytes, 'utf8'), loadConventions(fixture.patchesDir), artifact);
+	const parsed = parseCkpatch(Buffer.from(bytes, 'utf8'), loadConventions(vscodeType, fixture.patchesDir), artifact);
 	const pin = fixture.git(['show', `${pinSha}:${EXAMPLE_PART_PATH}`]).stdout;
 	return applyUnified(Buffer.from(pin, 'utf8'), parsed);
 }
@@ -1014,6 +1015,7 @@ describe('a crash during load --discard cannot lose the dropped line (ref writte
 				patchesDir: fixture.patchesDir,
 				resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 				config,
+				type: vscodeType,
 				out,
 				fresh: false,
 				dryRun: false,

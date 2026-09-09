@@ -59,7 +59,7 @@ describe('json mode', () => {
 
 		const envelope: unknown = JSON.parse(sink.stdout());
 		expect(envelope).toEqual({
-			codkit: { schema: ENVELOPE_SCHEMA_VERSION, command: 'where', version: '9.9.9' },
+			codkit: { schema: ENVELOPE_SCHEMA_VERSION, command: 'where', version: '9.9.9', type: null },
 			ok: true,
 			exitCode: 0,
 			roots: {

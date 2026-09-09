@@ -32,11 +32,12 @@ import { ckError, isCkError } from './messages.ts';
 import type { CkError } from './messages.ts';
 import {
 	NO_OWN_EXTENSIONS,
+	materializerOf,
 	mirrorOwnExtensionsBack,
 	ownExtensionTargetRelativeDir,
 	ownExtensionTreePrefixes
 } from './layers/ownExtensions.ts';
-import type { OwnExtensionSyncReport } from './layers/ownExtensions.ts';
+import type { Materializer, OwnExtensionSyncReport } from './layers/ownExtensions.ts';
 import { classifyOwn, mirrorOwnBack } from './ownCopy.ts';
 import { isDeliveredByCodkit, loadOwnManifest } from './layers/ownManifest.ts';
 import type { OwnExtension } from './layers/ownManifest.ts';
@@ -64,11 +65,14 @@ import { bytesOf, changesSince } from './treeState.ts';
 import type { StateChange, TreeState } from './treeState.ts';
 import { checkTree, formatCheckLine } from './treeIdentity.ts';
 import { assertGeneratedRefExclusive } from './worktrees.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export type SaveEngineOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set. */
+	readonly type: ProjectType;
 	readonly out: Output;
 	/** Positional paths; empty means "every changed file". */
 	readonly paths: readonly string[];
@@ -273,6 +277,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			patchesDir,
 			treeDir: tree,
 			pinSha: config.pin.sha,
+			type: options.type,
 			base: treeState.base,
 			mark,
 			ownRoot: config.typeConfig.ownRoot,
@@ -299,12 +304,13 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		}
 	}
 
-	const conventions = loadConventions(patchesDir);
+	const conventions = loadConventions(options.type, patchesDir);
 	// ##OWN-EXTENSION-UNIT: the tree roots the own-extension layer supplies. Like
 	// the own directory they are never selected as upstream changes, and their
 	// tree side is mirrored back into the delta instead.
 	const declaredExtensions = loadOwnManifest(patchesDir).extensions;
-	const ownedPrefixes = ownExtensionTreePrefixes(declaredExtensions);
+	const materializer = materializerOf(options.type);
+	const ownedPrefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, declaredExtensions);
 	const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
 	const headerOverrides = validateHeaderOverrides(options);
 	// Paths on the command line name files of the tree; they are read the same
@@ -376,7 +382,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// An addressed save mirrors only the extensions its paths name, the way it
 	// mirrors only the own files they name. An extension is mirrored as a whole
 	// directory, so naming one file inside it names the extension.
-	const extensionsInScope = filterOwnExtensions(declaredExtensions, filters);
+	const extensionsInScope = filterOwnExtensions(materializer, declaredExtensions, filters);
 
 	const store = new ArtifactStore(patchesDir);
 	const planFor = (entry: StateChange, state: TreeState, planning: ArtifactStore): PlannedFile | null =>
@@ -396,6 +402,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		// over one artifact store; a refusal names its state and blocks all writes.
 		const replayPlan = planStates({
 			patchesDir,
+			type: options.type,
 			tree,
 			base: treeState.base,
 			ownRoot: config.typeConfig.ownRoot,
@@ -424,7 +431,8 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			// worktree remainder writes below read a store that pass 2 has already
 			// put on disk, so their 'unchanged' verdicts describe the real files.
 			own = mirrorOwnBack(patchesDir, tree, config.typeConfig.ownRoot, ownInScope);
-			ownExtensions = mirrorOwnExtensionsBack(patchesDir, tree, extensionsInScope);
+			ownExtensions =
+				materializer === null ? NO_OWN_EXTENSIONS : mirrorOwnExtensionsBack(materializer, patchesDir, tree, extensionsInScope);
 			reportOwn(out, own);
 			reportOwnExtensions(out, ownExtensions);
 		}
@@ -438,7 +446,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// the store's copy of the last state).
 	if (!replayEligible || (squashing && errors.length === 0)) {
 		own = mirrorOwnBack(patchesDir, tree, config.typeConfig.ownRoot, ownInScope);
-		ownExtensions = mirrorOwnExtensionsBack(patchesDir, tree, extensionsInScope);
+		ownExtensions = materializer === null ? NO_OWN_EXTENSIONS : mirrorOwnExtensionsBack(materializer, patchesDir, tree, extensionsInScope);
 		reportOwn(out, own);
 		reportOwnExtensions(out, ownExtensions);
 		// 3. Upstream files: everything the tree's final state holds outside the own
@@ -532,6 +540,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			patchesDir,
 			resolution,
 			config,
+			type: options.type,
 			out,
 			fresh: options.fresh === true,
 			dryRun: false,
@@ -658,12 +667,19 @@ function matchesFilters(path: string, filters: readonly string[]): boolean {
  * is mirrored whole, so a filter that names the directory, a path inside it, or
  * a directory above it all select the same extension.
  */
-function filterOwnExtensions(extensions: readonly OwnExtension[], filters: readonly string[]): readonly OwnExtension[] {
+function filterOwnExtensions(
+	materializer: Materializer | null,
+	extensions: readonly OwnExtension[],
+	filters: readonly string[]
+): readonly OwnExtension[] {
+	if (materializer === null) {
+		return [];
+	}
 	if (filters.length === 0) {
 		return extensions;
 	}
 	return extensions.filter((extension) => {
-		const dir = ownExtensionTargetRelativeDir(extension.name);
+		const dir = ownExtensionTargetRelativeDir(materializer, extension.name);
 		return filters.some((filter) => filter === dir || filter.startsWith(`${dir}/`) || dir.startsWith(`${filter}/`));
 	});
 }
@@ -738,7 +754,7 @@ function planFile(
 		throw ckError(
 			'NEW-FILE-IN-UPSTREAM-ZONE',
 			'is a new file in the upstream zone: the pin does not carry it',
-			`new files belong to own code (delta/own/, materialized as src/vs/${config.typeConfig.ownRoot}/); ` +
+			`new files belong to own code (delta/own/, materialized as ${config.typeConfig.ownRoot}/); ` +
 				`if this one has to live at this exact path, say so: codkit save --allow-new-file ${target}`,
 			target
 		);

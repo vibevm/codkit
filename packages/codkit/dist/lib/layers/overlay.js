@@ -8,9 +8,9 @@
 // reformatting of the same file.
 //
 // Materialization has two channels (##OVERLAY-TWO-CHANNELS), and both live here.
-// Channel 1 is the one `load` uses: `<tree>/product.overrides.json`, which
-// upstream reads only under VSCODE_DEV and which is in the upstream .gitignore,
-// so the tree stays clean. Channel 2 rewrites the target file itself, for
+// Channel 1 is the one `load` uses: the dev-channel sidecar the type names,
+// which the running product reads instead of the target during development and
+// which upstream ignores, so the tree stays clean. Channel 2 rewrites the target file itself, for
 // packaging and publishing; its base is always the *clean file at the pin*
 // (`git show <pin>:<target>`), never the current state of the tree, which is
 // what makes `overlay apply` idempotent.
@@ -25,17 +25,38 @@ export const OVERLAY_SCHEMA_VERSION = 2;
 /** Overlays live here, one file per target, relative to the patchset root. */
 export const OVERLAYS_DIR = 'delta/overlays';
 export const OVERLAY_FILE_SUFFIX = '.overlay.json';
-/** The dev-channel file, relative to the tree root. */
-export const PRODUCT_OVERRIDES_FILE = 'product.overrides.json';
-/** The only target with a dev channel (##OVERLAY-NON-PRODUCT-TARGETS). */
-export const PRODUCT_JSON_TARGET = 'product.json';
 /**
- * Top-level keys of product.json that the upstream packaging step stamps by
- * itself (modules/vscode/PROP-003 ##PRODUCT-OVERLAY-FACTS). An overlay operation on one of them
- * is not refused - it is announced, because whatever it writes is overwritten at
- * packaging time and the intervention would be silently ineffective.
+ * The overlay target that carries a dev channel, or null when this family has
+ * none. The two-channel machinery is universal; which file is the manifest, and
+ * whether a dev channel exists for it at all, is the type's answer
+ * (##OVERLAY-TWO-CHANNELS).
  */
-export const STAMPED_PRODUCT_KEYS = ['commit', 'date', 'checksums', 'version'];
+export function devChannelTarget(type) {
+    return type.layers.overlayTargets.find((target) => target.devChannel !== null) ?? null;
+}
+/** The dev-channel file of this family, relative to the tree root, or null. */
+export function devChannelFile(type) {
+    return devChannelTarget(type)?.devChannel ?? null;
+}
+/** What the type says about one target, or null when it declares none. */
+export function overlayTargetOf(type, target) {
+    return type.layers.overlayTargets.find((declared) => declared.path === target) ?? null;
+}
+/**
+ * The only top-level keys an overlay of this target may touch, or null when the
+ * whole document is open to it. A target the type does not declare is held to
+ * the strictest rule the type states for a target without a dev channel: an
+ * undeclared target is not upstream's manifest, so it is written to as
+ * conservatively as the ones that are known not to be.
+ */
+export function allowedOverlayKeys(type, target) {
+    const declared = overlayTargetOf(type, target);
+    if (declared !== null) {
+        return declared.allowedKeys;
+    }
+    const restricted = type.layers.overlayTargets.flatMap((candidate) => candidate.allowedKeys ?? []);
+    return [...new Set(restricted)];
+}
 /** Variables `{"$var": ...}` may name (##OVERLAY-VARS). */
 export const OVERLAY_VARS = ['pin.tag', 'pin.sha', 'pin.date', 'patchset.commit', 'build.date'];
 const jsonSchema = z.lazy(() => z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonSchema), z.record(z.string(), jsonSchema)]));
@@ -202,9 +223,9 @@ export function applyOperations(base, operations, context) {
 }
 /**
  * Channel 1 (##OVERLAY-TWO-CHANNELS): collect every overlay whose target is
- * product.json and write their operations into `<tree>/product.overrides.json`.
+ * the dev-channel target and write their operations into its sidecar.
  *
- * Upstream merges that file over the real product.json with a flat
+ * Upstream merges that file over the real target with a flat
  * Object.assign of the top level, so the dev channel is a set of top-level
  * keys, and a `remove` cannot be expressed in it at all - an absent key in the
  * overrides file means "unchanged", not "deleted". Such an operation is skipped
@@ -221,8 +242,15 @@ export function applyOperations(base, operations, context) {
  * tree to read from (the seeding is then skipped, as it is for a target the pin
  * does not carry).
  */
-export function writeProductOverridesDev(_patchesDir, treeDir, overlays, context, pinSha, onWarn) {
-    const applicable = overlays.filter((overlay) => overlay.target === PRODUCT_JSON_TARGET);
+export function writeDevChannel(type, treeDir, overlays, context, pinSha, onWarn) {
+    const channel = devChannelTarget(type);
+    if (channel === null || channel.devChannel === null) {
+        // A family with no dev channel materializes through channel 2 only; there
+        // is no sidecar to write and nothing to report (##OVERLAY-TWO-CHANNELS).
+        return { path: '', written: false, keys: [], overlayIds: [] };
+    }
+    const devChannelPath = channel.devChannel;
+    const applicable = overlays.filter((overlay) => overlay.target === channel.path);
     const ids = [];
     let document = {};
     const seeded = new Set();
@@ -231,7 +259,7 @@ export function writeProductOverridesDev(_patchesDir, treeDir, overlays, context
         for (const operation of overlay.operations) {
             if (operation.op === 'remove') {
                 onWarn?.(`${overlay.artifactPath}: operation remove ${renderPath(operation.path)} has no meaning in the dev channel ` +
-                    `(product.overrides.json is merged over product.json, it cannot delete a key); it is applied only when the overlay is materialized into the target file`);
+                    `(the dev channel is merged over the target, it cannot delete a key); it is applied only when the overlay is materialized into the target file`);
                 continue;
             }
             const top = operation.path[0] ?? '';
@@ -247,8 +275,8 @@ export function writeProductOverridesDev(_patchesDir, treeDir, overlays, context
         document = applyOperations(document, expressible, context);
         ids.push(overlay.id);
     }
-    const path = overlayTreePath(treeDir, PRODUCT_OVERRIDES_FILE, 'the dev-channel target');
-    // A delta with no product.json overlay writes no file at all: an empty
+    const path = overlayTreePath(treeDir, devChannelPath, 'the dev-channel target');
+    // A delta with no overlay of that target writes no file at all: an empty
     // overrides document changes nothing upstream reads, and a file the tree did
     // not ask for is one more thing that could show up in `git status`. An
     // existing one is still refreshed, so removing the last overlay empties it.
@@ -257,7 +285,7 @@ export function writeProductOverridesDev(_patchesDir, treeDir, overlays, context
     }
     writeFileSync(path, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
     if (onWarn !== undefined) {
-        const ignoreWarning = devChannelIgnoreWarning(treeDir);
+        const ignoreWarning = devChannelIgnoreWarning(type, treeDir);
         if (ignoreWarning !== null) {
             onWarn(ignoreWarning);
         }
@@ -271,13 +299,17 @@ export function writeProductOverridesDev(_patchesDir, treeDir, overlays, context
  * or null when the file is ignored or the question cannot be answered (the tree
  * is not a git repository, as in a unit fixture).
  */
-export function devChannelIgnoreWarning(treeDir) {
-    const result = runGit({ args: ['check-ignore', '--quiet', '--', PRODUCT_OVERRIDES_FILE], cwd: treeDir });
+export function devChannelIgnoreWarning(type, treeDir) {
+    const file = devChannelFile(type);
+    if (file === null) {
+        return null;
+    }
+    const result = runGit({ args: ['check-ignore', '--quiet', '--', file], cwd: treeDir });
     // 0 = ignored, 1 = not ignored, anything else = git could not tell us.
     if (result.status !== 1) {
         return null;
     }
-    return (`${PRODUCT_OVERRIDES_FILE} is not ignored by the fork tree, so the dev channel of the config-overlay layer ` +
+    return (`${file} is not ignored by the fork tree, so the dev channel of the config-overlay layer ` +
         "leaves the tree permanently dirty; add it to .gitignore upstream or to the repository's own git exclusion (info/exclude)");
 }
 /** The value of one top-level key of a JSON target at the pin, or undefined. */
@@ -305,12 +337,13 @@ function valueAtPinPath(treeDir, pinSha, target, key) {
     return value === undefined ? undefined : value;
 }
 /** True when the tree carries a dev-channel file written by an earlier load. */
-export function productOverridesExists(treeDir) {
-    return existsSync(join(treeDir, PRODUCT_OVERRIDES_FILE));
+export function devChannelExists(type, treeDir) {
+    const file = devChannelFile(type);
+    return file !== null && existsSync(join(treeDir, file));
 }
 /**
  * Serialize a materialized target: tabs for indentation, a final line feed -
- * the style the upstream product.json is written in, so the diff of an applied
+ * the style the upstream targets are written in, so the diff of an applied
  * overlay is the change and nothing else.
  */
 export function serializeOverlayTarget(document) {
@@ -431,7 +464,7 @@ export function checkOverlay(overlay, options) {
         if (operation === undefined) {
             continue;
         }
-        const stamped = stampedKeyWarning(overlay, operation);
+        const stamped = stampedKeyWarning(options.type, overlay, operation);
         if (stamped !== null) {
             warnings.push(stamped);
         }
@@ -478,20 +511,19 @@ export function checkOverlayTarget(overlays, options) {
         materialization: options.pinOnly === true ? null : inspectMaterialization(overlays, options.treeDir, options.pinSha, options.context)
     };
 }
-/** The only path a non-product target may be changed at (##OVERLAY-NON-PRODUCT-TARGETS). */
-const SCRIPTS_KEY = 'scripts';
 /**
- * ##OVERLAY-NON-PRODUCT-TARGETS: a target other than product.json has no dev
+ * ##OVERLAY-NON-PRODUCT-TARGETS: a target the type keeps closed has no dev
  * channel, so an overlay on it rewrites an upstream file for real. The only
- * change that is allowed there is *adding* an npm script - `set` on a path of
- * exactly two keys starting with `scripts` (PROP-010 ##TREE-PACKAGE-JSON-RULE).
+ * change allowed there is *adding* under one of the keys the type opened - a
+ * `set` on a path of exactly two keys whose first is one of them.
  *
  * The finding is a check, not a parse failure: the document is well formed, and
  * what it asks for is out of bounds. `verify` reports it like any other
  * violation, and `overlay check` refuses the target.
  */
-export function nonProductTargetViolations(overlay) {
-    if (overlay.target === PRODUCT_JSON_TARGET) {
+export function restrictedTargetViolations(type, overlay) {
+    const allowedKeys = allowedOverlayKeys(type, overlay.target);
+    if (allowedKeys === null) {
         return [];
     }
     const errors = [];
@@ -500,12 +532,13 @@ export function nonProductTargetViolations(overlay) {
         if (operation === undefined) {
             continue;
         }
-        const allowed = operation.op === 'set' && operation.path.length === 2 && operation.path[0] === SCRIPTS_KEY;
+        const top = operation.path[0] ?? '';
+        const allowed = operation.op === 'set' && operation.path.length === 2 && allowedKeys.includes(top);
         if (allowed) {
             continue;
         }
         errors.push(ckError('OVERLAY-SCHEMA', `operations[${index}] is ${operation.op} ${renderPath(operation.path)} on ${overlay.target}: ` +
-            'only additions to scripts are allowed for tree package.json targets', `write the operation as {"op": "set", "path": ["${SCRIPTS_KEY}", "<name>"], …}, or move the change to a layer above`, overlay.artifactPath));
+            `only additions under ${allowedKeys.join(', ')} are allowed for this target`, `write the operation as {"op": "set", "path": ["${allowedKeys[0] ?? 'scripts'}", "<name>"], …}, or move the change to a layer above`, overlay.artifactPath));
     }
     return errors;
 }
@@ -518,17 +551,19 @@ export function overlayDriftErrors(drift) {
     return drift.map((entry) => ckError('OVERLAY-DRIFT', `${entry.overlayId}: ${entry.target}:${renderPath(entry.path)} at the pin is ${renderValue(entry.actual)}, ` +
         `but the overlay expects ${entry.expectedAbsent ? 'no such key' : renderValue(entry.expected)}`, 'upstream changed the key this intervention is written against: review the overlay and update expectUpstream', entry.artifactPath));
 }
-/** The advisory of modules/vscode/PROP-003 ##PRODUCT-OVERLAY-FACTS, or null when none applies. */
-function stampedKeyWarning(overlay, operation) {
-    if (overlay.target !== PRODUCT_JSON_TARGET) {
-        return null;
-    }
+/**
+ * The advisory about a key the packaging step of this family stamps by itself,
+ * or null when none applies. An operation on such a key is announced, not
+ * refused: whatever it writes is overwritten when the product is packaged.
+ */
+function stampedKeyWarning(type, overlay, operation) {
+    const stamped = overlayTargetOf(type, overlay.target)?.stampedKeys ?? [];
     const top = operation.path[0] ?? '';
-    if (operation.path.length !== 1 || !STAMPED_PRODUCT_KEYS.includes(top)) {
+    if (stamped.length === 0 || operation.path.length !== 1 || !stamped.includes(top)) {
         return null;
     }
     return (`${overlay.artifactPath}: operation ${operation.op} ${renderPath(operation.path)} writes a key the upstream packaging step stamps itself ` +
-        `(${STAMPED_PRODUCT_KEYS.join(', ')}), so the value is overwritten when the product is packaged`);
+        `(${stamped.join(', ')}), so the value is overwritten when the product is packaged`);
 }
 function inspectMaterialization(overlays, treeDir, pinSha, context) {
     const target = overlays[0]?.target ?? '';

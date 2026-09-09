@@ -31,7 +31,7 @@ function deriveCycleRegenerationPlan(options, recoveryBasis = []) {
     assertCanonicalInput(options.classifications, options.causes);
     const sourcePin = pinValue(state.sourcePin);
     const targetPin = pinValue(state.targetPin);
-    const inventory = loadInventory(options.patchesDir, recoveryBasis);
+    const inventory = loadInventory(options.patchesDir, options.type, recoveryBasis);
     const classifications = classificationMap(options.classifications);
     assertComplete(inventory, classifications);
     const causes = causeMap(options.causes, classifications);
@@ -172,12 +172,12 @@ export function regenerateCycle(options, runtime = {}) {
     }
     return applyCycleRegenerationPlan(options, planCycleRegeneration(options), runtime, false);
 }
-function loadInventory(root, recoveryBasis) {
+function loadInventory(root, type, recoveryBasis) {
     const override = new Map(recoveryBasis.map((item) => [item.path, item]));
     const snapshots = [];
     const patches = new Map();
     const patchFiles = files(root, PATCHES_DIR, PATCH_FILE_SUFFIX, override);
-    const conventions = patchFiles.length === 0 ? null : loadConventions(root);
+    const conventions = patchFiles.length === 0 ? null : loadConventions(type, root);
     for (const path of patchFiles) {
         const snap = snapshot(root, path, override);
         if (conventions === null)

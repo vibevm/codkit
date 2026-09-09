@@ -33,6 +33,7 @@ import {
 	verifyImageset
 } from '../../src/lib/imagesetVerify.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
 
@@ -70,7 +71,7 @@ function ico(frames: readonly Rgba[]): Uint8Array {
 }
 
 function verify(treeDir: string) {
-	const verification = verifyImageset({ treeDir, brandingDir: join(treeDir, 'never-read'), onReport: () => {} });
+	const verification = verifyImageset({ type: vscodeType, treeDir, brandingDir: join(treeDir, 'never-read'), onReport: () => {} });
 	return { verification, exitCode: verificationExitCode(verification) };
 }
 

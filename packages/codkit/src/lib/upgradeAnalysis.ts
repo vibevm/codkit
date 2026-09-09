@@ -13,11 +13,14 @@ import type { CodkitConfig, PinConfig } from './configFile.ts';
 import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 import type { CycleRename } from './cycleState.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export type UpgradeAnalysisOptions = {
 	readonly patchesDir: string;
 	readonly treeDir: string;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below are handed it. */
+	readonly type: ProjectType;
 	/** Exact 40-hex commit, never a movable branch or tag. */
 	readonly newRef: string;
 	readonly similarity?: number;
@@ -75,6 +78,7 @@ export function analyzeUpgrade(options: UpgradeAnalysisOptions): UpgradeAnalysis
 	const classified = classifyUpgradeInventory({
 		patchesDir: options.patchesDir,
 		treeDir: options.treeDir,
+		type: options.type,
 		expectedPin,
 		oldPin: options.config.pin.sha,
 		newRef: options.newRef,

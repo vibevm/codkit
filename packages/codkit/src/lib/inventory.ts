@@ -30,7 +30,7 @@ import type { Conventions } from './conventionsFile.ts';
 import { gitOk, runGit } from './gitx.ts';
 import { loadOverlays } from './layers/overlay.ts';
 import type { Overlay } from './layers/overlay.ts';
-import { ownExtensionSourceRoot, isSafeExtensionName, listExtensionFiles } from './layers/ownExtensions.ts';
+import { isSafeExtensionName, listExtensionFiles, materializerOf, ownExtensionSourceRoot } from './layers/ownExtensions.ts';
 import { OWN_MANIFEST_PATH, loadOwnManifest } from './layers/ownManifest.ts';
 import type { OwnManifest } from './layers/ownManifest.ts';
 import { loadRemoved } from './layers/removed.ts';
@@ -46,6 +46,7 @@ import { readVersionLiteral } from './runtimePackage.ts';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
 import { PATCHES_DIR, patchSetCommitId } from './syncEngine.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export const INVENTORY_SCHEMA_VERSION = 2;
 
@@ -190,8 +191,8 @@ export type BuildInventoryOptions = {
  * describe itself correctly fails here rather than producing a plausible-looking
  * document (##IB-READ-ARTIFACTS).
  */
-export function buildInventory(patchesDir: string, options: BuildInventoryOptions = {}): Inventory {
-	const conventions = loadConventions(patchesDir);
+export function buildInventory(patchesDir: string, type: ProjectType, options: BuildInventoryOptions = {}): Inventory {
+	const conventions = loadConventions(type, patchesDir);
 	const patches = loadPatches(patchesDir, conventions);
 	const overlays = loadOverlays(patchesDir);
 	const rules = loadRules(patchesDir);
@@ -218,7 +219,7 @@ export function buildInventory(patchesDir: string, options: BuildInventoryOption
 			artifact: RESOURCE_MAP_PATH
 		})),
 		...rules.map((rule) => ruleEntry(rule)),
-		...ownEntries(patchesDir, manifest),
+		...ownEntries(patchesDir, type, manifest),
 		...deliveredRuntimeEntry(patchesDir)
 	];
 	entries.sort((left, right) => compareBytes(left.id, right.id));
@@ -577,12 +578,13 @@ export function resolvePatchSetRef(patchesDir: string, ref: string): string {
  */
 export function diffInventoryAgainstRef(
 	patchesDir: string,
+	type: ProjectType,
 	current: Inventory,
 	ref: string
 ): { readonly sha: string; readonly diff: InventoryDiff } {
 	const checkout = checkoutPatchSetRef(patchesDir, ref);
 	try {
-		return { sha: checkout.sha, diff: diffInventories(buildInventory(checkout.dir, { patchSetCommit: checkout.sha }), current) };
+		return { sha: checkout.sha, diff: diffInventories(buildInventory(checkout.dir, type, { patchSetCommit: checkout.sha }), current) };
 	} finally {
 		checkout.release();
 	}
@@ -714,7 +716,7 @@ function ruleEntry(rule: Rule): InventoryEntry {
  * files those roots actually cover today - the point of the record is what own
  * code exists, not what a prefix could match.
  */
-function ownEntries(patchesDir: string, manifest: OwnManifest): readonly InventoryEntry[] {
+function ownEntries(patchesDir: string, type: ProjectType, manifest: OwnManifest): readonly InventoryEntry[] {
 	const ownFiles = listOwnFiles(ownSourceRoot(patchesDir), { refuseSymlinks: true });
 	const entries: InventoryEntry[] = [];
 	for (const unit of manifest.units) {
@@ -736,10 +738,14 @@ function ownEntries(patchesDir: string, manifest: OwnManifest): readonly Invento
 	}
 	// ##OWN-EXTENSION-UNIT: one record per extension, in the own layer, naming the
 	// files the directory holds today - the same rule the units follow.
+	const materializer = materializerOf(type);
 	for (const extension of manifest.extensions) {
-		const files = isSafeExtensionName(extension.name)
-			? listExtensionFiles(ownExtensionSourceRoot(patchesDir, extension.name)).map((relative) => `${extension.name}/${relative}`)
-			: [];
+		const files =
+			materializer !== null && isSafeExtensionName(materializer, extension.name)
+				? listExtensionFiles(ownExtensionSourceRoot(materializer, patchesDir, extension.name)).map(
+						(relative) => `${extension.name}/${relative}`
+					)
+				: [];
 		entries.push({
 			id: extension.id,
 			layer: 'own',
@@ -919,7 +925,7 @@ function countBy(values: readonly string[]): Readonly<Record<string, number>> {
 // Small shared pieces
 // ---------------------------------------------------------------------------
 
-/** `CK-workbench-001` -> `workbench` (##IB-MAKE-ENTRIES). */
+/** `CK-<subsystem>-001` -> `<subsystem>` (##IB-MAKE-ENTRIES). */
 export function subsystemOf(id: string): string {
 	return id.split('-')[1] ?? '';
 }

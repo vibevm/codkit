@@ -41,11 +41,12 @@ import {
 import type { ChannelConfig, ProcessRunner } from '../../src/lib/buildWrap.ts';
 import { readRecordState } from '../../src/lib/buildRuntime.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 afterAll(cleanupTempRoots);
 
 /** The configuration codkit ships, read through the real loader. */
-const shipped = loadBuildWatch();
+const shipped = loadBuildWatch(vscodeType);
 
 // Sanitized lines captured from the live watch-client daemon. Keeping these
 // byte-exact catches drift between the data file and the real upstream logger.
@@ -130,8 +131,13 @@ describe('build-watch.json', () => {
 
 	it('does not let a patch set replace the shipped process parser', () => {
 		const root = rootWith('build-watch-override', JSON.stringify({ codkitBuildWatch: 2, channels: {} }));
-		expect(loadBuildWatch(root)).toBe(shipped);
-		expect(loadBuildWatch(root).channels.map((entry) => entry.name)).toEqual(['transpile', 'typecheck', 'extensions', 'copilot']);
+		expect(loadBuildWatch(vscodeType, root)).toBe(shipped);
+		expect(loadBuildWatch(vscodeType, root).channels.map((entry) => entry.name)).toEqual([
+			'transpile',
+			'typecheck',
+			'extensions',
+			'copilot'
+		]);
 	});
 
 	it('loads a fork-specific process parser only through the explicit shared config field', () => {
@@ -145,7 +151,7 @@ describe('build-watch.json', () => {
 			})
 		);
 		declareBuildWatch(root);
-		const custom = loadBuildWatch(root);
+		const custom = loadBuildWatch(vscodeType, root);
 		expect(custom.channels.map((entry) => entry.name)).toEqual(['custom']);
 		expect(custom.channels[0]?.script).toBe('watch-custom');
 	});
@@ -160,7 +166,7 @@ describe('build-watch.json', () => {
 		] as const) {
 			const root = rootWith(`build-watch-${label}`, JSON.stringify({ codkitBuildWatch: 1, channels: { custom: channel } }));
 			declareBuildWatch(root);
-			expect(() => loadBuildWatch(root)).toThrow();
+			expect(() => loadBuildWatch(vscodeType, root)).toThrow();
 		}
 	});
 
@@ -193,7 +199,7 @@ describe('build-watch.json', () => {
 			})
 		);
 		declareBuildWatch(root);
-		expect(() => loadBuildWatch(root)).toThrow(/unsafe build channel name/);
+		expect(() => loadBuildWatch(vscodeType, root)).toThrow(/unsafe build channel name/);
 	});
 
 	it('rejects case-fold duplicates and names whose candidate files exceed the portable limit', () => {
@@ -204,7 +210,7 @@ describe('build-watch.json', () => {
 		] as const) {
 			const root = rootWith(`build-watch-${label}`, JSON.stringify({ codkitBuildWatch: 1, channels }));
 			declareBuildWatch(root);
-			expect(() => loadBuildWatch(root)).toThrow(/collide after ASCII|portable component limit/);
+			expect(() => loadBuildWatch(vscodeType, root)).toThrow(/collide after ASCII|portable component limit/);
 		}
 	});
 
@@ -240,7 +246,7 @@ describe('build-watch.json', () => {
 		declareProfile(leafRoot);
 		mkdirSync(join(leafRoot, 'profile'), { recursive: true });
 		symlinkSync(join(outside, 'watch.json'), join(leafRoot, 'profile', 'watch.json'));
-		expect(() => loadBuildWatch(leafRoot)).toThrow(/unsafe or unreadable|cannot be read/);
+		expect(() => loadBuildWatch(vscodeType, leafRoot)).toThrow(/unsafe or unreadable|cannot be read/);
 		expect(readFileSync(join(outside, 'watch.json'), 'utf8')).not.toContain('evil');
 
 		// A symlinked parent directory of the declared profile refuses too.
@@ -252,7 +258,7 @@ describe('build-watch.json', () => {
 		mkdirSync(join(parentRoot, 'elsewhere'), { recursive: true });
 		writeFileSync(join(parentRoot, 'elsewhere', 'watch.json'), JSON.stringify({ codkitBuildWatch: 1, channels: {} }), 'utf8');
 		symlinkSync(join(parentRoot, 'elsewhere'), join(parentRoot, 'profile'));
-		expect(() => loadBuildWatch(parentRoot)).toThrow(/unsafe or unreadable|cannot be read/);
+		expect(() => loadBuildWatch(vscodeType, parentRoot)).toThrow(/unsafe or unreadable|cannot be read/);
 	});
 
 	it('resolves --channel: a name, all, the default, and an unknown one', () => {
@@ -514,7 +520,7 @@ describe('diagnostics of a pass', () => {
 			})
 		);
 		declareBuildWatch(root);
-		expect(() => loadBuildWatch(root)).toThrow(/group 1/);
+		expect(() => loadBuildWatch(vscodeType, root)).toThrow(/group 1/);
 	});
 
 	it('rejects a count detector that captures only prose at load time is caught at match time', () => {
@@ -536,7 +542,7 @@ describe('diagnostics of a pass', () => {
 			})
 		);
 		declareBuildWatch(root);
-		const watch = loadBuildWatch(root);
+		const watch = loadBuildWatch(vscodeType, root);
 		const custom = watch.channels[0];
 		expect(custom?.name).toBe('custom');
 		// A matched count line whose group 1 is not the number: configuration
@@ -863,7 +869,7 @@ describe('probing a command line', () => {
 			stderr: ''
 		});
 
-		expect(foreignWatchers('C:\\fork tree', new Set(), { platform: 'win32', run })).toEqual([
+		expect(foreignWatchers(vscodeType, 'C:\\fork tree', new Set(), { platform: 'win32', run })).toEqual([
 			{ pid: 333, commandLine: 'node build/next/index.ts transpile --watch' }
 		]);
 	});

@@ -19,7 +19,7 @@
 // patchset-shift refusal replaced by the per-target rule) and the load half
 // (`runSync`, whose rebuild applies what patchset moved - explained by D16's
 // extension of the rebuild invariant).
-import { commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.js';
+import { commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { isCycleTestBuild } from '../lib/cycleTestCrash.js';
 import { treeId } from '../lib/fingerprint.js';
 import { runGit } from '../lib/gitx.js';
@@ -93,7 +93,16 @@ async function run(ctx) {
         }
     }
     return withLock(ctx.patchesDir, treeId(resolution.path), 'sync', () => {
-        const input = { patchesDir: ctx.patchesDir, resolution, config, out: ctx.out, flags, verbose: ctx.flags.verbose, crash };
+        const input = {
+            patchesDir: ctx.patchesDir,
+            resolution,
+            config,
+            type: requireProjectType(ctx),
+            out: ctx.out,
+            flags,
+            verbose: ctx.flags.verbose,
+            crash
+        };
         const result = aborting || continuing ? runSyncRecovery(input, aborting ? 'abort' : 'continue') : runTwoWay(input);
         ctx.out.setData(buildData(result));
         return result.exitCode;
@@ -102,7 +111,7 @@ async function run(ctx) {
     });
 }
 function runTwoWay(input) {
-    const { patchesDir, resolution, config, out, flags, crash } = input;
+    const { patchesDir, resolution, config, type, out, flags, crash } = input;
     const tree = resolution.path;
     const branch = generatedBranchName(config);
     // 0. A live transaction: nothing may operate over its half-applied state.
@@ -165,6 +174,7 @@ function runTwoWay(input) {
         patchesDir,
         treeDir: tree,
         pinSha: config.pin.sha,
+        type: type,
         base: treeState.base,
         mark,
         ownRoot: config.typeConfig.ownRoot,
@@ -227,7 +237,7 @@ function runTwoWay(input) {
         ownClasses.some((entry) => entry.kind === 'tree-edited' || entry.kind === 'unknown');
     const hasPatchsetWork = classes.patchsetOnly.length > 0 || ownClasses.some((entry) => entry.kind === 'patchset-edited');
     if (!hasTreeWork && !hasPatchsetWork) {
-        const settled = runSync({ patchesDir, resolution, config, out, fresh: flags.fresh, dryRun: false, verbose: input.verbose });
+        const settled = runSync({ patchesDir, resolution, config, type, out, fresh: flags.fresh, dryRun: false, verbose: input.verbose });
         return {
             ...ok(settled.status === 'up-to-date' ? 'up-to-date' : 'synced', classes, 0, { consumedRef: settled.discardedRef }),
             exitCode: settled.exitCode
@@ -258,7 +268,7 @@ function runTwoWay(input) {
  * the guard stay armed inside that engine.
  */
 function discardBranch(input, classes, treeState, mark, crash) {
-    const { patchesDir, resolution, config, out, flags } = input;
+    const { patchesDir, resolution, config, type, out, flags } = input;
     let record = openRecord(input, treeState, mark, [], [], classes.patchsetOnly, []);
     crash('transaction-written');
     let discarded;
@@ -267,6 +277,7 @@ function discardBranch(input, classes, treeState, mark, crash) {
             patchesDir,
             resolution,
             config,
+            type,
             out,
             fresh: flags.fresh,
             dryRun: false,

@@ -11,12 +11,13 @@ import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { driftDirty, porcelainEntries, upstreamDirt } from '../../src/lib/driftGuard.ts';
 import type { DriftOptions } from '../../src/lib/driftGuard.ts';
-import { strandedExtensionClassifier } from '../../src/lib/layers/ownExtensions.ts';
+import { strandedExtensionClassifier, materializerOf } from '../../src/lib/layers/ownExtensions.ts';
 import { loadOwnManifest } from '../../src/lib/layers/ownManifest.ts';
 import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
 const OWN_IN_PATCHSET = 'delta/own/hello.ts';
@@ -38,7 +39,9 @@ function generated(): DriftOptions['generated'] {
 }
 
 function guard(): ReturnType<typeof driftDirty> {
-	return driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, { generated: generated() });
+	return driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+		generated: generated()
+	});
 }
 
 /** Change something in the tree, look, put it back. */
@@ -113,7 +116,7 @@ describe('driftDirty', () => {
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
 			expect(guard().files).toContain('left-behind.txt');
-			const fresh = driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+			const fresh = driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 				untrackedIsDirt: false,
 				generated: generated()
 			});
@@ -131,7 +134,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 	it('drops a tracked path the caller certifies, and only that path', () => {
 		const result = whileChanged(EXAMPLE_PART_PATH, '// replaced by hand\n', () =>
 			whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+				driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 					generated: generated(),
 					isKnownMaterialization: (path) => path === 'product.json'
 				})
@@ -145,7 +148,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 
 	it('keeps the path dirt when the predicate answers no', () => {
 		const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-			driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+			driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 				generated: generated(),
 				isKnownMaterialization: () => false
 			})
@@ -162,7 +165,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
 			const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+				driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 					generated: generated(),
 					isKnownMaterialization: (path) => {
 						asked.push(path);
@@ -187,8 +190,13 @@ describe('driftDirty: the stranded-materialization exception (##DRIFT-GUARD-PRED
 
 	/** The guard as a plain `load` arms it, recording every path the hook saw. */
 	function guardPassingStranded(asked: string[]): ReturnType<typeof driftDirty> {
-		const classify = strandedExtensionClassifier(fixture.treeDir, fixture.config.pin.sha, loadOwnManifest(fixture.patchesDir).extensions);
-		return driftDirty(fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
+		const classify = strandedExtensionClassifier(
+			materializerOf(vscodeType)!,
+			fixture.treeDir,
+			fixture.config.pin.sha,
+			loadOwnManifest(fixture.patchesDir).extensions
+		);
+		return driftDirty(materializerOf(vscodeType), fixture.treeDir, fixture.config.typeConfig.ownRoot, fixture.patchesDir, {
 			generated: generated(),
 			isStrandedExtension: (entry) => {
 				asked.push(entry.path);

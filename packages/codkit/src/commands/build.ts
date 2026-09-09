@@ -17,7 +17,16 @@
 // naming codes for them.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.ts';
+import { requireCapability } from '../types/capability.ts';
+import {
+	EXIT_CHECK_FAILED,
+	EXIT_ENVIRONMENT,
+	EXIT_OK,
+	commandFlagGiven,
+	commandFlagValue,
+	forkResolution,
+	requireProjectType
+} from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import {
 	DEFAULT_ERRORS_TIMEOUT_MS,
@@ -51,12 +60,13 @@ const TIMEOUT = '--timeout';
 type Mode = 'up' | 'down' | 'status' | 'errors';
 
 async function run(ctx: CommandContext, mode: Mode): Promise<number> {
+	requireCapability(ctx.type, 'build-channels', `build ${mode}`);
 	const resolution = forkResolution(ctx);
 	ctx.out.setForkTree(resolution.path, resolution.source);
 	ctx.out.info(formatForkTreeLine(resolution));
 
 	const config = requireConfig(ctx.config, mode);
-	const watch = loadBuildWatch(ctx.patchesDir);
+	const watch = loadBuildWatch(requireProjectType(ctx), ctx.patchesDir);
 	const requested = commandFlagValue(ctx.commandFlags, CHANNEL);
 
 	const identity = checkTree(resolution, config, { mode: mode === 'up' ? 'write' : 'read' });
@@ -100,7 +110,7 @@ function runUp(ctx: CommandContext, watch: BuildWatch, requested: string | null,
 			ourGroups.add(state.record.pid);
 		}
 	}
-	const foreign = foreignWatchers(treeDir, ourGroups);
+	const foreign = foreignWatchers(requireProjectType(ctx), treeDir, ourGroups);
 	if (foreign.length > 0) {
 		for (const watcher of foreign) {
 			ctx.out.warn(`foreign watcher over ${treeDir}: pid ${watcher.pid} (${watcher.commandLine})`);
@@ -236,7 +246,9 @@ async function runErrors(
 	}
 
 	const mine = commandFlagGiven(ctx.commandFlags, MINE);
-	const targets = mine ? inventoryTargets(buildInventory(ctx.patchesDir, { config }), config.typeConfig.ownRoot) : new Set<string>();
+	const targets = mine
+		? inventoryTargets(buildInventory(ctx.patchesDir, requireProjectType(ctx), { config }), config.typeConfig.ownRoot)
+		: new Set<string>();
 
 	const rows: JsonValue[] = [];
 	let worst = EXIT_OK;

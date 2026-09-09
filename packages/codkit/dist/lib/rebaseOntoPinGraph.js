@@ -22,7 +22,7 @@ const PIN_BEARING_NONPATCH = [
     /^delta\/own\/patchset\.delta\.json$/,
     /^delta\/removed\.json$/
 ];
-export function prepareRebaseGraph(patchesDir, treeDir, mergedConfig) {
+export function prepareRebaseGraph(patchesDir, type, treeDir, mergedConfig) {
     const dirtyPaths = assertCleanMerge(patchesDir);
     const { head, featureParent, targetParent } = twoParents(patchesDir);
     if (dirtyPaths.length === 0 && !hasRebasePendingRecords(patchesDir))
@@ -42,9 +42,9 @@ export function prepareRebaseGraph(patchesDir, treeDir, mergedConfig) {
         const mergeBase = uniqueMergeBase(patchesDir, featureParent, targetParent);
         assertNoFeatureNonpatch(patchesDir, mergeBase, featureParent);
         const featurePaths = featurePatchPaths(patchesDir, mergeBase, featureParent);
-        const source = loadPatchesFromCommit(patchesDir, featureParent, featurePaths, featureCheckout.dir);
-        const merged = loadAllPatches(patchesDir, head, patchesDir);
-        const target = loadAllPatches(patchesDir, targetParent, targetCheckout.dir);
+        const source = loadPatchesFromCommit(patchesDir, type, featureParent, featurePaths, featureCheckout.dir);
+        const merged = loadAllPatches(patchesDir, type, head, patchesDir);
+        const target = loadAllPatches(patchesDir, type, targetParent, targetCheckout.dir);
         const featurePatches = bindMergedFeaturePatches(source, merged, target);
         const upstreamRenames = detectRenames({
             cwd: treeDir,
@@ -179,8 +179,8 @@ function nameOnly(patchesDir, from, to) {
         throw contract(`cannot inspect feature changes ${from}..${to}`);
     return result.stdout.split('\0').filter(Boolean).sort(compareText);
 }
-function loadPatchesFromCommit(patchesDir, commit, paths, conventionsRoot) {
-    const conventions = loadConventions(conventionsRoot);
+function loadPatchesFromCommit(patchesDir, type, commit, paths, conventionsRoot) {
+    const conventions = loadConventions(type, conventionsRoot);
     return paths.map((artifactPath) => {
         const bytes = objectBytes(patchesDir, commit, artifactPath, false);
         const patch = parseCkpatch(bytes, conventions, artifactPath);
@@ -189,7 +189,7 @@ function loadPatchesFromCommit(patchesDir, commit, paths, conventionsRoot) {
         return { sourceArtifactPath: artifactPath, artifactPath, patch, bytes, mergedBytes: bytes };
     });
 }
-function loadAllPatches(patchesDir, commit, conventionsRoot) {
+function loadAllPatches(patchesDir, type, commit, conventionsRoot) {
     const listed = runGit({ args: ['ls-tree', '-r', '--name-only', '-z', commit, '--', PATCHES_DIR], cwd: patchesDir });
     if (listed.status !== 0 || (listed.stdout !== '' && !listed.stdout.endsWith('\0')))
         throw contract(`cannot list patches at ${commit}`);
@@ -197,7 +197,7 @@ function loadAllPatches(patchesDir, commit, conventionsRoot) {
         .split('\0')
         .filter((path) => path.endsWith(PATCH_FILE_SUFFIX))
         .sort(compareText);
-    return loadPatchesFromCommit(patchesDir, commit, paths, conventionsRoot);
+    return loadPatchesFromCommit(patchesDir, type, commit, paths, conventionsRoot);
 }
 function bindMergedFeaturePatches(source, merged, target) {
     const targetIds = new Set(target.map((entry) => entry.patch.header.id));

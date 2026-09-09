@@ -21,7 +21,7 @@
 // extension of the rebuild invariant).
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.ts';
+import { commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
 import { isCycleTestBuild } from '../lib/cycleTestCrash.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { treeId } from '../lib/fingerprint.ts';
@@ -153,7 +153,16 @@ async function run(ctx: CommandContext): Promise<number> {
 		treeId(resolution.path),
 		'sync',
 		() => {
-			const input: TwoWayInput = { patchesDir: ctx.patchesDir, resolution, config, out: ctx.out, flags, verbose: ctx.flags.verbose, crash };
+			const input: TwoWayInput = {
+				patchesDir: ctx.patchesDir,
+				resolution,
+				config,
+				type: requireProjectType(ctx),
+				out: ctx.out,
+				flags,
+				verbose: ctx.flags.verbose,
+				crash
+			};
 			const result = aborting || continuing ? runSyncRecovery(input, aborting ? 'abort' : 'continue') : runTwoWay(input);
 			ctx.out.setData(buildData(result));
 			return result.exitCode;
@@ -165,7 +174,7 @@ async function run(ctx: CommandContext): Promise<number> {
 }
 
 function runTwoWay(input: TwoWayInput): TwoWayResult {
-	const { patchesDir, resolution, config, out, flags, crash } = input;
+	const { patchesDir, resolution, config, type, out, flags, crash } = input;
 	const tree = resolution.path;
 	const branch = generatedBranchName(config);
 
@@ -233,6 +242,7 @@ function runTwoWay(input: TwoWayInput): TwoWayResult {
 		patchesDir,
 		treeDir: tree,
 		pinSha: config.pin.sha,
+		type: type,
 		base: treeState.base,
 		mark,
 		ownRoot: config.typeConfig.ownRoot,
@@ -309,7 +319,7 @@ function runTwoWay(input: TwoWayInput): TwoWayResult {
 		ownClasses.some((entry) => entry.kind === 'tree-edited' || entry.kind === 'unknown');
 	const hasPatchsetWork = classes.patchsetOnly.length > 0 || ownClasses.some((entry) => entry.kind === 'patchset-edited');
 	if (!hasTreeWork && !hasPatchsetWork) {
-		const settled = runSync({ patchesDir, resolution, config, out, fresh: flags.fresh, dryRun: false, verbose: input.verbose });
+		const settled = runSync({ patchesDir, resolution, config, type, out, fresh: flags.fresh, dryRun: false, verbose: input.verbose });
 		return {
 			...ok(settled.status === 'up-to-date' ? 'up-to-date' : 'synced', classes, 0, { consumedRef: settled.discardedRef }),
 			exitCode: settled.exitCode
@@ -350,7 +360,7 @@ function discardBranch(
 	mark: TreeMark | null,
 	crash: (stage: SyncTestCrashStage) => void
 ): TwoWayResult {
-	const { patchesDir, resolution, config, out, flags } = input;
+	const { patchesDir, resolution, config, type, out, flags } = input;
 	let record = openRecord(input, treeState, mark, [], [], classes.patchsetOnly, []);
 	crash('transaction-written');
 	let discarded: SyncResult;
@@ -359,6 +369,7 @@ function discardBranch(
 			patchesDir,
 			resolution,
 			config,
+			type,
 			out,
 			fresh: flags.fresh,
 			dryRun: false,

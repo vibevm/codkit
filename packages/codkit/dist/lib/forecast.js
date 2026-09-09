@@ -12,6 +12,7 @@ export function forecastUpgrade(options) {
         patchesDir: options.patchesDir,
         treeDir: options.treeDir,
         config: options.config,
+        type: options.type,
         newRef: sha,
         ...(options.similarity === undefined ? {} : { similarity: options.similarity }),
         ...(options.layerRuntime === undefined ? {} : { layerRuntime: options.layerRuntime }),

@@ -1,6 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-REBASE-ONTO-PIN */
 // Thin command surface for the library transaction.
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, forkResolution, requireProjectType } from '../lib/command.js';
 import { ckError, isCkError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { rebaseOntoPin } from '../lib/rebaseOntoPin.js';
@@ -44,6 +44,7 @@ async function run(ctx) {
                 patchesDir: ctx.patchesDir,
                 resolution,
                 config,
+                type: requireProjectType(ctx),
                 out: ctx.out,
                 verbose: ctx.flags.verbose
             });

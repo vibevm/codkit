@@ -4,7 +4,7 @@
 //
 // An everyday developer never needs these: `load` writes the dev channel and
 // leaves the upstream file alone. Packaging does need them, because a packaged
-// build reads product.json itself, and that is what `apply` rewrites - from the
+// build reads the target itself, and that is what `apply` rewrites - from the
 // clean file at the pin, so running it twice writes the same bytes.
 //
 // `check` is the read-only half: it asks whether the artifact still describes
@@ -12,9 +12,9 @@
 // any operation writes a key the packaging step stamps by itself, and - when the
 // target is already materialized - whether the file in the tree really is "the
 // pin plus these operations" and not something a hand edit left behind.
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution } from '../lib/command.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.js';
 import { treeId } from '../lib/fingerprint.js';
-import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, applyOverlaysToTree, checkOverlayTarget, loadOverlays, nonProductTargetViolations, overlayDriftErrors } from '../lib/layers/overlay.js';
+import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, applyOverlaysToTree, checkOverlayTarget, loadOverlays, restrictedTargetViolations, overlayDriftErrors } from '../lib/layers/overlay.js';
 import { withLock } from '../lib/lock.js';
 import { ckError, isCkError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
@@ -36,7 +36,7 @@ async function run(ctx, mode) {
     const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(ctx.patchesDir));
     let report;
     try {
-        report = checkOverlayTarget(selected.overlays, { treeDir: tree, pinSha: config.pin.sha, context });
+        report = checkOverlayTarget(selected.overlays, { type: requireProjectType(ctx), treeDir: tree, pinSha: config.pin.sha, context });
     }
     catch (error) {
         // An artifact that no longer describes the tree is a check that did not
@@ -54,7 +54,7 @@ async function run(ctx, mode) {
     // ##OVERLAY-NON-PRODUCT-TARGETS: a target without a dev channel may only gain
     // npm scripts, and materializing anything else would rewrite an upstream file
     // the fork has no business rewriting - so `apply` refuses it too.
-    const outOfBounds = selected.overlays.flatMap((overlay) => nonProductTargetViolations(overlay));
+    const outOfBounds = selected.overlays.flatMap((overlay) => restrictedTargetViolations(requireProjectType(ctx), overlay));
     if (report.drift.length > 0 || outOfBounds.length > 0) {
         for (const error of [...overlayDriftErrors(report.drift), ...outOfBounds]) {
             ctx.out.addError(error.toPayload());
@@ -68,8 +68,8 @@ async function run(ctx, mode) {
     return applyTarget(ctx, config, tree, selected, report, context);
 }
 /**
- * The argument names a target (`product.json`) or the overlay file itself
- * (`delta/overlays/product.json.overlay.json`, or any path ending in it). Both
+ * The argument names a target of the type or the overlay file itself
+ * (`delta/overlays/<target>.overlay.json`, or any path ending in it). Both
  * are accepted: the command is used from scripts, where the artifact path is at
  * hand, and by people, who think in targets.
  */

@@ -2,7 +2,7 @@
 // Thin forecast command adapter.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { forecastUpgrade } from '../lib/forecast.ts';
 import type { ForecastArtifact, ForecastReport } from '../lib/forecast.ts';
@@ -41,6 +41,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		patchesDir: ctx.patchesDir,
 		treeDir: resolution.path,
 		config,
+		type: requireProjectType(ctx),
 		ref: requestedRef
 	});
 	render(ctx, result.report);

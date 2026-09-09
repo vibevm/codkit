@@ -29,6 +29,7 @@ import type { RuntimePackage } from './runtimePackage.ts';
 import { loadSpdxLicenseIds } from './spdxIds.ts';
 import { compareTrees, listScratchDirs, listTreeFiles, writeTreeViaScratch } from './standardsPackage.ts';
 import type { TreeComparison } from './standardsPackage.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 /** Where the library is installed inside the patch set (##RT-DIRECTORY-IS-CODKIT). */
 export const RUNTIME_TARGET_PATH = RUNTIME_PREFIX;
@@ -80,12 +81,14 @@ export type RuntimePlan = {
 	readonly pinTag: string | null;
 };
 
-/** ##RT-LOAD-STEPS step 7: the three lines a person needs after a successful load. */
-export const RUNTIME_NEXT_STEPS: readonly string[] = [
-	"next: import the library once from the product's composition root: import '../codkit/browser/featureFlags.contribution.js';",
-	`next: add the code-import-patterns block for src/vs/<ownRoot>/codkit/~ from the library's LAYERS.md`,
-	'next: declare the first feature with codkit gen feature <id> --title <text>'
-];
+/**
+ * ##RT-LOAD-STEPS step 7: what a person does in the tree after a delivery. The
+ * lines are the type's - they name imports and lint targets of that family -
+ * and the engine only prints them.
+ */
+export function runtimeNextSteps(type: ProjectType, ownRoot: string): readonly string[] {
+	return type.runtime?.nextSteps(ownRoot) ?? [];
+}
 
 /** Everything a run would do, computed without writing anything. */
 export function planRuntimeLoad(options: PlanOptions): RuntimePlan {

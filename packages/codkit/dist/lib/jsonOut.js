@@ -26,6 +26,7 @@ export class Output {
     errors;
     roots;
     data;
+    projectType;
     finished;
     constructor(options) {
         this.command = options.command;
@@ -36,6 +37,7 @@ export class Output {
         this.errors = [];
         this.roots = { tool: { path: '', source: 'install', exists: true }, patches: null, fork: null };
         this.data = {};
+        this.projectType = null;
         this.finished = false;
     }
     /** Human-facing progress line. Recorded in the envelope as level "info". */
@@ -78,6 +80,10 @@ export class Output {
     setData(data) {
         this.data = data;
     }
+    /** The project type this run resolved; it is carried by every envelope. */
+    setProjectType(id) {
+        this.projectType = id;
+    }
     addError(payload) {
         this.errors.push(payload);
         if (!this.jsonMode) {
@@ -109,7 +115,8 @@ export class Output {
             codkit: {
                 schema: ENVELOPE_SCHEMA_VERSION,
                 command: this.command,
-                version: this.version
+                version: this.version,
+                type: this.projectType
             },
             ok: exitCode === 0,
             exitCode,

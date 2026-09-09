@@ -93,7 +93,7 @@ const FIELD_EXPECTATION = {
     serviceId: 'must be the decorator id the override replaces',
     module: 'must be the path of our module inside delta/own/',
     extensions: 'must be a list of own extensions',
-    name: 'must be the directory name of the extension under delta/own-extensions/'
+    name: 'must be the directory name of the extension inside the own-extension delta root'
 };
 const HINT = 'see PROP-005 sec. 3 for the own manifest';
 /**

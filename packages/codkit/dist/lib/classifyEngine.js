@@ -118,7 +118,7 @@ export function classifyArtifacts(options) {
             case 'rule':
                 return classifyRule(options.treeDir, options.newRef, artifact.rule);
             case 'overlay':
-                return classifyOverlay(options.treeDir, options.newRef, artifact.overlay);
+                return classifyOverlay(options.type, options.treeDir, options.newRef, artifact.overlay);
         }
     });
 }
@@ -223,7 +223,7 @@ function classifyRule(treeDir, newRef, rule) {
         expectedMatches: rule.expectedMatches
     };
 }
-function classifyOverlay(treeDir, newRef, overlay) {
+function classifyOverlay(type, treeDir, newRef, overlay) {
     const identity = {
         artifactPath: overlay.artifactPath,
         artifactId: overlay.id,
@@ -240,7 +240,7 @@ function classifyOverlay(treeDir, newRef, overlay) {
             report: null
         };
     }
-    const report = checkOverlay(overlay, { treeDir, pinSha: newRef, pinOnly: true });
+    const report = checkOverlay(overlay, { type, treeDir, pinSha: newRef, pinOnly: true });
     return {
         ...identity,
         kind: 'overlay',

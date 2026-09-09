@@ -15,7 +15,8 @@
 // "the pass did not finish in time" are conditions of the environment around
 // the command, and PROP-007 section 13 fixes their exit codes (1 and 2) without
 // naming codes for them.
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.js';
+import { requireCapability } from '../types/capability.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { DEFAULT_ERRORS_TIMEOUT_MS, DEFAULT_UP_CHANNELS, downChannel, foreignWatchers, inotifyWarning, inventoryTargets, isMine, logPath, loadBuildWatch, readFinishedPass, readPass, selectChannels, statusOf, treeRelativePath, upChannel } from '../lib/buildWrap.js';
 import { treeId } from '../lib/fingerprint.js';
 import { buildInventory } from '../lib/inventory.js';
@@ -26,11 +27,12 @@ const CHANNEL = '--channel';
 const MINE = '--mine';
 const TIMEOUT = '--timeout';
 async function run(ctx, mode) {
+    requireCapability(ctx.type, 'build-channels', `build ${mode}`);
     const resolution = forkResolution(ctx);
     ctx.out.setForkTree(resolution.path, resolution.source);
     ctx.out.info(formatForkTreeLine(resolution));
     const config = requireConfig(ctx.config, mode);
-    const watch = loadBuildWatch(ctx.patchesDir);
+    const watch = loadBuildWatch(requireProjectType(ctx), ctx.patchesDir);
     const requested = commandFlagValue(ctx.commandFlags, CHANNEL);
     const identity = checkTree(resolution, config, { mode: mode === 'up' ? 'write' : 'read' });
     if (identity.fatal !== null) {
@@ -68,7 +70,7 @@ function runUp(ctx, watch, requested, treeDir) {
             ourGroups.add(state.record.pid);
         }
     }
-    const foreign = foreignWatchers(treeDir, ourGroups);
+    const foreign = foreignWatchers(requireProjectType(ctx), treeDir, ourGroups);
     if (foreign.length > 0) {
         for (const watcher of foreign) {
             ctx.out.warn(`foreign watcher over ${treeDir}: pid ${watcher.pid} (${watcher.commandLine})`);
@@ -183,7 +185,9 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
         channels = selectChannels(watch, requested, DEFAULT_UP_CHANNELS);
     }
     const mine = commandFlagGiven(ctx.commandFlags, MINE);
-    const targets = mine ? inventoryTargets(buildInventory(ctx.patchesDir, { config }), config.typeConfig.ownRoot) : new Set();
+    const targets = mine
+        ? inventoryTargets(buildInventory(ctx.patchesDir, requireProjectType(ctx), { config }), config.typeConfig.ownRoot)
+        : new Set();
     const rows = [];
     let worst = EXIT_OK;
     for (const channel of channels) {

@@ -8,7 +8,7 @@
 // with paths it takes only those.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { commandFlagGiven, commandFlagList, commandFlagValue, forkResolution } from '../lib/command.ts';
+import { commandFlagGiven, commandFlagList, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { isCycleTestBuild } from '../lib/cycleTestCrash.ts';
 import { treeId } from '../lib/fingerprint.ts';
@@ -51,6 +51,7 @@ async function run(ctx: CommandContext): Promise<number> {
 				patchesDir: ctx.patchesDir,
 				resolution,
 				config,
+				type: requireProjectType(ctx),
 				out: ctx.out,
 				paths: ctx.args,
 				allowNewFile: commandFlagList(ctx.commandFlags, ALLOW_NEW_FILE),

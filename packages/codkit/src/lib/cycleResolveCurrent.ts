@@ -8,6 +8,7 @@ import type { Output } from './jsonOut.ts';
 import { ckError } from './messages.ts';
 import { runSync } from './syncEngine.ts';
 import { fastPathOk, readTreeCache, readTreeMark } from './treeCache.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export function cycleResolveTreeCurrent(patchesDir: string, resolution: ForkDirResolution, config: CodkitConfig): boolean {
 	const fingerprint = deltaFingerprint(patchesDir, config.pin.sha);
@@ -27,12 +28,20 @@ export function cycleResolveTreeCurrent(patchesDir: string, resolution: ForkDirR
 	);
 }
 
-export function recoverCycleResolveTree(patchesDir: string, resolution: ForkDirResolution, config: CodkitConfig, out: Output): void {
+/** The forced load a clean-tree recovery performs (##PHASE-RESOLVE). */
+export function recoverCycleResolveTree(input: {
+	readonly patchesDir: string;
+	readonly resolution: ForkDirResolution;
+	readonly config: CodkitConfig;
+	readonly type: ProjectType;
+	readonly out: Output;
+}): void {
 	const result = runSync({
-		patchesDir,
-		resolution,
-		config,
-		out,
+		patchesDir: input.patchesDir,
+		resolution: input.resolution,
+		config: input.config,
+		type: input.type,
+		out: input.out,
 		fresh: false,
 		dryRun: false,
 		verbose: false,

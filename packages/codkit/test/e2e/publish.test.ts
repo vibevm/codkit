@@ -433,6 +433,7 @@ function libraryOptions(fixture: CliFixture, config: CodkitConfig, profile: 'ver
 		patchesDir: fixture.patchesDir,
 		resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 		config,
+		type: vscodeType,
 		out: output(),
 		patchSetRef: 'HEAD',
 		profile,

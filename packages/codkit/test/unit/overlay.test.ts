@@ -3,17 +3,12 @@
 import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import {
-	applyOperations,
-	devChannelIgnoreWarning,
-	parseOverlay,
-	resolveVar,
-	writeProductOverridesDev
-} from '../../src/lib/layers/overlay.ts';
+import { applyOperations, devChannelIgnoreWarning, parseOverlay, resolveVar, writeDevChannel } from '../../src/lib/layers/overlay.ts';
 import type { Overlay, OverlayVarContext } from '../../src/lib/layers/overlay.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const ARTIFACT = 'delta/overlays/product.json.overlay.json';
 
@@ -184,7 +179,7 @@ describe('the dev channel', () => {
 		// repository, which is exactly the "cannot be answered" case the seeding
 		// and the ignore check both step around. The e2e load test covers the
 		// seeding against a real tree.
-		const result = writeProductOverridesDev(makeTempRoot('overlay-patchset'), tree, [overlay], CONTEXT, '', (text) => {
+		const result = writeDevChannel(vscodeType, tree, [overlay], CONTEXT, '', (text) => {
 			warnings.push(text);
 		});
 		return { document: JSON.parse(readFileSync(result.path, 'utf8')) as Record<string, unknown>, warnings };
@@ -227,7 +222,7 @@ describe('the dev channel', () => {
 	it('writes two-space JSON with a final newline', () => {
 		const tree = makeTempRoot('overlay-bytes');
 		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['nameShort'], value: 'PatchSet' }]), ARTIFACT);
-		const result = writeProductOverridesDev(makeTempRoot('overlay-patchset-bytes'), tree, [overlay], CONTEXT, '');
+		const result = writeDevChannel(vscodeType, tree, [overlay], CONTEXT, '');
 		expect(readFileSync(result.path, 'utf8')).toBe('{\n  "nameShort": "PatchSet"\n}\n');
 		expect(result.path).toBe(join(tree, 'product.overrides.json'));
 		expect(result.overlayIds).toEqual(['CK-product-001']);
@@ -237,7 +232,7 @@ describe('the dev channel', () => {
 		const tree = makeTempRoot('overlay-other');
 		const other = parseOverlay({ ...VALID, target: 'package.json' }, 'delta/overlays/package.json.overlay.json');
 
-		const result = writeProductOverridesDev(makeTempRoot('overlay-patchset-other'), tree, [other], CONTEXT, '');
+		const result = writeDevChannel(vscodeType, tree, [other], CONTEXT, '');
 
 		expect(result.written).toBe(false);
 		expect(result.overlayIds).toEqual([]);
@@ -248,7 +243,7 @@ describe('the dev channel', () => {
 		const tree = makeTempRoot('overlay-emptied');
 		writeFileSync(join(tree, 'product.overrides.json'), '{\n  "nameShort": "PatchSet"\n}\n', 'utf8');
 
-		const result = writeProductOverridesDev(makeTempRoot('overlay-patchset-empty'), tree, [], CONTEXT, '');
+		const result = writeDevChannel(vscodeType, tree, [], CONTEXT, '');
 
 		expect(result.written).toBe(true);
 		expect(readFileSync(result.path, 'utf8')).toBe('{}\n');
@@ -264,7 +259,7 @@ describe('the dev channel', () => {
 		symlinkSync(victim, path);
 		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['nameShort'], value: 'PatchSet' }]), ARTIFACT);
 
-		expect(() => writeProductOverridesDev(makeTempRoot('overlay-patchset-symlink'), tree, [overlay], CONTEXT, '')).toThrow(/symlink/i);
+		expect(() => writeDevChannel(vscodeType, tree, [overlay], CONTEXT, '')).toThrow(/symlink/i);
 		expect(readFileSync(victim, 'utf8')).toBe('{"outside":true}\n');
 	});
 });
@@ -281,19 +276,19 @@ describe('devChannelIgnoreWarning', () => {
 	}
 
 	it('warns when the tree does not ignore the dev-channel file', () => {
-		const warning = devChannelIgnoreWarning(repo('overlay-ignore-missing', null));
+		const warning = devChannelIgnoreWarning(vscodeType, repo('overlay-ignore-missing', null));
 		expect(warning).not.toBeNull();
 		expect(warning).toContain('product.overrides.json');
 		expect(warning).toContain('.gitignore');
 	});
 
 	it('says nothing when the tree ignores it', () => {
-		expect(devChannelIgnoreWarning(repo('overlay-ignore-present', 'product.overrides.json\n'))).toBeNull();
+		expect(devChannelIgnoreWarning(vscodeType, repo('overlay-ignore-present', 'product.overrides.json\n'))).toBeNull();
 	});
 
 	it('says nothing when git cannot answer at all', () => {
 		// Not a repository: the load would have failed long before this point,
 		// and a warning here would only be noise.
-		expect(devChannelIgnoreWarning(makeTempRoot('overlay-ignore-norepo'))).toBeNull();
+		expect(devChannelIgnoreWarning(vscodeType, makeTempRoot('overlay-ignore-norepo'))).toBeNull();
 	});
 });

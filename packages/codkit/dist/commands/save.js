@@ -6,7 +6,7 @@
 // did there becomes an artifact in patchset, and the tree is rebuilt from those
 // artifacts in the same run. Without arguments it takes every changed file;
 // with paths it takes only those.
-import { commandFlagGiven, commandFlagList, commandFlagValue, forkResolution } from '../lib/command.js';
+import { commandFlagGiven, commandFlagList, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { isCycleTestBuild } from '../lib/cycleTestCrash.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
@@ -37,6 +37,7 @@ async function run(ctx) {
             patchesDir: ctx.patchesDir,
             resolution,
             config,
+            type: requireProjectType(ctx),
             out: ctx.out,
             paths: ctx.args,
             allowNewFile: commandFlagList(ctx.commandFlags, ALLOW_NEW_FILE),

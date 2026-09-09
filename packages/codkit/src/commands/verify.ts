@@ -12,7 +12,7 @@
 // one report, not five runs.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { ckError, serializeErrorPayload } from '../lib/messages.ts';
@@ -47,7 +47,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		return EXIT_ENVIRONMENT;
 	}
 
-	const result = runVerify({ patchesDir: ctx.patchesDir, resolution, config });
+	const result = runVerify({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
 	report(ctx, result);
 	ctx.out.setData(dataOf(result, { staged: null }));
 	if (result.findings.length === 0) {
@@ -64,7 +64,7 @@ async function run(ctx: CommandContext): Promise<number> {
  * forgiven - the hook must never make a repository uncommittable.
  */
 function stagedFast(ctx: CommandContext, config: CodkitConfig, resolution: ForkDirResolution | null): number {
-	const result = runStagedFast({ patchesDir: ctx.patchesDir, resolution, config });
+	const result = runStagedFast({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
 	report(ctx, result);
 	ctx.out.setData(dataOf(result, { staged: result.staged }));
 	if (result.findings.length === 0) {

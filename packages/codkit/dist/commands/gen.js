@@ -5,6 +5,7 @@
 // The command needs the patch-set root and nothing else (##GEN-NAMESPACE): a
 // skeleton is written into the delta, and the fork tree receives it on the next
 // `codkit load` like any other own file.
+import { requireCapability } from '../types/capability.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, patchesRoot } from '../lib/command.js';
 import { loadBaseConfig } from '../lib/configFile.js';
 import { brandHookText, brandReminders, featureDirectoryName, featureImportLine, planBrand, planFeature, readHeaderText, refuseExisting, unitReminder, writeGenerated } from '../lib/genFeature.js';
@@ -140,6 +141,7 @@ async function runFeature(ctx) {
     return EXIT_OK;
 }
 async function runBrand(ctx) {
+    requireCapability(ctx.type, 'gen-brand', 'gen brand');
     const patchesDir = patchesRoot(ctx);
     const outcome = planBrand({ patchesDir, header: headerOf(ctx, patchesDir) });
     const refusal = refuse(ctx, patchesDir, outcome);
@@ -188,7 +190,7 @@ export const genFeatureCommand = {
 export const genBrandCommand = {
     name: 'gen brand',
     summary: 'write the brand rules table and print the graft for nls.ts',
-    configMode: 'none',
+    configMode: 'load',
     roots: 'patches',
     maxArgs: 0,
     commandFlags: [...HEADER_FLAGS],

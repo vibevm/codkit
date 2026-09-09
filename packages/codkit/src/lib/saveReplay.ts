@@ -31,10 +31,11 @@ import { readRebasePending } from './rebaseOntoPinPending.ts';
 import type { RebasePendingOverride } from './rebaseOntoPinPending.ts';
 import type { PlannedFile } from './saveEngine.ts';
 import type { TreeCommit } from './treeCommits.ts';
-import { ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
+import { materializerOf, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
 import { loadOwnManifest } from './layers/ownManifest.ts';
 import { changesSince } from './treeState.ts';
 import type { StateChange, TreeState } from './treeState.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 /** The trailer that ties a patchset commit to the tree commit it replays. */
 export const TREE_COMMIT_TRAILER = 'Codkit-Tree-Commit';
@@ -133,6 +134,8 @@ export type ReplayWrites = {
 
 export type PlanStatesInput = {
 	readonly patchesDir: string;
+	/** The project type of the patch set. */
+	readonly type: ProjectType;
 	readonly tree: string;
 	/** The last applied tip; every state is read as a diff against it (D4). */
 	readonly base: string;
@@ -186,7 +189,8 @@ function planEntriesOf(
 	// ##OWN-EXTENSION-UNIT: the replay selects upstream work exactly like the
 	// direct path, so the tree roots the own-extension layer supplies are not
 	// upstream files here either.
-	const ownedPrefixes = ownExtensionTreePrefixes(loadOwnManifest(input.patchesDir).extensions);
+	const materializer = materializerOf(input.type);
+	const ownedPrefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, loadOwnManifest(input.patchesDir).extensions);
 	for (const entry of changesSince(input.tree, input.base, state, input.ownRoot, input.forcedPaths, ownedPrefixes)) {
 		try {
 			const plan = input.planFile(entry, state, store);

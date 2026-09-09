@@ -4,7 +4,7 @@
 //
 // An everyday developer never needs these: `load` writes the dev channel and
 // leaves the upstream file alone. Packaging does need them, because a packaged
-// build reads product.json itself, and that is what `apply` rewrites - from the
+// build reads the target itself, and that is what `apply` rewrites - from the
 // clean file at the pin, so running it twice writes the same bytes.
 //
 // `check` is the read-only half: it asks whether the artifact still describes
@@ -14,7 +14,7 @@
 // pin plus these operations" and not something a hand edit left behind.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { treeId } from '../lib/fingerprint.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
@@ -24,7 +24,7 @@ import {
 	applyOverlaysToTree,
 	checkOverlayTarget,
 	loadOverlays,
-	nonProductTargetViolations,
+	restrictedTargetViolations,
 	overlayDriftErrors
 } from '../lib/layers/overlay.ts';
 import type { Overlay, OverlayTargetReport } from '../lib/layers/overlay.ts';
@@ -55,7 +55,7 @@ async function run(ctx: CommandContext, mode: Mode): Promise<number> {
 
 	let report: OverlayTargetReport;
 	try {
-		report = checkOverlayTarget(selected.overlays, { treeDir: tree, pinSha: config.pin.sha, context });
+		report = checkOverlayTarget(selected.overlays, { type: requireProjectType(ctx), treeDir: tree, pinSha: config.pin.sha, context });
 	} catch (error) {
 		// An artifact that no longer describes the tree is a check that did not
 		// pass (exit 1); a schema failure never reaches here - it is raised when
@@ -72,7 +72,7 @@ async function run(ctx: CommandContext, mode: Mode): Promise<number> {
 	// ##OVERLAY-NON-PRODUCT-TARGETS: a target without a dev channel may only gain
 	// npm scripts, and materializing anything else would rewrite an upstream file
 	// the fork has no business rewriting - so `apply` refuses it too.
-	const outOfBounds = selected.overlays.flatMap((overlay) => nonProductTargetViolations(overlay));
+	const outOfBounds = selected.overlays.flatMap((overlay) => restrictedTargetViolations(requireProjectType(ctx), overlay));
 	if (report.drift.length > 0 || outOfBounds.length > 0) {
 		for (const error of [...overlayDriftErrors(report.drift), ...outOfBounds]) {
 			ctx.out.addError(error.toPayload());
@@ -90,8 +90,8 @@ async function run(ctx: CommandContext, mode: Mode): Promise<number> {
 type Selection = { readonly target: string; readonly overlays: readonly Overlay[] };
 
 /**
- * The argument names a target (`product.json`) or the overlay file itself
- * (`delta/overlays/product.json.overlay.json`, or any path ending in it). Both
+ * The argument names a target of the type or the overlay file itself
+ * (`delta/overlays/<target>.overlay.json`, or any path ending in it). Both
  * are accepted: the command is used from scripts, where the artifact path is at
  * hand, and by people, who think in targets.
  */

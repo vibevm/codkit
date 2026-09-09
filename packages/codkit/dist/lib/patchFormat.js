@@ -68,7 +68,7 @@ const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/;
 const SHA40 = /^[0-9a-f]{40}$/;
 const PIN_VALUE = /^[^@\s]+@[0-9a-f]{40}$/;
 /**
- * `src/vs/a/b.ts` -> `src__vs__a__b.ts.ckpatch` (PROP-004 sec. 4, name encoding).
+ * `a/b/c.ts` -> `a__b__c.ts.ckpatch` (PROP-004 sec. 4, name encoding).
  *
  * A path that already contains `__` would decode back to something else; the
  * upstream tree at the pin has none, and the check is there for the day one

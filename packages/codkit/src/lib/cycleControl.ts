@@ -39,6 +39,7 @@ import { gitLocal, runGit } from './gitx.ts';
 import { acquireLock } from './lock.ts';
 import type { LockHandle } from './lock.ts';
 import { ckError } from './messages.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 const PATCHSET_CYCLE_LOCK_ID = 'cycle-global';
 
@@ -72,6 +73,8 @@ export type StartCycleOptions = {
 	readonly patchesDir: string;
 	readonly forkDir: string;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below are handed it. */
+	readonly type: ProjectType;
 	readonly target: string;
 	readonly dependencies?: CycleControlDependencies;
 };
@@ -103,6 +106,8 @@ export type RestartCycleOptions = {
 	readonly patchesDir: string;
 	readonly forkDir: string;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below are handed it. */
+	readonly type: ProjectType;
 	readonly yes: boolean;
 	readonly dependencies?: CycleControlDependencies;
 };

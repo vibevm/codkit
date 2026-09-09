@@ -29,6 +29,7 @@ import type { Inventory } from '../../src/lib/inventory.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import { OVERLAY_ID, OWN_UNIT_ID, PATCH_FILE_NAME, PATCH_ID, RESOURCE_ID, RULE_ID, makePatchSet } from '../fixtures/makePatchSet.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 let patchesDir: string;
 let inventory: Inventory;
@@ -37,7 +38,7 @@ beforeAll(() => {
 	const upstream = makeUpstream(makeTempRoot('inventory-upstream'));
 	patchesDir = makeTempRoot('inventory-patchset');
 	makePatchSet(patchesDir, upstream);
-	inventory = buildInventory(patchesDir, { config: loadConfig(patchesDir) });
+	inventory = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
 });
 
 afterAll(cleanupTempRoots);
@@ -50,7 +51,7 @@ describe('the delivered runtime library', () => {
 		mkdirSync(root, { recursive: true });
 		try {
 			writeFileSync(join(root, 'version.ts'), "export const CODKIT_RUNTIME_VERSION = '0.1.0';\n", 'utf8');
-			const built = buildInventory(patchesDir, { config: loadConfig(patchesDir) });
+			const built = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
 			const delivered = built.entries.filter((entry) => entry.id === DELIVERED_RUNTIME_ID);
 
 			expect(delivered).toHaveLength(1);
@@ -132,7 +133,7 @@ describe('metrics', () => {
 		const saved = readFileSync(path, 'utf8');
 		try {
 			writeFileSync(path, saved.replace(`# id: ${PATCH_ID}\n`, `# id: ${PATCH_ID}\n# layer: entry-module\n`), 'utf8');
-			const after = buildInventory(patchesDir, { config: loadConfig(patchesDir) });
+			const after = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
 
 			expect(after.entries.find((item) => item.id === PATCH_ID)?.layer).toBe('entry-module');
 			expect(after.metrics.byLayer['entry-module']).toBe(1);
@@ -161,7 +162,7 @@ describe('metrics', () => {
 		const saved = readFileSync(path, 'utf8');
 		try {
 			writeFileSync(path, saved.split("suite('fixture.guard.icon'").join("suite('fixture.guard.gone'"), 'utf8');
-			const after = buildInventory(patchesDir, { config: loadConfig(patchesDir) });
+			const after = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
 			expect(after.metrics.contractCoverage).toEqual({ covered: 3, requiredCovered: 2, requiredTotal: 3 });
 		} finally {
 			writeFileSync(path, saved, 'utf8');
@@ -226,7 +227,7 @@ describe('expandRoots', () => {
 
 describe('serialization', () => {
 	it('is deterministic: two builds of one state are byte-identical', () => {
-		const again = buildInventory(patchesDir, { config: loadConfig(patchesDir) });
+		const again = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
 		expect(serializeInventory(again)).toBe(serializeInventory(inventory));
 	});
 

@@ -37,7 +37,7 @@ import { bytesOf } from './treeState.js';
  * written nothing.
  */
 export function mergeConflictSides(input) {
-    const theirs = applyUnified(pinBytesOf(input.treeDir, input.pinSha, input.target) ?? new Uint8Array(0), parseCkpatch(readFileSync(join(input.patchesDir, ...input.artifact.split('/'))), loadConventions(input.patchesDir), input.artifact));
+    const theirs = applyUnified(pinBytesOf(input.treeDir, input.pinSha, input.target) ?? new Uint8Array(0), parseCkpatch(readFileSync(join(input.patchesDir, ...input.artifact.split('/'))), loadConventions(input.type, input.patchesDir), input.artifact));
     let ours;
     try {
         ours = bytesOf(input.treeDir, { kind: 'worktree' }, input.target);

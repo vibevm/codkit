@@ -13,6 +13,7 @@ import { analyzeUpgrade } from '../../src/lib/upgradeAnalysis.ts';
 import type { UpgradeAnalysisOptions } from '../../src/lib/upgradeAnalysis.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const PATCH_TARGETS = {
 	clean: 'src/clean.ts',
@@ -88,7 +89,7 @@ function makeFixture(label: string): Fixture {
 }
 
 function options(fixture: Fixture, newRef = fixture.t2): UpgradeAnalysisOptions {
-	return { patchesDir: fixture.root, treeDir: fixture.tree, config: fixture.config, newRef };
+	return { patchesDir: fixture.root, treeDir: fixture.tree, config: fixture.config, type: vscodeType, newRef };
 }
 
 function writePatch(root: string, target: string, id: string, pin: string): void {

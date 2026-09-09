@@ -15,6 +15,7 @@ import type { CycleRegenerationOptions, CycleRegenerationPlan } from '../../src/
 import type { CycleState } from '../../src/lib/cycleState.ts';
 import { formatPatchHeader } from '../../src/lib/patchFormat.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { projectType as vscodeType } from '@codkit/type-vscode';
 
 const SOURCE_SHA = '1'.repeat(40);
 const TARGET_SHA = '2'.repeat(40);
@@ -256,7 +257,7 @@ function input(
 	classifications: readonly CycleApplyClassification[],
 	causes: readonly CycleClassificationCause[]
 ): CycleRegenerationOptions {
-	return { patchesDir: root, state: state(), classifications, causes };
+	return { patchesDir: root, type: vscodeType, state: state(), classifications, causes };
 }
 
 function state(): CycleState {

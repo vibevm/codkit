@@ -24,6 +24,7 @@ import { ckError } from './messages.ts';
 import { ownTestIds } from './inventory.ts';
 import { RESOURCE_FILES_PREFIX, RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, serializeResourceMap } from './layers/resource.ts';
 import type { ResourceEntry, ResourceMapDocument } from './layers/resource.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 /** Installer art has no alpha channel; the backdrop is part of the design. */
 const BMP_BACKGROUND = { r: 255, g: 255, b: 255 };
@@ -52,6 +53,8 @@ export type ImagesetReport = {
 
 export type ImagesetOptions = {
 	readonly patchesDir: string;
+	/** The project type of the patch set: the image set is its answer. */
+	readonly type: ProjectType;
 	readonly treeDir: string;
 	readonly brandingDir: string;
 	readonly pin: { readonly tag: string; readonly sha: string };
@@ -68,7 +71,7 @@ export type ImagesetOptions = {
 export function runImageset(options: ImagesetOptions): { exitCode: number; report: ImagesetReport } {
 	const { patchesDir, treeDir, brandingDir, dryRun, onInfo, onWarn } = options;
 	onInfo(`branding: ${brandingDir}`);
-	const targets = discoverTargets(treeDir, onInfo);
+	const targets = discoverTargets(options.type, treeDir, onInfo);
 	const seeded = seedMasters(brandingDir, treeDir, targets, dryRun);
 	for (const seed of seeded) {
 		onInfo(`${dryRun ? 'would seed' : 'seeded'} branding/${seed.file} from ${seed.from} (${seed.width}x${seed.height})`);

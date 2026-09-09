@@ -16,6 +16,7 @@ export function analyzeUpgrade(options) {
     const classified = classifyUpgradeInventory({
         patchesDir: options.patchesDir,
         treeDir: options.treeDir,
+        type: options.type,
         expectedPin,
         oldPin: options.config.pin.sha,
         newRef: options.newRef,

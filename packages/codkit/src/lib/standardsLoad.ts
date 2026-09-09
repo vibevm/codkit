@@ -132,7 +132,7 @@ export type LoadPlan = {
 export const LICENCE_NOTES: readonly string[] = [
 	'licence note: the package under vibevm/vibepacks/org.vibevm.codkit/standards/ carries its own LICENSE and REUSE.toml; they describe the package only.',
 	"licence note: this repository's own licence file is untouched and is never copied anywhere by codkit.",
-	"licence note: the fork tree's licence files and the product.json licence fields are upstream files - change them with a delta artifact in this patch set, never by hand.",
+	"licence note: the fork tree's licence files and the licence fields of its product manifest are upstream files - change them with a delta artifact in this patch set, never by hand.",
 	'licence note: a REUSE.toml for the fork tree is a delta artifact too.'
 ];
 
@@ -158,7 +158,7 @@ export const NOTICE_RECOMMENDATIONS: readonly string[] = [
 	'  Your own REUSE.toml may name the same paths: `codkit standards license` prints the annotation.',
 	"  Where the licences end: the packages, the runtime and this notice describe codkit's own content;",
 	"  this repository's licence file governs this repository and is never copied; the fork's licence",
-	'  files and product.json licence fields change only through a delta artifact.'
+	'  files and the licence fields of the product manifest change only through a delta artifact.'
 ];
 
 /** The shipped standards package, honouring the test seam when the build allows it. */

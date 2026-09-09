@@ -34,12 +34,14 @@ const TARGET_DIR_NAME = RUNTIME_TARGET_PATH.split('/').at(-1) ?? 'codkit';
  * is written by PROP-014 sec. 4a, so it is neither compared nor removed here.
  */
 const NOT_PART_OF_THE_LIBRARY = [NOTICE_NAME];
-/** ##RT-LOAD-STEPS step 7: the three lines a person needs after a successful load. */
-export const RUNTIME_NEXT_STEPS = [
-    "next: import the library once from the product's composition root: import '../codkit/browser/featureFlags.contribution.js';",
-    `next: add the code-import-patterns block for src/vs/<ownRoot>/codkit/~ from the library's LAYERS.md`,
-    'next: declare the first feature with codkit gen feature <id> --title <text>'
-];
+/**
+ * ##RT-LOAD-STEPS step 7: what a person does in the tree after a delivery. The
+ * lines are the type's - they name imports and lint targets of that family -
+ * and the engine only prints them.
+ */
+export function runtimeNextSteps(type, ownRoot) {
+    return type.runtime?.nextSteps(ownRoot) ?? [];
+}
 /** Everything a run would do, computed without writing anything. */
 export function planRuntimeLoad(options) {
     // (1) The source: exactly one version directory whose literal agrees with it.

@@ -25,6 +25,7 @@ import type { ForkDirResolution } from './paths.ts';
 import { runSave } from './saveEngine.ts';
 import type { SaveEngineOptions, SavePatchHeaderOverride, SaveResult } from './saveEngine.ts';
 import { loadConventions } from './conventionsFile.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 const CYCLE_LOCK_ID = 'cycle-global';
 const MARKER = /^(?:<{7}|\|{7}|={7}|>{7})(?: .*)?$/m;
@@ -97,6 +98,7 @@ export type CycleResolveOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	readonly type: ProjectType;
 	readonly state: CycleState;
 	readonly journal: readonly CycleJournalEntry[];
 	readonly artifacts: readonly CycleResolveArtifact[];
@@ -141,6 +143,7 @@ export function runCycleResolve(options: CycleResolveOptions): CycleResolveResul
 			patchesDir: options.patchesDir,
 			resolution: options.resolution,
 			config: options.config,
+			type: options.type,
 			out: options.out,
 			paths: [target],
 			allowNewFile: [],
@@ -218,6 +221,7 @@ function reconcileOrFinish(options: CycleResolveOptions, facts: Facts, plans: re
 		patchesDir: options.patchesDir,
 		resolution: options.resolution,
 		config: options.config,
+		type: options.type,
 		out: options.out,
 		paths: targets,
 		allowNewFile: [],
@@ -238,9 +242,7 @@ function recoverCleanTree(options: CycleResolveOptions, facts: Facts, artifact?:
 	if (facts.treeDirt.length > 0) throw broken('clean-tree recovery was requested with fork dirt');
 	if (artifact !== undefined) assertNoUnknownDirt(options, facts, artifact);
 	else assertLiveLocks(options);
-	(options.runtime?.recoverTree ?? ((input) => recoverCycleResolveTree(input.patchesDir, input.resolution, input.config, input.out)))(
-		options
-	);
+	(options.runtime?.recoverTree ?? recoverCycleResolveTree)(options);
 	const after = collectFacts(options);
 	if (after.treeDirt.length > 0 || !treeIsCurrent(options)) throw broken('forced load did not restore a clean current fork proof');
 	return after;
@@ -484,7 +486,7 @@ export const nodeCycleResolvePatchAdapter: CycleResolvePatchAdapter = {
 		} catch {
 			return false;
 		}
-		const patch = parseCkpatch(document, loadConventions(options.patchesDir), artifact.artifactPath);
+		const patch = parseCkpatch(document, loadConventions(options.type, options.patchesDir), artifact.artifactPath);
 		if (
 			patch.targetPath !== target ||
 			patch.header.id !== artifact.artifactId ||
@@ -575,10 +577,7 @@ function samePin(left: CodkitConfig['pin'], right: CycleState['targetPin']): boo
 	return left.tag === right.tag && left.sha === right.sha && left.date === right.date;
 }
 
-function sameCause(
-	left: { readonly sha: string; readonly approx: boolean },
-	right: { readonly sha: string; readonly approx: boolean }
-): boolean {
+function sameCause(left: CycleResolveArtifact['cause'], right: CycleResolveArtifact['cause']): boolean {
 	return left.sha === right.sha && left.approx === right.approx;
 }
 

@@ -16,6 +16,7 @@ import { ckError, isCkError, type CkErrorPayload } from './messages.ts';
 import type { ForkDirResolution } from './paths.ts';
 import type { VerifyResult } from './verifyEngine.ts';
 import { runVerify } from './verifyEngine.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 const CYCLE_LOCK_ID = 'cycle-global';
 const REPORT_VERSION = 1;
@@ -48,6 +49,8 @@ export type StabilizeHeavyRunnerOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below are handed it. */
+	readonly type: ProjectType;
 };
 export type CycleStabilizeCheckpoint =
 	'advisory-inspected' | 'advisory-planned' | 'stabilize-started' | 'stabilize-run-finished' | 'stabilize-planned';
@@ -179,7 +182,8 @@ async function planStabilize(options: ContinueCycleStabilizationOptions): Promis
 		execution = await (options.runner ?? runConcreteStabilization)({
 			patchesDir: options.patchesDir,
 			resolution: options.resolution,
-			config: options.config
+			config: options.config,
+			type: options.type
 		});
 	} catch (error) {
 		execution = failedExecution(error);
@@ -253,8 +257,8 @@ export async function runConcreteStabilization(options: StabilizeHeavyRunnerOpti
 	const failures: unknown[] = [];
 	const cleanupFailures: unknown[] = [];
 	try {
-		channels = loadBuildWatch(options.patchesDir).channels.map((channel) => channel.name);
-		verify = runVerify(options);
+		channels = loadBuildWatch(options.type, options.patchesDir).channels.map((channel) => channel.name);
+		verify = runVerify({ ...options, type: options.type });
 		build = await runCi({
 			...options,
 			out,

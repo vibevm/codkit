@@ -2,12 +2,12 @@
 // Target discovery (IMAGESET-TARGET-DISCOVERY): which image files of the fork
 // tree belong to the product's icon set, and what structure each one carries.
 //
-// The file set is codkit's built-in knowledge of the distribution - the image
-// locations every VS Code fork rebrands - expressed as fixed paths and globs.
-// The STRUCTURE is never assumed: each existing file is parsed, and the frame
-// list, element types and exact per-frame dimensions come from the bytes the
-// distribution ships. Upstream adding a frame, an installer size or a whole
-// new file under the globs is therefore followed automatically.
+// The file set is the project type's answer - the image locations a fork of
+// that family rebrands - and reaches this module as patterns and roles. The
+// STRUCTURE is never assumed: each existing file is parsed, and the frame list,
+// element types and exact per-frame dimensions come from the bytes the
+// distribution ships. Upstream adding a frame, an installer size or a whole new
+// file under the globs is therefore followed automatically.
 //
 // A target names two things, and they are not the same (IMAGESET-ARTWORK):
 // the FAMILY is the guard group and the masters folder - one contract test
@@ -16,6 +16,7 @@
 // file-type icons are one family with dozens.
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import type { ImageTargetPattern, ProjectType } from '@codkit/type-api';
 import { basename, extname, join } from 'node:path';
 import { parseBmp } from './imagesetBmp.ts';
 import { parseIcns } from './imagesetIcns.ts';
@@ -25,7 +26,8 @@ import { pngSize } from './imagesetPng.ts';
 import { parseSvg } from './imagesetSvg.ts';
 import { parseXpm } from './imagesetXpm.ts';
 
-export type TargetKind = 'ico' | 'icns' | 'png' | 'bmp' | 'xpm' | 'svg';
+/** The container of a target; the type names the ones its family uses. */
+export type TargetKind = string;
 
 export type TargetFrame = {
 	readonly width: number;
@@ -53,137 +55,15 @@ export type DiscoveredTarget = {
 	readonly stem: string;
 };
 
-type TargetPattern = {
-	readonly family: string;
-	readonly path: string;
-	readonly glob: boolean;
-	readonly kind: TargetKind;
-	/** Where a person sees the image. Never names a downstream product. */
-	readonly role: string;
-	/**
-	 * Present when every file the pattern matches carries its own drawing: the
-	 * artwork name is the file stem with this prefix removed. Absent when the
-	 * whole family shares one drawing.
-	 */
-	readonly artworkFromStem?: { readonly strip: string };
-	/** Base names this glob must not claim - another pattern owns them. */
-	readonly exclude?: readonly string[];
-};
-
-/**
- * The built-in image set of the distribution, as path patterns and roles.
- * The role is what `imageset index` hands to whoever draws the artwork, so
- * it names the place a human sees the image, not the file's own name.
- */
-const TARGET_PATTERNS: readonly TargetPattern[] = [
-	{
-		family: 'icon',
-		path: 'resources/win32/code.ico',
-		glob: false,
-		kind: 'ico',
-		role: 'Windows: the executable icon, and with it the taskbar button, the window icon, the shortcut and the file-association icon'
-	},
-	{
-		family: 'icon',
-		path: 'resources/darwin/code.icns',
-		glob: false,
-		kind: 'icns',
-		role: 'macOS: the application bundle icon, shown in the Dock, in Finder, in Launchpad and in the app switcher'
-	},
-	{
-		family: 'icon',
-		path: 'resources/linux/code.png',
-		glob: false,
-		kind: 'png',
-		role: 'Linux: the icon of the desktop entry - the application menu, the dock and the window decoration'
-	},
-	{
-		family: 'icon',
-		path: 'resources/win32/code_*.png',
-		glob: true,
-		kind: 'png',
-		role: 'Windows: the Start-menu and Store tile logos referenced by the appx manifest'
-	},
-	{
-		family: 'icon',
-		path: 'resources/linux/rpm/*.xpm',
-		glob: true,
-		kind: 'xpm',
-		role: 'Linux, RPM packaging: the package icon the menus of RPM distributions read'
-	},
-	{
-		family: 'icon',
-		path: 'resources/server/favicon.ico',
-		glob: false,
-		kind: 'ico',
-		role: 'Browser: the favicon of the served web client, shown in the tab, the bookmark bar and the history'
-	},
-	{
-		family: 'icon',
-		path: 'resources/server/code-*.png',
-		glob: true,
-		kind: 'png',
-		role: 'Browser: the installable web-app icon named by the web manifest, used when the client is added to a home screen'
-	},
-	{
-		family: 'installer-big',
-		path: 'resources/win32/inno-big-*.bmp',
-		glob: true,
-		kind: 'bmp',
-		role: 'Windows installer: the large image on the welcome and finish pages of the wizard'
-	},
-	{
-		family: 'installer-small',
-		path: 'resources/win32/inno-small-*.bmp',
-		glob: true,
-		kind: 'bmp',
-		role: 'Windows installer: the small header image shown on every page of the wizard'
-	},
-	{
-		family: 'filetype',
-		path: 'resources/win32/*.ico',
-		glob: true,
-		kind: 'ico',
-		role: 'Windows: the icon Explorer and the desktop show on files this distribution registers itself for',
-		artworkFromStem: { strip: '' },
-		exclude: ['code.ico']
-	},
-	{
-		family: 'filetype',
-		path: 'resources/darwin/*.icns',
-		glob: true,
-		kind: 'icns',
-		role: 'macOS: the icon Finder and Quick Look show on files this distribution registers itself for',
-		artworkFromStem: { strip: '' },
-		exclude: ['code.icns']
-	},
-	{
-		family: 'letterpress',
-		path: 'src/vs/workbench/browser/parts/editor/media/letterpress-*.svg',
-		glob: true,
-		kind: 'svg',
-		role: 'In the application: the watermark drawn behind the editor area when no file is open, one drawing per theme',
-		artworkFromStem: { strip: 'letterpress-' }
-	},
-	{
-		family: 'letterpress',
-		path: 'src/vs/sessions/contrib/chat/browser/media/letterpress-*.svg',
-		glob: true,
-		kind: 'svg',
-		role: 'In the application: the watermark drawn behind an empty chat session, one drawing per theme',
-		artworkFromStem: { strip: 'letterpress-' }
-	}
-];
-
 /**
  * Discover the image set of a fork tree. Missing fixed paths are reported per
  * file (they are the distribution's own layout, so their absence is news),
  * while a glob that matches nothing simply contributes no targets.
  */
-export function discoverTargets(treeDir: string, onReport: (text: string) => void): readonly DiscoveredTarget[] {
+export function discoverTargets(type: ProjectType, treeDir: string, onReport: (text: string) => void): readonly DiscoveredTarget[] {
 	const targets: DiscoveredTarget[] = [];
 	const claimed = new Map<string, string>();
-	for (const pattern of TARGET_PATTERNS) {
+	for (const pattern of type.brandImages?.targets ?? []) {
 		const files = pattern.glob
 			? globFiles(treeDir, pattern.path, pattern.exclude ?? [])
 			: existsSync(joinTree(treeDir, pattern.path))
@@ -212,7 +92,7 @@ export function discoverTargets(treeDir: string, onReport: (text: string) => voi
 	return targets;
 }
 
-function discoverOne(treeDir: string, file: string, pattern: TargetPattern): DiscoveredTarget {
+function discoverOne(treeDir: string, file: string, pattern: ImageTargetPattern): DiscoveredTarget {
 	const bytes = readFileSync(joinTree(treeDir, file));
 	const stem = basename(file, extname(file));
 	const { family, kind, role } = pattern;
@@ -255,7 +135,7 @@ function discoverOne(treeDir: string, file: string, pattern: TargetPattern): Dis
 }
 
 /** The artwork name of a target: the stem minus the pattern's prefix, or null. */
-function artworkOf(stem: string, pattern: TargetPattern): string | null {
+function artworkOf(stem: string, pattern: ImageTargetPattern): string | null {
 	if (pattern.artworkFromStem === undefined) {
 		return null;
 	}

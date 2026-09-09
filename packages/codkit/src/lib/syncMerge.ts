@@ -47,6 +47,7 @@ import type { TreeMark } from './treeCache.ts';
 import type { TreeCommit } from './treeCommits.ts';
 import { bytesOf, changesSince } from './treeState.ts';
 import type { TreeState } from './treeState.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 /** Where the patch artifacts live, relative to the patchset root (PROP-004 sec. 4). */
 const PATCHES_DIR = 'delta/patches';
@@ -170,6 +171,7 @@ export type TargetClasses = {
 
 export type ClassifyInput = {
 	readonly patchesDir: string;
+	readonly type: ProjectType;
 	readonly treeDir: string;
 	readonly pinSha: string;
 	/** The base of the tree's selection, as `save` reads it (D4). */
@@ -414,7 +416,7 @@ function reproducesTreeState(input: ClassifyInput, target: string, artifactPath:
 	try {
 		applied = applyUnified(
 			pinBytesOf(input.treeDir, input.pinSha, target) ?? new Uint8Array(0),
-			parseCkpatch(bytes, loadConventions(input.patchesDir), artifactPath)
+			parseCkpatch(bytes, loadConventions(input.type, input.patchesDir), artifactPath)
 		);
 	} catch {
 		// An artifact that does not even apply against the pin is not a state

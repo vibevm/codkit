@@ -1,6 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
 // codkit publish - guarded network publication of one immutable patchset commit.
-import { commandFlagGiven, commandFlagValue, forkResolution } from '../lib/command.js';
+import { commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { CI_PROFILES } from '../lib/ciEngine.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
@@ -22,6 +22,7 @@ async function run(ctx) {
         patchesDir: ctx.patchesDir,
         resolution,
         config,
+        type: requireProjectType(ctx),
         out: ctx.out,
         patchSetRef: ctx.args[0],
         profile: requireProfile(commandFlagValue(ctx.commandFlags, PROFILE)),

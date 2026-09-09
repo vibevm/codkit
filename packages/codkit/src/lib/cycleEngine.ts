@@ -41,6 +41,7 @@ import { ckError } from './messages.ts';
 import { isDeliveredOwnFile, listOwnFiles, OWN_SOURCE_DIR, ownSourceRoot } from './ownCopy.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { RESOURCE_MAP_PATH } from './layers/resource.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 const GLOBAL_LOCK_ID = 'cycle-global';
 const JOURNAL_ACTOR = 'agent:codkit';
@@ -49,6 +50,8 @@ export type ContinueCycleOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	/** The project type of the patch set; the engines below are handed it. */
+	readonly type: ProjectType;
 	readonly ci: boolean;
 	readonly out: Output;
 	readonly acknowledgement?: string | null;
@@ -208,6 +211,7 @@ function renamesPhase(options: ContinueCycleOptions, state: CycleState, record: 
 			patchesDir: options.patchesDir,
 			resolution: options.resolution,
 			config: options.config,
+			type: options.type,
 			sourcePin: state.sourcePin,
 			classifications: artifactClassifications(current.classifications),
 			renames: current.renames,
@@ -242,6 +246,7 @@ function regenerationPhase(
 	if (current.checkpoint === 'materialized') {
 		const regenerationOptions = {
 			patchesDir: options.patchesDir,
+			type: options.type,
 			state,
 			classifications: current.classifications,
 			causes: current.causes
@@ -319,6 +324,7 @@ function resolvePhase(
 		patchesDir: options.patchesDir,
 		resolution: options.resolution,
 		config: options.config,
+		type: options.type,
 		state,
 		journal,
 		artifacts: resolveArtifacts(options, state, record, journal),
@@ -380,6 +386,7 @@ function baseClassifyOptions(options: ContinueCycleOptions, state: CycleState) {
 		patchesDir: options.patchesDir,
 		treeDir: options.resolution.path,
 		config: options.config,
+		type: options.type,
 		state,
 		contractTestPaths: references.contractTests,
 		ownPaths: references.own
@@ -459,7 +466,7 @@ function resolveArtifacts(
 	const classifications = new Map(record.classifications.map((item) => [item.artifactPath, item]));
 	const causes = new Map(record.causes.map((item) => [item.artifactPath, item.cause]));
 	const latest = new Map(journal.map((entry) => [entry.artifact, entry]));
-	const inventory = buildInventory(options.patchesDir, { config: options.config });
+	const inventory = buildInventory(options.patchesDir, options.type, { config: options.config });
 	const entries = new Map(inventory.entries.map((entry) => [entry.artifact, entry]));
 	return RESOLVE_OUTCOMES.flatMap((outcome): CycleResolveArtifact[] =>
 		state.artifacts[outcome as keyof typeof state.artifacts].map((artifactPath): CycleResolveArtifact => {

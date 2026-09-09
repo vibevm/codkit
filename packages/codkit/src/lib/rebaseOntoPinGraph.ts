@@ -17,6 +17,7 @@ import { porcelainZEntries } from './driftGuard.ts';
 import { rebaseMovePending, retireHistoricalCompletedRebaseMove } from './rebaseOntoPinMove.ts';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.ts';
 import { detectRenames } from './renames.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 const CONFIG = 'codkit.json';
 const PIN_BEARING_NONPATCH = [
@@ -48,7 +49,7 @@ export type RebaseGraph = {
 	readonly release: () => void;
 };
 
-export function prepareRebaseGraph(patchesDir: string, treeDir: string, mergedConfig: CodkitConfig): RebaseGraph {
+export function prepareRebaseGraph(patchesDir: string, type: ProjectType, treeDir: string, mergedConfig: CodkitConfig): RebaseGraph {
 	const dirtyPaths = assertCleanMerge(patchesDir);
 	const { head, featureParent, targetParent } = twoParents(patchesDir);
 	if (dirtyPaths.length === 0 && !hasRebasePendingRecords(patchesDir)) retireHistoricalCompletedRebaseMove(patchesDir, treeDir, head);
@@ -66,9 +67,9 @@ export function prepareRebaseGraph(patchesDir: string, treeDir: string, mergedCo
 		const mergeBase = uniqueMergeBase(patchesDir, featureParent, targetParent);
 		assertNoFeatureNonpatch(patchesDir, mergeBase, featureParent);
 		const featurePaths = featurePatchPaths(patchesDir, mergeBase, featureParent);
-		const source = loadPatchesFromCommit(patchesDir, featureParent, featurePaths, featureCheckout.dir);
-		const merged = loadAllPatches(patchesDir, head, patchesDir);
-		const target = loadAllPatches(patchesDir, targetParent, targetCheckout.dir);
+		const source = loadPatchesFromCommit(patchesDir, type, featureParent, featurePaths, featureCheckout.dir);
+		const merged = loadAllPatches(patchesDir, type, head, patchesDir);
+		const target = loadAllPatches(patchesDir, type, targetParent, targetCheckout.dir);
 		const featurePatches = bindMergedFeaturePatches(source, merged, target);
 		const upstreamRenames = detectRenames({
 			cwd: treeDir,
@@ -208,11 +209,12 @@ function nameOnly(patchesDir: string, from: string, to: string): readonly string
 
 function loadPatchesFromCommit(
 	patchesDir: string,
+	type: ProjectType,
 	commit: string,
 	paths: readonly string[],
 	conventionsRoot: string
 ): readonly RebaseFeaturePatch[] {
-	const conventions = loadConventions(conventionsRoot);
+	const conventions = loadConventions(type, conventionsRoot);
 	return paths.map((artifactPath) => {
 		const bytes = objectBytes(patchesDir, commit, artifactPath, false);
 		const patch = parseCkpatch(bytes, conventions, artifactPath);
@@ -221,14 +223,14 @@ function loadPatchesFromCommit(
 	});
 }
 
-function loadAllPatches(patchesDir: string, commit: string, conventionsRoot: string): readonly RebaseFeaturePatch[] {
+function loadAllPatches(patchesDir: string, type: ProjectType, commit: string, conventionsRoot: string): readonly RebaseFeaturePatch[] {
 	const listed = runGit({ args: ['ls-tree', '-r', '--name-only', '-z', commit, '--', PATCHES_DIR], cwd: patchesDir });
 	if (listed.status !== 0 || (listed.stdout !== '' && !listed.stdout.endsWith('\0'))) throw contract(`cannot list patches at ${commit}`);
 	const paths = listed.stdout
 		.split('\0')
 		.filter((path) => path.endsWith(PATCH_FILE_SUFFIX))
 		.sort(compareText);
-	return loadPatchesFromCommit(patchesDir, commit, paths, conventionsRoot);
+	return loadPatchesFromCommit(patchesDir, type, commit, paths, conventionsRoot);
 }
 
 function bindMergedFeaturePatches(

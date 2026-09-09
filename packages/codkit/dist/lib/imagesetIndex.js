@@ -17,7 +17,7 @@ import { artworkKey, discoverTargets } from './imagesetTargets.js';
  * absent and names the command that would seed it.
  */
 export function buildImagesetIndex(options) {
-    const discovered = discoverTargets(options.treeDir, options.onReport);
+    const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
     const brandingDirExists = existsSync(options.brandingDir);
     const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
     const targets = discovered.map((target) => indexTarget(options.brandingDir, target));

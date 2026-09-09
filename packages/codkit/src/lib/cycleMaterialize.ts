@@ -40,6 +40,7 @@ import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource }
 import type { ConflictWrite, CycleMaterializeMoveCheckpoint, ProvisionalMoveOptions } from './cycleMaterializeMove.ts';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.ts';
 import type { CycleOwnRenameAuthority } from './cycleMaterializeOwn.ts';
+import type { ProjectType } from '@codkit/type-api';
 
 export type CycleMaterializeBlocker = {
 	readonly artifactPath: string;
@@ -52,6 +53,7 @@ export type CycleMaterializeOptions = {
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
+	readonly type: ProjectType;
 	readonly sourcePin: PinConfig;
 	readonly classifications: readonly ArtifactClassification[];
 	readonly renames?: readonly CycleRename[];
@@ -143,6 +145,7 @@ function prepare(options: CycleMaterializeOptions, patchSetCommit: string): Prep
 	const supplied = classificationMap(options.classifications);
 	const rebound = bindRenameTargets(loaded.artifacts, supplied, options.renames ?? []);
 	const recomputed = classifyArtifacts({
+		type: options.type,
 		treeDir: options.resolution.path,
 		artifacts: rebound,
 		oldPin: loaded.oldPin,
@@ -151,6 +154,7 @@ function prepare(options: CycleMaterializeOptions, patchSetCommit: string): Prep
 	assertClassificationsEqual(recomputed, supplied);
 	const ownEvidence = assertGeneratedTargetOwnership(
 		options.patchesDir,
+		options.type,
 		options.config.typeConfig.ownRoot,
 		generatedLayerTargets(recomputed, loaded.resources)
 	);
@@ -185,7 +189,7 @@ function prepare(options: CycleMaterializeOptions, patchSetCommit: string): Prep
 }
 
 function loadCurrent(options: CycleMaterializeOptions): Loaded {
-	const conventions = loadConventions(options.patchesDir);
+	const conventions = loadConventions(options.type, options.patchesDir);
 	strictLayerDirectory(options.patchesDir, RULES_DIR);
 	strictLayerDirectory(options.patchesDir, OVERLAYS_DIR);
 	const patches = patchNames(options.patchesDir).map((name) => {
