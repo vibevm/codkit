@@ -1,0 +1,25 @@
+# Copyright (c) 2026 Oleg Chirukhin
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+# SPDX-License-Identifier: UPL-1.0
+
+[package]
+name = "seams-theia"
+group = "org.vibevm.codkit"
+kind = "flow"
+version = "1.0.0"
+epoch = 1
+format = "normal"
+authors = ["Oleg Chirukhin"]
+license = "UPL-1.0"
+description = "The catalogue of upstream seams of the theia family of forks: the ways an Eclipse Theia monorepo itself lets a product add or change behaviour - the application manifest, theiaExtensions and the inversify container, the contribution points, rebind, the plugin map - ranked from a pull request upstream down to the internals of a module, with example locations on one upstream commit; the menu a patch set of the theia project type picks its own seam map from"
+keywords = ["codkit", "seams", "seam-catalogue", "fork", "patch-set", "project-type", "theia"]
+
+[compatibility]
+min_vibe_version = "0.1.0"
+requires_kinds = []
+
+[boot_snippet]
+source = "vibevm/vibespecs/boot/77-flow-codkit-seams-theia.xml"
+category = "flow"
+concepts = ["upstream seam", "seam map", "seam tier"]

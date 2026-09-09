@@ -24,6 +24,8 @@ const shipped = shippedStandardsPackage(toolRoot);
 const skills = shippedPackages(toolRoot, []).find((entry) => entry.name === 'agent-skills');
 /** ##STD-PACKAGES-OF-THE-TYPE: the package the `vscode` type names, delivered only to that type. */
 const seams = shippedPackages(toolRoot, ['seams-vscode']).find((entry) => entry.name === 'seams-vscode');
+/** The same for the second real type: one catalogue per family, and no other. */
+const theiaSeams = shippedPackages(toolRoot, ['seams-theia']).find((entry) => entry.name === 'seams-theia');
 
 /** ##STD-PACKAGE-PILOT-ASSETS: the bytes of the logo and the third-party icon. */
 const ASSET_HASHES: ReadonlyMap<string, string> = new Map([
@@ -245,6 +247,64 @@ describe('the shipped agent-skills package', () => {
  * same terms as the universal two - one version directory, every file with its
  * own bilingual banner, and no product name anywhere.
  */
+/**
+ * ##STD-PACKAGES-OF-THE-TYPE: the package of the `theia` project type, on the
+ * same terms as every other - one version directory, every file with its own
+ * bilingual banner, no product name anywhere, and a catalogue of the seams of
+ * its own family only.
+ */
+describe('the shipped seams-theia package', () => {
+	it('is one version directory of a type package, declaring no skills', () => {
+		expect(theiaSeams?.version).toBe('1.0.0');
+		expect(theiaSeams?.kind).toBe('type');
+		expect(theiaSeams?.declaresSkills).toBe(false);
+
+		const manifest = readFileSync(join(theiaSeams?.directory ?? '', 'vibe.toml'), 'utf8');
+		expect(manifest).toContain('name = "seams-theia"');
+		expect(manifest).toContain('source = "vibevm/vibespecs/boot/77-flow-codkit-seams-theia.xml"');
+	});
+
+	it('catalogues the seams of its own family and of no other', () => {
+		const catalogue = readFileSync(
+			join(theiaSeams?.directory ?? '', 'vibevm', 'vibespecs', 'flows', 'standards', 'seam-catalogue.xml'),
+			'utf8'
+		);
+		expect(catalogue).toContain('SEAM-CATALOGUE-IS-A-MENU-NOT-AN-INSTANCE');
+		// The two seams that make this family what it is.
+		expect(catalogue).toContain('SEAM-THEIA-EXTENSION');
+		expect(catalogue).toContain('SEAM-REBIND');
+		// And none of the other family's own vocabulary: a catalogue copied from
+		// the neighbouring type would carry these, and this one names them
+		// nowhere - the one mention of a manifest that does not exist here is
+		// the sentence saying so.
+		for (const foreign of ['registerSingleton', 'workbench.common.main', 'src/vs/', 'product.overrides']) {
+			expect(catalogue, foreign).not.toContain(foreign);
+		}
+	});
+
+	it('passes the licence check with no problems at all', () => {
+		const result = checkLicenseCarriers(theiaSeams?.directory ?? '', loadLicensePolicy(), loadSpdxLicenseIds());
+
+		expect(result.problems).toEqual([]);
+		expect(result.licences.own).toEqual(['UPL-1.0']);
+		expect(result.licences.thirdParty).toEqual([]);
+		expect(result.checked.filter((file) => file.carrier !== 'header')).toEqual([]);
+	});
+
+	it('states the licence in both languages in every carrier', () => {
+		const result = checkLicenseCarriers(theiaSeams?.directory ?? '', loadLicensePolicy(), loadSpdxLicenseIds());
+		for (const file of result.checked) {
+			const text = readFileSync(join(theiaSeams?.directory ?? '', ...file.path.split('/')), 'utf8');
+			expect(text, file.path).toContain(ENGLISH_REFERENCE);
+			expect(text, file.path).toContain(RUSSIAN_REFERENCE);
+		}
+	});
+
+	it('names no product', () => {
+		expectNoProductName(theiaSeams?.directory ?? '');
+	});
+});
+
 describe('the shipped seams-vscode package', () => {
 	it('is one version directory of a type package, declaring no skills', () => {
 		expect(seams?.version).toBe('1.0.0');
