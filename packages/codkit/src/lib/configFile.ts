@@ -448,7 +448,7 @@ function assertSchemaTwo(object: Readonly<Record<string, unknown>>, fileLabel: s
 		'CONFIG',
 		`is schema 1: schema ${CONFIG_SCHEMA_VERSION} adds ${SCHEMA_2_FIELDS}, and this tool reads schema ${CONFIG_SCHEMA_VERSION} only`,
 		`set "codkitConfig": ${CONFIG_SCHEMA_VERSION}, add "type": "<identifier>" and "typeConfig": { "ownRoot": "<path from the tree root>" }, ` +
-			'and remove "ownRoot"',
+			'and remove "ownDirName"',
 		fileLabel
 	);
 }

@@ -363,7 +363,7 @@ function assertSchemaTwo(object, fileLabel) {
         return;
     }
     throw ckError('CONFIG', `is schema 1: schema ${CONFIG_SCHEMA_VERSION} adds ${SCHEMA_2_FIELDS}, and this tool reads schema ${CONFIG_SCHEMA_VERSION} only`, `set "codkitConfig": ${CONFIG_SCHEMA_VERSION}, add "type": "<identifier>" and "typeConfig": { "ownRoot": "<path from the tree root>" }, ` +
-        'and remove "ownRoot"', fileLabel);
+        'and remove "ownDirName"', fileLabel);
 }
 function assertKnownKeys(object, known, fileLabel, prefix) {
     const unknownKeys = Object.keys(object).filter((key) => !known.includes(key));

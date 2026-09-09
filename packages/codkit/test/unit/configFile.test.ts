@@ -145,6 +145,7 @@ describe('parseBaseConfig', () => {
 		expect(error.message).toContain('schema 1');
 		expect(error.hint).toContain('"type"');
 		expect(error.hint).toContain('"ownRoot"');
+		expect(error.hint).toContain('remove "ownDirName"');
 	});
 
 	it('refuses a file that declares schema 2 but carries no type', () => {
