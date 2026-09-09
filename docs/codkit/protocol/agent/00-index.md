@@ -58,7 +58,7 @@ Patch set объявляет тип проекта — знание Codkit об 
 
 1. `codkit standards load` — кладёт в продукт универсальные пакеты `standards`
    (нормы) и `agent-skills` (навыки), пакеты объявленного типа проекта (у
-   `vscode` это `seams-vscode` — каталог швов) и блок зависимостей в
+   `vscode` это `seams-vscode`, у `theia` — `seams-theia`; оба каталоги швов) и блок зависимостей в
    `vibe.toml` (человеческий протокол — [13](../human/13-standards.md)).
    Команда читает `codkit.json`: без типа спрашивать не у кого.
 2. `vibe install --offline` — материализует пакеты в `vibevm/vibedeps/` и

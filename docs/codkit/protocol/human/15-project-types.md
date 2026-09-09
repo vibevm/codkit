@@ -70,13 +70,93 @@ CLI-пакета, и ни один модуль не грузится из patch
 | `commands.test` | `{command, ownGlobArg?}`; глоб — `<ownRoot>/**/*.test.*` |
 | `overlayTargets` | JSON-цели слоя `config-overlay` (без dev-канала); объявлена хотя бы одна — есть возможность `config-overlay` |
 | `cleanupWhitelist` | что свежий проход вправе удалить |
-| `identity.manifest` | `{path, nameField?}` — файл, который patch set называет доказательством своего апстрима (объявление; `check-tree` пока проверяет только git-условия) |
+| `identity.manifest` | `{path, nameField?}` — файл, который patch set называет доказательством своего апстрима: `check-tree` проверяет его наличие проверкой `fingerprints` |
 
 Практические следствия: `imageset *`, `gen brand`, `runtime load|check` над
 таким patch set всегда отказывают `CK-E-TYPE-CAPABILITY`; `build *` отказывает,
 пока не объявлены `commands.compile`; overlay материализуется только
 `codkit overlay apply <файл>`, потому что dev-канала нет. Заведение такого
 patch set по шагам — [02](02-daily.md#патч-сет-над-апстримом-без-модели-продукта).
+
+## Тип `theia`
+
+`theia` — монорепозиторий Eclipse Theia как апстрим: один npm-workspace пакетов
+на Node 24, сборка lerna + ссылки проектов TypeScript + esbuild, а приложение —
+не дерево исходников, а `package.json`: секция `theia` несёт имя приложения,
+умолчания настроек и параметры окна Electron, а список `dependencies` — весь
+инвентарь расширений.
+
+Три ответа этот тип получает от patch set, потому что у апстрима своего продукта
+нет:
+
+| Поле `typeConfig` | Что задаёт |
+| --- | --- |
+| `ownRoot` | каталог собственного пакета: один уровень под `packages/`, `dev-packages/` или `examples/` — иначе `CK-E-CONFIG` |
+| `ownPackageName` | npm-имя собственного пакета: им `lerna run <скрипт> --scope` выбирает пакет для линта и тестов |
+| `applicationRoot` | каталог приложения; его `package.json` — цель overlay, его сборка — package build |
+| `watchScripts.typecheck`, `watchScripts.bundle` | имена корневых npm-скриптов двух каналов наблюдения; по умолчанию `watch:compile` и `watch:bundle` |
+
+Возможности одинаковы у любого patch set этого семейства — `config-overlay`,
+`service-override`, `build-channels`, `upgrade-advisory`, — поэтому в
+`codkit types` строка `from typeConfig:` у него пуста. Шесть отсутствий —
+такие же ответы:
+
+- **нет `entry-module`**: собственный код попадает в приложение одной строкой его
+  же `dependencies`, генератор сам подставляет загрузку контейнера — прививать
+  нечего;
+- **нет `own-extensions`**: расширение Theia и **есть** собственный код
+  (workspace-пакет), а VS Code-расширения (`.vsix`) — другой механизм, через
+  карту `theiaPlugins`;
+- **нет `brand-images`** и **нет `gen-brand`**: таблицы целей изображений у
+  апстрима не существует, а идентичность продукта — один ключ манифеста
+  приложения (`theia.frontend.config.applicationName`), а не строковый шов;
+- **нет `dev-channel`**: приложение читает то, что вморожено в `src-gen/` на
+  сборке, — файла-спутника не существует, поэтому манифест приложения пишет
+  `codkit overlay apply`, а не `load`;
+- **нет `runtime-library`** в первой редакции.
+
+Что проверяет `check-tree` этого типа (проверка `fingerprints`): корневой
+`package.json` называется `@theia/monorepo` и покрывает глобы `packages/*` и
+`dev-packages/*`; `lerna.json` объявляет `npmClient: "npm"` и версию; версия
+`packages/core/package.json` совпадает с версией `lerna.json` — иначе дерево
+застряло посреди подъёма версии и работать на нём нельзя (`CK-E-NOT-UPSTREAM`).
+
+Подмена сервиса — `rebind(<Id>)` в контейнер-модуле собственного пакета, и
+`verify` проверяет **две** вещи: сам вызов и ребро зависимости от пакета,
+который сервис связывает. Без ребра порядок загрузки не гарантирован — модуль
+может загрузиться раньше и быть перекрытым самому, — поэтому `verify` называет
+пакет, которого не хватает в `dependencies` собственного пакета.
+
+Сборка: `npm ci`; линт — сначала собственный пакет
+(`npm run lint --workspace <ownRoot>`), затем полный `npm run lint`; собственные
+тесты — `npm run test --workspace <ownRoot>`; package build — `theia build`
+приложения. Ничего не штампуется на сборке: ни sha, ни даты, ни канала качества.
+
+Почему по workspace, а не `lerna run --scope <пакет>` (измерено на настоящем
+клоне): Codkit исключает собственный корень из git через `.git/info/exclude`, а
+lerna ищет свои пакеты с учётом git-игнора — `--scope` на собственный пакет даёт
+`EFILTER No packages remain after filtering`. npm читает глобы `workspaces` из
+манифеста и находит пакет независимо от git. Отсюда же ещё два наблюдаемых
+следствия дня:
+
+- **`npm ci` перестаёт работать**, как только собственный пакет появился в дереве
+  (`Missing: <пакет> from lock file`): участник workspace входит в lock-файл.
+  Один раз выполни `npm install`, положи обновлённый `package-lock.json` в свою
+  дельту, и `npm ci` снова зелёный.
+- **сборочный вывод собственного пакета лежит внутри собственного корня**
+  (`<ownRoot>/lib/`, `.eslintcache`, `*.tsbuildinfo`), а свежий проход внутрь
+  собственного корня не заходит: перед `load`, `save` и `status` удали эти пути,
+  иначе `status` покажет их как изменённый собственный код, а `load` откажет
+  `CK-E-DIRTY-TREE`. Компилировать собственный пакет можно только после дерева:
+  `npm run compile`, затем `npm run compile --workspace <ownRoot>`.
+Два канала наблюдения — `typecheck` (`tsc -b -w`) и `bundle`
+(`theia build --watch`); оба стартуют как корневые npm-скрипты дерева, поэтому
+форк заводит их у себя (overlay корневого `package.json` ограничен ключом
+`scripts`).
+
+Советник цикла читает шесть мест: версию `lerna.json`, движок Node корневого
+манифеста, набор пакетов workspace (из `package-lock.json`), виды входов
+`theiaExtensions`, схему секции `theia` и версию Electron приложения.
 
 ## Отказы и что по ним делать
 

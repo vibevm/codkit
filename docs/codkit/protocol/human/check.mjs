@@ -20,7 +20,7 @@ const caps = new Map([
 	['12-maintenance.md', 100],
 	['13-standards.md', 132],
 	['14-runtime.md', 140],
-	['15-project-types.md', 200]
+	['15-project-types.md', 280]
 ]);
 const required = [
 	'00-index.md',
