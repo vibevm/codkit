@@ -13,8 +13,8 @@
 // discouraged: layers enter this module through layersOf, which takes the
 // bytes of ONE file, and the master is picked out of that one list. There is
 // no parameter, and no flag, that could point the comparison at a second file
-// - and there must not be, because an .icns and an .ico of the same product
-// are different drawings, not two encodings of one (##IMAGESET-ROUND-TRIP).
+// - and there must not be, because two containers of one product are different
+// drawings, not two encodings of one (##IMAGESET-ROUND-TRIP).
 //
 // One model, two renderings, exactly as the index does it: `render` writes the
 // Markdown and `verificationData` the schema-2 payload, both walking the same
@@ -142,7 +142,7 @@ function verifyTarget(type, treeDir, target) {
         return unverifiable(`the shipped file carries a single layer (${shipped[0]?.label ?? 'none'}), so there is nothing to regenerate it from`);
     }
     // The master: the largest layer of THIS file, first in file order on a tie
-    // (an .icns ships ic08 and ic13 at the same size, and the round trip has to
+    // (a container may carry two layers at one size, and the round trip has to
     // be reproducible rather than dependent on which one was seen last).
     const master = shipped.reduce((best, layer) => (area(layer.image) > area(best.image) ? layer : best));
     // The regenerated container is decoded back out of its own bytes, so the
@@ -249,7 +249,7 @@ export function verificationData(verification) {
 /** The Markdown document: the same model, in the form a person reads. */
 export function renderImagesetVerification(verification) {
     const lines = ['# Icon set verification', ''];
-    lines.push(`Every raster target of the fork tree at \`${verification.treeDir}\`, round-tripped against`, 'itself: the largest layer of a container is taken as the master, the other layers are', 'regenerated from it through the pipeline `codkit imageset gen` uses, and each is compared', 'with the layer the distribution ships. The master is always a layer of the same file - an', '`.icns` and an `.ico` of one product are different drawings, so comparing them would', 'measure the difference between the drawings and not between the pipelines.', '', 'The number is the mean absolute difference over the R, G and B channels of the decoded', 'layers, in units of 1/255. Alpha is not in the average and nothing is composited onto a', 'background: measure it any other way and the figures below stop being comparable with', 'the ones the acceptance criterion was set from.', '', ...bandSection(), '', ...summarySection(verification), '', '## Targets', '');
+    lines.push(`Every raster target of the fork tree at \`${verification.treeDir}\`, round-tripped against`, 'itself: the largest layer of a container is taken as the master, the other layers are', 'regenerated from it through the pipeline `codkit imageset gen` uses, and each is compared', 'with the layer the distribution ships. The master is always a layer of the same file:', 'two containers of one product are different drawings, so comparing them would measure', 'the difference between the drawings and not between the pipelines.', '', 'The number is the mean absolute difference over the R, G and B channels of the decoded', 'layers, in units of 1/255. Alpha is not in the average and nothing is composited onto a', 'background: measure it any other way and the figures below stop being comparable with', 'the ones the acceptance criterion was set from.', '', ...bandSection(), '', ...summarySection(verification), '', '## Targets', '');
     for (const target of verification.targets.filter((candidate) => candidate.verifiable)) {
         lines.push(...targetSection(target), '');
     }

@@ -67,14 +67,13 @@ own icons, then you replace them piece by piece:
 <key> is the family for a family that holds one drawing, and family/artwork
 for one that holds several - so icon.svg, but filetype/json.svg.
 
-Families: icon (the application icon in .ico, .icns, .png and .xpm, the Start
-tiles and the web client's icons), installer-big and installer-small (the
-Windows installer bitmaps), filetype (one drawing per file type registered by
-the distribution) and letterpress (the empty-editor watermark, one per theme).
+Which families a distribution has, what each of them is for, and which
+containers they are stored in are the project type's answer; codkit imageset
+index prints them for the patch set at hand, family by family and file by file.
 
 Every raster size is rendered from a vector at its native resolution; raster
-masters are the only resampled path. A letterpress target is not rasterised at
-all: its master is emitted unchanged, so whatever the file contains - comments
+masters are the only resampled path. A vector target is not rasterised at all:
+its master is emitted unchanged, so whatever the file contains - comments
 included - is what ships.
 
 Generated files are written into delta/resources/files/ and map entries into
@@ -85,8 +84,9 @@ into the fork tree with codkit load, then review and commit the patchset.
 
 Required tools: none, on every supported OS. The SVG rasteriser ships as a
 prebuilt native module for twelve platforms (darwin x64/arm64, linux
-x64/arm64/arm each in gnu and musl, win32 x64/ia32/arm64, android), and every
-container encoder (ICO, ICNS, BMP, XPM, PNG) is part of codkit itself.
+x64/arm64/arm each in gnu and musl, win32 x64/ia32/arm64, android), and the
+container codecs are hand-written inside the project type's own package - there
+is no image-processing dependency to install.
 
 Linked libraries and licences:
   @resvg/resvg-js 2.6.2 and its twelve platform binaries      MPL-2.0
@@ -97,8 +97,7 @@ Linked libraries and licences:
   png, flate2, serde_json (image and support crates)          Apache-2.0 OR MIT
   zlib (via the flate2 backend)                               Zlib
 No GPL, LGPL or AGPL code is in the closure; the licences above are the whole
-of it. ICO frames and ICNS elements are PNG payloads, which the target
-platforms have accepted natively since Vista and OS X 10.7 respectively.`;
+of it.`;
 /** The namespace itself: only `--help` reaches here (see main.ts). */
 async function runNamespace(ctx) {
     for (const line of HELP_TEXT.split('\n')) {

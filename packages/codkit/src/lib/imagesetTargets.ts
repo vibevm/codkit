@@ -40,7 +40,7 @@ export type DiscoveredTarget = {
 	readonly frames: readonly TargetFrame[];
 	/** Element types the shipped file carries and a write does not reproduce. */
 	readonly legacyTypes: readonly string[];
-	/** File stem; the XPM encoder names its C array after it. */
+	/** File stem; a container that names its own content is named after it. */
 	readonly stem: string;
 };
 
