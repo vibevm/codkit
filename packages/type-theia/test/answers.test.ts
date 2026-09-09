@@ -102,6 +102,14 @@ describe('layout', () => {
 		expect(CLEANUP_WHITELIST.some((glob) => glob.includes('esbuild.mjs') && !glob.includes('gen-esbuild'))).toBe(false);
 	});
 
+	it('counts the packager output of an application as a build output', () => {
+		// ##THEIA-APPLICATION-ROOT: `dist/` is where the packager the product runs
+		// after `theia build` puts the unpacked application and its installers -
+		// hundreds of megabytes that used to be read as edited own code.
+		expect(makeLayout('examples/electron').ownRoots({ ownRoot: 'packages/product' })[1]?.buildOutputs).toContain('dist/**');
+		expect(CLEANUP_WHITELIST).toContain('**/dist/');
+	});
+
 	it('keeps the build directory of the one native addon this upstream has', () => {
 		// ##THEIA-NATIVE-ADDON-BUILD: the install compiles it from the `binding.gyp`
 		// of `dev-packages/ffmpeg`, a fresh pass that removed it cost a full

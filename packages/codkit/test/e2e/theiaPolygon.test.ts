@@ -307,6 +307,36 @@ describe('S75 - the second owned directory, and the build output inside an owned
 		expect(existsSync(fixture.treePath(`${OWN_ROOT}/src/browser/acme-editor-manager.ts`))).toBe(true);
 	}, 60_000);
 
+	it('does not read the packager output of the application as edited own code', () => {
+		// ##THEIA-APPLICATION-ROOT: the packager of the product writes hundreds of
+		// megabytes into `<applicationRoot>/dist/` after the build. Every file of
+		// it was reported as edited own code and `load` refused over the tree.
+		const fixture = makeTheiaFixture('theia-packaged');
+		provideTheiaTreeDependencies(fixture);
+		expect(fixture.json(['load']).run.status).toBe(0);
+
+		const packaged = fixture.treePath(`${APPLICATION_ROOT}/dist/linux-unpacked/product`);
+		mkdirSync(dirname(packaged), { recursive: true });
+		writeFileSync(packaged, 'an unpacked application\n', 'utf8');
+		writeFileSync(fixture.treePath(`${APPLICATION_ROOT}/dist/product-1.0.0.AppImage`), 'an installer\n', 'utf8');
+
+		const status = fixture.json(['status']);
+		expect(status.run.status, status.run.stderr).toBe(0);
+		expect((status.envelope.data['own'] as { changed: number }).changed).toBe(0);
+
+		// A plain load passes over it and leaves it where the packager put it.
+		const loaded = fixture.json(['load']);
+		expect(loaded.run.status, loaded.run.stderr).toBe(0);
+		expect(existsSync(packaged)).toBe(true);
+
+		// The fresh pass is the run that removes it, like every other output a
+		// build writes inside an owned directory.
+		const fresh = fixture.json(['load', '--fresh']);
+		expect(fresh.run.status, fresh.run.stderr).toBe(0);
+		expect(existsSync(packaged)).toBe(false);
+		expect(existsSync(fixture.treePath(`${APPLICATION_ROOT}/package.json`))).toBe(true);
+	}, 60_000);
+
 	it('keeps the compiled native addon of the install across a fresh pass', () => {
 		// ##THEIA-NATIVE-ADDON-BUILD: `dev-packages/ffmpeg/build/` is written by
 		// `npm ci` from the `binding.gyp` beside it and is untracked, so the fresh

@@ -43,6 +43,7 @@ export const CLEANUP_WHITELIST = [
     '**/gen-webpack*.js',
     '.browser_modules/',
     'plugins/',
+    '**/dist/',
     '.eslintcache',
     '**/.nyc_output/',
     '**/coverage/',
@@ -98,13 +99,18 @@ export const OWN_BUILD_OUTPUTS = [
  * ##THEIA-APPLICATION-ROOT: the application generates more than it compiles.
  * `theia build` writes the frozen composition into `src-gen/`, the bundler
  * entries beside it and the bundle into `lib/`; the plugins the application
- * downloads land in `plugins/`. The user-editable `esbuild.mjs` is deliberately
- * absent: a build only writes it when it is gone, so it is a file the product
- * owns (##THEIA-CLEANUP-WHITELIST).
+ * downloads land in `plugins/`; and the packager the product runs after the
+ * build - the second half of the package build, ##THEIA-PACKAGE-BUILD - writes
+ * its unpacked application and its installers into `dist/`, which is where
+ * every packager of this ecosystem puts them by default. It is the largest of
+ * them by far, and none of it is own code. The user-editable `esbuild.mjs` is
+ * deliberately absent: a build only writes it when it is gone, so it is a file
+ * the product owns (##THEIA-CLEANUP-WHITELIST).
  */
 export const APPLICATION_BUILD_OUTPUTS = [
     'lib/**',
     'src-gen/**',
+    'dist/**',
     'node_modules/**',
     'plugins/**',
     '.nyc_output/**',
