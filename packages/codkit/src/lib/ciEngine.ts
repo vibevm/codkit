@@ -29,7 +29,6 @@ import { dirname, join } from 'node:path';
 import { z } from 'zod';
 import {
 	DEFAULT_ERRORS_TIMEOUT_MS,
-	DEFAULT_UP_CHANNELS,
 	downChannel,
 	foreignWatchers,
 	inotifyWarning,
@@ -934,7 +933,7 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 	const { out, patchesDir, resolution } = options;
 	const tree = resolution.path;
 	const watch = loadBuildWatch(options.type, patchesDir);
-	const channels = selectChannels(watch, null, DEFAULT_UP_CHANNELS);
+	const channels = selectChannels(watch, null, options.type.build.defaultChannels);
 	const timeoutMs = options.passTimeoutMs ?? DEFAULT_ERRORS_TIMEOUT_MS;
 
 	const inotify = inotifyWarning();

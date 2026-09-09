@@ -2,7 +2,7 @@
 // ##TYPE-AREA-BUILD, ##TYPE-GENERIC).
 
 import { describe, expect, it } from 'vitest';
-import { makeBuild, projectTypeFor, watchProfileOf } from '../src/index.ts';
+import { defaultChannelsOf, makeBuild, projectTypeFor, watchProfileOf } from '../src/index.ts';
 
 /** One declared watch channel, with the pass boundaries a patch set writes. */
 function channel(script: string): { script: string; passStart: string[]; passEnd: string[]; errorLine: string[] } {
@@ -22,6 +22,22 @@ describe('the declared commands', () => {
 		expect(build.foreignWatcherMarkers).toEqual([]);
 		expect(build.watchProfilePath).toBeNull();
 		expect(build.watchProfile).toBeUndefined();
+		expect(build.defaultChannels).toEqual([]);
+	});
+
+	it('takes every channel the patch set declared as the default of a bare run', () => {
+		// This type knows no family, so it has no reason to prefer one of the
+		// patch set's own channel names over another.
+		expect(defaultChannelsOf(undefined)).toEqual([]);
+		expect(defaultChannelsOf([{ ...channel('watch:types') }, { channel: 'bundle', ...channel('watch:bundle') }])).toEqual([
+			'watch:types',
+			'bundle'
+		]);
+		const build = makeBuild({
+			ownRoot: 'own',
+			commands: { compile: [{ ...channel('watch:types') }, { channel: 'bundle', ...channel('watch:bundle') }] }
+		});
+		expect(build.defaultChannels).toEqual(['watch:types', 'bundle']);
 	});
 
 	it('still names the one dependency root npm writes into', () => {

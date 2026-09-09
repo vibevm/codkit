@@ -17,7 +17,7 @@
 // naming codes for them.
 import { requireCapability } from '../types/capability.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
-import { DEFAULT_ERRORS_TIMEOUT_MS, DEFAULT_UP_CHANNELS, downChannel, foreignWatchers, inotifyWarning, inventoryTargets, isMine, logPath, loadBuildWatch, readFinishedPass, readPass, selectChannels, statusOf, treeRelativePath, upChannel } from '../lib/buildWrap.js';
+import { DEFAULT_ERRORS_TIMEOUT_MS, downChannel, foreignWatchers, inotifyWarning, inventoryTargets, isMine, logPath, loadBuildWatch, readFinishedPass, readPass, selectChannels, statusOf, treeRelativePath, upChannel } from '../lib/buildWrap.js';
 import { treeId } from '../lib/fingerprint.js';
 import { buildInventory } from '../lib/inventory.js';
 import { ckError, isCkError } from '../lib/messages.js';
@@ -54,7 +54,7 @@ async function run(ctx, mode) {
 // up
 // ---------------------------------------------------------------------------
 function runUp(ctx, watch, requested, treeDir) {
-    const channels = selectChannels(watch, requested, DEFAULT_UP_CHANNELS);
+    const channels = selectChannels(watch, requested, requireProjectType(ctx).build.defaultChannels);
     const id = treeId(treeDir);
     // The environment contract of PROP-010 sec. 2: a warning, never a refusal.
     const inotify = inotifyWarning();
@@ -91,7 +91,7 @@ function runUp(ctx, watch, requested, treeDir) {
             continue;
         }
         if (result.action === 'already-running') {
-            // The trap of PROP-010 section 2: restarting transpile empties out/.
+            // The trap of PROP-010 section 2: a restart empties the channel's output.
             ctx.out.info(`${channel.name}: already running (pid ${result.pid}); not restarted`);
         }
         else {
@@ -182,7 +182,7 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
         }
     }
     else {
-        channels = selectChannels(watch, requested, DEFAULT_UP_CHANNELS);
+        channels = selectChannels(watch, requested, requireProjectType(ctx).build.defaultChannels);
     }
     const mine = commandFlagGiven(ctx.commandFlags, MINE);
     const targets = mine

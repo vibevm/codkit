@@ -84,6 +84,14 @@ export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['build/next/index.ts 
 export const WATCH_PROFILE_PATH = join(packageRoot, 'config', 'build-watch.json');
 
 /**
+ * ##VSCODE-BUILD-CHANNELS-DEFAULT: the two channels a bare `build up` and the
+ * single pass of the build profile start. The profile of this family declares
+ * four; the other two compile the add-ons and are started by name when a change
+ * asks for them.
+ */
+export const DEFAULT_CHANNELS: readonly string[] = ['transpile', 'typecheck'];
+
+/**
  * ##TESTS-LAYER-SPLIT: `--runGlob` bypasses the layer exclusion of the upstream
  * node runner, and a suite that brings up the workbench pulls in stylesheets
  * node cannot load; the node runner therefore takes the `common` and `node`
@@ -114,6 +122,7 @@ export const build: BuildArea = {
 	packageDistributable: PACKAGE_DISTRIBUTABLE,
 	packageStamps: PACKAGE_STAMPS,
 	packageOutputs: PACKAGE_OUTPUTS,
+	defaultChannels: DEFAULT_CHANNELS,
 	watchProfilePath: WATCH_PROFILE_PATH,
 	foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
 };

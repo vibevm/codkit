@@ -89,6 +89,12 @@ describe('build and test', () => {
 		]);
 	});
 
+	it('names the two channels a run that names none starts', () => {
+		// ##VSCODE-BUILD-CHANNELS-DEFAULT: the profile declares four; the default
+		// is the pair that compiles the product itself.
+		expect(build.defaultChannels).toEqual(['transpile', 'typecheck']);
+	});
+
 	it('names no package output, because its packager writes beside the managed tree', () => {
 		// ##VSCODE-PACKAGE-OUTPUTS: the gulp task of this family writes a sibling
 		// directory of the tree, and the contract keeps the patterns inside it.

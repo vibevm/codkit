@@ -100,7 +100,7 @@ export const projectType: ProjectType = {
 export default projectType;
 
 export { advisory } from './advisory.ts';
-export { build, makeBuild, toCommand, watchProfileOf } from './build.ts';
+export { build, defaultChannelsOf, makeBuild, toCommand, watchProfileOf } from './build.ts';
 export { argvOf, configSchema } from './configSchema.ts';
 export type { GenericTypeConfig } from './configSchema.ts';
 export { conventions, SUBSYSTEMS } from './conventions.ts';

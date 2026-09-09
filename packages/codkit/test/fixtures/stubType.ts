@@ -157,6 +157,13 @@ export const PACKAGE_DISTRIBUTABLE: readonly BuildCommand[] = [
  */
 export const PACKAGE_OUTPUTS: readonly string[] = ['.build/package/', '.build/app-*.tar'];
 
+/**
+ * The channels a run that names none starts. The stub's profile declares four,
+ * and the two below are the ones a bare `build up` and the single pass of the
+ * build profile take.
+ */
+export const DEFAULT_CHANNELS: readonly string[] = ['transpile', 'typecheck'];
+
 /** Argv fragments that mean somebody else's watcher already runs over this tree. */
 export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['build/watch.mjs transpile --watch', 'foreign watch-'];
 
@@ -288,6 +295,7 @@ const base: ProjectType = {
 			{ name: 'BUILD_SOURCE_VERSION', source: 'tree-head' },
 			{ name: 'BUILD_QUALITY', source: 'pin-tag' }
 		],
+		defaultChannels: DEFAULT_CHANNELS,
 		watchProfilePath: STUB_WATCH_PROFILE_PATH,
 		foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
 	},

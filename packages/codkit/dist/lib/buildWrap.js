@@ -6,10 +6,10 @@
 // detached processes and captures their stdout and stderr into
 // `.codkit/build/<channel>.log`; the record in `.codkit/build/<channel>.json`
 // is a claim, never sufficient truth: exclusive `starting`, proven `living`,
-// proven `dead`, and fail-closed `unknown` are distinct states. The
-// transpile channel empties `out/` when it starts, so a living channel is never
-// restarted, and a watcher started by somebody else over the same tree makes
-// `up` refuse rather than compete with it.
+// proven `dead`, and fail-closed `unknown` are distinct states. A compiling
+// channel commonly empties its output directory when it starts, so a living
+// channel is never restarted, and a watcher started by somebody else over the
+// same tree makes `up` refuse rather than compete with it.
 //
 // Where the boundaries of a pass are is data, not code: `config/build-watch.json`
 // carries the patterns, this module only applies them.
@@ -37,8 +37,6 @@ export { BUILD_DIR, DAEMON_RECORD_SCHEMA_VERSION, buildDir, logPath, recordPath,
 // ---------------------------------------------------------------------------
 /** How the pass-boundary profile is named in a diagnostic. */
 export const BUILD_WATCH_RELATIVE_PATH = 'config/build-watch.json';
-/** Channels `up` starts when no `--channel` is given (PROP-007 section 13). */
-export const DEFAULT_UP_CHANNELS = ['transpile', 'typecheck'];
 /** The word that stands for "every channel" in `--channel`. */
 export const ALL_CHANNELS = 'all';
 const patternList = z.array(z.string().min(1));
@@ -664,7 +662,7 @@ export const INOTIFY_LIMIT_PATH = '/proc/sys/fs/inotify/max_user_watches';
 /**
  * Below this the wrapper warns (PROP-010 sec. 2, the inotify environment requirement): a watch over
  * the ~18k files of the tree needs far more descriptors than the usual default,
- * and a transpile daemon that runs out of them finishes its first pass and then
+ * and a compiling daemon that runs out of them finishes its first pass and then
  * dies on ENOSPC while installing watchers - which reads as "the build stopped
  * for no reason" unless somebody says so first.
  */

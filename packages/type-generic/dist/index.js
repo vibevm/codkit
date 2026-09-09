@@ -90,7 +90,7 @@ export const projectType = {
 };
 export default projectType;
 export { advisory } from './advisory.js';
-export { build, makeBuild, toCommand, watchProfileOf } from './build.js';
+export { build, defaultChannelsOf, makeBuild, toCommand, watchProfileOf } from './build.js';
 export { argvOf, configSchema } from './configSchema.js';
 export { conventions, SUBSYSTEMS } from './conventions.js';
 export { featureConstant, featureSkeleton, generators, settingId } from './generators.js';

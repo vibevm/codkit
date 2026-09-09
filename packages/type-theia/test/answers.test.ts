@@ -268,6 +268,12 @@ describe('build', () => {
 		expect(makeBuild({ ...CONFIG, packageScript: 'package:linux' }).packageDistributable).toEqual(commands);
 	});
 
+	it('names both of its channels as the default of a run that names none', () => {
+		// ##THEIA-BUILD-CHANNELS: a default that left the bundle channel out would
+		// mean the application is never bundled by a build profile.
+		expect(makeBuild(CONFIG).defaultChannels).toEqual(['typecheck', 'bundle']);
+	});
+
 	it('names the application directory the packager writes its result into', () => {
 		// ##THEIA-PACKAGE-OUTPUTS: inside the tree, so `codkit package` can print it.
 		expect(packageOutputsOf('examples/electron')).toEqual(['examples/electron/dist/']);

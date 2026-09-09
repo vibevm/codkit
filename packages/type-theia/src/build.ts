@@ -94,6 +94,13 @@ const TIME_STAMP = '(?:\\[\\d{1,2}:\\d{2}:\\d{2}(?: [AP]M)?\\] )?';
  */
 export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['tsc -b -w', 'theia build --watch'];
 
+/**
+ * ##THEIA-BUILD-CHANNELS: this family has exactly two channels and both of them
+ * are the default - a run that names none starts the type check and the bundle,
+ * and a build profile that started only one would never bundle the application.
+ */
+export const DEFAULT_CHANNELS: readonly string[] = ['typecheck', 'bundle'];
+
 /** One npm script of the own package, run by its workspace directory. */
 function ownScript(label: string, script: string, ownRoot: string): BuildCommand {
 	return { label, command: 'npm', args: ['run', script, '--workspace', ownRoot] };
@@ -179,6 +186,7 @@ export function makeBuild(config: TheiaTypeConfig): BuildArea {
 		packageStamps: [],
 		// The channels are npm scripts of the fork's own root manifest, so the
 		// profile is data rather than a file this package ships (##TYPE-CONFIGURED).
+		defaultChannels: DEFAULT_CHANNELS,
 		watchProfilePath: null,
 		watchProfile: watchProfileOf(config),
 		foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS

@@ -43,6 +43,16 @@ export function watchProfileOf(compile: GenericChannels): unknown {
 }
 
 /**
+ * The names of the channels a patch set declared, in the order it declared
+ * them: for this type every declared channel is a default, because the type
+ * knows no family and has no reason to prefer one of the patch set's own names
+ * over another.
+ */
+export function defaultChannelsOf(compile: GenericChannels): readonly string[] {
+	return (compile ?? []).map((channel) => channel.channel ?? channel.script);
+}
+
+/**
  * The one dependency root a plain npm upstream has. A patch set of this type
  * declares its install command itself, but where an install lands is not a free
  * choice: npm writes into `node_modules/` of the directory it runs in, and the
@@ -93,6 +103,7 @@ export function makeBuild(config: GenericTypeConfig): BuildArea {
 		packageDistributable: [],
 		packageStamps: [],
 		packageOutputs: [],
+		defaultChannels: defaultChannelsOf(commands.compile),
 		watchProfilePath: null,
 		...(watchProfile === undefined ? {} : { watchProfile }),
 		foreignWatcherMarkers: []

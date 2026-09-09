@@ -26,7 +26,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { DEFAULT_ERRORS_TIMEOUT_MS, DEFAULT_UP_CHANNELS, downChannel, foreignWatchers, inotifyWarning, loadBuildWatch, logPath, readPass, selectChannels, statusOf, upChannel } from './buildWrap.js';
+import { DEFAULT_ERRORS_TIMEOUT_MS, downChannel, foreignWatchers, inotifyWarning, loadBuildWatch, logPath, readPass, selectChannels, statusOf, upChannel } from './buildWrap.js';
 import { encodeUtf8 } from './bytes.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
 import { CONFIG_FILE_NAME, loadConfig } from './configFile.js';
@@ -715,7 +715,7 @@ async function compileOnce(options, steps) {
     const { out, patchesDir, resolution } = options;
     const tree = resolution.path;
     const watch = loadBuildWatch(options.type, patchesDir);
-    const channels = selectChannels(watch, null, DEFAULT_UP_CHANNELS);
+    const channels = selectChannels(watch, null, options.type.build.defaultChannels);
     const timeoutMs = options.passTimeoutMs ?? DEFAULT_ERRORS_TIMEOUT_MS;
     const inotify = inotifyWarning();
     if (inotify !== null) {

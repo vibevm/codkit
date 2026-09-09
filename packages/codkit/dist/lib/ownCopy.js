@@ -44,7 +44,7 @@ export const GITKEEP_NAME = '.gitkeep';
  * needs to carry an empty directory, and the unit manifest. The manifest is a
  * statement of patchset *about* own code, not a module of it (PROP-005 sec. 3), and
  * mirroring it would materialize it in the own root of the tree, from where the
- * transpiler of the tree carries it into `out/` as if it were product code.
+ * compiler of the tree carries it into its output as if it were product code.
  *
  * The same predicate governs the comparison of the two sides: a file that is
  * never copied must never be missed in the tree either, or the drift guard

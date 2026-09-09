@@ -133,7 +133,8 @@ patchset, S stranded materialization(s)`. Третье число — броше
 
 ## Сборка и запуск
 
-1. `codkit build up` → `transpile` и `typecheck` started/already living, exit `0`.
+1. `codkit build up` → каналы, которые называет тип проекта ([15](15-project-types.md)),
+   started/already living, exit `0`.
    Exit `1` означает чужой watcher/конкурентный `starting`/`unknown` record/чужое дерево; `codkit build status` различает `starting`, `living`, `dead`, `unknown`. Invalid/starting/unknown record не удаляй: сначала докажи владельца или teardown.
    Exit `2` означает непригодное дерево. На Linux предупреждение про inotify передаётся владельцу машины: порог запуска предупреждения `<262144`, рекомендуемое значение `524288`.
 2. Один раз выполни `codkit build errors` и прочитай весь напечатанный проход.

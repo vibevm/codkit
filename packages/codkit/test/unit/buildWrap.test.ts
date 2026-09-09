@@ -13,7 +13,6 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
 	BUILD_WATCH_RELATIVE_PATH,
 	DAEMON_RECORD_SCHEMA_VERSION,
-	DEFAULT_UP_CHANNELS,
 	argsMatch,
 	channelByName,
 	downChannel,
@@ -128,7 +127,7 @@ describe('build-watch.json', () => {
 		expect(channel('typecheck').script).toBe('watch-compile');
 		expect(channel('addons').script).toBe('watch-addons');
 		expect(channel('extras').script).toBe('watch-extras');
-		expect(DEFAULT_UP_CHANNELS).toEqual(['transpile', 'typecheck']);
+		expect(stubProjectType.build.defaultChannels).toEqual(['transpile', 'typecheck']);
 	});
 
 	it('does not let a patch set replace the shipped process parser', () => {
@@ -293,29 +292,32 @@ describe('build-watch.json', () => {
 	});
 
 	it('resolves --channel: a name, all, the default, and an unknown one', () => {
-		expect(selectChannels(shipped, null, DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['transpile', 'typecheck']);
-		expect(selectChannels(shipped, 'all', DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual([
+		expect(selectChannels(shipped, null, stubProjectType.build.defaultChannels).map((entry) => entry.name)).toEqual([
+			'transpile',
+			'typecheck'
+		]);
+		expect(selectChannels(shipped, 'all', stubProjectType.build.defaultChannels).map((entry) => entry.name)).toEqual([
 			'transpile',
 			'typecheck',
 			'addons',
 			'extras'
 		]);
-		expect(selectChannels(shipped, 'extras', DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['extras']);
-		expect(() => selectChannels(shipped, 'nope', DEFAULT_UP_CHANNELS)).toThrow(/unknown build channel/);
+		expect(selectChannels(shipped, 'extras', stubProjectType.build.defaultChannels).map((entry) => entry.name)).toEqual(['extras']);
+		expect(() => selectChannels(shipped, 'nope', stubProjectType.build.defaultChannels)).toThrow(/unknown build channel/);
 	});
 
-	it('takes every declared channel as the default when the profile names none of the fallback', () => {
-		// The fallback pair is the channel set of one family (PROP-007 ##CMD-BUILD);
-		// a type whose profile declares neither of them must still start what it has.
+	it('starts exactly the channels the project type names, and every declared one when it names none', () => {
+		// The default is the type's answer (PROP-016 ##TYPE-BUILD-CHANNELS),
+		// and a profile that declares none of the named channels still starts what it has.
 		const other: BuildWatch = {
 			channels: [
 				{ name: 'typecheck', script: 'watch:compile', passStart: [], passEnd: [], errorLine: [], errorCountLine: [], falseEndGuards: [] },
 				{ name: 'bundle', script: 'watch:bundle', passStart: [], passEnd: [], errorLine: [], errorCountLine: [], falseEndGuards: [] }
 			]
 		};
-		expect(selectChannels(other, null, DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['typecheck']);
+		expect(selectChannels(other, null, stubProjectType.build.defaultChannels).map((entry) => entry.name)).toEqual(['typecheck']);
 		const foreign: BuildWatch = { channels: [other.channels[1] as ChannelConfig] };
-		expect(selectChannels(foreign, null, DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['bundle']);
+		expect(selectChannels(foreign, null, stubProjectType.build.defaultChannels).map((entry) => entry.name)).toEqual(['bundle']);
 	});
 });
 

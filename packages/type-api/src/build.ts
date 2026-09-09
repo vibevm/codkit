@@ -67,6 +67,19 @@ export type BuildArea = {
 	 */
 	readonly packageOutputs: readonly string[];
 	/**
+	 * The compile channels a run that names none starts: `codkit build up`
+	 * without `--channel`, and the single pass of `ci --profile build`.
+	 *
+	 * It is an answer of the type and not a constant of the engine because the
+	 * names belong to the family: one family transpiles and typechecks, another
+	 * typechecks and bundles, and a third declares its channels in the patch
+	 * set's own configuration. A name the profile does not declare is ignored,
+	 * and a type that names none has every declared channel as its default -
+	 * the engine never refuses the bare form of a command over a name it made up
+	 * itself.
+	 */
+	readonly defaultChannels: readonly string[];
+	/**
 	 * The default pass-boundary profile of the watch channels, as a path inside
 	 * the type package, or null when this family ships no file of its own. The
 	 * engine reads and validates it exactly as it reads a profile a patch set

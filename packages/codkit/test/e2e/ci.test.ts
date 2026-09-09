@@ -14,6 +14,8 @@ import { dirname } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
+import { STUB_CHANNELS_TYPE_MODULE } from '../fixtures/stubTypeChannels.ts';
+import { STUB_TYPE_ID } from '../fixtures/stubType.ts';
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
@@ -303,6 +305,29 @@ describe('codkit ci --profile build', () => {
 		expect(stepOf(envelope, 'dependencies')?.detail).toBe('no vendor/node_modules/.package-lock.json in the fork tree');
 
 		rmSync(receipt, { force: true });
+	});
+
+	it('raises exactly the compile channels the project type names', () => {
+		// PROP-016 ##TYPE-BUILD-CHANNELS: the pair the engine used to carry as a
+		// module constant is the answer of one family. This run is the same run
+		// with one thing changed - a type whose `defaultChannels` are two other
+		// channels of the same profile - and the pass it makes is theirs.
+		provideTreeDependencies(fixture);
+
+		const { run, envelope } = fixture.json(['ci', '--profile', 'build', ...TIMEOUT], {
+			STUB_MODE: 'ok',
+			CODKIT_TEST_TYPE_PACKAGE: `${STUB_TYPE_ID}=${STUB_CHANNELS_TYPE_MODULE}`
+		});
+
+		expect(run.status).toBe(0);
+		expect(stateOf(envelope, 'compile')).toBe('ok');
+		expect(stepOf(envelope, 'compile')?.detail).toBe('2 channel(s), one pass each, no errors');
+		// The two channels the variant names, and not the transpile channel the
+		// engine used to start whatever the type said.
+		expect(run.stderr).toContain('--- typecheck: pass');
+		expect(run.stderr).toContain('--- extras: pass');
+		expect(run.stderr).not.toContain('--- transpile: pass');
+		expect(run.stderr).toContain('[watch] build finished');
 	});
 
 	it('runs one pass through the daemons and stops them', () => {

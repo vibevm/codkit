@@ -85,7 +85,8 @@ mount остаётся контрактом runner.
    списка; stale deps-hash не обходится. Tool dependencies восстанавливаются в tool root, не в patch set.
 2. Runner восстанавливает cache по `<pin.sha> + lock hash` или выполняет внешний install из внутреннего registry.
 3. Повтор команды → dependencies `ok`; lock change может один раз дать `refresh node_modules out of band` warning.
-4. Compile запускает один pass `transpile,typecheck`, печатает полный pass и останавливает демоны в `finally`.
+4. Compile запускает один pass по каналам, которые называет тип проекта, печатает полный pass
+   и останавливает демоны в `finally`.
 5. На Linux inotify warning ниже `262144` лечит владелец runner; рекомендовано `524288`.
 
 ## Публикация

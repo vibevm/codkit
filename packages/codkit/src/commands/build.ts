@@ -30,7 +30,6 @@ import {
 import type { CodkitConfig } from '../lib/configFile.ts';
 import {
 	DEFAULT_ERRORS_TIMEOUT_MS,
-	DEFAULT_UP_CHANNELS,
 	downChannel,
 	foreignWatchers,
 	inotifyWarning,
@@ -92,7 +91,7 @@ async function run(ctx: CommandContext, mode: Mode): Promise<number> {
 // ---------------------------------------------------------------------------
 
 function runUp(ctx: CommandContext, watch: BuildWatch, requested: string | null, treeDir: string): number {
-	const channels = selectChannels(watch, requested, DEFAULT_UP_CHANNELS);
+	const channels = selectChannels(watch, requested, requireProjectType(ctx).build.defaultChannels);
 	const id = treeId(treeDir);
 
 	// The environment contract of PROP-010 sec. 2: a warning, never a refusal.
@@ -134,7 +133,7 @@ function runUp(ctx: CommandContext, watch: BuildWatch, requested: string | null,
 			continue;
 		}
 		if (result.action === 'already-running') {
-			// The trap of PROP-010 section 2: restarting transpile empties out/.
+			// The trap of PROP-010 section 2: a restart empties the channel's output.
 			ctx.out.info(`${channel.name}: already running (pid ${result.pid}); not restarted`);
 		} else {
 			ctx.out.info(`${channel.name}: started (pid ${result.pid}), npm run ${channel.script}, log ${result.log}`);
@@ -242,7 +241,7 @@ async function runErrors(
 			return EXIT_ENVIRONMENT;
 		}
 	} else {
-		channels = selectChannels(watch, requested, DEFAULT_UP_CHANNELS);
+		channels = selectChannels(watch, requested, requireProjectType(ctx).build.defaultChannels);
 	}
 
 	const mine = commandFlagGiven(ctx.commandFlags, MINE);

@@ -37,7 +37,11 @@ export const FAMILY_DICTIONARY: readonly string[] = [
 	'nls\\.ts',
 	'code-import-patterns',
 	'electron',
-	'build/node_modules'
+	'build/node_modules',
+	// A channel name of one family: the pair `transpile,typecheck` was a module
+	// constant of the wrapper until a family whose channels are `typecheck` and
+	// `bundle` met it, and the profile of that family therefore never bundled.
+	'transpile'
 ];
 
 const dictionary = new RegExp(FAMILY_DICTIONARY.join('|'), 'u');
