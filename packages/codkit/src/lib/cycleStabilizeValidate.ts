@@ -7,6 +7,7 @@ import {
 	parseStabilizeAuthority
 } from './cycleStabilize.ts';
 import { captureCycleLiveSnapshot } from './cycleStabilizeEvidence.ts';
+import type { ProjectType } from '@codkit/type-api';
 import { cycleStateSchema } from './cycleState.ts';
 import type { CycleState } from './cycleState.ts';
 import { ckError, isCkError } from './messages.ts';
@@ -16,6 +17,8 @@ export type ValidateCycleAdvisoryTransitionOptions = {
 	readonly inputState: CycleState;
 	readonly nextState: CycleState;
 	readonly document: string;
+	/** The project type of the patch set: the advisory readers are its answer. */
+	readonly type: ProjectType;
 };
 export type ValidateCycleStabilizeTransitionOptions = {
 	readonly patchesDir: string;
@@ -31,7 +34,8 @@ export function validateCycleAdvisoryTransition(options: ValidateCycleAdvisoryTr
 	const report = inspectDependencyAdvisory({
 		cwd: options.treeDir,
 		oldPin: options.inputState.sourcePin.sha,
-		newPin: options.inputState.targetPin.sha
+		newPin: options.inputState.targetPin.sha,
+		type: options.type
 	});
 	try {
 		const parsed = parseAdvisoryDocument(options.document, report, options.inputState);

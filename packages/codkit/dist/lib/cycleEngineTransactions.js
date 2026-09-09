@@ -313,7 +313,8 @@ function validateTransitionAuthority(options, record, observed) {
             treeDir: options.resolution.path,
             inputState: record.inputState,
             nextState: record.nextState,
-            document: writes[0]?.contents ?? ''
+            document: writes[0]?.contents ?? '',
+            type: options.type
         });
         return;
     }

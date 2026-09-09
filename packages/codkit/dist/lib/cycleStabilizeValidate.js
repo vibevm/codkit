@@ -10,7 +10,8 @@ export function validateCycleAdvisoryTransition(options) {
     const report = inspectDependencyAdvisory({
         cwd: options.treeDir,
         oldPin: options.inputState.sourcePin.sha,
-        newPin: options.inputState.targetPin.sha
+        newPin: options.inputState.targetPin.sha,
+        type: options.type
     });
     try {
         const parsed = parseAdvisoryDocument(options.document, report, options.inputState);

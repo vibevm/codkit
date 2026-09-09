@@ -1,6 +1,6 @@
 /** @scope spec://codkit/modules/vscode/PROP-001#VSCODE-TYPE-IS-AN-ANSWER-SET */
 // The `vscode` project type: the tool's knowledge of the Visual Studio Code
-// family of upstreams, as the nine answers of the contract.
+// family of upstreams, as the ten answers of the contract.
 //
 // The engine imports this package only through `ProjectType`; everything else
 // exported here exists for this package's own suite and for the type's tests.
@@ -48,12 +48,11 @@ export const projectType = {
     conventions
 };
 export default projectType;
-export { advisory } from './advisory.js';
+export { advisory, ADVISORY_PATHS, readers } from './advisory.js';
 export { brandImages, codecs, familyNotes, targets } from './brandImages.js';
 export { build } from './build.js';
 export { configSchema } from './configSchema.js';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.js';
-export { DEFERRED_PHASE } from './deferred.js';
 export { identity } from './identity.js';
 export { entryModule, layers, overlayTargets, ownExtensions, serviceOverride } from './layers.js';
 export { layout, OWN_ROOT_PREFIX } from './layout.js';

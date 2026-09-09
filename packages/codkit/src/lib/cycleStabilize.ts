@@ -120,7 +120,8 @@ async function planAdvisory(options: ContinueCycleStabilizationOptions): Promise
 	const report = inspectDependencyAdvisory({
 		cwd: options.resolution.path,
 		oldPin: options.state.sourcePin.sha,
-		newPin: options.state.targetPin.sha
+		newPin: options.state.targetPin.sha,
+		type: options.type
 	});
 	options.checkpoint?.('advisory-inspected');
 	assertLiveLocks(options);

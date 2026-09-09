@@ -109,7 +109,7 @@ describe('the shape gate of a type', () => {
 	it('ties advisory readers to the upgrade-advisory capability', () => {
 		const type = bareType({
 			advisory: {
-				readers: [{ id: 'node-version', paths: ['.nvmrc'], read: () => null, meaning: () => null }]
+				readers: [{ id: 'toolchain', paths: ['toolchain'], changeIsNews: true, read: () => null, meaning: () => null }]
 			}
 		});
 		expect(projectTypeProblems(type)).toEqual(['bare: advisory readers and the capability upgrade-advisory must agree']);

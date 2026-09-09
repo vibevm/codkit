@@ -19,13 +19,24 @@ export type AdvisoryReader = {
 	/** The tree-relative files this reader needs, in a stable order. */
 	readonly paths: readonly string[];
 	/**
+	 * A change to one of these files is news by itself: the file is listed as
+	 * changed even when the reading comes out the same at both pins, because the
+	 * file is part of what the tree is built from. False when only a difference
+	 * in the reading makes the file worth naming - the manifest of a product
+	 * carries a hundred fields the cycle has no opinion about.
+	 */
+	readonly changeIsNews: boolean;
+	/**
 	 * The semantic value at one pin. A file this reader declared but that the
-	 * pin does not carry arrives as null; a reader never throws on absence.
+	 * pin does not carry arrives as null; a reader never throws on absence, but
+	 * it refuses a file it cannot read with `brokenArtifact`, and the engine
+	 * turns that into `CK-E-ARTIFACT-BROKEN` naming the pin.
 	 */
 	read(files: AdvisoryFiles): AdvisoryValue;
 	/**
 	 * One sentence saying what a change of this value means for the patch set,
-	 * or null when a difference carries no meaning worth stopping for.
+	 * or null when a difference carries no meaning worth stopping for - a
+	 * difference without a meaning is not reported at all.
 	 */
 	meaning(before: AdvisoryValue, after: AdvisoryValue): string | null;
 };
