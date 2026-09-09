@@ -12,8 +12,8 @@ epoch = 1
 format = "normal"
 authors = ["Oleg Chirukhin"]
 license = "UPL-1.0"
-description = "The default codkit standards for a patch set over a VS Code fork: the delta as a parallel system in upstream's own style, a feature as one folder behind a flag, what a minimal intervention is, how a choice of layer is presented, how a product keeps its seam map, how the own catalogue documents and routes itself, and the catalogue of upstream seams"
-keywords = ["codkit", "standards", "fork", "patch-set", "minimal-intervention", "parallel-system", "feature-flags", "seam-catalogue"]
+description = "The default codkit standards for a patch set over any fork codkit maintains: the delta as a parallel system in upstream's own style, a feature as one folder behind a flag, what a minimal intervention is, how a choice of layer is presented, how a product keeps its seam map, and how the own catalogue documents and routes itself"
+keywords = ["codkit", "standards", "fork", "patch-set", "minimal-intervention", "parallel-system", "feature-flags"]
 
 [compatibility]
 min_vibe_version = "0.1.0"

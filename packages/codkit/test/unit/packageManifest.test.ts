@@ -78,6 +78,13 @@ const REQUIRED: ReadonlyMap<string, readonly string[]> = new Map([
 			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibe.toml',
 			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibevm/vibespecs/skills/ck-orient/SKILL.md',
 			'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs',
+			// The seam catalogue ships as the package of the `vscode` project type
+			// (##STD-PACKAGES-OF-THE-TYPE): in the tarball for every type, delivered
+			// only to a patch set whose type names it.
+			'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/LICENSE',
+			'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/vibe.toml',
+			'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/vibevm/vibespecs/flows/standards/seam-catalogue.xml',
+			'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/vibevm/vibespecs/boot/77-flow-codkit-seams-vscode.xml',
 			'runtime/v1.0.0/README.md',
 			'runtime/v1.0.0/common/version.ts',
 			'runtime/v1.0.0/browser/featureFlags.contribution.ts'

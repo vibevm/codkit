@@ -5,6 +5,14 @@
 // edition of norms and the agent skills - and every one of them lives under
 // `toolRoot/vibevm/vibepacks/org.vibevm.codkit/<name>/`.
 //
+// ##STD-PACKAGES-OF-THE-TYPE: the set has two halves. The universal half - the
+// standard and the skills - is delivered to every patch set, whatever it forks.
+// The other half belongs to a project type: the seam catalogue is a fact about
+// one family of upstreams, and travels as a package that only a patch set of
+// that type is delivered (PROP-016 ##TYPE-AREA-STANDARDS). The engine never
+// reads the name of a type package from a directory listing: the type names its
+// packages, and a directory the type did not name is delivered to nobody.
+//
 // ##STD-PACKAGE-LOCATION: exactly one `v*` directory lives under each of them,
 // and its name is the version its manifest states. Anything else means the
 // installation is damaged, which is `CK-E-INTERNAL` and not something a person
@@ -22,6 +30,12 @@ export const STANDARDS_PACKAGE_GROUP = 'org.vibevm.codkit';
 export const STANDARDS_PACKAGE_NAME = 'standards';
 /** ##STD-SKILLS-PACKAGE-IDENTITY: the second package of the set. */
 export const SKILLS_PACKAGE_NAME = 'agent-skills';
+/**
+ * ##STD-PACKAGES-OF-THE-TYPE: the packages every patch set gets, in delivery
+ * order. Everything else the installation carries under the group belongs to a
+ * project type and is delivered only when that type names it.
+ */
+export const UNIVERSAL_PACKAGE_NAMES = [STANDARDS_PACKAGE_NAME, SKILLS_PACKAGE_NAME];
 /** Where the standards package sits, relative to toolRoot. */
 export const STANDARDS_PACKAGE_PARENT = `${SHIPPED_PACKAGES_PARENT}/${STANDARDS_PACKAGE_NAME}`;
 /** ##STD-PACKAGE-LOCATION: `[package] version` of the package manifest. */
@@ -29,26 +43,36 @@ const MANIFEST_VERSION = /^version = "([0-9]+\.[0-9]+\.[0-9]+)"$/mu;
 /** Directories a run of `standards load` leaves behind when it is interrupted. */
 export const SCRATCH_PREFIX = '.codkit-load-';
 /**
- * ##STD-SHIPPED-PACKAGES: every package under the group directory, in the order
- * every surface prints them - `standards` first, because it is the edition of
- * norms every other package refers to, then the rest by name.
+ * ##STD-SHIPPED-PACKAGES, ##STD-PACKAGES-OF-THE-TYPE: the packages this patch
+ * set is delivered - the universal ones plus the ones its project type names -
+ * in the order every surface prints them: `standards` first, because it is the
+ * edition of norms every other package refers to, then the rest by name.
+ *
+ * A package the type names and the installation does not carry is a damaged
+ * installation, not a silent short delivery; a directory under the group that
+ * is neither universal nor named is delivered to nobody, so a type package of
+ * another family never reaches this patch set.
  *
  * `standardsOverride` is the test seam of ##STD-LOAD-STEP-SOURCE. It relocates
  * the standards package alone, which is what the seam has always meant: the
  * licence gate of the first package refuses the whole run, so a fixture that
  * breaks it never reaches the others.
  */
-export function shippedPackages(toolRoot, standardsOverride) {
+export function shippedPackages(toolRoot, typePackages, standardsOverride) {
     const group = join(toolRoot, ...SHIPPED_PACKAGES_PARENT.split('/'));
     const shape = statIfPresent(group);
     if (shape === null || !shape.isDirectory()) {
         throw ckError('INTERNAL', `no shipped packages under ${SHIPPED_PACKAGES_PARENT}`, 'restore the codkit installation from the approved supply', SHIPPED_PACKAGES_PARENT);
     }
-    const names = readdirSync(group, { withFileTypes: true })
+    const present = new Set(readdirSync(group, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
-        .map((entry) => entry.name)
-        .sort();
-    const found = names.map((name) => readShippedPackage(name, name === STANDARDS_PACKAGE_NAME && standardsOverride ? standardsOverride : join(group, name)));
+        .map((entry) => entry.name));
+    const missing = typePackages.filter((name) => !present.has(name));
+    if (missing.length > 0) {
+        throw ckError('INTERNAL', `the project type names ${missing.join(', ')}, and this installation ships no such package`, 'restore the codkit installation from the approved supply, or install a codkit that carries the packages of this type', `${SHIPPED_PACKAGES_PARENT}/${missing[0]}`);
+    }
+    const names = [...UNIVERSAL_PACKAGE_NAMES.filter((name) => present.has(name)), ...typePackages].sort();
+    const found = [...new Set(names)].map((name) => readShippedPackage(name, name === STANDARDS_PACKAGE_NAME && standardsOverride ? standardsOverride : join(group, name)));
     return [...found].sort(byShippedOrder);
 }
 /** `standards` first, then by name: the order of the manifest block and of every summary. */
@@ -101,7 +125,7 @@ function kindOf(name) {
         return 'standards';
     if (name === SKILLS_PACKAGE_NAME)
         return 'agent-skills';
-    return 'other';
+    return 'type';
 }
 /**
  * The two facts the manifest has to give up: the version, read by the literal

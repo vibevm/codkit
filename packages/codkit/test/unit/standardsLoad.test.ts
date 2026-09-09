@@ -26,8 +26,11 @@ function makePatchSet(label: string): string {
 	return root;
 }
 
+/** ##STD-PACKAGES-OF-THE-TYPE: the packages of the `vscode` type, as it names them. */
+const TYPE_PACKAGES = ['seams-vscode'];
+
 function options(patchesDir: string, upgrade = false) {
-	return { toolRoot, patchesDir, sourceOverride: null, dryRun: false, upgrade };
+	return { toolRoot, patchesDir, typePackages: TYPE_PACKAGES, sourceOverride: null, dryRun: false, upgrade };
 }
 
 function codeOf(run: () => unknown): string | null {
@@ -45,7 +48,7 @@ describe('one run over the whole shipped set', () => {
 
 		const outcome = runStandardsLoad(options(patchesDir));
 
-		expect(outcome.packages.map((entry) => entry.name)).toEqual(['standards', 'agent-skills']);
+		expect(outcome.packages.map((entry) => entry.name)).toEqual(['standards', 'agent-skills', 'seams-vscode']);
 		expect(outcome.packages.every((entry) => entry.state === 'created')).toBe(true);
 		expect(outcome.filesCreated).toBe(outcome.plan.packages.reduce((total, entry) => total + entry.fileCount, 0));
 		// ##STD-LOAD-ALL-PACKAGES: the projection step, because a package declares skills.

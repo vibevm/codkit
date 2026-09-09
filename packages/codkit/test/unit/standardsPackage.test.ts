@@ -74,28 +74,41 @@ describe('shippedStandardsPackage', () => {
 });
 
 describe('shippedPackages', () => {
-	it('lists the whole set with standards first and the rest by name', () => {
+	it('lists the universal set and the packages the type names, standards first', () => {
 		const root = makeToolRoot('set', [
 			{ name: 'standards', version: '0.2.0' },
 			{ name: 'agent-skills', version: '0.1.0', skills: true },
 			{ name: 'zeta', version: '1.0.0' }
 		]);
 
-		const found = shippedPackages(root);
+		const found = shippedPackages(root, ['zeta']);
 
 		expect(found.map((entry) => entry.name)).toEqual(['standards', 'agent-skills', 'zeta']);
 		expect(found.map((entry) => entry.version)).toEqual(['0.2.0', '0.1.0', '1.0.0']);
-		expect(found.map((entry) => entry.kind)).toEqual(['standards', 'agent-skills', 'other']);
+		expect(found.map((entry) => entry.kind)).toEqual(['standards', 'agent-skills', 'type']);
 		// ##STD-SKILLS-DECLARATION: only a manifest with `[[skill]]` needs projecting.
 		expect(found.map((entry) => entry.declaresSkills)).toEqual([false, true, false]);
 	});
 
+	// ##STD-PACKAGES-OF-THE-TYPE: a package no type names reaches nobody, and a
+	// name the installation cannot answer is a damaged installation.
+	it('delivers a package of another type to nobody', () => {
+		const root = makeToolRoot('set-other-type', [
+			{ name: 'standards', version: '0.2.0' },
+			{ name: 'agent-skills', version: '0.1.0', skills: true },
+			{ name: 'zeta', version: '1.0.0' }
+		]);
+
+		expect(shippedPackages(root, []).map((entry) => entry.name)).toEqual(['standards', 'agent-skills']);
+		expect(codeOf(() => shippedPackages(root, ['omega']))).toBe('INTERNAL');
+	});
+
 	it('refuses a damaged installation rather than guessing', () => {
-		expect(codeOf(() => shippedPackages(makeTempRoot('set-none')))).toBe('INTERNAL');
+		expect(codeOf(() => shippedPackages(makeTempRoot('set-none'), []))).toBe('INTERNAL');
 
 		const two = makeToolRoot('set-two', [{ name: 'standards', version: '0.2.0' }]);
 		mkdirSync(join(two, ...SHIPPED_PACKAGES_PARENT.split('/'), 'standards', 'v0.3.0'));
-		expect(codeOf(() => shippedPackages(two))).toBe('INTERNAL');
+		expect(codeOf(() => shippedPackages(two, []))).toBe('INTERNAL');
 	});
 
 	it('relocates the standards package alone through the test seam', () => {
@@ -105,7 +118,7 @@ describe('shippedPackages', () => {
 		]);
 		const elsewhere = makeSource('set-seam-source');
 
-		const found = shippedPackages(root, elsewhere.parent);
+		const found = shippedPackages(root, [], elsewhere.parent);
 
 		expect(found[0]?.name).toBe('standards');
 		expect(found[0]?.directory).toBe(elsewhere.dir);

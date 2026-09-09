@@ -9,10 +9,14 @@
 // notice file refuses outright (##STD-LOAD-STEP-DRIFT-REFUSAL). Only then does
 // a byte reach the patch set.
 //
-// ##STD-LOAD-ALL-PACKAGES: the steps run for every shipped package in one pass,
-// and the refusal of any one of them stops the whole run before the first
+// ##STD-LOAD-ALL-PACKAGES: the steps run for every delivered package in one
+// pass, and the refusal of any one of them stops the whole run before the first
 // write. There is one managed block in the manifest, with one table per
 // package, so the product has one place to look.
+//
+// ##STD-PACKAGES-OF-THE-TYPE: which packages those are is the universal set
+// plus the ones the patch set's project type names, so the command needs the
+// configuration to know what it delivers at all (##STD-LOAD-ROOTS).
 //
 // ##STD-LOAD-UPGRADE: an installed copy whose bytes differ is drift, and drift
 // is a refusal - unless `--upgrade` says to take the shipped copy, which
@@ -117,7 +121,7 @@ function classifyBlock(text, canonical, markers, path) {
 }
 /** Everything a run would do, computed without writing anything. */
 export function planStandardsLoad(options) {
-    const shipped = shippedPackages(options.toolRoot, options.sourceOverride);
+    const shipped = shippedPackages(options.toolRoot, options.typePackages, options.sourceOverride);
     const policy = loadLicensePolicy();
     const spdx = loadSpdxLicenseIds();
     // ##STD-LOAD-STEP-LICENSE-GATE: every package is checked before the state of

@@ -105,6 +105,7 @@ function expectedNotice(): string {
 	return renderNotice(readFileSync(shippedNotice, 'utf8'), [
 		{ name: 'agent-skills', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/' },
 		{ name: 'runtime', version: SHIPPED_VERSION, path: `${INSTALLED}/` },
+		{ name: 'seams-vscode', version: '1.0.0', path: 'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0/' },
 		{ name: 'standards', version: '1.0.0', path: `${STANDARDS}/` }
 	]);
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2026 Oleg Chirukhin
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+Лицензировано на условиях Universal Permissive License версии 1.0; текст лицензии: https://oss.oracle.com/licenses/upl/
+SPDX-License-Identifier: UPL-1.0
+-->
+<spec xmlns="https://vibevm.org/spec/1">
+  <title id="root">Flow: Codkit seam catalogue of the vscode type</title>
+  <status stage="impl" state="done"/>
+  <p><PROJECT-HAS-A-SEAM-CATALOGUE fact="true" status="impl/done">This repository is a patch set of the **vscode** project type, and the catalogue of the seams its upstream family offers — the ways upstream itself lets a distribution add or change behaviour, ranked from a pull request upstream down to the internals of a module — is @spec://org.vibevm.codkit/seams-vscode/flows/standards/seam-catalogue#root. The universal standard of minimal intervention is a separate package and is cited from its own snippet.</PROJECT-HAS-A-SEAM-CATALOGUE></p>
+  <p><THE-CATALOGUE-IS-A-MENU fact="true" status="impl/done">The catalogue is a menu, never this product's seam map: the map is the product's own instance, dated to its pin, naming its own interventions, and it lives in the product's specs (`MI-SEAM-MAP-REQUIRED` of the standard).</THE-CATALOGUE-IS-A-MENU></p>
+  <p><A-TYPE-OWNS-ITS-SEAMS fact="true" status="impl/done">A patch set carries the seam catalogue of its own project type and no other: the tiers, the seams and the example locations here are facts about this family of upstreams, and a patch set of another type is delivered another catalogue or none at all.</A-TYPE-OWNS-ITS-SEAMS></p>
+</spec>

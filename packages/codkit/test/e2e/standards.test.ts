@@ -20,23 +20,58 @@ afterAll(cleanupTempRoots);
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const shippedPackage = join(packageRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'standards', 'v1.0.0');
 const shippedSkills = join(packageRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'agent-skills', 'v1.0.0');
+const shippedSeams = join(packageRoot, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'seams-vscode', 'v1.0.0');
 const shippedNotice = join(packageRoot, 'config', 'LICENSE-CODKIT.md');
 const INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0';
 const SKILLS_INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0';
+/** ##STD-PACKAGES-OF-THE-TYPE: the package the fixture's `vscode` type names. */
+const SEAMS_INSTALLED = 'vibevm/vibepacks/org.vibevm.codkit/seams-vscode/v1.0.0';
 const SKILL_NAMES = ['ck-orient', 'ck-intervene', 'ck-review-intervention', 'ck-resolve'];
 
 /** ##STD-NOTICE-COMPONENTS-BLOCK: the whole shipped set, by name. */
 const COMPONENTS = [
 	{ name: 'agent-skills', version: '1.0.0', path: `${SKILLS_INSTALLED}/` },
+	{ name: 'seams-vscode', version: '1.0.0', path: `${SEAMS_INSTALLED}/` },
 	{ name: 'standards', version: '1.0.0', path: `${INSTALLED}/` }
 ];
 
-/** A patch set with a vibevm manifest and nothing else. */
+/**
+ * A patch set with a vibevm manifest and a codkit.json - and no fork tree at
+ * all. The configuration is there for one reason: the packages delivered are
+ * the universal ones plus the ones this patch set's project type names
+ * (##STD-PACKAGES-OF-THE-TYPE), so `load` and `check` have to know the type.
+ */
 function makePatchSet(label: string, manifest = '[project]\nname = "fixture"\nversion = "0.0.1"\n'): string {
 	const root = makeTempRoot(`std-${label}`);
 	mkdirSync(root, { recursive: true });
 	writeFileSync(join(root, 'vibe.toml'), manifest, 'utf8');
+	writeConfig(root, 'vscode');
 	return root;
+}
+
+/** The smallest schema-2 configuration a patch set of `type` can carry. */
+function writeConfig(root: string, type: string): void {
+	writeFileSync(
+		join(root, 'codkit.json'),
+		`${JSON.stringify(
+			{
+				codkitConfig: 2,
+				pin: { tag: '1.0.0', sha: 'a'.repeat(40), date: '2026-01-02' },
+				upstreamAnchorCommit: 'b'.repeat(40),
+				type,
+				typeConfig: type === 'vscode' ? { ownRoot: 'src/vs/patchset' } : { ownRoot: 'src/own' },
+				generatedBranchPrefix: 'codkit/applied/',
+				cycleBranchPrefix: 'codkit/cycle/',
+				releaseRefPrefix: 'codkit/release/',
+				publishRemoteUrl: null,
+				buildWatchFile: null,
+				conventionsExtensionFile: null
+			},
+			null,
+			'\t'
+		)}\n`,
+		'utf8'
+	);
 }
 
 function run(patchesDir: string, args: readonly string[]): { status: number; stdout: string; stderr: string } {
@@ -75,7 +110,7 @@ describe('S30 - standards load into a fresh product', () => {
 		expect(dryData.manifest.action).toBe('append');
 		expect(dryData.notes).toHaveLength(4);
 		expect(sha256(join(patchesDir, 'vibe.toml'))).toBe(before);
-		expect(readdirSync(patchesDir).sort()).toEqual(['vibe.toml']);
+		expect(readdirSync(patchesDir).sort()).toEqual(['codkit.json', 'vibe.toml']);
 
 		const loaded = run(patchesDir, ['standards', 'load']);
 		expect(loaded.status).toBe(0);
@@ -152,15 +187,16 @@ describe('S56 - one run delivers every package codkit ships', () => {
 		expect(loaded.status).toBe(0);
 		expect(sameTree(shippedPackage, join(patchesDir, ...INSTALLED.split('/')))).toBe(true);
 		expect(sameTree(shippedSkills, join(patchesDir, ...SKILLS_INSTALLED.split('/')))).toBe(true);
+		expect(sameTree(shippedSeams, join(patchesDir, ...SEAMS_INSTALLED.split('/')))).toBe(true);
 
 		// ##STD-LOAD-ALL-PACKAGES: `standards` first, then the rest by name.
 		const data = loaded.envelope.data as {
 			packages: readonly { name: string; version: string; state: string; declaresSkills: boolean }[];
 			nextSteps: readonly string[];
 		};
-		expect(data.packages.map((entry) => entry.name)).toEqual(['standards', 'agent-skills']);
-		expect(data.packages.map((entry) => entry.state)).toEqual(['created', 'created']);
-		expect(data.packages.map((entry) => entry.declaresSkills)).toEqual([false, true]);
+		expect(data.packages.map((entry) => entry.name)).toEqual(['standards', 'agent-skills', 'seams-vscode']);
+		expect(data.packages.map((entry) => entry.state)).toEqual(['created', 'created', 'created']);
+		expect(data.packages.map((entry) => entry.declaresSkills)).toEqual([false, true, false]);
 		expect(data.nextSteps).toEqual(['vibe install --offline', 'vibe skill install']);
 
 		// One block, one table per package, in the same order.
@@ -169,12 +205,14 @@ describe('S56 - one run delivers every package codkit ships', () => {
 		expect(block).toContain('[requires.packages."org.vibevm.codkit/standards"]');
 		expect(block).toContain('version = "=1.0.0"');
 		expect(block).toContain('[requires.packages."org.vibevm.codkit/agent-skills"]');
+		expect(block).toContain('[requires.packages."org.vibevm.codkit/seams-vscode"]');
 		expect(block).toContain('version = "=1.0.0"');
 		expect(manifest.split('# codkit:begin standards')).toHaveLength(2);
 
 		// ##STD-NOTICE-COMPONENTS-BLOCK: the notice names both installed packages.
 		const notice = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
 		expect(notice).toContain(`agent-skills  1.0.0  ${SKILLS_INSTALLED}/`);
+		expect(notice).toContain(`seams-vscode  1.0.0  ${SEAMS_INSTALLED}/`);
 		expect(notice).toContain(`standards  1.0.0  ${INSTALLED}/`);
 
 		const human = run(patchesDir, ['standards', 'load']);
@@ -183,12 +221,43 @@ describe('S56 - one run delivers every package codkit ships', () => {
 		expect(human.stdout).toContain('next: vibe skill install');
 		// One summary per package, in the delivery order (##STD-LOAD-ALL-PACKAGES).
 		const summaries = human.stdout.split('\n').filter((line) => line.startsWith('package: ') || line.startsWith('files: '));
-		expect(summaries).toHaveLength(4);
+		expect(summaries).toHaveLength(6);
 		expect(summaries[0]).toBe(`package: standards 1.0.0 -> ${INSTALLED}`);
 		expect(summaries[1]).toMatch(/^files: \d+ unchanged \(up to date\)$/u);
 		expect(summaries[2]).toBe(`package: agent-skills 1.0.0 -> ${SKILLS_INSTALLED}`);
 		expect(summaries[3]).toMatch(/^files: \d+ unchanged \(up to date\)$/u);
+		expect(summaries[4]).toBe(`package: seams-vscode 1.0.0 -> ${SEAMS_INSTALLED}`);
+		expect(summaries[5]).toMatch(/^files: \d+ unchanged \(up to date\)$/u);
 		expect((json(patchesDir, ['standards', 'load']).envelope.data as { files: { created: number } }).files.created).toBe(0);
+	});
+});
+
+describe("S68 - the packages a patch set is delivered are its type's", () => {
+	it('gives a generic patch set the universal set and nothing of another family', () => {
+		const patchesDir = makePatchSet('s68-generic');
+		writeConfig(patchesDir, 'generic');
+
+		const loaded = json(patchesDir, ['standards', 'load']);
+		expect(loaded.status).toBe(0);
+		const data = loaded.envelope.data as { packages: readonly { name: string }[] };
+		expect(data.packages.map((entry) => entry.name)).toEqual(['standards', 'agent-skills']);
+		expect(existsSync(join(patchesDir, 'vibevm', 'vibepacks', 'org.vibevm.codkit', 'seams-vscode'))).toBe(false);
+		// A package no type named is not a missing package: `check` is clean.
+		expect(run(patchesDir, ['standards', 'check']).status).toBe(0);
+		expect(readFileSync(join(patchesDir, 'vibe.toml'), 'utf8')).not.toContain('seams-vscode');
+		expect(readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8')).not.toContain('seams-vscode');
+	});
+
+	it('refuses a patch set with no configuration, before any write', () => {
+		const patchesDir = makePatchSet('s68-no-config');
+		rmSync(join(patchesDir, 'codkit.json'));
+
+		const refused = json(patchesDir, ['standards', 'load']);
+		expect(refused.status).toBe(2);
+		expect(refused.envelope.errors[0]?.code).toBe('CK-E-CONFIG');
+		expect(refused.envelope.errors[0]?.message).toContain('no project type to ask');
+		expect(readdirSync(patchesDir).sort()).toEqual(['vibe.toml']);
+		expect(json(patchesDir, ['standards', 'check']).status).toBe(2);
 	});
 });
 
@@ -318,7 +387,7 @@ describe('S33 - a package that fails the licence check is never copied', () => {
 		});
 		expect(refused.status).toBe(1);
 		expect(refused.stderr).toContain('CK-E-LICENSE-HEADER');
-		expect(readdirSync(patchesDir).sort()).toEqual(['vibe.toml']);
+		expect(readdirSync(patchesDir).sort()).toEqual(['codkit.json', 'vibe.toml']);
 	});
 
 	it('ignores the seam outside the test build', () => {
@@ -481,7 +550,10 @@ describe('S53 - a new edition lands beside an installed older one', () => {
 		const notice = readFileSync(join(patchesDir, 'LICENSE-CODKIT.md'), 'utf8');
 		expect(notice).toContain('standards  0.1.0  vibevm/vibepacks/org.vibevm.codkit/standards/v0.1.0/');
 		expect(notice).toContain('standards  1.0.0  vibevm/vibepacks/org.vibevm.codkit/standards/v1.0.0/');
-		expect(existsSync(join(patchesDir, INSTALLED, 'vibevm', 'vibespecs', 'flows', 'standards', 'seam-catalogue.xml'))).toBe(true);
+		// ##STD-PACKAGES-OF-THE-TYPE: the catalogue is the type's package now, and
+		// the standards package no longer carries it.
+		expect(existsSync(join(patchesDir, INSTALLED, 'vibevm', 'vibespecs', 'flows', 'standards', 'seam-catalogue.xml'))).toBe(false);
+		expect(existsSync(join(patchesDir, SEAMS_INSTALLED, 'vibevm', 'vibespecs', 'flows', 'standards', 'seam-catalogue.xml'))).toBe(true);
 	});
 });
 

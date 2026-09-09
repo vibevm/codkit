@@ -4,12 +4,15 @@
 // notice.
 // Contract: PROP-007 sec. 24, algorithm PROP-014 sec. 5-6.
 //
-// `load` and `check` need the patch-set root and nothing else: no fork tree, no
-// codkit.json, no tree lock (##STD-LOAD-ROOTS). `license` needs no root at all -
-// it only prints what codkit ships.
+// `load` and `check` need the patch-set root and codkit.json, and nothing else:
+// no fork tree and no tree lock (##STD-LOAD-ROOTS). The configuration is read
+// for one answer - which packages this patch set's project type asks for beside
+// the universal ones (##STD-PACKAGES-OF-THE-TYPE) - and a patch set with no
+// configuration has no type to ask, so both refuse. `license` needs no root at
+// all: it only prints what codkit ships, which is the same text for every type.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot } from '../lib/command.ts';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot, requireProjectType } from '../lib/command.ts';
 import { isCycleTestBuild } from '../lib/cycleTestCrash.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { NOTICE_LEGACY_PATH, renderedNotice, reuseAnnotationRows } from '../lib/licenceNotice.ts';
@@ -51,6 +54,15 @@ function reportLicences(ctx: CommandContext, plan: LoadPlan): void {
 	const third = plan.licences.thirdParty.map((id) => `${id} (third-party)`);
 	const notices = plan.licences.notices === null ? '' : `; notices: ${plan.licences.notices}`;
 	ctx.out.info(`licences loaded: ${[...own, ...third].join('; ')}${notices}`);
+}
+
+/**
+ * ##STD-PACKAGES-OF-THE-TYPE: the packages the declared project type asks for,
+ * beside the universal ones. The refusal for a patch set with no configuration
+ * is `requireProjectType`'s, because there is no type to ask.
+ */
+function typePackages(ctx: CommandContext): readonly string[] {
+	return requireProjectType(ctx).standards.packages;
 }
 
 /** ##STD-LOAD-ALL-PACKAGES: one summary per package, in the order they are delivered. */
@@ -103,7 +115,14 @@ async function runLoad(ctx: CommandContext): Promise<number> {
 	const patchesDir = patchesRoot(ctx);
 	const dryRun = commandFlagGiven(ctx.commandFlags, DRY_RUN);
 	const upgrade = commandFlagGiven(ctx.commandFlags, UPGRADE);
-	const outcome = runStandardsLoad({ toolRoot: ctx.toolRoot, patchesDir, sourceOverride: sourceOverride(ctx), dryRun, upgrade });
+	const outcome = runStandardsLoad({
+		toolRoot: ctx.toolRoot,
+		patchesDir,
+		typePackages: typePackages(ctx),
+		sourceOverride: sourceOverride(ctx),
+		dryRun,
+		upgrade
+	});
 	const plan = outcome.plan;
 
 	// ##STD-LOAD-STEP-LICENSE-GATE: a package that fails the check is never
@@ -177,7 +196,12 @@ function noticeAction(outcome: LoadOutcome, path: string): string {
 
 async function runCheck(ctx: CommandContext): Promise<number> {
 	const patchesDir = patchesRoot(ctx);
-	const report = runStandardsCheck({ toolRoot: ctx.toolRoot, patchesDir, sourceOverride: sourceOverride(ctx) });
+	const report = runStandardsCheck({
+		toolRoot: ctx.toolRoot,
+		patchesDir,
+		typePackages: typePackages(ctx),
+		sourceOverride: sourceOverride(ctx)
+	});
 	const plan = report.plan;
 
 	for (const entry of report.packages) ctx.out.info(`package: ${entry.name} ${entry.version} ${entry.state}`);
@@ -281,7 +305,7 @@ export const standardsCommand: CommandDefinition = {
 export const standardsLoadCommand: CommandDefinition = {
 	name: 'standards load',
 	summary: 'deliver the packages codkit ships into the patch-set repository',
-	configMode: 'none',
+	configMode: 'load',
 	maxArgs: 0,
 	commandFlags: [DRY_RUN, UPGRADE],
 	run: runLoad
@@ -290,7 +314,7 @@ export const standardsLoadCommand: CommandDefinition = {
 export const standardsCheckCommand: CommandDefinition = {
 	name: 'standards check',
 	summary: 'report on the installed packages, the notice files and both blocks',
-	configMode: 'none',
+	configMode: 'load',
 	maxArgs: 0,
 	run: runCheck
 };
