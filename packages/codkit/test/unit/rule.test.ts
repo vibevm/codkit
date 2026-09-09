@@ -17,20 +17,20 @@ import { RULE_ID, makePatchSet } from '../fixtures/makePatchSet.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 const ARTIFACT = 'delta/rules/example.ckrule.json';
-const ID = 'CK-workbench-903';
+const ID = 'CK-shell-903';
 
 const VALID = {
 	codkitRule: 2,
 	id: ID,
 	type: 'hook',
 	category: 'follow',
-	owner: 'workbench-core',
+	owner: 'shell-core',
 	reason: 'fixture rewrite rule: the rule layer with an expected match count',
 	link: 'none',
 	cause: 'none',
 	pin: '1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5',
 	contractTests: ['patchset.guard.rule'],
-	target: 'src/vs/workbench/browser/parts/example/examplePart.ts',
+	target: 'source/app/browser/parts/example/examplePart.ts',
 	engine: 'line-ops',
 	expectedMatches: 1,
 	ops: [

@@ -104,7 +104,7 @@ describe('completed rebase move receipt', () => {
 		const override = {
 			targetPath: 'src/conflict.ts',
 			artifactPath: 'delta/patches/src__conflict.ts.ckpatch',
-			artifactId: 'CK-workbench-999',
+			artifactId: 'CK-shell-999',
 			cause: 'a'.repeat(40),
 			pin: { tag: 't2', sha: 'b'.repeat(40) },
 			artifactSha256: 'c'.repeat(64),
@@ -237,7 +237,7 @@ function moveOptions(current: MaterializationFixture): RebaseMoveOptions {
 		desiredTree: current.desiredTree,
 		patchsetHead: current.patchsetHead,
 		allowedOwnBeforeTree: current.head,
-		allowedIgnoredPrefixes: ['src/vs/patchset/'],
+		allowedIgnoredPrefixes: ['source/own/'],
 		allowedIgnoredPaths: [],
 		allowCompletedRollover: false
 	};

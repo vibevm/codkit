@@ -8,13 +8,14 @@
 // real command with real argv parsing and real exit codes.
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEPS_REQUIRED_RECEIPTS } from '../../src/lib/ciEngine.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
 import type { PublicErrorPayload } from '../../src/lib/messages.ts';
+import { STUB_TYPE_ID, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { makePatchSet } from '../fixtures/makePatchSet.ts';
@@ -23,9 +24,41 @@ import { makeTempRoot } from './tmp.ts';
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const launcher = join(packageRoot, 'bin', 'codkit.mjs');
 export const CODKIT_E2E_TEST_BUILD = 'CODKIT_E2E_TEST_BUILD';
+/** The node condition that turns a run into a test build (PROP-013 ##E2E-STANDARDS-SURFACE). */
+export const TEST_BUILD_CONDITION = '--conditions=codkit-test';
 export const CODKIT_E2E_TIMEOUT_MS = 'CODKIT_E2E_TIMEOUT_MS';
 
 export type Run = { readonly status: number; readonly stdout: string; readonly stderr: string };
+
+/**
+ * PROP-016 ##TYPE-TEST-SEAM: what a subprocess needs to reach the stub type.
+ * The fixture patch sets declare `stub`, and the stub type is no package, so
+ * the CLI finds it only through the seam - which the test build alone honours.
+ */
+export const STUB_TYPE_ENV: Readonly<Record<string, string>> = {
+	[CODKIT_E2E_TEST_BUILD]: '1',
+	CODKIT_TEST_TYPE_PACKAGE: `${STUB_TYPE_ID}=${STUB_TYPE_MODULE}`
+};
+
+/** The seam's environment with a test's own variables written over it. */
+export function withStubType(env?: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+	return { ...STUB_TYPE_ENV, ...(env ?? {}) };
+}
+
+/**
+ * A directory to put first on `PATH` for a scenario that reaches codkit through
+ * a launcher script or through `PATH` rather than by spawning node itself. The
+ * launchers run `node <launcher>`, and the build condition lives in the node
+ * process's own argv, so a `node` of this directory is what turns the run into
+ * a test build (##TYPE-TEST-SEAM). Nothing else about the run changes.
+ */
+export function testBuildNodeDir(label: string): string {
+	const dir = makeTempRoot(`${label}-node-shim`);
+	const shim = join(dir, 'node');
+	writeFileSync(shim, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${TEST_BUILD_CONDITION} "$@"\n`, 'utf8');
+	chmodSync(shim, 0o755);
+	return dir;
+}
 
 /** The `--json` envelope of PROP-012 sec. 1, as the tests read it. */
 export type Envelope = {
@@ -78,7 +111,7 @@ export function makeCliFixture(label: string): CliFixture {
 	runGit({ args: ['checkout', '--quiet', '--detach', upstream.t1.sha], cwd: treeDir });
 
 	const run = (args: readonly string[], env?: Readonly<Record<string, string>>): Run =>
-		runCli(patchesDir, ['--patches-dir', patchesDir, '--fork-dir', treeDir, ...args], env);
+		runCli(patchesDir, ['--patches-dir', patchesDir, '--fork-dir', treeDir, ...args], withStubType(env));
 
 	return {
 		upstream,

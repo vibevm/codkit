@@ -52,7 +52,7 @@ describe('codkit inventory', () => {
 			'resource-file': 1,
 			'rewrite-rule': 1
 		});
-		expect(data.inventory.metrics.bySubsystem).toEqual({ product: 2, workbench: 3 });
+		expect(data.inventory.metrics.bySubsystem).toEqual({ product: 2, shell: 3 });
 		expect(data.inventory.metrics.patchAndRuleCount).toBe(2);
 		expect(data.inventory.metrics.hunks).toBe(1);
 		expect(data.inventory.metrics.patchLineTotal).toBe(3);

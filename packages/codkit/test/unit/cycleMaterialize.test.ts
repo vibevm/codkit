@@ -34,7 +34,7 @@ import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/ma
 import { conventions } from '../support/conventions.ts';
 import { writeOwnManifestFixture } from '../support/ownManifestFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const CLEAN = 'src/clean.ts';
 const MERGED = 'src/merged.ts';
@@ -95,14 +95,14 @@ function fixture(): Fixture {
 	const patchesDir = makeTempRoot('cycle-materialize-patchset');
 	copyConventions(patchesDir);
 	const patchArtifacts = [
-		patch(patchesDir, CLEAN, 'CK-workbench-201', oldPin, 'base', 'codkit'),
-		patch(patchesDir, MERGED, 'CK-workbench-202', oldPin, 'base', 'codkit'),
-		patch(patchesDir, CONFLICT, 'CK-workbench-203', oldPin, 'base', 'codkit'),
-		patch(patchesDir, CONFLICT_TWO, 'CK-workbench-207', oldPin, 'base', 'second-codkit'),
-		patch(patchesDir, DELETED, 'CK-workbench-204', oldPin, 'base', 'codkit')
+		patch(patchesDir, CLEAN, 'CK-shell-201', oldPin, 'base', 'codkit'),
+		patch(patchesDir, MERGED, 'CK-shell-202', oldPin, 'base', 'codkit'),
+		patch(patchesDir, CONFLICT, 'CK-shell-203', oldPin, 'base', 'codkit'),
+		patch(patchesDir, CONFLICT_TWO, 'CK-shell-207', oldPin, 'base', 'second-codkit'),
+		patch(patchesDir, DELETED, 'CK-shell-204', oldPin, 'base', 'codkit')
 	];
-	const cleanRule = rule(patchesDir, RULE_CLEAN, 'CK-workbench-205', oldPin, 'anchor');
-	const brokenRule = rule(patchesDir, RULE_BROKEN, 'CK-workbench-206', oldPin, 'old-anchor');
+	const cleanRule = rule(patchesDir, RULE_CLEAN, 'CK-shell-205', oldPin, 'anchor');
+	const brokenRule = rule(patchesDir, RULE_BROKEN, 'CK-shell-206', oldPin, 'old-anchor');
 	const cleanOverlay = overlay(patchesDir, OVERLAY_CLEAN, 'CK-product-201', oldPin, 'old');
 	const brokenOverlay = overlay(patchesDir, OVERLAY_BROKEN, 'CK-product-202', oldPin, 'old');
 	writeResourceAndOwn(patchesDir, oldPin);
@@ -116,13 +116,13 @@ function fixture(): Fixture {
 		{ kind: 'overlay', overlay: cleanOverlay },
 		{ kind: 'overlay', overlay: brokenOverlay }
 	];
-	const classifications = classifyArtifacts({ type: vscodeType, treeDir: tree, artifacts, oldPin, newRef: targetPin });
+	const classifications = classifyArtifacts({ type: stubProjectType, treeDir: tree, artifacts, oldPin, newRef: targetPin });
 	const config: CodkitConfig = {
 		codkitConfig: 2,
 		pin: { tag: 't2', sha: targetPin, date: '2026-03-01' },
 		upstreamAnchorCommit: oldPin,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: 'stub',
+		typeConfig: { ownRoot: 'source/own' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -148,7 +148,7 @@ function patch(patchesDir: string, target: string, id: string, oldPin: string, b
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'exercise provisional cycle materialization',
 		link: 'none',
 		cause: 'none',
@@ -169,7 +169,7 @@ function rule(patchesDir: string, target: string, id: string, oldPin: string, ma
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'guard a generated patch',
 		link: 'none',
 		cause: 'none',
@@ -274,7 +274,7 @@ function materialize(current: Fixture, overrides: Partial<Pick<CycleMaterializeO
 		patchesDir: current.patchesDir,
 		resolution: current.resolution,
 		config: current.config,
-		type: vscodeType,
+		type: stubProjectType,
 		sourcePin: current.sourcePin,
 		classifications: overrides.classifications ?? current.classifications,
 		out: current.output,
@@ -329,7 +329,7 @@ describe('materializeCycleApply', () => {
 					patchesDir: current.patchesDir,
 					resolution: current.resolution,
 					config: current.config,
-					type: vscodeType,
+					type: stubProjectType,
 					sourcePin: current.sourcePin,
 					classifications: current.classifications,
 					out: current.output
@@ -347,7 +347,7 @@ describe('materializeCycleApply', () => {
 			patchesDir: current.patchesDir,
 			resolution: current.resolution,
 			config: current.config,
-			type: vscodeType,
+			type: stubProjectType,
 			sourcePin: current.sourcePin,
 			classifications: current.classifications,
 			out: current.output
@@ -361,10 +361,10 @@ describe('materializeCycleApply', () => {
 		).toBe('6');
 		expect(first.blockers.map((entry) => [entry.outcome, entry.artifactId])).toEqual([
 			['conflict', 'CK-product-202'],
-			['conflict', 'CK-workbench-203'],
-			['target-deleted', 'CK-workbench-204'],
-			['conflict', 'CK-workbench-207'],
-			['rule-broken', 'CK-workbench-206']
+			['conflict', 'CK-shell-203'],
+			['target-deleted', 'CK-shell-204'],
+			['conflict', 'CK-shell-207'],
+			['rule-broken', 'CK-shell-206']
 		]);
 
 		const conflict = readFileSync(join(current.tree, CONFLICT), 'utf8');
@@ -381,14 +381,14 @@ describe('materializeCycleApply', () => {
 		expect(runGit({ args: ['ls-tree', first.provisionalTip, RESOURCE], cwd: current.tree }).stdout).toMatch(/^100755 /);
 		expect(statSync(join(current.tree, MODE_ONLY)).mode & 0o111).not.toBe(0);
 		expect(runGit({ args: ['cat-file', '-e', `${first.provisionalTip}:${DELETED}`], cwd: current.tree }).status).not.toBe(0);
-		expect(readFileSync(join(current.tree, 'src/vs/patchset/hello.ts'), 'utf8')).toBe('export const hello = true;\n');
+		expect(readFileSync(join(current.tree, 'source/own/hello.ts'), 'utf8')).toBe('export const hello = true;\n');
 		expect(runGit({ args: ['rev-parse', 'refs/heads/codkit/applied/t2'], cwd: current.tree }).stdout.trim()).toBe(current.oldPin);
 
 		const second = materializeCycleApply({
 			patchesDir: current.patchesDir,
 			resolution: current.resolution,
 			config: current.config,
-			type: vscodeType,
+			type: stubProjectType,
 			sourcePin: current.sourcePin,
 			classifications: current.classifications,
 			out: current.output
@@ -404,7 +404,7 @@ describe('materializeCycleApply', () => {
 					patchesDir: current.patchesDir,
 					resolution: current.resolution,
 					config: current.config,
-					type: vscodeType,
+					type: stubProjectType,
 					sourcePin: current.sourcePin,
 					classifications: current.classifications,
 					out: current.output
@@ -417,7 +417,7 @@ describe('materializeCycleApply', () => {
 	it('rejects stale or tampered classifications before claiming the provisional ref', () => {
 		const current = fixture();
 		const tampered = current.classifications.map((item) => {
-			if (item.kind !== 'patch' || item.artifactId !== 'CK-workbench-201' || item.bytes === null) return item;
+			if (item.kind !== 'patch' || item.artifactId !== 'CK-shell-201' || item.bytes === null) return item;
 			return { ...item, bytes: encodeUtf8('tampered\n') };
 		});
 		expect(codeOf(() => materialize(current, { classifications: tampered }))).toBe('ARTIFACT-BROKEN');
@@ -471,7 +471,7 @@ describe('materializeCycleApply', () => {
 					patchesDir: ignored.patchesDir,
 					resolution: ignored.resolution,
 					config: laterConfig,
-					type: vscodeType,
+					type: stubProjectType,
 					sourcePin: ignored.sourcePin,
 					classifications: ignored.classifications,
 					out: ignored.output
@@ -497,7 +497,7 @@ describe('materializeCycleApply', () => {
 			patchesDir: linked.patchesDir,
 			resolution: linked.resolution,
 			config: linkedConfig,
-			type: vscodeType,
+			type: stubProjectType,
 			sourcePin: linked.sourcePin,
 			classifications: linked.classifications,
 			out: linked.output
@@ -534,8 +534,8 @@ describe('materializeCycleApply', () => {
 	it.each(['both', 'tree-only'] as const)('refuses %s own-code data loss before object or ref mutation', (kind) => {
 		const current = fixture();
 		const applied = materialize(current);
-		const ownRoot = join(current.tree, 'src/vs/patchset');
-		if (kind === 'both') write(current.tree, 'src/vs/patchset/hello.ts', 'tree edit\n');
+		const ownRoot = join(current.tree, 'source/own');
+		if (kind === 'both') write(current.tree, 'source/own/hello.ts', 'tree edit\n');
 		else writeFileSync(join(ownRoot, 'tree-only.ts'), 'tree-only\n');
 		const objectsBefore = looseObjectCount(current);
 		expect(codeOf(() => materialize(current))).toBe('DIRTY-TREE');

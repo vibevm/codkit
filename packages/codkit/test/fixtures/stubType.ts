@@ -1,0 +1,374 @@
+// The project type the engine's own tests run against (PROP-016
+// ##TYPE-ENGINE-TESTS, ##TYPE-TEST-SEAM).
+//
+// It answers the contract with the smallest layout that still exercises every
+// engine mechanism: one source root, one own root inside it, one JSON manifest
+// as the overlay target, one directory where an add-on materializes, one
+// registration call an override is proved by, one list of entry modules. It
+// names no upstream product, so a test written against it proves that the
+// engine does the work rather than that one official type happens to answer the
+// way the engine assumed.
+//
+// The module is loaded two ways: in process, by the unit suites, which override
+// the answers they are about with `stubType({...})`; and by the real CLI of the
+// e2e suites, which reaches it through `CODKIT_TEST_TYPE_PACKAGE` and takes the
+// `projectType` export below.
+
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
+import type {
+	AdvisoryFiles,
+	AdvisoryReader,
+	AdvisoryValue,
+	BrandGraft,
+	BuildCommand,
+	Capability,
+	EntryModuleLocator,
+	ExtensionMaterializer,
+	GeneratorsArea,
+	OverlayTarget,
+	OwnedDirectory,
+	ProjectType,
+	Refusal,
+	ServiceOverrideVerifier
+} from '@codkit/type-api';
+
+/** The identifier a fixture patch set declares in `codkit.json`. */
+export const STUB_TYPE_ID = 'stub';
+
+/** The source root of the stub layout; the own root sits inside it. */
+export const SOURCE_ROOT_PREFIX = 'source/';
+
+/** The own root every fixture patch set of this type declares. */
+export const STUB_OWN_ROOT = 'source/own';
+
+/** The JSON manifest that is the overlay target of this layout. */
+export const MANIFEST_TARGET = 'manifest.json';
+
+/** The sidecar the running product of this layout reads instead of the target. */
+export const MANIFEST_OVERRIDES_FILE = 'manifest.overrides.json';
+
+/** Where an own add-on materializes, from the tree root. */
+export const ADDONS_TREE_DIR = 'addons';
+
+/** This module's own absolute path: what `CODKIT_TEST_TYPE_PACKAGE` names. */
+export const STUB_TYPE_MODULE = fileURLToPath(import.meta.url);
+
+/** The pass-boundary profile of the stub's watch channels. */
+export const STUB_WATCH_PROFILE_PATH = join(dirname(fileURLToPath(import.meta.url)), 'stubBuildWatch.json');
+
+/** Keys the packaging step of this layout stamps by itself. */
+export const STAMPED_MANIFEST_KEYS: readonly string[] = ['commit', 'date', 'checksums', 'version'];
+
+/** The subsystem names an intervention id of a fixture patch set may take. */
+export const SUBSYSTEMS: readonly string[] = ['shell', 'editor', 'platform', 'addons', 'build', 'product', 'base', 'server', 'test'];
+
+/** Service ids own code may never re-register in this layout. */
+export const FORBIDDEN_SERVICE_IDS: readonly string[] = ['ILogService', 'IFileService', 'IProductService'];
+
+/** ##TYPE-AREA-LAYOUT: the own root must sit under the source root. */
+export function ownRootProblem(ownRoot: string): Refusal {
+	if (ownRoot === '') {
+		return `must be a path from the tree root under ${SOURCE_ROOT_PREFIX}`;
+	}
+	if (ownRoot.startsWith('/') || ownRoot.endsWith('/')) {
+		return 'must be written without a leading or trailing slash';
+	}
+	if (ownRoot.includes('\\')) {
+		return 'must use forward slashes';
+	}
+	if (ownRoot.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')) {
+		return 'must not contain an empty, dot or dot-dot segment';
+	}
+	if (!ownRoot.startsWith(SOURCE_ROOT_PREFIX) || ownRoot.length === SOURCE_ROOT_PREFIX.length) {
+		return `must be a directory under ${SOURCE_ROOT_PREFIX}: the build of this layout is anchored there`;
+	}
+	return null;
+}
+
+/** ##OWN-EXTENSION-UNIT: `addons/<name>`, relative to the tree root. */
+export function ownExtensionPath(name: string): string {
+	return `${ADDONS_TREE_DIR}/${name}`;
+}
+
+/** One owned directory and no build output inside it: this layout compiles to `out/`. */
+export function ownRoots(config: { readonly ownRoot: string }): readonly OwnedDirectory[] {
+	return [{ path: config.ownRoot, role: 'own', buildOutputs: [] }];
+}
+
+/** The overlay targets: the manifest with its dev channel, and the tree manifest's scripts. */
+export const overlayTargets: readonly OverlayTarget[] = [
+	{ path: MANIFEST_TARGET, devChannel: MANIFEST_OVERRIDES_FILE, stampedKeys: STAMPED_MANIFEST_KEYS, allowedKeys: null },
+	{ path: 'package.json', devChannel: null, stampedKeys: [], allowedKeys: ['scripts'] }
+];
+
+/** ##OWN-EXTENSION-UNIT: the delta directory and its materialization. */
+export const ownExtensions: ExtensionMaterializer = {
+	deltaRoot: 'delta/own-extensions',
+	materializedPath: ownExtensionPath,
+	namePattern: /^[a-z0-9][a-z0-9-]*$/,
+	manifestFile: 'package.json'
+};
+
+/** ##SO-MECHANISM, ##SO-FORBIDDEN-IDS: how an override is proved and refused. */
+export const serviceOverride: ServiceOverrideVerifier = {
+	registrationCall: 'registerService',
+	registrationModule: null,
+	forbiddenReason:
+		'this service is set explicitly before the shell is created, so a later registration is ignored and the product breaks at load',
+	forbiddenHint: 'override a service the shell itself instantiates, or replace the behaviour through the entry-module layer'
+};
+
+/** The entry modules of this layout: the import lists the product is assembled from. */
+export const entryModule: EntryModuleLocator = {
+	entries: ['source/app/entry.common.main.ts', 'source/app/entry.desktop.main.ts', 'source/app/entry.web.main.ts'],
+	why: 'these modules are the import lists the product of this layout is assembled from, so a contribution reaches it by being imported there'
+};
+
+/** The dependency install of the tree. */
+export const INSTALL: readonly BuildCommand[] = [{ label: 'install', command: 'npm', args: ['ci'] }];
+
+/** The hygiene and lint gates, in the order they must run. */
+export const HYGIENE: readonly BuildCommand[] = [
+	{ label: 'hygiene', command: 'npm', args: ['run', 'hygiene'] },
+	{ label: 'eslint', command: 'npm', args: ['run', 'eslint'] }
+];
+
+/** The distributable build; nothing in `ci` runs it. */
+export const PACKAGE_BUILD: readonly BuildCommand[] = [{ label: 'package', command: 'npm', args: ['run', 'package'] }];
+
+/** Argv fragments that mean somebody else's watcher already runs over this tree. */
+export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['build/watch.mjs transpile --watch', 'foreign watch-'];
+
+/** The own-test runner of this layout takes the own root as a glob. */
+export function ownTests(ownRoot: string): BuildCommand | null {
+	const leaf =
+		ownRoot
+			.split('/')
+			.filter((segment) => segment !== '')
+			.at(-1) ?? '';
+	if (leaf === '') {
+		return null;
+	}
+	return {
+		label: 'product tests',
+		command: 'npm',
+		args: ['run', 'test-own', '--', '--runGlob', `${leaf}/**/test/{common,node}/**/*.test.js`]
+	};
+}
+
+/** The one nonempty line of the toolchain pin file. */
+function toolchainPin(files: AdvisoryFiles): AdvisoryValue {
+	const content = files.get('.nvmrc') ?? null;
+	if (content === null) {
+		return null;
+	}
+	const line = content.split('\n').find((candidate) => candidate.trim() !== '');
+	return line === undefined ? null : line.trim();
+}
+
+/** The dependency block of the tree manifest, as the advisory compares it. */
+function treeDependencies(files: AdvisoryFiles): AdvisoryValue {
+	const content = files.get('package.json') ?? null;
+	if (content === null) {
+		return null;
+	}
+	try {
+		const parsed = JSON.parse(content) as { readonly dependencies?: AdvisoryValue };
+		return parsed.dependencies ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/** The readers of the upgrade advisory: the toolchain pin and the tree manifest. */
+export const readers: readonly AdvisoryReader[] = [
+	{
+		id: 'toolchain-pin',
+		paths: ['.nvmrc'],
+		changeIsNews: true,
+		read: toolchainPin,
+		meaning: () => 'the toolchain the tree is built with moved; rebuild the managed tree from a clean install'
+	},
+	{
+		id: 'tree-dependencies',
+		paths: ['package.json'],
+		changeIsNews: false,
+		read: treeDependencies,
+		meaning: () => 'the dependency block of the tree changed; own code compiled against it may need the same move'
+	}
+];
+
+/** The stub's own configuration: an own root and nothing else. */
+const configSchema = z
+	.object({
+		ownRoot: z
+			.string()
+			.min(1)
+			.superRefine((value, context) => {
+				const problem = ownRootProblem(value);
+				if (problem !== null) {
+					context.addIssue({ code: 'custom', message: problem });
+				}
+			})
+	})
+	.strict();
+
+/**
+ * The capabilities the engine's suites need answered. `brand-images` and
+ * `runtime-library` are deliberately absent: each of them is a payload the tool
+ * ships for one family, and the suites that prove those live with the family
+ * that ships them.
+ */
+export const CAPABILITIES: readonly Capability[] = [
+	'gen-brand',
+	'build-channels',
+	'own-extensions',
+	'service-override',
+	'entry-module',
+	'config-overlay',
+	'dev-channel',
+	'upgrade-advisory'
+];
+
+const base: ProjectType = {
+	id: STUB_TYPE_ID,
+	capabilities: new Set<Capability>(CAPABILITIES),
+	configSchema,
+	identity: {
+		tagPattern: /^\d+\.\d+\.\d+$/u,
+		tagShape: '<major>.<minor>.<patch>',
+		fingerprints: [
+			{
+				path: 'package.json',
+				kind: 'file',
+				why: 'the tree of this layout is an npm project, and every build command of the type is one of its scripts'
+			},
+			{ path: MANIFEST_TARGET, kind: 'file', why: 'the manifest of the product: the target of the configuration overlay' },
+			{ path: 'source', kind: 'directory', why: 'the source root of this layout; the own root of a patch set lives inside it' }
+		]
+	},
+	layout: {
+		ownRootProblem,
+		ownRoots,
+		ownExtensionPath,
+		cleanupWhitelist: ['node_modules/', '.build/', '/out*/', 'addons/*/out/', 'addons/*/dist/', '.eslintcache', '*.tsbuildinfo'],
+		forbiddenPatchTargets: ['.config/generated/**']
+	},
+	layers: { overlayTargets, ownExtensions, serviceOverride, entryModule },
+	build: {
+		install: INSTALL,
+		hygiene: HYGIENE,
+		ownTests,
+		packageBuild: PACKAGE_BUILD,
+		packageStamps: [
+			{ name: 'BUILD_SOURCE_VERSION', source: 'tree-head' },
+			{ name: 'BUILD_QUALITY', source: 'pin-tag' }
+		],
+		watchProfilePath: STUB_WATCH_PROFILE_PATH,
+		foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
+	},
+	advisory: { readers },
+	standards: { packages: [] },
+	conventions: { subsystems: SUBSYSTEMS, forbiddenServiceIds: FORBIDDEN_SERVICE_IDS },
+	generators: stubGenerators({ brand: true })
+};
+
+/**
+ * The smallest honest skeleton: identifiers, and a test inside the feature's
+ * own directory. `brandGraft` is present only when a test asks for it, so the
+ * refusal of a family without a string funnel can be proved too.
+ */
+export function stubGenerators(options: { readonly brand?: boolean; readonly testOutside?: boolean } = {}): GeneratorsArea {
+	const area: GeneratorsArea = {
+		featureSkeleton: (request) => {
+			const directory = `delta/own/contrib/${request.name}`;
+			return {
+				directory,
+				modules: [
+					{
+						path: `${directory}/common/${request.name}.ts`,
+						text: `// Identifiers of the ${request.title} feature.\nexport const FEATURE_ID = '${request.id}';\n`,
+						role: 'identifiers'
+					},
+					{
+						path: `${directory}/browser/${request.name}.contribution.ts`,
+						text: [
+							`import { registerStubFeature } from '../../../codkit/browser/featureRegistry.js';`,
+							`import { FEATURE_ID } from '../common/${request.name}.js';`,
+							'',
+							'registerStubFeature({',
+							'\tid: FEATURE_ID,',
+							`\ttitle: '${request.title}',`,
+							`\tsetting: ${String(request.setting)},`,
+							`\thotToggle: ${String(!request.cold)},`,
+							'});',
+							''
+						].join('\n'),
+						role: 'feature'
+					},
+					{
+						path:
+							options.testOutside === true ? `delta/own/test/${request.name}.test.ts` : `${directory}/test/browser/${request.name}.test.ts`,
+						text: `// the test of ${request.id}\n`,
+						role: 'test'
+					}
+				],
+				importLine: `import '../contrib/${request.name}/browser/${request.name}.contribution.js';`,
+				reminders: [`teach the stub family about ${request.name}`]
+			};
+		}
+	};
+	if (options.brand !== true) {
+		return area;
+	}
+	return {
+		...area,
+		brandGraft: (ownRoot): BrandGraft => ({
+			module: {
+				path: 'delta/own/common/brand.ts',
+				text: [
+					`// the brand table of ${ownRoot}`,
+					`import { createStubBrandTransform, type IBrandRule } from '../codkit/common/brand/brandRules.js';`,
+					'',
+					'const RULES: IBrandRule[] = [];',
+					'',
+					'export const brandMessage = createStubBrandTransform(RULES);',
+					''
+				].join('\n'),
+				role: 'table'
+			},
+			hookText: `graft brandMessage(text) into the string funnel of ${ownRoot}\n`,
+			reminders: ['the graft is a patch of the product: type = hook', 'declare the import of the table in the layering rules of the family']
+		})
+	};
+}
+
+/** The stub, with the answers this test cares about written over it. */
+export function stubType(answers: Partial<ProjectType> = {}): ProjectType {
+	return { ...base, ...answers };
+}
+
+/** What the CLI loads through `CODKIT_TEST_TYPE_PACKAGE` (##TYPE-TEST-SEAM). */
+export const projectType: ProjectType = base;
+
+export default projectType;
+
+/**
+ * A reader of one file that reads its trimmed text. `changeIsNews` says whether
+ * a change of the file is worth naming even when the text reads the same.
+ */
+export function stubReader(
+	id: string,
+	path: string,
+	options: { readonly changeIsNews?: boolean; readonly meaning?: string | null } = {}
+): AdvisoryReader {
+	return {
+		id,
+		paths: [path],
+		changeIsNews: options.changeIsNews ?? false,
+		read: (files) => files.get(path)?.trim() ?? null,
+		meaning: () => (options.meaning === undefined ? `${id} changed` : options.meaning)
+	};
+}

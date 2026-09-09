@@ -17,10 +17,10 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 import { oneOwnedRoot, ownedRoot } from '../support/ownedRoots.ts';
 
-const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
+const OWN_IN_TREE = 'source/own/hello.ts';
 const OWN_IN_PATCHSET = 'delta/own/hello.ts';
 
 let fixture: SyncFixture;
@@ -40,7 +40,7 @@ function generated(): DriftOptions['generated'] {
 }
 
 function guard(): ReturnType<typeof driftDirty> {
-	return driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
+	return driftDirty(materializerOf(stubProjectType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 		generated: generated()
 	});
 }
@@ -89,14 +89,14 @@ describe('driftDirty', () => {
 		// git says nothing about it: the own directory is excluded locally.
 		expect(result.upstream).toEqual([]);
 		expect(upstreamDirt(fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot))).toEqual([]);
-		expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'both', owned: ownedRoot('src/vs/patchset') });
+		expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'both', owned: ownedRoot('source/own') });
 		expect(result.files.some((path) => path.startsWith(OWN_IN_TREE) && path.includes(OWN_IN_PATCHSET))).toBe(true);
 	});
 
 	it('reports an own file the tree has and patchset does not', () => {
-		const result = whileChanged('src/vs/patchset/strayNote.ts', '// never extracted\n', guard);
+		const result = whileChanged('source/own/strayNote.ts', '// never extracted\n', guard);
 		expect(result.dirty).toBe(true);
-		expect(result.own).toContainEqual({ relative: 'strayNote.ts', kind: 'tree-only', owned: ownedRoot('src/vs/patchset') });
+		expect(result.own).toContainEqual({ relative: 'strayNote.ts', kind: 'tree-only', owned: ownedRoot('source/own') });
 	});
 
 	it('does not call own code that is merely not materialized yet dirt', () => {
@@ -105,7 +105,7 @@ describe('driftDirty', () => {
 		rmSync(inTree);
 		try {
 			const result = guard();
-			expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'patchset-only', owned: ownedRoot('src/vs/patchset') });
+			expect(result.own).toContainEqual({ relative: 'hello.ts', kind: 'patchset-only', owned: ownedRoot('source/own') });
 			expect(result.dirty).toBe(false);
 		} finally {
 			writeFileSync(inTree, saved);
@@ -118,7 +118,7 @@ describe('driftDirty', () => {
 		try {
 			expect(guard().files).toContain('left-behind.txt');
 			const fresh = driftDirty(
-				materializerOf(vscodeType),
+				materializerOf(stubProjectType),
 				fixture.treeDir,
 				oneOwnedRoot(fixture.config.typeConfig.ownRoot),
 				fixture.patchesDir,
@@ -140,10 +140,10 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 
 	it('drops a tracked path the caller certifies, and only that path', () => {
 		const result = whileChanged(EXAMPLE_PART_PATH, '// replaced by hand\n', () =>
-			whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
+			whileChanged('manifest.json', '// materialized for packaging\n', () =>
+				driftDirty(materializerOf(stubProjectType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 					generated: generated(),
-					isKnownMaterialization: (path) => path === 'product.json'
+					isKnownMaterialization: (path) => path === 'manifest.json'
 				})
 			)
 		);
@@ -154,14 +154,14 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 	});
 
 	it('keeps the path dirt when the predicate answers no', () => {
-		const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-			driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
+		const result = whileChanged('manifest.json', '// materialized for packaging\n', () =>
+			driftDirty(materializerOf(stubProjectType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 				generated: generated(),
 				isKnownMaterialization: () => false
 			})
 		);
 
-		expect(result.upstream).toEqual(['product.json']);
+		expect(result.upstream).toEqual(['manifest.json']);
 	});
 
 	it('never asks the predicate about untracked paths', () => {
@@ -171,8 +171,8 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 		const litter = join(fixture.treeDir, 'left-behind.txt');
 		writeFileSync(litter, 'junk\n', 'utf8');
 		try {
-			const result = whileChanged('product.json', '// materialized for packaging\n', () =>
-				driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
+			const result = whileChanged('manifest.json', '// materialized for packaging\n', () =>
+				driftDirty(materializerOf(stubProjectType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
 					generated: generated(),
 					isKnownMaterialization: (path) => {
 						asked.push(path);
@@ -181,7 +181,7 @@ describe('driftDirty: the known-materialization refinement (##OVERLAY-KNOWN-MATE
 				})
 			);
 
-			expect(asked).toEqual(['product.json']);
+			expect(asked).toEqual(['manifest.json']);
 			expect(result.dirty).toBe(true);
 			expect(result.files).toContain('left-behind.txt');
 		} finally {
@@ -198,18 +198,24 @@ describe('driftDirty: the stranded-materialization exception (##DRIFT-GUARD-PRED
 	/** The guard as a plain `load` arms it, recording every path the hook saw. */
 	function guardPassingStranded(asked: string[]): ReturnType<typeof driftDirty> {
 		const classify = strandedExtensionClassifier(
-			materializerOf(vscodeType)!,
+			materializerOf(stubProjectType)!,
 			fixture.treeDir,
 			fixture.config.pin.sha,
 			loadOwnManifest(fixture.patchesDir).extensions
 		);
-		return driftDirty(materializerOf(vscodeType), fixture.treeDir, oneOwnedRoot(fixture.config.typeConfig.ownRoot), fixture.patchesDir, {
-			generated: generated(),
-			isStrandedExtension: (entry) => {
-				asked.push(entry.path);
-				return classify(entry.path);
+		return driftDirty(
+			materializerOf(stubProjectType),
+			fixture.treeDir,
+			oneOwnedRoot(fixture.config.typeConfig.ownRoot),
+			fixture.patchesDir,
+			{
+				generated: generated(),
+				isStrandedExtension: (entry) => {
+					asked.push(entry.path);
+					return classify(entry.path);
+				}
 			}
-		});
+		);
 	}
 
 	/** Put something untracked in the tree, look, take it away again. */
@@ -220,27 +226,27 @@ describe('driftDirty: the stranded-materialization exception (##DRIFT-GUARD-PRED
 		try {
 			return look();
 		} finally {
-			rmSync(join(fixture.treeDir, 'extensions'), { recursive: true, force: true });
+			rmSync(join(fixture.treeDir, 'addons'), { recursive: true, force: true });
 			rmSync(absolute, { force: true });
 		}
 	}
 
 	it('passes over a directory no record declares and the pin does not ship', () => {
 		const asked: string[] = [];
-		const result = withTreePath('extensions/sample/package.json', PACKAGE_JSON, () => guardPassingStranded(asked));
+		const result = withTreePath('addons/sample/package.json', PACKAGE_JSON, () => guardPassingStranded(asked));
 
 		expect(result.dirty).toBe(false);
 		expect(result.upstream).toEqual([]);
-		// The collapsed `extensions/` entry was opened up, or the hook could
+		// The collapsed `addons/` entry was opened up, or the hook could
 		// never have been asked about the directory inside it.
-		expect(asked).toContain('extensions/sample/package.json');
+		expect(asked).toContain('addons/sample/package.json');
 	});
 
 	it('leaves the same directory dirt for a command that arms no hook', () => {
-		const result = withTreePath('extensions/sample/package.json', PACKAGE_JSON, guard);
+		const result = withTreePath('addons/sample/package.json', PACKAGE_JSON, guard);
 
 		expect(result.dirty).toBe(true);
-		expect(result.upstream.some((path) => path.startsWith('extensions/'))).toBe(true);
+		expect(result.upstream.some((path) => path.startsWith('addons/'))).toBe(true);
 	});
 
 	it('is never asked about a declared extension, which stays out of the dirt as before', () => {
@@ -264,25 +270,25 @@ describe('driftDirty: the stranded-materialization exception (##DRIFT-GUARD-PRED
 		const asked: string[] = [];
 		try {
 			// Both sides carry the same bytes: the extension is materialized, not drifted.
-			const result = withTreePath('extensions/acme-pack/package.json', PACKAGE_JSON, () => guardPassingStranded(asked));
+			const result = withTreePath('addons/acme-pack/package.json', PACKAGE_JSON, () => guardPassingStranded(asked));
 
 			expect(result.dirty).toBe(false);
-			expect(asked.some((path) => path.startsWith('extensions/acme-pack/'))).toBe(false);
+			expect(asked.some((path) => path.startsWith('addons/acme-pack/'))).toBe(false);
 		} finally {
 			writeFileSync(manifestPath, saved, 'utf8');
 			rmSync(join(fixture.patchesDir, 'delta', 'own-extensions'), { recursive: true, force: true });
 		}
 	});
 
-	it('keeps a new file outside extensions/ dirt, and a loose file straight under it', () => {
+	it('keeps a new file outside addons/ dirt, and a loose file straight under it', () => {
 		const asked: string[] = [];
-		const result = withTreePath('extensions/README.md', '# not a materialization\n', () =>
+		const result = withTreePath('addons/README.md', '# not a materialization\n', () =>
 			whileChanged('left-behind.txt', 'junk\n', () => guardPassingStranded(asked))
 		);
 
 		expect(result.dirty).toBe(true);
 		expect(result.upstream).toContain('left-behind.txt');
-		expect(result.upstream).toContain('extensions/README.md');
+		expect(result.upstream).toContain('addons/README.md');
 	});
 });
 
@@ -295,15 +301,15 @@ describe('.gitkeep in own code', () => {
 		// The fingerprint moved, so this is a full apply, own copy included.
 		expect(fixture.sync().exitCode).toBe(0);
 
-		expect(existsSync(join(fixture.treeDir, 'src', 'vs', 'patchset', 'modes', '.gitkeep'))).toBe(false);
+		expect(existsSync(join(fixture.treeDir, 'source', 'own', 'modes', '.gitkeep'))).toBe(false);
 		expect(guard().dirty).toBe(false);
 	});
 });
 
 describe('porcelainEntries', () => {
 	it('keeps the status and takes the new path of a rename', () => {
-		expect(porcelainEntries(' M src/vs/a.ts\n?? litter.txt\nR  old.ts -> new.ts\n')).toEqual([
-			{ status: ' M', path: 'src/vs/a.ts' },
+		expect(porcelainEntries(' M source/a.ts\n?? litter.txt\nR  old.ts -> new.ts\n')).toEqual([
+			{ status: ' M', path: 'source/a.ts' },
 			{ status: '??', path: 'litter.txt' },
 			{ status: 'R ', path: 'new.ts' }
 		]);

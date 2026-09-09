@@ -14,10 +14,10 @@ import { STATUS_PART_PATH, STATUSBAR_PART_PATH, fixtureCommit } from '../fixture
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const REFERENCE = 'delta/own/test/rename-path.test.ts';
-const MATERIALIZED_REFERENCE = 'src/vs/patchset/test/rename-path.test.ts';
+const MATERIALIZED_REFERENCE = 'source/own/test/rename-path.test.ts';
 
 afterAll(cleanupTempRoots);
 
@@ -52,7 +52,7 @@ function preparedFixture(): CliFixture {
 		patchesDir: fixture.patchesDir,
 		forkDir: fixture.treeDir,
 		config: requiredConfig(fixture),
-		type: vscodeType,
+		type: stubProjectType,
 		target: fixture.upstream.t2.tag
 	});
 	return fixture;
@@ -61,13 +61,13 @@ function preparedFixture(): CliFixture {
 function addRenamePatch(fixture: CliFixture): void {
 	const source = fixture.git(['show', `${fixture.upstream.t1.sha}:${STATUS_PART_PATH}`]);
 	if (source.status !== 0) throw new Error(source.stderr);
-	const id = 'CK-workbench-905';
+	const id = 'CK-shell-905';
 	const header = [
 		'# codkit-patch: 2',
 		`# id: ${id}`,
 		'# type: hook',
 		'# category: follow',
-		'# owner: workbench-core',
+		'# owner: shell-core',
 		'# reason: rename own materialization crash fixture',
 		'# link: none',
 		'# cause: none',
@@ -101,7 +101,7 @@ function continueFixture(fixture: CliFixture, config: ReturnType<typeof required
 		patchesDir: fixture.patchesDir,
 		resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 		config,
-		type: vscodeType,
+		type: stubProjectType,
 		ci: true,
 		out: new Output({
 			command: 'cycle continue',

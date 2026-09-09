@@ -16,7 +16,7 @@ import { makeUpstream, fixtureCommit, fixtureGit, pinDate } from '../fixtures/ma
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { makePatchSet } from '../fixtures/makePatchSet.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const NOW = new Date('2026-08-31T12:34:56.000Z');
 
@@ -52,7 +52,7 @@ function start(fixtureValue: Fixture, target = 't2') {
 		patchesDir: fixtureValue.patchesDir,
 		forkDir: fixtureValue.upstream.dir,
 		config: config(fixtureValue.patchesDir),
-		type: vscodeType,
+		type: stubProjectType,
 		target,
 		dependencies: { now: () => NOW }
 	});
@@ -68,7 +68,7 @@ function startWith(
 		patchesDir: fixtureValue.patchesDir,
 		forkDir: fixtureValue.upstream.dir,
 		config: configValue,
-		type: vscodeType,
+		type: stubProjectType,
 		target,
 		dependencies: { now: () => NOW, ...dependencies }
 	});
@@ -79,7 +79,7 @@ function restartWith(fixtureValue: Fixture, dependencies: CycleControlDependenci
 		patchesDir: fixtureValue.patchesDir,
 		forkDir: fixtureValue.upstream.dir,
 		config: configValue,
-		type: vscodeType,
+		type: stubProjectType,
 		yes: true,
 		dependencies: { now: () => NOW, ...dependencies }
 	});
@@ -228,7 +228,7 @@ describe('cycle control', () => {
 				patchesDir: current.patchesDir,
 				forkDir: current.upstream.dir,
 				config: config(current.patchesDir),
-				type: vscodeType,
+				type: stubProjectType,
 				target: 't2',
 				dependencies: {
 					now: () => NOW,
@@ -248,7 +248,7 @@ describe('cycle control', () => {
 			patchesDir: current.patchesDir,
 			forkDir: current.upstream.dir,
 			config: config(current.patchesDir),
-			type: vscodeType,
+			type: stubProjectType,
 			target: 't2',
 			dependencies: { now: () => NOW }
 		});
@@ -430,7 +430,7 @@ describe('cycle control', () => {
 				patchesDir: current.patchesDir,
 				forkDir: current.upstream.dir,
 				config: config(current.patchesDir),
-				type: vscodeType,
+				type: stubProjectType,
 				yes: false
 			})
 		);
@@ -444,7 +444,7 @@ describe('cycle control', () => {
 				patchesDir: current.patchesDir,
 				forkDir: current.upstream.dir,
 				config: config(current.patchesDir),
-				type: vscodeType,
+				type: stubProjectType,
 				yes: true
 			})
 		);
@@ -459,7 +459,7 @@ describe('cycle control', () => {
 			patchesDir: current.patchesDir,
 			forkDir: current.upstream.dir,
 			config: config(current.patchesDir),
-			type: vscodeType,
+			type: stubProjectType,
 			yes: true
 		});
 		expect(result).toEqual({ branch: started.branch, removedState: true, resetTo: current.sourceHead });

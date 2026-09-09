@@ -1,3 +1,7 @@
+// PROP-016 ##TYPE-ENGINE-TESTS: partly a polygon of the `vscode` type - the
+// packages a run delivers are the universal ones plus the ones the patch set's
+// type names, so the scenarios about that list declare the family that ships
+// one.
 // PROP-013 ##E2E-STANDARDS-SURFACE: `codkit standards` through the real
 // launcher. FEAT-002 ##S30-##S37, ##S41, ##S56-##S58 and ##S60.
 //
@@ -59,7 +63,7 @@ function writeConfig(root: string, type: string): void {
 				pin: { tag: '1.0.0', sha: 'a'.repeat(40), date: '2026-01-02' },
 				upstreamAnchorCommit: 'b'.repeat(40),
 				type,
-				typeConfig: type === 'vscode' ? { ownRoot: 'src/vs/patchset' } : { ownRoot: 'src/own' },
+				typeConfig: type === 'vscode' ? { ownRoot: 'src/vs/own' } : { ownRoot: 'src/own' },
 				generatedBranchPrefix: 'codkit/applied/',
 				cycleBranchPrefix: 'codkit/cycle/',
 				releaseRefPrefix: 'codkit/release/',
@@ -568,7 +572,7 @@ describe('S36 - the notice is a delivered own file that needs no unit', () => {
 		expect(verified.status, verified.stderr).toBe(0);
 
 		expect(fixture.run(['load']).status).toBe(0);
-		expect(sha256(fixture.treePath('src/vs/patchset/LICENSE-CODKIT.md'))).toBe(sha256(shippedNotice));
+		expect(sha256(fixture.treePath('source/own/LICENSE-CODKIT.md'))).toBe(sha256(shippedNotice));
 
 		// `save` mirrors it back unchanged, like any other own file.
 		const saved = fixture.run(['save']);

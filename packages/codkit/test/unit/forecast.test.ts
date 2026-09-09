@@ -17,7 +17,7 @@ import { isCkError } from '../../src/lib/messages.ts';
 import { encodePatchName, formatPatchHeader } from '../../src/lib/patchFormat.ts';
 import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const SHIFTED = 'src/shifted.ts';
 const CONFLICT = 'src/conflict.ts';
@@ -45,7 +45,7 @@ function makeFixture(label: string): Fixture {
 	const conventions = join(root, 'codkit/config/conventions.json');
 	mkdirSync(dirname(conventions), { recursive: true });
 	copyFileSync(fileURLToPath(new URL('../../config/conventions.json', import.meta.url)), conventions);
-	writePatch(root, SHIFTED, 'CK-workbench-901', 'alpha-owner', t1);
+	writePatch(root, SHIFTED, 'CK-shell-901', 'alpha-owner', t1);
 	writePatch(root, CONFLICT, 'CK-editor-901', 'beta-owner', t1);
 	write(root, 'delta/resources/files/icon.bin', 'patchset resource\n');
 	writeJson(root, 'delta/resources/map.json', {
@@ -72,8 +72,8 @@ function makeFixture(label: string): Fixture {
 		codkitConfig: 2,
 		pin: { tag: 't1', sha: t1, date: commitDate(tree, t1) },
 		upstreamAnchorCommit: t1,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: 'stub',
+		typeConfig: { ownRoot: 'source/own' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -146,7 +146,7 @@ async function runCommand(fixture: Fixture, options: { readonly ref?: string; re
 		commandFlags,
 		env: {},
 		config: fixture.config,
-		type: vscodeType,
+		type: stubProjectType,
 		out
 	};
 	let exitCode: number;
@@ -182,7 +182,7 @@ describe('forecast surface', () => {
 			patchesDir: fixture.root,
 			treeDir: fixture.tree,
 			config: fixture.config,
-			type: vscodeType,
+			type: stubProjectType,
 			ref: 't2'
 		});
 
@@ -218,7 +218,7 @@ describe('forecast surface', () => {
 			patchesDir: fixture.root,
 			treeDir: fixture.tree,
 			config: fixture.config,
-			type: vscodeType,
+			type: stubProjectType,
 			ref: fixture.t1
 		});
 		expect(current).toMatchObject({ exitCode: 0, report: { counts: { total: 3, nonClean: 0 }, owners: [] } });

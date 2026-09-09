@@ -31,7 +31,7 @@ import { loadBuildWatch } from '../../src/lib/buildWrap.ts';
 import { removeContainedFile, writeContainedFileExclusive } from '../../src/lib/containedFile.ts';
 import { linkContainedFileExclusive, removeContainedHardlinkGeneration } from '../../src/lib/containedGeneration.ts';
 import { cleanupDiskRoots, makeDiskRoot } from '../support/diskRoot.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 afterAll(cleanupDiskRoots);
 
@@ -452,8 +452,8 @@ describe('the build channel namespace', () => {
 					codkitConfig: 2,
 					pin: { tag: '1.135.0', sha: '08d4889f9ec4a1685d257b9b95de036c8e1ce1e5', date: '2026-08-25' },
 					upstreamAnchorCommit: '0000000000000000000000000000000000000000',
-					type: 'vscode',
-					typeConfig: { ownRoot: 'src/vs/patchset' },
+					type: 'stub',
+					typeConfig: { ownRoot: 'source/own' },
 					generatedBranchPrefix: 'codkit/applied/',
 					cycleBranchPrefix: 'codkit/cycle/',
 					releaseRefPrefix: 'codkit/release/',
@@ -472,11 +472,11 @@ describe('the build channel namespace', () => {
 			errorLine: [`^${name}: (.+)$`]
 		});
 		writeFileSync(profile, `${JSON.stringify({ codkitBuildWatch: 1, channels: { Foo: channel('foo'), foo: channel('foo') } })}\n`, 'utf8');
-		expect(() => loadBuildWatch(vscodeType, root)).toThrow(/"Foo" and "foo" collide after ASCII case folding/);
+		expect(() => loadBuildWatch(stubProjectType, root)).toThrow(/"Foo" and "foo" collide after ASCII case folding/);
 
 		// Nothing was cached by the refused load: the next call reads the repaired
 		// profile instead of replaying the invalid one.
 		writeFileSync(profile, `${JSON.stringify({ codkitBuildWatch: 1, channels: { transpile: channel('transpile') } })}\n`, 'utf8');
-		expect(loadBuildWatch(vscodeType, root).channels.map((entry) => entry.name)).toEqual(['transpile']);
+		expect(loadBuildWatch(stubProjectType, root).channels.map((entry) => entry.name)).toEqual(['transpile']);
 	});
 });

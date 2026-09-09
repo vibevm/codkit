@@ -29,7 +29,7 @@ import type { Inventory } from '../../src/lib/inventory.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import { OVERLAY_ID, OWN_UNIT_ID, PATCH_FILE_NAME, PATCH_ID, RESOURCE_ID, RULE_ID, makePatchSet } from '../fixtures/makePatchSet.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 let patchesDir: string;
 let inventory: Inventory;
@@ -38,7 +38,7 @@ beforeAll(() => {
 	const upstream = makeUpstream(makeTempRoot('inventory-upstream'));
 	patchesDir = makeTempRoot('inventory-patchset');
 	makePatchSet(patchesDir, upstream);
-	inventory = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
+	inventory = buildInventory(patchesDir, stubProjectType, { config: loadConfig(patchesDir) });
 });
 
 afterAll(cleanupTempRoots);
@@ -51,7 +51,7 @@ describe('the delivered runtime library', () => {
 		mkdirSync(root, { recursive: true });
 		try {
 			writeFileSync(join(root, 'version.ts'), "export const CODKIT_RUNTIME_VERSION = '0.1.0';\n", 'utf8');
-			const built = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
+			const built = buildInventory(patchesDir, stubProjectType, { config: loadConfig(patchesDir) });
 			const delivered = built.entries.filter((entry) => entry.id === DELIVERED_RUNTIME_ID);
 
 			expect(delivered).toHaveLength(1);
@@ -85,21 +85,21 @@ describe('buildInventory', () => {
 
 	it('names the artifact file each record lives in', () => {
 		expect(entry(PATCH_ID).artifact).toBe(`delta/patches/${PATCH_FILE_NAME}`);
-		expect(entry(OVERLAY_ID).artifact).toBe('delta/overlays/product.json.overlay.json');
+		expect(entry(OVERLAY_ID).artifact).toBe('delta/overlays/manifest.json.overlay.json');
 		expect(entry(RESOURCE_ID).artifact).toBe('delta/resources/map.json');
 		expect(entry(RULE_ID).artifact).toBe('delta/rules/example.ckrule.json');
 		expect(entry(OWN_UNIT_ID).artifact).toBe('delta/own/patchset.delta.json');
 	});
 
 	it('takes the subsystem from the second component of the id', () => {
-		expect(entry(PATCH_ID).subsystem).toBe('workbench');
+		expect(entry(PATCH_ID).subsystem).toBe('shell');
 		expect(entry(OVERLAY_ID).subsystem).toBe('product');
 		expect(subsystemOf('CK-editor-042')).toBe('editor');
 	});
 
 	it('names the files each record changes', () => {
-		expect(entry(PATCH_ID).files).toEqual(['src/vs/workbench/browser/parts/example/examplePart.ts']);
-		expect(entry(OVERLAY_ID).files).toEqual(['product.json']);
+		expect(entry(PATCH_ID).files).toEqual(['source/app/browser/parts/example/examplePart.ts']);
+		expect(entry(OVERLAY_ID).files).toEqual(['manifest.json']);
 		expect(entry(RESOURCE_ID).files).toEqual(['resources/app-icon.bin']);
 		// A unit declares roots; the entry names the files those roots cover.
 		expect(entry(OWN_UNIT_ID).files).toEqual(['hello.ts', 'test/fixture.test.ts']);
@@ -119,7 +119,7 @@ describe('buildInventory', () => {
 describe('metrics', () => {
 	it('counts entries by layer and by subsystem', () => {
 		expect(inventory.metrics.byLayer).toEqual({ 'config-overlay': 1, own: 1, patch: 1, 'resource-file': 1, 'rewrite-rule': 1 });
-		expect(inventory.metrics.bySubsystem).toEqual({ product: 2, workbench: 3 });
+		expect(inventory.metrics.bySubsystem).toEqual({ product: 2, shell: 3 });
 	});
 
 	it('counts only the two bottom layers in the shrink metric', () => {
@@ -133,7 +133,7 @@ describe('metrics', () => {
 		const saved = readFileSync(path, 'utf8');
 		try {
 			writeFileSync(path, saved.replace(`# id: ${PATCH_ID}\n`, `# id: ${PATCH_ID}\n# layer: entry-module\n`), 'utf8');
-			const after = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
+			const after = buildInventory(patchesDir, stubProjectType, { config: loadConfig(patchesDir) });
 
 			expect(after.entries.find((item) => item.id === PATCH_ID)?.layer).toBe('entry-module');
 			expect(after.metrics.byLayer['entry-module']).toBe(1);
@@ -162,7 +162,7 @@ describe('metrics', () => {
 		const saved = readFileSync(path, 'utf8');
 		try {
 			writeFileSync(path, saved.split("suite('fixture.guard.icon'").join("suite('fixture.guard.gone'"), 'utf8');
-			const after = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
+			const after = buildInventory(patchesDir, stubProjectType, { config: loadConfig(patchesDir) });
 			expect(after.metrics.contractCoverage).toEqual({ covered: 3, requiredCovered: 2, requiredTotal: 3 });
 		} finally {
 			writeFileSync(path, saved, 'utf8');
@@ -234,7 +234,7 @@ describe('expandRoots', () => {
 
 describe('serialization', () => {
 	it('is deterministic: two builds of one state are byte-identical', () => {
-		const again = buildInventory(patchesDir, vscodeType, { config: loadConfig(patchesDir) });
+		const again = buildInventory(patchesDir, stubProjectType, { config: loadConfig(patchesDir) });
 		expect(serializeInventory(again)).toBe(serializeInventory(inventory));
 	});
 

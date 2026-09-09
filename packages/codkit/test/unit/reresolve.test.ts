@@ -14,7 +14,7 @@ import { runReresolve, selectPatchSource } from '../../src/lib/reresolve.ts';
 import type { ReresolveDependencies } from '../../src/lib/reresolve.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const TARGET = 'src/replay.ts';
 const BASE = 'a\nbase\nz\n';
@@ -204,17 +204,17 @@ function execute(current: CoreFixture, dependencies?: ReresolveDependencies) {
 		treeDir: current.treeDir,
 		target: TARGET,
 		explicitPatch: 'saved/old.ckpatch',
-		conventions: loadConventions(vscodeType, current.patchesDir),
+		conventions: loadConventions(stubProjectType, current.patchesDir),
 		...(dependencies === undefined ? {} : { dependencies })
 	});
 }
 
 function patchText(target: string, pin: string): string {
 	const header = formatPatchHeader({
-		id: 'CK-workbench-731',
+		id: 'CK-shell-731',
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'unit reresolve patch',
 		link: 'none',
 		cause: 'none',

@@ -63,7 +63,7 @@ describe('codkit verify', () => {
 	});
 
 	it('gives the same verdict on a dirty tree', () => {
-		const path = fixture.treePath('src/vs/workbench/browser/parts/example/examplePart.ts');
+		const path = fixture.treePath('source/app/browser/parts/example/examplePart.ts');
 		const saved = readFileSync(path, 'utf8');
 		try {
 			writeFileSync(path, `${saved}\n// an unfinished edit nobody extracted yet\n`, 'utf8');
@@ -76,7 +76,7 @@ describe('codkit verify', () => {
 	it('prints one coded line with a hint per violation, and exits 1', () => {
 		const outcome = withEdit(
 			PATCH_ARTIFACT,
-			(text) => text.replace('# owner: workbench-core', '# owner: nobody'),
+			(text) => text.replace('# owner: shell-core', '# owner: nobody'),
 			() => fixture.run(['verify'])
 		);
 
@@ -107,8 +107,8 @@ describe('codkit verify', () => {
 			(text) => text.replace('# category: follow', '# category: hide'),
 			() =>
 				withEdit(
-					'delta/overlays/product.json.overlay.json',
-					(text) => text.replace('"Fixture - OSS"', '"Moved"'),
+					'delta/overlays/manifest.json.overlay.json',
+					(text) => text.replace('"Fixture Upstream"', '"Moved"'),
 					() => fixture.json(['verify'])
 				)
 		);

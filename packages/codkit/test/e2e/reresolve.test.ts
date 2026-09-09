@@ -113,7 +113,7 @@ describe('codkit reresolve replay outcomes', () => {
 
 	it('rejects a patch whose exact target differs', () => {
 		const mismatch = 'saved/mismatch.ckpatch';
-		const bytes = readFileSync(fixture.patchesPath(PATCH_ARTIFACT), 'utf8').replaceAll(EXAMPLE_PART_PATH, 'src/vs/base/common/util.ts');
+		const bytes = readFileSync(fixture.patchesPath(PATCH_ARTIFACT), 'utf8').replaceAll(EXAMPLE_PART_PATH, 'source/base/common/util.ts');
 		write(fixture.patchesDir, mismatch, bytes);
 
 		const outcome = fixture.json(['reresolve', EXAMPLE_PART_PATH, '--patch', mismatch]);

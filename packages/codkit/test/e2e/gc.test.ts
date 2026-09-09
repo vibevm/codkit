@@ -34,18 +34,18 @@ import { pendingFileName } from '../../src/lib/pendingHeader.ts';
 import { SYNC_TEST_CRASH_ENV, SYNC_TEST_CRASH_EXIT_CODE, SYNC_TRANSACTION_RELATIVE_PATH } from '../../src/lib/syncTransaction.ts';
 import { CONSUMED_REF_PREFIX } from '../../src/lib/treeCommits.ts';
 import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
-import { CODKIT_E2E_TEST_BUILD, makeCliFixture, runCli } from '../support/cliFixture.ts';
+import { CODKIT_E2E_TEST_BUILD, makeCliFixture, runCli, STUB_TYPE_ENV, TEST_BUILD_CONDITION, withStubType } from '../support/cliFixture.ts';
 import type { CliFixture, Envelope, Run } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 /** F: the file whose patch artifact the patchset side moves (the sync conflict). */
-const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
+const EXAMPLE_PATCH = 'delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch';
 /** The tree file of the three saves. */
-const UTIL_PATH = 'src/vs/base/common/util.ts';
+const UTIL_PATH = 'source/base/common/util.ts';
 /** The tree file of the pending draft marker new leaves behind. */
-const LIFECYCLE_PATH = 'src/vs/base/common/lifecycle.ts';
+const LIFECYCLE_PATH = 'source/base/common/lifecycle.ts';
 
-const F_BLOCK_ID = 'CK-workbench-901';
+const F_BLOCK_ID = 'CK-shell-901';
 const UTIL_BLOCK_ID = 'CK-base-905';
 const LIFECYCLE_BLOCK_ID = 'CK-base-906';
 
@@ -89,7 +89,7 @@ function dirtyBlock(fixture: CliFixture, path: string, id: string, line: string)
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'gc fixture scaffold'
 	]);
@@ -109,7 +109,7 @@ function scaffoldDraft(fixture: CliFixture, path: string, id: string): void {
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'gc fixture pending draft'
 	]);
@@ -200,12 +200,17 @@ async function crashDuringBranchBuild(fixture: CliFixture, key: string): Promise
 			env[name] = value;
 		}
 	}
-	const child = spawn(process.execPath, [launcher, '--patches-dir', fixture.patchesDir, '--fork-dir', fixture.treeDir, 'load', '--fresh'], {
-		cwd: fixture.patchesDir,
-		env,
-		stdio: 'ignore',
-		detached: true
-	});
+	Object.assign(env, STUB_TYPE_ENV);
+	const child = spawn(
+		process.execPath,
+		[TEST_BUILD_CONDITION, launcher, '--patches-dir', fixture.patchesDir, '--fork-dir', fixture.treeDir, 'load', '--fresh'],
+		{
+			cwd: fixture.patchesDir,
+			env,
+			stdio: 'ignore',
+			detached: true
+		}
+	);
 	const exited = new Promise<number | null>((resolve) => {
 		child.on('exit', (code) => {
 			resolve(code);
@@ -275,7 +280,7 @@ function loadThenDeleteSecondTree(fixture: CliFixture): void {
 	const tree = join(root, 'fork-tree');
 	runGit({ args: ['clone', '--quiet', '--no-checkout', fixture.upstream.dir, tree], cwd: root, netAllowed: true });
 	runGit({ args: ['checkout', '--quiet', '--detach', config.pin.sha], cwd: tree });
-	const applied = runCli(fixture.patchesDir, ['--patches-dir', fixture.patchesDir, '--fork-dir', tree, 'load']);
+	const applied = runCli(fixture.patchesDir, ['--patches-dir', fixture.patchesDir, '--fork-dir', tree, 'load'], withStubType());
 	expect(applied.status, applied.stderr).toBe(0);
 	rmSync(root, { recursive: true, force: true });
 }
@@ -325,12 +330,12 @@ describe('S28: gc removes spent state and never a transaction', () => {
 		expect(fixture.run(['load']).status).toBe(0);
 
 		// Three saves with tree commits: three consumed refs (D6).
-		dirtyBlock(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the first tree commit, delegating to patchset/ own code');
+		dirtyBlock(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the first tree commit, delegating to own/ code');
 		commitAll(fixture, 'work: tree commit 1');
 		expect(fixture.run(['save']).status).toBe(0);
-		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the second tree commit, delegating to patchset/ own code', 'work: tree commit 2');
+		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the second tree commit, delegating to own/ code', 'work: tree commit 2');
 		expect(fixture.run(['save']).status).toBe(0);
-		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the third tree commit, delegating to patchset/ own code', 'work: tree commit 3');
+		commitInTree(fixture, UTIL_PATH, UTIL_BLOCK_ID, '// the third tree commit, delegating to own/ code', 'work: tree commit 3');
 		expect(fixture.run(['save']).status).toBe(0);
 		expect(consumedRefs(fixture).length).toBe(3);
 

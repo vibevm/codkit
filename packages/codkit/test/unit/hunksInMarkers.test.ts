@@ -21,19 +21,19 @@ import { makePatchSet, PATCH_FILE_NAME } from '../fixtures/makePatchSet.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const PATCH_FILE = 'delta/patches/src__vs__a.ts.ckpatch';
-const TARGET = 'src/vs/a.ts';
+const PATCH_FILE = 'delta/patches/source__a.ts.ckpatch';
+const TARGET = 'source/a.ts';
 
 const PIN_TS = ['const one = 1;', 'const two = 2;', 'const three = 3;', 'const four = 4;', 'const five = 5;', 'const six = 6;', ''].join(
 	'\n'
 );
 
-function patchOf(bodyLines: readonly string[], id = 'CK-workbench-001', target = TARGET): ParsedPatch {
+function patchOf(bodyLines: readonly string[], id = 'CK-shell-001', target = TARGET): ParsedPatch {
 	const header = formatPatchHeader({
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'a synthetic patch built by the hunks-in-markers unit test',
 		link: 'none',
 		cause: 'none',
@@ -101,7 +101,7 @@ describe('additions outside a marker block', () => {
 		expect(codes(result)).toContain('HUNK-OUTSIDE-MARKER');
 		const outside = result.errors.find((error) => error.code === 'HUNK-OUTSIDE-MARKER');
 		expect(outside?.message).toContain('hunk at target line 3 adds lines outside any codkit marker block');
-		expect(outside?.message).toContain('// codkit:begin CK-workbench-001');
+		expect(outside?.message).toContain('// codkit:begin CK-shell-001');
 		expect(outside?.file).toBe(PATCH_FILE);
 	});
 
@@ -128,8 +128,8 @@ describe('deleted upstream lines', () => {
 			' const one = 1;',
 			' const two = 2;',
 			'-const three = 3;',
-			'+// codkit:begin CK-workbench-001',
-			'+// codkit:end CK-workbench-001',
+			'+// codkit:begin CK-shell-001',
+			'+// codkit:end CK-shell-001',
 			' const four = 4;',
 			' const five = 5;'
 		]);
@@ -148,9 +148,9 @@ describe('deleted upstream lines', () => {
 			' const one = 1;',
 			' const two = 2;',
 			'-const three = 3;',
-			'+// codkit:begin CK-workbench-001',
+			'+// codkit:begin CK-shell-001',
 			'+// const three = 3;',
-			'+// codkit:end CK-workbench-001',
+			'+// codkit:end CK-shell-001',
 			' const four = 4;',
 			' const five = 5;'
 		]);
@@ -168,14 +168,14 @@ describe('deleted upstream lines', () => {
 				'@@ -1,4 +1,6 @@',
 				' .a {',
 				'-\tcolor: red;',
-				'+\t/* codkit:begin CK-workbench-001 */',
+				'+\t/* codkit:begin CK-shell-001 */',
 				'+\t/* color: red; */',
-				'+\t/* codkit:end CK-workbench-001 */',
+				'+\t/* codkit:end CK-shell-001 */',
 				' \tdisplay: block;',
 				' }'
 			],
-			'CK-workbench-001',
-			'src/vs/a.css'
+			'CK-shell-001',
+			'source/a.css'
 		);
 
 		const result = checkHunksInsideMarkers(patch, encodeUtf8(pinCss), '.css', conventions(), { patchFile: PATCH_FILE });
@@ -189,9 +189,9 @@ describe('deleted upstream lines', () => {
 		const pin = `${'const filler = 0;\n'.repeat(20)}const three = 3;\n${'const tail = 0;\n'.repeat(20)}`;
 		const patch = patchOf([
 			'@@ -1,3 +1,6 @@',
-			'+// codkit:begin CK-workbench-001',
+			'+// codkit:begin CK-shell-001',
 			'+// const three = 3;',
-			'+// codkit:end CK-workbench-001',
+			'+// codkit:end CK-shell-001',
 			' const filler = 0;',
 			' const filler = 0;',
 			' const filler = 0;',
@@ -215,8 +215,8 @@ describe('marker blocks and the artifact that owns them', () => {
 			'@@ -1,5 +1,7 @@',
 			' const one = 1;',
 			' const two = 2;',
-			'+// codkit:begin CK-workbench-001',
-			'+// codkit:end CK-workbench-001',
+			'+// codkit:begin CK-shell-001',
+			'+// codkit:end CK-shell-001',
 			' const three = 3;',
 			' const four = 4;',
 			' const five = 5;'
@@ -250,13 +250,13 @@ describe('marker blocks and the artifact that owns them', () => {
 	});
 
 	it('reports MARKER-ARTIFACT-MISMATCH when the marker is already in the pin', () => {
-		const pin = ['const one = 1;', '// codkit:begin CK-workbench-001', '// codkit:end CK-workbench-001', 'const four = 4;', ''].join('\n');
+		const pin = ['const one = 1;', '// codkit:begin CK-shell-001', '// codkit:end CK-shell-001', 'const four = 4;', ''].join('\n');
 		const patch = patchOf([
 			'@@ -1,4 +1,5 @@',
 			' const one = 1;',
-			' // codkit:begin CK-workbench-001',
+			' // codkit:begin CK-shell-001',
 			'+const injected = 1;',
-			' // codkit:end CK-workbench-001',
+			' // codkit:end CK-shell-001',
 			' const four = 4;'
 		]);
 
@@ -271,8 +271,8 @@ describe('marker blocks and the artifact that owns them', () => {
 			'@@ -1,5 +1,7 @@',
 			' const one = 1;',
 			' const two = 2;',
-			'+// codkit:begin CK-workbench-001',
-			'+// codkit:begin CK-workbench-001',
+			'+// codkit:begin CK-shell-001',
+			'+// codkit:begin CK-shell-001',
 			' const three = 3;',
 			' const four = 4;',
 			' const five = 5;'
@@ -284,15 +284,15 @@ describe('marker blocks and the artifact that owns them', () => {
 
 describe('checkMarkerArtifactConsistency', () => {
 	it('accepts blocks that carry the artifact id', () => {
-		const blocks = [{ id: 'CK-workbench-001', beginLine: 3, endLine: 5 }];
+		const blocks = [{ id: 'CK-shell-001', beginLine: 3, endLine: 5 }];
 
-		expect(checkMarkerArtifactConsistency(blocks, 'CK-workbench-001')).toEqual([]);
+		expect(checkMarkerArtifactConsistency(blocks, 'CK-shell-001')).toEqual([]);
 	});
 
 	it('reports a block with a foreign id and a missing artifact id', () => {
 		const blocks = [{ id: 'CK-editor-002', beginLine: 3, endLine: 5 }];
 
-		expect(checkMarkerArtifactConsistency(blocks, 'CK-workbench-001').map((error) => error.code)).toEqual([
+		expect(checkMarkerArtifactConsistency(blocks, 'CK-shell-001').map((error) => error.code)).toEqual([
 			'MARKER-ARTIFACT-MISMATCH',
 			'MARKER-ARTIFACT-MISMATCH'
 		]);
@@ -300,10 +300,10 @@ describe('checkMarkerArtifactConsistency', () => {
 
 	it('accepts a foreign id that the entry-module layer allows', () => {
 		const blocks = [
-			{ id: 'CK-workbench-001', beginLine: 3, endLine: 5 },
+			{ id: 'CK-shell-001', beginLine: 3, endLine: 5 },
 			{ id: 'CK-editor-002', beginLine: 7, endLine: 9 }
 		];
 
-		expect(checkMarkerArtifactConsistency(blocks, 'CK-workbench-001', ['CK-editor-002'])).toEqual([]);
+		expect(checkMarkerArtifactConsistency(blocks, 'CK-shell-001', ['CK-editor-002'])).toEqual([]);
 	});
 });

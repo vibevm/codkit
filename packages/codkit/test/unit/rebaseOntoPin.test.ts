@@ -20,16 +20,16 @@ import { runSync } from '../../src/lib/syncEngine.ts';
 import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 // prettier-ignore
 const TARGETS = { clean: 'src/clean.ts', shifted: 'src/shifted.ts', merged: 'src/merged.ts', conflict: 'src/conflict.ts', deleted: 'src/deleted.ts', rename: 'src/rename-old.ts' } as const;
 const RENAMED = 'src/rename-new.ts';
 const TARGET_ONLY = 'src/target-only.ts';
-const OWN_TARGET = 'src/vs/patchset/targetOwn.ts';
-const OVERLAY_TARGET = 'config/product.json';
+const OWN_TARGET = 'source/own/targetOwn.ts';
+const OVERLAY_TARGET = 'config/manifest.json';
 const RESOURCE_TARGET = 'resources/logo.bin';
 // prettier-ignore
-const IDS = { clean: 'CK-workbench-711', shifted: 'CK-workbench-712', merged: 'CK-workbench-713', conflict: 'CK-workbench-714', deleted: 'CK-workbench-715', rename: 'CK-workbench-716' } as const;
+const IDS = { clean: 'CK-shell-711', shifted: 'CK-shell-712', merged: 'CK-shell-713', conflict: 'CK-shell-714', deleted: 'CK-shell-715', rename: 'CK-shell-716' } as const;
 // prettier-ignore
 type FixtureOptions = { readonly blockers?: boolean; readonly nonpatch?: boolean; readonly collision?: boolean; readonly noMerge?: boolean; readonly redundant?: boolean; readonly deletedOwn?: boolean };
 // prettier-ignore
@@ -38,7 +38,7 @@ function makeFixture(label: string, options: FixtureOptions = {}): Fixture {
 	const tree = makeTempRoot(`${label}-tree`);
 	fixtureGit(tree, ['init', '--quiet', '--initial-branch=main', '.']);
 	writeFingerprintFiles(tree);
-	write(tree, '.gitignore', 'product.overrides.json\nsrc/vs/patchset/\n');
+	write(tree, '.gitignore', 'manifest.overrides.json\nsource/own/\n');
 	for (const target of [...Object.values(TARGETS), TARGET_ONLY]) write(tree, target, baseText());
 	write(tree, OVERLAY_TARGET, '{"name":"upstream","stable":true}\n');
 	write(tree, RESOURCE_TARGET, 'upstream resource\n');
@@ -52,7 +52,7 @@ function makeFixture(label: string, options: FixtureOptions = {}): Fixture {
 	fixtureGit(tree, ['mv', TARGETS.rename, RENAMED]);
 	if (options.blockers !== false) rmSync(join(tree, TARGETS.deleted));
 	const t2 = fixtureCommit(tree, 'fixture: new upstream pin', '2026-08-11T00:00:00Z');
-	write(tree, 'product.overrides.json', '{"stale":true}\n');
+	write(tree, 'manifest.overrides.json', '{"stale":true}\n');
 	if (options.deletedOwn !== true) write(tree, OWN_TARGET, 'export const targetOwn = true;\n');
 	const root = makeTempRoot(`${label}-patchset`);
 	fixtureGit(root, ['init', '--quiet', '--initial-branch=feature', '.']);
@@ -103,7 +103,7 @@ function writePatch(root: string, target: string, id: string, pin: string, cause
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'rebase fixture patch',
 		link: 'none',
 		cause,
@@ -220,7 +220,7 @@ function writeSourceOwn(root: string, pin: string): void {
 }
 function configOf(tree: string, sha: string, tag: string, anchor: string): CodkitConfig {
 	// prettier-ignore
-	return { codkitConfig: 2, pin: { tag, sha, date: fixtureGit(tree, ['show', '-s', '--format=%cs', sha]).stdout.trim() }, upstreamAnchorCommit: anchor, type: 'vscode', typeConfig: { ownRoot: 'src/vs/patchset' }, generatedBranchPrefix: 'codkit/applied/', cycleBranchPrefix: 'codkit/cycle/', releaseRefPrefix: 'codkit/release/', publishRemoteUrl: null, buildWatchFile: null, conventionsExtensionFile: null };
+	return { codkitConfig: 2, pin: { tag, sha, date: fixtureGit(tree, ['show', '-s', '--format=%cs', sha]).stdout.trim() }, upstreamAnchorCommit: anchor, type: 'stub', typeConfig: { ownRoot: 'source/own' }, generatedBranchPrefix: 'codkit/applied/', cycleBranchPrefix: 'codkit/cycle/', releaseRefPrefix: 'codkit/release/', publishRemoteUrl: null, buildWatchFile: null, conventionsExtensionFile: null };
 }
 function resolution(tree: string): ForkDirResolution {
 	return { path: tree, source: 'settings', exists: true, warning: null };
@@ -252,7 +252,7 @@ function commandContext(fixture: Fixture): CommandContext {
 		commandFlags: new Map(),
 		env: {},
 		config: fixture.config,
-		type: vscodeType,
+		type: stubProjectType,
 		out: output()
 	};
 }
@@ -261,7 +261,7 @@ function run(fixture: Fixture) {
 		patchesDir: fixture.root,
 		resolution: fixture.resolution,
 		config: fixture.config,
-		type: vscodeType,
+		type: stubProjectType,
 		out: output()
 	});
 }
@@ -271,7 +271,7 @@ function commitAndSync(fixture: Fixture, date: string) {
 		patchesDir: fixture.root,
 		resolution: fixture.resolution,
 		config: fixture.config,
-		type: vscodeType,
+		type: stubProjectType,
 		out: output(),
 		fresh: false,
 		dryRun: false,
@@ -333,7 +333,7 @@ describe('rebaseOntoPin', () => {
 		expect(readFileSync(join(fixture.tree, OWN_TARGET), 'utf8')).toBe('export const targetOwn = true;\n');
 		expect(JSON.parse(readFileSync(join(fixture.tree, OVERLAY_TARGET), 'utf8'))).toMatchObject({ name: 'patchset', stable: true });
 		expect(readFileSync(join(fixture.tree, RESOURCE_TARGET), 'utf8')).toBe('patchset resource\n');
-		expect(existsSync(join(fixture.tree, 'product.overrides.json'))).toBe(false);
+		expect(existsSync(join(fixture.tree, 'manifest.overrides.json'))).toBe(false);
 		expect(readFileSync(join(fixture.tree, TARGETS.conflict), 'utf8')).toContain('<<<<<<< ours');
 		expect(parsedPatch(fixture, TARGETS.conflict).header.pin).toBe(`t1@${fixture.t1}`);
 		expect(readRebasePending(fixture.root, TARGETS.conflict)).toMatchObject({
@@ -362,7 +362,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				paths: [TARGETS.conflict],
 				allowNewFile: [],
@@ -403,7 +403,7 @@ describe('rebaseOntoPin', () => {
 			patchesDir: fixture.root,
 			resolution: fixture.resolution,
 			config: fixture.config,
-			type: vscodeType,
+			type: stubProjectType,
 			out: output(),
 			paths: [TARGETS.conflict],
 			allowNewFile: [],
@@ -438,7 +438,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: changed.root,
 				resolution: changed.resolution,
 				config: changed.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				fresh: false,
 				dryRun: false,
@@ -456,7 +456,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: dirty.root,
 				resolution: dirty.resolution,
 				config: dirty.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				fresh: false,
 				dryRun: false,
@@ -514,7 +514,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				moveTempCheckpoint(path) {
 					if (path === TARGET_ONLY) throw new Error('injected rebase move interruption');
@@ -537,7 +537,7 @@ describe('rebaseOntoPin', () => {
 					patchesDir: fixture.root,
 					resolution: fixture.resolution,
 					config: fixture.config,
-					type: vscodeType,
+					type: stubProjectType,
 					out: output(),
 					...(stage === 'artifact-temp'
 						? {
@@ -566,7 +566,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				checkpoint(stage) {
 					if (stage === 'during-pending') throw new Error('injected pending interruption');
@@ -587,7 +587,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				checkpoint(stage) {
 					if (stage === 'after-save') throw new Error('injected after-save tamper window');
@@ -608,7 +608,7 @@ describe('rebaseOntoPin', () => {
 				patchesDir: fixture.root,
 				resolution: fixture.resolution,
 				config: fixture.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				checkpoint(stage) {
 					if (stage === 'after-save') throw new Error('injected after redundant removal');

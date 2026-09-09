@@ -22,7 +22,7 @@ import {
 import { runGit } from '../../src/lib/gitx.ts';
 import { CkError } from '../../src/lib/messages.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
-import { stubReader, stubType } from '../support/stubType.ts';
+import { stubReader, stubType } from '../fixtures/stubType.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 type Content = string | Uint8Array;

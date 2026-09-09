@@ -1,3 +1,5 @@
+// PROP-016 ##TYPE-ENGINE-TESTS: the registry itself, so this suite names the
+// official types by definition; it is the one engine suite that must.
 // The registry of project types and the capability refusal (PROP-016
 // ##TYPE-REGISTRY, ##TYPE-UNKNOWN, ##TYPE-CAPABILITY-REFUSAL).
 //

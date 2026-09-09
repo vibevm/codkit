@@ -11,9 +11,9 @@ import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const UTIL_PATH = 'src/vs/base/common/util.ts';
-const LIFECYCLE_PATH = 'src/vs/base/common/lifecycle.ts';
-const CSS_PATH = 'src/vs/workbench/browser/parts/example/examplePart.css';
+const UTIL_PATH = 'source/base/common/util.ts';
+const LIFECYCLE_PATH = 'source/base/common/lifecycle.ts';
+const CSS_PATH = 'source/app/browser/parts/example/examplePart.css';
 
 let fixture: CliFixture;
 
@@ -28,20 +28,7 @@ afterAll(() => {
 
 /** `marker new` with the four mandatory flags filled in. */
 function markerNew(target: string, id: string, extra: readonly string[] = []): ReturnType<CliFixture['json']> {
-	return fixture.json([
-		'marker',
-		'new',
-		target,
-		'--id',
-		id,
-		'--type',
-		'hook',
-		'--owner',
-		'workbench-core',
-		'--reason',
-		'a reason',
-		...extra
-	]);
+	return fixture.json(['marker', 'new', target, '--id', id, '--type', 'hook', '--owner', 'shell-core', '--reason', 'a reason', ...extra]);
 }
 
 describe('codkit marker new: where the block goes', () => {
@@ -51,12 +38,12 @@ describe('codkit marker new: where the block goes', () => {
 		const line = before.findIndex((text) => text === '\tprivate readonly toDispose: IDisposable[] = [];') + 1;
 		expect(line).toBeGreaterThan(0);
 
-		const outcome = markerNew(LIFECYCLE_PATH, 'CK-workbench-911', ['--line', String(line)]);
+		const outcome = markerNew(LIFECYCLE_PATH, 'CK-shell-911', ['--line', String(line)]);
 
 		expect(outcome.run.status).toBe(0);
 		const after = readFileSync(target, 'utf8').split('\n');
-		expect(after[line - 1]).toBe('\t// codkit:begin CK-workbench-911');
-		expect(after[line]).toBe('\t// codkit:end CK-workbench-911');
+		expect(after[line - 1]).toBe('\t// codkit:begin CK-shell-911');
+		expect(after[line]).toBe('\t// codkit:end CK-shell-911');
 		// Inserted before that line, not over it.
 		expect(after[line + 1]).toBe('\tprivate readonly toDispose: IDisposable[] = [];');
 		expect(after.length).toBe(before.length + 2);
@@ -64,14 +51,14 @@ describe('codkit marker new: where the block goes', () => {
 	});
 
 	it('uses the marker form of the file extension', () => {
-		const outcome = markerNew(CSS_PATH, 'CK-workbench-912');
+		const outcome = markerNew(CSS_PATH, 'CK-shell-912');
 
 		expect(outcome.run.status).toBe(0);
 		const text = readFileSync(fixture.treePath(CSS_PATH), 'utf8');
-		expect(text).toContain('/* codkit:begin CK-workbench-912 */');
-		expect(text).toContain('/* codkit:end CK-workbench-912 */');
+		expect(text).toContain('/* codkit:begin CK-shell-912 */');
+		expect(text).toContain('/* codkit:end CK-shell-912 */');
 		// Appended at the end, and the final newline of the file is preserved.
-		expect(text.endsWith('/* codkit:end CK-workbench-912 */\n')).toBe(true);
+		expect(text.endsWith('/* codkit:end CK-shell-912 */\n')).toBe(true);
 	});
 
 	it('refuses a --line past the end of the file and writes nothing', () => {
@@ -96,7 +83,7 @@ describe('codkit marker new: what it refuses', () => {
 	}
 
 	it('refuses a file that is not in the tree', () => {
-		expect(refusal('src/vs/base/common/nothing.ts', 'CK-base-922').code).toBe('CK-E-FORBIDDEN-TARGET');
+		expect(refusal('source/base/common/nothing.ts', 'CK-base-922').code).toBe('CK-E-FORBIDDEN-TARGET');
 	});
 
 	it('refuses a traversal to an existing file outside the tree and leaves it untouched', () => {
@@ -129,7 +116,7 @@ describe('codkit marker new: what it refuses', () => {
 	});
 
 	it('refuses own code', () => {
-		const failure = refusal('src/vs/patchset/hello.ts', 'CK-base-923');
+		const failure = refusal('source/own/hello.ts', 'CK-base-923');
 		expect(failure.code).toBe('CK-E-FORBIDDEN-TARGET');
 		expect(failure.message).toContain('own code');
 	});
@@ -141,7 +128,7 @@ describe('codkit marker new: what it refuses', () => {
 	});
 
 	it('refuses a target the configuration overlay of the type owns', () => {
-		const failure = refusal('product.json', 'CK-product-922');
+		const failure = refusal('manifest.json', 'CK-product-922');
 		expect(failure.code).toBe('CK-E-FORBIDDEN-TARGET');
 		expect(failure.message).toContain('forbidden patch target');
 	});
@@ -166,7 +153,7 @@ describe('codkit marker new: what it refuses', () => {
 		]);
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-OWNER-UNKNOWN');
-		expect(outcome.envelope.errors[0]?.hint).toContain('workbench-core');
+		expect(outcome.envelope.errors[0]?.hint).toContain('shell-core');
 	});
 
 	it('refuses a type outside the vocabulary', () => {
@@ -179,7 +166,7 @@ describe('codkit marker new: what it refuses', () => {
 			'--type',
 			'sprinkle',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'a reason'
 		]);
@@ -208,14 +195,14 @@ describe('codkit marker new: what it refuses', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'first target intent'
 		] as const;
 		const first = current.json(firstArgs);
 		expect(first.run.status, first.run.stderr).toBe(0);
 		const treeBefore = readFileSync(current.treePath(UTIL_PATH));
-		const pendingPath = current.patchesPath('.codkit/pending/src__vs__base__common__util.ts.json');
+		const pendingPath = current.patchesPath('.codkit/pending/source__base__common__util.ts.json');
 		const pendingBefore = readFileSync(pendingPath);
 		const exactRetry = current.json(firstArgs);
 		expect(exactRetry.run.status, exactRetry.run.stderr).toBe(0);
@@ -231,7 +218,7 @@ describe('codkit marker new: what it refuses', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'second target intent'
 		]);
@@ -242,13 +229,13 @@ describe('codkit marker new: what it refuses', () => {
 	});
 
 	it('refuses an id a patch in patchset already carries', () => {
-		const failure = refusal(UTIL_PATH, 'CK-workbench-901');
+		const failure = refusal(UTIL_PATH, 'CK-shell-901');
 		expect(failure.code).toBe('CK-E-MARKER-DUP-ID');
 		expect(failure.message).toContain('delta/patches/');
 	});
 
 	it('refuses a different id when the target already has a patch artifact', () => {
-		const failure = refusal(EXAMPLE_PART_PATH, 'CK-workbench-944');
+		const failure = refusal(EXAMPLE_PART_PATH, 'CK-shell-944');
 		expect(failure.code).toBe('CK-E-MARKER-ARTIFACT-MISMATCH');
 		expect(failure.message).toContain('already has patch artifact');
 	});
@@ -297,8 +284,8 @@ describe('--verbose diagnostics', () => {
 
 describe('codkit marker new: the pending draft', () => {
 	it('names the draft after the target and keeps it until save consumes it', () => {
-		expect(existsSync(fixture.patchesPath('.codkit/pending/src__vs__base__common__util.ts.json'))).toBe(true);
-		expect(existsSync(fixture.patchesPath('.codkit/pending/src__vs__workbench__browser__parts__example__examplePart.css.json'))).toBe(true);
+		expect(existsSync(fixture.patchesPath('.codkit/pending/source__base__common__util.ts.json'))).toBe(true);
+		expect(existsSync(fixture.patchesPath('.codkit/pending/source__app__browser__parts__example__examplePart.css.json'))).toBe(true);
 	});
 
 	it('records entry-module and rejects the generated-only rewrite-rule layer', () => {
@@ -313,7 +300,7 @@ describe('codkit marker new: the pending draft', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'entry graft',
 			'--layer',
@@ -321,7 +308,7 @@ describe('codkit marker new: the pending draft', () => {
 		]);
 		expect(entry.run.status, entry.run.stderr).toBe(0);
 		expect(entry.envelope.data['layer']).toBe('entry-module');
-		const pending = JSON.parse(readFileSync(current.patchesPath('.codkit/pending/src__vs__base__common__util.ts.json'), 'utf8')) as Record<
+		const pending = JSON.parse(readFileSync(current.patchesPath('.codkit/pending/source__base__common__util.ts.json'), 'utf8')) as Record<
 			string,
 			unknown
 		>;
@@ -336,7 +323,7 @@ describe('codkit marker new: the pending draft', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'generated only',
 			'--layer',
@@ -354,7 +341,7 @@ describe('codkit marker new: the pending draft', () => {
 			layer: 'patch',
 			type: 'hook',
 			category: 'follow',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'resume exact intent',
 			link: 'none'
 		});
@@ -367,7 +354,7 @@ describe('codkit marker new: the pending draft', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'resume exact intent'
 		]);
@@ -388,7 +375,7 @@ describe('codkit marker new: the pending draft', () => {
 			layer: 'patch',
 			type: 'hook',
 			category: 'follow',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'resume exact temp',
 			link: 'none'
 		});
@@ -403,7 +390,7 @@ describe('codkit marker new: the pending draft', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'resume exact temp'
 		]);
@@ -445,14 +432,14 @@ describe('codkit marker new --add-block: a second block of the same intervention
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'import and call'
 		]);
 		expect(scaffold.run.status).toBe(0);
 		const target = own.treePath(UTIL_PATH);
 		const scaffolded = readFileSync(target, 'utf8');
-		writeFileSync(target, scaffolded.replace(`// codkit:begin ${ID}\n`, `// codkit:begin ${ID}\nhook(); // patchset/ own code\n`), 'utf8');
+		writeFileSync(target, scaffolded.replace(`// codkit:begin ${ID}\n`, `// codkit:begin ${ID}\nhook(); // own/ code\n`), 'utf8');
 		expect(own.run(['save', '--commit']).status).toBe(0);
 
 		const second = own.json(['marker', 'new', UTIL_PATH, '--id', ID, '--add-block', '--line', '1']);
@@ -462,7 +449,7 @@ describe('codkit marker new --add-block: a second block of the same intervention
 		expect(withTwo.split(`// codkit:begin ${ID}`).length - 1).toBe(2);
 		writeFileSync(
 			target,
-			withTwo.replace(`// codkit:begin ${ID}\n`, `// codkit:begin ${ID}\nimport { hook } from './patchset/hook.js';\n`),
+			withTwo.replace(`// codkit:begin ${ID}\n`, `// codkit:begin ${ID}\nimport { hook } from './own/hook.js';\n`),
 			'utf8'
 		);
 

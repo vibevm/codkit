@@ -30,7 +30,7 @@ import type { CliFixture, Envelope } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 const TIMEOUT = ['--timeout', '20'];
-const CHANNEL_NAMES = ['transpile', 'typecheck', 'extensions', 'copilot'] as const;
+const CHANNEL_NAMES = ['transpile', 'typecheck', 'addons', 'extras'] as const;
 
 type Step = { name: string; state: string; detail: string };
 
@@ -46,10 +46,10 @@ function stateOf(envelope: Envelope, name: string): string {
 function foreignRecord(pid: number): Record<string, unknown> {
 	return {
 		codkitBuildDaemon: 1,
-		channel: 'extensions',
-		script: 'watch-extensions',
+		channel: 'addons',
+		script: 'watch-addons',
 		pid,
-		cmdline: 'watch-extensions',
+		cmdline: 'watch-addons',
 		startedAt: '2026-09-01T00:00:00.000Z',
 		treeId: 'foreign-fork-tree',
 		treePath: '/another/fork/tree',
@@ -58,7 +58,7 @@ function foreignRecord(pid: number): Record<string, unknown> {
 }
 
 function plantForeign(fixture: CliFixture, pid: number): { bytes: Buffer; mtimeMs: number } {
-	const path = fixture.patchesPath('.codkit/build/extensions.json');
+	const path = fixture.patchesPath('.codkit/build/addons.json');
 	mkdirSync(dirname(path), { recursive: true });
 	const bytes = Buffer.from(`${JSON.stringify(foreignRecord(pid), null, 2)}\n`);
 	writeFileSync(path, bytes);
@@ -66,7 +66,7 @@ function plantForeign(fixture: CliFixture, pid: number): { bytes: Buffer; mtimeM
 }
 
 function expectForeignIntact(fixture: CliFixture, before: { bytes: Buffer; mtimeMs: number }): void {
-	const path = fixture.patchesPath('.codkit/build/extensions.json');
+	const path = fixture.patchesPath('.codkit/build/addons.json');
 	expect(readFileSync(path)).toEqual(before.bytes);
 	expect(statSync(path).mtimeMs).toBe(before.mtimeMs);
 }
@@ -100,7 +100,7 @@ function foreignDaemonMarker(): { process: ChildProcess; markerPath: string } {
 		process.on('SIGINT', () => { try { fs.appendFileSync(${JSON.stringify(markerPath)}, 'SIGINT\\n'); } catch {} });
 		setInterval(() => {}, 60000);
 	`;
-	const marked = spawn(process.execPath, ['-e', script, 'watch-extensions'], { detached: true, stdio: 'ignore' });
+	const marked = spawn(process.execPath, ['-e', script, 'watch-addons'], { detached: true, stdio: 'ignore' });
 	expect(marked.pid).toBeGreaterThan(0);
 	return { process: marked, markerPath };
 }
@@ -142,7 +142,7 @@ describe('a full CI run over one tree and a foreign-tree daemon record over the 
 			expect(run.status).toBe(0);
 			expect(stateOf(envelope, 'compile')).toBe('ok');
 			// The teardown said what it refused instead of acting on it.
-			expect(run.stderr).toContain('extensions');
+			expect(run.stderr).toContain('addons');
 			expect(run.stderr).toContain('another tree');
 
 			// The foreign record: same bytes, same mtime, and zero TERM/KILL to
@@ -182,7 +182,7 @@ describe('a full CI run over one tree and a foreign-tree daemon record over the 
 		expect(run.status, `stderr:\n${run.stderr}\nsteps: ${JSON.stringify((envelope.data as { steps?: unknown }).steps)}`).toBe(1);
 		expect(stateOf(envelope, 'compile')).toBe('failed');
 		expect(run.stderr).toContain('error TS2322');
-		expect(run.stderr).toContain('extensions');
+		expect(run.stderr).toContain('addons');
 		expectForeignIntact(fixture, before);
 		for (const channel of ['transpile', 'typecheck']) {
 			expect(existsSync(fixture.patchesPath(`.codkit/build/${channel}.json`))).toBe(false);

@@ -28,7 +28,7 @@ const TREE_ID = 'lock-warn-test-tree';
 const TREE_PATH = '/lock/warn/recorded/tree';
 const CHANNEL: ChannelConfig = {
 	name: 'transpile',
-	script: 'watch-client-transpile',
+	script: 'watch-transpile',
 	passStart: [/^start$/],
 	passEnd: [/^end$/],
 	errorLine: [/^error: (.+)$/],
@@ -44,7 +44,7 @@ const run: ProcessRunner = (_command, args) => ({ status: 0, stdout: args.includ
 function fixture(label: string): { readonly patchesDir: string; readonly treeDir: string } {
 	const patchesDir = makeTempRoot(`${label}-patches`);
 	const treeDir = makeTempRoot(`${label}-tree`);
-	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-client-transpile': 'fixture' } }), 'utf8');
+	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-transpile': 'fixture' } }), 'utf8');
 	return { patchesDir, treeDir };
 }
 
@@ -57,9 +57,9 @@ function installRecord(patchesDir: string, pending: { readonly pid: number; read
 			{
 				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 				channel: 'transpile',
-				script: 'watch-client-transpile',
+				script: 'watch-transpile',
 				pid: pending.pid,
-				cmdline: 'watch-client-transpile',
+				cmdline: 'watch-transpile',
 				startedAt: pending.startedAt,
 				treeId: TREE_ID,
 				treePath: TREE_PATH,

@@ -33,11 +33,11 @@ import type { CliFixture, Envelope, Run } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 /** F: the file whose patch artifact the patchset side moves and the tree edits. */
-const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
+const EXAMPLE_PATCH = 'delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch';
 /** G: the file the tree commits a change to, so a continuation has a replay atom. */
-const UTIL_PATH = 'src/vs/base/common/util.ts';
+const UTIL_PATH = 'source/base/common/util.ts';
 
-const F_BLOCK_ID = 'CK-workbench-901';
+const F_BLOCK_ID = 'CK-shell-901';
 const G_BLOCK_ID = 'CK-base-905';
 
 const PATCHSET_LINE = '// the patchset side of F';
@@ -83,7 +83,7 @@ function dirtyBlock(fixture: CliFixture, path: string, id: string, line: string)
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'conflict materialization fixture'
 	]);

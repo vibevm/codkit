@@ -29,9 +29,9 @@ function record(pending: { readonly pid: number; readonly startedAt: string }): 
 		{
 			codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 			channel: 'transpile',
-			script: 'watch-client-transpile',
+			script: 'watch-transpile',
 			pid: pending.pid,
-			cmdline: 'watch-client-transpile',
+			cmdline: 'watch-transpile',
 			startedAt: pending.startedAt,
 			treeId: TREE_ID,
 			treePath: TREE_PATH,
@@ -51,7 +51,7 @@ function install(root: string, pending: { readonly pid: number; readonly started
 
 /** `ps` shapes: `-p` probes one recorded pid, `-eo` reads the process-group table. */
 const FOREIGN_ARGS = 'someone else entirely\n';
-const OUR_ARGS = 'npm run watch-client-transpile\n';
+const OUR_ARGS = 'npm run watch-transpile\n';
 
 describe('codkit build down: a starting record is waited out, not refused', () => {
 	afterAll(cleanupTempRoots);

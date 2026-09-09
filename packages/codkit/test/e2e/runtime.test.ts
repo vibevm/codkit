@@ -1,3 +1,7 @@
+// PROP-016 ##TYPE-ENGINE-TESTS: a polygon of the `vscode` type. The engine's
+// suites run on the stub type; the delivered runtime library is a payload the
+// tool ships for one family, so the scenarios that prove the delivery name that
+// family and its tree shape, and they are the only ones here that do.
 // PROP-013 ##E2E-RUNTIME-SURFACE: `codkit runtime` through the real launcher.
 // FEAT-002 ##S42-##S48.
 //
@@ -13,6 +17,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Envelope } from '../support/cliFixture.ts';
 import { makeCliFixture, runCli } from '../support/cliFixture.ts';
+import { STUB_TYPE_ID } from '../fixtures/stubType.ts';
+import { STUB_RUNTIME_TYPE_MODULE } from '../fixtures/stubTypeWithRuntime.ts';
 import { renderNotice } from '../../src/lib/licenceNotice.ts';
 import { shippedRuntime } from '../../src/lib/runtimePackage.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
@@ -253,22 +259,29 @@ describe('S46 - runtime check names the three states', () => {
 	});
 });
 
+/**
+ * The tree scenarios run over the engine's fixture triple, whose patch set
+ * declares the stub type; the stub delivers no library, so these two point the
+ * type seam at the stub that does (PROP-016 ##TYPE-TEST-SEAM).
+ */
+const DELIVERING_TYPE = { CODKIT_TEST_TYPE_PACKAGE: `${STUB_TYPE_ID}=${STUB_RUNTIME_TYPE_MODULE}` };
+
 describe('S47 - save refuses an edit of a delivered file', () => {
 	it('extracts nothing at all, not even the own file the developer added', () => {
 		const fixture = makeCliFixture('runtime-save');
-		expect(fixture.run(['runtime', 'load']).status).toBe(0);
-		expect(fixture.run(['load']).status).toBe(0);
+		expect(fixture.run(['runtime', 'load'], DELIVERING_TYPE).status).toBe(0);
+		expect(fixture.run(['load'], DELIVERING_TYPE).status).toBe(0);
 
-		const delivered = fixture.treePath('src/vs/patchset/codkit/common/version.ts');
+		const delivered = fixture.treePath('source/own/codkit/common/version.ts');
 		writeFileSync(delivered, `${readFileSync(delivered, 'utf8')}// edited in the tree\n`, 'utf8');
-		const mine = fixture.treePath('src/vs/patchset/mine.ts');
+		const mine = fixture.treePath('source/own/mine.ts');
 		writeFileSync(mine, 'export const MINE = 1;\n', 'utf8');
 		const before = snapshot(fixture.patchesPath('delta/own'));
 
-		const outcome = fixture.json(['save']);
+		const outcome = fixture.json(['save'], DELIVERING_TYPE);
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-DELIVERED-EDIT');
-		expect(outcome.envelope.errors[0]?.message).toContain('src/vs/patchset/codkit/common/version.ts');
+		expect(outcome.envelope.errors[0]?.message).toContain('source/own/codkit/common/version.ts');
 		expect(outcome.envelope.errors[0]?.hint).toContain('runtime load --upgrade');
 		expect(snapshot(fixture.patchesPath('delta/own'))).toBe(before);
 	});
@@ -277,13 +290,13 @@ describe('S47 - save refuses an edit of a delivered file', () => {
 describe('S48 - verify refuses a unit under codkit/ and drift of the library', () => {
 	it('names the unit, then the drifted file, then the oversized hook', () => {
 		const fixture = makeCliFixture('runtime-verify');
-		expect(fixture.run(['load']).status).toBe(0);
+		expect(fixture.run(['load'], DELIVERING_TYPE).status).toBe(0);
 
 		const manifestPath = fixture.patchesPath('delta/own/patchset.delta.json');
 		const savedManifest = readFileSync(manifestPath, 'utf8');
 		try {
 			writeFileSync(manifestPath, savedManifest.replace('"roots": [', '"roots": [\n        "codkit/extra/",'), 'utf8');
-			const under = fixture.json(['verify']);
+			const under = fixture.json(['verify'], DELIVERING_TYPE);
 			expect(under.run.status).toBe(1);
 			const findings = (under.envelope.data as unknown as { findings: { code: string; message: string }[] }).findings;
 			expect(findings.some((item) => item.code === 'CK-E-OWN-UNDER-CODKIT' && item.message.includes('codkit/extra/'))).toBe(true);
@@ -295,7 +308,7 @@ describe('S48 - verify refuses a unit under codkit/ and drift of the library', (
 		try {
 			mkdirSync(join(runtimeRoot, 'common'), { recursive: true });
 			writeFileSync(join(runtimeRoot, 'common', 'version.ts'), '// not what codkit ships\n', 'utf8');
-			const drifted = fixture.json(['verify']);
+			const drifted = fixture.json(['verify'], DELIVERING_TYPE);
 			expect(drifted.run.status).toBe(1);
 			const findings = (drifted.envelope.data as unknown as { findings: { code: string }[] }).findings;
 			expect(findings.some((item) => item.code === 'CK-E-RUNTIME-DRIFT')).toBe(true);

@@ -4,11 +4,11 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { makeCliFixture } from '../support/cliFixture.ts';
+import { makeCliFixture, STUB_TYPE_ENV, TEST_BUILD_CONDITION, testBuildNodeDir } from '../support/cliFixture.ts';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
@@ -27,7 +27,11 @@ function inheritedEnv(extra: Readonly<Record<string, string>>): Record<string, s
 			env[key] = value;
 		}
 	}
-	return Object.assign(env, extra);
+	// The launchers run `node <launcher>`, and the stub type is reachable only
+	// in a test build, so the `node` these scenarios find is the shim of the
+	// fixture (##TYPE-TEST-SEAM); nothing else about the run changes.
+	env['PATH'] = `${testBuildNodeDir('launcher')}${delimiter}${env['PATH'] ?? ''}`;
+	return Object.assign(env, STUB_TYPE_ENV, extra);
 }
 
 describe('bin/codkit', () => {
@@ -75,7 +79,7 @@ describe('bin/codkit.ps1', () => {
 describe('npm bin launcher', () => {
 	it('is a cwd-independent Node entry point', () => {
 		const fixture = makeCliFixture('launcher-node');
-		const result = spawnSync(process.execPath, [nodeLauncher, '--json', '--fork-dir', fixture.treeDir, 'where'], {
+		const result = spawnSync(process.execPath, [TEST_BUILD_CONDITION, nodeLauncher, '--json', '--fork-dir', fixture.treeDir, 'where'], {
 			cwd: makeTempRoot('launcher-node-cwd'),
 			env: inheritedEnv({ CODKIT_PATCHES_DIR: fixture.patchesDir }),
 			encoding: 'utf8'

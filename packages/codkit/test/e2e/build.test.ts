@@ -24,18 +24,18 @@ let fixture: CliFixture;
 /** The `--timeout` every test that expects a pass uses: generous, never 600s. */
 const TIMEOUT = ['--timeout', '20'];
 
-const CHANNEL_NAMES = ['transpile', 'typecheck', 'extensions', 'copilot'] as const;
+const CHANNEL_NAMES = ['transpile', 'typecheck', 'addons', 'extras'] as const;
 
 const LIVE_GREEN_PASS = [
 	'[05:56:09] Starting compilation...',
-	'[05:56:22] Finished watch-client-noEmit /workspace/fork/src/tsconfig.json with 0 errors.',
+	'[05:56:22] Finished compile-noEmit /workspace/fork/src/tsconfig.json with 0 errors.',
 	'[05:56:22] Finished compilation with 0 errors after 12110 ms'
 ] as const;
 
 const LIVE_TS7027_PASS = [
 	LIVE_GREEN_PASS[0],
-	'[05:43:37] src/vs/patchset/test/node/patchset.resources.test.ts(80,4): error TS7027: Unreachable code detected.',
-	'[05:43:37] Finished watch-client-noEmit /workspace/fork/src/tsconfig.json with 1 errors.',
+	'[05:43:37] source/own/test/node/patchset.resources.test.ts(80,4): error TS7027: Unreachable code detected.',
+	'[05:43:37] Finished compile-noEmit /workspace/fork/src/tsconfig.json with 1 errors.',
 	'[05:43:37] Finished compilation with 1 errors after 12353 ms'
 ] as const;
 
@@ -104,7 +104,7 @@ describe('codkit build up|status', () => {
 		expect(rowOf(started.envelope, 'transpile').action).toBe('started');
 
 		const written = record('transpile');
-		expect(written?.script).toBe('watch-client-transpile');
+		expect(written?.script).toBe('watch-transpile');
 		expect(written?.treePath).toBe(fixture.treeDir);
 		expect(written?.pid).toBeGreaterThan(0);
 
@@ -125,7 +125,7 @@ describe('codkit build up|status', () => {
 
 	it('reports every channel when no channel is named', () => {
 		const status = fixture.json(['build', 'status']);
-		expect(channels(status.envelope).map((row) => row.channel)).toEqual(['transpile', 'typecheck', 'extensions', 'copilot']);
+		expect(channels(status.envelope).map((row) => row.channel)).toEqual(['transpile', 'typecheck', 'addons', 'extras']);
 		expect(rowOf(status.envelope, 'typecheck').state).toBe('dead');
 	});
 
@@ -175,7 +175,7 @@ describe('codkit build errors', () => {
 			expect(row.countFromSummary).toBe(true);
 			expect(row.errors).toEqual([
 				{
-					file: 'src/vs/patchset/test/node/patchset.resources.test.ts',
+					file: 'source/own/test/node/patchset.resources.test.ts',
 					line: 80,
 					column: 4,
 					code: 'TS7027',
@@ -188,10 +188,10 @@ describe('codkit build errors', () => {
 	});
 
 	it('finishes the exact timestamped extensions green pass instead of timing out', () => {
-		expect(fixture.run(['build', 'up', '--channel', 'extensions'], { STUB_MODE: 'live-ext-green' }).status).toBe(0);
+		expect(fixture.run(['build', 'up', '--channel', 'addons'], { STUB_MODE: 'live-ext-green' }).status).toBe(0);
 		try {
-			const outcome = fixture.json(['build', 'errors', '--channel', 'extensions', '--timeout', '2']);
-			const row = rowOf(outcome.envelope, 'extensions');
+			const outcome = fixture.json(['build', 'errors', '--channel', 'addons', '--timeout', '2']);
+			const row = rowOf(outcome.envelope, 'addons');
 
 			expect(outcome.run.status).toBe(0);
 			expect(row.lines?.[row.lines.length - 1]).toBe('[05:55:37] Finished compilation');
@@ -199,25 +199,25 @@ describe('codkit build errors', () => {
 			expect(row.countFromSummary).toBe(false);
 			expect(row.errors).toEqual([]);
 		} finally {
-			fixture.run(['build', 'down', '--channel', 'extensions']);
+			fixture.run(['build', 'down', '--channel', 'addons']);
 		}
 	});
 
 	it('keeps every diagnostic of the timestamped red extensions pass and stays red after a zero project', () => {
-		expect(fixture.run(['build', 'up', '--channel', 'extensions'], { STUB_MODE: 'live-ext-red' }).status).toBe(0);
+		expect(fixture.run(['build', 'up', '--channel', 'addons'], { STUB_MODE: 'live-ext-red' }).status).toBe(0);
 		try {
-			const outcome = fixture.json(['build', 'errors', '--channel', 'extensions', '--timeout', '2']);
-			const row = rowOf(outcome.envelope, 'extensions');
+			const outcome = fixture.json(['build', 'errors', '--channel', 'addons', '--timeout', '2']);
+			const row = rowOf(outcome.envelope, 'addons');
 
 			// The pass reports a red project and then a zero-reporting one; the
 			// count comes from the parsed diagnostics, so it cannot turn green.
 			expect(outcome.run.status).toBe(1);
 			expect(row.errorCount).toBe(2);
 			expect(row.countFromSummary).toBe(false);
-			expect(row.errors?.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts', 'src/vs/base/common/util.ts']);
+			expect(row.errors?.map((error) => error.file)).toEqual(['source/own/hello.ts', 'source/base/common/util.ts']);
 			expect(row.errors?.[0]).toMatchObject({ line: 12, column: 7, code: 'TS2322' });
 		} finally {
-			fixture.run(['build', 'down', '--channel', 'extensions']);
+			fixture.run(['build', 'down', '--channel', 'addons']);
 		}
 	});
 
@@ -228,7 +228,7 @@ describe('codkit build errors', () => {
 		const row = rowOf(outcome.envelope, 'typecheck');
 
 		expect(outcome.run.status).toBe(1);
-		expect(row.errors?.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts', 'src/vs/base/common/util.ts']);
+		expect(row.errors?.map((error) => error.file)).toEqual(['source/own/hello.ts', 'source/base/common/util.ts']);
 		expect(row.errors?.[0]).toMatchObject({ line: 12, code: 'TS2322' });
 		// The counter of the end line is the 0/1 flag; the real number is the one
 		// the pass states on its own line.
@@ -241,42 +241,42 @@ describe('codkit build errors', () => {
 		const row = rowOf(outcome.envelope, 'typecheck');
 
 		expect(outcome.run.status).toBe(1);
-		expect(row.errors?.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts']);
+		expect(row.errors?.map((error) => error.file)).toEqual(['source/own/hello.ts']);
 		expect(row.reportedCount).toBe(1);
 		// The pass itself is still reported whole.
 		expect(row.errorCount).toBe(2);
 	});
 
 	it('exits 2 with a hint when the channel has no daemon', () => {
-		const outcome = fixture.json(['build', 'errors', '--channel', 'copilot', ...TIMEOUT]);
+		const outcome = fixture.json(['build', 'errors', '--channel', 'extras', ...TIMEOUT]);
 		expect(outcome.run.status).toBe(2);
-		expect(outcome.run.stderr).toContain('codkit build up --channel copilot');
+		expect(outcome.run.stderr).toContain('codkit build up --channel extras');
 	});
 
 	it('strips the ANSI a daemon writes into its log before matching anything', () => {
-		expect(fixture.run(['build', 'up', '--channel', 'copilot'], { STUB_MODE: 'ansi' }).status).toBe(0);
+		expect(fixture.run(['build', 'up', '--channel', 'extras'], { STUB_MODE: 'ansi' }).status).toBe(0);
 		try {
-			const outcome = fixture.json(['build', 'errors', '--channel', 'copilot', ...TIMEOUT]);
-			const row = rowOf(outcome.envelope, 'copilot');
+			const outcome = fixture.json(['build', 'errors', '--channel', 'extras', ...TIMEOUT]);
+			const row = rowOf(outcome.envelope, 'extras');
 
 			expect(outcome.run.status).toBe(0);
 			expect(row.lines?.[0]).toBe('[watch] build started');
 			expect(row.lines?.[row.lines.length - 1]).toBe('[watch] build finished');
 			// The log really does carry the escapes: it is the reader that removes them.
-			expect(readFileSync(fixture.patchesPath('.codkit/build/copilot.log'), 'utf8')).toContain('\u001b[32m');
+			expect(readFileSync(fixture.patchesPath('.codkit/build/extras.log'), 'utf8')).toContain('\u001b[32m');
 		} finally {
-			fixture.run(['build', 'down', '--channel', 'copilot']);
+			fixture.run(['build', 'down', '--channel', 'extras']);
 		}
 	});
 
 	it('exits 2 when the pass does not finish within the timeout', () => {
-		expect(fixture.run(['build', 'up', '--channel', 'extensions'], { STUB_MODE: 'never-end' }).status).toBe(0);
+		expect(fixture.run(['build', 'up', '--channel', 'addons'], { STUB_MODE: 'never-end' }).status).toBe(0);
 
-		const outcome = fixture.json(['build', 'errors', '--channel', 'extensions', '--timeout', '2']);
+		const outcome = fixture.json(['build', 'errors', '--channel', 'addons', '--timeout', '2']);
 		expect(outcome.run.status).toBe(2);
 		expect(outcome.run.stderr).toContain('did not finish within 2s');
 
-		expect(fixture.run(['build', 'down', '--channel', 'extensions']).status).toBe(0);
+		expect(fixture.run(['build', 'down', '--channel', 'addons']).status).toBe(0);
 	});
 
 	it('waits for the real end of a pass, not for a code-generation marker', () => {
@@ -303,7 +303,7 @@ describe('codkit build down', () => {
 	it('stops every channel and removes their records', () => {
 		const outcome = fixture.json(['build', 'down', '--channel', 'all']);
 		expect(outcome.run.status).toBe(0);
-		expect(channels(outcome.envelope).map((row) => row.channel)).toEqual(['transpile', 'typecheck', 'extensions', 'copilot']);
+		expect(channels(outcome.envelope).map((row) => row.channel)).toEqual(['transpile', 'typecheck', 'addons', 'extras']);
 
 		const status = fixture.json(['build', 'status']);
 		expect(channels(status.envelope).every((row) => row.state === 'dead')).toBe(true);
@@ -370,9 +370,9 @@ describe('codkit build fail-closed runtime records', () => {
 		return {
 			codkitBuildDaemon: 1,
 			channel: 'transpile',
-			script: 'watch-client-transpile',
+			script: 'watch-transpile',
 			pid: 0,
-			cmdline: 'watch-client-transpile',
+			cmdline: 'watch-transpile',
 			startedAt: new Date().toISOString(),
 			treeId: owner,
 			treePath: fixture.treeDir,
@@ -387,7 +387,7 @@ describe('codkit build up: a watcher somebody else started', () => {
 		// and the path of this tree. It does nothing; being visible is its job.
 		const foreign: ChildProcess = spawn(
 			process.execPath,
-			['-e', 'setInterval(() => {}, 1000)', 'build/next/index.ts', 'transpile', '--watch', fixture.treeDir],
+			['-e', 'setInterval(() => {}, 1000)', 'build/watch.mjs', 'transpile', '--watch', fixture.treeDir],
 			{ cwd: fixture.treeDir, stdio: 'ignore' }
 		);
 		try {
@@ -484,21 +484,21 @@ describe('codkit build errors: a daemon that is gone', () => {
 		expect(outcome.run.stderr).toContain('the daemon is gone');
 		expect(row.daemonGone).toBe(true);
 		expect(row.errorCount).toBe(2);
-		expect(row.errors?.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts', 'src/vs/base/common/util.ts']);
+		expect(row.errors?.map((error) => error.file)).toEqual(['source/own/hello.ts', 'source/base/common/util.ts']);
 
 		expect(fixture.run(['build', 'down', '--channel', 'typecheck']).status).toBe(0);
 	});
 
 	it('is still exit 2 when the daemon died before it finished a pass', async () => {
-		expect(fixture.run(['build', 'up', '--channel', 'extensions'], { STUB_MODE: 'never-end' }).status).toBe(0);
-		await killDaemon('extensions');
+		expect(fixture.run(['build', 'up', '--channel', 'addons'], { STUB_MODE: 'never-end' }).status).toBe(0);
+		await killDaemon('addons');
 
-		const outcome = fixture.json(['build', 'errors', '--channel', 'extensions', ...TIMEOUT]);
+		const outcome = fixture.json(['build', 'errors', '--channel', 'addons', ...TIMEOUT]);
 
 		expect(outcome.run.status).toBe(2);
-		expect(outcome.run.stderr).toContain('codkit build up --channel extensions');
-		expect(rowOf(outcome.envelope, 'extensions')).toEqual({ channel: 'extensions', state: 'dead' });
+		expect(outcome.run.stderr).toContain('codkit build up --channel addons');
+		expect(rowOf(outcome.envelope, 'addons')).toEqual({ channel: 'addons', state: 'dead' });
 
-		expect(fixture.run(['build', 'down', '--channel', 'extensions']).status).toBe(0);
+		expect(fixture.run(['build', 'down', '--channel', 'addons']).status).toBe(0);
 	});
 });

@@ -21,7 +21,7 @@ import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const PATCH_ID = 'CK-workbench-001';
+const PATCH_ID = 'CK-shell-001';
 
 let upstream: UpstreamFixture;
 let scratch: string;
@@ -42,7 +42,7 @@ function header(pin = `${upstream.t1.tag}@${upstream.t1.sha}`): string {
 		id: PATCH_ID,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'mount point for the example area host',
 		link: 'none',
 		cause: 'none',
@@ -101,7 +101,7 @@ function withHookBlock(source: string): string {
 	const anchor = `${EXAMPLE_AREA_ANCHOR}\n`;
 	return source.replace(
 		anchor,
-		`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in patchset/ own code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
+		`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in own/ code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
 	);
 }
 
@@ -206,18 +206,18 @@ describe('regeneratePatch byte predicates', () => {
 	const PIN = 'const one = 1;\nconst two = 2;\n';
 
 	it('keeps trailing whitespace on a changed line', () => {
-		const text = textOf(generate(PIN, 'const one = 1;   \nconst two = 2;\n', { targetPath: 'src/vs/a.ts' }));
+		const text = textOf(generate(PIN, 'const one = 1;   \nconst two = 2;\n', { targetPath: 'source/a.ts' }));
 
 		expect(text).toContain('+const one = 1;   \n');
 		expect(text).toContain('-const one = 1;\n');
 	});
 
 	it('refuses a target with CRLF line endings', () => {
-		expect(codeOf(() => generate(PIN, 'const one = 1;\r\nconst two = 2;\r\n', { targetPath: 'src/vs/a.ts' }))).toBe('CRLF');
+		expect(codeOf(() => generate(PIN, 'const one = 1;\r\nconst two = 2;\r\n', { targetPath: 'source/a.ts' }))).toBe('CRLF');
 	});
 
 	it('refuses a target that lost the newline it has at the pin', () => {
-		expect(codeOf(() => generate(PIN, 'const one = 1;\nconst two = 2;', { targetPath: 'src/vs/a.ts' }))).toBe('EOF-NEWLINE');
+		expect(codeOf(() => generate(PIN, 'const one = 1;\nconst two = 2;', { targetPath: 'source/a.ts' }))).toBe('EOF-NEWLINE');
 	});
 
 	it('refuses a binary target', () => {
@@ -238,7 +238,7 @@ describe('regeneratePatch byte predicates', () => {
 	it('refuses a target that is not valid UTF-8', () => {
 		const code = codeOf(() =>
 			regeneratePatch({
-				targetPath: 'src/vs/a.ts',
+				targetPath: 'source/a.ts',
 				pinBytes: encodeUtf8(PIN),
 				curBytes: new Uint8Array([0x63, 0x6f, 0x6e, 0xff, 0x0a]),
 				header: header(),
@@ -251,7 +251,7 @@ describe('regeneratePatch byte predicates', () => {
 	});
 
 	it('accepts a target that never had a final newline at the pin', () => {
-		const result = generate('const one = 1;', 'const one = 1;\nconst two = 2;', { targetPath: 'src/vs/a.ts' });
+		const result = generate('const one = 1;', 'const one = 1;\nconst two = 2;', { targetPath: 'source/a.ts' });
 
 		expect(textOf(result)).toContain('\\ No newline at end of file');
 	});
@@ -259,18 +259,18 @@ describe('regeneratePatch byte predicates', () => {
 
 describe('regeneratePatch on a new file', () => {
 	it('does not confuse an existing empty pin file with an absent add-file target', () => {
-		const text = textOf(generate('', 'export const host = 1;\n', { targetPath: 'src/vs/empty.ts', pinExists: true }));
+		const text = textOf(generate('', 'export const host = 1;\n', { targetPath: 'source/empty.ts', pinExists: true }));
 
-		expect(text).toContain('--- a/src/vs/empty.ts\n');
+		expect(text).toContain('--- a/source/empty.ts\n');
 		expect(text).not.toContain('--- /dev/null\n');
 		expect(parseCkpatch(encodeUtf8(text), conventions(), 'x.ckpatch').isAddFile).toBe(false);
 	});
 
 	it('writes an add-file patch when the pin has no such file', () => {
-		const text = textOf(generate('', 'export const host = 1;\n', { targetPath: 'src/vs/patchsetHost.ts' }));
+		const text = textOf(generate('', 'export const host = 1;\n', { targetPath: 'source/ownHost.ts' }));
 
 		expect(text).toContain('--- /dev/null\n');
-		expect(text).toContain('+++ b/src/vs/patchsetHost.ts\n');
+		expect(text).toContain('+++ b/source/ownHost.ts\n');
 		expect(parseCkpatch(encodeUtf8(text), conventions(), 'x.ckpatch').isAddFile).toBe(true);
 	});
 });

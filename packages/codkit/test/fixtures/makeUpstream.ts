@@ -1,15 +1,18 @@
-// Pseudo-upstream fixture: a "mini VS Code" repository (PROP-013 ##FIXTURE-UPSTREAM).
+// Pseudo-upstream fixture: a repository of the layout the stub type declares
+// (PROP-013 ##FIXTURE-UPSTREAM, PROP-016 ##TYPE-ENGINE-TESTS).
 //
-// It reproduces the *shape* of the upstream tree that matters to codkit - a
-// workbench part with a constructor and a create* method, a CSS file with a
-// stable class, product.json, watch-daemon scripts, a binary resource, .nvmrc -
-// and the history shape the upgrade cycle has to survive between two pins:
+// It reproduces the *shape* the engine cares about, and that shape is the stub
+// type's answer rather than any product's tree - a shell part with a
+// constructor and a create* method, a style file with a stable class, the JSON
+// manifest that is the overlay target, watch-daemon scripts, a binary resource,
+// a toolchain pin - and the history the upgrade cycle has to survive between
+// two pins:
 //
 //   c1 (anchor, root)                      the commit ##ID-CHECK-ORIGIN looks for
 //   c2                             -> t1   "old pin"
 //   c3   examplePart, away from the hook   an edit the patch must not collide with
 //   c4   examplePart, in the constructor   the future conflict case
-//   c5   statusPart.ts -> statusbarPart.ts rename with a small edit (R096 analogue)
+//   c5   statusPart.ts -> statusbarPart.ts rename with a small edit
 //   c6   obsolete/oldThing.ts deleted -> t2 "new pin"
 //
 // Everything is deterministic: fixed author, fixed committer, fixed dates one
@@ -37,17 +40,17 @@ export type UpstreamFixture = {
 };
 
 /** Target of the sample patch and of the sample rewrite rule. */
-export const EXAMPLE_PART_PATH = 'src/vs/workbench/browser/parts/example/examplePart.ts';
+export const EXAMPLE_PART_PATH = 'source/app/browser/parts/example/examplePart.ts';
 /** Exact line the sample patch hooks after (a create* method, never the constructor). */
 export const EXAMPLE_AREA_ANCHOR = '\tprotected createExampleArea(parent: FixtureElement): void {';
 /** Exact line the sample rewrite rule matches. */
 export const EXAMPLE_TOOLBAR_ANCHOR = '\tprotected createExampleToolbar(parent: FixtureElement): void {';
 /** Renamed between t1 and t2. */
-export const STATUS_PART_PATH = 'src/vs/workbench/browser/parts/status/statusPart.ts';
-export const STATUSBAR_PART_PATH = 'src/vs/workbench/browser/parts/status/statusbarPart.ts';
+export const STATUS_PART_PATH = 'source/app/browser/parts/status/statusPart.ts';
+export const STATUSBAR_PART_PATH = 'source/app/browser/parts/status/statusbarPart.ts';
 /** Deleted between t1 and t2. */
-export const OBSOLETE_PATH = 'src/vs/workbench/obsolete/oldThing.ts';
-/** Stable CSS class the fixture contract tests can assert on. */
+export const OBSOLETE_PATH = 'source/app/obsolete/oldThing.ts';
+/** Stable style class the fixture contract tests can assert on. */
 export const STATUS_CSS_CLASS = 'fixture-status-item';
 
 const AUTHOR_NAME = 'fixture';
@@ -67,7 +70,7 @@ export function makeUpstream(dir: string): UpstreamFixture {
 	let clock = 0;
 
 	writeAll(dir, rootCommitFiles());
-	const anchorSha = fixtureCommit(dir, 'fixture: initial mini-VS-Code tree', commitDate(clock));
+	const anchorSha = fixtureCommit(dir, 'fixture: initial upstream tree', commitDate(clock));
 	clock += 1;
 
 	writeAll(dir, secondCommitFiles());
@@ -115,9 +118,9 @@ export function makeUpstream(dir: string): UpstreamFixture {
  * writes them with this, so that `check-tree` recognizes the family it declares.
  */
 export function writeFingerprintFiles(dir: string): void {
-	writeFile(dir, 'package.json', '{\n\t"name": "fixture-code"\n}\n');
-	writeFile(dir, 'product.json', '{\n\t"nameShort": "Fixture"\n}\n');
-	writeFile(dir, 'src/vs/base/common/fixture.ts', 'export const FIXTURE = true;\n');
+	writeFile(dir, 'package.json', '{\n\t"name": "fixture-app"\n}\n');
+	writeFile(dir, 'manifest.json', '{\n\t"displayName": "Fixture"\n}\n');
+	writeFile(dir, 'source/base/common/fixture.ts', 'export const FIXTURE = true;\n');
 }
 
 export function pinDate(dateIso: string): string {
@@ -183,30 +186,30 @@ function rootCommitFiles(): FileMap {
 		['.gitignore', GITIGNORE],
 		['README.md', README],
 		['package.json', PACKAGE_JSON],
-		['product.json', PRODUCT_JSON],
+		['manifest.json', MANIFEST_JSON],
 		['build/stub-ci-step.mjs', STUB_CI_STEP],
 		['build/stub-watch.mjs', STUB_WATCH],
 		['resources/app-icon.bin', APP_ICON],
-		['src/vs/base/common/util.ts', UTIL_TS],
-		['src/vs/base/common/lifecycle.ts', LIFECYCLE_TS],
-		['src/vs/base/common/event.ts', EVENT_TS],
-		['src/vs/base/browser/dom.ts', DOM_TS],
-		['src/vs/platform/log/common/log.ts', LOG_TS],
-		['src/vs/platform/instantiation/common/instantiation.ts', INSTANTIATION_TS],
-		['src/vs/workbench/common/contributions.ts', CONTRIBUTIONS_TS],
-		['src/vs/workbench/browser/workbench.ts', WORKBENCH_TS],
+		['source/base/common/util.ts', UTIL_TS],
+		['source/base/common/lifecycle.ts', LIFECYCLE_TS],
+		['source/base/common/event.ts', EVENT_TS],
+		['source/base/browser/dom.ts', DOM_TS],
+		['source/platform/log/common/log.ts', LOG_TS],
+		['source/platform/instantiation/common/instantiation.ts', INSTANTIATION_TS],
+		['source/app/common/contributions.ts', CONTRIBUTIONS_TS],
+		['source/app/browser/shell.ts', SHELL_TS],
 		[EXAMPLE_PART_PATH, EXAMPLE_PART_T1],
-		['src/vs/workbench/browser/parts/example/examplePart.css', EXAMPLE_PART_CSS],
+		['source/app/browser/parts/example/examplePart.css', EXAMPLE_PART_CSS],
 		[STATUS_PART_PATH, STATUS_PART_T1],
-		['src/vs/workbench/browser/parts/status/statusPart.css', STATUS_PART_CSS],
+		['source/app/browser/parts/status/statusPart.css', STATUS_PART_CSS],
 		[OBSOLETE_PATH, OLD_THING_TS]
 	]);
 }
 
 function secondCommitFiles(): FileMap {
 	return new Map<string, string | Uint8Array>([
-		['src/vs/workbench/browser/parts/titlebar/titlebarPart.ts', TITLEBAR_PART_TS],
-		['src/vs/workbench/services/example/browser/exampleService.ts', EXAMPLE_SERVICE_TS]
+		['source/app/browser/parts/titlebar/titlebarPart.ts', TITLEBAR_PART_TS],
+		['source/app/services/example/browser/exampleService.ts', EXAMPLE_SERVICE_TS]
 	]);
 }
 
@@ -215,53 +218,53 @@ function secondCommitFiles(): FileMap {
 // - the same rules codkit enforces on the real upstream.
 // ---------------------------------------------------------------------------
 
-// product.overrides.json is ignored upstream too: it is the dev channel of the
+// manifest.overrides.json is ignored upstream too: it is the dev channel of the
 // config-overlay layer (PROP-005 ##OVERLAY-TWO-CHANNELS), written into the tree by
 // `load`, and the tree has to stay clean with it in place.
 const GITIGNORE = `.build/
 node_modules/
 out/
-product.overrides.json
+manifest.overrides.json
 `;
 
-const README = `# Fixture - OSS
+const README = `# Fixture Upstream
 
-A miniature stand-in for the upstream VS Code tree, generated by the codkit
-test fixtures. It exists to have the shape codkit cares about, not to run.
+A miniature stand-in for an upstream tree, generated by the codkit test
+fixtures. It exists to have the shape codkit cares about, not to run.
 `;
 
 const PACKAGE_JSON = `{
-	"name": "fixture-oss",
+	"name": "fixture-upstream",
 	"version": "1.0.0",
 	"private": true,
 	"scripts": {
 		"hygiene": "node build/stub-ci-step.mjs hygiene",
 		"eslint": "node build/stub-ci-step.mjs eslint",
-		"test-node": "node build/stub-ci-step.mjs product-tests",
-		"watch-client-transpile": "node build/stub-watch.mjs transpile",
-		"watch-client": "node build/stub-watch.mjs typecheck",
-		"watch-extensions": "node build/stub-watch.mjs extensions",
-		"watch-copilot": "node build/stub-watch.mjs copilot"
+		"test-own": "node build/stub-ci-step.mjs product-tests",
+		"watch-transpile": "node build/stub-watch.mjs transpile",
+		"watch-compile": "node build/stub-watch.mjs typecheck",
+		"watch-addons": "node build/stub-watch.mjs addons",
+		"watch-extras": "node build/stub-watch.mjs extras"
 	}
 }
 `;
 
 const STUB_CI_STEP = `#!/usr/bin/env node
-// Executable fixture counterparts of the upstream hygiene/eslint/node-test
+// Executable fixture counterparts of the upstream hygiene, lint and own-test
 // runners. Besides selectable red verdicts, they assert the ordering fixed by
-// PROP-011: hygiene sees the pin product.json, product tests see its materialized
+// PROP-011: hygiene sees the pin manifest.json, product tests see its materialized
 // overlay and receive the exact own-test runGlob.
 
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const step = process.argv[2];
-const product = JSON.parse(readFileSync('product.json', 'utf8'));
+const product = JSON.parse(readFileSync('manifest.json', 'utf8'));
 mkdirSync('.build', { recursive: true });
 appendFileSync('.build/ci-steps.log', step + '\\n', 'utf8');
 
 if (step === 'hygiene' || step === 'eslint') {
-	if (product.nameShort !== 'Fixture - OSS' || Object.hasOwn(product, 'patchsetUpstreamPin')) {
+	if (product.displayName !== 'Fixture Upstream' || Object.hasOwn(product, 'patchsetUpstreamPin')) {
 		console.error(step + ': overlay target was materialized before upstream hygiene');
 		process.exit(1);
 	}
@@ -277,17 +280,17 @@ if (step === 'hygiene' || step === 'eslint') {
 if (step === 'product-tests') {
 	const runGlobAt = process.argv.indexOf('--runGlob');
 	const runGlob = runGlobAt === -1 ? undefined : process.argv[runGlobAt + 1];
-	if (runGlob !== 'vs/patchset/**/test/{common,node}/**/*.test.js') {
+	if (runGlob !== 'own/**/test/{common,node}/**/*.test.js') {
 		console.error('product-tests: expected the own-test --runGlob, got ' + String(runGlob));
 		process.exit(1);
 	}
 	const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim();
 	const expectedPin = branch.slice(branch.lastIndexOf('/') + 1);
-	if (product.nameShort !== 'Fixture PatchSet' || product.patchsetUpstreamPin !== expectedPin) {
+	if (product.displayName !== 'Fixture PatchSet' || product.patchsetUpstreamPin !== expectedPin) {
 		console.error('product-tests: overlay target was not materialized before the tests');
 		process.exit(1);
 	}
-	readFileSync('src/vs/patchset/test/fixture.test.ts', 'utf8');
+	readFileSync('source/own/test/fixture.test.ts', 'utf8');
 	if (process.env.STUB_PRODUCT_TEST_MODE === 'fail') {
 		console.error('product-tests: fixture assertion failed');
 		process.exit(1);
@@ -300,17 +303,17 @@ console.error('unknown fixture CI step: ' + String(step));
 process.exit(2);
 `;
 
-// extensionsGallery is nested on purpose: the dev channel of the config-overlay
+// addonGallery is nested on purpose: the dev channel of the config-overlay
 // layer has to seed a top-level key from the pin before writing into it, or the
 // flat merge upstream performs would drop the sibling keys (PROP-005
 // ##OVERLAY-TWO-CHANNELS).
-const PRODUCT_JSON = `{
-	"nameShort": "Fixture - OSS",
-	"nameLong": "Fixture Code - OSS",
-	"dataFolderName": ".fixture-code-oss",
-	"applicationName": "fixture-code",
+const MANIFEST_JSON = `{
+	"displayName": "Fixture Upstream",
+	"descriptiveName": "Fixture Upstream App",
+	"dataFolderName": ".fixture-upstream-app",
+	"applicationName": "fixture-app",
 	"version": "1.0.0",
-	"extensionsGallery": {
+	"addonGallery": {
 		"serviceUrl": "https://gallery.fixture.invalid/api",
 		"itemUrl": "https://gallery.fixture.invalid/item"
 	}
@@ -331,10 +334,10 @@ const STUB_WATCH = `#!/usr/bin/env node
 //   never-end  a start and no end at all
 //   false-end  a code-generation marker that looks like an end, then the real one
 //   ansi       like ok, with the colour and title sequences around every line
-//   live-green exact sanitized timestamped watch-client green pass
-//   live-ts7027 exact sanitized timestamped watch-client TS7027 pass
-//   live-ext-green exact sanitized timestamped watch-extensions green pass
-//   live-ext-red   timestamped watch-extensions pass: two diagnostics and
+//   live-green exact sanitized timestamped watch-compile green pass
+//   live-ts7027 exact sanitized timestamped watch-compile TS7027 pass
+//   live-ext-green exact sanitized timestamped watch-addons green pass
+//   live-ext-red   timestamped watch-addons pass: two diagnostics and
 //                  per-project summaries, the last of which reports zero
 
 import { appendFileSync } from 'node:fs';
@@ -344,7 +347,7 @@ const CHANNELS = {
 		start: 'Starting transpilation...',
 		end: 'Finished transpilation with 0 errors after 200 ms',
 		endWithErrors: 'Finished transpilation with 1 errors after 200 ms',
-		falseEnd: 'Finished transpilation of extensions with 0 errors after 12 ms'
+		falseEnd: 'Finished transpilation of addons with 0 errors after 12 ms'
 	},
 	typecheck: {
 		start: 'Starting compilation...',
@@ -352,13 +355,13 @@ const CHANNELS = {
 		endWithErrors: 'Finished compilation with 1 errors after 200 ms',
 		falseEnd: 'Finished compilation api-proposal-names with 0 errors after 12 ms'
 	},
-	extensions: {
+	addons: {
 		start: 'Starting compilation',
 		end: 'Finished compilation',
 		endWithErrors: 'Finished compilation',
 		falseEnd: 'Finished compilation api-proposal-names with 0 errors after 12 ms'
 	},
-	copilot: {
+	extras: {
 		start: '[watch] build started',
 		end: '[watch] build finished',
 		endWithErrors: '[watch] build finished',
@@ -370,41 +373,41 @@ const CHANNELS = {
 // something to keep and something to drop; the count line carries the real number,
 // which the counter of the end line does not.
 const ERROR_LINES = [
-	'src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
-	'src/vs/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.',
-	'Finished watch-client-noEmit fixture with 2 errors.'
+	'source/own/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
+	'source/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.',
+	'Finished compile-noEmit fixture with 2 errors.'
 ];
 
 const LIVE_GREEN = {
 	start: '[05:56:09] Starting compilation...',
-	count: '[05:56:22] Finished watch-client-noEmit /workspace/fork/src/tsconfig.json with 0 errors.',
+	count: '[05:56:22] Finished compile-noEmit /workspace/fork/src/tsconfig.json with 0 errors.',
 	end: '[05:56:22] Finished compilation with 0 errors after 12110 ms'
 };
 
 const LIVE_TS7027 = {
 	start: LIVE_GREEN.start,
-	error: '[05:43:37] src/vs/patchset/test/node/patchset.resources.test.ts(80,4): error TS7027: Unreachable code detected.',
-	count: '[05:43:37] Finished watch-client-noEmit /workspace/fork/src/tsconfig.json with 1 errors.',
+	error: '[05:43:37] source/own/test/node/patchset.resources.test.ts(80,4): error TS7027: Unreachable code detected.',
+	count: '[05:43:37] Finished compile-noEmit /workspace/fork/src/tsconfig.json with 1 errors.',
 	end: '[05:43:37] Finished compilation with 1 errors after 12353 ms'
 };
 
-// Sanitized shapes of the live watch-extensions daemon: every line carries the
+// Sanitized shapes of the live watch-addons daemon: every line carries the
 // [HH:mm:ss] prefix, and the per-project summaries are not a pass total - the
 // red pass ends with a zero from a later project on purpose, so a
 // last-count-wins reading of it cannot pass as green.
 const LIVE_EXT_GREEN = {
 	start: '[05:55:35] Starting compilation',
-	projects: ['[05:55:36] Finished extensions types with 0 errors.', '[05:55:36] Finished extensions markdown-basics with 0 errors.'],
+	projects: ['[05:55:36] Finished addons types with 0 errors.', '[05:55:36] Finished addons sample-pack with 0 errors.'],
 	end: '[05:55:37] Finished compilation'
 };
 
 const LIVE_EXT_RED = {
 	start: LIVE_EXT_GREEN.start,
 	errors: [
-		'[05:55:36] src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
-		'[05:55:36] src/vs/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.'
+		'[05:55:36] source/own/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
+		'[05:55:36] source/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.'
 	],
-	projects: ['[05:55:36] Finished extensions markdown-basics with 2 errors.', '[05:55:37] Finished extensions types with 0 errors.'],
+	projects: ['[05:55:36] Finished addons sample-pack with 2 errors.', '[05:55:37] Finished addons types with 0 errors.'],
 	end: LIVE_EXT_GREEN.end
 };
 
@@ -661,13 +664,13 @@ const CONTRIBUTIONS_TS = `/*----------------------------------------------------
 
 import { ServicesAccessor } from '../../platform/instantiation/common/instantiation.ts';
 
-export interface IWorkbenchContribution {
+export interface IShellContribution {
 	start(accessor: ServicesAccessor): void;
 }
 
-const contributions: IWorkbenchContribution[] = [];
+const contributions: IShellContribution[] = [];
 
-export function registerWorkbenchContribution(contribution: IWorkbenchContribution): void {
+export function registerShellContribution(contribution: IShellContribution): void {
 	contributions.push(contribution);
 }
 
@@ -678,7 +681,7 @@ export function startContributions(accessor: ServicesAccessor): void {
 }
 `;
 
-const WORKBENCH_TS = `/*---------------------------------------------------------------------------------------------
+const SHELL_TS = `/*---------------------------------------------------------------------------------------------
  *  Fixture file for codkit tests.
  *--------------------------------------------------------------------------------------------*/
 
@@ -688,7 +691,7 @@ import { InstantiationService } from '../../platform/instantiation/common/instan
 import { startContributions } from '../common/contributions.ts';
 import { ExamplePart } from './parts/example/examplePart.ts';
 
-export function createWorkbench(container: FixtureElement): void {
+export function createShell(container: FixtureElement): void {
 	const instantiationService = new InstantiationService();
 	const logService = new ConsoleLogService();
 	instantiationService.set(ILogService, logService);
@@ -792,7 +795,7 @@ export class ExampleService implements IExampleService {
 // constructor does not.
 
 const EXAMPLE_PART_T1 = `/*---------------------------------------------------------------------------------------------
- *  Fixture file for codkit tests. Shaped like a VS Code workbench part.
+ *  Fixture file for codkit tests. Shaped like a shell part of the layout.
  *--------------------------------------------------------------------------------------------*/
 
 import { FixtureElement, append } from '../../../../base/browser/dom.ts';

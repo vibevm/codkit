@@ -17,7 +17,7 @@ const MIDDLE = 'b'.repeat(40);
 const EARLIEST = 'c'.repeat(40);
 const DELETE = 'd'.repeat(40);
 const RENAME = 'e'.repeat(40);
-const TARGET = 'src/vs/workbench/example.ts';
+const TARGET = 'source/app/example.ts';
 const TARGET_PATHSPEC = `:(top,literal)${TARGET}`;
 
 const OPTIONS = {
@@ -216,7 +216,7 @@ describe('findCause', () => {
 	});
 
 	it('queries the rename commit directly for a known target-renamed outcome', () => {
-		const newTarget = 'src/vs/workbench/renamed.ts';
+		const newTarget = 'source/app/renamed.ts';
 		const fake = sequence([result(`${RENAME}\n`)]);
 
 		expect(findCause({ ...OPTIONS, lifecycle: { outcome: 'target-renamed', newTarget } }, fake.git)).toEqual({

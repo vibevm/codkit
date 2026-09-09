@@ -13,6 +13,7 @@ import {
 	provideTreeDependencies,
 	type CliFixture
 } from '../support/cliFixture.ts';
+import { excludeGenericRuntimeState, makeGenericFixture, provideGenericTreeDependencies } from '../support/genericFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 const PROCESS_TIMEOUT_MS = '20000';
@@ -130,10 +131,14 @@ describe('cycle hard-crash resume matrix', () => {
 	});
 
 	it('rejects the test hook outside the test runtime', () => {
-		const fixture = trackedFixture('cycle-crash-guard');
-		prepare(fixture);
-		const failed = fixture.json(['cycle', 'start', fixture.upstream.t2.tag, '--ci'], {
-			[CODKIT_E2E_TIMEOUT_MS]: PROCESS_TIMEOUT_MS,
+		// Outside the test build the stub type is out of reach as well (PROP-016
+		// ##TYPE-TEST-SEAM), so this one is played over the second polygon, whose
+		// type the release itself carries. What is proved is the refusal of the
+		// crash hook by a run that is not a test build, and that is unchanged.
+		const fixture = makeGenericFixture('cycle-crash-guard');
+		excludeGenericRuntimeState(fixture);
+		provideGenericTreeDependencies(fixture);
+		const failed = fixture.json(['cycle', 'start', fixture.upstream.v2.tag, '--ci'], {
 			[CYCLE_TEST_CRASH_ENV]: 'init-state-written'
 		});
 		expect(failed.run.status).toBe(2);

@@ -134,7 +134,7 @@ describe('codkit cycle continue', () => {
 		provideTreeDependencies(fixture);
 		addRenamePatch(fixture);
 		const referencePath = 'delta/own/test/rename-path.test.ts';
-		const materializedReference = fixture.treePath('src/vs/patchset/test/rename-path.test.ts');
+		const materializedReference = fixture.treePath('source/own/test/rename-path.test.ts');
 		const synced = fixture.json(['load']);
 		expect(synced.run.status, synced.run.stderr).toBe(0);
 		expect(readFileSync(materializedReference, 'utf8')).toContain(STATUS_PART_PATH);
@@ -161,8 +161,8 @@ describe('codkit cycle continue', () => {
 	}, 20_000);
 
 	it.each([
-		['accepted rename path', 'src/vs/patchset/test/rename-path.test.ts'],
-		['unrelated own path', 'src/vs/patchset/hello.ts']
+		['accepted rename path', 'source/own/test/rename-path.test.ts'],
+		['unrelated own path', 'source/own/hello.ts']
 	] as const)(
 		'does not overwrite a tampered %s while delivering rename-owned bytes',
 		(_label, treePath) => {
@@ -260,7 +260,7 @@ describe('codkit cycle continue', () => {
 		expect(unchanged.envelope.data['stop']).toBe('resource-rename-review');
 
 		const map = JSON.parse(readFileSync(mapPath, 'utf8')) as { entries: Array<{ id: string; target: string }> };
-		const entry = map.entries.find((candidate) => candidate.id === 'CK-workbench-906');
+		const entry = map.entries.find((candidate) => candidate.id === 'CK-shell-906');
 		if (entry === undefined) throw new Error('resource fixture entry missing');
 		entry.target = STATUSBAR_PART_PATH;
 		writeFileSync(mapPath, `${JSON.stringify(map, null, 2)}\n`, 'utf8');
@@ -275,7 +275,7 @@ describe('codkit cycle exit classes', () => {
 		const fixture = makeCliFixture('cycle-malformed-artifact');
 		excludeRuntimeState(fixture.patchesDir);
 		const patch = fixture.patchesPath(`delta/patches/${PATCH_FILE_NAME}`);
-		writeFileSync(patch, readFileSync(patch, 'utf8').replace('# id: CK-workbench-901', '# id: malformed'), 'utf8');
+		writeFileSync(patch, readFileSync(patch, 'utf8').replace('# id: CK-shell-901', '# id: malformed'), 'utf8');
 		fixtureCommit(fixture.patchesDir, 'fixture: malformed committed patch', '2026-02-04T00:00:00Z');
 		const { run, envelope } = fixture.json(['cycle', 'start', fixture.upstream.t2.tag]);
 		expect(run.status, run.stderr).toBe(1);
@@ -340,10 +340,10 @@ function addRenamePatch(fixture: ReturnType<typeof makeCliFixture>): string {
 	if (source.status !== 0) throw new Error(source.stderr);
 	const header = [
 		'# codkit-patch: 2',
-		'# id: CK-workbench-905',
+		'# id: CK-shell-905',
 		'# type: hook',
 		'# category: follow',
-		'# owner: workbench-core',
+		'# owner: shell-core',
 		'# reason: review token fixture',
 		'# link: none',
 		'# cause: none',
@@ -356,7 +356,7 @@ function addRenamePatch(fixture: ReturnType<typeof makeCliFixture>): string {
 		pinBytes: Buffer.from(source.stdout),
 		pinExists: true,
 		curBytes: Buffer.from(
-			`${source.stdout}// codkit:begin CK-workbench-905\n// codkit status hook, delegating to patchset/ own code\n// codkit:end CK-workbench-905\n`
+			`${source.stdout}// codkit:begin CK-shell-905\n// codkit status hook, delegating to own/ code\n// codkit:end CK-shell-905\n`
 		),
 		header,
 		existingBytes: null,
@@ -378,12 +378,12 @@ function addRenamedResource(fixture: ReturnType<typeof makeCliFixture>): string 
 	const mapPath = fixture.patchesPath('delta/resources/map.json');
 	const map = JSON.parse(readFileSync(mapPath, 'utf8')) as { entries: unknown[] };
 	map.entries.push({
-		id: 'CK-workbench-906',
+		id: 'CK-shell-906',
 		target: STATUS_PART_PATH,
 		source: 'delta/resources/files/status-part.txt',
 		type: 'modify',
 		category: 'own',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'fixture resource follows an upstream rename',
 		link: 'none',
 		cause: 'none',

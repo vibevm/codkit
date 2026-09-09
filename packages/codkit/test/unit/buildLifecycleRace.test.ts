@@ -30,7 +30,7 @@ afterAll(() => {
 
 const CHANNEL: ChannelConfig = {
 	name: 'transpile',
-	script: 'watch-client-transpile',
+	script: 'watch-transpile',
 	passStart: [/^start$/],
 	passEnd: [/^end$/],
 	errorLine: [/^error: (.+)$/],
@@ -44,7 +44,7 @@ function fixture(label: string): { readonly patchesDir: string; readonly treeDir
 	// identity obligation names; the tree dir carries no inode semantics.
 	const patchesDir = makeDiskRoot(`${label}-patches`);
 	const treeDir = makeTempRoot(`${label}-tree`);
-	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-client-transpile': 'fixture' } }), 'utf8');
+	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-transpile': 'fixture' } }), 'utf8');
 	return { patchesDir, treeDir };
 }
 

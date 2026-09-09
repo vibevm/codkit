@@ -15,7 +15,7 @@ import type { OwnFileMap } from '../../src/lib/ownSides.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { ownedRoot } from '../support/ownedRoots.ts';
 
-const OWN_DIR = 'src/vs/patchset';
+const OWN_DIR = 'source/own';
 
 /** The one owned directory these sides are about. */
 const OWNED = ownedRoot(OWN_DIR);

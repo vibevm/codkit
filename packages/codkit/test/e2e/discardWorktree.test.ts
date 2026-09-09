@@ -17,9 +17,9 @@ import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 /** A tracked upstream file the delta never touches: no marker block anywhere in it. */
-const PLAIN_UPSTREAM = 'src/vs/base/common/lifecycle.ts';
+const PLAIN_UPSTREAM = 'source/base/common/lifecycle.ts';
 /** The own-code pair of the fixture: patchset source and materialized tree target. */
-const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
+const OWN_IN_TREE = 'source/own/hello.ts';
 
 /** The line a tree build leaves behind in a tracked file. */
 const BUILD_ARTIFACT = '// written by the tree build, not by a human\n';

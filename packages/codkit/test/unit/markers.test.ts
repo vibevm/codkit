@@ -38,10 +38,10 @@ function fileWithBlock(ext: string, id: string): string {
 describe('marker forms', () => {
 	it('finds the block in every comment form of PROP-004 sec. 1', () => {
 		for (const ext of ['.ts', '.css', '.html', '.sh']) {
-			const result = parse(fileWithBlock(ext, 'CK-workbench-001'), ext);
+			const result = parse(fileWithBlock(ext, 'CK-shell-001'), ext);
 
 			expect(codes(result), ext).toEqual([]);
-			expect(result.blocks, ext).toEqual([{ id: 'CK-workbench-001', beginLine: 2, endLine: 4 }]);
+			expect(result.blocks, ext).toEqual([{ id: 'CK-shell-001', beginLine: 2, endLine: 4 }]);
 		}
 	});
 
@@ -76,13 +76,9 @@ describe('marker forms', () => {
 describe('marker rules', () => {
 	it('reports MARKER-NESTED for a block inside a block', () => {
 		const result = parse(
-			[
-				'// codkit:begin CK-workbench-001',
-				'// codkit:begin CK-workbench-002',
-				'// codkit:end CK-workbench-002',
-				'// codkit:end CK-workbench-001',
-				''
-			].join('\n'),
+			['// codkit:begin CK-shell-001', '// codkit:begin CK-shell-002', '// codkit:end CK-shell-002', '// codkit:end CK-shell-001', ''].join(
+				'\n'
+			),
 			'.ts'
 		);
 
@@ -91,7 +87,7 @@ describe('marker rules', () => {
 	});
 
 	it('reports MARKER-UNBALANCED for an end without a begin', () => {
-		const result = parse('const a = 1;\n// codkit:end CK-workbench-001\n', '.ts');
+		const result = parse('const a = 1;\n// codkit:end CK-shell-001\n', '.ts');
 
 		expect(codes(result)).toEqual(['MARKER-UNBALANCED']);
 		expect(result.errors[0]?.line).toBe(2);
@@ -99,13 +95,13 @@ describe('marker rules', () => {
 	});
 
 	it('reports MARKER-UNBALANCED when the end closes another id', () => {
-		const result = parse('// codkit:begin CK-workbench-001\n// codkit:end CK-workbench-002\n', '.ts');
+		const result = parse('// codkit:begin CK-shell-001\n// codkit:end CK-shell-002\n', '.ts');
 
 		expect(codes(result)).toContain('MARKER-UNBALANCED');
 	});
 
 	it('reports MARKER-UNCLOSED for a block that never ends', () => {
-		const result = parse('// codkit:begin CK-workbench-001\nconst a = 1;\n', '.ts');
+		const result = parse('// codkit:begin CK-shell-001\nconst a = 1;\n', '.ts');
 
 		expect(codes(result)).toEqual(['MARKER-UNCLOSED']);
 		// The diagnostic points at the begin marker, not at the end of the file.
@@ -115,13 +111,13 @@ describe('marker rules', () => {
 	it('lets one id open several blocks in a file: an import line and a call site are one graft', () => {
 		const result = parse(
 			[
-				'// codkit:begin CK-workbench-001',
-				"import { hook } from './patchset/hook.js';",
-				'// codkit:end CK-workbench-001',
+				'// codkit:begin CK-shell-001',
+				"import { hook } from './own/hook.js';",
+				'// codkit:end CK-shell-001',
 				'const between = 1;',
-				'// codkit:begin CK-workbench-001',
+				'// codkit:begin CK-shell-001',
 				'hook(between);',
-				'// codkit:end CK-workbench-001',
+				'// codkit:end CK-shell-001',
 				''
 			].join('\n'),
 			'.ts'
@@ -129,8 +125,8 @@ describe('marker rules', () => {
 
 		expect(codes(result)).toEqual([]);
 		expect(result.blocks.map((block) => [block.id, block.beginLine, block.endLine])).toEqual([
-			['CK-workbench-001', 1, 3],
-			['CK-workbench-001', 5, 7]
+			['CK-shell-001', 1, 3],
+			['CK-shell-001', 5, 7]
 		]);
 	});
 
@@ -144,7 +140,7 @@ describe('marker rules', () => {
 	});
 
 	it('reports MARKER-MALFORMED for a line that mentions a marker but is not one', () => {
-		const result = parse('\t// codkit:begin CK-Workbench-001 (mount point)\n', '.ts');
+		const result = parse('\t// codkit:begin CK-Shell-001 (mount point)\n', '.ts');
 
 		expect(codes(result)).toEqual(['MARKER-MALFORMED']);
 		expect(result.errors[0]?.line).toBe(1);
@@ -152,7 +148,7 @@ describe('marker rules', () => {
 	});
 
 	it('reports MARKER-MALFORMED when the comment form belongs to another language', () => {
-		const result = parse('/* codkit:begin CK-workbench-001 */\n', '.ts');
+		const result = parse('/* codkit:begin CK-shell-001 */\n', '.ts');
 
 		expect(codes(result)).toEqual(['MARKER-MALFORMED']);
 	});
@@ -168,7 +164,7 @@ describe('marker rules', () => {
 
 describe('marker parser byte rules', () => {
 	it('reports CRLF and stops', () => {
-		const result = parse('// codkit:begin CK-workbench-001\r\n// codkit:end CK-workbench-001\r\n', '.ts');
+		const result = parse('// codkit:begin CK-shell-001\r\n// codkit:end CK-shell-001\r\n', '.ts');
 
 		expect(codes(result)).toEqual(['CRLF']);
 		expect(result.errors[0]?.line).toBe(1);
@@ -190,9 +186,9 @@ describe('marker parser performance', () => {
 		const lines: string[] = [];
 		for (let index = 0; index < 5000; index += 1) {
 			if (index === 2000) {
-				lines.push('\t// codkit:begin CK-workbench-001');
+				lines.push('\t// codkit:begin CK-shell-001');
 			} else if (index === 2002) {
-				lines.push('\t// codkit:end CK-workbench-001');
+				lines.push('\t// codkit:end CK-shell-001');
 			} else {
 				lines.push(`\tconst value${index} = ${index}; // a line of an ordinary source file`);
 			}
@@ -205,7 +201,7 @@ describe('marker parser performance', () => {
 		const result = parseMarkers(bytes, '.ts', conventions());
 		const elapsed = performance.now() - started;
 
-		expect(result.blocks).toEqual([{ id: 'CK-workbench-001', beginLine: 2001, endLine: 2003 }]);
+		expect(result.blocks).toEqual([{ id: 'CK-shell-001', beginLine: 2001, endLine: 2003 }]);
 		expect(elapsed).toBeLessThan(50);
 	});
 });

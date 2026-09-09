@@ -1,3 +1,7 @@
+// PROP-016 ##TYPE-ENGINE-TESTS: the fixture of the `vscode` brand polygon. The
+// engine's own suites run on the stub type; the brand surface is measured
+// against the committed binaries of one family, so this fixture keeps that
+// family's tree shape.
 // Fixture pair for the imageset tests: a miniature fork tree whose commits
 // carry a "shipped icon set" of a distribution (the committed binaries of the
 // type package, under its test/fixtures/imageset and produced by its
@@ -7,7 +11,7 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fixtureCommit, fixtureGit, writeFingerprintFiles } from '../fixtures/makeUpstream.ts';
+import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { makeTempRoot } from './tmp.ts';
 
 const fixtureRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'type-vscode', 'test', 'fixtures', 'imageset');
@@ -39,6 +43,24 @@ export const EXTENDED_ICONS: ReadonlyMap<string, string> = new Map([
 	['src/vs/workbench/browser/parts/editor/media/letterpress-dark.svg', 'letterpress.svg']
 ]);
 
+/**
+ * The three paths the `vscode` type names as the fingerprints of a healthy tree
+ * (PROP-008 ##ID-CHECK-FINGERPRINTS). This polygon is the brand surface of that
+ * family, so it writes them itself; the engine's own fixtures write the
+ * fingerprints of the stub type instead (PROP-016 ##TYPE-ENGINE-TESTS).
+ */
+function writeVscodeFingerprintFiles(dir: string): void {
+	for (const [relative, content] of [
+		['package.json', '{\n\t"name": "fixture-code"\n}\n'],
+		['product.json', '{\n\t"nameShort": "Fixture"\n}\n'],
+		['src/vs/base/common/fixture.ts', 'export const FIXTURE = true;\n']
+	] as const) {
+		const absolute = join(dir, ...relative.split('/'));
+		mkdirSync(dirname(absolute), { recursive: true });
+		writeFileSync(absolute, content, 'utf8');
+	}
+}
+
 export type ImagesetTreeFixture = {
 	readonly dir: string;
 	readonly pin: { readonly tag: string; readonly sha: string; readonly date: string };
@@ -48,7 +70,7 @@ export type ImagesetTreeFixture = {
 export function makeImagesetTree(label: string, options: { readonly extended?: boolean } = {}): ImagesetTreeFixture {
 	const dir = makeTempRoot(`${label}-tree`);
 	fixtureGit(dir, ['init', '--quiet', '--initial-branch=main', '.']);
-	writeFingerprintFiles(dir);
+	writeVscodeFingerprintFiles(dir);
 	writeFileSync(join(dir, 'product.json'), '{\n\t"nameShort": "Fixture - OSS"\n}\n', 'utf8');
 	const shipped = options.extended === true ? new Map([...SHIPPED_ICONS, ...EXTENDED_ICONS]) : SHIPPED_ICONS;
 	for (const [relative, name] of shipped) {

@@ -15,7 +15,7 @@ import { acquireLock } from '../../src/lib/lock.ts';
 import { formatPatchHeader, encodePatchName } from '../../src/lib/patchFormat.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const EMPTY_ARTIFACTS: CycleState['artifacts'] = {
 	clean: [],
@@ -48,7 +48,7 @@ describe('cycle apply classification adapter', () => {
 		write(tree, 'src/deleted.ts', 'a\nbase\nz\n');
 		write(tree, 'src/rule-clean.ts', 'anchor\nstable\n');
 		write(tree, 'src/rule-broken.ts', 'old-anchor\n');
-		write(tree, 'config/product.json', '{"name":"old","stable":true}\n');
+		write(tree, 'config/manifest.json', '{"name":"old","stable":true}\n');
 		const oldPin = fixtureCommit(tree, 'old pin', '2026-05-01T00:00:00Z');
 
 		write(tree, 'src/shifted.ts', 'a\nbase\nz\nupstream-tail\n');
@@ -56,16 +56,16 @@ describe('cycle apply classification adapter', () => {
 		write(tree, 'src/conflict.ts', 'a\nupstream\nz\n');
 		rmSync(join(tree, 'src/deleted.ts'));
 		write(tree, 'src/rule-broken.ts', 'new-anchor\n');
-		write(tree, 'config/product.json', '{"name":"new","stable":true}\n');
+		write(tree, 'config/manifest.json', '{"name":"new","stable":true}\n');
 		const newPin = fixtureCommit(tree, 'target changes', '2026-05-02T00:00:00Z');
 
 		const current = cycleFixture(tree, oldPin, newPin);
 		for (const [index, target] of ['src/clean.ts', 'src/shifted.ts', 'src/merged.ts', 'src/conflict.ts', 'src/deleted.ts'].entries()) {
-			writePatch(current.root, target, `CK-workbench-30${index}`, oldPin, target === 'src/deleted.ts' ? 'base' : 'base', 'codkit');
+			writePatch(current.root, target, `CK-shell-30${index}`, oldPin, target === 'src/deleted.ts' ? 'base' : 'base', 'codkit');
 		}
 		writeRule(current.root, 'src/rule-clean.ts', 'CK-rule-clean', oldPin, 'anchor');
 		writeRule(current.root, 'src/rule-broken.ts', 'CK-rule-broken', oldPin, 'old-anchor');
-		writeOverlay(current.root, 'config/product.json', 'CK-overlay', oldPin, 'old');
+		writeOverlay(current.root, 'config/manifest.json', 'CK-overlay', oldPin, 'old');
 
 		const result = classifyCycleApply(options(current));
 		expect(result.renames).toEqual([]);
@@ -103,7 +103,7 @@ describe('cycle apply classification adapter', () => {
 		fixtureGit(tree, ['mv', oldTarget, newTarget]);
 		const newPin = fixtureCommit(tree, 'exact rename', '2026-05-04T00:00:00Z');
 		const current = cycleFixture(tree, oldPin, newPin);
-		writePatch(current.root, oldTarget, 'CK-workbench-401', oldPin, 'base', 'codkit');
+		writePatch(current.root, oldTarget, 'CK-shell-401', oldPin, 'base', 'codkit');
 
 		const preview = classifyCycleApply(options(current));
 		expect(preview.renames).toEqual([{ from: oldTarget, to: newTarget, similarity: 100 }]);
@@ -134,7 +134,7 @@ describe('cycle apply classification adapter', () => {
 		write(tree, newTarget, numbered('changed'));
 		const newPin = fixtureCommit(tree, 'inexact rename', '2026-05-06T00:00:00Z');
 		const current = cycleFixture(tree, oldPin, newPin);
-		writePatch(current.root, oldTarget, 'CK-workbench-402', oldPin, 'line-10-old', 'line-10-codkit', 10, 20);
+		writePatch(current.root, oldTarget, 'CK-shell-402', oldPin, 'line-10-old', 'line-10-codkit', 10, 20);
 
 		const preview = classifyCycleApply(options(current));
 		expect(preview.renames).toHaveLength(1);
@@ -153,7 +153,7 @@ describe('cycle apply classification adapter', () => {
 		write(tree, 'src/a.ts', 'a\nnext\nz\n');
 		const newPin = fixtureCommit(tree, 'new', '2026-05-08T00:00:00Z');
 		const current = cycleFixture(tree, oldPin, newPin);
-		writePatch(current.root, 'src/a.ts', 'CK-workbench-403', oldPin, 'base', 'codkit');
+		writePatch(current.root, 'src/a.ts', 'CK-shell-403', oldPin, 'base', 'codkit');
 
 		expect(() =>
 			classifyCycleApply({
@@ -286,7 +286,7 @@ describe('cycle apply classification adapter', () => {
 					layer: 'own',
 					type: 'module',
 					category: 'own',
-					owner: 'workbench-core',
+					owner: 'shell-core',
 					reason: 'own only fixture',
 					link: 'none',
 					cause: 'none',
@@ -401,7 +401,7 @@ describe('cycle apply classification adapter', () => {
 		fixtureGit(tree, ['mv', oldTarget, newTarget]);
 		const newPin = fixtureCommit(tree, 'rename', '2026-05-18T00:00:00Z');
 		const current = cycleFixture(tree, oldPin, newPin);
-		writePatch(current.root, oldTarget, 'CK-workbench-404', oldPin, 'base', 'codkit');
+		writePatch(current.root, oldTarget, 'CK-shell-404', oldPin, 'base', 'codkit');
 		classifyCycleApply(options(current));
 
 		withCycleLocks(current, (locks) => {
@@ -493,7 +493,7 @@ describe('cycle apply classification adapter', () => {
 		fixtureGit(tree, ['mv', oldTarget, newTarget]);
 		const newPin = fixtureCommit(tree, 'rename', '2026-05-20T00:00:00Z');
 		const current = cycleFixture(tree, oldPin, newPin);
-		writePatch(current.root, oldTarget, 'CK-workbench-405', oldPin, 'base', 'codkit');
+		writePatch(current.root, oldTarget, 'CK-shell-405', oldPin, 'base', 'codkit');
 		const cycle = acquireLock(current.root, 'cycle-global', 'cycle continue');
 		const wrong = acquireLock(current.root, 'wrong-tree', 'cycle continue');
 		try {
@@ -573,8 +573,8 @@ function cycleFixture(tree: string, oldPin: string, newPin: string): Fixture {
 		codkitConfig: 2,
 		pin: targetPin,
 		upstreamAnchorCommit: oldPin,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: 'stub',
+		typeConfig: { ownRoot: 'source/own' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -586,7 +586,7 @@ function cycleFixture(tree: string, oldPin: string, newPin: string): Fixture {
 }
 
 function options(current: Fixture) {
-	return { patchesDir: current.root, treeDir: current.tree, config: current.config, type: vscodeType, state: current.state };
+	return { patchesDir: current.root, treeDir: current.tree, config: current.config, type: stubProjectType, state: current.state };
 }
 
 function renameFixture(label: string, stem: string): Fixture {
@@ -600,7 +600,7 @@ function renameFixture(label: string, stem: string): Fixture {
 	fixtureGit(tree, ['mv', oldTarget, newTarget]);
 	const newPin = fixtureCommit(tree, 'rename', '2026-06-02T00:00:00Z');
 	const current = cycleFixture(tree, oldPin, newPin);
-	writePatch(current.root, oldTarget, 'CK-workbench-406', oldPin, 'base', 'codkit');
+	writePatch(current.root, oldTarget, 'CK-shell-406', oldPin, 'base', 'codkit');
 	return current;
 }
 
@@ -682,7 +682,7 @@ function writePatch(root: string, target: string, id: string, oldPin: string, be
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'cycle classifier fixture',
 		link: 'none',
 		cause: 'none',
@@ -706,7 +706,7 @@ function writeRule(root: string, target: string, id: string, oldPin: string, mat
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'cycle classifier fixture',
 		link: 'none',
 		cause: 'none',
@@ -760,7 +760,7 @@ function writeLayerMetadata(root: string, oldPin: string, stale?: 'resource' | '
 				layer: 'own',
 				type: 'module',
 				category: 'own',
-				owner: 'workbench-core',
+				owner: 'shell-core',
 				reason: 'fixture own unit',
 				link: 'none',
 				cause: 'none',
@@ -774,7 +774,7 @@ function writeLayerMetadata(root: string, oldPin: string, stale?: 'resource' | '
 				id: 'CK-service',
 				serviceId: 'IExampleService',
 				module: 'unit.ts',
-				owner: 'workbench-core',
+				owner: 'shell-core',
 				reason: 'fixture override',
 				link: 'none',
 				cause: 'none',

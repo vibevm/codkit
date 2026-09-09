@@ -24,9 +24,9 @@ import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
-const UTIL_PATH = 'src/vs/base/common/util.ts';
-const UTIL_PATCH = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
-const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
+const UTIL_PATH = 'source/base/common/util.ts';
+const UTIL_PATCH = 'delta/patches/source__base__common__util.ts.ckpatch';
+const EXAMPLE_PATCH = 'delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch';
 
 const PROBE_ID = 'CK-base-906';
 /** The deterministic line the test adds inside the block, twice. */
@@ -49,7 +49,7 @@ function prepare(label: string): { fixture: CliFixture; withoutProbe: string } {
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'double regeneration probe'
 	]);

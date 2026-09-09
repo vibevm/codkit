@@ -26,7 +26,7 @@ import {
 import { parseOwnManifest } from '../../src/lib/layers/ownManifest.ts';
 import type { OwnExtension } from '../../src/lib/layers/ownManifest.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const PIN = '1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5';
 
@@ -92,12 +92,12 @@ describe('checkOwnExtensions (##OWN-EXTENSION-UNIT)', () => {
 	it('accepts a directory that carries its package.json', () => {
 		writeSampleExtension();
 
-		expect(checkOwnExtensions(materializerOf(vscodeType)!, patchesDir, [PACK], noUpstream)).toEqual([]);
+		expect(checkOwnExtensions(materializerOf(stubProjectType)!, patchesDir, [PACK], noUpstream)).toEqual([]);
 	});
 
 	it('refuses a name that is not of the declared form', () => {
 		writeDelta('Acme_Pack/package.json', PACKAGE_JSON);
-		const problems = checkOwnExtensions(materializerOf(vscodeType)!, patchesDir, [{ ...PACK, name: 'Acme_Pack' }], noUpstream);
+		const problems = checkOwnExtensions(materializerOf(stubProjectType)!, patchesDir, [{ ...PACK, name: 'Acme_Pack' }], noUpstream);
 
 		expect(problems).toHaveLength(1);
 		expect(problems[0]?.message).toContain('is not of the form');
@@ -105,7 +105,12 @@ describe('checkOwnExtensions (##OWN-EXTENSION-UNIT)', () => {
 
 	it('refuses a second record claiming a name the first already has', () => {
 		writeSampleExtension();
-		const problems = checkOwnExtensions(materializerOf(vscodeType)!, patchesDir, [PACK, { ...PACK, id: 'CK-product-906' }], noUpstream);
+		const problems = checkOwnExtensions(
+			materializerOf(stubProjectType)!,
+			patchesDir,
+			[PACK, { ...PACK, id: 'CK-product-906' }],
+			noUpstream
+		);
 
 		expect(problems).toHaveLength(1);
 		expect(problems[0]?.message).toContain('is already declared by CK-product-905');
@@ -113,7 +118,7 @@ describe('checkOwnExtensions (##OWN-EXTENSION-UNIT)', () => {
 
 	it('refuses a directory without the package.json the build looks for', () => {
 		writeDelta('acme-pack/package.nls.json', NLS_JSON);
-		const problems = checkOwnExtensions(materializerOf(vscodeType)!, patchesDir, [PACK], noUpstream);
+		const problems = checkOwnExtensions(materializerOf(stubProjectType)!, patchesDir, [PACK], noUpstream);
 
 		expect(problems).toHaveLength(1);
 		expect(problems[0]?.message).toContain(`delta/own-extensions/acme-pack/package.json is missing`);
@@ -122,7 +127,7 @@ describe('checkOwnExtensions (##OWN-EXTENSION-UNIT)', () => {
 
 	it('refuses a name the pin already ships, in the words the spec fixes', () => {
 		writeSampleExtension();
-		const problems = checkOwnExtensions(materializerOf(vscodeType)!, patchesDir, [PACK], (name) => name === 'acme-pack');
+		const problems = checkOwnExtensions(materializerOf(stubProjectType)!, patchesDir, [PACK], (name) => name === 'acme-pack');
 
 		expect(problems).toHaveLength(1);
 		expect(problems[0]?.message).toContain('name collides with an upstream extension');
@@ -131,14 +136,14 @@ describe('checkOwnExtensions (##OWN-EXTENSION-UNIT)', () => {
 	it('refuses a directory no record declares: it would never be materialized', () => {
 		writeSampleExtension();
 		writeDelta('orphan-pack/package.json', PACKAGE_JSON);
-		const problems = checkOwnExtensions(materializerOf(vscodeType)!, patchesDir, [PACK], noUpstream);
+		const problems = checkOwnExtensions(materializerOf(stubProjectType)!, patchesDir, [PACK], noUpstream);
 
 		expect(problems).toHaveLength(1);
 		expect(problems[0]?.message).toContain(`delta/own-extensions/orphan-pack/ is declared by no record`);
 	});
 
 	it('says nothing about a patchset that does not use the layer at all', () => {
-		expect(checkOwnExtensions(materializerOf(vscodeType)!, patchesDir, [], noUpstream)).toEqual([]);
+		expect(checkOwnExtensions(materializerOf(stubProjectType)!, patchesDir, [], noUpstream)).toEqual([]);
 	});
 });
 
@@ -147,41 +152,41 @@ describe('the files of a declared extension', () => {
 		writeSampleExtension();
 		writeDelta('acme-pack/themes/dark.json', '{}\n');
 
-		expect(ownExtensionFiles(materializerOf(vscodeType)!, patchesDir, [PACK]).map((file) => [file.relative, file.target])).toEqual([
-			['acme-pack/package.json', 'extensions/acme-pack/package.json'],
-			['acme-pack/package.nls.json', 'extensions/acme-pack/package.nls.json'],
-			['acme-pack/themes/dark.json', 'extensions/acme-pack/themes/dark.json']
+		expect(ownExtensionFiles(materializerOf(stubProjectType)!, patchesDir, [PACK]).map((file) => [file.relative, file.target])).toEqual([
+			['acme-pack/package.json', 'addons/acme-pack/package.json'],
+			['acme-pack/package.nls.json', 'addons/acme-pack/package.nls.json'],
+			['acme-pack/themes/dark.json', 'addons/acme-pack/themes/dark.json']
 		]);
 	});
 
 	it('names the tree prefix the upstream-change selectors have to skip', () => {
-		expect(ownExtensionTreePrefixes(materializerOf(vscodeType)!, [PACK])).toEqual(['extensions/acme-pack/']);
+		expect(ownExtensionTreePrefixes(materializerOf(stubProjectType)!, [PACK])).toEqual(['addons/acme-pack/']);
 	});
 
 	it('contributes nothing for a name that cannot be a path', () => {
-		expect(ownExtensionFiles(materializerOf(vscodeType)!, patchesDir, [{ ...PACK, name: '../escape' }])).toEqual([]);
-		expect(ownExtensionTreePrefixes(materializerOf(vscodeType)!, [{ ...PACK, name: '../escape' }])).toEqual([]);
+		expect(ownExtensionFiles(materializerOf(stubProjectType)!, patchesDir, [{ ...PACK, name: '../escape' }])).toEqual([]);
+		expect(ownExtensionTreePrefixes(materializerOf(stubProjectType)!, [{ ...PACK, name: '../escape' }])).toEqual([]);
 	});
 });
 
 describe('syncOwnExtensions: patchset -> tree, the direction load uses', () => {
-	it('writes the whole directory into extensions/<name>/', () => {
+	it('writes the whole directory into addons/<name>/', () => {
 		writeSampleExtension();
-		const report = syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
+		const report = syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
 
 		expect(report).toEqual({ copied: 2, removed: 0, total: 2 });
-		expect(readFileSync(join(treeDir, 'extensions', 'acme-pack', 'package.nls.json'), 'utf8')).toBe(NLS_JSON);
+		expect(readFileSync(join(treeDir, 'addons', 'acme-pack', 'package.nls.json'), 'utf8')).toBe(NLS_JSON);
 	});
 
 	it('does not rewrite a file whose bytes already match, so its mtime stays put', () => {
 		writeSampleExtension();
-		syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
-		const target = join(treeDir, 'extensions', 'acme-pack', 'package.json');
+		syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
+		const target = join(treeDir, 'addons', 'acme-pack', 'package.json');
 		const past = new Date(Date.now() - 60_000);
 		utimesSync(target, past, past);
 		const before = statSync(target).mtimeMs;
 
-		const report = syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
+		const report = syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
 
 		expect(report.copied).toBe(0);
 		expect(statSync(target).mtimeMs).toBe(before);
@@ -190,19 +195,19 @@ describe('syncOwnExtensions: patchset -> tree, the direction load uses', () => {
 	it('removes a tree file the delta no longer has, and prunes the directory it emptied', () => {
 		writeSampleExtension();
 		writeDelta('acme-pack/themes/dark.json', '{}\n');
-		syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
-		expect(existsSync(join(treeDir, 'extensions', 'acme-pack', 'themes', 'dark.json'))).toBe(true);
+		syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
+		expect(existsSync(join(treeDir, 'addons', 'acme-pack', 'themes', 'dark.json'))).toBe(true);
 
 		// The delta drops the theme; the next load has to take it out of the tree.
-		rmSync(join(ownExtensionSourceRoot(materializerOf(vscodeType)!, patchesDir, 'acme-pack'), 'themes', 'dark.json'), { force: true });
-		const report = syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
+		rmSync(join(ownExtensionSourceRoot(materializerOf(stubProjectType)!, patchesDir, 'acme-pack'), 'themes', 'dark.json'), { force: true });
+		const report = syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
 
 		expect(report.removed).toBe(1);
-		expect(existsSync(join(treeDir, 'extensions', 'acme-pack', 'themes'))).toBe(false);
+		expect(existsSync(join(treeDir, 'addons', 'acme-pack', 'themes'))).toBe(false);
 	});
 
 	it('skips a record whose name cannot be a path', () => {
-		expect(syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [{ ...PACK, name: '../escape' }])).toEqual({
+		expect(syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [{ ...PACK, name: '../escape' }])).toEqual({
 			copied: 0,
 			removed: 0,
 			total: 0
@@ -213,25 +218,25 @@ describe('syncOwnExtensions: patchset -> tree, the direction load uses', () => {
 describe('mirrorOwnExtensionsBack: tree -> patchset, the direction save uses', () => {
 	it('brings a tree-side edit into the delta', () => {
 		writeSampleExtension();
-		syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
-		writeTree('extensions/acme-pack/package.nls.json', '{\n\t"acme.hello": "hi"\n}\n');
+		syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
+		writeTree('addons/acme-pack/package.nls.json', '{\n\t"acme.hello": "hi"\n}\n');
 
-		const report = mirrorOwnExtensionsBack(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
+		const report = mirrorOwnExtensionsBack(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
 
 		expect(report.copied).toBe(1);
 		expect(
-			readFileSync(join(ownExtensionSourceRoot(materializerOf(vscodeType)!, patchesDir, 'acme-pack'), 'package.nls.json'), 'utf8')
+			readFileSync(join(ownExtensionSourceRoot(materializerOf(stubProjectType)!, patchesDir, 'acme-pack'), 'package.nls.json'), 'utf8')
 		).toBe('{\n\t"acme.hello": "hi"\n}\n');
 	});
 
 	it('brings a file the tree added into the delta', () => {
 		writeSampleExtension();
-		syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
-		writeTree('extensions/acme-pack/themes/dark.json', '{}\n');
+		syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
+		writeTree('addons/acme-pack/themes/dark.json', '{}\n');
 
-		mirrorOwnExtensionsBack(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
+		mirrorOwnExtensionsBack(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
 
-		expect(listExtensionFiles(ownExtensionSourceRoot(materializerOf(vscodeType)!, patchesDir, 'acme-pack'))).toEqual([
+		expect(listExtensionFiles(ownExtensionSourceRoot(materializerOf(stubProjectType)!, patchesDir, 'acme-pack'))).toEqual([
 			'package.json',
 			'package.nls.json',
 			'themes/dark.json'
@@ -241,10 +246,10 @@ describe('mirrorOwnExtensionsBack: tree -> patchset, the direction save uses', (
 	it('leaves the delta alone when the tree never materialized the extension', () => {
 		writeSampleExtension();
 
-		const report = mirrorOwnExtensionsBack(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
+		const report = mirrorOwnExtensionsBack(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
 
 		expect(report).toEqual({ copied: 0, removed: 0, total: 2 });
-		expect(listExtensionFiles(ownExtensionSourceRoot(materializerOf(vscodeType)!, patchesDir, 'acme-pack'))).toEqual([
+		expect(listExtensionFiles(ownExtensionSourceRoot(materializerOf(stubProjectType)!, patchesDir, 'acme-pack'))).toEqual([
 			'package.json',
 			'package.nls.json'
 		]);
@@ -255,43 +260,38 @@ describe('strandedMaterializations (##OWN-EXTENSION-STRANDED)', () => {
 	const nothingAtPin = (): boolean => false;
 
 	it('says nothing about a directory a record still declares', () => {
-		expect(strandedMaterializations(materializerOf(vscodeType)!, ['extensions/acme-pack/package.json'], [PACK], nothingAtPin)).toEqual([]);
+		expect(strandedMaterializations(materializerOf(stubProjectType)!, ['addons/acme-pack/package.json'], [PACK], nothingAtPin)).toEqual([]);
 	});
 
 	it('says nothing about an extension the pin ships, whatever is untracked inside it', () => {
 		expect(
-			strandedMaterializations(
-				materializerOf(vscodeType)!,
-				['extensions/markdown-basics/scratch.ts'],
-				[],
-				(name) => name === 'markdown-basics'
-			)
+			strandedMaterializations(materializerOf(stubProjectType)!, ['addons/sample-pack/scratch.ts'], [], (name) => name === 'sample-pack')
 		).toEqual([]);
 	});
 
 	it('names a directory that no record declares and the pin does not ship', () => {
-		expect(strandedMaterializations(materializerOf(vscodeType)!, ['extensions/acme-pack/package.json'], [], nothingAtPin)).toEqual([
-			'extensions/acme-pack/'
+		expect(strandedMaterializations(materializerOf(stubProjectType)!, ['addons/acme-pack/package.json'], [], nothingAtPin)).toEqual([
+			'addons/acme-pack/'
 		]);
 	});
 
 	it('names a collapsed directory entry the same way as the files inside it', () => {
-		expect(strandedMaterializations(materializerOf(vscodeType)!, ['extensions/acme-pack/'], [], nothingAtPin)).toEqual([
-			'extensions/acme-pack/'
+		expect(strandedMaterializations(materializerOf(stubProjectType)!, ['addons/acme-pack/'], [], nothingAtPin)).toEqual([
+			'addons/acme-pack/'
 		]);
 	});
 
 	it('names a directory without a package.json too: the rule is the record and the pin, not the content', () => {
-		expect(strandedMaterializations(materializerOf(vscodeType)!, ['extensions/local-experiment/note.txt'], [], nothingAtPin)).toEqual([
-			'extensions/local-experiment/'
+		expect(strandedMaterializations(materializerOf(stubProjectType)!, ['addons/local-experiment/note.txt'], [], nothingAtPin)).toEqual([
+			'addons/local-experiment/'
 		]);
 	});
 
 	it('names each directory once, in the order git reported it, and asks the pin once per name', () => {
 		const asked: string[] = [];
 		const stranded = strandedMaterializations(
-			materializerOf(vscodeType)!,
-			['extensions/second/package.json', 'extensions/first/a.txt', 'extensions/first/b.txt', 'extensions/second/themes/dark.json'],
+			materializerOf(stubProjectType)!,
+			['addons/second/package.json', 'addons/first/a.txt', 'addons/first/b.txt', 'addons/second/themes/dark.json'],
 			[],
 			(name) => {
 				asked.push(name);
@@ -299,18 +299,13 @@ describe('strandedMaterializations (##OWN-EXTENSION-STRANDED)', () => {
 			}
 		);
 
-		expect(stranded).toEqual(['extensions/second/', 'extensions/first/']);
+		expect(stranded).toEqual(['addons/second/', 'addons/first/']);
 		expect(asked).toEqual(['second', 'first']);
 	});
 
-	it('ignores a loose file straight under extensions/ and everything outside it', () => {
+	it('ignores a loose file straight under addons/ and everything outside it', () => {
 		expect(
-			strandedMaterializations(
-				materializerOf(vscodeType)!,
-				['extensions/README.md', 'extensions/', 'src/vs/patchset/hello.ts'],
-				[],
-				nothingAtPin
-			)
+			strandedMaterializations(materializerOf(stubProjectType)!, ['addons/README.md', 'addons/', 'source/own/hello.ts'], [], nothingAtPin)
 		).toEqual([]);
 	});
 });
@@ -318,27 +313,27 @@ describe('strandedMaterializations (##OWN-EXTENSION-STRANDED)', () => {
 describe('compareOwnExtensions: what the drift guard and verify read', () => {
 	it('reports nothing while the two sides are identical', () => {
 		writeSampleExtension();
-		syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
+		syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
 
-		expect(compareOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK])).toEqual([]);
+		expect(compareOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK])).toEqual([]);
 	});
 
 	it('reports an edited file as `both`, with the path inside the layer', () => {
 		writeSampleExtension();
-		syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
-		writeTree('extensions/acme-pack/package.nls.json', '{}\n');
+		syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
+		writeTree('addons/acme-pack/package.nls.json', '{}\n');
 
-		expect(compareOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK])).toEqual([
+		expect(compareOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK])).toEqual([
 			{ relative: 'acme-pack/package.nls.json', kind: 'both' }
 		]);
 	});
 
 	it('reports a file only the tree has as `tree-only`', () => {
 		writeSampleExtension();
-		syncOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK]);
-		writeTree('extensions/acme-pack/themes/dark.json', '{}\n');
+		syncOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK]);
+		writeTree('addons/acme-pack/themes/dark.json', '{}\n');
 
-		expect(compareOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK])).toEqual([
+		expect(compareOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK])).toEqual([
 			{ relative: 'acme-pack/themes/dark.json', kind: 'tree-only' }
 		]);
 	});
@@ -346,7 +341,7 @@ describe('compareOwnExtensions: what the drift guard and verify read', () => {
 	it('says nothing about an extension the tree has never materialized', () => {
 		writeSampleExtension();
 
-		expect(compareOwnExtensions(materializerOf(vscodeType)!, patchesDir, treeDir, [PACK])).toEqual([]);
-		expect(existsSync(ownExtensionTargetRoot(materializerOf(vscodeType)!, treeDir, 'acme-pack'))).toBe(false);
+		expect(compareOwnExtensions(materializerOf(stubProjectType)!, patchesDir, treeDir, [PACK])).toEqual([]);
+		expect(existsSync(ownExtensionTargetRoot(materializerOf(stubProjectType)!, treeDir, 'acme-pack'))).toBe(false);
 	});
 });

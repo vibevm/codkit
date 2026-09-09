@@ -15,7 +15,7 @@ import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
-const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
+const OWN_IN_TREE = 'source/own/hello.ts';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -78,7 +78,7 @@ describe('codkit status: a tree with work in it', () => {
 		// tree: the two halves of the drift guard, seen from the other side.
 		const target = fixture.treePath(EXAMPLE_PART_PATH);
 		const text = readFileSync(target, 'utf8');
-		const at = text.indexOf('// (hook body lives in patchset/ own code; this block only delegates)');
+		const at = text.indexOf('// (hook body lives in own/ code; this block only delegates)');
 		writeFileSync(target, `${text.slice(0, at)}// one more line of the hook\n\t\t${text.slice(at)}`, 'utf8');
 		writeFileSync(fixture.treePath(OWN_IN_TREE), '// edited in the tree\n', 'utf8');
 	});
@@ -107,7 +107,7 @@ describe('codkit status: a tree with work in it', () => {
 	it('counts marker errors of the changed files', () => {
 		const target = fixture.treePath(EXAMPLE_PART_PATH);
 		const before = readFileSync(target, 'utf8');
-		writeFileSync(target, `${before}\n// codkit:begin CK-workbench-908\n`, 'utf8');
+		writeFileSync(target, `${before}\n// codkit:begin CK-shell-908\n`, 'utf8');
 		try {
 			const outcome = fixture.json(['status']);
 
@@ -141,7 +141,7 @@ describe('codkit status: the other direction of truth', () => {
 	it('warns when delta/ is edited in patchset while the tree is clean', () => {
 		const fixture = makeCliFixture('status-patchset-side');
 		expect(fixture.run(['load']).status).toBe(0);
-		const patch = fixture.patchesPath('delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch');
+		const patch = fixture.patchesPath('delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch');
 		writeFileSync(patch, `${readFileSync(patch, 'utf8').replace('# reason: ', '# reason: edited in patchset - ')}`, 'utf8');
 
 		const outcome = fixture.json(['status']);

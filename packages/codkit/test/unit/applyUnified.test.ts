@@ -26,12 +26,12 @@ const TEST_PATCH_FILE = 'delta/patches/test.ckpatch';
  * A patch with a valid header and the given diff body. `target` writes the two
  * file headers; null leaves them to the caller, for the add-file shape.
  */
-function patchOf(target: string | null, bodyLines: readonly string[], id = 'CK-workbench-001'): ParsedPatch {
+function patchOf(target: string | null, bodyLines: readonly string[], id = 'CK-shell-001'): ParsedPatch {
 	const header = formatPatchHeader({
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'a synthetic patch built by the applyUnified unit test',
 		link: 'none',
 		cause: 'none',
@@ -89,7 +89,7 @@ describe('applyUnified on the fixture patch', () => {
 		const anchor = `${EXAMPLE_AREA_ANCHOR}\n`;
 		const expected = pin.replace(
 			anchor,
-			`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in patchset/ own code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
+			`${anchor}\t\t// codkit:begin ${PATCH_ID}\n\t\t// (hook body lives in own/ code; this block only delegates)\n\t\t// codkit:end ${PATCH_ID}\n`
 		);
 
 		expect(apply(pin, patch)).toBe(expected);
@@ -109,14 +109,14 @@ describe('applyUnified exactness', () => {
 	const BASE = 'one\ntwo\nthree\nfour\nfive\n';
 
 	it('applies an addition inside the file', () => {
-		const patch = patchOf('src/vs/a.ts', ['@@ -1,5 +1,6 @@', ' one', ' two', '+inserted', ' three', ' four', ' five']);
+		const patch = patchOf('source/a.ts', ['@@ -1,5 +1,6 @@', ' one', ' two', '+inserted', ' three', ' four', ' five']);
 
 		expect(apply(BASE, patch)).toBe('one\ntwo\ninserted\nthree\nfour\nfive\n');
 	});
 
 	it('applies several hunks in order', () => {
 		const base = `${'a\n'.repeat(3)}x\n${'b\n'.repeat(8)}y\n${'c\n'.repeat(3)}`;
-		const patch = patchOf('src/vs/a.ts', [
+		const patch = patchOf('source/a.ts', [
 			'@@ -1,7 +1,8 @@',
 			' a',
 			' a',
@@ -142,24 +142,24 @@ describe('applyUnified exactness', () => {
 	});
 
 	it('reports ARTIFACT-BROKEN when a context line does not match', () => {
-		const patch = patchOf('src/vs/a.ts', ['@@ -1,5 +1,6 @@', ' one', ' TWO', '+inserted', ' three', ' four', ' five']);
+		const patch = patchOf('source/a.ts', ['@@ -1,5 +1,6 @@', ' one', ' TWO', '+inserted', ' three', ' four', ' five']);
 
 		expect(codeOf(() => applyUnified(encodeUtf8(BASE), patch))).toBe('ARTIFACT-BROKEN');
 		try {
 			applyUnified(encodeUtf8(BASE), patch);
 		} catch (error) {
-			expect(isCkError(error) ? error.message : '').toContain('context mismatch at src/vs/a.ts:2');
+			expect(isCkError(error) ? error.message : '').toContain('context mismatch at source/a.ts:2');
 		}
 	});
 
 	it('reports ARTIFACT-BROKEN when a removed line does not match', () => {
-		const patch = patchOf('src/vs/a.ts', ['@@ -1,5 +1,4 @@', ' one', '-TWO', ' three', ' four', ' five']);
+		const patch = patchOf('source/a.ts', ['@@ -1,5 +1,4 @@', ' one', '-TWO', ' three', ' four', ' five']);
 
 		expect(codeOf(() => applyUnified(encodeUtf8(BASE), patch))).toBe('ARTIFACT-BROKEN');
 	});
 
 	it('reports ARTIFACT-BROKEN when the hunk runs past the end of the file', () => {
-		const patch = patchOf('src/vs/a.ts', ['@@ -5,3 +5,3 @@', ' five', ' six', '-seven', '+SEVEN']);
+		const patch = patchOf('source/a.ts', ['@@ -5,3 +5,3 @@', ' five', ' six', '-seven', '+SEVEN']);
 
 		expect(codeOf(() => applyUnified(encodeUtf8(BASE), patch))).toBe('ARTIFACT-BROKEN');
 	});
@@ -169,18 +169,18 @@ describe('applyUnified on an add-file patch', () => {
 	it('produces the file from an empty base', () => {
 		const patch = patchOf(null, [
 			'--- /dev/null',
-			'+++ b/src/vs/workbench/browser/parts/example/exampleHost.ts',
+			'+++ b/source/app/browser/parts/example/exampleHost.ts',
 			'@@ -0,0 +1,3 @@',
-			'+// codkit:begin CK-workbench-001',
+			'+// codkit:begin CK-shell-001',
 			'+export const exampleHost = 1;',
-			'+// codkit:end CK-workbench-001'
+			'+// codkit:end CK-shell-001'
 		]);
 
-		expect(apply('', patch)).toBe('// codkit:begin CK-workbench-001\nexport const exampleHost = 1;\n// codkit:end CK-workbench-001\n');
+		expect(apply('', patch)).toBe('// codkit:begin CK-shell-001\nexport const exampleHost = 1;\n// codkit:end CK-shell-001\n');
 	});
 
 	it('refuses an add-file patch when the pin already has the file', () => {
-		const patch = patchOf(null, ['--- /dev/null', '+++ b/src/vs/a.ts', '@@ -0,0 +1,1 @@', '+const a = 1;']);
+		const patch = patchOf(null, ['--- /dev/null', '+++ b/source/a.ts', '@@ -0,0 +1,1 @@', '+const a = 1;']);
 
 		expect(codeOf(() => applyUnified(encodeUtf8('something\n'), patch))).toBe('ARTIFACT-BROKEN');
 	});
@@ -188,7 +188,7 @@ describe('applyUnified on an add-file patch', () => {
 
 describe('applyUnified and the missing final newline', () => {
 	it('keeps a file that has no newline at the end of the file', () => {
-		const patch = patchOf('src/vs/a.ts', [
+		const patch = patchOf('source/a.ts', [
 			'@@ -1,3 +1,3 @@',
 			' one',
 			' two',
@@ -202,19 +202,19 @@ describe('applyUnified and the missing final newline', () => {
 	});
 
 	it('adds the terminator when the patch stops marking it', () => {
-		const patch = patchOf('src/vs/a.ts', ['@@ -1,3 +1,4 @@', ' one', ' two', '-three', '\\ No newline at end of file', '+three', '+four']);
+		const patch = patchOf('source/a.ts', ['@@ -1,3 +1,4 @@', ' one', ' two', '-three', '\\ No newline at end of file', '+three', '+four']);
 
 		expect(apply('one\ntwo\nthree', patch)).toBe('one\ntwo\nthree\nfour\n');
 	});
 
 	it('removes the terminator when the patch marks the added last line', () => {
-		const patch = patchOf('src/vs/a.ts', ['@@ -1,3 +1,3 @@', ' one', ' two', '-three', '+three-changed', '\\ No newline at end of file']);
+		const patch = patchOf('source/a.ts', ['@@ -1,3 +1,3 @@', ' one', ' two', '-three', '+three-changed', '\\ No newline at end of file']);
 
 		expect(apply('one\ntwo\nthree\n', patch)).toBe('one\ntwo\nthree-changed');
 	});
 
 	it('refuses a patch that claims a missing terminator the pin does not have', () => {
-		const patch = patchOf('src/vs/a.ts', [
+		const patch = patchOf('source/a.ts', [
 			'@@ -1,3 +1,3 @@',
 			' one',
 			' two',
@@ -228,7 +228,7 @@ describe('applyUnified and the missing final newline', () => {
 	});
 
 	it('refuses a patch that consumes an unterminated last line without saying so', () => {
-		const patch = patchOf('src/vs/a.ts', ['@@ -1,3 +1,3 @@', ' one', ' two', '-three', '+three-changed']);
+		const patch = patchOf('source/a.ts', ['@@ -1,3 +1,3 @@', ' one', ' two', '-three', '+three-changed']);
 
 		expect(codeOf(() => applyUnified(encodeUtf8('one\ntwo\nthree'), patch))).toBe('ARTIFACT-BROKEN');
 	});

@@ -15,16 +15,16 @@ import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const TARGET = 'src/vs/replay.ts';
+const TARGET = 'source/replay.ts';
 const BASE = 'a\nbase\nz\n';
 const THEIRS = 'a\ncodkit\nz\n';
 
 function patchOf(target = TARGET, expected = 'base', replacement = 'codkit'): ParsedPatch {
 	const header = formatPatchHeader({
-		id: 'CK-workbench-701',
+		id: 'CK-shell-701',
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'exercise the shared patch replay primitive',
 		link: 'none',
 		cause: 'none',
@@ -37,10 +37,10 @@ function patchOf(target = TARGET, expected = 'base', replacement = 'codkit'): Pa
 
 function addPatch(target = TARGET): ParsedPatch {
 	const header = formatPatchHeader({
-		id: 'CK-workbench-702',
+		id: 'CK-shell-702',
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'exercise add-file replay',
 		link: 'none',
 		cause: 'none',

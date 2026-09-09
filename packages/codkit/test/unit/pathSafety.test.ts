@@ -5,8 +5,8 @@ import { repoRelativePathProblem } from '../../src/lib/pathSafety.ts';
 
 describe('repoRelativePathProblem portability', () => {
 	it('accepts ordinary POSIX paths with spaces and non-ASCII text', () => {
-		expect(repoRelativePathProblem('src/vs/обычный файл.ts')).toBeNull();
-		expect(repoRelativePathProblem('src/vs/emoji-😀.ts')).toBeNull();
+		expect(repoRelativePathProblem('source/обычный файл.ts')).toBeNull();
+		expect(repoRelativePathProblem('source/emoji-😀.ts')).toBeNull();
 	});
 
 	it.each([

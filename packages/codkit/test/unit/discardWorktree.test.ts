@@ -20,13 +20,13 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 import { materializerOf } from '../../src/lib/layers/ownExtensions.ts';
 import { oneOwnedRoot, ownedRoot } from '../support/ownedRoots.ts';
 
 /** A tracked upstream file no artifact of the delta touches: it carries no block. */
-const PLAIN_UPSTREAM = 'src/vs/base/common/lifecycle.ts';
-const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
+const PLAIN_UPSTREAM = 'source/base/common/lifecycle.ts';
+const OWN_IN_TREE = 'source/own/hello.ts';
 
 let fixture: SyncFixture;
 let conventions: Conventions;
@@ -34,7 +34,7 @@ let conventions: Conventions;
 beforeAll(() => {
 	fixture = makeSyncFixture('discard-worktree');
 	expect(fixture.sync().exitCode).toBe(0);
-	conventions = loadConventions(vscodeType, fixture.patchesDir);
+	conventions = loadConventions(stubProjectType, fixture.patchesDir);
 });
 
 afterAll(() => {
@@ -50,7 +50,7 @@ function classify(spy?: (entry: PorcelainEntry) => void): { plan: WorktreeDiscar
 	const plan = emptyWorktreeDiscardPlan();
 	const decide = worktreeDiscardClassifier(fixture.treeDir, conventions, plan);
 	const drift = driftDirty(
-		materializerOf(vscodeType),
+		materializerOf(stubProjectType),
 		fixture.treeDir,
 		oneOwnedRoot(fixture.config.typeConfig.ownRoot),
 		fixture.patchesDir,
@@ -124,7 +124,7 @@ describe('the working-tree discard classifier', () => {
 	});
 
 	it('leaves a path the tip does not carry alone: there is nothing to return it to', () => {
-		const relative = 'src/vs/base/common/generatedByTheBuild.ts';
+		const relative = 'source/base/common/generatedByTheBuild.ts';
 		const absolute = join(fixture.treeDir, relative);
 		writeFileSync(absolute, '// produced by the build and staged\n', 'utf8');
 		runGit({ args: ['add', '--', relative], cwd: fixture.treeDir });
@@ -149,7 +149,7 @@ describe('the working-tree discard classifier', () => {
 		expect(asked).toEqual([]);
 		expect(plan.discard).toEqual([]);
 		// Half (b) still carries the verdict, untouched by the flag.
-		expect(drift.own).toContainEqual({ relative: 'hello.ts', kind: 'both', owned: ownedRoot('src/vs/patchset') });
+		expect(drift.own).toContainEqual({ relative: 'hello.ts', kind: 'both', owned: ownedRoot('source/own') });
 		expect(drift.dirty).toBe(true);
 	});
 

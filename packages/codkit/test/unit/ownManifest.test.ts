@@ -26,12 +26,12 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 const PIN = '1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5';
 
 const UNIT = {
-	id: 'CK-workbench-002',
+	id: 'CK-shell-002',
 	layer: 'own',
 	type: 'extend',
 	category: 'own',
-	owner: 'workbench-core',
-	reason: 'patchset workbench contribution root',
+	owner: 'shell-core',
+	reason: 'patchset shell contribution root',
 	link: 'none',
 	cause: 'none',
 	pin: PIN,
@@ -40,10 +40,10 @@ const UNIT = {
 };
 
 const SERVICE_OVERRIDE = {
-	id: 'CK-workbench-003',
+	id: 'CK-shell-003',
 	serviceId: 'IUserActivityService',
 	module: 'services/userActivity.override.ts',
-	owner: 'workbench-core',
+	owner: 'shell-core',
 	reason: 'patchset keeps the window awake while a long task runs',
 	link: 'none',
 	cause: 'none',
@@ -222,11 +222,11 @@ describe('checkUnitCoverage', () => {
 	});
 
 	it('reports a file two units claim, and names both of them', () => {
-		const second = { ...UNIT, id: 'CK-workbench-004', roots: ['modes/zen/'] };
+		const second = { ...UNIT, id: 'CK-shell-004', roots: ['modes/zen/'] };
 		const coverage = checkUnitCoverage(manifest([UNIT, second]), ['modes/zen/zenMode.ts', 'modes/focus.ts']);
 
 		expect(coverage.uncovered).toEqual([]);
-		expect(coverage.overlapping).toEqual([['modes/zen/zenMode.ts', ['CK-workbench-002', 'CK-workbench-004']]]);
+		expect(coverage.overlapping).toEqual([['modes/zen/zenMode.ts', ['CK-shell-002', 'CK-shell-004']]]);
 	});
 
 	it('reports every own file as uncovered when there is no manifest at all', () => {
@@ -242,7 +242,7 @@ describe('checkUnitCoverage', () => {
 
 describe('checkServiceOverrideModules', () => {
 	it('requires the named module to be delivered and claimed by exactly one unit', () => {
-		const second = { ...UNIT, id: 'CK-workbench-004', roots: ['services/userActivity.override.ts'] };
+		const second = { ...UNIT, id: 'CK-shell-004', roots: ['services/userActivity.override.ts'] };
 		const checked = checkServiceOverrideModules(manifest([UNIT, second], [SERVICE_OVERRIDE]), ['services/userActivity.override.ts']);
 
 		expect(checked).toEqual([
@@ -250,7 +250,7 @@ describe('checkServiceOverrideModules', () => {
 				override: SERVICE_OVERRIDE,
 				module: 'services/userActivity.override.ts',
 				delivered: true,
-				units: ['CK-workbench-004']
+				units: ['CK-shell-004']
 			}
 		]);
 	});
@@ -265,10 +265,10 @@ describe('checkServiceOverrideModules', () => {
 
 	it('reports every unit claiming an override module', () => {
 		const broad = { ...UNIT, roots: ['services/'] };
-		const exact = { ...UNIT, id: 'CK-workbench-004', roots: ['services/userActivity.override.ts'] };
+		const exact = { ...UNIT, id: 'CK-shell-004', roots: ['services/userActivity.override.ts'] };
 
 		expect(
 			checkServiceOverrideModules(manifest([broad, exact], [SERVICE_OVERRIDE]), ['services/userActivity.override.ts'])[0]?.units
-		).toEqual(['CK-workbench-002', 'CK-workbench-004']);
+		).toEqual(['CK-shell-002', 'CK-shell-004']);
 	});
 });

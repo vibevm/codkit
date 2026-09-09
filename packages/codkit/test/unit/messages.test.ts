@@ -109,12 +109,12 @@ describe('ckError', () => {
 	});
 
 	it('carries hint, file and line when given', () => {
-		const error = ckError('CRLF', 'CRLF line ending', 'convert the file to LF', 'src/vs/a.ts', 12);
+		const error = ckError('CRLF', 'CRLF line ending', 'convert the file to LF', 'source/a.ts', 12);
 		expect(error.toPayload()).toEqual({
 			code: 'CRLF',
 			message: 'CRLF line ending',
 			hint: 'convert the file to LF',
-			file: 'src/vs/a.ts',
+			file: 'source/a.ts',
 			line: 12
 		});
 	});
@@ -144,8 +144,8 @@ describe('formatError', () => {
 	});
 
 	it('renders file:line when a line is known', () => {
-		const text = formatError(ckError('MARKER-NESTED', 'nested marker', undefined, 'src/vs/a.ts', 7).toPayload());
-		expect(text).toBe('error CK-E-MARKER-NESTED: src/vs/a.ts:7: nested marker');
+		const text = formatError(ckError('MARKER-NESTED', 'nested marker', undefined, 'source/a.ts', 7).toPayload());
+		expect(text).toBe('error CK-E-MARKER-NESTED: source/a.ts:7: nested marker');
 	});
 
 	it('omits the location when there is no file', () => {

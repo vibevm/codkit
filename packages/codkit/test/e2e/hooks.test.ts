@@ -7,7 +7,7 @@
 // executable, and speaking through exit codes - rather than merely written.
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { gitLocal } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
@@ -15,7 +15,7 @@ import { HOOK_MARKER } from '../../src/lib/hooksPatchSet.ts';
 import { serializeCycleState } from '../../src/lib/cycleState.ts';
 import type { CycleState } from '../../src/lib/cycleState.ts';
 import { PATCH_FILE_NAME, PATCH_ID } from '../fixtures/makePatchSet.ts';
-import { makeCliFixture } from '../support/cliFixture.ts';
+import { makeCliFixture, STUB_TYPE_ENV, testBuildNodeDir } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
@@ -28,16 +28,22 @@ const PATCH_ARTIFACT = `delta/patches/${PATCH_FILE_NAME}`;
  * of codkit sees no global config) and no CODKIT_FORK_DIR inherited from the
  * developer's shell, which would point the hook at a real tree.
  */
-const COMMIT_ENV: GitEnv = {
-	GIT_AUTHOR_NAME: 'fixture',
-	GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
-	GIT_COMMITTER_NAME: 'fixture',
-	GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
-	CODKIT_FORK_DIR: ''
-};
+let COMMIT_ENV: GitEnv;
 
 beforeAll(() => {
 	fixture = makeCliFixture('hooks');
+	// The hook runs `node "$CODKIT_LAUNCHER"`, so the `node` it finds is what
+	// decides whether the run is a test build - and only a test build reaches
+	// the stub type the fixture patch set declares (PROP-016 ##TYPE-TEST-SEAM).
+	COMMIT_ENV = {
+		GIT_AUTHOR_NAME: 'fixture',
+		GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+		GIT_COMMITTER_NAME: 'fixture',
+		GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
+		CODKIT_FORK_DIR: '',
+		...STUB_TYPE_ENV,
+		PATH: `${testBuildNodeDir('hooks')}${delimiter}${process.env['PATH'] ?? ''}`
+	};
 });
 
 afterAll(cleanupTempRoots);
@@ -232,7 +238,7 @@ describe('the installed pre-commit hook', () => {
  */
 function escapeTheBlock(patch: string): string {
 	const begin = `+\t\t// codkit:begin ${PATCH_ID}`;
-	const body = '+\t\t// (hook body lives in patchset/ own code; this block only delegates)';
+	const body = '+\t\t// (hook body lives in own/ code; this block only delegates)';
 	if (!patch.includes(`${begin}\n${body}`)) {
 		throw new Error('the fixture patch no longer has the shape this test edits');
 	}

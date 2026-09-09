@@ -16,11 +16,11 @@ import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
-const UTIL_PATH = 'src/vs/base/common/util.ts';
-const UTIL_PATCH = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
-const UTIL_PENDING = '.codkit/pending/src__vs__base__common__util.ts.json';
-const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
-const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
+const UTIL_PATH = 'source/base/common/util.ts';
+const UTIL_PATCH = 'delta/patches/source__base__common__util.ts.ckpatch';
+const UTIL_PENDING = '.codkit/pending/source__base__common__util.ts.json';
+const EXAMPLE_PATCH = 'delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch';
+const OWN_IN_TREE = 'source/own/hello.ts';
 const OWN_IN_PATCHSET = 'delta/own/hello.ts';
 
 const HOOK_ID = 'CK-base-905';
@@ -71,7 +71,7 @@ describe('codkit save: the round trip of one change (S04)', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'test hook'
 		]);
@@ -99,7 +99,7 @@ describe('codkit save: the round trip of one change (S04)', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'x'
 		]);
@@ -123,7 +123,7 @@ describe('codkit save: the round trip of one change (S04)', () => {
 		const header = headerOf(patch);
 		expect(header.get('id')).toBe(HOOK_ID);
 		expect(header.get('type')).toBe('hook');
-		expect(header.get('owner')).toBe('workbench-core');
+		expect(header.get('owner')).toBe('shell-core');
 		expect(header.get('reason')).toBe('test hook');
 		expect(header.get('category')).toBe('follow');
 		expect(header.get('link')).toBe('none');
@@ -164,8 +164,7 @@ describe('codkit save: the round trip of one change (S04)', () => {
 
 		// Put the block back for the idempotency case below.
 		expect(
-			fixture.run(['marker', 'new', UTIL_PATH, '--id', HOOK_ID, '--type', 'hook', '--owner', 'workbench-core', '--reason', 'test hook'])
-				.status
+			fixture.run(['marker', 'new', UTIL_PATH, '--id', HOOK_ID, '--type', 'hook', '--owner', 'shell-core', '--reason', 'test hook']).status
 		).toBe(0);
 		const target = fixture.treePath(UTIL_PATH);
 		writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), HOOK_ID, HOOK_LINE), 'utf8');
@@ -205,7 +204,7 @@ describe('codkit save: one graft, two blocks of one id in a file (PROP-004 MR-SE
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'import and call'
 		]);
@@ -213,21 +212,18 @@ describe('codkit save: one graft, two blocks of one id in a file (PROP-004 MR-SE
 
 		// The scaffold left one block; a second block with the same id goes at the top.
 		const target = fixture.treePath(UTIL_PATH);
-		const filled = fillBlock(readFileSync(target, 'utf8'), HOOK_ID, '\thook(); // patchset/ own code');
-		const withImport = [
-			`// codkit:begin ${HOOK_ID}`,
-			"import { hook } from './patchset/hook.js';",
-			`// codkit:end ${HOOK_ID}`,
-			filled
-		].join('\n');
+		const filled = fillBlock(readFileSync(target, 'utf8'), HOOK_ID, '\thook(); // own/ code');
+		const withImport = [`// codkit:begin ${HOOK_ID}`, "import { hook } from './own/hook.js';", `// codkit:end ${HOOK_ID}`, filled].join(
+			'\n'
+		);
 		writeFileSync(target, withImport, 'utf8');
 
 		const saved = fixture.json(['save', '--commit']);
 		expect(saved.run.status).toBe(0);
 		const patch = readFileSync(fixture.patchesPath(UTIL_PATCH), 'utf8');
 		expect(patch.split(`+// codkit:begin ${HOOK_ID}`).length - 1).toBe(2);
-		expect(patch).toContain("import { hook } from './patchset/hook.js';");
-		expect(patch).toContain('hook(); // patchset/ own code');
+		expect(patch).toContain("import { hook } from './own/hook.js';");
+		expect(patch).toContain('hook(); // own/ code');
 
 		// Both blocks belong to one artifact: verify is green, and a fresh load reproduces the file.
 		const verify = fixture.json(['verify']);
@@ -252,7 +248,7 @@ describe('codkit save: entry-module attribution', () => {
 			'--type',
 			'hook',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'entry graft',
 			'--layer',
@@ -270,7 +266,7 @@ describe('codkit save: entry-module attribution', () => {
 		const fixture = makeCliFixture('save-entry-module-shared-markers');
 		expect(fixture.run(['load']).status).toBe(0);
 		const first = 'CK-base-942';
-		const second = 'CK-workbench-942';
+		const second = 'CK-shell-942';
 		for (const [target, id] of [
 			[UTIL_PATH, first],
 			[STATUS_PART_PATH, second]
@@ -284,7 +280,7 @@ describe('codkit save: entry-module attribution', () => {
 				'--type',
 				'hook',
 				'--owner',
-				'workbench-core',
+				'shell-core',
 				'--reason',
 				'shared entry markers',
 				'--layer',
@@ -341,7 +337,7 @@ describe('codkit save: things that are not a patch', () => {
 	});
 
 	it('refuses to record the deletion of an upstream file', () => {
-		const victim = 'src/vs/base/common/lifecycle.ts';
+		const victim = 'source/base/common/lifecycle.ts';
 		rmSync(fixture.treePath(victim));
 		try {
 			const outcome = fixture.json(['save']);
@@ -357,7 +353,7 @@ describe('codkit save: things that are not a patch', () => {
 	});
 
 	it('refuses a new file in the upstream zone until it is allowed explicitly', () => {
-		const newFile = 'src/vs/workbench/browser/parts/example/exampleExtra.ts';
+		const newFile = 'source/app/browser/parts/example/exampleExtra.ts';
 		writeFileSync(fixture.treePath(newFile), '// a file that does not exist at the pin\n', 'utf8');
 		try {
 			const refused = fixture.json(['save']);
@@ -412,12 +408,11 @@ describe('codkit save <paths>', () => {
 		// is about to get its first patch.
 		const example = fixture.treePath(EXAMPLE_PART_PATH);
 		const exampleText = readFileSync(example, 'utf8');
-		const at = exampleText.indexOf('// (hook body lives in patchset/ own code; this block only delegates)');
+		const at = exampleText.indexOf('// (hook body lives in own/ code; this block only delegates)');
 		writeFileSync(example, `${exampleText.slice(0, at)}// one more line\n\t\t${exampleText.slice(at)}`, 'utf8');
 
 		expect(
-			fixture.run(['marker', 'new', UTIL_PATH, '--id', HOOK_ID, '--type', 'hook', '--owner', 'workbench-core', '--reason', 'test hook'])
-				.status
+			fixture.run(['marker', 'new', UTIL_PATH, '--id', HOOK_ID, '--type', 'hook', '--owner', 'shell-core', '--reason', 'test hook']).status
 		).toBe(0);
 		const util = fixture.treePath(UTIL_PATH);
 		writeFileSync(util, fillBlock(readFileSync(util, 'utf8'), HOOK_ID, HOOK_LINE), 'utf8');
@@ -448,7 +443,7 @@ describe('codkit save --allow-new-file', () => {
 		const fixture = makeCliFixture('save-add-file');
 		expect(fixture.run(['load']).status).toBe(0);
 
-		const newFile = 'src/vs/workbench/browser/parts/example/exampleExtra.ts';
+		const newFile = 'source/app/browser/parts/example/exampleExtra.ts';
 		const artifact = `delta/patches/${newFile.split('/').join('__')}.ckpatch`;
 		writeFileSync(fixture.treePath(newFile), '// a resource that must sit at this exact path\n', 'utf8');
 
@@ -457,17 +452,17 @@ describe('codkit save --allow-new-file', () => {
 			'new',
 			newFile,
 			'--id',
-			'CK-workbench-907',
+			'CK-shell-907',
 			'--type',
 			'extend',
 			'--owner',
-			'workbench-core',
+			'shell-core',
 			'--reason',
 			'a file that must live in the upstream zone'
 		]);
 		expect(scaffold.status).toBe(0);
 		const target = fixture.treePath(newFile);
-		writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), 'CK-workbench-907', '// the body of the new file'), 'utf8');
+		writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), 'CK-shell-907', '// the body of the new file'), 'utf8');
 
 		const outcome = fixture.json(['save', '--allow-new-file', newFile]);
 
@@ -476,7 +471,7 @@ describe('codkit save --allow-new-file', () => {
 		expect(patch).toContain('--- /dev/null');
 		expect(patch).toContain(`+++ b/${newFile}`);
 		expect(patch).toMatch(/@@ -0,0 \+1,\d+ @@/);
-		expect(headerOf(patch).get('id')).toBe('CK-workbench-907');
+		expect(headerOf(patch).get('id')).toBe('CK-shell-907');
 		// The file is part of the generated branch now, and the tree is clean.
 		expect(fixture.git(['show', `HEAD:${newFile}`]).stdout).toContain('the body of the new file');
 		expect(fixture.git(['status', '--porcelain']).stdout.trim()).toBe('');
@@ -538,7 +533,7 @@ describe('codkit save: own code', () => {
 });
 
 describe('codkit save: an artifact of a layer save does not extract', () => {
-	const CSS_TARGET = 'src/vs/workbench/browser/parts/status/statusPart.css';
+	const CSS_TARGET = 'source/app/browser/parts/status/statusPart.css';
 	const CSS_SOURCE = 'delta/resources/files/statusPart.css';
 	const BRANDED_CSS = '/* the status bar patchset ships instead of the upstream one */\n.fixture-status-bar {\n\tdisplay: none;\n}\n';
 
@@ -557,7 +552,7 @@ describe('codkit save: an artifact of a layer save does not extract', () => {
 			source: CSS_SOURCE,
 			type: 'modify',
 			category: 'own',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'fixture status bar: a resource written by hand between two saves',
 			link: 'none',
 			cause: 'none',
@@ -705,7 +700,7 @@ describe('codkit save: a patchset that was dirty at load time (S23)', () => {
 function shiftExampleArtifact(fixture: CliFixture, suffix: string): void {
 	const artifact = fixture.patchesPath(EXAMPLE_PATCH);
 	const before = readFileSync(artifact, 'utf8');
-	const added = '+\t\t// (hook body lives in patchset/ own code; this block only delegates)';
+	const added = '+\t\t// (hook body lives in own/ code; this block only delegates)';
 	if (!before.includes(added)) {
 		throw new Error('the fixture patch body does not carry the expected added line');
 	}
@@ -723,7 +718,7 @@ function dirtyUtilBlock(fixture: CliFixture, line: string): void {
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'uncommitted half'
 	]);

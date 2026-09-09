@@ -25,14 +25,14 @@ import { isCkError } from '../../src/lib/messages.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
-const ARTIFACT = 'delta/overlays/product.json.overlay.json';
+const ARTIFACT = 'delta/overlays/manifest.json.overlay.json';
 
 const BASE = {
 	codkitOverlay: 2,
 	id: 'CK-product-901',
-	target: 'product.json',
+	target: 'manifest.json',
 	type: 'modify',
 	category: 'own',
 	owner: 'product',
@@ -62,7 +62,7 @@ function upstreamAt(label: string): UpstreamFixture {
 }
 
 function productInTree(fixture: UpstreamFixture): string {
-	return readFileSync(join(fixture.dir, 'product.json'), 'utf8');
+	return readFileSync(join(fixture.dir, 'manifest.json'), 'utf8');
 }
 
 afterAll(() => {
@@ -74,10 +74,10 @@ describe('applyOverlayToTree', () => {
 		const fixture = upstreamAt('overlay-apply-base');
 		// Whatever the tree carries is irrelevant: this is what makes the second
 		// apply write the same bytes as the first one.
-		writeFileSync(join(fixture.dir, 'product.json'), '{\n\t"nameShort": "hand edited"\n}\n', 'utf8');
+		writeFileSync(join(fixture.dir, 'manifest.json'), '{\n\t"displayName": "hand edited"\n}\n', 'utf8');
 
 		const applied = applyOverlayToTree(
-			overlay([{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }]),
+			overlay([{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }]),
 			fixture.dir,
 			fixture.t1.sha,
 			CONTEXT
@@ -85,39 +85,39 @@ describe('applyOverlayToTree', () => {
 
 		const written = JSON.parse(productInTree(fixture)) as Record<string, unknown>;
 		expect(applied.changed).toBe(true);
-		expect(written['nameShort']).toBe('Fixture PatchSet');
+		expect(written['displayName']).toBe('Fixture PatchSet');
 		// The keys of the pin are all still there: the base was the pin.
-		expect(written['nameLong']).toBe('Fixture Code - OSS');
-		expect(written['applicationName']).toBe('fixture-code');
+		expect(written['descriptiveName']).toBe('Fixture Upstream App');
+		expect(written['applicationName']).toBe('fixture-app');
 	});
 
 	it('serializes with tabs and a final line feed', () => {
 		const fixture = upstreamAt('overlay-apply-bytes');
 
-		applyOverlayToTree(overlay([{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }]), fixture.dir, fixture.t1.sha, CONTEXT);
+		applyOverlayToTree(overlay([{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }]), fixture.dir, fixture.t1.sha, CONTEXT);
 
 		const text = productInTree(fixture);
-		expect(text.startsWith('{\n\t"nameShort": "Fixture PatchSet",\n')).toBe(true);
+		expect(text.startsWith('{\n\t"displayName": "Fixture PatchSet",\n')).toBe(true);
 		expect(text.endsWith('}\n')).toBe(true);
 		expect(text).not.toContain('\n  ');
 		// A nested object is indented with tabs too, not spaces.
-		expect(text).toContain('\n\t"extensionsGallery": {\n\t\t"serviceUrl"');
+		expect(text).toContain('\n\t"addonGallery": {\n\t\t"serviceUrl"');
 	});
 
 	it('is idempotent: the second apply writes nothing at all', () => {
 		const fixture = upstreamAt('overlay-apply-twice');
 		const sample = overlay([
-			{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' },
+			{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' },
 			{ op: 'set', path: ['patchsetUpstreamPin'], value: { $var: 'pin.tag' } }
 		]);
 
 		const first = applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
-		const bytesAfterFirst = readFileSync(join(fixture.dir, 'product.json'));
+		const bytesAfterFirst = readFileSync(join(fixture.dir, 'manifest.json'));
 		const second = applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
 
 		expect(first.changed).toBe(true);
 		expect(second.changed).toBe(false);
-		expect(readFileSync(join(fixture.dir, 'product.json')).equals(bytesAfterFirst)).toBe(true);
+		expect(readFileSync(join(fixture.dir, 'manifest.json')).equals(bytesAfterFirst)).toBe(true);
 		expect((JSON.parse(productInTree(fixture)) as Record<string, unknown>)['patchsetUpstreamPin']).toBe('t1');
 	});
 
@@ -125,8 +125,8 @@ describe('applyOverlayToTree', () => {
 		const fixture = upstreamAt('overlay-apply-compose');
 		const rendered = renderOverlayTarget(
 			[
-				overlay([{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }]),
-				overlay([{ op: 'set', path: ['extensionsGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }], {
+				overlay([{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }]),
+				overlay([{ op: 'set', path: ['addonGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }], {
 					id: 'CK-product-903'
 				})
 			],
@@ -137,10 +137,10 @@ describe('applyOverlayToTree', () => {
 
 		const document = rendered.document as Record<string, Record<string, unknown>>;
 		expect(rendered.overlayIds).toEqual(['CK-product-901', 'CK-product-903']);
-		expect(document['nameShort']).toBe('Fixture PatchSet');
-		expect(document['extensionsGallery']?.['serviceUrl']).toBe('https://gallery.patchset.invalid');
+		expect(document['displayName']).toBe('Fixture PatchSet');
+		expect(document['addonGallery']?.['serviceUrl']).toBe('https://gallery.patchset.invalid');
 		// The sibling upstream put in the nested object is not lost.
-		expect(document['extensionsGallery']?.['itemUrl']).toBe('https://gallery.fixture.invalid/item');
+		expect(document['addonGallery']?.['itemUrl']).toBe('https://gallery.fixture.invalid/item');
 	});
 
 	it('refuses a target the pin does not carry', () => {
@@ -158,23 +158,23 @@ describe('applyOverlayToTree', () => {
 	it('refuses a symlink target without overwriting the external file', () => {
 		const fixture = upstreamAt('overlay-apply-symlink');
 		const outside = makeTempRoot('overlay-apply-symlink-outside');
-		const victim = join(outside, 'product.json');
+		const victim = join(outside, 'manifest.json');
 		writeFileSync(victim, '{\n\t"outside": true\n}\n', 'utf8');
-		const target = join(fixture.dir, 'product.json');
+		const target = join(fixture.dir, 'manifest.json');
 		rmSync(target);
 		symlinkSync(victim, target);
 
 		expect(() =>
-			applyOverlayToTree(overlay([{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }]), fixture.dir, fixture.t1.sha, CONTEXT)
+			applyOverlayToTree(overlay([{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }]), fixture.dir, fixture.t1.sha, CONTEXT)
 		).toThrow(/symlink/i);
 		expect(readFileSync(victim, 'utf8')).toBe('{\n\t"outside": true\n}\n');
 	});
 });
 
 describe('serializeOverlayTarget', () => {
-	it('reproduces the upstream style of product.json byte for byte when nothing changed', () => {
+	it('reproduces the upstream style of manifest.json byte for byte when nothing changed', () => {
 		const fixture = upstreamAt('overlay-serialize');
-		const atPin = readFileSync(join(fixture.dir, 'product.json'), 'utf8');
+		const atPin = readFileSync(join(fixture.dir, 'manifest.json'), 'utf8');
 
 		expect(serializeOverlayTarget(JSON.parse(atPin) as Record<string, never>)).toBe(atPin);
 	});
@@ -185,16 +185,16 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 		const fixture = upstreamAt('overlay-check-ok');
 		const report = checkOverlay(
 			overlay([
-				{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet', expectUpstream: 'Fixture - OSS' },
+				{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet', expectUpstream: 'Fixture Upstream' },
 				{ op: 'set', path: ['patchsetUpstreamPin'], value: { $var: 'pin.tag' }, expectUpstream: { $absent: true } },
 				{
 					op: 'set',
-					path: ['extensionsGallery'],
+					path: ['addonGallery'],
 					value: { serviceUrl: 'https://gallery.patchset.invalid' },
 					expectUpstream: { serviceUrl: 'https://gallery.fixture.invalid/api', itemUrl: 'https://gallery.fixture.invalid/item' }
 				}
 			]),
-			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
+			{ type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
 		);
 
 		expect(report.drift).toEqual([]);
@@ -205,16 +205,16 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 		const fixture = upstreamAt('overlay-check-drift');
 		const report = checkOverlay(
 			overlay([
-				{ op: 'set', path: ['nameShort'], value: 'PatchSet', expectUpstream: 'Code - OSS' },
-				{ op: 'set', path: ['nameLong'], value: 'PatchSet', expectUpstream: 'Fixture Code - OSS' },
+				{ op: 'set', path: ['displayName'], value: 'PatchSet', expectUpstream: 'Code - OSS' },
+				{ op: 'set', path: ['descriptiveName'], value: 'PatchSet', expectUpstream: 'Fixture Upstream App' },
 				{ op: 'set', path: ['applicationName'], value: 'patchset', expectUpstream: 'code-oss' },
 				{ op: 'set', path: ['dataFolderName'], value: '.patchset', expectUpstream: { $absent: true } }
 			]),
-			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
+			{ type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT }
 		);
 
 		expect(report.drift.map((entry) => entry.operationIndex)).toEqual([0, 2, 3]);
-		expect(report.drift[0]?.actual).toBe('Fixture - OSS');
+		expect(report.drift[0]?.actual).toBe('Fixture Upstream');
 		expect(report.drift[0]?.expected).toBe('Code - OSS');
 		expect(report.drift[2]?.expectedAbsent).toBe(true);
 
@@ -222,13 +222,13 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 		expect(errors.length).toBe(3);
 		expect(errors.every((error) => error.code === 'OVERLAY-DRIFT')).toBe(true);
 		expect(errors[0]?.file).toBe(ARTIFACT);
-		expect(errors[0]?.message).toContain('product.json:nameShort');
+		expect(errors[0]?.message).toContain('manifest.json:displayName');
 	});
 
 	it('sees a key that is expected to be absent but is there', () => {
 		const fixture = upstreamAt('overlay-check-absent');
 		const report = checkOverlay(overlay([{ op: 'set', path: ['version'], value: '2', expectUpstream: { $absent: true } }]), {
-			type: vscodeType,
+			type: stubProjectType,
 
 			treeDir: fixture.dir,
 			pinSha: fixture.t1.sha
@@ -244,15 +244,15 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 			overlay([
 				{
 					op: 'remove',
-					path: ['extensionsGallery'],
+					path: ['addonGallery'],
 					expectUpstream: { itemUrl: 'https://gallery.fixture.invalid/item', serviceUrl: 'https://gallery.fixture.invalid/api' }
 				}
 			]),
-			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
+			{ type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
 		);
 		const different = checkOverlay(
-			overlay([{ op: 'remove', path: ['extensionsGallery'], expectUpstream: { serviceUrl: 'https://gallery.fixture.invalid/api' } }]),
-			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
+			overlay([{ op: 'remove', path: ['addonGallery'], expectUpstream: { serviceUrl: 'https://gallery.fixture.invalid/api' } }]),
+			{ type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
 		);
 
 		expect(equal.drift).toEqual([]);
@@ -261,15 +261,15 @@ describe('checkOverlay: expectUpstream against the pin', () => {
 });
 
 describe('checkOverlay: the keys packaging stamps', () => {
-	it('warns about an operation on a stamped key of product.json', () => {
+	it('warns about an operation on a stamped key of manifest.json', () => {
 		const fixture = upstreamAt('overlay-check-stamped');
 		const report = checkOverlay(
 			overlay([
 				{ op: 'set', path: ['version'], value: '9.9.9' },
 				{ op: 'set', path: ['commit'], value: 'deadbeef' },
-				{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }
+				{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }
 			]),
-			{ type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
+			{ type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha }
 		);
 
 		expect(report.warnings.length).toBe(2);
@@ -282,7 +282,7 @@ describe('checkOverlay: the keys packaging stamps', () => {
 	it('says nothing about the same key on another target', () => {
 		const fixture = upstreamAt('overlay-check-stamped-other');
 		const report = checkOverlay(overlay([{ op: 'set', path: ['version'], value: '9.9.9' }], { target: 'package.json' }), {
-			type: vscodeType,
+			type: stubProjectType,
 
 			treeDir: fixture.dir,
 			pinSha: fixture.t1.sha
@@ -293,11 +293,16 @@ describe('checkOverlay: the keys packaging stamps', () => {
 });
 
 describe('checkOverlay: the file in the tree', () => {
-	const OPERATIONS = [{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }];
+	const OPERATIONS = [{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }];
 
 	it('reports nothing to compare while the target still equals the pin', () => {
 		const fixture = upstreamAt('overlay-check-clean');
-		const report = checkOverlay(overlay(OPERATIONS), { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlay(overlay(OPERATIONS), {
+			type: stubProjectType,
+			treeDir: fixture.dir,
+			pinSha: fixture.t1.sha,
+			context: CONTEXT
+		});
 
 		expect(report.materialization).toEqual({ present: true, differsFromPin: false, matches: null });
 	});
@@ -307,7 +312,7 @@ describe('checkOverlay: the file in the tree', () => {
 		const sample = overlay(OPERATIONS);
 		applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
 
-		const report = checkOverlay(sample, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlay(sample, { type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
 		expect(report.materialization?.differsFromPin).toBe(true);
 		expect(report.materialization?.matches).toBe(true);
@@ -317,10 +322,10 @@ describe('checkOverlay: the file in the tree', () => {
 		const fixture = upstreamAt('overlay-check-edited');
 		const sample = overlay(OPERATIONS);
 		applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
-		const path = join(fixture.dir, 'product.json');
-		writeFileSync(path, readFileSync(path, 'utf8').replace('"applicationName": "fixture-code"', '"applicationName": "by-hand"'), 'utf8');
+		const path = join(fixture.dir, 'manifest.json');
+		writeFileSync(path, readFileSync(path, 'utf8').replace('"applicationName": "fixture-app"', '"applicationName": "by-hand"'), 'utf8');
 
-		const report = checkOverlay(sample, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlay(sample, { type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
 		expect(report.materialization?.differsFromPin).toBe(true);
 		expect(report.materialization?.matches).toBe(false);
@@ -332,14 +337,19 @@ describe('checkOverlay: the file in the tree', () => {
 		const fixture = upstreamAt('overlay-check-pinonly');
 		applyOverlayToTree(overlay(OPERATIONS), fixture.dir, fixture.t1.sha, CONTEXT);
 
-		const report = checkOverlay(overlay(OPERATIONS), { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, pinOnly: true });
+		const report = checkOverlay(overlay(OPERATIONS), {
+			type: stubProjectType,
+			treeDir: fixture.dir,
+			pinSha: fixture.t1.sha,
+			pinOnly: true
+		});
 
 		expect(report.materialization).toBeNull();
 	});
 });
 
 describe('isExactOverlayMaterialization: the bytes the drift guard certifies', () => {
-	const OPERATIONS = [{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }];
+	const OPERATIONS = [{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }];
 
 	it('recognizes exactly the bytes applyOverlaysToTree wrote', () => {
 		const fixture = upstreamAt('overlay-exact-applied');
@@ -356,15 +366,15 @@ describe('isExactOverlayMaterialization: the bytes the drift guard certifies', (
 		const fixture = upstreamAt('overlay-exact-edited');
 		const sample = overlay(OPERATIONS);
 		applyOverlayToTree(sample, fixture.dir, fixture.t1.sha, CONTEXT);
-		const path = join(fixture.dir, 'product.json');
-		writeFileSync(path, readFileSync(path, 'utf8').replace('"applicationName": "fixture-code"', '"applicationName": "by-hand"'), 'utf8');
+		const path = join(fixture.dir, 'manifest.json');
+		writeFileSync(path, readFileSync(path, 'utf8').replace('"applicationName": "fixture-app"', '"applicationName": "by-hand"'), 'utf8');
 
 		expect(isExactOverlayMaterialization([sample], fixture.dir, fixture.t1.sha, CONTEXT)).toBe(false);
 	});
 
 	it('does not recognize an absent target', () => {
 		const fixture = upstreamAt('overlay-exact-absent');
-		rmSync(join(fixture.dir, 'product.json'));
+		rmSync(join(fixture.dir, 'manifest.json'));
 
 		expect(isExactOverlayMaterialization([overlay(OPERATIONS)], fixture.dir, fixture.t1.sha, CONTEXT)).toBe(false);
 	});
@@ -372,8 +382,8 @@ describe('isExactOverlayMaterialization: the bytes the drift guard certifies', (
 	it('judges the composed target, not one overlay of it', () => {
 		const fixture = upstreamAt('overlay-exact-compose');
 		const group = [
-			overlay([{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }]),
-			overlay([{ op: 'set', path: ['extensionsGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }], {
+			overlay([{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }]),
+			overlay([{ op: 'set', path: ['addonGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }], {
 				id: 'CK-product-903'
 			})
 		];
@@ -388,20 +398,20 @@ describe('isExactOverlayMaterialization: the bytes the drift guard certifies', (
 
 describe('checkOverlayTarget: a target several overlays contribute to', () => {
 	const GROUP = [
-		overlay([{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet' }]),
-		overlay([{ op: 'set', path: ['extensionsGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }], { id: 'CK-product-903' })
+		overlay([{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet' }]),
+		overlay([{ op: 'set', path: ['addonGallery', 'serviceUrl'], value: 'https://gallery.patchset.invalid' }], { id: 'CK-product-903' })
 	];
 
 	it('collects the findings of every overlay of the target', () => {
 		const fixture = upstreamAt('overlay-target-collect');
 		const drifting = [
-			overlay([{ op: 'set', path: ['nameShort'], value: 'PatchSet', expectUpstream: 'Code - OSS' }]),
+			overlay([{ op: 'set', path: ['displayName'], value: 'PatchSet', expectUpstream: 'Code - OSS' }]),
 			overlay([{ op: 'set', path: ['version'], value: '9.9.9' }], { id: 'CK-product-903' })
 		];
 
-		const report = checkOverlayTarget(drifting, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const report = checkOverlayTarget(drifting, { type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
 
-		expect(report.target).toBe('product.json');
+		expect(report.target).toBe('manifest.json');
 		expect(report.reports.length).toBe(2);
 		expect(report.drift.map((entry) => entry.overlayId)).toEqual(['CK-product-901']);
 		expect(report.warnings.length).toBe(1);
@@ -410,10 +420,15 @@ describe('checkOverlayTarget: a target several overlays contribute to', () => {
 	it('compares the file in the tree with the composed result, not with one overlay', () => {
 		const fixture = upstreamAt('overlay-target-composed');
 		// What `overlay apply` writes for this target: both overlays, in order.
-		writeFileSync(join(fixture.dir, 'product.json'), renderOverlayTarget(GROUP, fixture.dir, fixture.t1.sha, CONTEXT).text, 'utf8');
+		writeFileSync(join(fixture.dir, 'manifest.json'), renderOverlayTarget(GROUP, fixture.dir, fixture.t1.sha, CONTEXT).text, 'utf8');
 
-		const composed = checkOverlayTarget(GROUP, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
-		const single = checkOverlay(GROUP[0] as Overlay, { type: vscodeType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const composed = checkOverlayTarget(GROUP, { type: stubProjectType, treeDir: fixture.dir, pinSha: fixture.t1.sha, context: CONTEXT });
+		const single = checkOverlay(GROUP[0] as Overlay, {
+			type: stubProjectType,
+			treeDir: fixture.dir,
+			pinSha: fixture.t1.sha,
+			context: CONTEXT
+		});
 
 		expect(composed.materialization?.matches).toBe(true);
 		// Checked alone, the same file looks wrong - which is why the command

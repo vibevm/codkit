@@ -30,7 +30,7 @@ import { STATUS_PART_PATH, STATUSBAR_PART_PATH, fixtureCommit, fixtureGit } from
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const stabilizationRunner = vi.hoisted(() => ({ calls: 0 }));
 
@@ -51,7 +51,7 @@ vi.mock('../../src/lib/cycleStabilize.ts', async (importOriginal) => {
 					options.runner ??
 					(async (runnerOptions) => {
 						stabilizationRunner.calls += 1;
-						const inventory = buildInventory(runnerOptions.patchesDir, vscodeType, { config: runnerOptions.config });
+						const inventory = buildInventory(runnerOptions.patchesDir, stubProjectType, { config: runnerOptions.config });
 						const tip = runFixtureGit({
 							args: ['rev-parse', '--verify', 'HEAD^{commit}'],
 							cwd: runnerOptions.resolution.path
@@ -206,7 +206,7 @@ describe('cycle engine crash transactions', () => {
 		fixtureGit(fixture.upstream.dir, ['tag', 't3']);
 		const fetched = runGit({ args: ['fetch', '--quiet', '--tags', 'origin'], cwd: fixture.treeDir, netAllowed: true });
 		if (fetched.status !== 0) throw new Error(fetched.stderr);
-		startCycle({ patchesDir: fixture.patchesDir, forkDir: fixture.treeDir, config, type: vscodeType, target: 't3' });
+		startCycle({ patchesDir: fixture.patchesDir, forkDir: fixture.treeDir, config, type: stubProjectType, target: 't3' });
 		expect(readCycleTerminalRecord(fixture.patchesDir)?.checkpoint).toBe('committed');
 		const newConfig = requiredConfig(fixture);
 		const next = await run(fixture, newConfig);
@@ -229,9 +229,9 @@ describe('cycle engine crash transactions', () => {
 				{
 					codkitBuildDaemon: 1,
 					channel: 'transpile',
-					script: 'watch-client-transpile',
+					script: 'watch-transpile',
 					pid: 4242,
-					cmdline: 'watch-client-transpile',
+					cmdline: 'watch-transpile',
 					startedAt: '2026-09-01T00:00:00.000Z',
 					treeId: 'fixture-tree',
 					treePath: '/fixture/tree',
@@ -358,7 +358,7 @@ describe('cycle engine crash transactions', () => {
 				patchesDir: fixture.patchesDir,
 				forkDir: fixture.treeDir,
 				config,
-				type: vscodeType,
+				type: stubProjectType,
 				yes: true,
 				dependencies: {
 					checkpoint(name) {
@@ -399,7 +399,7 @@ function startFixture(label: string, review = false): CliFixture {
 		patchesDir: fixture.patchesDir,
 		forkDir: fixture.treeDir,
 		config,
-		type: vscodeType,
+		type: stubProjectType,
 		target: fixture.upstream.t2.tag
 	});
 	return fixture;
@@ -415,7 +415,7 @@ type FixtureDaemonTarget = Pick<CliFixture, 'patchesDir' | 'run'>;
 
 function stopFixtureDaemons(targets: readonly FixtureDaemonTarget[]): void {
 	for (const fixture of targets) {
-		const records = loadBuildWatch(vscodeType, fixture.patchesDir)
+		const records = loadBuildWatch(stubProjectType, fixture.patchesDir)
 			.channels.map((channel) => readRecordState(fixture.patchesDir, channel.name))
 			.flatMap((observed) => (observed.state === 'valid' && observed.record.pid > 0 ? [observed.record] : []));
 		fixture.run(['build', 'down', '--channel', 'all']);
@@ -433,13 +433,13 @@ function stopFixtureDaemons(targets: readonly FixtureDaemonTarget[]): void {
 function addReviewPatch(fixture: CliFixture): void {
 	const source = fixture.git(['show', `${fixture.upstream.t1.sha}:${STATUS_PART_PATH}`]);
 	if (source.status !== 0) throw new Error(source.stderr);
-	const id = 'CK-workbench-905';
+	const id = 'CK-shell-905';
 	const header = [
 		'# codkit-patch: 2',
 		`# id: ${id}`,
 		'# type: hook',
 		'# category: follow',
-		'# owner: workbench-core',
+		'# owner: shell-core',
 		'# reason: review crash fixture',
 		'# link: none',
 		'# cause: none',
@@ -478,7 +478,7 @@ function run(fixture: CliFixture, config: ReturnType<typeof requiredConfig>, cra
 		patchesDir: fixture.patchesDir,
 		resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 		config,
-		type: vscodeType,
+		type: stubProjectType,
 		ci: true,
 		out,
 		...(crash === undefined

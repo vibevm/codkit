@@ -1,3 +1,5 @@
+// PROP-016 ##TYPE-ENGINE-TESTS: part of the `vscode` brand polygon - the family
+// table and its glob targets are that family's answer.
 // The whole brand surface, not just the application icon: how a target names
 // its family and its artwork (modules/vscode/PROP-006 ##IMAGESET-ARTWORK), how masters are
 // found under a family folder (##IMAGESET-MASTERS), and how a vector target

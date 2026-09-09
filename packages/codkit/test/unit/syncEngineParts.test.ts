@@ -9,7 +9,7 @@ import { loadConventions, matchesPatternList } from '../../src/lib/conventionsFi
 import { EXCLUDE_BEGIN, EXCLUDE_END, matchesCleanupWhitelist, toPosix, writeExclude } from '../../src/lib/syncEngine.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 import { oneOwnedRoot } from '../support/ownedRoots.ts';
 
 /**
@@ -18,7 +18,7 @@ import { oneOwnedRoot } from '../support/ownedRoots.ts';
  * shipped file has to be a deliberate change to this test as well; the case
  * below checks that the two still agree.
  */
-const WHITELIST = ['node_modules/', '.build/', '/out*/', 'extensions/*/out/', 'extensions/*/dist/', '.eslintcache', '*.tsbuildinfo'];
+const WHITELIST = ['node_modules/', '.build/', '/out*/', 'addons/*/out/', 'addons/*/dist/', '.eslintcache', '*.tsbuildinfo'];
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -26,12 +26,12 @@ afterAll(() => {
 
 describe('matchesCleanupWhitelist', () => {
 	it('is the list conventions.json ships', () => {
-		expect(loadConventions(vscodeType).cleanupWhitelist).toEqual(WHITELIST);
+		expect(loadConventions(stubProjectType).cleanupWhitelist).toEqual(WHITELIST);
 	});
 
 	it('keeps node_modules at any level', () => {
 		expect(matchesCleanupWhitelist('node_modules/pkg/index.js', WHITELIST)).toBe(true);
-		expect(matchesCleanupWhitelist('extensions/sample/node_modules/pkg/index.js', WHITELIST)).toBe(true);
+		expect(matchesCleanupWhitelist('addons/sample/node_modules/pkg/index.js', WHITELIST)).toBe(true);
 		expect(matchesCleanupWhitelist('build/lib/node_modules/x', WHITELIST)).toBe(true);
 	});
 
@@ -44,13 +44,13 @@ describe('matchesCleanupWhitelist', () => {
 	});
 
 	it('anchors a pattern that carries a slash', () => {
-		expect(matchesCleanupWhitelist('extensions/sample/dist/main.js', WHITELIST)).toBe(true);
+		expect(matchesCleanupWhitelist('addons/sample/dist/main.js', WHITELIST)).toBe(true);
 		// The same shape one level deeper is not what the anchored pattern names.
-		expect(matchesCleanupWhitelist('vendor/extensions/sample/dist/main.js', WHITELIST)).toBe(false);
+		expect(matchesCleanupWhitelist('vendor/addons/sample/dist/main.js', WHITELIST)).toBe(false);
 	});
 
 	it('does not let a star cross a slash', () => {
-		expect(matchesCleanupWhitelist('extensions/a/b/dist/main.js', WHITELIST)).toBe(false);
+		expect(matchesCleanupWhitelist('addons/a/b/dist/main.js', WHITELIST)).toBe(false);
 	});
 
 	it('anchors a pattern that starts with a slash at the tree root', () => {
@@ -62,10 +62,10 @@ describe('matchesCleanupWhitelist', () => {
 		expect(matchesCleanupWhitelist('out-build/vs/main.js', WHITELIST)).toBe(true);
 		expect(matchesCleanupWhitelist('src/out/file.js', WHITELIST)).toBe(false);
 		expect(matchesCleanupWhitelist('deep/nested/out-build/file.js', WHITELIST)).toBe(false);
-		// `extensions/*/out/` is not redundant any more: it is the only pattern
+		// `addons/*/out/` is not redundant any more: it is the only pattern
 		// that protects a built extension.
-		expect(matchesCleanupWhitelist('extensions/sample/out/main.js', WHITELIST)).toBe(true);
-		expect(matchesCleanupWhitelist('extensions/a/b/out/main.js', WHITELIST)).toBe(false);
+		expect(matchesCleanupWhitelist('addons/sample/out/main.js', WHITELIST)).toBe(true);
+		expect(matchesCleanupWhitelist('addons/a/b/out/main.js', WHITELIST)).toBe(false);
 	});
 
 	it('does not protect anything inside .git, which git never lists anyway', () => {
@@ -76,7 +76,7 @@ describe('matchesCleanupWhitelist', () => {
 		expect(matchesCleanupWhitelist('litter.txt', WHITELIST)).toBe(false);
 		expect(matchesCleanupWhitelist('scratch/deep/note.md', WHITELIST)).toBe(false);
 		expect(matchesCleanupWhitelist('outfile.js', WHITELIST)).toBe(false);
-		expect(matchesCleanupWhitelist('src/vs/workbench/new.ts', WHITELIST)).toBe(false);
+		expect(matchesCleanupWhitelist('source/app/new.ts', WHITELIST)).toBe(false);
 	});
 
 	it('understands a directory entry the same way as a file inside it', () => {
@@ -95,8 +95,8 @@ describe('conventions ownership', () => {
 				codkitConfig: 2,
 				pin: { tag: '1.0.0', sha: '1'.repeat(40), date: '2026-01-01' },
 				upstreamAnchorCommit: '0'.repeat(40),
-				type: 'vscode',
-				typeConfig: { ownRoot: 'src/vs/patchset' },
+				type: 'stub',
+				typeConfig: { ownRoot: 'source/own' },
 				generatedBranchPrefix: 'codkit/applied/',
 				cycleBranchPrefix: 'codkit/cycle/',
 				releaseRefPrefix: 'codkit/release/',
@@ -114,7 +114,7 @@ describe('conventions ownership', () => {
 		const root = makeTempRoot('conventions-hidden-copy');
 		mkdirSync(join(root, 'codkit', 'config'), { recursive: true });
 		writeFileSync(join(root, 'codkit', 'config', 'conventions.json'), '{"codkitConventions":999}\n');
-		expect(loadConventions(vscodeType, root)).toBe(loadConventions(vscodeType));
+		expect(loadConventions(stubProjectType, root)).toBe(loadConventions(stubProjectType));
 	});
 
 	it('merges an explicit extension additively', () => {
@@ -125,7 +125,7 @@ describe('conventions ownership', () => {
 			forbiddenServiceIds: ['IVendorRootService'],
 			markerComment: { '.foo': { open: '# codkit:', close: '' } }
 		});
-		const conventions = loadConventions(vscodeType, root);
+		const conventions = loadConventions(stubProjectType, root);
 		expect(new RegExp(conventions.idPattern).test('CK-vendor-001')).toBe(true);
 		expect(conventions.forbiddenPatchTargets).toContain('private/**');
 		expect(conventions.forbiddenServiceIds).toContain('IVendorRootService');
@@ -138,7 +138,7 @@ describe('conventions ownership', () => {
 			codkitConventionsExtension: 1,
 			markerComment: { '.ts': { open: '// unsafe:', close: '' } }
 		});
-		expect(() => loadConventions(vscodeType, root)).toThrow(/cannot replace a shipped marker form/);
+		expect(() => loadConventions(stubProjectType, root)).toThrow(/cannot replace a shipped marker form/);
 	});
 });
 
@@ -147,12 +147,12 @@ describe('matchesPatternList: forbiddenPatchTargets', () => {
 		// The type's own forbidden targets, plus the targets of its configuration
 		// overlay: an overlay owns those files as data, and a patch over the same
 		// bytes would be a second, silent owner (PROP-003 ##CONV-FORBIDDEN-TARGETS).
-		const forbidden = loadConventions(vscodeType).forbiddenPatchTargets;
-		expect(forbidden).toEqual(['.config/1espt/**', 'product.json', 'package.json']);
-		expect(matchesPatternList('.config/1espt/PipelineAutobaseliningConfig.yml', forbidden)).toBe(true);
-		expect(matchesPatternList('.config/1espt/deep/nested.yml', forbidden)).toBe(true);
+		const forbidden = loadConventions(stubProjectType).forbiddenPatchTargets;
+		expect(forbidden).toEqual(['.config/generated/**', 'manifest.json', 'package.json']);
+		expect(matchesPatternList('.config/generated/PipelineAutobaseliningConfig.yml', forbidden)).toBe(true);
+		expect(matchesPatternList('.config/generated/deep/nested.yml', forbidden)).toBe(true);
 		expect(matchesPatternList('.config/other.yml', forbidden)).toBe(false);
-		expect(matchesPatternList('src/vs/workbench/a.ts', forbidden)).toBe(false);
+		expect(matchesPatternList('source/app/a.ts', forbidden)).toBe(false);
 	});
 });
 
@@ -172,37 +172,37 @@ describe('writeExclude', () => {
 
 	it('writes exactly the three managed lines', () => {
 		const tree = makeTree('exclude-new', null);
-		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
-		expect(excludeFile(tree)).toBe(`${EXCLUDE_BEGIN}\n/src/vs/patchset/\n${EXCLUDE_END}\n`);
+		writeExclude(tree, oneOwnedRoot('source/own'));
+		expect(excludeFile(tree)).toBe(`${EXCLUDE_BEGIN}\n/source/own/\n${EXCLUDE_END}\n`);
 	});
 
 	it('creates an absent block after one blank line without normalizing host bytes', () => {
 		const tree = makeTree('exclude-separated', '# user\r\n*.local');
-		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
-		expect(excludeFile(tree)).toBe(`# user\r\n*.local\r\n\r\n${EXCLUDE_BEGIN}\r\n/src/vs/patchset/\r\n${EXCLUDE_END}\r\n`);
+		writeExclude(tree, oneOwnedRoot('source/own'));
+		expect(excludeFile(tree)).toBe(`# user\r\n*.local\r\n\r\n${EXCLUDE_BEGIN}\r\n/source/own/\r\n${EXCLUDE_END}\r\n`);
 	});
 
 	it('is idempotent', () => {
 		const tree = makeTree('exclude-idempotent', '# left by the user\n*.local\n');
-		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
+		writeExclude(tree, oneOwnedRoot('source/own'));
 		const once = excludeFile(tree);
-		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
+		writeExclude(tree, oneOwnedRoot('source/own'));
 		expect(excludeFile(tree)).toBe(once);
 		expect(once.startsWith('# left by the user\n*.local\n')).toBe(true);
 	});
 
 	it('replaces a stale managed block without touching other lines', () => {
-		const tree = makeTree('exclude-stale', `# mine\n${EXCLUDE_BEGIN}\n/src/vs/oldname/\n${EXCLUDE_END}\n# also mine\n`);
-		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
-		expect(excludeFile(tree)).toBe(`# mine\n${EXCLUDE_BEGIN}\n/src/vs/patchset/\n${EXCLUDE_END}\n# also mine\n`);
+		const tree = makeTree('exclude-stale', `# mine\n${EXCLUDE_BEGIN}\n/source/oldname/\n${EXCLUDE_END}\n# also mine\n`);
+		writeExclude(tree, oneOwnedRoot('source/own'));
+		expect(excludeFile(tree)).toBe(`# mine\n${EXCLUDE_BEGIN}\n/source/own/\n${EXCLUDE_END}\n# also mine\n`);
 	});
 
 	it('hard-stops on an unclosed block and preserves the entire file', () => {
-		const existing = `# mine\n${EXCLUDE_BEGIN}\n/src/vs/oldname/\n# user tail\n`;
+		const existing = `# mine\n${EXCLUDE_BEGIN}\n/source/oldname/\n# user tail\n`;
 		const tree = makeTree('exclude-unclosed', existing);
 		let failure: unknown;
 		try {
-			writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
+			writeExclude(tree, oneOwnedRoot('source/own'));
 		} catch (error) {
 			failure = error;
 		}
@@ -213,16 +213,16 @@ describe('writeExclude', () => {
 	it('hard-stops on duplicate markers', () => {
 		const existing = `${EXCLUDE_BEGIN}\nold\n${EXCLUDE_END}\n${EXCLUDE_BEGIN}\nother\n${EXCLUDE_END}\n`;
 		const tree = makeTree('exclude-duplicate', existing);
-		expect(() => writeExclude(tree, oneOwnedRoot('src/vs/patchset'))).toThrow(/expected zero markers or one ordered pair/);
+		expect(() => writeExclude(tree, oneOwnedRoot('source/own'))).toThrow(/expected zero markers or one ordered pair/);
 		expect(excludeFile(tree)).toBe(existing);
 	});
 
 	it('does not rewrite a byte-identical managed block', () => {
-		const existing = `# mine\r\n${EXCLUDE_BEGIN}\r\n/src/vs/patchset/\r\n${EXCLUDE_END}\r\n# tail`;
+		const existing = `# mine\r\n${EXCLUDE_BEGIN}\r\n/source/own/\r\n${EXCLUDE_END}\r\n# tail`;
 		const tree = makeTree('exclude-noop', existing);
 		const path = join(tree, '.git', 'info', 'exclude');
 		const before = statSync(path).mtimeMs;
-		writeExclude(tree, oneOwnedRoot('src/vs/patchset'));
+		writeExclude(tree, oneOwnedRoot('source/own'));
 		expect(excludeFile(tree)).toBe(existing);
 		expect(statSync(path).mtimeMs).toBe(before);
 	});
@@ -230,7 +230,7 @@ describe('writeExclude', () => {
 
 describe('toPosix', () => {
 	it('gives git forward slashes on every platform', () => {
-		expect(toPosix('src\\vs\\workbench\\a.ts')).toBe('src/vs/workbench/a.ts');
-		expect(toPosix('src/vs/workbench/a.ts')).toBe('src/vs/workbench/a.ts');
+		expect(toPosix('source\\app\\a.ts')).toBe('source/app/a.ts');
+		expect(toPosix('source/app/a.ts')).toBe('source/app/a.ts');
 	});
 });

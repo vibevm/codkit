@@ -6,7 +6,7 @@
 // Since PROP-016 that definition has two halves - the shipped file and the
 // project type's defaults - and the loader is what puts them together.
 
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 import { loadConventions } from '../../src/lib/conventionsFile.ts';
 import type { MarkerConventions } from '../../src/lib/markers.ts';
 import type { PatchConventions } from '../../src/lib/patchFormat.ts';
@@ -15,7 +15,7 @@ export type TestConventions = MarkerConventions & PatchConventions;
 
 /** The engine's conventions composed with the vscode type, once per process. */
 export function conventions(): TestConventions {
-	return loadConventions(vscodeType);
+	return loadConventions(stubProjectType);
 }
 
 /** A conventions object with one field replaced, for the negative cases. */

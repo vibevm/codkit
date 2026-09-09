@@ -8,15 +8,15 @@ import type { Overlay, OverlayVarContext } from '../../src/lib/layers/overlay.ts
 import { runGit } from '../../src/lib/gitx.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
-const ARTIFACT = 'delta/overlays/product.json.overlay.json';
+const ARTIFACT = 'delta/overlays/manifest.json.overlay.json';
 
 /** The valid sample of PROP-005 ##overlay-valid-sample, transcribed. */
 const VALID = {
 	codkitOverlay: 2,
 	id: 'CK-product-001',
-	target: 'product.json',
+	target: 'manifest.json',
 	type: 'modify',
 	category: 'own',
 	owner: 'product',
@@ -26,7 +26,7 @@ const VALID = {
 	pin: '1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5',
 	contractTests: ['patchset.guard.product-name'],
 	operations: [
-		{ op: 'set', path: ['nameShort'], value: 'PatchSet', expectUpstream: 'Code - OSS' },
+		{ op: 'set', path: ['displayName'], value: 'PatchSet', expectUpstream: 'Code - OSS' },
 		{ op: 'set', path: ['patchsetUpstreamPin'], value: { $var: 'pin.tag' }, expectUpstream: { $absent: true } }
 	]
 };
@@ -68,7 +68,7 @@ describe('overlay schema', () => {
 	});
 
 	it('refuses an unknown operation with the wording of the spec', () => {
-		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'insert', path: ['nameShort'], value: 'x' }]), ARTIFACT));
+		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'insert', path: ['displayName'], value: 'x' }]), ARTIFACT));
 		expect(failure.code).toBe('OVERLAY-SCHEMA');
 		expect(failure.message).toBe('operations[0].op must be "set" or "remove", got "insert"');
 		expect(failure.file).toBe(ARTIFACT);
@@ -93,7 +93,7 @@ describe('overlay schema', () => {
 	});
 
 	it('refuses a set without a value', () => {
-		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'set', path: ['nameShort'] }]), ARTIFACT));
+		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'set', path: ['displayName'] }]), ARTIFACT));
 		expect(failure.message).toBe('operations[0].value is required for op "set", got nothing');
 	});
 
@@ -108,7 +108,7 @@ describe('overlay schema', () => {
 		expect(codeOf(() => parseOverlay({ ...VALID, codkitOverlay: 3 }, ARTIFACT)).message).toContain('codkitOverlay must be exactly 2');
 	});
 
-	it.each(['../product.json', '/tmp/product.json', 'dir\\product.json'])('refuses unsafe target %j', (target) => {
+	it.each(['../manifest.json', '/tmp/manifest.json', 'dir\\manifest.json'])('refuses unsafe target %j', (target) => {
 		const failure = codeOf(() => parseOverlay({ ...VALID, target }, ARTIFACT));
 
 		expect(failure.code).toBe('OVERLAY-SCHEMA');
@@ -134,13 +134,13 @@ describe('applyOperations', () => {
 	it('sets, creating the objects along the path', () => {
 		const overlay = parseOverlay(
 			withOperations([
-				{ op: 'set', path: ['nameShort'], value: 'PatchSet' },
+				{ op: 'set', path: ['displayName'], value: 'PatchSet' },
 				{ op: 'set', path: ['gallery', 'serviceUrl'], value: 'https://gallery.invalid' }
 			]),
 			ARTIFACT
 		);
 		expect(applyOperations({}, overlay.operations, CONTEXT)).toEqual({
-			nameShort: 'PatchSet',
+			displayName: 'PatchSet',
 			gallery: { serviceUrl: 'https://gallery.invalid' }
 		});
 	});
@@ -153,20 +153,20 @@ describe('applyOperations', () => {
 	it('removes a key, and removing an absent key is not an error', () => {
 		const overlay = parseOverlay(
 			withOperations([
-				{ op: 'remove', path: ['nameShort'] },
+				{ op: 'remove', path: ['displayName'] },
 				{ op: 'remove', path: ['neverThere'] },
 				{ op: 'remove', path: ['deep', 'gone'] }
 			]),
 			ARTIFACT
 		);
-		expect(applyOperations({ nameShort: 'x', keep: 1 }, overlay.operations, CONTEXT)).toEqual({ keep: 1 });
+		expect(applyOperations({ displayName: 'x', keep: 1 }, overlay.operations, CONTEXT)).toEqual({ keep: 1 });
 	});
 
 	it('does not mutate the document it was given', () => {
-		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['nameShort'], value: 'PatchSet' }]), ARTIFACT);
-		const base = { nameShort: 'Code - OSS' };
+		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['displayName'], value: 'PatchSet' }]), ARTIFACT);
+		const base = { displayName: 'Code - OSS' };
 		applyOperations(base, overlay.operations, CONTEXT);
-		expect(base.nameShort).toBe('Code - OSS');
+		expect(base.displayName).toBe('Code - OSS');
 	});
 });
 
@@ -179,7 +179,7 @@ describe('the dev channel', () => {
 		// repository, which is exactly the "cannot be answered" case the seeding
 		// and the ignore check both step around. The e2e load test covers the
 		// seeding against a real tree.
-		const result = writeDevChannel(vscodeType, tree, [overlay], CONTEXT, '', (text) => {
+		const result = writeDevChannel(stubProjectType, tree, [overlay], CONTEXT, '', (text) => {
 			warnings.push(text);
 		});
 		return { document: JSON.parse(readFileSync(result.path, 'utf8')) as Record<string, unknown>, warnings };
@@ -187,13 +187,13 @@ describe('the dev channel', () => {
 
 	it('flattens to top-level keys and substitutes variables', () => {
 		const { document, warnings } = devChannel([
-			{ op: 'set', path: ['nameShort'], value: 'PatchSet' },
-			{ op: 'set', path: ['extensionsGallery'], value: { serviceUrl: 'https://gallery.invalid', itemUrl: 'https://item.invalid' } },
+			{ op: 'set', path: ['displayName'], value: 'PatchSet' },
+			{ op: 'set', path: ['addonGallery'], value: { serviceUrl: 'https://gallery.invalid', itemUrl: 'https://item.invalid' } },
 			{ op: 'set', path: ['patchsetUpstreamPin'], value: { $var: 'pin.tag' } }
 		]);
 		expect(document).toEqual({
-			nameShort: 'PatchSet',
-			extensionsGallery: { serviceUrl: 'https://gallery.invalid', itemUrl: 'https://item.invalid' },
+			displayName: 'PatchSet',
+			addonGallery: { serviceUrl: 'https://gallery.invalid', itemUrl: 'https://item.invalid' },
 			patchsetUpstreamPin: '1.135.0'
 		});
 		expect(warnings).toEqual([]);
@@ -201,10 +201,10 @@ describe('the dev channel', () => {
 
 	it('warns that remove cannot be expressed and leaves the key out', () => {
 		const { document, warnings } = devChannel([
-			{ op: 'set', path: ['nameShort'], value: 'PatchSet' },
+			{ op: 'set', path: ['displayName'], value: 'PatchSet' },
 			{ op: 'remove', path: ['telemetry'] }
 		]);
-		expect(document).toEqual({ nameShort: 'PatchSet' });
+		expect(document).toEqual({ displayName: 'PatchSet' });
 		expect(warnings.length).toBe(1);
 		expect(warnings[0]).toContain('remove telemetry');
 		expect(warnings[0]).toContain('dev channel');
@@ -214,25 +214,25 @@ describe('the dev channel', () => {
 		// Without a tree to read the pin from, the seeding finds nothing and the
 		// operation still applies; what matters here is that a nested path is a
 		// normal thing to write in the dev channel, not a reported degradation.
-		const { document, warnings } = devChannel([{ op: 'set', path: ['extensionsGallery', 'serviceUrl'], value: 'https://gallery.invalid' }]);
+		const { document, warnings } = devChannel([{ op: 'set', path: ['addonGallery', 'serviceUrl'], value: 'https://gallery.invalid' }]);
 		expect(warnings).toEqual([]);
-		expect(document).toEqual({ extensionsGallery: { serviceUrl: 'https://gallery.invalid' } });
+		expect(document).toEqual({ addonGallery: { serviceUrl: 'https://gallery.invalid' } });
 	});
 
 	it('writes two-space JSON with a final newline', () => {
 		const tree = makeTempRoot('overlay-bytes');
-		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['nameShort'], value: 'PatchSet' }]), ARTIFACT);
-		const result = writeDevChannel(vscodeType, tree, [overlay], CONTEXT, '');
-		expect(readFileSync(result.path, 'utf8')).toBe('{\n  "nameShort": "PatchSet"\n}\n');
-		expect(result.path).toBe(join(tree, 'product.overrides.json'));
+		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['displayName'], value: 'PatchSet' }]), ARTIFACT);
+		const result = writeDevChannel(stubProjectType, tree, [overlay], CONTEXT, '');
+		expect(readFileSync(result.path, 'utf8')).toBe('{\n  "displayName": "PatchSet"\n}\n');
+		expect(result.path).toBe(join(tree, 'manifest.overrides.json'));
 		expect(result.overlayIds).toEqual(['CK-product-001']);
 	});
 
-	it('writes nothing when no overlay targets product.json', () => {
+	it('writes nothing when no overlay targets manifest.json', () => {
 		const tree = makeTempRoot('overlay-other');
 		const other = parseOverlay({ ...VALID, target: 'package.json' }, 'delta/overlays/package.json.overlay.json');
 
-		const result = writeDevChannel(vscodeType, tree, [other], CONTEXT, '');
+		const result = writeDevChannel(stubProjectType, tree, [other], CONTEXT, '');
 
 		expect(result.written).toBe(false);
 		expect(result.overlayIds).toEqual([]);
@@ -241,25 +241,25 @@ describe('the dev channel', () => {
 
 	it('empties an existing file when the last product overlay is gone', () => {
 		const tree = makeTempRoot('overlay-emptied');
-		writeFileSync(join(tree, 'product.overrides.json'), '{\n  "nameShort": "PatchSet"\n}\n', 'utf8');
+		writeFileSync(join(tree, 'manifest.overrides.json'), '{\n  "displayName": "PatchSet"\n}\n', 'utf8');
 
-		const result = writeDevChannel(vscodeType, tree, [], CONTEXT, '');
+		const result = writeDevChannel(stubProjectType, tree, [], CONTEXT, '');
 
 		expect(result.written).toBe(true);
 		expect(readFileSync(result.path, 'utf8')).toBe('{}\n');
 	});
 
-	it('refuses an existing product.overrides.json symlink without overwriting its target', () => {
+	it('refuses an existing manifest.overrides.json symlink without overwriting its target', () => {
 		const tree = makeTempRoot('overlay-dev-symlink');
 		const outside = makeTempRoot('overlay-dev-symlink-outside');
 		const victim = join(outside, 'victim.json');
 		writeFileSync(victim, '{"outside":true}\n', 'utf8');
-		const path = join(tree, 'product.overrides.json');
+		const path = join(tree, 'manifest.overrides.json');
 		rmSync(path, { force: true });
 		symlinkSync(victim, path);
-		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['nameShort'], value: 'PatchSet' }]), ARTIFACT);
+		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['displayName'], value: 'PatchSet' }]), ARTIFACT);
 
-		expect(() => writeDevChannel(vscodeType, tree, [overlay], CONTEXT, '')).toThrow(/symlink/i);
+		expect(() => writeDevChannel(stubProjectType, tree, [overlay], CONTEXT, '')).toThrow(/symlink/i);
 		expect(readFileSync(victim, 'utf8')).toBe('{"outside":true}\n');
 	});
 });
@@ -276,19 +276,19 @@ describe('devChannelIgnoreWarning', () => {
 	}
 
 	it('warns when the tree does not ignore the dev-channel file', () => {
-		const warning = devChannelIgnoreWarning(vscodeType, repo('overlay-ignore-missing', null));
+		const warning = devChannelIgnoreWarning(stubProjectType, repo('overlay-ignore-missing', null));
 		expect(warning).not.toBeNull();
-		expect(warning).toContain('product.overrides.json');
+		expect(warning).toContain('manifest.overrides.json');
 		expect(warning).toContain('.gitignore');
 	});
 
 	it('says nothing when the tree ignores it', () => {
-		expect(devChannelIgnoreWarning(vscodeType, repo('overlay-ignore-present', 'product.overrides.json\n'))).toBeNull();
+		expect(devChannelIgnoreWarning(stubProjectType, repo('overlay-ignore-present', 'manifest.overrides.json\n'))).toBeNull();
 	});
 
 	it('says nothing when git cannot answer at all', () => {
 		// Not a repository: the load would have failed long before this point,
 		// and a warning here would only be noise.
-		expect(devChannelIgnoreWarning(vscodeType, makeTempRoot('overlay-ignore-norepo'))).toBeNull();
+		expect(devChannelIgnoreWarning(stubProjectType, makeTempRoot('overlay-ignore-norepo'))).toBeNull();
 	});
 });

@@ -11,11 +11,11 @@ export function writeOwnManifestFixture(root: string, pin: string, roots: readon
 				codkitOwnManifest: 2,
 				units: [
 					{
-						id: 'CK-workbench-208',
+						id: 'CK-shell-208',
 						layer: 'own',
 						type: 'extend',
 						category: 'own',
-						owner: 'workbench-core',
+						owner: 'shell-core',
 						reason: 'cycle materialization own fixture',
 						link: 'none',
 						cause: 'none',

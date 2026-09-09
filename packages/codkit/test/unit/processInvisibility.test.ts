@@ -29,7 +29,7 @@ afterAll(cleanupTempRoots);
 
 const CHANNEL: ChannelConfig = {
 	name: 'transpile',
-	script: 'watch-client-transpile',
+	script: 'watch-transpile',
 	passStart: [/^start$/],
 	passEnd: [/^end$/],
 	errorLine: [/^error: (.+)$/],
@@ -42,7 +42,7 @@ const EMITTED = fileURLToPath(new URL('../../dist/lib/buildWrap.js', import.meta
 function fixture(label: string): { readonly patchesDir: string; readonly treeDir: string } {
 	const patchesDir = makeTempRoot(`${label}-patches`);
 	const treeDir = makeTempRoot(`${label}-tree`);
-	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-client-transpile': 'fixture' } }), 'utf8');
+	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-transpile': 'fixture' } }), 'utf8');
 	return { patchesDir, treeDir };
 }
 

@@ -1,3 +1,6 @@
+// PROP-016 ##TYPE-ENGINE-TESTS: a polygon of the `vscode` type - the shipped
+// runtime library is the payload of one family, and this suite is about that
+// payload rather than about the engine.
 // PROP-013 ##UT-SHIPPED-RUNTIME: the runtime library codkit ships, checked on
 // its real bytes (PROP-015 ##RT-SHIPPED-RUNTIME-TEST).
 //

@@ -19,7 +19,7 @@ import { deltaDirOfRole, isBuildOutput, ownedRootOf, ownedRootsOf, ownedTreePref
 import type { OwnedRoot } from '../../src/lib/ownedRoots.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { ownedRoot } from '../support/ownedRoots.ts';
-import { stubType } from '../support/stubType.ts';
+import { stubType } from '../fixtures/stubType.ts';
 
 const OWN_DIR = 'packages/product-own';
 const APPLICATION_DIR = 'applications/product';

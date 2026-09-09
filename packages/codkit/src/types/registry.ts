@@ -10,9 +10,12 @@
 // Adding a type is publishing its package and adding its name here.
 
 import { createRequire } from 'node:module';
+import { isAbsolute } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { Capability, ProjectType } from '@codkit/type-api';
 import { projectTypeProblems } from '@codkit/type-api';
 import { ckError } from '../lib/messages.ts';
+import { testSeamEntry, TYPE_PACKAGE_ENV } from './testSeam.ts';
 
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
 export const TYPE_REGISTRY: ReadonlyMap<string, string> = new Map([
@@ -20,6 +23,17 @@ export const TYPE_REGISTRY: ReadonlyMap<string, string> = new Map([
 	['generic', '@codkit/type-generic'],
 	['theia', '@codkit/type-theia']
 ]);
+
+/**
+ * The table this process resolves against: the shipped one, plus the single
+ * type a test build was told to add (##TYPE-TEST-SEAM). A production build gets
+ * `TYPE_REGISTRY` itself, so `codkit types` of a real installation never has a
+ * row the release does not carry.
+ */
+export function effectiveRegistry(): ReadonlyMap<string, string> {
+	const seam = testSeamEntry(process.env[TYPE_PACKAGE_ENV], process.execArgv);
+	return seam === null ? TYPE_REGISTRY : new Map([...TYPE_REGISTRY, seam]);
+}
 
 /** One row of `codkit types` (##CMD-TYPES). */
 export type RegisteredType = {
@@ -49,12 +63,13 @@ export async function resolveProjectType(id: string): Promise<ProjectType> {
 	if (cached !== undefined) {
 		return cached;
 	}
-	const packageName = TYPE_REGISTRY.get(id);
+	const registry = effectiveRegistry();
+	const packageName = registry.get(id);
 	if (packageName === undefined) {
 		throw ckError(
 			'TYPE-UNKNOWN',
 			`the project type ${JSON.stringify(id)} is not in the registry of this codkit`,
-			`use one of: ${[...TYPE_REGISTRY.keys()].join(', ')}   (run: codkit types)`,
+			`use one of: ${[...registry.keys()].join(', ')}   (run: codkit types)`,
 			'codkit.json'
 		);
 	}
@@ -75,7 +90,7 @@ export async function resolveProjectType(id: string): Promise<ProjectType> {
 /** The rows `codkit types` prints, in registry order (##CMD-TYPES). */
 export async function registeredTypes(): Promise<readonly RegisteredType[]> {
 	const rows: RegisteredType[] = [];
-	for (const [id, packageName] of TYPE_REGISTRY) {
+	for (const [id, packageName] of effectiveRegistry()) {
 		let type: ProjectType | null = null;
 		try {
 			type = await resolveProjectType(id);
@@ -99,7 +114,9 @@ export async function registeredTypes(): Promise<readonly RegisteredType[]> {
 async function importProjectType(id: string, packageName: string): Promise<ProjectType> {
 	let module: { readonly projectType?: unknown };
 	try {
-		module = (await import(packageName)) as { readonly projectType?: unknown };
+		// An absolute path is the test seam; everything else is a package name.
+		const specifier = isAbsolute(packageName) ? pathToFileURL(packageName).href : packageName;
+		module = (await import(specifier)) as { readonly projectType?: unknown };
 	} catch (error) {
 		throw ckError(
 			'TYPE-UNKNOWN',
@@ -130,6 +147,10 @@ function isProjectType(value: unknown): value is ProjectType {
 
 /** The installed version of a type package, read from its own manifest. */
 function packageVersion(packageName: string): string | null {
+	if (isAbsolute(packageName)) {
+		// The test seam names a module, not a package: it has no manifest.
+		return null;
+	}
 	try {
 		const manifest = createRequire(import.meta.url)(`${packageName}/package.json`) as { readonly version?: unknown };
 		return typeof manifest.version === 'string' ? manifest.version : null;

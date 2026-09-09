@@ -21,7 +21,7 @@ import type { ForkDirResolution } from '../../src/lib/paths.ts';
 import type { VerifyResult } from '../../src/lib/verifyEngine.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 type Fixture = {
 	readonly root: string;
@@ -139,7 +139,7 @@ describe('cycle dependency advisory and stabilization adapter', () => {
 					runner: async () =>
 						execution({
 							steps: [{ name: 'product tests', state: 'failed', detail: 'runner missing' }],
-							errors: [{ code: 'CK-E-LOG-INCOMPLETE', message: 'npm test-node is missing' }],
+							errors: [{ code: 'CK-E-LOG-INCOMPLETE', message: 'npm test-own is missing' }],
 							cleanupErrors: [
 								{ code: 'CK-E-INTERNAL', message: 'cannot stop transpile' },
 								{ code: 'CK-E-INTERNAL', message: 'cannot stop typecheck' }
@@ -341,8 +341,8 @@ function fixture(advisoryChanged: boolean, phase: CycleState['phase'] = 'deps-ad
 		codkitConfig: 2,
 		pin: targetPin,
 		upstreamAnchorCommit: sourceSha,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: 'stub',
+		typeConfig: { ownRoot: 'source/own' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -373,7 +373,7 @@ function options(
 		patchesDir: current.root,
 		resolution: current.resolution,
 		config: current.config,
-		type: vscodeType,
+		type: stubProjectType,
 		state: current.state,
 		locks,
 		ci: false,
@@ -437,7 +437,7 @@ function entry(test: string, artifact: string): InventoryEntry {
 		type: 'modify',
 		category: 'own',
 		subsystem: 'test',
-		files: ['product.json'],
+		files: ['manifest.json'],
 		owner: 'test',
 		reason: 'fixture',
 		link: 'none',

@@ -1,7 +1,7 @@
 // e2e: the own-extension layer through the real CLI (FEAT-002 S54, S55, S62).
 //
 // S54 is the round trip the layer exists for: `load` materializes
-// `delta/own-extensions/<name>/**` into `extensions/<name>/**` of the fork tree,
+// `delta/own-extensions/<name>/**` into `addons/<name>/**` of the fork tree,
 // an edit made in the tree comes back into the delta with `save`, and the
 // inventory carries one record of category `own-extension` for it.
 //
@@ -99,8 +99,8 @@ function findingsOf(code: string): Finding[] {
 
 describe('S54 - load materializes an own extension, save brings the edit back', () => {
 	it('writes the whole extension directory into the fork tree', () => {
-		expect(readFileSync(fixture.treePath(`extensions/${EXTENSION_NAME}/package.json`), 'utf8')).toBe(PACKAGE_JSON);
-		expect(readFileSync(fixture.treePath(`extensions/${EXTENSION_NAME}/package.nls.json`), 'utf8')).toBe(NLS_JSON);
+		expect(readFileSync(fixture.treePath(`addons/${EXTENSION_NAME}/package.json`), 'utf8')).toBe(PACKAGE_JSON);
+		expect(readFileSync(fixture.treePath(`addons/${EXTENSION_NAME}/package.nls.json`), 'utf8')).toBe(NLS_JSON);
 	});
 
 	it('leaves a delta and a tree that verify agrees on', () => {
@@ -121,7 +121,7 @@ describe('S54 - load materializes an own extension, save brings the edit back', 
 
 		expect(outcome.run.status).toBe(0);
 		expect(data.upstream.changed).toBe(0);
-		expect(data.upstream.files.some((file) => file.path.startsWith('extensions/'))).toBe(false);
+		expect(data.upstream.files.some((file) => file.path.startsWith('addons/'))).toBe(false);
 		expect(outcome.run.stdout).toContain('own extensions: 1 declared, 0 path(s) differ');
 		expect(outcome.run.stdout).not.toContain('run codkit save');
 	});
@@ -139,7 +139,7 @@ describe('S54 - load materializes an own extension, save brings the edit back', 
 	});
 
 	it('brings an edit made in the tree back into the delta', () => {
-		writeFileSync(fixture.treePath(`extensions/${EXTENSION_NAME}/package.nls.json`), NLS_EDITED, 'utf8');
+		writeFileSync(fixture.treePath(`addons/${EXTENSION_NAME}/package.nls.json`), NLS_EDITED, 'utf8');
 
 		const outcome = fixture.run(['save']);
 
@@ -187,14 +187,14 @@ describe('S55 - verify is red on a broken manifest and on drift', () => {
 	});
 
 	it('reports CK-E-OWN-EXTENSION-DRIFT with the path when the tree differs', () => {
-		const path = fixture.treePath(`extensions/${EXTENSION_NAME}/package.nls.json`);
+		const path = fixture.treePath(`addons/${EXTENSION_NAME}/package.nls.json`);
 		const saved = readFileSync(path, 'utf8');
 		try {
 			writeFileSync(path, '{\n\t"acme.hello": "a hand edit nobody extracted"\n}\n', 'utf8');
 			const findings = findingsOf('OWN-EXTENSION-DRIFT');
 
 			expect(findings).toHaveLength(1);
-			expect(findings[0]?.message).toContain(`extensions/${EXTENSION_NAME}/package.nls.json differs from`);
+			expect(findings[0]?.message).toContain(`addons/${EXTENSION_NAME}/package.nls.json differs from`);
 			expect(findings[0]?.file).toBe(`delta/own-extensions/${EXTENSION_NAME}/package.nls.json`);
 		} finally {
 			writeFileSync(path, saved, 'utf8');
@@ -202,32 +202,32 @@ describe('S55 - verify is red on a broken manifest and on drift', () => {
 	});
 
 	it('reports CK-E-OWN-EXTENSION-DRIFT for a file only the tree carries', () => {
-		const path = fixture.treePath(`extensions/${EXTENSION_NAME}/themes/dark.json`);
+		const path = fixture.treePath(`addons/${EXTENSION_NAME}/themes/dark.json`);
 		try {
 			mkdirSync(dirname(path), { recursive: true });
 			writeFileSync(path, '{}\n', 'utf8');
 			const findings = findingsOf('OWN-EXTENSION-DRIFT');
 
 			expect(findings).toHaveLength(1);
-			expect(findings[0]?.message).toContain(`extensions/${EXTENSION_NAME}/themes/dark.json is not in`);
+			expect(findings[0]?.message).toContain(`addons/${EXTENSION_NAME}/themes/dark.json is not in`);
 		} finally {
 			rmSync(dirname(path), { recursive: true, force: true });
 		}
 	});
 
 	it('is green again once the tree matches the delta', () => {
-		expect(existsSync(join(fixture.treeDir, 'extensions', EXTENSION_NAME))).toBe(true);
+		expect(existsSync(join(fixture.treeDir, 'addons', EXTENSION_NAME))).toBe(true);
 		expect(verify().status).toBe(0);
 	});
 });
 
 describe('S55 - a name the pin already ships is refused in the words the spec fixes', () => {
 	it('reports CK-E-OWN-EXTENSION-MANIFEST naming the upstream collision', () => {
-		// A pin that ships `extensions/acme-pack` of its own: the fork tree gets
+		// A pin that ships `addons/acme-pack` of its own: the fork tree gets
 		// one commit adding it, and the delta is pinned to that commit. This is
 		// the only case the layer cannot answer from patchset alone.
 		const colliding = makeCliFixture('own-extension-collision');
-		const upstreamExtension = join(colliding.treeDir, 'extensions', EXTENSION_NAME, 'package.json');
+		const upstreamExtension = join(colliding.treeDir, 'addons', EXTENSION_NAME, 'package.json');
 		mkdirSync(dirname(upstreamExtension), { recursive: true });
 		writeFileSync(upstreamExtension, '{\n\t"name": "acme-pack"\n}\n', 'utf8');
 		const pinSha = fixtureCommit(colliding.treeDir, 'upstream ships a built-in extension of this name', '2026-01-02T00:03:00Z');
@@ -275,7 +275,7 @@ describe('S62 - a stranded own extension: load passes over it, status names it',
 
 	/**
 	 * A patch set that declared one own extension, loaded it into the tree and
-	 * then withdrew the record: `extensions/<name>/` stands in the tree,
+	 * then withdrew the record: `addons/<name>/` stands in the tree,
 	 * untracked, and nothing in the delta claims it any more.
 	 */
 	function makeStrandedFixture(label: string): CliFixture {
@@ -293,7 +293,7 @@ describe('S62 - a stranded own extension: load passes over it, status names it',
 		]);
 		fixtureCommit(fixture.patchesDir, 'fixture patchset: one own extension', '2026-01-02T00:05:00Z');
 		expect(fixture.run(['load']).status).toBe(0);
-		expect(existsSync(fixture.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
+		expect(existsSync(fixture.treePath(`addons/${STRANDED_NAME}/package.json`))).toBe(true);
 
 		declareExtensions(fixture, []);
 		rmSync(fixture.patchesPath(`delta/own-extensions/${STRANDED_NAME}`), { recursive: true, force: true });
@@ -325,7 +325,7 @@ describe('S62 - a stranded own extension: load passes over it, status names it',
 
 		expect(outcome.status, outcome.stderr).toBe(0);
 		expect(outcome.stderr).not.toContain('CK-E-DIRTY-TREE');
-		expect(readFileSync(stray.treePath(`extensions/${STRANDED_NAME}/package.json`), 'utf8')).toBe(PACKAGE_JSON);
+		expect(readFileSync(stray.treePath(`addons/${STRANDED_NAME}/package.json`), 'utf8')).toBe(PACKAGE_JSON);
 	});
 
 	it('counts it, names it with the recipe that removes it, and exits 1', () => {
@@ -335,17 +335,17 @@ describe('S62 - a stranded own extension: load passes over it, status names it',
 		expect(outcome.stdout).toContain(
 			'own extensions: 0 declared, 0 path(s) differ between tree and patchset, 1 stranded materialization(s)'
 		);
-		expect(outcome.stdout).toContain(`  extensions/${STRANDED_NAME}/ - codkit load --fresh removes it`);
-		expect(strandedOf(stray).stranded).toEqual([`extensions/${STRANDED_NAME}/`]);
+		expect(outcome.stdout).toContain(`  addons/${STRANDED_NAME}/ - codkit load --fresh removes it`);
+		expect(strandedOf(stray).stranded).toEqual([`addons/${STRANDED_NAME}/`]);
 	});
 
 	it('names an untracked directory without a package.json too, in the order git reports', () => {
-		const note = stray.treePath('extensions/local-experiment/note.txt');
+		const note = stray.treePath('addons/local-experiment/note.txt');
 		try {
 			mkdirSync(dirname(note), { recursive: true });
 			writeFileSync(note, 'a local experiment nobody declared\n', 'utf8');
 
-			expect(strandedOf(stray).stranded).toEqual(['extensions/local-experiment/', `extensions/${STRANDED_NAME}/`]);
+			expect(strandedOf(stray).stranded).toEqual(['addons/local-experiment/', `addons/${STRANDED_NAME}/`]);
 		} finally {
 			rmSync(dirname(note), { recursive: true, force: true });
 		}
@@ -366,7 +366,7 @@ describe('S62 - a stranded own extension: load passes over it, status names it',
 
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-DIRTY-TREE');
-		expect(outcome.envelope.errors[0]?.message).toContain(`extensions/${STRANDED_NAME}`);
+		expect(outcome.envelope.errors[0]?.message).toContain(`addons/${STRANDED_NAME}`);
 	}, 60_000);
 
 	it('is still a new file in the upstream zone for the two-way sync', () => {
@@ -376,15 +376,15 @@ describe('S62 - a stranded own extension: load passes over it, status names it',
 
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors.map((error) => error.code)).toEqual(['CK-E-NEW-FILE-IN-UPSTREAM-ZONE']);
-		expect(outcome.envelope.errors[0]?.file).toContain('extensions/');
-		expect(existsSync(guarded.treePath(`extensions/${STRANDED_NAME}/package.json`))).toBe(true);
+		expect(outcome.envelope.errors[0]?.file).toContain('addons/');
+		expect(existsSync(guarded.treePath(`addons/${STRANDED_NAME}/package.json`))).toBe(true);
 	});
 
 	it('is gone after load --fresh, and status is quiet and green again', () => {
 		expect(stray.run(['load', '--fresh']).status).toBe(0);
 		const outcome = strandedOf(stray);
 
-		expect(existsSync(stray.treePath(`extensions/${STRANDED_NAME}`))).toBe(false);
+		expect(existsSync(stray.treePath(`addons/${STRANDED_NAME}`))).toBe(false);
 		expect(outcome.stranded).toEqual([]);
 		expect(outcome.stdout).toContain(
 			'own extensions: 0 declared, 0 path(s) differ between tree and patchset, 0 stranded materialization(s)'
@@ -393,24 +393,24 @@ describe('S62 - a stranded own extension: load passes over it, status names it',
 	});
 
 	it('never calls an extension of the pin stranded, whatever is untracked inside it', () => {
-		// A pin that ships `extensions/<name>` of its own, as in the collision
+		// A pin that ships `addons/<name>` of its own, as in the collision
 		// case above: an untracked file inside it is litter, never a stranded
 		// materialization, because the rule asks the pin and not the tree.
 		const shipped = makeCliFixture('own-extension-stranded-upstream');
-		const upstreamExtension = shipped.treePath('extensions/builtin-thing/package.json');
+		const upstreamExtension = shipped.treePath('addons/builtin-thing/package.json');
 		mkdirSync(dirname(upstreamExtension), { recursive: true });
 		writeFileSync(upstreamExtension, '{\n\t"name": "builtin-thing"\n}\n', 'utf8');
 		const pinSha = fixtureCommit(shipped.treeDir, 'upstream ships a built-in extension', '2026-01-02T00:07:00Z');
 		const configPath = shipped.patchesPath('codkit.json');
 		writeFileSync(configPath, readFileSync(configPath, 'utf8').replace(shipped.upstream.t1.sha, pinSha), 'utf8');
-		writeFileSync(shipped.treePath('extensions/builtin-thing/scratch.json'), '{}\n', 'utf8');
+		writeFileSync(shipped.treePath('addons/builtin-thing/scratch.json'), '{}\n', 'utf8');
 
 		const outcome = shipped.json(['status']);
 		const data = outcome.envelope.data as { upstream: { files: { path: string }[] }; ownExtensions: { stranded: string[] } };
 
 		// The untracked file does reach the report, so the empty verdict is the
 		// pin's answer and not an entry nobody ever classified.
-		expect(data.upstream.files.some((file) => file.path === 'extensions/builtin-thing/scratch.json')).toBe(true);
+		expect(data.upstream.files.some((file) => file.path === 'addons/builtin-thing/scratch.json')).toBe(true);
 		expect(data.ownExtensions.stranded).toEqual([]);
 	});
 });

@@ -26,7 +26,7 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { PATCH_FILE_NAME, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const TAG = '1.135.0';
 const CAUSE = 'a'.repeat(40);
@@ -122,8 +122,8 @@ function harness(
 		codkitConfig: 2,
 		pin: current.targetPin,
 		upstreamAnchorCommit: current.sourcePin.sha,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: 'stub',
+		typeConfig: { ownRoot: 'source/own' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -180,7 +180,7 @@ function harness(
 			patchesDir,
 			resolution: { path: tree, source: 'settings', exists: true, warning: null },
 			config,
-			type: vscodeType,
+			type: stubProjectType,
 			state: current,
 			journal: overrides.journal ?? [entry()],
 			artifacts: overrides.artifacts ?? [patchArtifact()],
@@ -380,12 +380,12 @@ describe('cycle resolve production adapter', () => {
 
 	it('runs two real-Git conflict atoms and reconciles only after both exact patches are committed', () => {
 		const fixture = makeCliFixture('cycle-resolve-real-two');
-		const util = 'src/vs/base/common/util.ts';
-		const utilPatch = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
+		const util = 'source/base/common/util.ts';
+		const utilPatch = 'delta/patches/source__base__common__util.ts.ckpatch';
 		const utilId = 'CK-base-977';
 		expect(fixture.run(['load']).status).toBe(0);
 		expect(
-			fixture.run(['marker', 'new', util, '--id', utilId, '--type', 'hook', '--owner', 'workbench-core', '--reason', 'resolve test']).status
+			fixture.run(['marker', 'new', util, '--id', utilId, '--type', 'hook', '--owner', 'shell-core', '--reason', 'resolve test']).status
 		).toBe(0);
 		writeFileSync(fixture.treePath(util), blockBody(readFileSync(fixture.treePath(util), 'utf8'), utilId, '\t// original util body'));
 		expect(fixture.run(['save', '--commit']).status).toBe(0);
@@ -441,7 +441,7 @@ describe('cycle resolve production adapter', () => {
 				patchesDir: fixture.patchesDir,
 				resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null } as const,
 				config,
-				type: vscodeType,
+				type: stubProjectType,
 				journal,
 				artifacts,
 				locks: { cycle, tree },
@@ -511,7 +511,7 @@ describe('cycle resolve production adapter', () => {
 				patchesDir: fixture.patchesDir,
 				resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 				config,
-				type: vscodeType,
+				type: stubProjectType,
 				state: current,
 				journal,
 				artifacts: [artifact],
@@ -537,7 +537,7 @@ describe('cycle resolve production adapter', () => {
 			expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
 			expect(cycleResolveTreeCurrent(fixture.patchesDir, base.resolution, config)).toBe(false);
 			if (checkpoint === 'worktree-moved') {
-				const ownPath = fixture.treePath('src/vs/patchset/hello.ts');
+				const ownPath = fixture.treePath('source/own/hello.ts');
 				const ownBefore = readFileSync(ownPath);
 				const humanBytes = Buffer.from(`${ownBefore.toString('utf8')}\n// ignored human work\n`);
 				writeFileSync(ownPath, humanBytes);

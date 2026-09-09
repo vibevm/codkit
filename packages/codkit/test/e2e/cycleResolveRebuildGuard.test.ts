@@ -17,7 +17,7 @@ import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
 import { PATCH_FILE_NAME, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 afterAll(cleanupTempRoots);
 
@@ -32,7 +32,7 @@ describe('cycle resolve save rebuild guard', () => {
 				patchesDir: fixture.patchesDir,
 				resolution,
 				config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: quietOutput(),
 				fresh: true,
 				dryRun: false,
@@ -40,7 +40,7 @@ describe('cycle resolve save rebuild guard', () => {
 				materializeOverlays: true
 			}).exitCode
 		).toBe(0);
-		expect(JSON.parse(readFileSync(fixture.treePath('product.json'), 'utf8'))).toMatchObject({ nameShort: 'Fixture PatchSet' });
+		expect(JSON.parse(readFileSync(fixture.treePath('manifest.json'), 'utf8'))).toMatchObject({ displayName: 'Fixture PatchSet' });
 
 		writeFileSync(fixture.patchesPath('.git/info/exclude'), '\n.codkit/\n', { flag: 'a' });
 		const branch = `${config.cycleBranchPrefix}${config.pin.tag}`;
@@ -94,7 +94,7 @@ describe('cycle resolve save rebuild guard', () => {
 				patchesDir: fixture.patchesDir,
 				resolution,
 				config,
-				type: vscodeType,
+				type: stubProjectType,
 				state: current,
 				journal,
 				artifacts: [artifact],
@@ -103,7 +103,7 @@ describe('cycle resolve save rebuild guard', () => {
 			});
 			expect(result.status).toBe('commit-ready');
 			expect(result.commit?.paths).toEqual([journalPath, 'cycle/state.json', artifactPath]);
-			expect(JSON.parse(readFileSync(fixture.treePath('product.json'), 'utf8'))).toMatchObject({ nameShort: 'Fixture - OSS' });
+			expect(JSON.parse(readFileSync(fixture.treePath('manifest.json'), 'utf8'))).toMatchObject({ displayName: 'Fixture Upstream' });
 			expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
 		} finally {
 			tree.release();
@@ -117,13 +117,13 @@ describe('cycle resolve save rebuild guard', () => {
 		const artifact = fixture.patchesPath(`delta/patches/${PATCH_FILE_NAME}`);
 		const patch = readFileSync(artifact, 'utf8');
 		const changedPatch = patch.replace(
-			'// (hook body lives in patchset/ own code; this block only delegates)',
+			'// (hook body lives in own/ code; this block only delegates)',
 			'// patchset-only patch movement that this save did not extract'
 		);
 		expect(changedPatch).not.toBe(patch);
 		writeFileSync(artifact, changedPatch, 'utf8');
 		writeFileSync(
-			fixture.treePath('src/vs/patchset/hello.ts'),
+			fixture.treePath('source/own/hello.ts'),
 			'// edited in the tree to trigger a rebuild\nexport function hello(name: string): string {\n\treturn name;\n}\n',
 			'utf8'
 		);

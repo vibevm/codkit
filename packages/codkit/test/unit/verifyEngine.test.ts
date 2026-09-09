@@ -21,12 +21,12 @@ import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 import type { Capability, ProjectType } from '@codkit/type-api';
 import { isCkError } from '../../src/lib/messages.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 let fixture: SyncFixture;
 
 const RULE_ARTIFACT = 'delta/rules/example.ckrule.json';
-const OVERLAY_ARTIFACT = 'delta/overlays/product.json.overlay.json';
+const OVERLAY_ARTIFACT = 'delta/overlays/manifest.json.overlay.json';
 const RESOURCE_ARTIFACT = 'delta/resources/map.json';
 const OWN_MANIFEST_ARTIFACT = 'delta/own/patchset.delta.json';
 const REMOVED_ARTIFACT = 'delta/removed.json';
@@ -42,12 +42,13 @@ beforeAll(() => {
 afterAll(cleanupTempRoots);
 
 function verify(): readonly Finding[] {
-	return runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config, type: vscodeType }).findings;
+	return runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config, type: stubProjectType })
+		.findings;
 }
 
 /** The same run under a type that answers no optional layer at all. */
 function verifyUnder(capabilities: readonly Capability[]): unknown {
-	const type: ProjectType = { ...vscodeType, id: 'stub', capabilities: new Set(capabilities) };
+	const type: ProjectType = { ...stubProjectType, id: 'stub', capabilities: new Set(capabilities) };
 	try {
 		runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config, type });
 	} catch (error) {
@@ -98,7 +99,7 @@ describe('a healthy delta', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: { ...fixture.config, pin: { ...fixture.config.pin, tag: 'never-synced' } },
-			type: vscodeType
+			type: stubProjectType
 		});
 		expect(result.warnings.join('\n')).toContain('run codkit load first');
 	});
@@ -141,7 +142,7 @@ describe('(b) ids are unique across the layers', () => {
 
 describe('(c) every owner is declared', () => {
 	it('reports an owner that owners.json does not carry', () => {
-		const findings = withEdit(RULE_ARTIFACT, (text) => text.split('"workbench-core"').join('"nobody"'), verify);
+		const findings = withEdit(RULE_ARTIFACT, (text) => text.split('"shell-core"').join('"nobody"'), verify);
 
 		expect(codes(findings)).toEqual(['OWNER-UNKNOWN']);
 		expect(findings[0]?.message).toContain(`${RULE_ID}: owner "nobody"`);
@@ -167,9 +168,9 @@ describe('(d) markers', () => {
 		const rename = (text: string): string =>
 			text
 				.split(`codkit:begin ${PATCH_ID}`)
-				.join('codkit:begin CK-workbench-999')
+				.join('codkit:begin CK-shell-999')
 				.split(`codkit:end ${PATCH_ID}`)
-				.join('codkit:end CK-workbench-999');
+				.join('codkit:end CK-shell-999');
 		const findings = withEdit(PATCH_ARTIFACT, rename, verify);
 
 		// The block now carries an id no artifact declares, and the artifact's own
@@ -217,13 +218,13 @@ describe('(f) a rule counts what it expects', () => {
 
 describe('(g) overlays', () => {
 	it('reports an expectUpstream that no longer describes the pin', () => {
-		const findings = withEdit(OVERLAY_ARTIFACT, (text) => text.replace('"Fixture - OSS"', '"Something Else"'), verify);
+		const findings = withEdit(OVERLAY_ARTIFACT, (text) => text.replace('"Fixture Upstream"', '"Something Else"'), verify);
 
 		expect(codes(findings)).toEqual(['OVERLAY-DRIFT']);
 		expect(findings[0]?.file).toBe(OVERLAY_ARTIFACT);
 	});
 
-	it('allows only additions to scripts on a target other than product.json', () => {
+	it('allows only additions to scripts on a target other than manifest.json', () => {
 		const findings = withFile('delta/overlays/package.json.overlay.json', packageOverlay(['name']), verify);
 
 		expect(codes(findings)).toEqual(['OVERLAY-SCHEMA']);
@@ -249,7 +250,7 @@ describe('(h) own code', () => {
 			(text) => {
 				const manifest = JSON.parse(text) as { units: Record<string, unknown>[] };
 				const first = manifest.units[0] ?? {};
-				manifest.units.push({ ...first, id: 'CK-workbench-905', roots: ['test/'] });
+				manifest.units.push({ ...first, id: 'CK-shell-905', roots: ['test/'] });
 				return `${JSON.stringify(manifest, null, 2)}\n`;
 			},
 			verify
@@ -258,26 +259,26 @@ describe('(h) own code', () => {
 		expect(findings.some((item) => item.code === 'OWN-UNCOVERED' && item.message.includes('claimed by more than one unit'))).toBe(true);
 	});
 
-	it('reports a registerSingleton of a service that must not be overridden', () => {
+	it('reports a registerService of a service that must not be overridden', () => {
 		const source = [
-			"import { registerSingleton } from '../platform.ts';",
+			"import { registerService } from '../platform.ts';",
 			'',
-			'registerSingleton(IFileService, FixtureFileService, 0);',
+			'registerService(IFileService, FixtureFileService, 0);',
 			''
 		].join('\n');
 		const findings = withFile('delta/own/test/forbidden.ts', source, verify);
 
 		expect(codes(findings)).toEqual(['FORBIDDEN-SERVICE']);
-		expect(findings[0]?.message).toContain('registerSingleton(IFileService)');
+		expect(findings[0]?.message).toContain('registerService(IFileService)');
 		expect(findings[0]?.file).toBe('delta/own/test/forbidden.ts');
 		expect(findings[0]?.line).toBe(3);
 	});
 
-	it('reports a multiline registerSingleton of a forbidden service', () => {
+	it('reports a multiline registerService of a forbidden service', () => {
 		const source = [
-			"import { registerSingleton } from '../platform.ts';",
+			"import { registerService } from '../platform.ts';",
 			'',
-			'registerSingleton(',
+			'registerService(',
 			'\tIFileService,',
 			'\tFixtureFileService,',
 			'\t0',
@@ -287,12 +288,12 @@ describe('(h) own code', () => {
 		const findings = withFile('delta/own/test/forbidden-multiline.ts', source, verify);
 
 		expect(codes(findings)).toEqual(['FORBIDDEN-SERVICE']);
-		expect(findings[0]?.message).toContain('registerSingleton(IFileService)');
+		expect(findings[0]?.message).toContain('registerService(IFileService)');
 		expect(findings[0]?.line).toBe(3);
 	});
 
-	it('resolves an imported alias of registerSingleton', () => {
-		const source = ["import { registerSingleton as reg } from '../platform.ts';", '', 'reg(IFileService, FixtureFileService, 0);', ''].join(
+	it('resolves an imported alias of registerService', () => {
+		const source = ["import { registerService as reg } from '../platform.ts';", '', 'reg(IFileService, FixtureFileService, 0);', ''].join(
 			'\n'
 		);
 		const findings = withFile('delta/own/test/forbidden-alias.ts', source, verify);
@@ -301,12 +302,12 @@ describe('(h) own code', () => {
 		expect(findings[0]?.line).toBe(3);
 	});
 
-	it('ignores registerSingleton text in comments and strings', () => {
+	it('ignores registerService text in comments and strings', () => {
 		const source = [
-			'// registerSingleton(IFileService, FixtureFileService, 0);',
-			'const example = "registerSingleton(IFileService, FixtureFileService, 0)";',
+			'// registerService(IFileService, FixtureFileService, 0);',
+			'const example = "registerService(IFileService, FixtureFileService, 0)";',
 			'/*',
-			'registerSingleton(',
+			'registerService(',
 			'\tIFileService,',
 			'\tFixtureFileService,',
 			'\t0',
@@ -328,19 +329,19 @@ describe('(h) own code', () => {
 	});
 
 	it('reports when the named override module does not register the declared service id', () => {
-		const source = 'registerSingleton(IOtherService, FixtureService, 0);\n';
+		const source = 'registerService(IOtherService, FixtureService, 0);\n';
 		const findings = withFile('delta/own/test/service.override.ts', source, () =>
 			withEdit('delta/own/patchset.delta.json', (text) => addServiceOverride(text, 'test/service.override.ts', 'IFixtureService'), verify)
 		);
 		const mismatch = findings.filter((item) => item.code === 'ARTIFACT-BROKEN' && item.message.includes('service override declares'));
 
 		expect(mismatch).toHaveLength(1);
-		expect(mismatch[0]?.message).toContain('does not call registerSingleton(IFixtureService)');
+		expect(mismatch[0]?.message).toContain('does not call registerService(IFixtureService)');
 		expect(mismatch[0]?.file).toBe('delta/own/test/service.override.ts');
 	});
 
 	it('accepts the declared service id when the named module registers it', () => {
-		const source = 'registerSingleton(IFixtureService, FixtureService, 0);\n';
+		const source = 'registerService(IFixtureService, FixtureService, 0);\n';
 		const findings = withFile('delta/own/test/service.override.ts', source, () =>
 			withEdit('delta/own/patchset.delta.json', (text) => addServiceOverride(text, 'test/service.override.ts'), verify)
 		);
@@ -349,9 +350,7 @@ describe('(h) own code', () => {
 	});
 
 	it('accepts the declared service id through an imported alias', () => {
-		const source = ["import { registerSingleton as reg } from '../platform.ts';", 'reg(IFixtureService, FixtureService, 0);', ''].join(
-			'\n'
-		);
+		const source = ["import { registerService as reg } from '../platform.ts';", 'reg(IFixtureService, FixtureService, 0);', ''].join('\n');
 		const findings = withFile('delta/own/test/service.override.ts', source, () =>
 			withEdit('delta/own/patchset.delta.json', (text) => addServiceOverride(text, 'test/service.override.ts'), verify)
 		);
@@ -366,12 +365,12 @@ describe('(h) own code', () => {
 		// reports its answer without knowing what it means.
 		const asked: string[] = [];
 		const type: ProjectType = {
-			...vscodeType,
+			...stubProjectType,
 			layers: {
-				...vscodeType.layers,
+				...stubProjectType.layers,
 				serviceOverride: {
-					...(vscodeType.layers.serviceOverride ?? {
-						registrationCall: 'registerSingleton',
+					...(stubProjectType.layers.serviceOverride ?? {
+						registrationCall: 'registerService',
 						registrationModule: null,
 						forbiddenReason: '',
 						forbiddenHint: ''
@@ -385,7 +384,7 @@ describe('(h) own code', () => {
 				}
 			}
 		};
-		const source = 'registerSingleton(IFixtureService, FixtureService, 0);\n';
+		const source = 'registerService(IFixtureService, FixtureService, 0);\n';
 		const findings = withFile('delta/own/test/service.override.ts', source, () =>
 			withEdit(
 				'delta/own/patchset.delta.json',
@@ -401,7 +400,7 @@ describe('(h) own code', () => {
 	});
 
 	it('reports a delivered override module outside every own unit', () => {
-		const source = 'registerSingleton(IFixtureService, FixtureService, 0);\n';
+		const source = 'registerService(IFixtureService, FixtureService, 0);\n';
 		const findings = withFile('delta/own/services/service.override.ts', source, () =>
 			withEdit('delta/own/patchset.delta.json', (text) => addServiceOverride(text, 'services/service.override.ts'), verify)
 		);
@@ -414,6 +413,22 @@ describe('(h) own code', () => {
 
 describe('(h2) what codkit delivered into the own layer', () => {
 	const RUNTIME_FILE = 'delta/own/codkit/common/version.ts';
+
+	// The delivered-library checks need a type that delivers one, and the tool
+	// ships exactly one runtime package (PROP-015 ##RT-SHIPPED-LOCATION). The
+	// stub declares no runtime of its own - a stub library would be a second
+	// shipped package for nobody - so these three cases name the shipped one and
+	// nothing else in the engine's suites does.
+	const withRuntimeArea: ProjectType = {
+		...stubProjectType,
+		capabilities: new Set<Capability>([...stubProjectType.capabilities, 'runtime-library']),
+		runtime: { packageId: 'runtime-vscode', targetDirName: 'codkit', nextSteps: () => [] }
+	};
+
+	function verifyDelivered(): readonly Finding[] {
+		return runVerify({ patchesDir: fixture.patchesDir, resolution: fixture.resolution, config: fixture.config, type: withRuntimeArea })
+			.findings;
+	}
 
 	/** Put one file where the delivered library lives, then remove the whole root. */
 	function withRuntimeCopy<T>(body: () => T): T {
@@ -431,7 +446,7 @@ describe('(h2) what codkit delivered into the own layer', () => {
 	it('reports an installed runtime library that is not what codkit ships', () => {
 		// PROP-015 ##RT-DELIVERED-NOT-OWN: the copy is managed, so anything but
 		// byte equality with the shipped library is drift.
-		const drift = withRuntimeCopy(verify).filter((item) => item.code === 'RUNTIME-DRIFT');
+		const drift = withRuntimeCopy(verifyDelivered).filter((item) => item.code === 'RUNTIME-DRIFT');
 
 		expect(drift.length).toBeGreaterThan(0);
 		expect(drift.some((item) => item.file === RUNTIME_FILE)).toBe(true);
@@ -439,11 +454,11 @@ describe('(h2) what codkit delivered into the own layer', () => {
 	});
 
 	it('does not ask a unit to declare the files codkit delivered', () => {
-		expect(withRuntimeCopy(verify).filter((item) => item.code === 'OWN-UNCOVERED')).toEqual([]);
+		expect(withRuntimeCopy(verifyDelivered).filter((item) => item.code === 'OWN-UNCOVERED')).toEqual([]);
 	});
 
 	it('says nothing about the runtime library when the product has not installed it', () => {
-		expect(verify().filter((item) => item.code === 'RUNTIME-DRIFT')).toEqual([]);
+		expect(verifyDelivered().filter((item) => item.code === 'RUNTIME-DRIFT')).toEqual([]);
 	});
 
 	it('refuses a unit whose root is inside the codkit root', () => {
@@ -467,7 +482,7 @@ describe('(h2) what codkit delivered into the own layer', () => {
 });
 
 describe('(h3) the graft budget of a hook patch', () => {
-	const COMMENT_LINE = '+\t\t// (hook body lives in patchset/ own code; this block only delegates)';
+	const COMMENT_LINE = '+\t\t// (hook body lives in own/ code; this block only delegates)';
 
 	/** Replace the one line the fixture grafts, keeping the hunk counts honest. */
 	function withGraft<T>(lines: readonly string[], body: () => T): T {
@@ -497,7 +512,7 @@ describe('(h3) the graft budget of a hook patch', () => {
 				'const host = this.instantiationService.createInstance(PatchsetHost);',
 				'const two = host.first();',
 				'const three = host.second();',
-				'const four = host.third(); // patchset/ own code',
+				'const four = host.third(); // own/ code',
 				''
 			],
 			verify
@@ -514,11 +529,11 @@ describe('(h3) the graft budget of a hook patch', () => {
 		const budget = findings.filter((item) => item.code === 'HOOK-TOO-LARGE');
 
 		expect(budget).toHaveLength(1);
-		expect(budget[0]?.message).toContain('names no path under patchset/');
+		expect(budget[0]?.message).toContain('names no path under own/');
 	});
 
 	it('accepts three lines of code when one of them reaches own code', () => {
-		const findings = withGraft(["import { hook } from '../../../patchset/hook.js';", 'const done = hook(this);', 'void done;'], verify);
+		const findings = withGraft(["import { hook } from '../../../own/hook.js';", 'const done = hook(this);', 'void done;'], verify);
 
 		expect(findings.filter((item) => item.code === 'HOOK-TOO-LARGE')).toEqual([]);
 	});
@@ -535,7 +550,7 @@ describe('(i) no intervention outside the inventory', () => {
 			const findings = verify();
 			const untracked = findings.filter((item) => item.code === 'UNTRACKED-INTERVENTION');
 			expect(untracked).toHaveLength(1);
-			expect(untracked[0]?.message).toContain('src/vs/workbench/browser/parts/example/examplePart.ts');
+			expect(untracked[0]?.message).toContain('source/app/browser/parts/example/examplePart.ts');
 			expect(untracked[0]?.message).toContain('no artifact of the delta explains it');
 		} finally {
 			writeFileSync(path, saved, 'utf8');
@@ -603,7 +618,7 @@ function addServiceOverride(text: string, module: string, serviceId = 'IFixtureS
 		throw new Error('fixture manifest has no own unit');
 	}
 	manifest.serviceOverrides.push({
-		id: 'CK-workbench-999',
+		id: 'CK-shell-999',
 		serviceId,
 		module,
 		owner: unit.owner,
@@ -627,6 +642,6 @@ describe('(m) the layers the project type does not provide', () => {
 	});
 
 	it('passes the layer gate when the type declares every optional layer of the delta', () => {
-		expect(verifyUnder([...vscodeType.capabilities])).toBeNull();
+		expect(verifyUnder([...stubProjectType.capabilities])).toBeNull();
 	});
 });

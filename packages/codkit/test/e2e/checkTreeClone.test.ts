@@ -13,6 +13,7 @@ import { runGit } from '../../src/lib/gitx.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { makePatchSet } from '../fixtures/makePatchSet.ts';
+import { TEST_BUILD_CONDITION, withStubType } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -50,6 +51,7 @@ afterAll(() => {
 });
 
 function runCli(args: readonly string[], extraEnv: Readonly<Record<string, string>> = {}): Run {
+	extraEnv = withStubType(extraEnv);
 	const env: Record<string, string> = {};
 	for (const [key, value] of Object.entries(process.env)) {
 		if (value !== undefined) {
@@ -61,7 +63,7 @@ function runCli(args: readonly string[], extraEnv: Readonly<Record<string, strin
 	env['CODKIT_PATCHES_DIR'] = patchsetFixture;
 	Object.assign(env, extraEnv);
 
-	const result = spawnSync(process.execPath, [launcher, ...args], { cwd: patchsetFixture, env, encoding: 'utf8' });
+	const result = spawnSync(process.execPath, [TEST_BUILD_CONDITION, launcher, ...args], { cwd: patchsetFixture, env, encoding: 'utf8' });
 	return { status: result.status ?? -1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 }
 

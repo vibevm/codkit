@@ -86,10 +86,10 @@ describe('PreToolUse policy', () => {
 	});
 
 	it.each([
-		['scout', 'cycle/reports/1.136.0-scout-CK-workbench-901.md'],
+		['scout', 'cycle/reports/1.136.0-scout-CK-shell-901.md'],
 		['verify', 'cycle/reports/1.136.0-verify-1.md'],
 		['review', 'cycle/reports/1.136.0-review.md'],
-		['cause', '.codkit/agent-cause-CK-workbench-901.json']
+		['cause', '.codkit/agent-cause-CK-shell-901.json']
 	] as const)('allows only the exact %s report output and no tree edit', (kind, output) => {
 		const roots = fixtureRoots(`report-${kind}`);
 		writeReportTask(roots.project, kind, output);

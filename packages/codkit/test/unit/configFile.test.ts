@@ -27,8 +27,8 @@ const VALID_SAMPLE = {
 	codkitConfig: 2,
 	pin: { tag: '1.135.0', sha: '08d4889f9ec4a1685d257b9b95de036c8e1ce1e5', date: '2026-08-25' },
 	upstreamAnchorCommit: '0000000000000000000000000000000000000000',
-	type: 'vscode',
-	typeConfig: { ownRoot: 'src/vs/patchset' },
+	type: 'stub',
+	typeConfig: { ownRoot: 'source/own' },
 	generatedBranchPrefix: 'codkit/applied/',
 	cycleBranchPrefix: 'codkit/cycle/',
 	releaseRefPrefix: 'codkit/release/',
@@ -68,8 +68,8 @@ describe('parseBaseConfig', () => {
 	it('accepts the valid sample from the spec', () => {
 		const config = parseBaseConfig(VALID_SAMPLE, CONFIG_FILE_NAME);
 		expect(config.pin.sha).toBe('08d4889f9ec4a1685d257b9b95de036c8e1ce1e5');
-		expect(config.type).toBe('vscode');
-		expect(config.typeConfig.ownRoot).toBe('src/vs/patchset');
+		expect(config.type).toBe('stub');
+		expect(config.typeConfig.ownRoot).toBe('source/own');
 		expect(config.buildWatchFile).toBeNull();
 		expect(config.conventionsExtensionFile).toBeNull();
 	});
@@ -128,7 +128,7 @@ describe('parseBaseConfig', () => {
 		expect(catchCkError(() => parseBaseConfig(typo, CONFIG_FILE_NAME)).message).toContain('forkdir');
 	});
 
-	it.each(['../outside', 'src/vs/../../outside', '/absolute', '', 'src/vs/x/'])('refuses unsafe typeConfig.ownRoot %j', (ownRoot) => {
+	it.each(['../outside', 'source/../../outside', '/absolute', '', 'source/x/'])('refuses unsafe typeConfig.ownRoot %j', (ownRoot) => {
 		const error = catchCkError(() => parseBaseConfig({ ...VALID_SAMPLE, typeConfig: { ownRoot } }, CONFIG_FILE_NAME));
 
 		expect(error.code).toBe('CONFIG');
@@ -211,7 +211,7 @@ describe('mergeLocal', () => {
 	const base = parseBaseConfig(VALID_SAMPLE, CONFIG_FILE_NAME);
 
 	it('lets a non-empty local field win', () => {
-		expect(mergeLocal(base, { typeConfig: { ownRoot: 'src/vs/custom' } }).typeConfig.ownRoot).toBe('src/vs/custom');
+		expect(mergeLocal(base, { typeConfig: { ownRoot: 'source/custom' } }).typeConfig.ownRoot).toBe('source/custom');
 	});
 
 	it('keeps the base value for absent, null and empty local fields', () => {
@@ -221,7 +221,7 @@ describe('mergeLocal', () => {
 	});
 
 	it('never lets the merge touch the pin', () => {
-		const merged = mergeLocal(base, { typeConfig: { ownRoot: 'src/vs/custom' } });
+		const merged = mergeLocal(base, { typeConfig: { ownRoot: 'source/custom' } });
 		expect(merged.pin).toEqual(base.pin);
 		expect(merged.upstreamAnchorCommit).toBe(base.upstreamAnchorCommit);
 		expect(merged.codkitConfig).toBe(2);
@@ -242,8 +242,8 @@ describe('loadConfig', () => {
 	it('applies codkit.local.json on top', () => {
 		const root = makeTempRoot('patchset');
 		writeJson(root, CONFIG_FILE_NAME, VALID_SAMPLE);
-		writeJson(root, LOCAL_CONFIG_FILE_NAME, { typeConfig: { ownRoot: 'src/vs/custom' } });
-		expect(loadConfig(root)?.typeConfig.ownRoot).toBe('src/vs/custom');
+		writeJson(root, LOCAL_CONFIG_FILE_NAME, { typeConfig: { ownRoot: 'source/custom' } });
+		expect(loadConfig(root)?.typeConfig.ownRoot).toBe('source/custom');
 	});
 
 	it('fails when codkit.local.json carries a pin', () => {
@@ -285,7 +285,7 @@ describe('loadConfig', () => {
 
 		const localRoot = makeTempRoot('config-read-local-symlink');
 		writeJson(localRoot, CONFIG_FILE_NAME, VALID_SAMPLE);
-		writeJson(outside, LOCAL_CONFIG_FILE_NAME, { typeConfig: { ownRoot: 'src/vs/outside' } });
+		writeJson(outside, LOCAL_CONFIG_FILE_NAME, { typeConfig: { ownRoot: 'source/outside' } });
 		symlinkSync(join(outside, LOCAL_CONFIG_FILE_NAME), join(localRoot, LOCAL_CONFIG_FILE_NAME));
 		expect(() => loadConfig(localRoot)).toThrow(/regular non-symlink/);
 	});
@@ -319,7 +319,7 @@ describe('canonical pin updates', () => {
 	it('preserves a newer external edit injected after compare and before replace', () => {
 		const root = makeTempRoot('config-before-replace');
 		writeJson(root, CONFIG_FILE_NAME, VALID_SAMPLE);
-		const newer = { ...VALID_SAMPLE, typeConfig: { ownRoot: 'src/vs/newer-external-edit' } };
+		const newer = { ...VALID_SAMPLE, typeConfig: { ownRoot: 'source/newer-external-edit' } };
 		const lock = acquireLock(root, 'cycle-global', 'config compare barrier');
 		try {
 			expect(() =>
@@ -369,7 +369,7 @@ describe('canonical pin updates', () => {
 	it('serializes canonical key order and atomically updates only the shared base pin', () => {
 		const root = makeTempRoot('config-write');
 		writeJson(root, CONFIG_FILE_NAME, VALID_SAMPLE);
-		writeJson(root, LOCAL_CONFIG_FILE_NAME, { typeConfig: { ownRoot: 'src/vs/custom' } });
+		writeJson(root, LOCAL_CONFIG_FILE_NAME, { typeConfig: { ownRoot: 'source/custom' } });
 		const targetPin = { tag: '1.136.0', sha: 'b'.repeat(40), date: '2026-09-01' };
 
 		expect(writePin(root, targetPin, { temporarySuffix: () => 'first' })).toBe(true);
@@ -388,7 +388,7 @@ describe('canonical pin updates', () => {
 			'conventionsExtensionFile'
 		]);
 		expect(base['pin']).toEqual(targetPin);
-		expect(loadConfig(root)?.typeConfig.ownRoot).toBe('src/vs/custom');
+		expect(loadConfig(root)?.typeConfig.ownRoot).toBe('source/custom');
 		expect(writePin(root, targetPin, { temporarySuffix: () => 'unused' })).toBe(false);
 		expect(serializeBaseConfig(parseBaseConfig(base, CONFIG_FILE_NAME))).toBe(readFileSync(join(root, CONFIG_FILE_NAME), 'utf8'));
 	});

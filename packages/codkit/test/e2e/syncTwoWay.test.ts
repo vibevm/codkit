@@ -31,12 +31,12 @@ import type { CliFixture, Envelope, Run } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 /** F: the file whose patch artifact the patchset side moves. */
-const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
+const EXAMPLE_PATCH = 'delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch';
 /** G: the file the tree commits a change to. */
-const UTIL_PATH = 'src/vs/base/common/util.ts';
+const UTIL_PATH = 'source/base/common/util.ts';
 /** H: the file the tree leaves an uncommitted change in. */
-const LIFECYCLE_PATH = 'src/vs/base/common/lifecycle.ts';
-const LIFECYCLE_PATCH = 'delta/patches/src__vs__base__common__lifecycle.ts.ckpatch';
+const LIFECYCLE_PATH = 'source/base/common/lifecycle.ts';
+const LIFECYCLE_PATCH = 'delta/patches/source__base__common__lifecycle.ts.ckpatch';
 
 const G_BLOCK_ID = 'CK-base-905';
 const H_BLOCK_ID = 'CK-base-906';
@@ -79,7 +79,7 @@ function dirtyBlock(fixture: CliFixture, path: string, id: string, line: string)
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'two-way sync fixture'
 	]);
@@ -292,7 +292,7 @@ describe('S25: both sides changed F - the stop is the materialized merge (Phase 
 		// fixture patch already carries, on the other side of the two
 		// repositories.
 		const target = fixture.treePath(EXAMPLE_PART_PATH);
-		writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), 'CK-workbench-901', '\t\t// the tree side of F'), 'utf8');
+		writeFileSync(target, fillBlock(readFileSync(target, 'utf8'), 'CK-shell-901', '\t\t// the tree side of F'), 'utf8');
 		treeFileBefore = readFileSync(target, 'utf8');
 		artifactBefore = readFileSync(fixture.patchesPath(EXAMPLE_PATCH), 'utf8');
 		outcome = fixture.json(['sync']);

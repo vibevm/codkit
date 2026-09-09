@@ -18,13 +18,14 @@ import type { GitEnv } from '../../src/lib/gitx.ts';
 import { EXAMPLE_PART_PATH, makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { PATCH_ID, makePatchSet } from '../fixtures/makePatchSet.ts';
+import { TEST_BUILD_CONDITION, withStubType } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const launcher = join(packageRoot, 'bin', 'codkit.mjs');
 
 const BRANCH = 'codkit/applied/t1';
-const OWN_FILE = 'src/vs/patchset/hello.ts';
+const OWN_FILE = 'source/own/hello.ts';
 const RESOURCE_TARGET = 'resources/app-icon.bin';
 
 type Run = { status: number; stdout: string; stderr: string };
@@ -81,6 +82,7 @@ function treePath(label: string): string {
 }
 
 function runCli(args: readonly string[], extraEnv: Record<string, string> = {}): Run {
+	extraEnv = { ...withStubType(extraEnv) };
 	const env: Record<string, string> = {};
 	for (const [key, value] of Object.entries(process.env)) {
 		if (value !== undefined) {
@@ -90,7 +92,7 @@ function runCli(args: readonly string[], extraEnv: Record<string, string> = {}):
 	delete env['CODKIT_FORK_DIR'];
 	env['CODKIT_PATCHES_DIR'] = patchsetFixture;
 	Object.assign(env, extraEnv);
-	const result = spawnSync(process.execPath, [launcher, ...args], { cwd: patchsetFixture, env, encoding: 'utf8' });
+	const result = spawnSync(process.execPath, [TEST_BUILD_CONDITION, launcher, ...args], { cwd: patchsetFixture, env, encoding: 'utf8' });
 	return { status: result.status ?? -1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 }
 
@@ -162,18 +164,18 @@ describe('codkit load: applying the delta (S01)', () => {
 		// The exclude block is what keeps it invisible, not luck.
 		const exclude = readFileSync(join(tree, '.git', 'info', 'exclude'), 'utf8');
 		expect(exclude).toContain('# codkit:begin managed');
-		expect(exclude).toContain('/src/vs/patchset/');
+		expect(exclude).toContain('/source/own/');
 		expect(exclude).toContain('# codkit:end managed');
 		expect(gitOut(tree, ['status', '--porcelain', '--untracked-files=all'])).toBe('');
 	});
 
 	it('writes the dev channel of the config-overlay layer', () => {
-		const overrides = JSON.parse(readFileSync(join(tree, 'product.overrides.json'), 'utf8')) as Record<string, unknown>;
-		expect(overrides['nameShort']).toBe('Fixture PatchSet');
+		const overrides = JSON.parse(readFileSync(join(tree, 'manifest.overrides.json'), 'utf8')) as Record<string, unknown>;
+		expect(overrides['displayName']).toBe('Fixture PatchSet');
 		// $var is substituted at materialization time.
 		expect(overrides['patchsetUpstreamPin']).toBe('t1');
 		// The upstream file itself is untouched by the dev channel.
-		expect(JSON.parse(readFileSync(join(tree, 'product.json'), 'utf8'))['nameShort']).toBe('Fixture - OSS');
+		expect(JSON.parse(readFileSync(join(tree, 'manifest.json'), 'utf8'))['displayName']).toBe('Fixture Upstream');
 	});
 
 	it('carries the marker block of the patch on HEAD', () => {
@@ -221,13 +223,13 @@ describe('codkit load: applying the delta (S01)', () => {
 	});
 
 	it('is a no-op on the second run and does not touch mtimes (S03)', () => {
-		const before = mtimes(join(tree, 'src', 'vs', 'workbench'));
+		const before = mtimes(join(tree, 'source', 'app'));
 		const outcome = load(tree);
 
 		expect(outcome.run.status).toBe(0);
 		expect(outcome.envelope.data.status).toBe('up-to-date');
 		expect(outcome.envelope.messages.some((message) => message.text === 'up to date')).toBe(true);
-		const after = mtimes(join(tree, 'src', 'vs', 'workbench'));
+		const after = mtimes(join(tree, 'source', 'app'));
 		expect([...after.keys()].sort()).toEqual([...before.keys()].sort());
 		for (const [path, when] of before) {
 			expect(after.get(path)).toBe(when);
@@ -300,7 +302,7 @@ describe('codkit load: the drift guard', () => {
 
 describe('codkit load: the unit manifest of own code', () => {
 	const MANIFEST_IN_PATCHSET = 'patchset.delta.json';
-	const MANIFEST_IN_TREE = 'src/vs/patchset/patchset.delta.json';
+	const MANIFEST_IN_TREE = 'source/own/patchset.delta.json';
 
 	it('delivers own code without the manifest that declares it', () => {
 		const tree = freshTree(treePath('sync-manifest'));
@@ -341,8 +343,8 @@ describe('codkit load --fresh', () => {
 		writeFileSync(join(tree, 'scratch', 'deep', 'note.md'), 'more litter\n', 'utf8');
 		mkdirSync(join(tree, 'node_modules', 'pkg'), { recursive: true });
 		writeFileSync(join(tree, 'node_modules', 'pkg', 'index.js'), 'module.exports = 1;\n', 'utf8');
-		mkdirSync(join(tree, 'extensions', 'sample', 'out'), { recursive: true });
-		writeFileSync(join(tree, 'extensions', 'sample', 'out', 'main.js'), 'built\n', 'utf8');
+		mkdirSync(join(tree, 'addons', 'sample', 'out'), { recursive: true });
+		writeFileSync(join(tree, 'addons', 'sample', 'out', 'main.js'), 'built\n', 'utf8');
 		mkdirSync(join(tree, '.build'), { recursive: true });
 		writeFileSync(join(tree, '.build', 'stamp'), 'cache\n', 'utf8');
 
@@ -353,7 +355,7 @@ describe('codkit load --fresh', () => {
 		expect(existsSync(join(tree, 'scratch'))).toBe(false);
 		expect(existsSync(join(tree, 'node_modules', 'pkg', 'index.js'))).toBe(true);
 		expect(existsSync(join(tree, '.build', 'stamp'))).toBe(true);
-		expect(existsSync(join(tree, 'extensions', 'sample', 'out', 'main.js'))).toBe(true);
+		expect(existsSync(join(tree, 'addons', 'sample', 'out', 'main.js'))).toBe(true);
 		expect(existsSync(join(tree, OWN_FILE))).toBe(true);
 		expect((outcome.envelope.data.cleaned ?? 0) >= 2).toBe(true);
 	});
@@ -417,7 +419,7 @@ describe('codkit load --dry-run', () => {
 		expect(outcome.envelope.messages.some((message) => message.text.includes('all applicable'))).toBe(true);
 		expect(git(tree, ['rev-parse', '--verify', `refs/heads/${BRANCH}`]).status).not.toBe(0);
 		expect(gitOut(tree, ['rev-parse', 'HEAD'])).toBe(upstream.t1.sha);
-		expect(existsSync(join(tree, 'product.overrides.json'))).toBe(false);
+		expect(existsSync(join(tree, 'manifest.overrides.json'))).toBe(false);
 	});
 
 	it('does not run the guard and changes nothing on a dirty tree', () => {
@@ -426,7 +428,7 @@ describe('codkit load --dry-run', () => {
 		const tipBefore = gitOut(tree, ['rev-parse', 'HEAD']);
 		const target = join(tree, EXAMPLE_PART_PATH);
 		writeFileSync(target, `${readFileSync(target, 'utf8')}\n// unextracted\n`, 'utf8');
-		const before = mtimes(join(tree, 'src', 'vs', 'workbench'));
+		const before = mtimes(join(tree, 'source', 'app'));
 
 		const outcome = load(tree, ['--dry-run']);
 
@@ -434,7 +436,7 @@ describe('codkit load --dry-run', () => {
 		expect(outcome.envelope.errors).toEqual([]);
 		expect(gitOut(tree, ['rev-parse', 'HEAD'])).toBe(tipBefore);
 		expect(readFileSync(target, 'utf8')).toContain('// unextracted');
-		expect(mtimes(join(tree, 'src', 'vs', 'workbench'))).toEqual(before);
+		expect(mtimes(join(tree, 'source', 'app'))).toEqual(before);
 	});
 });
 

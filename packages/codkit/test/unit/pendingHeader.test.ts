@@ -23,14 +23,14 @@ import {
 import type { PendingHeader } from '../../src/lib/pendingHeader.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const TARGET = 'src/vs/workbench/browser/parts/example/examplePart.ts';
+const TARGET = 'source/app/browser/parts/example/examplePart.ts';
 
 const DRAFT: PendingHeader = {
-	id: 'CK-workbench-001',
+	id: 'CK-shell-001',
 	layer: 'patch',
 	type: 'hook',
 	category: 'follow',
-	owner: 'workbench-core',
+	owner: 'shell-core',
 	reason: 'mount point for patchset center-area host initialization',
 	link: 'none'
 };
@@ -42,7 +42,7 @@ afterAll(() => {
 describe('pendingPath', () => {
 	it('encodes the target the way the patch file name does', () => {
 		const root = makeTempRoot('pending-path');
-		expect(pendingFileName(TARGET)).toBe('src__vs__workbench__browser__parts__example__examplePart.ts.json');
+		expect(pendingFileName(TARGET)).toBe('source__app__browser__parts__example__examplePart.ts.json');
 		expect(pendingPath(root, TARGET)).toBe(join(root, ...PENDING_DIR.split('/'), pendingFileName(TARGET)));
 	});
 });
@@ -69,7 +69,7 @@ describe('a draft round trip', () => {
 		const before = readFileSync(path);
 
 		expect(writePendingHeader(root, TARGET, DRAFT)).toBe(path);
-		expect(() => writePendingHeader(root, TARGET, { ...DRAFT, id: 'CK-workbench-002' })).toThrow(/another pending header/);
+		expect(() => writePendingHeader(root, TARGET, { ...DRAFT, id: 'CK-shell-002' })).toThrow(/another pending header/);
 		expect(readFileSync(path)).toEqual(before);
 	});
 
@@ -141,18 +141,18 @@ describe('listPendingHeaders', () => {
 	it('lists every draft in file-name order', () => {
 		const root = makeTempRoot('pending-list');
 		writePendingHeader(root, TARGET, DRAFT);
-		writePendingHeader(root, 'src/vs/base/common/util.ts', { ...DRAFT, id: 'CK-base-002' });
+		writePendingHeader(root, 'source/base/common/util.ts', { ...DRAFT, id: 'CK-base-002' });
 
 		const listed = listPendingHeaders(root);
 
-		expect(listed.map((entry) => entry.header.id)).toEqual(['CK-base-002', 'CK-workbench-001']);
-		expect(listed[0]?.fileName).toBe('src__vs__base__common__util.ts.json');
+		expect(listed.map((entry) => entry.header.id)).toEqual(['CK-shell-001', 'CK-base-002']);
+		expect(listed[0]?.fileName).toBe('source__app__browser__parts__example__examplePart.ts.json');
 	});
 
 	it('refuses a draft that is not readable rather than ignoring it', () => {
 		const root = makeTempRoot('pending-broken');
 		const path = writePendingHeader(root, TARGET, DRAFT);
-		writeFileSync(path, '{ "id": "CK-workbench-001" }\n', 'utf8');
+		writeFileSync(path, '{ "id": "CK-shell-001" }\n', 'utf8');
 
 		try {
 			readPendingHeader(root, TARGET);

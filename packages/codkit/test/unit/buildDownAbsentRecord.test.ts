@@ -21,7 +21,7 @@ function rows(envelope: { data: Record<string, unknown> }): Row[] {
 	return (envelope.data as unknown as { channels: Row[] }).channels;
 }
 
-const CHANNELS = ['transpile', 'typecheck', 'extensions', 'copilot'];
+const CHANNELS = ['transpile', 'typecheck', 'addons', 'extras'];
 const TREE_ID = 'absent-record-test-tree';
 const TREE_PATH = '/absent-record/recorded/tree';
 const DEAD_PID = 424_242;
@@ -33,9 +33,9 @@ function deadRecord(nonce: string): Buffer {
 			{
 				codkitBuildDaemon: 1,
 				channel: 'transpile',
-				script: 'watch-client-transpile',
+				script: 'watch-transpile',
 				pid: DEAD_PID,
-				cmdline: 'watch-client-transpile',
+				cmdline: 'watch-transpile',
 				startedAt: '2026-09-01T00:00:00.000Z',
 				treeId: TREE_ID,
 				treePath: TREE_PATH,

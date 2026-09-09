@@ -10,7 +10,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Envelope } from '../support/cliFixture.ts';
-import { runCli } from '../support/cliFixture.ts';
+import { runCli, withStubType } from '../support/cliFixture.ts';
+import { STUB_OWN_ROOT, STUB_TYPE_ID } from '../fixtures/stubType.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
@@ -33,8 +34,8 @@ function makePatchSet(label: string): string {
 				codkitConfig: 2,
 				pin: { tag: '1.0.0', sha: 'f'.repeat(40), date: '2026-01-01' },
 				upstreamAnchorCommit: 'f'.repeat(40),
-				type: 'vscode',
-				typeConfig: { ownRoot: 'src/vs/patchset' },
+				type: STUB_TYPE_ID,
+				typeConfig: { ownRoot: STUB_OWN_ROOT },
 				generatedBranchPrefix: 'codkit/applied/',
 				cycleBranchPrefix: 'codkit/cycle/',
 				releaseRefPrefix: 'codkit/release/',
@@ -51,7 +52,7 @@ function makePatchSet(label: string): string {
 }
 
 function run(patchesDir: string, args: readonly string[]): { status: number; stdout: string; stderr: string } {
-	return runCli(patchesDir, ['--patches-dir', patchesDir, ...args]);
+	return runCli(patchesDir, ['--patches-dir', patchesDir, ...args], withStubType());
 }
 
 function json(patchesDir: string, args: readonly string[]): { status: number; envelope: Envelope } {
@@ -123,7 +124,7 @@ describe('S49 - gen feature writes the skeleton with the product header', () => 
 			expect(lines[0]).toBe('// Copyright (c) 2026 Acme');
 			expect(lines[3]).toBe('// SPDX-License-Identifier: MIT');
 		}
-		expect(read(patchesDir, CONTRIBUTION)).toContain('registerFeature(');
+		expect(read(patchesDir, CONTRIBUTION)).toContain('registerStubFeature(');
 		expect(read(patchesDir, CONTRIBUTION)).toContain('hotToggle: true,');
 	});
 
@@ -186,7 +187,8 @@ describe('S61 - gen feature writes the header form of the product and keeps the 
 		}
 		// One unit covers the code and the test alike, so the reminder names one.
 		expect(data.reminders).toEqual([
-			'declare a unit for delta/own/contrib/sample in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED'
+			'declare a unit for delta/own/contrib/sample in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED',
+			'teach the stub family about sample'
 		]);
 	});
 
@@ -273,11 +275,11 @@ describe('S50 - gen brand writes the table and prints the graft', () => {
 		expect(outcome.status).toBe(0);
 		const data = outcome.envelope.data as { file: string; hookText: string; reminders: string[] };
 		expect(data.file).toBe(BRAND);
-		expect(read(patchesDir, BRAND)).toContain('createBrandTransform');
-		expect(read(patchesDir, BRAND)).toContain('export const brandMessage = createBrandTransform(RULES);');
+		expect(read(patchesDir, BRAND)).toContain('createStubBrandTransform');
+		expect(read(patchesDir, BRAND)).toContain('export const brandMessage = createStubBrandTransform(RULES);');
 		expect(data.hookText).toContain('brandMessage(');
 		expect(data.reminders.some((line) => line.includes('type = hook'))).toBe(true);
-		expect(data.reminders.some((line) => line.includes('nls.ts') && line.includes('code-import-patterns'))).toBe(true);
+		expect(data.reminders.some((line) => line.includes('layering rules'))).toBe(true);
 	});
 });
 

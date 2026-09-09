@@ -26,7 +26,7 @@ afterAll(cleanupTempRoots);
 
 const CHANNEL: ChannelConfig = {
 	name: 'transpile',
-	script: 'watch-client-transpile',
+	script: 'watch-transpile',
 	passStart: [/^start$/],
 	passEnd: [/^end$/],
 	errorLine: [/^error: (.+)$/],
@@ -37,7 +37,7 @@ const CHANNEL: ChannelConfig = {
 function fixture(label: string): { readonly patchesDir: string; readonly treeDir: string; readonly treeId: string } {
 	const patchesDir = makeTempRoot(`${label}-patches`);
 	const treeDir = makeTempRoot(`${label}-tree`);
-	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-client-transpile': 'fixture' } }), 'utf8');
+	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-transpile': 'fixture' } }), 'utf8');
 	return { patchesDir, treeDir, treeId: 'fixture-tree' };
 }
 
@@ -172,7 +172,7 @@ describe('a daemon spawned by up never outlives the operation that started it', 
 });
 
 describe('the cleanup of a spawned daemon proves the target before it signals', () => {
-	const SCRIPT = 'watch-client-transpile';
+	const SCRIPT = 'watch-transpile';
 
 	/** A process table in which `pid` answers with `args`, or is absent. */
 	function probeWith(args: readonly string[] | null, signals: Array<readonly [number, string]>) {
@@ -203,7 +203,7 @@ describe('the cleanup of a spawned daemon proves the target before it signals', 
 		// space. Killing `-pid` here would take out that whole group.
 		const signals: Array<readonly [number, string]> = [];
 		expect(() => terminateSpawnedDaemon(4242, SCRIPT, probeWith(['sshd:', 'olegchir@pts/0'], signals))).toThrow(
-			/pid 4242 no longer runs watch-client-transpile; refusing to signal a process group/
+			/pid 4242 no longer runs watch-transpile; refusing to signal a process group/
 		);
 		// Loud, and empty-handed: never a silent skip, which is how the watcher
 		// leak returns, and never a kill, which is how a stranger's group dies.

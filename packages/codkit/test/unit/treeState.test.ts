@@ -30,7 +30,7 @@ const IDENTITY: GitEnv = {
 	GIT_COMMITTER_DATE: '2026-09-06T11:00:00Z'
 };
 
-const TARGET = 'src/vs/workbench/browser/parts/example/examplePart.ts';
+const TARGET = 'source/app/browser/parts/example/examplePart.ts';
 
 let fixture: SyncFixture;
 
@@ -108,7 +108,7 @@ describe('changesSince over the worktree state', () => {
 	});
 
 	it('sees an untracked path with the porcelain letters', () => {
-		const path = 'src/vs/workbench/browser/parts/example/newFile.ts';
+		const path = 'source/app/browser/parts/example/newFile.ts';
 		writeFileSync(treePath(path), '// untracked\n', 'utf8');
 		try {
 			expect(changes().map((entry) => entry.path)).toEqual([path]);
@@ -175,7 +175,7 @@ describe('changesSince over the worktree state', () => {
 		writeFileSync(treePath(TARGET), `${readTarget()}// unstaged line\n`, 'utf8');
 		try {
 			const forced = changes([TARGET, 'src/other.ts']);
-			expect(forced.map((entry) => entry.path)).toEqual(['src/other.ts', TARGET]);
+			expect(forced.map((entry) => entry.path)).toEqual([TARGET, 'src/other.ts']);
 			expect(forced.find((entry) => entry.path === TARGET)?.status).toBe('M');
 			expect(forced.find((entry) => entry.path === 'src/other.ts')?.status).toBe(' M');
 		} finally {

@@ -15,7 +15,7 @@ import { OVERLAY_ID, OWN_UNIT_ID, PATCH_FILE_NAME, PATCH_ID, RESOURCE_ID } from 
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 afterAll(cleanupTempRoots);
 
@@ -35,7 +35,7 @@ describe('complete generated branch objects', () => {
 		const subjects = commits.map((commit) => gitOut(fixture.treeDir, ['show', '-s', '--format=%s', commit]));
 		expect(subjects).toEqual([
 			expect.stringContaining(PATCH_ID),
-			'codkit: own code src/vs/patchset',
+			'codkit: own code source/own',
 			expect.stringContaining(OVERLAY_ID),
 			expect.stringContaining(RESOURCE_ID)
 		]);
@@ -43,11 +43,11 @@ describe('complete generated branch objects', () => {
 		const ownCommit = commits[1];
 		expect(ownCommit).toBeDefined();
 		const ownPaths = gitOut(fixture.treeDir, ['diff-tree', '--no-commit-id', '--name-only', '-r', ownCommit ?? '']).split('\n');
-		expect(ownPaths).toEqual(['src/vs/patchset/hello.ts', 'src/vs/patchset/test/fixture.test.ts']);
-		expect(gitOut(fixture.treeDir, ['show', `${first}:src/vs/patchset/hello.ts`])).toBe(
+		expect(ownPaths).toEqual(['source/own/hello.ts', 'source/own/test/fixture.test.ts']);
+		expect(gitOut(fixture.treeDir, ['show', `${first}:source/own/hello.ts`])).toBe(
 			readFileSync(join(fixture.patchesDir, 'delta', 'own', 'hello.ts'), 'utf8').trimEnd()
 		);
-		expect(runGit({ args: ['cat-file', '-e', `${first}:src/vs/patchset/patchset.delta.json`], cwd: fixture.treeDir }).status).not.toBe(0);
+		expect(runGit({ args: ['cat-file', '-e', `${first}:source/own/patchset.delta.json`], cwd: fixture.treeDir }).status).not.toBe(0);
 
 		const body = gitOut(fixture.treeDir, ['show', '-s', '--format=%B', ownCommit ?? '']);
 		expect(body).toContain(`Codkit-Patchset-Commit: ${gitOut(fixture.patchesDir, ['rev-parse', 'HEAD'])}`);
@@ -68,7 +68,7 @@ describe('complete generated branch objects', () => {
 		const current = buildGenerated(fixture);
 
 		expect(current).not.toBe(base);
-		expect(gitOut(fixture.treeDir, ['diff', '--name-only', base, current])).toBe('src/vs/patchset/hello.ts');
+		expect(gitOut(fixture.treeDir, ['diff', '--name-only', base, current])).toBe('source/own/hello.ts');
 	});
 
 	it('skips the own atom when the delivered own layer is empty', () => {
@@ -82,7 +82,7 @@ describe('complete generated branch objects', () => {
 		const subjects = gitOut(fixture.treeDir, ['log', '--reverse', '--format=%s', `${fixture.upstream.t1.sha}..${first}`]).split('\n');
 		expect(subjects).toHaveLength(3);
 		expect(subjects.some((subject) => subject.includes('own code'))).toBe(false);
-		expect(runGit({ args: ['cat-file', '-e', `${first}:src/vs/patchset/hello.ts`], cwd: fixture.treeDir }).status).not.toBe(0);
+		expect(runGit({ args: ['cat-file', '-e', `${first}:source/own/hello.ts`], cwd: fixture.treeDir }).status).not.toBe(0);
 	});
 
 	it('refuses another layer targeting delivered own code before cleanup or commit', async () => {
@@ -91,7 +91,7 @@ describe('complete generated branch objects', () => {
 		const map = JSON.parse(readFileSync(mapPath, 'utf8')) as { entries: { target: string }[] };
 		const entry = map.entries[0];
 		expect(entry).toBeDefined();
-		if (entry !== undefined) entry.target = 'src/vs/patchset/hello.ts';
+		if (entry !== undefined) entry.target = 'source/own/hello.ts';
 		writeFileSync(mapPath, `${JSON.stringify(map, null, 2)}\n`, 'utf8');
 		const litter = join(fixture.treeDir, 'collision-preflight-litter.txt');
 		writeFileSync(litter, 'must survive failed --fresh preflight\n', 'utf8');
@@ -101,7 +101,7 @@ describe('complete generated branch objects', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
-			type: vscodeType,
+			type: stubProjectType,
 			out,
 			fresh: true,
 			dryRun: false,
@@ -113,7 +113,7 @@ describe('complete generated branch objects', () => {
 		expect(result.status).toBe('broken');
 		const [error] = out.buildEnvelope(result.exitCode).errors;
 		expect(error?.code).toBe('CK-E-ARTIFACT-BROKEN');
-		expect(error?.message).toContain('src/vs/patchset/hello.ts');
+		expect(error?.message).toContain('source/own/hello.ts');
 		expect(error?.message).toContain('resource layer');
 		expect(error?.message).toContain('own layer');
 		expect(existsSync(litter)).toBe(true);
@@ -124,7 +124,7 @@ describe('complete generated branch objects', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
-			type: vscodeType,
+			type: stubProjectType,
 			out: ciOut,
 			profile: 'verify',
 			effectiveDiffBase: null,
@@ -138,7 +138,7 @@ describe('complete generated branch objects', () => {
 
 	it.each([
 		['unit', OWN_UNIT_ID],
-		['serviceOverride', 'CK-workbench-999']
+		['serviceOverride', 'CK-shell-999']
 	] as const)('rejects a patch id already claimed by an own %s before cleanup', (kind, duplicateId) => {
 		const fixture = makeSyncFixture(`generated-own-id-${kind}`);
 		if (kind === 'serviceOverride') {
@@ -148,7 +148,7 @@ describe('complete generated branch objects', () => {
 				id: duplicateId,
 				serviceId: 'fixtureService',
 				module: 'hello.ts',
-				owner: 'workbench-core',
+				owner: 'shell-core',
 				reason: 'fixture duplicate generated id',
 				link: 'none',
 				cause: 'none',
@@ -167,7 +167,7 @@ describe('complete generated branch objects', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
-			type: vscodeType,
+			type: stubProjectType,
 			out,
 			fresh: true,
 			dryRun: false,
@@ -192,7 +192,7 @@ describe('full and local load modes', () => {
 			patchesDir: fixture.patchesDir,
 			resolution: fixture.resolution,
 			config: fixture.config,
-			type: vscodeType,
+			type: stubProjectType,
 			out: output(),
 			profile: 'verify',
 			effectiveDiffBase: null,
@@ -201,34 +201,30 @@ describe('full and local load modes', () => {
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(gitOut(fixture.treeDir, ['ls-files', 'src/vs/patchset'])).toBe(
-			['src/vs/patchset/hello.ts', 'src/vs/patchset/test/fixture.test.ts'].join('\n')
-		);
+		expect(gitOut(fixture.treeDir, ['ls-files', 'source/own'])).toBe(['source/own/hello.ts', 'source/own/test/fixture.test.ts'].join('\n'));
 		expect(
 			gitOut(fixture.treeDir, ['log', '--format=%s', `${fixture.upstream.t1.sha}..HEAD`])
 				.split('\n')
-				.filter((subject) => subject === 'codkit: own code src/vs/patchset')
+				.filter((subject) => subject === 'codkit: own code source/own')
 		).toHaveLength(1);
 	});
 
 	it('tracks own code in full mode without poisoning the local fast path', () => {
 		const fixture = makeSyncFixture('generated-sync-mode');
 		const full = runFullSync(fixture);
-		const nonPatchTargets = ['product.json', 'resources/app-icon.bin', 'src/vs/patchset/hello.ts', 'src/vs/patchset/test/fixture.test.ts'];
+		const nonPatchTargets = ['manifest.json', 'resources/app-icon.bin', 'source/own/hello.ts', 'source/own/test/fixture.test.ts'];
 
 		expect(full.status).toBe('applied');
 		expect(full.nonPatchTargets).toEqual(nonPatchTargets);
-		expect(gitOut(fixture.treeDir, ['ls-files', 'src/vs/patchset'])).toBe(
-			['src/vs/patchset/hello.ts', 'src/vs/patchset/test/fixture.test.ts'].join('\n')
-		);
+		expect(gitOut(fixture.treeDir, ['ls-files', 'source/own'])).toBe(['source/own/hello.ts', 'source/own/test/fixture.test.ts'].join('\n'));
 		expect(gitOut(fixture.treeDir, ['status', '--porcelain', '--untracked-files=all'])).toBe('');
 		expect(runFullSync(fixture).status).toBe('up-to-date');
 
 		const local = fixture.sync();
 		expect(local.status).toBe('applied');
 		expect(local.nonPatchTargets).toEqual(nonPatchTargets);
-		expect(gitOut(fixture.treeDir, ['ls-files', 'src/vs/patchset'])).toBe('');
-		expect(readFileSync(join(fixture.treeDir, 'src', 'vs', 'patchset', 'hello.ts'), 'utf8')).toContain('export function hello');
+		expect(gitOut(fixture.treeDir, ['ls-files', 'source/own'])).toBe('');
+		expect(readFileSync(join(fixture.treeDir, 'source', 'own', 'hello.ts'), 'utf8')).toContain('export function hello');
 		expect(gitOut(fixture.treeDir, ['status', '--porcelain', '--untracked-files=all'])).toBe('');
 		const localSubjects = gitOut(fixture.treeDir, ['log', '--reverse', '--format=%s', `${fixture.upstream.t1.sha}..HEAD`]).split('\n');
 		expect(localSubjects).toHaveLength(2);
@@ -245,7 +241,7 @@ describe('full and local load modes', () => {
 		commitIndex(fixture.patchesDir, 'fixture: make own file executable', '2026-02-04T00:00:00Z');
 		const changed = runFullSync(fixture);
 		expect(changed.status).toBe('applied');
-		expect(gitOut(fixture.treeDir, ['ls-tree', changed.branchTip ?? '', '--', 'src/vs/patchset/hello.ts'])).toMatch(/^100755 /);
+		expect(gitOut(fixture.treeDir, ['ls-tree', changed.branchTip ?? '', '--', 'source/own/hello.ts'])).toMatch(/^100755 /);
 
 		const patchSetCommit = gitOut(fixture.patchesDir, ['rev-parse', 'HEAD']);
 		const checkout = checkoutPatchSetRef(fixture.patchesDir, patchSetCommit);
@@ -256,13 +252,13 @@ describe('full and local load modes', () => {
 				patchesDir: checkout.dir,
 				resolution: fixture.resolution,
 				config: config ?? fixture.config,
-				type: vscodeType,
+				type: stubProjectType,
 				out: output(),
 				verbose: false,
 				patchSetCommit,
 				patchesRepositoryRoot: fixture.patchesDir
 			});
-			expect(gitOut(fixture.treeDir, ['ls-tree', scratchTip, '--', 'src/vs/patchset/hello.ts'])).toMatch(/^100755 /);
+			expect(gitOut(fixture.treeDir, ['ls-tree', scratchTip, '--', 'source/own/hello.ts'])).toMatch(/^100755 /);
 		} finally {
 			checkout.release();
 		}
@@ -274,7 +270,7 @@ function buildGenerated(fixture: SyncFixture): string {
 		patchesDir: fixture.patchesDir,
 		resolution: fixture.resolution,
 		config: fixture.config,
-		type: vscodeType,
+		type: stubProjectType,
 		out: output(),
 		verbose: false
 	});
@@ -285,7 +281,7 @@ function runFullSync(fixture: SyncFixture) {
 		patchesDir: fixture.patchesDir,
 		resolution: fixture.resolution,
 		config: fixture.config,
-		type: vscodeType,
+		type: stubProjectType,
 		out: output(),
 		fresh: false,
 		dryRun: false,

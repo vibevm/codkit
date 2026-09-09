@@ -13,8 +13,8 @@ import { checkTree, LFS_POINTER_MARKER } from '../../src/lib/treeIdentity.ts';
 import type { TreeCheck, TreeCheckId } from '../../src/lib/treeIdentity.ts';
 import { fixtureCommit, fixtureGit, makeUpstream, pinDate } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
-import { stubType } from '../support/stubType.ts';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
+import { stubType } from '../fixtures/stubType.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(() => {
@@ -31,8 +31,8 @@ function configFor(fixture: UpstreamFixture): CodkitConfig {
 		codkitConfig: 2,
 		pin: { tag: fixture.t1.tag, sha: fixture.t1.sha, date: pinDate(fixture.t1.dateIso) },
 		upstreamAnchorCommit: fixture.anchorSha,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: 'stub',
+		typeConfig: { ownRoot: 'source/own' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -185,8 +185,8 @@ describe('checkTree git-lfs check', () => {
 			codkitConfig: 2,
 			pin: { tag: 'lfs-fixture', sha, date: '2026-01-03' },
 			upstreamAnchorCommit: sha,
-			type: 'vscode',
-			typeConfig: { ownRoot: 'src/vs/patchset' },
+			type: 'stub',
+			typeConfig: { ownRoot: 'source/own' },
 			generatedBranchPrefix: 'codkit/applied/',
 			cycleBranchPrefix: 'codkit/cycle/',
 			releaseRefPrefix: 'codkit/release/',
@@ -218,7 +218,7 @@ describe('checkTree cleanliness', () => {
 
 	it('does not count own code as dirt', () => {
 		const fixture = upstreamFixture('own-only');
-		const own = join(fixture.dir, 'src', 'vs', 'patchset');
+		const own = join(fixture.dir, 'source', 'own');
 		mkdirSync(own, { recursive: true });
 		writeFileSync(join(own, 'scratch.ts'), 'export const scratch = 1;\n', 'utf8');
 
@@ -236,7 +236,7 @@ describe('checkTree cleanliness', () => {
 describe('checkTree fingerprints of the declared family', () => {
 	it('runs the check when a type is given and reports what it found', () => {
 		const fixture = upstreamFixture('family-ok');
-		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: vscodeType });
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: stubProjectType });
 
 		expect(result.fatal).toBeNull();
 		expect(ids(result.checks)).toEqual(['repo', 'upstream', 'pin', 'fingerprints', 'lfs']);
@@ -252,13 +252,13 @@ describe('checkTree fingerprints of the declared family', () => {
 
 	it('refuses a tree that is missing a path the type names, and says why it matters', () => {
 		const fixture = upstreamFixture('family-missing');
-		rmSync(join(fixture.dir, 'product.json'));
+		rmSync(join(fixture.dir, 'manifest.json'));
 
-		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: vscodeType });
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: stubProjectType });
 
 		expect(result.fatal?.code).toBe('NOT-UPSTREAM');
-		expect(result.fatal?.message).toContain('product.json is missing');
-		expect(result.fatal?.message).toContain('the product manifest of the distribution');
+		expect(result.fatal?.message).toContain('manifest.json is missing');
+		expect(result.fatal?.message).toContain('the manifest of the product');
 		expect(find(result.checks, 'fingerprints').ok).toBe(false);
 		// The sequence stops at the first fatal check, so nothing after it ran.
 		expect(ids(result.checks)).toEqual(['repo', 'upstream', 'pin', 'fingerprints']);
@@ -278,11 +278,11 @@ describe('checkTree fingerprints of the declared family', () => {
 						contentProblem: (files) => ((files.get('package.json') ?? '').includes(`"${'name'}"`) ? null : 'carries no name of the project')
 					},
 					{
-						path: 'product.json',
+						path: 'manifest.json',
 						kind: 'file',
 						why: 'the product manifest',
 						contentProblem: (files) =>
-							files.get('package.json') === files.get('product.json') ? null : 'does not repeat the root manifest byte for byte'
+							files.get('package.json') === files.get('manifest.json') ? null : 'does not repeat the root manifest byte for byte'
 					}
 				]
 			}
@@ -291,13 +291,14 @@ describe('checkTree fingerprints of the declared family', () => {
 		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type });
 
 		expect(result.fatal?.code).toBe('NOT-UPSTREAM');
-		expect(result.fatal?.message).toContain('product.json: does not repeat the root manifest');
+		expect(result.fatal?.message).toContain('manifest.json: does not repeat the root manifest');
 		expect(result.fatal?.message).not.toContain('package.json: carries no name');
 	});
 
 	it('passes vacuously for a type that names no fingerprint', () => {
 		const fixture = upstreamFixture('family-none');
-		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type: stubType() });
+		const type = stubType({ identity: { ...stubProjectType.identity, fingerprints: [] } });
+		const result = checkTree(resolution(fixture.dir), configFor(fixture), { mode: 'read', type });
 
 		expect(result.fatal).toBeNull();
 		expect(find(result.checks, 'fingerprints').info).toContain('names none');

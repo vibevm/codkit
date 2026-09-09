@@ -7,9 +7,9 @@ import type { UpstreamRef } from '../fixtures/makeUpstream.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
-const TARGET = 'src/vs/base/common/util.ts';
-const ARTIFACT = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
-const OTHER_ARTIFACT = 'delta/patches/src__vs__base__common__other.ts.ckpatch';
+const TARGET = 'source/base/common/util.ts';
+const ARTIFACT = 'delta/patches/source__base__common__util.ts.ckpatch';
+const OTHER_ARTIFACT = 'delta/patches/source__base__common__other.ts.ckpatch';
 const FIRST = 'CK-base-951';
 const SECOND = 'CK-base-952';
 
@@ -60,7 +60,7 @@ function scaffold(fixture: ReturnType<typeof makeCliFixture>, id: string, layer:
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'shared entry marker layout',
 		'--layer',
@@ -90,14 +90,14 @@ function siblingEntryModulePatch(pin: UpstreamRef, id: string): string {
 		'# layer: entry-module',
 		'# type: hook',
 		'# category: follow',
-		'# owner: workbench-core',
+		'# owner: shell-core',
 		'# reason: sibling entry-module patch sharing the marker layout',
 		'# link: none',
 		'# cause: none',
 		`# pin: ${pin.tag}@${pin.sha}`,
 		'# contract-tests: none',
 		'--- /dev/null',
-		'+++ b/src/vs/base/common/other.ts',
+		'+++ b/source/base/common/other.ts',
 		'@@ -0,0 +1,3 @@',
 		`+// codkit:begin ${id}`,
 		'+// the sibling entry-module body',

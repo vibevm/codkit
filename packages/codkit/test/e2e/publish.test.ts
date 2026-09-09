@@ -21,7 +21,7 @@ import { OWN_UNIT_ID, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 afterAll(cleanupTempRoots);
 
@@ -99,13 +99,13 @@ describe('publish generated branch', () => {
 
 		const subjects = remoteOut(remote, ['log', '--reverse', '--format=%s', `${fixture.upstream.t1.sha}..${tip}`]).split('\n');
 		expect(subjects).toHaveLength(4);
-		expect(subjects[1]).toBe('codkit: own code src/vs/patchset');
-		expect(subjects[2]).toContain('product.json');
+		expect(subjects[1]).toBe('codkit: own code source/own');
+		expect(subjects[2]).toContain('manifest.json');
 		expect(subjects[3]).toContain('app-icon.bin');
 		const history = remoteOut(remote, ['log', '--format=%B', `${fixture.upstream.t1.sha}..${tip}`]);
 		expect(history).toContain(`Codkit-Patchset-Commit: ${sha}`);
 		expect(history).toContain(`Codkit-Upstream-Pin: t1@${fixture.upstream.t1.sha}`);
-		expect(remoteOut(remote, ['show', `${tip}:src/vs/patchset/hello.ts`])).toBe(
+		expect(remoteOut(remote, ['show', `${tip}:source/own/hello.ts`])).toBe(
 			readFileSync(fixture.patchesPath('delta/own/hello.ts'), 'utf8').trimEnd()
 		);
 
@@ -134,13 +134,13 @@ describe('publish generated branch', () => {
 		if (tip === null) return;
 
 		// The own commit is there, with the own code - and without the notice.
-		expect(remoteOut(remote, ['show', `${tip}:src/vs/patchset/hello.ts`]).length).toBeGreaterThan(0);
+		expect(remoteOut(remote, ['show', `${tip}:source/own/hello.ts`]).length).toBeGreaterThan(0);
 		const listed = remoteOut(remote, ['ls-tree', '-r', '--name-only', tip]).split('\n');
-		expect(listed).not.toContain('src/vs/patchset/LICENSE-CODKIT.md');
+		expect(listed).not.toContain('source/own/LICENSE-CODKIT.md');
 
 		// The developer tree, which `load` materialises, does carry it.
 		expect(fixture.run(['load']).status).toBe(0);
-		expect(readFileSync(fixture.treePath('src/vs/patchset/LICENSE-CODKIT.md'), 'utf8')).toBe('# Codkit licence notice\n');
+		expect(readFileSync(fixture.treePath('source/own/LICENSE-CODKIT.md'), 'utf8')).toBe('# Codkit licence notice\n');
 	});
 
 	it('runs the real build profile before publishing', async () => {
@@ -394,7 +394,7 @@ async function invoke(fixture: CliFixture, options: InvocationOptions = {}): Pro
 		commandFlags,
 		env: {},
 		config,
-		type: vscodeType,
+		type: stubProjectType,
 		out
 	};
 	let exitCode: number;
@@ -433,7 +433,7 @@ function libraryOptions(fixture: CliFixture, config: CodkitConfig, profile: 'ver
 		patchesDir: fixture.patchesDir,
 		resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 		config,
-		type: vscodeType,
+		type: stubProjectType,
 		out: output(),
 		patchSetRef: 'HEAD',
 		profile,

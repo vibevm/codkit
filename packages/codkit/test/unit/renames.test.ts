@@ -201,8 +201,8 @@ describe('rename detection', () => {
 
 describe('planPatchArtifactRename', () => {
 	const rename = {
-		from: 'src/vs/platform/agent/remoteClient.ts',
-		to: 'src/vs/platform/agent/client.ts',
+		from: 'source/platform/agent/remoteClient.ts',
+		to: 'source/platform/agent/client.ts',
 		similarity: 96,
 		needsReview: true
 	} as const;
@@ -214,8 +214,8 @@ describe('planPatchArtifactRename', () => {
 				{
 					area: 'contract-test',
 					file: 'delta/own/test/agent.test.ts',
-					from: 'src/vs/platform/agent/remoteClient.ts',
-					to: 'src/vs/platform/agent/client.ts'
+					from: 'source/platform/agent/remoteClient.ts',
+					to: 'source/platform/agent/client.ts'
 				},
 				{
 					area: 'own-import',
@@ -226,7 +226,7 @@ describe('planPatchArtifactRename', () => {
 			]
 		});
 
-		expect(plan.preconditions).toEqual([{ kind: 'destination-absent', path: 'delta/patches/src__vs__platform__agent__client.ts.ckpatch' }]);
+		expect(plan.preconditions).toEqual([{ kind: 'destination-absent', path: 'delta/patches/source__platform__agent__client.ts.ckpatch' }]);
 		expect(plan.operations.map((operation) => operation.kind)).toEqual(['replace', 'replace', 'replace', 'replace', 'move']);
 		expect(plan.operations[3]).toEqual({
 			kind: 'replace',
@@ -237,8 +237,8 @@ describe('planPatchArtifactRename', () => {
 		});
 		expect(plan.operations.at(-1)).toEqual({
 			kind: 'move',
-			from: 'delta/patches/src__vs__platform__agent__remoteClient.ts.ckpatch',
-			to: 'delta/patches/src__vs__platform__agent__client.ts.ckpatch'
+			from: 'delta/patches/source__platform__agent__remoteClient.ts.ckpatch',
+			to: 'delta/patches/source__platform__agent__client.ts.ckpatch'
 		});
 		expect(JSON.parse(JSON.stringify(plan))).toEqual(plan);
 	});
@@ -275,7 +275,7 @@ describe('planPatchArtifactRename', () => {
 		expect(() =>
 			planPatchArtifactRename({
 				rename,
-				referenceReplacements: [{ ...reference, file: 'delta/patches/src__vs__platform__agent__client.ts.ckpatch' }]
+				referenceReplacements: [{ ...reference, file: 'delta/patches/source__platform__agent__client.ts.ckpatch' }]
 			})
 		).toThrow(/destination-absent/);
 	});

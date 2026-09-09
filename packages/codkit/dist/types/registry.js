@@ -17,14 +17,27 @@ var __rewriteRelativeImportExtension = (this && this.__rewriteRelativeImportExte
     return path;
 };
 import { createRequire } from 'node:module';
+import { isAbsolute } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { projectTypeProblems } from '@codkit/type-api';
 import { ckError } from '../lib/messages.js';
+import { testSeamEntry, TYPE_PACKAGE_ENV } from './testSeam.js';
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
 export const TYPE_REGISTRY = new Map([
     ['vscode', '@codkit/type-vscode'],
     ['generic', '@codkit/type-generic'],
     ['theia', '@codkit/type-theia']
 ]);
+/**
+ * The table this process resolves against: the shipped one, plus the single
+ * type a test build was told to add (##TYPE-TEST-SEAM). A production build gets
+ * `TYPE_REGISTRY` itself, so `codkit types` of a real installation never has a
+ * row the release does not carry.
+ */
+export function effectiveRegistry() {
+    const seam = testSeamEntry(process.env[TYPE_PACKAGE_ENV], process.execArgv);
+    return seam === null ? TYPE_REGISTRY : new Map([...TYPE_REGISTRY, seam]);
+}
 const loaded = new Map();
 /**
  * ##TYPE-UNKNOWN: a `type` the registry does not know, or whose package is not
@@ -36,9 +49,10 @@ export async function resolveProjectType(id) {
     if (cached !== undefined) {
         return cached;
     }
-    const packageName = TYPE_REGISTRY.get(id);
+    const registry = effectiveRegistry();
+    const packageName = registry.get(id);
     if (packageName === undefined) {
-        throw ckError('TYPE-UNKNOWN', `the project type ${JSON.stringify(id)} is not in the registry of this codkit`, `use one of: ${[...TYPE_REGISTRY.keys()].join(', ')}   (run: codkit types)`, 'codkit.json');
+        throw ckError('TYPE-UNKNOWN', `the project type ${JSON.stringify(id)} is not in the registry of this codkit`, `use one of: ${[...registry.keys()].join(', ')}   (run: codkit types)`, 'codkit.json');
     }
     const type = await importProjectType(id, packageName);
     const problems = projectTypeProblems(type);
@@ -51,7 +65,7 @@ export async function resolveProjectType(id) {
 /** The rows `codkit types` prints, in registry order (##CMD-TYPES). */
 export async function registeredTypes() {
     const rows = [];
-    for (const [id, packageName] of TYPE_REGISTRY) {
+    for (const [id, packageName] of effectiveRegistry()) {
         let type = null;
         try {
             type = await resolveProjectType(id);
@@ -75,7 +89,9 @@ export async function registeredTypes() {
 async function importProjectType(id, packageName) {
     let module;
     try {
-        module = (await import(__rewriteRelativeImportExtension(packageName)));
+        // An absolute path is the test seam; everything else is a package name.
+        const specifier = isAbsolute(packageName) ? pathToFileURL(packageName).href : packageName;
+        module = (await import(__rewriteRelativeImportExtension(specifier)));
     }
     catch (error) {
         throw ckError('TYPE-UNKNOWN', `the project type ${id} is registered as ${packageName}, and that package is not installed: ${messageOf(error)}`, `install ${packageName} next to codkit, or declare a type whose package this installation carries`, 'codkit.json');
@@ -95,6 +111,10 @@ function isProjectType(value) {
 }
 /** The installed version of a type package, read from its own manifest. */
 function packageVersion(packageName) {
+    if (isAbsolute(packageName)) {
+        // The test seam names a module, not a package: it has no manifest.
+        return null;
+    }
     try {
         const manifest = createRequire(import.meta.url)(`${packageName}/package.json`);
         return typeof manifest.version === 'string' ? manifest.version : null;

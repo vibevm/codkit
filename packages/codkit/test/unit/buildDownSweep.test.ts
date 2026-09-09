@@ -39,7 +39,7 @@ describe('codkit build down: one poisoned channel does not abort the sweep', () 
 		// (copilot is started too so the sweep has a daemon to stop on every
 		// channel it reaches - the absent-record no-op is a different question,
 		// not this family's.)
-		for (const channel of ['typecheck', 'extensions', 'copilot']) {
+		for (const channel of ['typecheck', 'addons', 'extras']) {
 			expect(fixture.run(['build', 'up', '--channel', channel], { STUB_MODE: 'ok', CODKIT_TEST_DAEMON_PID_LOG: pidLog }).status).toBe(0);
 		}
 
@@ -53,9 +53,9 @@ describe('codkit build down: one poisoned channel does not abort the sweep', () 
 				{
 					codkitBuildDaemon: 1,
 					channel: 'transpile',
-					script: 'watch-client-transpile',
+					script: 'watch-transpile',
 					pid: 424_242,
-					cmdline: 'watch-client-transpile',
+					cmdline: 'watch-transpile',
 					startedAt: '2026-09-01T00:00:00.000Z',
 					treeId: 'foreign-fork-tree',
 					treePath: '/another/fork/tree',
@@ -71,7 +71,7 @@ describe('codkit build down: one poisoned channel does not abort the sweep', () 
 
 	afterAll(() => {
 		fixture.run(['build', 'down', '--channel', 'all']);
-		for (const channel of ['transpile', 'typecheck', 'extensions', 'copilot']) {
+		for (const channel of ['transpile', 'typecheck', 'addons', 'extras']) {
 			const path = fixture.patchesPath(`.codkit/build/${channel}.json`);
 			if (!existsSync(path)) continue;
 			const record = JSON.parse(readFileSync(path, 'utf8')) as { pid: number };
@@ -96,8 +96,8 @@ describe('codkit build down: one poisoned channel does not abort the sweep', () 
 		expect(rows(envelope).map((row) => [row.channel, row.action])).toEqual([
 			['transpile', 'refused'],
 			['typecheck', 'stopped'],
-			['extensions', 'stopped'],
-			['copilot', 'stopped']
+			['addons', 'stopped'],
+			['extras', 'stopped']
 		]);
 		expect(rows(envelope)[0]?.detail).toContain('another tree');
 
@@ -109,7 +109,7 @@ describe('codkit build down: one poisoned channel does not abort the sweep', () 
 
 		// The remaining channels were really stopped: records retired and the
 		// daemons the sweep claimed to have stopped are gone.
-		for (const channel of ['typecheck', 'extensions', 'copilot']) {
+		for (const channel of ['typecheck', 'addons', 'extras']) {
 			expect(existsSync(fixture.patchesPath(`.codkit/build/${channel}.json`))).toBe(false);
 		}
 		for (const pid of readFileSync(pidLog, 'utf8')

@@ -18,21 +18,21 @@ import { formatPatchHeader, parseCkpatch } from '../../src/lib/patchFormat.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { conventions } from '../support/conventions.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
-const CLEAN = 'src/vs/classify/clean.ts';
-const SHIFTED = 'src/vs/classify/shifted.ts';
-const MERGED = 'src/vs/classify/merged.ts';
-const CONFLICT = 'src/vs/classify/conflict.ts';
-const DELETED = 'src/vs/classify/deleted.ts';
-const ADDED = 'src/vs/classify/added.ts';
-const BINARY_ADDED = 'src/vs/classify/binary-added.ts';
-const RULE_TARGET = 'src/vs/classify/rule-target.ts';
-const OVERLAY_TARGET = 'product.json';
-const RENAMED_CLEAN_OLD = 'src/vs/classify/renamed-clean-old.ts';
-const RENAMED_CLEAN_NEW = 'src/vs/classify/renamed-clean-new.ts';
-const RENAMED_SHIFTED_OLD = 'src/vs/classify/renamed-shifted-old.ts';
-const RENAMED_SHIFTED_NEW = 'src/vs/classify/renamed-shifted-new.ts';
+const CLEAN = 'source/classify/clean.ts';
+const SHIFTED = 'source/classify/shifted.ts';
+const MERGED = 'source/classify/merged.ts';
+const CONFLICT = 'source/classify/conflict.ts';
+const DELETED = 'source/classify/deleted.ts';
+const ADDED = 'source/classify/added.ts';
+const BINARY_ADDED = 'source/classify/binary-added.ts';
+const RULE_TARGET = 'source/classify/rule-target.ts';
+const OVERLAY_TARGET = 'manifest.json';
+const RENAMED_CLEAN_OLD = 'source/classify/renamed-clean-old.ts';
+const RENAMED_CLEAN_NEW = 'source/classify/renamed-clean-new.ts';
+const RENAMED_SHIFTED_OLD = 'source/classify/renamed-shifted-old.ts';
+const RENAMED_SHIFTED_NEW = 'source/classify/renamed-shifted-new.ts';
 
 type Fixture = {
 	readonly dir: string;
@@ -68,14 +68,14 @@ function makeFixture(): Fixture {
 		oldPin,
 		newRef,
 		artifacts: {
-			clean: artifact(CLEAN, 'CK-workbench-101', oldPin),
-			shifted: artifact(SHIFTED, 'CK-workbench-102', oldPin),
-			merged: artifact(MERGED, 'CK-workbench-103', oldPin),
-			conflict: artifact(CONFLICT, 'CK-workbench-104', oldPin),
-			deleted: artifact(DELETED, 'CK-workbench-105', oldPin),
-			added: addFileArtifact(ADDED, 'CK-workbench-106', oldPin),
-			renamedClean: artifact(RENAMED_CLEAN_OLD, 'CK-workbench-114', oldPin),
-			renamedShifted: artifact(RENAMED_SHIFTED_OLD, 'CK-workbench-115', oldPin)
+			clean: artifact(CLEAN, 'CK-shell-101', oldPin),
+			shifted: artifact(SHIFTED, 'CK-shell-102', oldPin),
+			merged: artifact(MERGED, 'CK-shell-103', oldPin),
+			conflict: artifact(CONFLICT, 'CK-shell-104', oldPin),
+			deleted: artifact(DELETED, 'CK-shell-105', oldPin),
+			added: addFileArtifact(ADDED, 'CK-shell-106', oldPin),
+			renamedClean: artifact(RENAMED_CLEAN_OLD, 'CK-shell-114', oldPin),
+			renamedShifted: artifact(RENAMED_SHIFTED_OLD, 'CK-shell-115', oldPin)
 		}
 	};
 }
@@ -85,7 +85,7 @@ function artifact(targetPath: string, id: string, oldPin: string): PatchClassifi
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'exercise one normative patch classification outcome',
 		link: 'none',
 		cause: 'none',
@@ -105,7 +105,7 @@ function addFileArtifact(targetPath: string, id: string, oldPin: string): PatchC
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'exercise an add-file patch across an upgrade',
 		link: 'none',
 		cause: 'none',
@@ -139,7 +139,7 @@ function ruleArtifact(targetPath: string, id: string, oldPin: string, match: str
 			id,
 			type: 'hook',
 			category: 'follow',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'classify a real rewrite-rule match count at the new ref',
 			link: 'none',
 			cause: 'none',
@@ -329,7 +329,7 @@ describe('classifyPatchArtifact', () => {
 	});
 
 	it('validates an edit target at the old pin before treating new-ref absence as deletion', () => {
-		const missing = artifact('src/vs/classify/missing-at-both-pins.ts', 'CK-workbench-107', fixture.oldPin);
+		const missing = artifact('source/classify/missing-at-both-pins.ts', 'CK-shell-107', fixture.oldPin);
 
 		const failure = caught(() =>
 			classifyPatchArtifact({ treeDir: fixture.dir, artifact: missing, oldPin: fixture.oldPin, newRef: fixture.newRef })
@@ -366,7 +366,7 @@ describe('classifyPatchArtifact', () => {
 		if (selected === undefined) {
 			throw new Error('missing old-path mapping fixture');
 		}
-		const missingOld = 'src/vs/classify/not-the-old-name.ts';
+		const missingOld = 'source/classify/not-the-old-name.ts';
 
 		const failure = caught(() =>
 			classifyPatchArtifact({
@@ -384,7 +384,7 @@ describe('classifyPatchArtifact', () => {
 	});
 
 	it('refuses an add-file patch whose target already exists at the old pin', () => {
-		const invalid = addFileArtifact(CLEAN, 'CK-workbench-108', fixture.oldPin);
+		const invalid = addFileArtifact(CLEAN, 'CK-shell-108', fixture.oldPin);
 
 		const failure = caught(() =>
 			classifyPatchArtifact({ treeDir: fixture.dir, artifact: invalid, oldPin: fixture.oldPin, newRef: fixture.newRef })
@@ -395,7 +395,7 @@ describe('classifyPatchArtifact', () => {
 	});
 
 	it('preserves raw blob bytes when upstream independently adds an add-file target', () => {
-		const selected = addFileArtifact(BINARY_ADDED, 'CK-workbench-109', fixture.oldPin);
+		const selected = addFileArtifact(BINARY_ADDED, 'CK-shell-109', fixture.oldPin);
 		let seenOurs: Uint8Array | null = null;
 
 		const result = classifyPatchArtifact({
@@ -463,9 +463,9 @@ describe('classifyPatchArtifact', () => {
 		}
 		const artifacts: ClassificationArtifact[] = [
 			{ kind: 'patch', ...conflict },
-			{ kind: 'rule', rule: ruleArtifact(RULE_TARGET, 'CK-workbench-110', fixture.oldPin, 'anchor') },
+			{ kind: 'rule', rule: ruleArtifact(RULE_TARGET, 'CK-shell-110', fixture.oldPin, 'anchor') },
 			{ kind: 'overlay', overlay: overlayArtifact('CK-product-111', fixture.oldPin, 'name', 'old') },
-			{ kind: 'rule', rule: ruleArtifact(RULE_TARGET, 'CK-workbench-112', fixture.oldPin, 'stable') },
+			{ kind: 'rule', rule: ruleArtifact(RULE_TARGET, 'CK-shell-112', fixture.oldPin, 'stable') },
 			{ kind: 'overlay', overlay: overlayArtifact('CK-product-113', fixture.oldPin, 'keep', true) },
 			{ kind: 'patch', ...clean },
 			{
@@ -477,7 +477,7 @@ describe('classifyPatchArtifact', () => {
 		];
 
 		const results = classifyArtifacts({
-			type: vscodeType,
+			type: stubProjectType,
 
 			treeDir: fixture.dir,
 			artifacts,

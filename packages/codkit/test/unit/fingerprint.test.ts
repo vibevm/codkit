@@ -31,10 +31,10 @@ function makeDelta(label: string, files: Files): string {
 }
 
 const SAMPLE: Files = [
-	['delta/patches/src__vs__a.ts.ckpatch', '# codkit-patch: 2\n'],
+	['delta/patches/source__a.ts.ckpatch', '# codkit-patch: 2\n'],
 	['delta/own/hello.ts', 'export const hello = 1;\n'],
 	['delta/own/modes/.gitkeep', ''],
-	['delta/overlays/product.json.overlay.json', '{ "codkitOverlay": 1 }\n']
+	['delta/overlays/manifest.json.overlay.json', '{ "codkitOverlay": 1 }\n']
 ];
 
 describe('deltaFingerprint', () => {
@@ -84,10 +84,10 @@ describe('deltaFingerprint', () => {
 	it('lists paths POSIX-style, relative to the patchset root, sorted by bytes', () => {
 		const root = makeDelta('fp-list', SAMPLE);
 		expect(listDeltaFiles(root).map((file) => file.path)).toEqual([
-			'delta/overlays/product.json.overlay.json',
+			'delta/overlays/manifest.json.overlay.json',
 			'delta/own/hello.ts',
 			'delta/own/modes/.gitkeep',
-			'delta/patches/src__vs__a.ts.ckpatch'
+			'delta/patches/source__a.ts.ckpatch'
 		]);
 	});
 });
@@ -98,13 +98,12 @@ describe('deltaFiles', () => {
 		const both = deltaFiles(root, PIN);
 		expect(both.fingerprint).toBe(deltaFingerprint(root, PIN));
 		expect(both.files).toEqual({
-			'delta/overlays/product.json.overlay.json': listDeltaFiles(root).find(
-				(file) => file.path === 'delta/overlays/product.json.overlay.json'
+			'delta/overlays/manifest.json.overlay.json': listDeltaFiles(root).find(
+				(file) => file.path === 'delta/overlays/manifest.json.overlay.json'
 			)?.sha256,
 			'delta/own/hello.ts': listDeltaFiles(root).find((file) => file.path === 'delta/own/hello.ts')?.sha256,
 			'delta/own/modes/.gitkeep': listDeltaFiles(root).find((file) => file.path === 'delta/own/modes/.gitkeep')?.sha256,
-			'delta/patches/src__vs__a.ts.ckpatch': listDeltaFiles(root).find((file) => file.path === 'delta/patches/src__vs__a.ts.ckpatch')
-				?.sha256
+			'delta/patches/source__a.ts.ckpatch': listDeltaFiles(root).find((file) => file.path === 'delta/patches/source__a.ts.ckpatch')?.sha256
 		});
 	});
 });
@@ -114,13 +113,13 @@ describe('deltaArtifactMap', () => {
 		const files: Record<string, string> = {
 			'delta/own/hello.ts': 'aaa',
 			'delta/own/modes/.gitkeep': 'bbb',
-			'delta/patches/src__vs__a.ts.ckpatch': 'ccc',
-			'delta/overlays/product.json.overlay.json': 'ddd',
+			'delta/patches/source__a.ts.ckpatch': 'ccc',
+			'delta/overlays/manifest.json.overlay.json': 'ddd',
 			'delta/resources/map.json': 'eee'
 		};
 		expect(deltaArtifactMap(files)).toEqual({
-			'delta/patches/src__vs__a.ts.ckpatch': 'ccc',
-			'delta/overlays/product.json.overlay.json': 'ddd',
+			'delta/patches/source__a.ts.ckpatch': 'ccc',
+			'delta/overlays/manifest.json.overlay.json': 'ddd',
 			'delta/resources/map.json': 'eee'
 		});
 	});

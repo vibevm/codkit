@@ -30,15 +30,15 @@ import { CODKIT_E2E_TEST_BUILD, makeCliFixture } from '../support/cliFixture.ts'
 import type { CliFixture, Envelope, Run } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 import { SAVE_REPLAY_CRASH_ENV, SAVE_REPLAY_CRASH_EXIT_CODE } from '../../src/lib/saveReplay.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
-const UTIL_PATH = 'src/vs/base/common/util.ts';
-const UTIL_PATCH = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
-const EXAMPLE_PATCH = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
+const UTIL_PATH = 'source/base/common/util.ts';
+const UTIL_PATCH = 'delta/patches/source__base__common__util.ts.ckpatch';
+const EXAMPLE_PATCH = 'delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch';
 const UTIL_BLOCK_ID = 'CK-base-905';
 /** The fixture's own-code pair: one file, its patchset source and tree target. */
 const OWN_IN_PATCHSET = 'delta/own/hello.ts';
-const OWN_IN_TREE = 'src/vs/patchset/hello.ts';
+const OWN_IN_TREE = 'source/own/hello.ts';
 
 const IDENTITY: GitEnv = {
 	GIT_AUTHOR_NAME: 'human',
@@ -49,7 +49,7 @@ const IDENTITY: GitEnv = {
 	GIT_COMMITTER_DATE: '2026-09-06T10:20:00Z'
 };
 
-const MARKER_BLOCK_NOTE = '// (hook body lives in patchset/ own code; this block only delegates)';
+const MARKER_BLOCK_NOTE = '// (hook body lives in own/ code; this block only delegates)';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -169,7 +169,7 @@ function patchsetCommitsSince(fixture: CliFixture, since: string): readonly Patc
 /** Apply the artifact as it stands at patchset commit `sha` to the pin bytes. */
 function artifactStateAt(fixture: CliFixture, sha: string, artifact: string, pinSha: string): Uint8Array {
 	const bytes = fixture.patchGit(['show', `${sha}:${artifact}`]).stdout;
-	const parsed = parseCkpatch(Buffer.from(bytes, 'utf8'), loadConventions(vscodeType, fixture.patchesDir), artifact);
+	const parsed = parseCkpatch(Buffer.from(bytes, 'utf8'), loadConventions(stubProjectType, fixture.patchesDir), artifact);
 	const pin = fixture.git(['show', `${pinSha}:${EXAMPLE_PART_PATH}`]).stdout;
 	return applyUnified(Buffer.from(pin, 'utf8'), parsed);
 }
@@ -185,7 +185,7 @@ function dirtyUtilBlock(fixture: CliFixture, line: string): void {
 		'--type',
 		'hook',
 		'--owner',
-		'workbench-core',
+		'shell-core',
 		'--reason',
 		'uncommitted half'
 	]);
@@ -1015,7 +1015,7 @@ describe('a crash during load --discard cannot lose the dropped line (ref writte
 				patchesDir: fixture.patchesDir,
 				resolution: { path: fixture.treeDir, source: 'flag', exists: true, warning: null },
 				config,
-				type: vscodeType,
+				type: stubProjectType,
 				out,
 				fresh: false,
 				dryRun: false,

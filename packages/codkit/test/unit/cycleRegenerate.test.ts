@@ -15,7 +15,7 @@ import type { CycleRegenerationOptions, CycleRegenerationPlan } from '../../src/
 import type { CycleState } from '../../src/lib/cycleState.ts';
 import { formatPatchHeader } from '../../src/lib/patchFormat.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const SOURCE_SHA = '1'.repeat(40);
 const TARGET_SHA = '2'.repeat(40);
@@ -28,12 +28,12 @@ describe('cycle regeneration transaction', () => {
 
 	it('regenerates every safe patch outcome, preserves blockers, deletes an empty diff, and repeats as a noop', () => {
 		const root = makeTempRoot('cycle-regenerate-patches');
-		const clean = patchItem(root, 'src/clean.ts', 'CK-workbench-901', 'clean', 'base\n', 'base\n', 'fork\n');
-		const shifted = patchItem(root, 'src/shifted.ts', 'CK-workbench-902', 'shifted', 'base\n', 'upstream\n', 'merged\n');
-		const merged = patchItem(root, 'src/merged.ts', 'CK-workbench-903', 'merged', 'base\n', 'upstream\n', 'combined\n');
-		const empty = patchItem(root, 'src/empty.ts', 'CK-workbench-904', 'merged', 'base\n', 'upstream\n', 'upstream\n');
-		const conflict = patchItem(root, 'src/conflict.ts', 'CK-workbench-905', 'conflict', 'base\n', 'upstream\n', 'markers\n');
-		const deleted = deletedPatchItem(root, 'src/deleted.ts', 'CK-workbench-906');
+		const clean = patchItem(root, 'src/clean.ts', 'CK-shell-901', 'clean', 'base\n', 'base\n', 'fork\n');
+		const shifted = patchItem(root, 'src/shifted.ts', 'CK-shell-902', 'shifted', 'base\n', 'upstream\n', 'merged\n');
+		const merged = patchItem(root, 'src/merged.ts', 'CK-shell-903', 'merged', 'base\n', 'upstream\n', 'combined\n');
+		const empty = patchItem(root, 'src/empty.ts', 'CK-shell-904', 'merged', 'base\n', 'upstream\n', 'upstream\n');
+		const conflict = patchItem(root, 'src/conflict.ts', 'CK-shell-905', 'conflict', 'base\n', 'upstream\n', 'markers\n');
+		const deleted = deletedPatchItem(root, 'src/deleted.ts', 'CK-shell-906');
 		const classifications = [clean, conflict, deleted, empty, merged, shifted].sort(byArtifact);
 		const causes = [cause(merged, true), cause(shifted, false)].sort(byArtifact);
 		const options = input(root, classifications, causes);
@@ -62,8 +62,8 @@ describe('cycle regeneration transaction', () => {
 
 	it('distinguishes existing empty targets from independently added empty upstream files', () => {
 		const root = makeTempRoot('cycle-regenerate-empty-presence');
-		const edit = patchItem(root, 'src/existing-empty.ts', 'CK-workbench-907', 'merged', '', '', 'fork\n');
-		const add = addPatchItem(root, 'src/independent-empty.ts', 'CK-workbench-908');
+		const edit = patchItem(root, 'src/existing-empty.ts', 'CK-shell-907', 'merged', '', '', 'fork\n');
+		const add = addPatchItem(root, 'src/independent-empty.ts', 'CK-shell-908');
 		regenerateCycle(input(root, [edit, add].sort(byArtifact), []));
 		for (const item of [edit, add]) {
 			expect(text(root, item.artifactPath)).toContain(`--- a/${item.targetPath}`);
@@ -76,7 +76,7 @@ describe('cycle regeneration transaction', () => {
 		const rulePath = 'delta/rules/r.ckrule.json';
 		const overlayPath = 'delta/overlays/o.overlay.json';
 		const resourceSource = 'delta/resources/files/logo.bin';
-		writeJson(root, rulePath, rule('CK-workbench-911'));
+		writeJson(root, rulePath, rule('CK-shell-911'));
 		writeJson(root, overlayPath, overlay('CK-product-912'));
 		write(root, resourceSource, 'binary-ish\n');
 		writeJson(root, 'delta/resources/map.json', {
@@ -86,7 +86,7 @@ describe('cycle regeneration transaction', () => {
 		write(root, 'delta/own/main.ts', 'export {};\n');
 		writeJson(root, 'delta/own/patchset.delta.json', {
 			codkitOwnManifest: 2,
-			units: [own('CK-workbench-914')],
+			units: [own('CK-shell-914')],
 			serviceOverrides: [service('CK-platform-915')]
 		});
 		writeJson(root, 'delta/removed.json', {
@@ -100,7 +100,7 @@ describe('cycle regeneration transaction', () => {
 					layer: 'config-overlay',
 					artifactPath: overlayPath,
 					artifactId: 'CK-product-912',
-					targetPath: 'product.json',
+					targetPath: 'manifest.json',
 					outcome: 'clean',
 					targetBytes: new TextEncoder().encode('{}\n'),
 					report: null
@@ -117,7 +117,7 @@ describe('cycle regeneration transaction', () => {
 					kind: 'rule',
 					layer: 'rewrite-rule',
 					artifactPath: rulePath,
-					artifactId: 'CK-workbench-911',
+					artifactId: 'CK-shell-911',
 					targetPath: 'src/rule.ts',
 					outcome: 'clean',
 					targetBytes: new TextEncoder().encode('anchor\n'),
@@ -156,7 +156,7 @@ describe('cycle regeneration transaction', () => {
 			layer: 'config-overlay',
 			artifactPath: overlayPath,
 			artifactId: 'CK-product-917',
-			targetPath: 'product.json',
+			targetPath: 'manifest.json',
 			outcome: 'clean',
 			targetBytes: new TextEncoder().encode('{}\n'),
 			report: null
@@ -168,12 +168,12 @@ describe('cycle regeneration transaction', () => {
 	it('rejects source metadata mismatch and symlink containment before writes', () => {
 		const root = makeTempRoot('cycle-regenerate-invalid');
 		const rulePath = 'delta/rules/r.ckrule.json';
-		writeJson(root, rulePath, { ...rule('CK-workbench-921'), pin: `stale@${'f'.repeat(40)}` });
-		const classification = ruleClassification(rulePath, 'CK-workbench-921');
+		writeJson(root, rulePath, { ...rule('CK-shell-921'), pin: `stale@${'f'.repeat(40)}` });
+		const classification = ruleClassification(rulePath, 'CK-shell-921');
 		expect(() => planCycleRegeneration(input(root, [classification], []))).toThrow(/matches neither cycle source nor target/);
 
 		const linked = makeTempRoot('cycle-regenerate-link-target');
-		writeJson(linked, 'r.ckrule.json', rule('CK-workbench-922'));
+		writeJson(linked, 'r.ckrule.json', rule('CK-shell-922'));
 		const root2 = makeTempRoot('cycle-regenerate-link-root');
 		mkdirSync(join(root2, 'delta'), { recursive: true });
 		symlinkSync(linked, join(root2, 'delta/rules'));
@@ -184,9 +184,9 @@ describe('cycle regeneration transaction', () => {
 		const root = makeTempRoot('cycle-regenerate-recovery');
 		const aPath = 'delta/rules/a.ckrule.json';
 		const bPath = 'delta/rules/b.ckrule.json';
-		writeJson(root, aPath, rule('CK-workbench-931'));
-		writeJson(root, bPath, rule('CK-workbench-932'));
-		const options = input(root, [ruleClassification(aPath, 'CK-workbench-931'), ruleClassification(bPath, 'CK-workbench-932')], []);
+		writeJson(root, aPath, rule('CK-shell-931'));
+		writeJson(root, bPath, rule('CK-shell-932'));
+		const options = input(root, [ruleClassification(aPath, 'CK-shell-931'), ruleClassification(bPath, 'CK-shell-932')], []);
 		expect(() =>
 			regenerateCycle(options, {
 				beforeMutation(path) {
@@ -197,7 +197,7 @@ describe('cycle regeneration transaction', () => {
 		expect(existsSync(join(root, CYCLE_REGENERATE_RECOVERY_PATH))).toBe(true);
 
 		// Restore the exact basis, then let one operation complete and simulate a crash.
-		writeJson(root, aPath, rule('CK-workbench-931'));
+		writeJson(root, aPath, rule('CK-shell-931'));
 		let checkpoints = 0;
 		expect(() =>
 			regenerateCycle(options, {
@@ -217,8 +217,8 @@ describe('cycle regeneration transaction', () => {
 	it('rejects a re-signed arbitrary operation and a chmod race, then preserves the original mode', () => {
 		const root = makeTempRoot('cycle-regenerate-plan-trust');
 		const path = 'delta/rules/a.ckrule.json';
-		writeJson(root, path, rule('CK-workbench-941'));
-		const options = input(root, [ruleClassification(path, 'CK-workbench-941')], []);
+		writeJson(root, path, rule('CK-shell-941'));
+		const options = input(root, [ruleClassification(path, 'CK-shell-941')], []);
 		const plan = planCycleRegeneration(options);
 		const before = Buffer.from('owned\n').toString('base64');
 		const injected = resign({
@@ -257,7 +257,7 @@ function input(
 	classifications: readonly CycleApplyClassification[],
 	causes: readonly CycleClassificationCause[]
 ): CycleRegenerationOptions {
-	return { patchesDir: root, type: vscodeType, state: state(), classifications, causes };
+	return { patchesDir: root, type: stubProjectType, state: state(), classifications, causes };
 }
 
 function state(): CycleState {
@@ -360,7 +360,7 @@ function patchHeader(id: string): string {
 		id,
 		type: 'modify',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'fixture patch',
 		link: 'none',
 		cause: 'none',
@@ -399,7 +399,7 @@ function rule(id: string): Record<string, unknown> {
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'fixture rule',
 		link: 'none',
 		cause: 'none',
@@ -419,7 +419,7 @@ function overlay(id: string): unknown {
 	return {
 		codkitOverlay: 2,
 		id,
-		target: 'product.json',
+		target: 'manifest.json',
 		type: 'modify',
 		category: 'own',
 		owner: 'product',
@@ -428,7 +428,7 @@ function overlay(id: string): unknown {
 		cause: 'none',
 		pin: SOURCE_PIN,
 		contractTests: ['overlay.guard'],
-		operations: [{ op: 'set', path: ['nameShort'], value: 'PatchSet', expectUpstream: 'Code - OSS' }]
+		operations: [{ op: 'set', path: ['displayName'], value: 'PatchSet', expectUpstream: 'Code - OSS' }]
 	};
 }
 
@@ -454,7 +454,7 @@ function own(id: string): unknown {
 		layer: 'own',
 		type: 'extend',
 		category: 'own',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'fixture own',
 		link: 'none',
 		cause: 'none',

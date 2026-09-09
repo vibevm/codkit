@@ -16,11 +16,11 @@ const VALID = {
 	codkitRemoved: 1,
 	entries: [
 		{
-			id: 'CK-workbench-904',
+			id: 'CK-shell-904',
 			kind: 'setting',
 			target: 'fixture.telemetry.enabled',
-			how: 'default flipped in own code, never registered by the workbench',
-			owner: 'workbench-core',
+			how: 'default flipped in own code, never registered by the shell',
+			owner: 'shell-core',
 			reason: 'nothing must re-introduce this setting',
 			link: 'none',
 			pin: '1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5',

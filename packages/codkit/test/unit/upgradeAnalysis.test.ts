@@ -13,7 +13,7 @@ import { analyzeUpgrade } from '../../src/lib/upgradeAnalysis.ts';
 import type { UpgradeAnalysisOptions } from '../../src/lib/upgradeAnalysis.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const PATCH_TARGETS = {
 	clean: 'src/clean.ts',
@@ -41,7 +41,7 @@ function makeFixture(label: string): Fixture {
 	write(tree, PATCH_TARGETS.renamed, 'a\nbase\nrename-z\n');
 	write(tree, 'src/rule-clean.ts', 'anchor\nstable\n');
 	write(tree, 'src/rule-broken.ts', 'old-anchor\n');
-	write(tree, 'config/product.json', '{"name":"old","stable":true}\n');
+	write(tree, 'config/manifest.json', '{"name":"old","stable":true}\n');
 	write(tree, 'resources/stable.bin', 'stable\n');
 	write(tree, 'resources/deleted.bin', 'deleted\n');
 	write(tree, 'resources/old.bin', 'renamed\n');
@@ -53,7 +53,7 @@ function makeFixture(label: string): Fixture {
 	rmSync(join(tree, PATCH_TARGETS.deleted));
 	fixtureGit(tree, ['mv', PATCH_TARGETS.renamed, RENAMED_PATCH_TARGET]);
 	write(tree, 'src/rule-broken.ts', 'new-anchor\n');
-	write(tree, 'config/product.json', '{"name":"new","stable":true}\n');
+	write(tree, 'config/manifest.json', '{"name":"new","stable":true}\n');
 	rmSync(join(tree, 'resources/deleted.bin'));
 	fixtureGit(tree, ['mv', 'resources/old.bin', 'resources/new.bin']);
 	const t2 = fixtureCommit(tree, 'fixture: forecast target', '2026-07-02T00:00:00Z');
@@ -64,7 +64,7 @@ function makeFixture(label: string): Fixture {
 	mkdirSync(dirname(conventions), { recursive: true });
 	copyFileSync(fileURLToPath(new URL('../../config/conventions.json', import.meta.url)), conventions);
 	for (const [index, target] of Object.values(PATCH_TARGETS).entries()) {
-		writePatch(root, target, `CK-workbench-80${index}`, t1);
+		writePatch(root, target, `CK-shell-80${index}`, t1);
 	}
 	writeRule(root, 'src/rule-clean.ts', 'CK-build-801', t1, 'anchor');
 	writeRule(root, 'src/rule-broken.ts', 'CK-build-802', t1, 'old-anchor');
@@ -76,8 +76,8 @@ function makeFixture(label: string): Fixture {
 		codkitConfig: 2,
 		pin: { tag: 't1', sha: t1, date: commitDate(tree, t1) },
 		upstreamAnchorCommit: t1,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: 'stub',
+		typeConfig: { ownRoot: 'source/own' },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -89,7 +89,7 @@ function makeFixture(label: string): Fixture {
 }
 
 function options(fixture: Fixture, newRef = fixture.t2): UpgradeAnalysisOptions {
-	return { patchesDir: fixture.root, treeDir: fixture.tree, config: fixture.config, type: vscodeType, newRef };
+	return { patchesDir: fixture.root, treeDir: fixture.tree, config: fixture.config, type: stubProjectType, newRef };
 }
 
 function writePatch(root: string, target: string, id: string, pin: string): void {
@@ -97,7 +97,7 @@ function writePatch(root: string, target: string, id: string, pin: string): void
 		id,
 		type: 'hook',
 		category: 'follow',
-		owner: 'workbench-core',
+		owner: 'shell-core',
 		reason: 'forecast fixture patch',
 		link: 'none',
 		cause: 'none',
@@ -135,7 +135,7 @@ function writeOverlay(root: string, pin: string): void {
 	writeJson(root, 'delta/overlays/product.overlay.json', {
 		codkitOverlay: 2,
 		id: 'CK-product-801',
-		target: 'config/product.json',
+		target: 'config/manifest.json',
 		type: 'modify',
 		category: 'own',
 		owner: 'product',
@@ -235,7 +235,7 @@ describe('analyzeUpgrade', () => {
 			['assets', 3, 2],
 			['automation', 2, 1],
 			['product', 1, 1],
-			['workbench-core', 6, 5]
+			['shell-core', 6, 5]
 		]);
 		expect(result.artifacts.filter((item) => item.cause !== null)).toHaveLength(9);
 		expect(result.artifacts.filter((item) => item.cause !== null).every((item) => item.cause?.sha === fixture.t2)).toBe(true);

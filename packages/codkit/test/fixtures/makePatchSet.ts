@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { ckError } from '../../src/lib/messages.ts';
 import { assertApplies, encodePatchName, showAtPin, unifiedDiff, writeBytes, writeJson } from './patchText.ts';
 import { EXAMPLE_AREA_ANCHOR, EXAMPLE_PART_PATH, EXAMPLE_TOOLBAR_ANCHOR, fixtureCommit, fixtureGit, pinDate } from './makeUpstream.ts';
+import { STUB_OWN_ROOT, STUB_TYPE_ID } from './stubType.ts';
 import type { UpstreamFixture } from './makeUpstream.ts';
 
 export type PatchSetFixture = {
@@ -19,17 +20,17 @@ export type PatchSetFixture = {
 };
 
 /** Ids of the artifacts the fixture carries, one per layer. */
-export const PATCH_ID = 'CK-workbench-901';
-export const OWN_UNIT_ID = 'CK-workbench-902';
-export const RULE_ID = 'CK-workbench-903';
-export const REMOVED_ID = 'CK-workbench-904';
+export const PATCH_ID = 'CK-shell-901';
+export const OWN_UNIT_ID = 'CK-shell-902';
+export const RULE_ID = 'CK-shell-903';
+export const REMOVED_ID = 'CK-shell-904';
 export const OVERLAY_ID = 'CK-product-901';
 export const RESOURCE_ID = 'CK-product-902';
 
 /** Name of the sample patch file (PROP-004 sec. 4, patch file name encoding). */
 export const PATCH_FILE_NAME = `${encodePatchName(EXAMPLE_PART_PATH)}.ckpatch`;
 
-const OWNER_WORKBENCH = 'workbench-core';
+const OWNER_SHELL = 'shell-core';
 const OWNER_PRODUCT = 'product';
 
 const FIRST_COMMIT_ISO = '2026-01-02T00:00:00Z';
@@ -46,8 +47,8 @@ export function makePatchSet(dir: string, upstream: UpstreamFixture): PatchSetFi
 		codkitConfig: 2,
 		pin: { tag: upstream.t1.tag, sha: upstream.t1.sha, date: pinDate(upstream.t1.dateIso) },
 		upstreamAnchorCommit: upstream.anchorSha,
-		type: 'vscode',
-		typeConfig: { ownRoot: 'src/vs/patchset' },
+		type: STUB_TYPE_ID,
+		typeConfig: { ownRoot: STUB_OWN_ROOT },
 		generatedBranchPrefix: 'codkit/applied/',
 		cycleBranchPrefix: 'codkit/cycle/',
 		releaseRefPrefix: 'codkit/release/',
@@ -59,8 +60,8 @@ export function makePatchSet(dir: string, upstream: UpstreamFixture): PatchSetFi
 	writeJson(join(dir, 'delta', 'owners.json'), {
 		codkitOwners: 1,
 		owners: {
-			[OWNER_WORKBENCH]: { contact: 'fixture', paths: ['src/vs/workbench/**'] },
-			[OWNER_PRODUCT]: { contact: 'fixture', paths: ['product.json', 'resources/**'] }
+			[OWNER_SHELL]: { contact: 'fixture', paths: ['source/app/**'] },
+			[OWNER_PRODUCT]: { contact: 'fixture', paths: ['manifest.json', 'resources/**'] }
 		}
 	});
 
@@ -88,7 +89,7 @@ function writeLayers(dir: string, upstream: UpstreamFixture): void {
 				layer: 'own',
 				type: 'extend',
 				category: 'own',
-				owner: OWNER_WORKBENCH,
+				owner: OWNER_SHELL,
 				reason: 'fixture own-code unit: proves the own layer is carried end to end',
 				link: 'none',
 				cause: 'none',
@@ -108,10 +109,10 @@ function writeLayers(dir: string, upstream: UpstreamFixture): void {
 
 	// config-overlay layer (PROP-005 sec. 5): operations over a parsed JSON target,
 	// one of them carrying a $var so the variable substitution is exercised.
-	writeJson(join(dir, 'delta', 'overlays', 'product.json.overlay.json'), {
+	writeJson(join(dir, 'delta', 'overlays', 'manifest.json.overlay.json'), {
 		codkitOverlay: 2,
 		id: OVERLAY_ID,
-		target: 'product.json',
+		target: 'manifest.json',
 		type: 'modify',
 		category: 'own',
 		owner: OWNER_PRODUCT,
@@ -121,7 +122,7 @@ function writeLayers(dir: string, upstream: UpstreamFixture): void {
 		pin,
 		contractTests: ['fixture.guard.product'],
 		operations: [
-			{ op: 'set', path: ['nameShort'], value: 'Fixture PatchSet', expectUpstream: 'Fixture - OSS' },
+			{ op: 'set', path: ['displayName'], value: 'Fixture PatchSet', expectUpstream: 'Fixture Upstream' },
 			{ op: 'set', path: ['patchsetUpstreamPin'], value: { $var: 'pin.tag' }, expectUpstream: { $absent: true } }
 		]
 	});
@@ -157,7 +158,7 @@ function writeLayers(dir: string, upstream: UpstreamFixture): void {
 		id: RULE_ID,
 		type: 'hook',
 		category: 'follow',
-		owner: OWNER_WORKBENCH,
+		owner: OWNER_SHELL,
 		reason: 'fixture rewrite rule: the rule layer with an expected match count',
 		link: 'none',
 		cause: 'none',
@@ -189,8 +190,8 @@ function writeLayers(dir: string, upstream: UpstreamFixture): void {
 				id: REMOVED_ID,
 				kind: 'setting',
 				target: 'fixture.telemetry.enabled',
-				how: 'default flipped in own code, never registered by the fixture workbench',
-				owner: OWNER_WORKBENCH,
+				how: 'default flipped in own code, never registered by the fixture shell',
+				owner: OWNER_SHELL,
 				reason: 'fixture removed-registry entry: nothing must re-introduce this setting',
 				link: 'none',
 				pin,
@@ -201,7 +202,7 @@ function writeLayers(dir: string, upstream: UpstreamFixture): void {
 }
 
 const OWN_HELLO_TS = `/*---------------------------------------------------------------------------------------------
- *  Fixture own code: lives in patchset, is copied into src/vs/patchset/ of the tree.
+ *  Fixture own code: lives in patchset, is copied into the own root of the tree.
  *--------------------------------------------------------------------------------------------*/
 
 export function hello(name: string): string {
@@ -229,7 +230,7 @@ suite('fixture.unit.hello', () => {
 
 suite('fixture.guard.product', () => {
 	test('the product name is the fixture one', () => {
-		assert.strictEqual(product.nameShort, 'Fixture PatchSet');
+		assert.strictEqual(product.displayName, 'Fixture PatchSet');
 	});
 });
 
@@ -277,7 +278,7 @@ function patchHeader(upstream: UpstreamFixture): string {
 		`# id: ${PATCH_ID}`,
 		'# type: hook',
 		'# category: follow',
-		`# owner: ${OWNER_WORKBENCH}`,
+		`# owner: ${OWNER_SHELL}`,
 		'# reason: mount point for the fixture example area host',
 		'# link: none',
 		'# cause: none',
@@ -295,7 +296,7 @@ function insertHookBlock(source: string): string {
 	}
 	const block = [
 		`\t\t// codkit:begin ${PATCH_ID}`,
-		'\t\t// (hook body lives in patchset/ own code; this block only delegates)',
+		'\t\t// (hook body lives in own/ code; this block only delegates)',
 		`\t\t// codkit:end ${PATCH_ID}`,
 		''
 	].join('\n');

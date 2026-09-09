@@ -16,10 +16,10 @@ import { serializeCkpatch, type ParsedPatch } from '../../src/lib/patchFormat.ts
 import type { UpstreamRename } from '../../src/lib/renames.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const OLD = 'src/vs/old/remoteClient.ts';
-const NEXT = 'src/vs/new/client.ts';
-const OLD_ARTIFACT = 'delta/patches/src__vs__old__remoteClient.ts.ckpatch';
-const NEXT_ARTIFACT = 'delta/patches/src__vs__new__client.ts.ckpatch';
+const OLD = 'source/old/remoteClient.ts';
+const NEXT = 'source/new/client.ts';
+const OLD_ARTIFACT = 'delta/patches/source__old__remoteClient.ts.ckpatch';
+const NEXT_ARTIFACT = 'delta/patches/source__new__client.ts.ckpatch';
 const OWN = 'delta/own/client.ts';
 const EXACT: UpstreamRename = { from: OLD, to: NEXT, similarity: 100, needsReview: false };
 
@@ -27,12 +27,12 @@ function patch(target = OLD): ParsedPatch {
 	return {
 		header: {
 			schema: 2,
-			id: 'CK-workbench-001',
+			id: 'CK-shell-001',
 			layer: 'patch',
 			layerExplicit: false,
 			type: 'hook',
 			category: 'follow',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'rename fixture',
 			link: 'none',
 			cause: 'none',
@@ -40,10 +40,10 @@ function patch(target = OLD): ParsedPatch {
 			contractTests: [],
 			lines: [
 				'# codkit-patch: 2',
-				'# id: CK-workbench-001',
+				'# id: CK-shell-001',
 				'# type: hook',
 				'# category: follow',
-				'# owner: workbench-core',
+				'# owner: shell-core',
 				'# reason: rename fixture',
 				'# link: none',
 				'# cause: none',
@@ -80,7 +80,7 @@ function fixture(label: string, withReference = true): { readonly root: string; 
 	const root = makeTempRoot(label);
 	const parsed = patch();
 	write(root, OLD_ARTIFACT, serializeCkpatch(parsed));
-	if (withReference) write(root, OWN, "import { client } from '../../src/vs/old/remoteClient.js';\n");
+	if (withReference) write(root, OWN, "import { client } from '../../source/old/remoteClient.js';\n");
 	const batch = buildPatchRenameBatch({
 		patchesDir: root,
 		renames: [EXACT],
@@ -92,8 +92,8 @@ function fixture(label: string, withReference = true): { readonly root: string; 
 						renameFrom: OLD,
 						area: 'own-import',
 						file: OWN,
-						from: '../../src/vs/old/remoteClient.js',
-						to: '../../src/vs/new/client.js'
+						from: '../../source/old/remoteClient.js',
+						to: '../../source/new/client.js'
 					}
 				]
 			: []
@@ -114,7 +114,7 @@ describe('rename batch planning and apply', () => {
 		const moved = readFileSync(join(root, NEXT_ARTIFACT), 'utf8');
 		expect(moved).toContain(`--- a/${NEXT}`);
 		expect(moved).toContain(`+++ b/${NEXT}`);
-		expect(readFileSync(join(root, OWN), 'utf8')).toContain('../../src/vs/new/client.js');
+		expect(readFileSync(join(root, OWN), 'utf8')).toContain('../../source/new/client.js');
 		expect(existsSync(join(root, RENAME_TRANSACTION_PATH))).toBe(false);
 	});
 
@@ -275,7 +275,7 @@ describe('rename batch planning and apply', () => {
 			expect(binding.preimageSha256).toMatch(/^[0-9a-f]{64}$/);
 			expect(binding.expectedOccurrences).toBe(1);
 		}
-		writeFileSync(join(drifted.root, OWN), "import '../../src/vs/old/remoteClient.js';\nimport '../../src/vs/old/remoteClient.js';\n");
+		writeFileSync(join(drifted.root, OWN), "import '../../source/old/remoteClient.js';\nimport '../../source/old/remoteClient.js';\n");
 		expect(() => applyPatchRenameBatch({ patchesDir: drifted.root, batch: drifted.batch, reviewed: true })).toThrow(
 			/hash\/count or portable file mode changed/
 		);

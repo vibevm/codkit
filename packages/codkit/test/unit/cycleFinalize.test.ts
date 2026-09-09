@@ -76,7 +76,7 @@ function inventory(overrides: Partial<CycleFinalizationInventory> = {}): CycleFi
 		entryCount: 3,
 		metrics: {
 			byLayer: { own: 1, patch: 2 },
-			bySubsystem: { product: 1, workbench: 2 },
+			bySubsystem: { product: 1, shell: 2 },
 			patchAndRuleCount: 2,
 			hunks: 4,
 			patchLineTotal: 17,
@@ -210,7 +210,7 @@ describe('cycle finalization', () => {
 			metrics: {
 				...inventory().metrics,
 				byLayer: { own: 2, patch: 2 },
-				bySubsystem: { product: 2, workbench: 2 }
+				bySubsystem: { product: 2, shell: 2 }
 			}
 		});
 		expect(codeOf(() => planCycleFinalization({ patchesDir: root, state: state(), inventory: changed }))).toBe('CONFIG');

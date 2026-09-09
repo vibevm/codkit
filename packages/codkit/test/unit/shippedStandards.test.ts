@@ -229,7 +229,7 @@ describe('the shipped agent-skills package', () => {
 			text: readFileSync(join(skills?.directory ?? '', 'vibevm', 'vibespecs', 'skills', name, 'SKILL.md'), 'utf8')
 		}));
 		for (const { name, text } of bodies) {
-			for (const needle of ['product.json', 'registerSingleton', 'workbench', 'extensions/', 'nls.ts']) {
+			for (const needle of ['manifest.json', 'registerService', 'shell', 'addons/', 'nls.ts']) {
 				expect(text.includes(needle), `${name} names ${needle}`).toBe(false);
 			}
 		}
@@ -277,7 +277,7 @@ describe('the shipped seams-theia package', () => {
 		// the neighbouring type would carry these, and this one names them
 		// nowhere - the one mention of a manifest that does not exist here is
 		// the sentence saying so.
-		for (const foreign of ['registerSingleton', 'workbench.common.main', 'src/vs/', 'product.overrides']) {
+		for (const foreign of ['registerService', 'shell.common.main', 'source/', 'product.overrides']) {
 			expect(catalogue, foreign).not.toContain(foreign);
 		}
 	});

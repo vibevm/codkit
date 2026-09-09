@@ -27,33 +27,33 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 /** The valid sample of PROP-004 sec. 4, one array element per line. */
 const SPEC_SAMPLE_LINES = [
 	'# codkit-patch: 2',
-	'# id: CK-workbench-001',
+	'# id: CK-shell-001',
 	'# type: hook',
 	'# category: follow',
-	'# owner: workbench-core',
+	'# owner: shell-core',
 	'# reason: mount point for patchset center-area host initialization',
 	'# link: none',
 	'# cause: none',
 	'# pin: 1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5',
 	'# contract-tests: none',
-	'--- a/src/vs/workbench/browser/parts/example/examplePart.ts',
-	'+++ b/src/vs/workbench/browser/parts/example/examplePart.ts',
+	'--- a/source/app/browser/parts/example/examplePart.ts',
+	'+++ b/source/app/browser/parts/example/examplePart.ts',
 	'@@ -110,6 +110,9 @@',
 	' \t}',
 	// The spec text lost the single space of this context line; a real generator
 	// writes " ". Both shapes are accepted, and both are written back unchanged.
 	'',
 	' \tprotected createExampleArea(parent: HTMLElement): void {',
-	'+\t\t// codkit:begin CK-workbench-001',
-	'+\t\t// (hook body lives in patchset/ own code; this block only delegates)',
-	'+\t\t// codkit:end CK-workbench-001',
+	'+\t\t// codkit:begin CK-shell-001',
+	'+\t\t// (hook body lives in own/ code; this block only delegates)',
+	'+\t\t// codkit:end CK-shell-001',
 	' \t\tthis.doCreateExampleArea(parent);',
 	' \t}',
 	' '
 ];
 
 const SPEC_SAMPLE = `${SPEC_SAMPLE_LINES.join('\n')}\n`;
-const SAMPLE_FILE = 'delta/patches/src__vs__workbench__browser__parts__example__examplePart.ts.ckpatch';
+const SAMPLE_FILE = 'delta/patches/source__app__browser__parts__example__examplePart.ts.ckpatch';
 
 function parse(text: string, file = SAMPLE_FILE): ParsedPatch {
 	return parseCkpatch(encodeUtf8(text), conventions(), file);
@@ -86,24 +86,24 @@ function hintOf(run: () => unknown): string {
 
 describe('patch file names', () => {
 	it('encodes the upstream path with __ and the .ckpatch suffix', () => {
-		expect(encodePatchName('src/vs/workbench/browser/parts/titlebar/titlebarPart.ts')).toBe(
-			'src__vs__workbench__browser__parts__titlebar__titlebarPart.ts.ckpatch'
+		expect(encodePatchName('source/app/browser/parts/titlebar/titlebarPart.ts')).toBe(
+			'source__app__browser__parts__titlebar__titlebarPart.ts.ckpatch'
 		);
-		expect(encodePatchName('product.json')).toBe('product.json.ckpatch');
+		expect(encodePatchName('manifest.json')).toBe('manifest.json.ckpatch');
 	});
 
 	it('decodes back to the upstream path', () => {
-		const path = 'src/vs/workbench/browser/parts/titlebar/titlebarPart.ts';
+		const path = 'source/app/browser/parts/titlebar/titlebarPart.ts';
 		expect(decodePatchName(encodePatchName(path))).toBe(path);
 	});
 
 	it('refuses a path that already contains __', () => {
-		expect(codeOf(() => encodePatchName('src/vs/some__module/file.ts'))).toBe('INTERNAL');
-		expect(() => encodePatchName('src/vs/some__module/file.ts')).toThrow(/cannot encode patch name/);
+		expect(codeOf(() => encodePatchName('source/some__module/file.ts'))).toBe('INTERNAL');
+		expect(() => encodePatchName('source/some__module/file.ts')).toThrow(/cannot encode patch name/);
 	});
 
 	it('refuses a file name that is not a .ckpatch', () => {
-		expect(codeOf(() => decodePatchName('src__vs__a.ts.patch'))).toBe('ARTIFACT-BROKEN');
+		expect(codeOf(() => decodePatchName('source__a.ts.patch'))).toBe('ARTIFACT-BROKEN');
 	});
 });
 
@@ -112,10 +112,10 @@ describe('parseCkpatch on the sample of the spec', () => {
 		const patch = parse(SPEC_SAMPLE);
 
 		expect(patch.header.schema).toBe(2);
-		expect(patch.header.id).toBe('CK-workbench-001');
+		expect(patch.header.id).toBe('CK-shell-001');
 		expect(patch.header.type).toBe('hook');
 		expect(patch.header.category).toBe('follow');
-		expect(patch.header.owner).toBe('workbench-core');
+		expect(patch.header.owner).toBe('shell-core');
 		expect(patch.header.reason).toBe('mount point for patchset center-area host initialization');
 		expect(patch.header.link).toBe('none');
 		expect(patch.header.cause).toBe('none');
@@ -126,7 +126,7 @@ describe('parseCkpatch on the sample of the spec', () => {
 	it('reads the body as one file and one hunk', () => {
 		const patch = parse(SPEC_SAMPLE);
 
-		expect(patch.targetPath).toBe('src/vs/workbench/browser/parts/example/examplePart.ts');
+		expect(patch.targetPath).toBe('source/app/browser/parts/example/examplePart.ts');
 		expect(patch.isAddFile).toBe(false);
 		expect(patch.hunks.length).toBe(1);
 
@@ -211,7 +211,7 @@ describe('parseCkpatch body validation', () => {
 	});
 
 	it('refuses two headers that name different files', () => {
-		expect(codeOf(() => parse(sampleWith(11, '+++ b/src/vs/workbench/browser/parts/example/other.ts')))).toBe('ARTIFACT-BROKEN');
+		expect(codeOf(() => parse(sampleWith(11, '+++ b/source/app/browser/parts/example/other.ts')))).toBe('ARTIFACT-BROKEN');
 	});
 
 	it('refuses a hunk whose counts disagree with its body', () => {
@@ -223,7 +223,7 @@ describe('parseCkpatch body validation', () => {
 	});
 
 	it('refuses a second file in the same patch', () => {
-		const doubled = `${SPEC_SAMPLE}--- a/src/vs/other.ts\n+++ b/src/vs/other.ts\n@@ -1 +1 @@\n-a\n+b\n`;
+		const doubled = `${SPEC_SAMPLE}--- a/source/other.ts\n+++ b/source/other.ts\n@@ -1 +1 @@\n-a\n+b\n`;
 
 		expect(codeOf(() => parse(doubled))).toBe('ARTIFACT-BROKEN');
 		expect(() => parse(doubled)).toThrow(/second file/);
@@ -233,21 +233,21 @@ describe('parseCkpatch body validation', () => {
 describe('add-file and delete-file patches', () => {
 	const ADD_FILE = [
 		'# codkit-patch: 2',
-		'# id: CK-workbench-001',
+		'# id: CK-shell-001',
 		'# type: extend',
 		'# category: own',
-		'# owner: workbench-core',
+		'# owner: shell-core',
 		'# reason: a new file in the upstream zone, allowed only as an exception',
 		'# link: none',
 		'# cause: none',
 		'# pin: 1.135.0@08d4889f9ec4a1685d257b9b95de036c8e1ce1e5',
 		'# contract-tests: none',
 		'--- /dev/null',
-		'+++ b/src/vs/workbench/browser/parts/example/exampleHost.ts',
+		'+++ b/source/app/browser/parts/example/exampleHost.ts',
 		'@@ -0,0 +1,3 @@',
-		'+// codkit:begin CK-workbench-001',
+		'+// codkit:begin CK-shell-001',
 		'+export const exampleHost = 1;',
-		'+// codkit:end CK-workbench-001',
+		'+// codkit:end CK-shell-001',
 		''
 	].join('\n');
 
@@ -255,7 +255,7 @@ describe('add-file and delete-file patches', () => {
 		const patch = parse(ADD_FILE);
 
 		expect(patch.isAddFile).toBe(true);
-		expect(patch.targetPath).toBe('src/vs/workbench/browser/parts/example/exampleHost.ts');
+		expect(patch.targetPath).toBe('source/app/browser/parts/example/exampleHost.ts');
 		expect(patch.hunks[0]?.startOld).toBe(0);
 		expect(patch.hunks[0]?.countOld).toBe(0);
 		expect(patch.hunks[0]?.countNew).toBe(3);
@@ -269,7 +269,7 @@ describe('add-file and delete-file patches', () => {
 	it('refuses a patch that deletes an upstream file', () => {
 		const deleteFile = [
 			...SPEC_SAMPLE_LINES.slice(0, 10),
-			'--- a/src/vs/workbench/browser/parts/example/examplePart.ts',
+			'--- a/source/app/browser/parts/example/examplePart.ts',
 			'+++ /dev/null',
 			'@@ -1,2 +0,0 @@',
 			'-const a = 1;',
@@ -285,10 +285,10 @@ describe('add-file and delete-file patches', () => {
 describe('formatPatchHeader', () => {
 	it('writes the ten fields in the order the spec fixes', () => {
 		const header = formatPatchHeader({
-			id: 'CK-workbench-001',
+			id: 'CK-shell-001',
 			type: 'hook',
 			category: 'follow',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'mount point for patchset center-area host initialization',
 			link: 'none',
 			cause: 'none',
@@ -304,7 +304,7 @@ describe('formatPatchHeader', () => {
 			id: 'CK-build-001',
 			type: 'extend' as const,
 			category: 'own',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'graft point of the patchset contribution',
 			link: 'none',
 			cause: 'none',
@@ -344,7 +344,7 @@ describe('the optional # layer: field', () => {
 		expect(entry.header.layer).toBe('entry-module');
 		expect(entry.header.layerExplicit).toBe(true);
 		// Everything after the inserted line is still read as the same header.
-		expect(entry.header.id).toBe('CK-workbench-001');
+		expect(entry.header.id).toBe('CK-shell-001');
 		expect(entry.header.contractTests).toEqual([]);
 	});
 

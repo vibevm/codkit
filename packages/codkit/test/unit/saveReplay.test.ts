@@ -7,8 +7,8 @@ import { ArtifactStore } from '../../src/lib/saveReplay.ts';
 import { pendingPath } from '../../src/lib/pendingHeader.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
-const ARTIFACT = 'delta/patches/src__vs__example.ts.ckpatch';
-const TARGET = 'src/vs/example.ts';
+const ARTIFACT = 'delta/patches/source__example.ts.ckpatch';
+const TARGET = 'source/example.ts';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -33,7 +33,7 @@ function writePending(root: string): void {
 			layer: 'patch',
 			type: 'hook',
 			category: 'follow',
-			owner: 'workbench-core',
+			owner: 'shell-core',
 			reason: 'unit',
 			link: 'none'
 		}),

@@ -33,9 +33,9 @@ function reservation(channel = 'transpile'): DaemonRecord {
 	return {
 		codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 		channel,
-		script: 'watch-client-transpile',
+		script: 'watch-transpile',
 		pid: 0,
-		cmdline: 'watch-client-transpile',
+		cmdline: 'watch-transpile',
 		startedAt: '2026-09-04T00:00:00.000Z',
 		treeId: 'fixture-tree',
 		treePath: '/fixture/tree',

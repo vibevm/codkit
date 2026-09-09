@@ -14,7 +14,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { readCycleJournal } from '../../src/lib/cycleJournal.ts';
 import type { CycleState } from '../../src/lib/cycleState.ts';
 import { writeCycleState } from '../../src/lib/cycleState.ts';
-import { makeCliFixture } from '../support/cliFixture.ts';
+import { makeCliFixture, STUB_TYPE_ENV, testBuildNodeDir } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -23,7 +23,7 @@ const helper = join(
 	'vibevm/vibepacks/org.vibevm.codkit/agent-skills/v1.0.0/vibevm/vibespecs/skills/ck-resolve/scripts/append-journal.mjs'
 );
 const launcherDir = join(packageRoot, 'bin');
-const artifact = 'delta/patches/src__vs__base__common__util.ts.ckpatch';
+const artifact = 'delta/patches/source__base__common__util.ts.ckpatch';
 
 afterAll(cleanupTempRoots);
 
@@ -102,7 +102,8 @@ function invoke(patchesDir: string, treeDir: string, entry: string) {
 		cwd: patchesDir,
 		env: {
 			...process.env,
-			PATH: `${launcherDir}${delimiter}${process.env['PATH'] ?? ''}`,
+			...STUB_TYPE_ENV,
+			PATH: `${testBuildNodeDir('ck-resolve')}${delimiter}${launcherDir}${delimiter}${process.env['PATH'] ?? ''}`,
 			CODKIT_PATCHES_DIR: patchesDir,
 			CODKIT_FORK_DIR: treeDir
 		},
@@ -158,7 +159,7 @@ function writeTask(patchesDir: string): void {
 				kind: 'resolve',
 				targetTag: 't2',
 				actor: 'agent:test',
-				blockers: [{ artifact, outcome: 'conflict', paths: ['src/vs/base/common/util.ts'] }]
+				blockers: [{ artifact, outcome: 'conflict', paths: ['source/base/common/util.ts'] }]
 			},
 			null,
 			2
@@ -181,7 +182,7 @@ function taskResult() {
 				resolution: journalEntry().resolution
 			}
 		],
-		changedPaths: ['src/vs/base/common/util.ts'],
+		changedPaths: ['source/base/common/util.ts'],
 		verifications: journalEntry().verified,
 		reason: null
 	};

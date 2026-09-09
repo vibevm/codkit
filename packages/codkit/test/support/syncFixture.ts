@@ -19,7 +19,7 @@ import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { makePatchSet } from '../fixtures/makePatchSet.ts';
 import { makeTempRoot } from './tmp.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 export type SyncFixture = {
 	readonly upstream: UpstreamFixture;
@@ -76,7 +76,7 @@ export function makeSyncFixture(label: string): SyncFixture {
 				patchesDir,
 				resolution,
 				config,
-				type: vscodeType,
+				type: stubProjectType,
 				out,
 				fresh: options.fresh ?? false,
 				dryRun: options.dryRun ?? false,

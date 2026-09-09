@@ -17,7 +17,7 @@ import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.t
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
-const OVERLAY_ARTIFACT = 'delta/overlays/product.json.overlay.json';
+const OVERLAY_ARTIFACT = 'delta/overlays/manifest.json.overlay.json';
 
 /** The step list of the verify profile, in the order PROP-011 sec. 3 fixes. */
 const VERIFY_STEPS = ['fork tree', 'safe.directory', 'check-tree', 'fresh apply', 'verify', 'pin guard', 'effective diff'];
@@ -25,7 +25,7 @@ const VERIFY_STEPS = ['fork tree', 'safe.directory', 'check-tree', 'fresh apply'
 /** Generous, and never the 600s default: the stub finishes a pass in 200 ms. */
 const TIMEOUT = ['--timeout', '20'];
 
-const CHANNEL_NAMES = ['transpile', 'typecheck', 'extensions', 'copilot'] as const;
+const CHANNEL_NAMES = ['transpile', 'typecheck', 'addons', 'extras'] as const;
 
 /** A commit identity for the fixture repository; gitx isolates the machine's. */
 const IDENTITY: GitEnv = {
@@ -80,8 +80,8 @@ describe('codkit ci --profile verify', () => {
 
 		// Channel 2 of the config-overlay layer: the target is on the branch, in
 		// the tab serialization, and the work tree agrees with it.
-		const onHead = fixture.git(['show', 'HEAD:product.json']).stdout;
-		expect(onHead.startsWith('{\n\t"nameShort": "Fixture PatchSet"')).toBe(true);
+		const onHead = fixture.git(['show', 'HEAD:manifest.json']).stdout;
+		expect(onHead.startsWith('{\n\t"displayName": "Fixture PatchSet"')).toBe(true);
 		expect(JSON.parse(onHead)['patchsetUpstreamPin']).toBe('t1');
 		expect(fixture.git(['status', '--porcelain']).stdout).toBe('');
 	});
@@ -102,7 +102,7 @@ describe('codkit ci --profile verify', () => {
 	});
 
 	it('refuses a tree that carries work nobody extracted: ci trees are disposable', () => {
-		const path = fixture.treePath('src/vs/base/common/util.ts');
+		const path = fixture.treePath('source/base/common/util.ts');
 		const original = readFileSync(path, 'utf8');
 		writeFileSync(path, `${original}\n// edited in the ci tree by hand\n`, 'utf8');
 		try {
@@ -202,7 +202,7 @@ describe('codkit ci --effective-diff', () => {
 				{
 					codkitOverlay: 2,
 					id: 'CK-product-905',
-					target: 'product.json',
+					target: 'manifest.json',
 					type: 'modify',
 					category: 'own',
 					owner: 'product',
@@ -230,7 +230,7 @@ describe('codkit ci --effective-diff', () => {
 		const inventory = readFileSync(fixture.patchesPath('.codkit/out/inventory-diff.md'), 'utf8');
 
 		// The diff a reviewer reads: the target of the added artifact, changed.
-		expect(patch).toContain('product.json');
+		expect(patch).toContain('manifest.json');
 		expect(patch).toContain('+\t"patchsetEffectiveDiffProbe": "yes"');
 		// And the inventory diff naming the artifact itself.
 		expect(inventory).toContain('CK-product-905');
@@ -238,7 +238,7 @@ describe('codkit ci --effective-diff', () => {
 
 		const reported = (envelope.data as { effectiveDiff?: { base: string; patch: string; stat: string } }).effectiveDiff;
 		expect(reported?.base).toBe('main');
-		expect(reported?.stat).toContain('product.json');
+		expect(reported?.stat).toContain('manifest.json');
 	});
 });
 

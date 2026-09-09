@@ -1,0 +1,42 @@
+{
+	"codkitBuildWatch": 1,
+	"_doc": "Pass boundaries of the watch daemons of the stub layout (PROP-010 section 2), as data. Every entry of channels is one daemon: script is the npm script of the fork tree that starts it; passStart / passEnd / errorLine / errorCountLine / falseEndGuards are JavaScript regular-expression sources matched against a single log line after ANSI escapes have been stripped.",
+	"channels": {
+		"transpile": {
+			"_doc": "The only writer of out/, and it empties out/ when it starts: never restart a living transpile daemon.",
+			"script": "watch-transpile",
+			"passStart": ["^Starting transpilation\\.\\.\\.$"],
+			"passEnd": ["^Finished transpilation with (0|1) errors after \\d+ ms$"],
+			"errorLine": ["^(.+?):(\\d+):(\\d+): ERROR: (.+)$"],
+			"errorCountLine": [],
+			"falseEndGuards": []
+		},
+		"typecheck": {
+			"_doc": "noEmit type check plus code generation into the source root. Real lines carry a [HH:mm:ss] prefix while the generated fixtures stay bare, so every pattern accepts exactly that optional prefix. The generators print their own 'Finished compilation <id> with N errors after M ms' markers on every change; those look like the end of a pass and are not, so they are guarded.",
+			"script": "watch-compile",
+			"passStart": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Starting compilation\\.\\.\\.$"],
+			"passEnd": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compilation with \\d+ errors after \\d+ ms$"],
+			"errorLine": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
+			"errorCountLine": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compile-noEmit .* with (\\d+) errors\\.$"],
+			"falseEndGuards": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compilation (?!with )[^ ]+ with \\d+ errors after \\d+ ms$"]
+		},
+		"addons": {
+			"_doc": "The add-on projects. Real lines carry a [HH:mm:ss] prefix while the generated fixtures stay bare, so every pattern accepts exactly that optional prefix; errorLine additionally refuses a line whose remainder starts with '[', so a malformed prefix is not parsed as a diagnostic with a polluted file path. There is no aggregate count line: 'Finished addons <project> with N errors.' lines are per-project summaries, not a pass total, and are intentionally ignored.",
+			"script": "watch-addons",
+			"passStart": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Starting compilation$"],
+			"passEnd": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?Finished compilation$"],
+			"errorLine": ["^(?:\\[\\d{2}:\\d{2}:\\d{2}\\] )?(?!\\[)(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
+			"errorCountLine": [],
+			"falseEndGuards": []
+		},
+		"extras": {
+			"_doc": "A bundler plus a tsc noEmit pass; either of the two lines ends a pass, and the tsc summary also carries the count.",
+			"script": "watch-extras",
+			"passStart": ["\\[watch\\] build started"],
+			"passEnd": ["\\[watch\\] build finished", "Found (\\d+) errors?\\. Watching for file changes"],
+			"errorLine": ["^(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$"],
+			"errorCountLine": ["Found (\\d+) errors?\\. Watching for file changes"],
+			"falseEndGuards": []
+		}
+	}
+}

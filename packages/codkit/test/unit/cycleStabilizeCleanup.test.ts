@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CodkitConfig } from '../../src/lib/configFile.ts';
 import type { ForkDirResolution } from '../../src/lib/paths.ts';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 
 const mocks = vi.hoisted(() => ({
 	down: vi.fn(async (_root: string, channel: string) => Promise.reject(new Error(`cannot stop ${channel}`)))
@@ -29,8 +29,8 @@ describe('concrete cycle stabilization cleanup', () => {
 			codkitConfig: 2,
 			pin: { tag: 't2', sha: '2'.repeat(40), date: '2026-08-02' },
 			upstreamAnchorCommit: '1'.repeat(40),
-			type: 'vscode',
-			typeConfig: { ownRoot: 'src/vs/patchset' },
+			type: 'stub',
+			typeConfig: { ownRoot: 'source/own' },
 			generatedBranchPrefix: 'codkit/applied/',
 			cycleBranchPrefix: 'codkit/cycle/',
 			releaseRefPrefix: 'codkit/release/',
@@ -40,7 +40,7 @@ describe('concrete cycle stabilization cleanup', () => {
 		} satisfies CodkitConfig;
 		const resolution = { path: '/tree', source: 'flag', exists: true, warning: null } satisfies ForkDirResolution;
 
-		const result = await runConcreteStabilization({ patchesDir: '/patchset', resolution, config, type: vscodeType });
+		const result = await runConcreteStabilization({ patchesDir: '/patchset', resolution, config, type: stubProjectType });
 
 		expect(mocks.down.mock.calls.map((call) => call[1])).toEqual(['transpile', 'typecheck']);
 		expect(result.cleanupErrors.map((error) => error.message)).toEqual(['cannot stop transpile', 'cannot stop typecheck']);

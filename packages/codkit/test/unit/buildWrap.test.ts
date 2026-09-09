@@ -8,7 +8,7 @@
 import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectType as genericType } from '@codkit/type-generic';
-import { projectType as vscodeType } from '@codkit/type-vscode';
+import { projectType as stubProjectType } from '../fixtures/stubType.ts';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
 	BUILD_WATCH_RELATIVE_PATH,
@@ -48,39 +48,39 @@ import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 afterAll(cleanupTempRoots);
 
 /** The configuration codkit ships, read through the real loader. */
-const shipped = loadBuildWatch(vscodeType);
+const shipped = loadBuildWatch(stubProjectType);
 
-// Sanitized lines captured from the live watch-client daemon. Keeping these
+// Sanitized lines captured from the live watch-compile daemon. Keeping these
 // byte-exact catches drift between the data file and the real upstream logger.
 const LIVE_GREEN_PASS = [
 	'[05:56:09] Starting compilation...',
-	'[05:56:22] Finished watch-client-noEmit /workspace/fork/src/tsconfig.json with 0 errors.',
+	'[05:56:22] Finished compile-noEmit /workspace/fork/src/tsconfig.json with 0 errors.',
 	'[05:56:22] Finished compilation with 0 errors after 12110 ms'
 ] as const;
 
 const LIVE_TS7027_PASS = [
 	LIVE_GREEN_PASS[0],
-	'[05:43:37] src/vs/patchset/test/node/patchset.resources.test.ts(80,4): error TS7027: Unreachable code detected.',
-	'[05:43:37] Finished watch-client-noEmit /workspace/fork/src/tsconfig.json with 1 errors.',
+	'[05:43:37] source/own/test/node/patchset.resources.test.ts(80,4): error TS7027: Unreachable code detected.',
+	'[05:43:37] Finished compile-noEmit /workspace/fork/src/tsconfig.json with 1 errors.',
 	'[05:43:37] Finished compilation with 1 errors after 12353 ms'
 ] as const;
 
-// Sanitized shapes of the live watch-extensions daemon (REPAIR-002/003): every
+// Sanitized shapes of the live watch-addons daemon (REPAIR-002/003): every
 // line carries the [HH:mm:ss] prefix, and the per-project summaries are not a
 // pass total - the red pass deliberately ends with a zero from a later project.
 const LIVE_EXT_GREEN_PASS = [
 	'[05:55:35] Starting compilation',
-	'[05:55:36] Finished extensions types with 0 errors.',
-	'[05:55:36] Finished extensions markdown-basics with 0 errors.',
+	'[05:55:36] Finished addons types with 0 errors.',
+	'[05:55:36] Finished addons sample-pack with 0 errors.',
 	'[05:55:37] Finished compilation'
 ] as const;
 
 const LIVE_EXT_RED_PASS = [
 	'[05:55:35] Starting compilation',
-	'[05:55:36] src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
-	'[05:55:36] src/vs/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.',
-	'[05:55:36] Finished extensions markdown-basics with 2 errors.',
-	'[05:55:37] Finished extensions types with 0 errors.',
+	'[05:55:36] source/own/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
+	'[05:55:36] source/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.',
+	'[05:55:36] Finished addons sample-pack with 2 errors.',
+	'[05:55:37] Finished addons types with 0 errors.',
 	'[05:55:37] Finished compilation'
 ] as const;
 
@@ -108,8 +108,8 @@ function declareBuildWatch(root: string): void {
 			codkitConfig: 2,
 			pin: { tag: '1.0.0', sha: '1'.repeat(40), date: '2026-01-01' },
 			upstreamAnchorCommit: '0'.repeat(40),
-			type: 'vscode',
-			typeConfig: { ownRoot: 'src/vs/patchset' },
+			type: 'stub',
+			typeConfig: { ownRoot: 'source/own' },
 			generatedBranchPrefix: 'codkit/applied/',
 			cycleBranchPrefix: 'codkit/cycle/',
 			releaseRefPrefix: 'codkit/release/',
@@ -123,22 +123,22 @@ function declareBuildWatch(root: string): void {
 
 describe('build-watch.json', () => {
 	it('carries the four channels of the fork tree with their npm scripts', () => {
-		expect(shipped.channels.map((entry) => entry.name)).toEqual(['transpile', 'typecheck', 'extensions', 'copilot']);
-		expect(channel('transpile').script).toBe('watch-client-transpile');
-		expect(channel('typecheck').script).toBe('watch-client');
-		expect(channel('extensions').script).toBe('watch-extensions');
-		expect(channel('copilot').script).toBe('watch-copilot');
+		expect(shipped.channels.map((entry) => entry.name)).toEqual(['transpile', 'typecheck', 'addons', 'extras']);
+		expect(channel('transpile').script).toBe('watch-transpile');
+		expect(channel('typecheck').script).toBe('watch-compile');
+		expect(channel('addons').script).toBe('watch-addons');
+		expect(channel('extras').script).toBe('watch-extras');
 		expect(DEFAULT_UP_CHANNELS).toEqual(['transpile', 'typecheck']);
 	});
 
 	it('does not let a patch set replace the shipped process parser', () => {
 		const root = rootWith('build-watch-override', JSON.stringify({ codkitBuildWatch: 2, channels: {} }));
-		expect(loadBuildWatch(vscodeType, root)).toBe(shipped);
-		expect(loadBuildWatch(vscodeType, root).channels.map((entry) => entry.name)).toEqual([
+		expect(loadBuildWatch(stubProjectType, root)).toBe(shipped);
+		expect(loadBuildWatch(stubProjectType, root).channels.map((entry) => entry.name)).toEqual([
 			'transpile',
 			'typecheck',
-			'extensions',
-			'copilot'
+			'addons',
+			'extras'
 		]);
 	});
 
@@ -153,7 +153,7 @@ describe('build-watch.json', () => {
 			})
 		);
 		declareBuildWatch(root);
-		const custom = loadBuildWatch(vscodeType, root);
+		const custom = loadBuildWatch(stubProjectType, root);
 		expect(custom.channels.map((entry) => entry.name)).toEqual(['custom']);
 		expect(custom.channels[0]?.script).toBe('watch-custom');
 	});
@@ -197,7 +197,7 @@ describe('build-watch.json', () => {
 		] as const) {
 			const root = rootWith(`build-watch-${label}`, JSON.stringify({ codkitBuildWatch: 1, channels: { custom: channel } }));
 			declareBuildWatch(root);
-			expect(() => loadBuildWatch(vscodeType, root)).toThrow();
+			expect(() => loadBuildWatch(stubProjectType, root)).toThrow();
 		}
 	});
 
@@ -230,7 +230,7 @@ describe('build-watch.json', () => {
 			})
 		);
 		declareBuildWatch(root);
-		expect(() => loadBuildWatch(vscodeType, root)).toThrow(/unsafe build channel name/);
+		expect(() => loadBuildWatch(stubProjectType, root)).toThrow(/unsafe build channel name/);
 	});
 
 	it('rejects case-fold duplicates and names whose candidate files exceed the portable limit', () => {
@@ -241,7 +241,7 @@ describe('build-watch.json', () => {
 		] as const) {
 			const root = rootWith(`build-watch-${label}`, JSON.stringify({ codkitBuildWatch: 1, channels }));
 			declareBuildWatch(root);
-			expect(() => loadBuildWatch(vscodeType, root)).toThrow(/collide after ASCII|portable component limit/);
+			expect(() => loadBuildWatch(stubProjectType, root)).toThrow(/collide after ASCII|portable component limit/);
 		}
 	});
 
@@ -253,8 +253,8 @@ describe('build-watch.json', () => {
 					codkitConfig: 2,
 					pin: { tag: '1.0.0', sha: '1'.repeat(40), date: '2026-01-01' },
 					upstreamAnchorCommit: '0'.repeat(40),
-					type: 'vscode',
-					typeConfig: { ownRoot: 'src/vs/patchset' },
+					type: 'stub',
+					typeConfig: { ownRoot: 'source/own' },
 					generatedBranchPrefix: 'codkit/applied/',
 					cycleBranchPrefix: 'codkit/cycle/',
 					releaseRefPrefix: 'codkit/release/',
@@ -277,7 +277,7 @@ describe('build-watch.json', () => {
 		declareProfile(leafRoot);
 		mkdirSync(join(leafRoot, 'profile'), { recursive: true });
 		symlinkSync(join(outside, 'watch.json'), join(leafRoot, 'profile', 'watch.json'));
-		expect(() => loadBuildWatch(vscodeType, leafRoot)).toThrow(/unsafe or unreadable|cannot be read/);
+		expect(() => loadBuildWatch(stubProjectType, leafRoot)).toThrow(/unsafe or unreadable|cannot be read/);
 		expect(readFileSync(join(outside, 'watch.json'), 'utf8')).not.toContain('evil');
 
 		// A symlinked parent directory of the declared profile refuses too.
@@ -289,7 +289,7 @@ describe('build-watch.json', () => {
 		mkdirSync(join(parentRoot, 'elsewhere'), { recursive: true });
 		writeFileSync(join(parentRoot, 'elsewhere', 'watch.json'), JSON.stringify({ codkitBuildWatch: 1, channels: {} }), 'utf8');
 		symlinkSync(join(parentRoot, 'elsewhere'), join(parentRoot, 'profile'));
-		expect(() => loadBuildWatch(vscodeType, parentRoot)).toThrow(/unsafe or unreadable|cannot be read/);
+		expect(() => loadBuildWatch(stubProjectType, parentRoot)).toThrow(/unsafe or unreadable|cannot be read/);
 	});
 
 	it('resolves --channel: a name, all, the default, and an unknown one', () => {
@@ -297,10 +297,10 @@ describe('build-watch.json', () => {
 		expect(selectChannels(shipped, 'all', DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual([
 			'transpile',
 			'typecheck',
-			'extensions',
-			'copilot'
+			'addons',
+			'extras'
 		]);
-		expect(selectChannels(shipped, 'copilot', DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['copilot']);
+		expect(selectChannels(shipped, 'extras', DEFAULT_UP_CHANNELS).map((entry) => entry.name)).toEqual(['extras']);
 		expect(() => selectChannels(shipped, 'nope', DEFAULT_UP_CHANNELS)).toThrow(/unknown build channel/);
 	});
 
@@ -348,7 +348,7 @@ describe('pass boundaries', () => {
 			'Starting transpilation...',
 			'Finished transpilation with 0 errors after 10 ms',
 			'Starting transpilation...',
-			'src/vs/patchset/hello.ts:2:1: ERROR: broken',
+			'source/own/hello.ts:2:1: ERROR: broken',
 			'Finished transpilation with 1 errors after 20 ms'
 		];
 		const pass = findLastPass(lines, transpile);
@@ -368,7 +368,7 @@ describe('pass boundaries', () => {
 			'Starting transpilation...',
 			'Finished transpilation with 0 errors after 10 ms',
 			'Starting transpilation...',
-			'src/vs/patchset/hello.ts:2:1: ERROR: broken',
+			'source/own/hello.ts:2:1: ERROR: broken',
 			'Finished transpilation with 1 errors after 20 ms',
 			'Starting transpilation...'
 		];
@@ -387,7 +387,7 @@ describe('pass boundaries', () => {
 		expect(findLastFinishedPass([], transpile)).toBeNull();
 	});
 
-	it('recognizes the exact timestamped green watch-client pass while retaining bare fixture lines', () => {
+	it('recognizes the exact timestamped green watch-compile pass while retaining bare fixture lines', () => {
 		const typecheck = channel('typecheck');
 		expect(findLastPass(LIVE_GREEN_PASS, typecheck)?.lines).toEqual(LIVE_GREEN_PASS);
 		expect(findLastPass(['Starting compilation...', 'Finished compilation with 0 errors after 200 ms'], typecheck)?.lines).toEqual([
@@ -401,7 +401,7 @@ describe('pass boundaries', () => {
 	});
 
 	it('recognizes the exact timestamped extensions boundaries while retaining the bare legacy form', () => {
-		const extensions = channel('extensions');
+		const extensions = channel('addons');
 		expect(findLastPass(LIVE_EXT_GREEN_PASS, extensions)?.lines).toEqual(LIVE_EXT_GREEN_PASS);
 		expect(findLastPass(['Starting compilation', 'Finished compilation'], extensions)?.lines).toEqual([
 			'Starting compilation',
@@ -442,7 +442,7 @@ describe('false ends of a pass', () => {
 		// A deliberately naive passEnd, which is what the guards exist for.
 		const naive: ChannelConfig = {
 			name: 'naive',
-			script: 'watch-client',
+			script: 'watch-compile',
 			passStart: [/^Starting compilation\.\.\.$/],
 			passEnd: [/^Finished compilation/],
 			errorLine: [],
@@ -471,10 +471,10 @@ describe('false ends of a pass', () => {
 
 describe('diagnostics of a pass', () => {
 	it('parses the transpile form (file:line:col: ERROR: text)', () => {
-		const errors = parseErrorLines(['src/vs/patchset/hello.ts:12:7: ERROR: Unexpected token'], channel('transpile'));
+		const errors = parseErrorLines(['source/own/hello.ts:12:7: ERROR: Unexpected token'], channel('transpile'));
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toMatchObject({
-			file: 'src/vs/patchset/hello.ts',
+			file: 'source/own/hello.ts',
 			line: 12,
 			column: 7,
 			code: null,
@@ -485,13 +485,13 @@ describe('diagnostics of a pass', () => {
 	it('parses the tsc form (file(line,col): error TSnnnn: text)', () => {
 		const errors = parseErrorLines(
 			[
-				'src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
+				'source/own/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
 				'not an error line at all',
-				'src/vs/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.'
+				'source/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.'
 			],
 			channel('typecheck')
 		);
-		expect(errors.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts', 'src/vs/base/common/util.ts']);
+		expect(errors.map((error) => error.file)).toEqual(['source/own/hello.ts', 'source/base/common/util.ts']);
 		expect(errors[0]?.code).toBe('TS2322');
 		expect(errors[0]?.line).toBe(12);
 		expect(errors[0]?.column).toBe(7);
@@ -502,9 +502,9 @@ describe('diagnostics of a pass', () => {
 		const typecheck = channel('typecheck');
 		const lines = [
 			'Starting compilation...',
-			'src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
-			'src/vs/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.',
-			'Finished watch-client-noEmit fixture with 7 errors.',
+			'source/own/hello.ts(12,7): error TS2322: Type number is not assignable to type string.',
+			'source/base/common/util.ts(4,2): error TS2345: Argument of type string is not assignable.',
+			'Finished compile-noEmit fixture with 7 errors.',
 			'Finished compilation with 1 errors after 200 ms'
 		];
 		expect(errorCountFrom(lines, typecheck)).toBe(7);
@@ -517,7 +517,7 @@ describe('diagnostics of a pass', () => {
 		expect(pass?.lines).toEqual(LIVE_TS7027_PASS);
 		expect(parseErrorLines(pass?.lines ?? [], typecheck)).toEqual([
 			{
-				file: 'src/vs/patchset/test/node/patchset.resources.test.ts',
+				file: 'source/own/test/node/patchset.resources.test.ts',
 				line: 80,
 				column: 4,
 				code: 'TS7027',
@@ -537,10 +537,10 @@ describe('diagnostics of a pass', () => {
 		// Per-project lines are not an aggregate: a red project followed by a
 		// zero-reporting one must not be readable as green by any count line,
 		// so the channel declares none (REPAIR-003).
-		const extensions = channel('extensions');
+		const extensions = channel('addons');
 		expect(extensions.errorCountLine).toEqual([]);
-		expect(errorCountFrom(['Finished extensions compilation with 3 errors.'], extensions)).toBeNull();
-		expect(errorCountFrom(['[05:55:37] Finished extensions types with 0 errors.'], extensions)).toBeNull();
+		expect(errorCountFrom(['Finished addons compilation with 3 errors.'], extensions)).toBeNull();
+		expect(errorCountFrom(['[05:55:37] Finished addons types with 0 errors.'], extensions)).toBeNull();
 		expect(errorCountFrom(LIVE_EXT_RED_PASS, extensions)).toBeNull();
 	});
 
@@ -565,7 +565,7 @@ describe('diagnostics of a pass', () => {
 			})
 		);
 		declareBuildWatch(root);
-		expect(() => loadBuildWatch(vscodeType, root)).toThrow(/group 1/);
+		expect(() => loadBuildWatch(stubProjectType, root)).toThrow(/group 1/);
 	});
 
 	it('rejects a count detector that captures only prose at load time is caught at match time', () => {
@@ -587,7 +587,7 @@ describe('diagnostics of a pass', () => {
 			})
 		);
 		declareBuildWatch(root);
-		const watch = loadBuildWatch(vscodeType, root);
+		const watch = loadBuildWatch(stubProjectType, root);
 		const custom = watch.channels[0];
 		expect(custom?.name).toBe('custom');
 		// A matched count line whose group 1 is not the number: configuration
@@ -614,83 +614,80 @@ describe('diagnostics of a pass', () => {
 	});
 
 	it('counts a timestamped extensions pass by its parsed diagnostics alone', () => {
-		const extensions = channel('extensions');
+		const extensions = channel('addons');
 		const pass = findLastPass(LIVE_EXT_RED_PASS, extensions);
 		expect(pass?.lines).toEqual(LIVE_EXT_RED_PASS);
 		const parsed = parseErrorLines(pass?.lines ?? [], extensions);
-		expect(parsed.map((error) => error.file)).toEqual(['src/vs/patchset/hello.ts', 'src/vs/base/common/util.ts']);
+		expect(parsed.map((error) => error.file)).toEqual(['source/own/hello.ts', 'source/base/common/util.ts']);
 		expect(parsed[0]).toMatchObject({ line: 12, column: 7, code: 'TS2322', message: 'Type number is not assignable to type string.' });
 		expect(parsed[1]).toMatchObject({ line: 4, column: 2, code: 'TS2345' });
 		expect(parsed).toHaveLength(2);
 
 		// The bare legacy diagnostic form still parses, and a malformed prefix
 		// (no space after the closing bracket) is not a diagnostic at all.
-		const bare = parseErrorLines(
-			['src/vs/patchset/hello.ts(12,7): error TS2322: Type number is not assignable to type string.'],
-			extensions
-		);
+		const bare = parseErrorLines(['source/own/hello.ts(12,7): error TS2322: Type number is not assignable to type string.'], extensions);
 		expect(bare).toHaveLength(1);
-		expect(parseErrorLines(['[05:55:36]src/vs/patchset/hello.ts(12,7): error TS2322: no space'], extensions)).toEqual([]);
+		expect(parseErrorLines(['[05:55:36]source/own/hello.ts(12,7): error TS2322: no space'], extensions)).toEqual([]);
 	});
 });
 
 describe('--mine', () => {
 	// The shape of the fixture delta: a patch and a rewrite rule over one upstream
-	// file, an overlay over product.json, a resource, and an own unit whose files
+	// file, an overlay over manifest.json, a resource, and an own unit whose files
 	// are named relative to delta/own/.
 	const inventory = {
 		entries: [
-			{ layer: 'patch', files: ['src/vs/workbench/browser/parts/example/examplePart.ts'] },
-			{ layer: 'config-overlay', files: ['product.json'] },
+			{ layer: 'patch', files: ['source/app/browser/parts/example/examplePart.ts'] },
+			{ layer: 'config-overlay', files: ['manifest.json'] },
 			{ layer: 'resource-file', files: ['resources/app-icon.bin'] },
 			{ layer: 'own', files: ['hello.ts', 'test/fixture.test.ts'] }
 		]
 	};
-	const targets = inventoryTargets(inventory, 'src/vs/patchset');
+	const targets = inventoryTargets(inventory, 'source/own');
 
 	it('maps own files to where they land in the tree', () => {
 		expect([...targets].sort()).toEqual([
-			'product.json',
+			'manifest.json',
 			'resources/app-icon.bin',
-			'src/vs/patchset/hello.ts',
-			'src/vs/patchset/test/fixture.test.ts',
-			'src/vs/workbench/browser/parts/example/examplePart.ts'
+			'source/app/browser/parts/example/examplePart.ts',
+			'source/own/hello.ts',
+			'source/own/test/fixture.test.ts'
 		]);
 	});
 
 	it('keeps own code and inventory targets, and drops everything else', () => {
-		expect(isMine('src/vs/patchset/anything/at/all.ts', 'src/vs/patchset', new Set())).toBe(true);
-		expect(isMine('src/vs/workbench/browser/parts/example/examplePart.ts', 'src/vs/patchset', targets)).toBe(true);
-		expect(isMine('product.json', 'src/vs/patchset', targets)).toBe(true);
-		expect(isMine('src/vs/base/common/util.ts', 'src/vs/patchset', targets)).toBe(false);
+		expect(isMine('source/own/anything/at/all.ts', 'source/own', new Set())).toBe(true);
+		expect(isMine('source/app/browser/parts/example/examplePart.ts', 'source/own', targets)).toBe(true);
+		expect(isMine('manifest.json', 'source/own', targets)).toBe(true);
+		expect(isMine('source/base/common/util.ts', 'source/own', targets)).toBe(false);
 		// A sibling directory whose name merely starts the same way is not own code.
-		expect(isMine('src/vs/patchset-extra/thing.ts', 'src/vs/patchset', targets)).toBe(false);
+		expect(isMine('source/own-extra/thing.ts', 'source/own', targets)).toBe(false);
 	});
 
 	it('brings the path of a diagnostic to the tree-relative form first', () => {
 		const tree = '/tmp/fork-tree';
-		expect(treeRelativePath('/tmp/fork-tree/src/vs/patchset/hello.ts', tree)).toBe('src/vs/patchset/hello.ts');
-		expect(treeRelativePath('./src/vs/patchset/hello.ts', tree)).toBe('src/vs/patchset/hello.ts');
-		expect(treeRelativePath('src/vs/patchset/hello.ts', tree)).toBe('src/vs/patchset/hello.ts');
+		expect(treeRelativePath('/tmp/fork-tree/source/own/hello.ts', tree)).toBe('source/own/hello.ts');
+		expect(treeRelativePath('./source/own/hello.ts', tree)).toBe('source/own/hello.ts');
+		expect(treeRelativePath('source/own/hello.ts', tree)).toBe('source/own/hello.ts');
 		// A path outside the tree stays as it is, and is nobody's.
 		expect(treeRelativePath('/elsewhere/hello.ts', tree)).toBe('/elsewhere/hello.ts');
-		expect(isMine(treeRelativePath('/elsewhere/hello.ts', tree), 'src/vs/patchset', targets)).toBe(false);
+		expect(isMine(treeRelativePath('/elsewhere/hello.ts', tree), 'source/own', targets)).toBe(false);
 	});
 });
 
 describe('probing a command line', () => {
 	it('compares argv tokens, so one script name is not a prefix of another', () => {
-		const transpileArgs = ['node', '/usr/lib/node_modules/npm/bin/npm-cli.js', 'run', 'watch-client-transpile'];
-		expect(argsMatch(transpileArgs, 'watch-client-transpile')).toBe(true);
-		expect(argsMatch(transpileArgs, 'watch-client')).toBe(false);
+		const transpileArgs = ['node', '/usr/lib/node_modules/npm/bin/npm-cli.js', 'run', 'watch-transpile'];
+		expect(argsMatch(transpileArgs, 'watch-transpile')).toBe(true);
+		expect(argsMatch(transpileArgs, 'watch-compile')).toBe(false);
 	});
 
 	it('accepts the single-string title npm rewrites its own argv with', () => {
 		// What /proc/<pid>/cmdline really holds once npm has renamed itself.
-		const title = ['npm run watch-client-transpile'];
-		expect(argsMatch(title, 'watch-client-transpile')).toBe(true);
-		expect(argsMatch(title, 'watch-client')).toBe(false);
-		expect(argsMatch(['npm run watch-client'], 'watch-client')).toBe(true);
+		const title = ['npm run watch-transpile'];
+		expect(argsMatch(title, 'watch-transpile')).toBe(true);
+		expect(argsMatch(title, 'watch-compile')).toBe(false);
+		expect(argsMatch(['npm run watch-compile'], 'watch-compile')).toBe(true);
 	});
 
 	it('keeps a channel living while descendants survive its exited POSIX group leader', () => {
@@ -702,9 +699,9 @@ describe('probing a command line', () => {
 			`${JSON.stringify({
 				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 				channel: 'transpile',
-				script: 'watch-client-transpile',
+				script: 'watch-transpile',
 				pid: 4242,
-				cmdline: 'watch-client-transpile',
+				cmdline: 'watch-transpile',
 				startedAt: '2026-08-31T00:00:00.000Z',
 				treeId: 'fixture-tree',
 				treePath: '/fixture/tree',
@@ -750,9 +747,9 @@ describe('probing a command line', () => {
 			`${JSON.stringify({
 				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 				channel: 'transpile',
-				script: 'watch-client-transpile',
+				script: 'watch-transpile',
 				pid: 4242,
-				cmdline: 'watch-client-transpile',
+				cmdline: 'watch-transpile',
 				startedAt: '2026-08-31T00:00:00.000Z',
 				treeId: 'fixture-tree',
 				treePath: tree,
@@ -797,9 +794,9 @@ describe('probing a command line', () => {
 			`${JSON.stringify({
 				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 				channel: 'transpile',
-				script: 'watch-client-transpile',
+				script: 'watch-transpile',
 				pid: 4242,
-				cmdline: 'watch-client-transpile',
+				cmdline: 'watch-transpile',
 				startedAt: '2026-08-31T00:00:00.000Z',
 				treeId: 'fixture-tree',
 				treePath: '/fixture/tree',
@@ -845,9 +842,9 @@ describe('probing a command line', () => {
 			`${JSON.stringify({
 				codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 				channel: 'transpile',
-				script: 'watch-client-transpile',
+				script: 'watch-transpile',
 				pid: 4242,
-				cmdline: 'watch-client-transpile',
+				cmdline: 'watch-transpile',
 				startedAt: '2026-08-31T00:00:00.000Z',
 				treeId: 'fixture-tree',
 				treePath: 'C:\\fork tree',
@@ -870,7 +867,7 @@ describe('probing a command line', () => {
 	});
 
 	it('reads one native Windows command line through Get-CimInstance', () => {
-		const commandLine = '"C:\\Program Files\\nodejs\\node.exe" npm-cli.js run watch-client-transpile';
+		const commandLine = '"C:\\Program Files\\nodejs\\node.exe" npm-cli.js run watch-transpile';
 		const invoked: { command: string; args: readonly string[] }[] = [];
 		const run: ProcessRunner = (command, args) => {
 			invoked.push({ command, args });
@@ -885,13 +882,13 @@ describe('probing a command line', () => {
 		expect(invoked[0]?.command).toBe('powershell.exe');
 		expect(invoked[0]?.args).toContain('-NoProfile');
 		expect(invoked[0]?.args.at(-1)).toContain('Get-CimInstance Win32_Process -Filter "ProcessId = 4242"');
-		expect(argsMatch([commandLine], 'watch-client-transpile')).toBe(true);
+		expect(argsMatch([commandLine], 'watch-transpile')).toBe(true);
 	});
 
 	it('reads the native Windows process table and carries parent pids for watcher ownership', () => {
 		const rows = [
-			{ pid: 101, parentPid: 50, commandLine: 'npm run watch-client-transpile' },
-			{ pid: 102, parentPid: 101, commandLine: 'node build/next/index.ts transpile --watch C:\\fork tree' },
+			{ pid: 101, parentPid: 50, commandLine: 'npm run watch-transpile' },
+			{ pid: 102, parentPid: 101, commandLine: 'node build/watch.mjs transpile --watch C:\\fork tree' },
 			// System processes whose command line CIM does not expose are irrelevant.
 			{ pid: 4, parentPid: 0, commandLine: null }
 		];
@@ -902,20 +899,20 @@ describe('probing a command line', () => {
 		};
 
 		expect(processTable({ platform: 'win32', run })).toEqual([
-			{ pid: 101, pgid: 50, args: ['npm run watch-client-transpile'], cwd: null },
-			{ pid: 102, pgid: 101, args: ['node build/next/index.ts transpile --watch C:\\fork tree'], cwd: null }
+			{ pid: 101, pgid: 50, args: ['npm run watch-transpile'], cwd: null },
+			{ pid: 102, pgid: 101, args: ['node build/watch.mjs transpile --watch C:\\fork tree'], cwd: null }
 		]);
 	});
 
 	it('conservatively catches a Windows watcher whose cwd is unavailable', () => {
 		const run: ProcessRunner = () => ({
 			status: 0,
-			stdout: JSON.stringify({ pid: 333, parentPid: 1, commandLine: 'node build/next/index.ts transpile --watch' }),
+			stdout: JSON.stringify({ pid: 333, parentPid: 1, commandLine: 'node build/watch.mjs transpile --watch' }),
 			stderr: ''
 		});
 
-		expect(foreignWatchers(vscodeType, 'C:\\fork tree', new Set(), { platform: 'win32', run })).toEqual([
-			{ pid: 333, commandLine: 'node build/next/index.ts transpile --watch' }
+		expect(foreignWatchers(stubProjectType, 'C:\\fork tree', new Set(), { platform: 'win32', run })).toEqual([
+			{ pid: 333, commandLine: 'node build/watch.mjs transpile --watch' }
 		]);
 	});
 
@@ -929,9 +926,9 @@ describe('probing a command line', () => {
 				{
 					codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
 					channel: 'transpile',
-					script: 'watch-client-transpile',
+					script: 'watch-transpile',
 					pid: 4242,
-					cmdline: 'watch-client-transpile',
+					cmdline: 'watch-transpile',
 					startedAt: '2026-08-31T00:00:00.000Z',
 					treeId: 'fixture-tree',
 					treePath: 'C:\\fork tree',

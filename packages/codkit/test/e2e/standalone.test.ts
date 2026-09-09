@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { makeCliFixture } from '../support/cliFixture.ts';
+import { makeCliFixture, STUB_TYPE_ENV, TEST_BUILD_CONDITION } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -32,7 +32,9 @@ describe('standalone Codkit roots', () => {
 		delete env['CODKIT_FORK_DIR'];
 		env['HOME'] = home;
 
-		const run = spawnSync(process.execPath, [launcher, '--json', 'load'], {
+		Object.assign(env, STUB_TYPE_ENV);
+
+		const run = spawnSync(process.execPath, [TEST_BUILD_CONDITION, launcher, '--json', 'load'], {
 			cwd: makeTempRoot('standalone-caller'),
 			env,
 			encoding: 'utf8'
