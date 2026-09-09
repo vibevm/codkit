@@ -9,27 +9,15 @@
 // codkit's own notice never reaches a product file.
 
 import { join } from 'node:path';
+import type { FeatureSkeleton, ProjectType } from '@codkit/type-api';
 import { statIfPresent } from './containedPath.ts';
 import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts';
 import { ckError } from './messages.ts';
-import {
-	brandHookText,
-	brandModule,
-	brandReminders,
-	commonModule,
-	contributionModule,
-	headerStyleName,
-	productHeader,
-	settingId,
-	testModule
-} from './genTemplates.ts';
-import type { FeatureTemplateOptions, HeaderStyleName, ProductHeader } from './genTemplates.ts';
+import { headerStyleName, productHeader } from './genTemplates.ts';
+import type { HeaderStyleName, ProductHeader } from './genTemplates.ts';
 
 /** ##RT-DESCRIPTOR: two or more dot-separated camelCase segments. */
 export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/u;
-
-/** Where the brand table goes, relative to the patch set. */
-export const BRAND_FILE_PATH = 'delta/own/common/brand.ts';
 
 /** One file a generator would create. */
 export type GeneratedFile = { readonly path: string; readonly text: string };
@@ -38,6 +26,10 @@ export type GenOptions = {
 	readonly patchesDir: string;
 	/** The product's header, or null when no header flag was given. */
 	readonly header: ProductHeader | null;
+	/** The project type of the patch set: the skeletons are its answer. */
+	readonly type: ProjectType;
+	/** The own root of the patch set, a path from the tree root. */
+	readonly ownRoot: string;
 };
 
 export type FeatureOptions = GenOptions & {
@@ -54,6 +46,21 @@ export type GenOutcome = {
 	readonly headerStyle: HeaderStyleName;
 };
 
+export type FeatureOutcome = GenOutcome & {
+	/** The directory of the feature: one unit of the own manifest covers it. */
+	readonly directory: string;
+	/** The line the composition root of the product gains by hand. */
+	readonly importLine: string;
+	/** What is left to do by hand, the engine's line first. */
+	readonly reminders: readonly string[];
+};
+
+export type BrandOutcome = GenOutcome & {
+	/** The graft the product writes as a patch; printed, never written. */
+	readonly hookText: string;
+	readonly reminders: readonly string[];
+};
+
 /** ##GEN-FEATURE: the id decides the directory, so it is validated first. */
 export function featureDirectoryName(id: string): string {
 	if (!FEATURE_ID_PATTERN.test(id)) {
@@ -67,27 +74,60 @@ export function featureDirectoryName(id: string): string {
 	return id.split('.').at(-1) ?? id;
 }
 
-/** The three files a feature skeleton consists of, already rendered. */
-export function planFeature(options: FeatureOptions): GenOutcome {
+/** The files of a feature skeleton, as the project type writes them. */
+export function planFeature(options: FeatureOptions): FeatureOutcome {
 	const name = featureDirectoryName(options.id);
-	const template: FeatureTemplateOptions = {
+	const skeleton = options.type.generators.featureSkeleton({
 		id: options.id,
 		name,
 		title: options.title,
 		setting: options.setting,
-		cold: options.cold
+		cold: options.cold,
+		ownRoot: options.ownRoot
+	});
+	assertTestLivesWithTheFeature(options.type, skeleton);
+	const files: GeneratedFile[] = skeleton.modules.map((module) => ({ path: module.path, text: module.text }));
+	return {
+		...withHeader(files, options.header),
+		directory: skeleton.directory,
+		importLine: skeleton.importLine,
+		reminders: [unitReminder(skeleton.directory), ...skeleton.reminders]
 	};
-	const files: GeneratedFile[] = [
-		{ path: `delta/own/contrib/${name}/common/${name}.ts`, text: commonModule(template) },
-		{ path: `delta/own/contrib/${name}/browser/${name}.contribution.ts`, text: contributionModule(template) },
-		{ path: `delta/own/contrib/${name}/test/browser/${name}.test.ts`, text: testModule(template) }
-	];
-	return withHeader(files, options.header);
 }
 
-/** ##GEN-BRAND: the rules table; the graft into `nls.ts` is printed, not written. */
-export function planBrand(options: GenOptions): GenOutcome {
-	return withHeader([{ path: BRAND_FILE_PATH, text: brandModule() }], options.header);
+/**
+ * ##GEN-TEST-LIVES-WITH-THE-FEATURE: the rule is the engine's, so the engine
+ * checks it rather than trusting the answer. A test outside the feature's
+ * directory would need a unit of its own, and the reminder the run prints names
+ * exactly one.
+ */
+function assertTestLivesWithTheFeature(type: ProjectType, skeleton: FeatureSkeleton): void {
+	const strays = skeleton.modules.filter((module) => module.role === 'test' && !module.path.startsWith(`${skeleton.directory}/`));
+	if (strays.length > 0) {
+		throw ckError(
+			'ARTIFACT-BROKEN',
+			`the project type ${type.id} puts the test of a feature outside its directory: ${strays.map((module) => module.path).join(', ')}`,
+			`a feature skeleton keeps its test under ${skeleton.directory}/, so one declared unit covers the code and the test`
+		);
+	}
+}
+
+/** ##GEN-BRAND: the rules table; the graft into the funnel is printed, not written. */
+export function planBrand(options: GenOptions): BrandOutcome {
+	const graft = options.type.generators.brandGraft;
+	if (graft === undefined) {
+		throw ckError(
+			'TYPE-CAPABILITY',
+			`the project type ${options.type.id} has no string funnel to graft a brand table into`,
+			'the capability gen-brand is what says a family has one'
+		);
+	}
+	const built = graft(options.ownRoot);
+	return {
+		...withHeader([{ path: built.module.path, text: built.module.text }], options.header),
+		hookText: built.hookText,
+		reminders: built.reminders
+	};
 }
 
 function withHeader(files: readonly GeneratedFile[], header: ProductHeader | null): GenOutcome {
@@ -150,18 +190,11 @@ export function writeGenerated(patchesDir: string, files: readonly GeneratedFile
 	}
 }
 
-/** ##GEN-FEATURE: the line the product's composition root gains. */
-export function featureImportLine(name: string): string {
-	return `import '../contrib/${name}/browser/${name}.contribution.js';`;
-}
-
 /**
  * ##GEN-TEST-LIVES-WITH-THE-FEATURE: own code needs a unit, and the generator
  * does not write one. The test lives inside the feature, so one unit covers
  * the whole skeleton and the reminder names exactly that one.
  */
-export function unitReminder(name: string): string {
-	return `declare a unit for delta/own/contrib/${name} in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED`;
+export function unitReminder(directory: string): string {
+	return `declare a unit for ${directory} in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED`;
 }
-
-export { brandHookText, brandReminders, settingId };

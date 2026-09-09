@@ -1,8 +1,10 @@
 /** @scope spec://codkit/modules/codkit/PROP-016#TYPE-CONTRACT-IS-CLOSED */
-// The contract itself: the nine questions a project type answers, and nothing
-// else. The list is the set of variation points measured in the engine; a tenth
+// The contract itself: the ten questions a project type answers, and nothing
+// else. The list is the set of variation points measured in the engine; a new
 // question is added when a second type needs it, never in anticipation
-// (##DECISION-TYPE-CONTRACT-FROM-MEASUREMENT).
+// (##DECISION-TYPE-CONTRACT-FROM-MEASUREMENT). The tenth, generators, was added
+// on 2026-09-09 exactly so: the second type needs a different skeleton and has
+// no string funnel to graft a brand table into at all.
 //
 // `@codkit/type-api` is the only import a type package takes from the tool, and
 // the CLI imports a type only through this interface (##TYPE-API-STABILITY).
@@ -13,6 +15,7 @@ import type { BrandImagesArea } from './brandImages.ts';
 import type { BuildArea } from './build.ts';
 import type { Capability } from './capabilities.ts';
 import type { ConventionsArea } from './conventions.ts';
+import type { GeneratorsArea } from './generators.ts';
 import type { IdentityArea } from './identity.ts';
 import type { LayersArea } from './layers.ts';
 import type { LayoutArea } from './layout.ts';
@@ -41,6 +44,7 @@ export type ProjectType = {
 	readonly runtime?: RuntimeArea;
 	readonly standards: StandardsArea;
 	readonly conventions: ConventionsArea;
+	readonly generators: GeneratorsArea;
 };
 
 /**
@@ -66,6 +70,9 @@ export function projectTypeProblems(type: ProjectType): readonly string[] {
 		const declared = type.capabilities.has(capability);
 		if (present && !declared) problems.push(`${type.id}: ${area} is answered but the capability ${capability} is not declared`);
 		if (!present && declared) problems.push(`${type.id}: the capability ${capability} is declared but ${area} is not answered`);
+	}
+	if ((type.generators.brandGraft !== undefined) !== type.capabilities.has('gen-brand')) {
+		problems.push(`${type.id}: the brand graft and the capability gen-brand must agree`);
 	}
 	for (const [area, capability] of [
 		['ownExtensions', 'own-extensions'],

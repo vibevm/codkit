@@ -17,5 +17,6 @@ export type { Rgba } from './png.ts';
 export type { RuntimeArea } from './runtime.ts';
 export type { StandardsArea } from './standards.ts';
 export type { ConventionsArea } from './conventions.ts';
+export type { BrandGraft, FeatureRequest, FeatureSkeleton, GeneratedModule, GeneratedRole, GeneratorsArea } from './generators.ts';
 export { OPTIONAL_AREAS, projectTypeProblems } from './projectType.ts';
 export type { ProjectType } from './projectType.ts';

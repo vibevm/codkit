@@ -1,33 +1,30 @@
-// PROP-013 ##UT-GEN-FEATURE: the skeletons `codkit gen` writes (PROP-015 sec. 5).
+// PROP-013 ##UT-GEN-FEATURE: what `codkit gen` does with the skeleton a project
+// type hands it (PROP-015 sec. 5).
 //
 // Four properties are what the tests are about: the id decides everything
 // (##GEN-FEATURE), the header is the product's or there is none
 // (##GEN-HEADER-IS-THE-PRODUCTS), the test belongs to the feature
 // (##GEN-TEST-LIVES-WITH-THE-FEATURE), and a refusal writes nothing at all
-// (##GEN-REFUSES-EXISTING).
+// (##GEN-REFUSES-EXISTING). What a skeleton says is the type's answer and is
+// proved in the suite of the package that gives it, so the type here is a stub.
 
 import { afterAll, describe, expect, it } from 'vitest';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-	BRAND_FILE_PATH,
-	brandHookText,
-	brandReminders,
-	featureDirectoryName,
-	featureImportLine,
-	planBrand,
-	planFeature,
-	refuseExisting,
-	unitReminder,
-	writeGenerated
-} from '../../src/lib/genFeature.ts';
+import type { Capability } from '@codkit/type-api';
+import { featureDirectoryName, planBrand, planFeature, refuseExisting, unitReminder, writeGenerated } from '../../src/lib/genFeature.ts';
+import type { FeatureOptions } from '../../src/lib/genFeature.ts';
 import { isCkError } from '../../src/lib/messages.ts';
+import { stubGenerators, stubType } from '../support/stubType.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
 
 const HEADER = { form: 'fields', holder: 'Acme', license: 'MIT', year: '2026', style: 'line' } as const;
 const BLOCK_HEADER = { ...HEADER, style: 'block' } as const;
+
+const TYPE = stubType();
+const BRANDING_TYPE = stubType({ capabilities: new Set<Capability>(['gen-brand']), generators: stubGenerators({ brand: true }) });
 
 // The block form is pinned line by line: its width is what makes an own file
 // sit flush with the upstream file next to it, and a silent change of width is
@@ -59,6 +56,20 @@ function read(patchesDir: string, relative: string): string {
 	return readFileSync(join(patchesDir, ...relative.split('/')), 'utf8');
 }
 
+function feature(patchesDir: string, over: Partial<Omit<FeatureOptions, 'patchesDir'>> = {}) {
+	return planFeature({
+		patchesDir,
+		header: HEADER,
+		type: TYPE,
+		ownRoot: 'own/root',
+		id: 'acme.sample',
+		title: 'Sample',
+		setting: false,
+		cold: false,
+		...over
+	});
+}
+
 describe('featureDirectoryName', () => {
 	it('takes the last segment of a well-formed id', () => {
 		expect(featureDirectoryName('acme.sample')).toBe('sample');
@@ -77,66 +88,55 @@ describe('featureDirectoryName', () => {
 });
 
 describe('planFeature', () => {
-	it('writes three files, named after the last segment of the id', () => {
+	it('writes what the type answered, at the paths the type named', () => {
 		const patchesDir = makeProduct('files');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: true, cold: false });
+		const outcome = feature(patchesDir);
 		writeGenerated(patchesDir, outcome.files);
 
 		expect(outcome.files.map((file) => file.path)).toEqual([
-			'delta/own/contrib/sample/common/sample.ts',
-			'delta/own/contrib/sample/browser/sample.contribution.ts',
-			'delta/own/contrib/sample/test/browser/sample.test.ts'
+			'delta/own/contrib/sample/sample.ts',
+			'delta/own/contrib/sample/test/sample.test.ts'
 		]);
-		expect(read(patchesDir, 'delta/own/contrib/sample/common/sample.ts')).toContain("export const FEATURE_ID = 'acme.sample';");
-		expect(read(patchesDir, 'delta/own/contrib/sample/common/sample.ts')).toContain("export const SETTING_ID = 'acme.sample.enabled';");
+		expect(read(patchesDir, 'delta/own/contrib/sample/sample.ts')).toContain("export const FEATURE_ID = 'acme.sample';");
 	});
 
-	it('registers the feature through the runtime library and defaults to a hot toggle', () => {
-		const patchesDir = makeProduct('hot');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: true, cold: false });
-		const contribution = outcome.files[1]?.text ?? '';
+	it('hands the type the id, the directory name, the flags and the own root', () => {
+		const seen: unknown[] = [];
+		const type = stubType({
+			generators: {
+				featureSkeleton: (request) => {
+					seen.push(request);
+					return { directory: 'delta/own/x', modules: [], importLine: '', reminders: [] };
+				}
+			}
+		});
+		feature(makeProduct('request'), { type, id: 'acme.editor.smartPaste', title: 'Smart paste', setting: true, cold: true });
 
-		expect(contribution).toContain("import { registerFeature } from '../../../codkit/browser/featureRegistry.js';");
-		expect(contribution).toContain('registerFeature(');
-		expect(contribution).toContain('hotToggle: true,');
-		expect(contribution).toContain('class SampleFeature extends Disposable {');
-		expect(contribution).toContain('localize(\'acme.sample.title\', "Sample")');
+		expect(seen).toEqual([
+			{ id: 'acme.editor.smartPaste', name: 'smartPaste', title: 'Smart paste', setting: true, cold: true, ownRoot: 'own/root' }
+		]);
 	});
 
-	it('declares a cold feature under --cold and no setting without --setting', () => {
-		const patchesDir = makeProduct('cold');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: true });
+	it('carries the reminders of the type after the one the own manifest needs', () => {
+		const outcome = feature(makeProduct('reminders'));
 
-		expect(outcome.files[1]?.text).toContain('hotToggle: false,');
-		expect(outcome.files[1]?.text).not.toContain('setting: {');
-		expect(outcome.files[0]?.text).not.toContain('SETTING_ID');
+		expect(outcome.directory).toBe('delta/own/contrib/sample');
+		expect(outcome.importLine).toBe("import './contrib/sample/sample.js';");
+		expect(outcome.reminders).toEqual([unitReminder('delta/own/contrib/sample'), 'teach the stub family about sample']);
 	});
 
-	it('writes a test skeleton that leaks no disposables', () => {
-		const patchesDir = makeProduct('test');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+	it('refuses a skeleton whose test does not live with the feature', () => {
+		// ##GEN-TEST-LIVES-WITH-THE-FEATURE is the engine's rule, so the engine
+		// checks it rather than trusting whatever the type answered.
+		const type = stubType({ generators: stubGenerators({ testOutside: true }) });
 
-		expect(outcome.files[2]?.text).toContain('ensureNoDisposablesAreLeakedInTestSuite();');
-		expect(outcome.files[2]?.text).toContain("suite('acme.sample', () => {");
-	});
-
-	it('counts the specifiers of that test from inside the feature directory', () => {
-		// ##GEN-TEST-LIVES-WITH-THE-FEATURE: `test/browser/` sits two levels below
-		// the feature, so upstream is five `..` away and own code is two.
-		const patchesDir = makeProduct('test-imports');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
-
-		expect(outcome.files[2]?.text).toContain(
-			"import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';"
-		);
-		expect(outcome.files[2]?.text).toContain("import { FEATURE_ID } from '../../common/sample.js';");
+		expect(codeOf(() => feature(makeProduct('stray-test'), { type }))).toBe('ARTIFACT-BROKEN');
 	});
 });
 
 describe('the header of a generated file', () => {
 	it("is the product's, four lines, with its holder and its SPDX identifier", () => {
-		const patchesDir = makeProduct('header');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+		const outcome = feature(makeProduct('header'));
 
 		expect(outcome.headerWritten).toBe(true);
 		expect(outcome.headerStyle).toBe('line');
@@ -152,8 +152,7 @@ describe('the header of a generated file', () => {
 	});
 
 	it('is the ruled block of the upstream form under the block style, to the character', () => {
-		const patchesDir = makeProduct('header-block');
-		const outcome = planFeature({ patchesDir, header: BLOCK_HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+		const outcome = feature(makeProduct('header-block'), { header: BLOCK_HEADER });
 
 		expect(outcome.headerStyle).toBe('block');
 		for (const file of outcome.files) {
@@ -165,16 +164,8 @@ describe('the header of a generated file', () => {
 	});
 
 	it('copies the text of a header file byte for byte and calls it the file style', () => {
-		const patchesDir = makeProduct('header-file');
 		const text = `${['/* the house header of this product', ' * second line, exactly as written', ' */'].join('\n')}\n`;
-		const outcome = planFeature({
-			patchesDir,
-			header: { form: 'text', text },
-			id: 'acme.sample',
-			title: 'Sample',
-			setting: false,
-			cold: false
-		});
+		const outcome = feature(makeProduct('header-file'), { header: { form: 'text', text } });
 
 		expect(outcome.headerWritten).toBe(true);
 		expect(outcome.headerStyle).toBe('file');
@@ -184,8 +175,7 @@ describe('the header of a generated file', () => {
 	});
 
 	it("never carries codkit's own notice into a product file", () => {
-		const patchesDir = makeProduct('no-upl');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+		const outcome = feature(makeProduct('no-upl'));
 
 		for (const file of outcome.files) {
 			expect(file.text).not.toContain('UPL-1.0');
@@ -194,89 +184,78 @@ describe('the header of a generated file', () => {
 	});
 
 	it('is absent when the product supplied neither holder nor licence', () => {
-		const patchesDir = makeProduct('none');
-		const outcome = planFeature({ patchesDir, header: null, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+		const outcome = feature(makeProduct('none'), { header: null });
 
 		expect(outcome.headerWritten).toBe(false);
 		expect(outcome.headerStyle).toBeNull();
-		expect(outcome.files[0]?.text.startsWith('// Identifiers of the Sample feature.')).toBe(true);
+		expect(outcome.files[0]?.text.startsWith('// the Sample feature')).toBe(true);
 	});
 });
 
 describe('refuseExisting', () => {
 	it('refuses when a single target is already there, before anything is written', () => {
 		const patchesDir = makeProduct('exists');
-		const first = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+		const first = feature(patchesDir);
 		writeGenerated(patchesDir, first.files);
-		const before = read(patchesDir, 'delta/own/contrib/sample/common/sample.ts');
+		const before = read(patchesDir, 'delta/own/contrib/sample/sample.ts');
 
-		const second = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Other', setting: true, cold: true });
+		const second = feature(patchesDir, { title: 'Other', setting: true, cold: true });
 		expect(codeOf(() => refuseExisting(patchesDir, second.files))).toBe('GEN-EXISTS');
-		expect(read(patchesDir, 'delta/own/contrib/sample/common/sample.ts')).toBe(before);
+		expect(read(patchesDir, 'delta/own/contrib/sample/sample.ts')).toBe(before);
 	});
 
 	it('says nothing about a directory that holds no target of this run', () => {
 		const patchesDir = makeProduct('free');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.other', title: 'Other', setting: false, cold: false });
+		const outcome = feature(patchesDir, { id: 'acme.other', title: 'Other' });
 
 		expect(codeOf(() => refuseExisting(patchesDir, outcome.files))).toBeNull();
-	});
-});
-
-describe('planBrand', () => {
-	it('writes one table exporting brandMessage through the runtime engine', () => {
-		const patchesDir = makeProduct('brand');
-		const outcome = planBrand({ patchesDir, header: HEADER });
-		writeGenerated(patchesDir, outcome.files);
-
-		expect(outcome.files.map((file) => file.path)).toEqual([BRAND_FILE_PATH]);
-		const text = read(patchesDir, BRAND_FILE_PATH);
-		expect(text).toContain("import { createBrandTransform, type IBrandRule } from '../codkit/common/brand/brandRules.js';");
-		expect(text).toContain('export const brandMessage = createBrandTransform(RULES);');
-		expect(text).toContain("{ find: 'Upstream Name', replace: 'Product Name', except: ['Upstream Name Speech'] },");
-	});
-
-	it('refuses to overwrite an existing table', () => {
-		const patchesDir = makeProduct('brand-exists');
-		mkdirSync(join(patchesDir, 'delta', 'own', 'common'), { recursive: true });
-		writeFileSync(join(patchesDir, ...BRAND_FILE_PATH.split('/')), 'mine\n', 'utf8');
-
-		const outcome = planBrand({ patchesDir, header: HEADER });
-		expect(codeOf(() => refuseExisting(patchesDir, outcome.files))).toBe('GEN-EXISTS');
-		expect(read(patchesDir, BRAND_FILE_PATH)).toBe('mine\n');
-	});
-});
-
-describe('what the generator prints', () => {
-	it('offers the import line the composition root needs', () => {
-		expect(featureImportLine('sample')).toBe("import '../contrib/sample/browser/sample.contribution.js';");
-	});
-
-	it('names one unit, the feature directory that now holds the test too', () => {
-		// ##GEN-TEST-LIVES-WITH-THE-FEATURE: one declaration covers code and test.
-		expect(unitReminder('sample')).toBe(
-			'declare a unit for delta/own/contrib/sample in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED'
-		);
-	});
-
-	it('offers the graft for nls.ts and the two reminders that go with it', () => {
-		expect(brandHookText('patchset')).toContain('brandMessage(');
-		expect(brandHookText('patchset')).toContain("import { brandMessage } from './patchset/common/brand.js';");
-
-		const reminders = brandReminders('patchset');
-		expect(reminders).toHaveLength(2);
-		expect(reminders[0]).toContain('type = hook');
-		expect(reminders[1]).toContain('nls.ts');
-		expect(reminders[1]).toContain('vs/patchset/common/~');
 	});
 
 	it('leaves an empty product directory empty when it refuses', () => {
 		const patchesDir = makeProduct('untouched');
-		const outcome = planFeature({ patchesDir, header: HEADER, id: 'acme.sample', title: 'Sample', setting: false, cold: false });
+		const outcome = feature(patchesDir);
 		writeGenerated(patchesDir, outcome.files);
 		const listed = readdirSync(join(patchesDir, 'delta', 'own')).sort();
 
 		expect(codeOf(() => refuseExisting(patchesDir, outcome.files))).toBe('GEN-EXISTS');
 		expect(readdirSync(join(patchesDir, 'delta', 'own')).sort()).toEqual(listed);
+	});
+});
+
+describe('planBrand', () => {
+	it('writes the table the type answered and hands back its graft unwritten', () => {
+		const patchesDir = makeProduct('brand');
+		const outcome = planBrand({ patchesDir, header: HEADER, type: BRANDING_TYPE, ownRoot: 'own/root' });
+		writeGenerated(patchesDir, outcome.files);
+
+		expect(outcome.files.map((file) => file.path)).toEqual(['delta/own/common/brand.ts']);
+		expect(read(patchesDir, 'delta/own/common/brand.ts')).toContain('the brand table of own/root');
+		expect(outcome.hookText).toContain('own/root');
+		expect(outcome.reminders).toEqual(['the graft is a patch of the product']);
+	});
+
+	it('refuses to overwrite an existing table', () => {
+		const patchesDir = makeProduct('brand-exists');
+		mkdirSync(join(patchesDir, 'delta', 'own', 'common'), { recursive: true });
+		writeFileSync(join(patchesDir, 'delta', 'own', 'common', 'brand.ts'), 'mine\n', 'utf8');
+
+		const outcome = planBrand({ patchesDir, header: HEADER, type: BRANDING_TYPE, ownRoot: 'own/root' });
+		expect(codeOf(() => refuseExisting(patchesDir, outcome.files))).toBe('GEN-EXISTS');
+		expect(read(patchesDir, 'delta/own/common/brand.ts')).toBe('mine\n');
+	});
+
+	it('refuses a family that has no string funnel to graft into', () => {
+		const patchesDir = makeProduct('brand-none');
+
+		expect(codeOf(() => planBrand({ patchesDir, header: HEADER, type: TYPE, ownRoot: 'own/root' }))).toBe('TYPE-CAPABILITY');
+	});
+});
+
+describe('what the generator prints', () => {
+	it('names one unit, the feature directory that now holds the test too', () => {
+		// ##GEN-TEST-LIVES-WITH-THE-FEATURE: one declaration covers code and test.
+		expect(unitReminder('delta/own/contrib/sample')).toBe(
+			'declare a unit for delta/own/contrib/sample in delta/own/patchset.delta.json, or verify reports CK-E-OWN-UNCOVERED'
+		);
 	});
 });

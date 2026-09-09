@@ -6,9 +6,8 @@
 // skeleton is written into the delta, and the fork tree receives it on the next
 // `codkit load` like any other own file.
 import { requireCapability } from '../types/capability.js';
-import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, patchesRoot } from '../lib/command.js';
-import { loadBaseConfig } from '../lib/configFile.js';
-import { brandHookText, brandReminders, featureDirectoryName, featureImportLine, planBrand, planFeature, readHeaderText, refuseExisting, unitReminder, writeGenerated } from '../lib/genFeature.js';
+import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, patchesRoot, requireProjectType } from '../lib/command.js';
+import { featureDirectoryName, planBrand, planFeature, readHeaderText, refuseExisting, writeGenerated } from '../lib/genFeature.js';
 import { ckError, isCkError } from '../lib/messages.js';
 const TITLE = '--title';
 const SETTING = '--setting';
@@ -67,17 +66,13 @@ function headerStyleOf(style) {
     return known;
 }
 /**
- * `ownRoot` shapes the import specifiers a person is asked to write by hand.
- * The command reads no configuration to run (##GEN-NAMESPACE), so a patch set
- * without one gets the placeholder rather than a refusal.
+ * The own root shapes what a generator of this family writes and what a person
+ * is asked to write by hand. It comes from the configuration, which is why
+ * these two verbs read one (##GEN-NAMESPACE is about the namespace, not about
+ * the answers the type needs to give).
  */
-function ownRoot(patchesDir) {
-    try {
-        return loadBaseConfig(patchesDir)?.typeConfig.ownRoot ?? '<ownRoot>';
-    }
-    catch {
-        return '<ownRoot>';
-    }
+function ownRoot(ctx) {
+    return ctx.config?.typeConfig.ownRoot ?? '';
 }
 /**
  * ##GEN-REFUSES-EXISTING: exit 1 with nothing written. It is a verdict about
@@ -109,11 +104,13 @@ async function runFeature(ctx) {
     }
     // The id is validated before anything else: it decides the directory, and a
     // refusal here has nothing to undo (##GEN-FEATURE).
-    const name = featureDirectoryName(id);
+    featureDirectoryName(id);
     const header = headerOf(ctx, patchesDir);
     const outcome = planFeature({
         patchesDir,
         header,
+        type: requireProjectType(ctx),
+        ownRoot: ownRoot(ctx),
         id,
         title,
         setting: commandFlagGiven(ctx.commandFlags, SETTING),
@@ -127,44 +124,41 @@ async function runFeature(ctx) {
         ctx.out.info(`created ${file.path}`);
     if (!outcome.headerWritten)
         ctx.out.warn(NO_HEADER_WARNING);
-    const importLine = featureImportLine(name);
-    ctx.out.info(`next: add to the composition root of the product: ${importLine}`);
-    ctx.out.info(`next: ${unitReminder(name)}`);
+    ctx.out.info(`next: add to the composition root of the product: ${outcome.importLine}`);
+    for (const reminder of outcome.reminders)
+        ctx.out.info(`next: ${reminder}`);
     ctx.out.setData({
         id,
         files: outcome.files.map((file) => file.path),
-        importLine,
+        importLine: outcome.importLine,
         headerWritten: outcome.headerWritten,
         headerStyle: outcome.headerStyle,
-        reminders: [unitReminder(name)]
+        reminders: [...outcome.reminders]
     });
     return EXIT_OK;
 }
 async function runBrand(ctx) {
     requireCapability(ctx.type, 'gen-brand', 'gen brand');
     const patchesDir = patchesRoot(ctx);
-    const outcome = planBrand({ patchesDir, header: headerOf(ctx, patchesDir) });
+    const outcome = planBrand({ patchesDir, header: headerOf(ctx, patchesDir), type: requireProjectType(ctx), ownRoot: ownRoot(ctx) });
     const refusal = refuse(ctx, patchesDir, outcome);
     if (refusal !== null)
         return refusal;
     writeGenerated(patchesDir, outcome.files);
-    const own = ownRoot(patchesDir);
-    const hookText = brandHookText(own);
-    const reminders = brandReminders(own);
     for (const file of outcome.files)
         ctx.out.info(`created ${file.path}`);
     if (!outcome.headerWritten)
         ctx.out.warn(NO_HEADER_WARNING);
-    ctx.out.info('----- the graft for _format in src/vs/nls.ts (write it as a patch of the product) -----');
-    ctx.out.info(hookText.replace(/\n$/u, ''));
+    ctx.out.info('----- the graft into the string funnel of the distribution (write it as a patch of the product) -----');
+    ctx.out.info(outcome.hookText.replace(/\n$/u, ''));
     ctx.out.info('----- end of the graft -----');
-    for (const reminder of reminders)
+    for (const reminder of outcome.reminders)
         ctx.out.info(`reminder: ${reminder}`);
     ctx.out.setData({
         file: outcome.files[0]?.path ?? '',
         files: outcome.files.map((file) => file.path),
-        hookText,
-        reminders: [...reminders],
+        hookText: outcome.hookText,
+        reminders: [...outcome.reminders],
         headerWritten: outcome.headerWritten
     });
     return EXIT_OK;
@@ -181,7 +175,7 @@ export const genCommand = {
 export const genFeatureCommand = {
     name: 'gen feature',
     summary: 'write the skeleton of a flag-gated product feature into delta/own/',
-    configMode: 'none',
+    configMode: 'load',
     roots: 'patches',
     maxArgs: 1,
     commandFlags: [TITLE, SETTING, COLD, ...HEADER_FLAGS],
@@ -189,7 +183,7 @@ export const genFeatureCommand = {
 };
 export const genBrandCommand = {
     name: 'gen brand',
-    summary: 'write the brand rules table and print the graft for nls.ts',
+    summary: "write the brand rules table and print the graft for the distribution's string funnel",
     configMode: 'load',
     roots: 'patches',
     maxArgs: 0,

@@ -11,6 +11,7 @@ import { brandImages } from './brandImages.ts';
 import { build } from './build.ts';
 import { configSchema } from './configSchema.ts';
 import { conventions } from './conventions.ts';
+import { generators } from './generators.ts';
 import { identity } from './identity.ts';
 import { layers } from './layers.ts';
 import { layout } from './layout.ts';
@@ -50,7 +51,8 @@ export const projectType: ProjectType = {
 	brandImages,
 	runtime,
 	standards,
-	conventions
+	conventions,
+	generators
 };
 
 export default projectType;
@@ -61,6 +63,7 @@ export { build } from './build.ts';
 export { configSchema } from './configSchema.ts';
 export type { VscodeTypeConfig } from './configSchema.ts';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.ts';
+export { brandGraft, featureClassName, featureSkeleton, generators, settingId } from './generators.ts';
 export { identity } from './identity.ts';
 export { entryModule, layers, overlayTargets, ownExtensions, serviceOverride } from './layers.ts';
 export { layout, OWN_ROOT_PREFIX } from './layout.ts';

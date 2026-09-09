@@ -7,7 +7,7 @@
 // answers it is about.
 
 import { z } from 'zod';
-import type { AdvisoryReader, Capability, ProjectType } from '@codkit/type-api';
+import type { AdvisoryReader, BrandGraft, Capability, GeneratorsArea, ProjectType } from '@codkit/type-api';
 
 /** The stub's own configuration: an own root and nothing else. */
 const configSchema = z.object({ ownRoot: z.string().min(1) }).strict();
@@ -44,8 +44,50 @@ const base: ProjectType = {
 	},
 	advisory: { readers: [] },
 	standards: { packages: [] },
-	conventions: { subsystems: ['stub'], forbiddenServiceIds: [] }
+	conventions: { subsystems: ['stub'], forbiddenServiceIds: [] },
+	generators: stubGenerators()
 };
+
+/**
+ * The smallest honest skeleton: identifiers, and a test inside the feature's
+ * own directory. `brandGraft` is present only when a test asks for it, so the
+ * refusal of a family without a string funnel can be proved too.
+ */
+export function stubGenerators(options: { readonly brand?: boolean; readonly testOutside?: boolean } = {}): GeneratorsArea {
+	const area: GeneratorsArea = {
+		featureSkeleton: (request) => {
+			const directory = `delta/own/contrib/${request.name}`;
+			return {
+				directory,
+				modules: [
+					{
+						path: `${directory}/${request.name}.ts`,
+						text: `// the ${request.title} feature\nexport const FEATURE_ID = '${request.id}';\n`,
+						role: 'identifiers'
+					},
+					{
+						path: options.testOutside === true ? `delta/own/test/${request.name}.test.ts` : `${directory}/test/${request.name}.test.ts`,
+						text: `// the test of ${request.id}\n`,
+						role: 'test'
+					}
+				],
+				importLine: `import './contrib/${request.name}/${request.name}.js';`,
+				reminders: [`teach the stub family about ${request.name}`]
+			};
+		}
+	};
+	if (options.brand !== true) {
+		return area;
+	}
+	return {
+		...area,
+		brandGraft: (ownRoot): BrandGraft => ({
+			module: { path: 'delta/own/common/brand.ts', text: `// the brand table of ${ownRoot}\n`, role: 'table' },
+			hookText: `graft brandMessage into the funnel of ${ownRoot}\n`,
+			reminders: ['the graft is a patch of the product']
+		})
+	};
+}
 
 /** The stub, with the answers this test cares about written over it. */
 export function stubType(answers: Partial<ProjectType> = {}): ProjectType {

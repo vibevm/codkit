@@ -4820,7 +4820,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:7ed151717ec3159ba708c16dc2747296d458ed402ff4d08574ac2bf40cf6b4a6",
+      "content_hash": "sha256:ed2b75e4e7bbc2557c6be0926dedf6b5b32c24b88616f59da81b257d8bafcf71",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -5819,7 +5819,7 @@
     },
     {
       "anchor": "cmd-gen",
-      "content_hash": "sha256:79b07e6bfcb1e6c875ad44cc4fe97f4cefad3a6bb46c209c76c3598f0821c505",
+      "content_hash": "sha256:e78d78b80e67416bc574da6e6522eb0d53f45153a017ea2c3623aaa7c9bb4dd9",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "26. codkit gen feature <id> | brand",
@@ -5828,10 +5828,10 @@
     },
     {
       "anchor": "GEN-NAMESPACE",
-      "content_hash": "sha256:738a47082e85ad8daafa5af3e1fff5af93b3233a57e6b57b579ab6e97a32e288",
+      "content_hash": "sha256:b4e0a489755a974f6676e512fad6ed75347a7dae7275cb7e4fa3236f9b424f2e",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`gen` is a namespace: a bare `codkit gen` and an unknown subcommand give the list of subcommands and exit 2; the subcommands are `feature` and `brand`; only patchesDir is needed (`configMode: 'none'`). Flags: `--title <text>` (a value), `--setting`, `--cold` (boolean), `--holder`, `--license`, `--year` (values, as for `license annotate`), `--header-style line|block`, `--header-file <path>` (values; PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`). @status:spec/done",
+      "heading": "`gen` is a namespace: a bare `codkit gen` and an unknown subcommand give the list of subcommands and exit 2; the subcommands are `feature` and `brand`; both read the patch set's configuration (`configMode: 'load'`), because the skeleton and the graft are the project type's answer and the type is named there (PROP-016 `TYPE-AREA-GENERATORS`); no fork tree is needed. Flags: `--title <text>` (a value), `--setting`, `--cold` (boolean), `--holder`, `--license`, `--year` (values, as for `license annotate`), `--header-style line|block`, `--header-file <path>` (values; PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`). @status:spec/done",
       "line": 293,
       "uri": "spec://codkit/modules/codkit/PROP-007#GEN-NAMESPACE"
     },

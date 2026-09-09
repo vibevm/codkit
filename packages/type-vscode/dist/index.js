@@ -9,6 +9,7 @@ import { brandImages } from './brandImages.js';
 import { build } from './build.js';
 import { configSchema } from './configSchema.js';
 import { conventions } from './conventions.js';
+import { generators } from './generators.js';
 import { identity } from './identity.js';
 import { layers } from './layers.js';
 import { layout } from './layout.js';
@@ -45,7 +46,8 @@ export const projectType = {
     brandImages,
     runtime,
     standards,
-    conventions
+    conventions,
+    generators
 };
 export default projectType;
 export { advisory, ADVISORY_PATHS, readers } from './advisory.js';
@@ -53,6 +55,7 @@ export { brandImages, codecs, familyNotes, targets } from './brandImages.js';
 export { build } from './build.js';
 export { configSchema } from './configSchema.js';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.js';
+export { brandGraft, featureClassName, featureSkeleton, generators, settingId } from './generators.js';
 export { identity } from './identity.js';
 export { entryModule, layers, overlayTargets, ownExtensions, serviceOverride } from './layers.js';
 export { layout, OWN_ROOT_PREFIX } from './layout.js';

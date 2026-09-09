@@ -1,8 +1,9 @@
 // PROP-013 ##E2E-GEN-SURFACE: `codkit gen` through the real launcher.
 // FEAT-002 ##S49-##S50, ##S61.
 //
-// The fixture is a patch-set root with `delta/own/` and nothing else: the
-// generator writes into the delta and needs no fork tree (##GEN-NAMESPACE).
+// The fixture is a patch-set root with `delta/own/` and a configuration: the
+// generator writes into the delta and needs no fork tree, but it does need the
+// project type whose skeleton it writes (##GEN-NAMESPACE).
 
 import { afterAll, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
@@ -25,6 +26,27 @@ const HEADER_FILE = 'delta/own/HEADER.txt';
 function makePatchSet(label: string): string {
 	const root = makeTempRoot(`gen-${label}`);
 	mkdirSync(join(root, 'delta', 'own'), { recursive: true });
+	writeFileSync(
+		join(root, 'codkit.json'),
+		`${JSON.stringify(
+			{
+				codkitConfig: 2,
+				pin: { tag: '1.0.0', sha: 'f'.repeat(40), date: '2026-01-01' },
+				upstreamAnchorCommit: 'f'.repeat(40),
+				type: 'vscode',
+				typeConfig: { ownRoot: 'src/vs/patchset' },
+				generatedBranchPrefix: 'codkit/applied/',
+				cycleBranchPrefix: 'codkit/cycle/',
+				releaseRefPrefix: 'codkit/release/',
+				publishRemoteUrl: null,
+				buildWatchFile: null,
+				conventionsExtensionFile: null
+			},
+			null,
+			'\t'
+		)}\n`,
+		'utf8'
+	);
 	return root;
 }
 

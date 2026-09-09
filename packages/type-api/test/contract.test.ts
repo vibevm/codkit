@@ -33,7 +33,8 @@ function bareType(overrides: Partial<ProjectType> = {}): ProjectType {
 		},
 		advisory: { readers: [] },
 		standards: { packages: [] },
-		conventions: { subsystems: [], forbiddenServiceIds: [] }
+		conventions: { subsystems: [], forbiddenServiceIds: [] },
+		generators: { featureSkeleton: () => ({ directory: 'delta/own/x', modules: [], importLine: '', reminders: [] }) }
 	};
 	return { ...base, ...overrides };
 }
@@ -113,6 +114,19 @@ describe('the shape gate of a type', () => {
 			}
 		});
 		expect(projectTypeProblems(type)).toEqual(['bare: advisory readers and the capability upgrade-advisory must agree']);
+	});
+
+	it('ties the brand graft to the gen-brand capability', () => {
+		const declared = bareType({ capabilities: new Set<Capability>(['gen-brand']) });
+		expect(projectTypeProblems(declared)).toEqual(['bare: the brand graft and the capability gen-brand must agree']);
+
+		const answered = bareType({
+			generators: {
+				featureSkeleton: () => ({ directory: 'delta/own/x', modules: [], importLine: '', reminders: [] }),
+				brandGraft: () => ({ module: { path: 'delta/own/brand.ts', text: '', role: 'table' }, hookText: '', reminders: [] })
+			}
+		});
+		expect(projectTypeProblems(answered)).toEqual(['bare: the brand graft and the capability gen-brand must agree']);
 	});
 
 	it('refuses an image target whose container has no codec', () => {
