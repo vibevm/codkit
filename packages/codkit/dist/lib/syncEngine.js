@@ -34,7 +34,7 @@ import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
 import { OVERLAYS_DIR, checkOverlay, isExactOverlayMaterialization, loadOverlays, overlayDriftErrors, renderOverlayTarget, writeDevChannel } from './layers/overlay.js';
 import { RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, resourceSourcePath } from './layers/resource.js';
 import { ckError, isCkError } from './messages.js';
-import { OWN_SOURCE_DIR, syncAllOwnCode } from './ownCopy.js';
+import { syncAllOwnCode } from './ownCopy.js';
 import { classifyAllOwn, ownMarkFilesOf, ownMarkState } from './ownSides.js';
 import { isBuildOutput, ownedRootOf, ownedRootsOf } from './ownedRoots.js';
 import { PATCH_FILE_SUFFIX, encodePatchName, parseCkpatch } from './patchFormat.js';
@@ -1724,14 +1724,14 @@ function judgeOwnSides(drift, patchesDir, treeDir, roots, mark, fingerprint) {
     const classes = classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
     const bothSides = classes.find((entry) => entry.kind === 'both-edited');
     if (bothSides !== undefined) {
-        return { kind: 'both-sides', error: bothSidesError(bothSides.relative) };
+        return { kind: 'both-sides', error: bothSidesError(bothSides) };
     }
     if (classes.some((entry) => entry.kind === 'tree-edited')) {
         return { kind: 'unextracted' };
     }
     const changed = classes.filter((entry) => entry.kind === 'patchset-edited');
     if (changed.length > 0) {
-        return { kind: 'patchset-side', text: patchsetSideText(changed.map((entry) => entry.relative)) };
+        return { kind: 'patchset-side', text: patchsetSideText(changed) };
     }
     // No map: fall back to the evidence the fingerprint gives (a tree file that
     // exists only in the tree is unextracted work whatever the fingerprint says).
@@ -1745,7 +1745,7 @@ function judgeOwnSides(drift, patchesDir, treeDir, roots, mark, fingerprint) {
     if (unknown.length === 0) {
         return { kind: 'unextracted' };
     }
-    return { kind: 'patchset-side', text: patchsetSideText(unknown.map((divergence) => divergence.relative)) };
+    return { kind: 'patchset-side', text: patchsetSideText(unknown) };
 }
 /**
  * The dirt the guard sees is the commits and nothing else (D11's boundary): no
@@ -1772,13 +1772,23 @@ function assertDiscardSetHeld(selected, current) {
     }
     throw ckError('INTERNAL', `the fork tree changed during load --discard: ${current.commits.length} commit(s) not in patchset now, ${selected.commits.length} when the run started`, 'nothing was rebuilt and nothing was discarded; re-run codkit load --discard over the new state');
 }
-function patchsetSideText(relatives) {
-    const names = relatives.map((relative) => `${OWN_SOURCE_DIR}/${relative}`).join(', ');
+/**
+ * The paths of a diagnostic about own code are paths in the delta, and the delta
+ * addresses an owned directory by its role (##OWN-ROOTS-IN-THE-DELTA): the own
+ * root is `delta/own/`, every other owned directory is `delta/own-roots/<role>/`.
+ * A message that spelled the first one for all of them sent the reader to a
+ * directory that does not hold the file.
+ */
+function deltaPathOf(entry) {
+    return `${entry.owned.deltaDir}/${entry.relative}`;
+}
+function patchsetSideText(changed) {
+    const names = changed.map(deltaPathOf).join(', ');
     return `own code was edited in patchset since this tree was last synced (${names}); the patchset version is being applied over the tree`;
 }
 /** The one diagnostic both `load` and `save` raise for a two-sided own edit. */
-export function bothSidesError(relative) {
-    return ckError('BOTH-SIDES-EDITED', 'own code was edited in patchset and in the fork tree, in different ways', 'resolve manually: keep one side, then codkit load/save', `${OWN_SOURCE_DIR}/${relative}`);
+export function bothSidesError(entry) {
+    return ckError('BOTH-SIDES-EDITED', 'own code was edited in patchset and in the fork tree, in different ways', 'resolve manually: keep one side, then codkit load/save', deltaPathOf(entry));
 }
 /**
  * The branch-relative paths this build supplies from the own layer, extensions

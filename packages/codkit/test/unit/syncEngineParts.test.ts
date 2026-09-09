@@ -6,11 +6,11 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { loadConventions, matchesPatternList } from '../../src/lib/conventionsFile.ts';
-import { EXCLUDE_BEGIN, EXCLUDE_END, matchesCleanupWhitelist, toPosix, writeExclude } from '../../src/lib/syncEngine.ts';
+import { bothSidesError, EXCLUDE_BEGIN, EXCLUDE_END, matchesCleanupWhitelist, toPosix, writeExclude } from '../../src/lib/syncEngine.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as stubProjectType } from '../fixtures/stubType.ts';
-import { oneOwnedRoot } from '../support/ownedRoots.ts';
+import { oneOwnedRoot, ownedRoot } from '../support/ownedRoots.ts';
 
 /**
  * The shipped list (PROP-011 ##CLEANUP-WHITELIST-CONTENT), read as gitignore
@@ -232,5 +232,20 @@ describe('toPosix', () => {
 	it('gives git forward slashes on every platform', () => {
 		expect(toPosix('source\\app\\a.ts')).toBe('source/app/a.ts');
 		expect(toPosix('source/app/a.ts')).toBe('source/app/a.ts');
+	});
+});
+
+describe('the paths of an own-code diagnostic', () => {
+	// ##OWN-ROOTS-IN-THE-DELTA: the own root is `delta/own/`, every other owned
+	// directory is `delta/own-roots/<role>/`. A message that spelled the first
+	// one for all of them named a file that is not there.
+	it('addresses the own root as delta/own', () => {
+		const error = bothSidesError({ owned: ownedRoot('source/own'), relative: 'browser/hello.ts' });
+		expect(error.toPayload().file).toBe('delta/own/browser/hello.ts');
+	});
+
+	it('addresses another owned directory by its role', () => {
+		const error = bothSidesError({ owned: ownedRoot('applications/product', 'application'), relative: 'esbuild.mjs' });
+		expect(error.toPayload().file).toBe('delta/own-roots/application/esbuild.mjs');
 	});
 });

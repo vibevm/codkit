@@ -307,6 +307,25 @@ describe('S75 - the second owned directory, and the build output inside an owned
 		expect(existsSync(fixture.treePath(`${OWN_ROOT}/src/browser/acme-editor-manager.ts`))).toBe(true);
 	}, 60_000);
 
+	it('names the delta directory of the owned directory the edited file lives in', () => {
+		// The warning of ##PATCHSET-SIDE-EDIT-RULE printed `delta/own/<path>` for
+		// every owned directory, so a file of the application sent the reader to a
+		// directory that does not hold it: the delta addresses an owned directory
+		// by its role (##OWN-ROOTS-IN-THE-DELTA).
+		const fixture = makeTheiaFixture('theia-patchset-side');
+		expect(fixture.json(['load']).run.status).toBe(0);
+
+		const entry = fixture.patchesPath(`delta/own-roots/application/${APPLICATION_ENTRY}`);
+		writeFileSync(entry, `${readFileSync(entry, 'utf8')}// a line the patch set added\n`, 'utf8');
+
+		const loaded = fixture.json(['load']);
+
+		expect(loaded.run.status, loaded.run.stderr).toBe(0);
+		const warning = loaded.envelope.messages.find((message) => message.text.includes('own code was edited in patchset'));
+		expect(warning?.text).toContain(`delta/own-roots/application/${APPLICATION_ENTRY}`);
+		expect(warning?.text).not.toContain(`delta/own/${APPLICATION_ENTRY}`);
+	}, 60_000);
+
 	it('does not read the packager output of the application as edited own code', () => {
 		// ##THEIA-APPLICATION-ROOT: the packager of the product writes hundreds of
 		// megabytes into `<applicationRoot>/dist/` after the build. Every file of

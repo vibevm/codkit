@@ -233,7 +233,7 @@ export function runSave(options) {
     }
     const conflict = classes.find((entry) => entry.kind === 'both-edited');
     if (conflict !== undefined) {
-        out.addError(bothSidesError(conflict.relative).toPayload());
+        out.addError(bothSidesError(conflict).toPayload());
         return result('blocked', 1, { branch });
     }
     const ownInScope = filterOwn(classes, filters);

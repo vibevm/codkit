@@ -61,7 +61,7 @@ import { RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, resourceSourcePa
 import type { ResourceEntry } from './layers/resource.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkError } from './messages.ts';
-import { OWN_SOURCE_DIR, syncAllOwnCode } from './ownCopy.ts';
+import { syncAllOwnCode } from './ownCopy.ts';
 import { classifyAllOwn, ownMarkFilesOf, ownMarkState } from './ownSides.ts';
 import { isBuildOutput, ownedRootOf, ownedRootsOf } from './ownedRoots.ts';
 import type { OwnedRoot } from './ownedRoots.ts';
@@ -2283,14 +2283,14 @@ function judgeOwnSides(
 	);
 	const bothSides = classes.find((entry) => entry.kind === 'both-edited');
 	if (bothSides !== undefined) {
-		return { kind: 'both-sides', error: bothSidesError(bothSides.relative) };
+		return { kind: 'both-sides', error: bothSidesError(bothSides) };
 	}
 	if (classes.some((entry) => entry.kind === 'tree-edited')) {
 		return { kind: 'unextracted' };
 	}
 	const changed = classes.filter((entry) => entry.kind === 'patchset-edited');
 	if (changed.length > 0) {
-		return { kind: 'patchset-side', text: patchsetSideText(changed.map((entry) => entry.relative)) };
+		return { kind: 'patchset-side', text: patchsetSideText(changed) };
 	}
 	// No map: fall back to the evidence the fingerprint gives (a tree file that
 	// exists only in the tree is unextracted work whatever the fingerprint says).
@@ -2304,7 +2304,7 @@ function judgeOwnSides(
 	if (unknown.length === 0) {
 		return { kind: 'unextracted' };
 	}
-	return { kind: 'patchset-side', text: patchsetSideText(unknown.map((divergence) => divergence.relative)) };
+	return { kind: 'patchset-side', text: patchsetSideText(unknown) };
 }
 
 /**
@@ -2340,18 +2340,32 @@ function assertDiscardSetHeld(selected: { readonly commits: readonly TreeCommit[
 	);
 }
 
-function patchsetSideText(relatives: readonly string[]): string {
-	const names = relatives.map((relative) => `${OWN_SOURCE_DIR}/${relative}`).join(', ');
+/** One own file, as every classification of own code carries it. */
+type OwnedFilePlace = { readonly owned: OwnedRoot; readonly relative: string };
+
+/**
+ * The paths of a diagnostic about own code are paths in the delta, and the delta
+ * addresses an owned directory by its role (##OWN-ROOTS-IN-THE-DELTA): the own
+ * root is `delta/own/`, every other owned directory is `delta/own-roots/<role>/`.
+ * A message that spelled the first one for all of them sent the reader to a
+ * directory that does not hold the file.
+ */
+function deltaPathOf(entry: OwnedFilePlace): string {
+	return `${entry.owned.deltaDir}/${entry.relative}`;
+}
+
+function patchsetSideText(changed: readonly OwnedFilePlace[]): string {
+	const names = changed.map(deltaPathOf).join(', ');
 	return `own code was edited in patchset since this tree was last synced (${names}); the patchset version is being applied over the tree`;
 }
 
 /** The one diagnostic both `load` and `save` raise for a two-sided own edit. */
-export function bothSidesError(relative: string): CkError {
+export function bothSidesError(entry: OwnedFilePlace): CkError {
 	return ckError(
 		'BOTH-SIDES-EDITED',
 		'own code was edited in patchset and in the fork tree, in different ways',
 		'resolve manually: keep one side, then codkit load/save',
-		`${OWN_SOURCE_DIR}/${relative}`
+		deltaPathOf(entry)
 	);
 }
 
