@@ -32,6 +32,28 @@ export const OVERLAYS_DIR = 'delta/overlays';
 
 export const OVERLAY_FILE_SUFFIX = '.overlay.json';
 
+/** How a `/` of the target is spelled inside the artifact's file name. */
+const NAME_SEPARATOR = '__';
+
+/**
+ * The artifact file name a scaffold gives an overlay of this target, encoded
+ * the way a patch file name is: one file per target, `/` written as `__`, and
+ * the layer's suffix. The loader reads the target out of the document rather
+ * than out of the name, so this is a convention for people and for `selectTarget`
+ * - but it has to be a total one, and a target that already contains the
+ * separator would not read back.
+ */
+export function overlayArtifactName(target: string): string {
+	if (target === '' || target.includes(NAME_SEPARATOR)) {
+		throw ckError(
+			'CONFIG',
+			`cannot name an overlay artifact for the target ${JSON.stringify(target)}`,
+			`the file name writes "/" as "${NAME_SEPARATOR}", so the target must be non-empty and must not contain "${NAME_SEPARATOR}"`
+		);
+	}
+	return `${target.split('/').join(NAME_SEPARATOR)}${OVERLAY_FILE_SUFFIX}`;
+}
+
 /**
  * The overlay target that carries a dev channel, or null when this family has
  * none. The two-channel machinery is universal; which file is the manifest, and

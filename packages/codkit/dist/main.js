@@ -20,7 +20,7 @@ import { inventoryCommand } from './commands/inventory.js';
 import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.js';
 import { loadCommand } from './commands/load.js';
 import { markerNewCommand } from './commands/markerNew.js';
-import { overlayApplyCommand, overlayCheckCommand } from './commands/overlay.js';
+import { overlayApplyCommand, overlayCheckCommand, overlayNewCommand } from './commands/overlay.js';
 import { packageCommand } from './commands/package.js';
 import { publishCommand } from './commands/publish.js';
 import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.js';
@@ -69,6 +69,7 @@ const COMMANDS = new Map([
     reresolveCommand,
     inventoryCommand,
     verifyCommand,
+    overlayNewCommand,
     overlayApplyCommand,
     overlayCheckCommand,
     buildUpCommand,

@@ -94,7 +94,10 @@
 
 ## Терминальный лист config-overlay
 
-1. Авторуй `delta/overlays/<name>.overlay.json` в patchset: точный target, `expectUpstream`, операции и общий metadata-словарь.
+1. `codkit overlay new <target> --id … --type … --owner … --reason … --contract-test <id>` создаёт
+   `delta/overlays/<target>.overlay.json` с канонической метадатой, пином и пустым списком операций;
+   писать метадату руками не нужно — некононические байты отвергает `CK-E-ARTIFACT-BROKEN`.
+   Затем допиши операции: точный target, `expectUpstream`, значения.
 2. `codkit overlay check <target>` → exit `0`; `CK-E-OVERLAY-DRIFT`, exit `1` требует обновить ожидание по пину и смысл операции.
 3. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.
 

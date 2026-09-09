@@ -28,6 +28,143 @@ afterAll(() => {
 	cleanupTempRoots();
 });
 
+describe('codkit overlay new', () => {
+	let fixture: CliFixture;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('overlay-new');
+	});
+
+	it('writes an artifact the loader accepts, which a hand-written one is not', () => {
+		// The defect: the metadata has to be canonical JSON in the serializer's key
+		// order, and the refusal that says so names the rules without naming the
+		// order, so every first overlay of a patch set cost one refusal
+		// (##CMD-OVERLAY-NEW).
+		const { run, envelope } = fixture.json([
+			'overlay',
+			'new',
+			'package.json',
+			'--id',
+			'CK-build-777',
+			'--type',
+			'extend',
+			'--owner',
+			'product',
+			'--reason',
+			'the fork adds its own build scripts',
+			'--contract-test',
+			'fixture.guard.scripts'
+		]);
+
+		expect(run.status).toBe(0);
+		expect(envelope.errors).toEqual([]);
+		const artifact = 'delta/overlays/package.json.overlay.json';
+		expect(envelope.data['artifact']).toBe(artifact);
+		expect(envelope.data['operations']).toBe(0);
+
+		const written = readFileSync(fixture.patchesPath(artifact), 'utf8');
+		expect(JSON.parse(written)).toEqual({
+			codkitOverlay: 2,
+			id: 'CK-build-777',
+			target: 'package.json',
+			type: 'extend',
+			category: 'follow',
+			owner: 'product',
+			reason: 'the fork adds its own build scripts',
+			link: 'none',
+			cause: 'none',
+			pin: `${fixture.upstream.t1.tag}@${fixture.upstream.t1.sha}`,
+			contractTests: ['fixture.guard.scripts'],
+			operations: []
+		});
+		// Canonical bytes: two-space indent, one final LF, and the key order the
+		// serializer writes - which is what the loader holds an artifact to.
+		expect(written.endsWith('}\n')).toBe(true);
+		expect(written).toContain('\n  "id": "CK-build-777",');
+		expect(Object.keys(JSON.parse(written) as Record<string, unknown>)[0]).toBe('codkitOverlay');
+
+		// And the layer reads it back: `overlay check` finds the new target.
+		expect(fixture.run(['overlay', 'check', 'package.json']).status).toBe(0);
+	});
+
+	it('refuses to overwrite an artifact this target already has', () => {
+		const { run, envelope } = fixture.json([
+			'overlay',
+			'new',
+			'package.json',
+			'--id',
+			'CK-build-778',
+			'--type',
+			'extend',
+			'--owner',
+			'product',
+			'--reason',
+			'a second artifact for the same target',
+			'--contract-test',
+			'fixture.guard.scripts'
+		]);
+
+		expect(run.status).toBe(1);
+		expect(envelope.errors.map((error) => error.code)).toEqual(['CK-E-GEN-EXISTS']);
+	});
+
+	it('holds the metadata to the same vocabularies marker new does', () => {
+		const base = ['overlay', 'new', 'manifest.json', '--owner', 'product', '--reason', 'why', '--contract-test', 'fixture.guard.product'];
+
+		const badId = fixture.json([...base, '--id', 'nope', '--type', 'extend']);
+		expect(badId.run.status).toBe(1);
+		expect(badId.envelope.errors[0]?.code).toBe('CK-E-MARKER-BAD-ID');
+
+		const badType = fixture.json([...base, '--id', 'CK-product-902', '--type', 'invent']);
+		expect(badType.run.status).toBe(2);
+		expect(badType.envelope.errors[0]?.message).toContain('is not one of the intervention types');
+
+		const takenId = fixture.json([...base, '--id', OVERLAY_ID, '--type', 'extend']);
+		expect(takenId.run.status).toBe(1);
+		expect(takenId.envelope.errors[0]?.code).toBe('CK-E-MARKER-DUP-ID');
+
+		const unknownOwner = fixture.json([
+			'overlay',
+			'new',
+			'manifest.json',
+			'--id',
+			'CK-product-903',
+			'--type',
+			'extend',
+			'--owner',
+			'nobody',
+			'--reason',
+			'why',
+			'--contract-test',
+			'fixture.guard.product'
+		]);
+		expect(unknownOwner.run.status).toBe(1);
+		expect(unknownOwner.envelope.errors[0]?.code).toBe('CK-E-OWNER-UNKNOWN');
+	});
+
+	it('needs the guard test the layer makes mandatory, and takes no --layer', () => {
+		const noTest = fixture.json([
+			'overlay',
+			'new',
+			'settings.json',
+			'--id',
+			'CK-product-904',
+			'--type',
+			'extend',
+			'--owner',
+			'product',
+			'--reason',
+			'why'
+		]);
+		expect(noTest.run.status).toBe(2);
+		expect(noTest.envelope.errors[0]?.hint).toContain('a guard test is mandatory for this layer');
+
+		const withLayer = fixture.run(['overlay', 'new', 'manifest.json', '--layer', 'config-overlay']);
+		expect(withLayer.status).toBe(2);
+		expect(withLayer.stderr).toContain("flag --layer is not a flag of command 'overlay new'");
+	});
+});
+
 describe('codkit overlay check', () => {
 	let fixture: CliFixture;
 

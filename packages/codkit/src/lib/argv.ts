@@ -97,6 +97,9 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--layer', 'value'],
 	['--line', 'value'],
 	['--add-block', 'boolean'],
+	// overlay new (PROP-007 sec. 12); --id, --type, --owner, --reason and
+	// --category above are shared with marker new.
+	['--contract-test', 'repeatable'],
 	// reresolve (PROP-007 sec. 9)
 	['--patch', 'value'],
 	// forecast (PROP-007 sec. 15)

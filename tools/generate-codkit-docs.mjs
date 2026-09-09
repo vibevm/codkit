@@ -127,6 +127,7 @@ const valueLabels = {
 	'--owner': 'owner',
 	'--reason': 'text',
 	'--category': 'category',
+	'--contract-test': 'guard-test-id',
 	'--layer': 'patch|entry-module',
 	'--line': 'n',
 	'--patch': 'contained-old-patch',
@@ -206,6 +207,12 @@ const commandGuidance = {
 	verify: {
 		positional: '',
 		detail: 'Read-only full delta integrity report. The hook-only `--staged-fast` flag is intentionally not public.'
+	},
+	'overlay new': {
+		positional: '<target>',
+		requiredFlags: ['--id', '--type', '--owner', '--reason', '--contract-test'],
+		detail:
+			'Scaffold the artifact of the config-overlay layer for a target: canonical metadata in the schema key order, the pin of `codkit.json`, the guard tests of `--contract-test` (repeatable and required - the layer leaves no marker in the target file, so the test is the only thing that fails when upstream moves the key) and an empty list of operations to fill in. The metadata is held to the vocabularies of `marker new`; an existing artifact of the target is never overwritten. No fork tree is needed, and there is no `--layer`: the artifact is the layer.'
 	},
 	'overlay apply': {
 		positional: '<target|overlay-file>',
