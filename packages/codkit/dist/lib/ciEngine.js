@@ -36,6 +36,7 @@ import { treeId } from './fingerprint.js';
 import { runGit, useGitConfigGlobal } from './gitx.js';
 import { buildInventory, checkoutPatchSetRef, diffInventories, renderInventoryDiffMarkdown } from './inventory.js';
 import { isCkError } from './messages.js';
+import { processInvocation } from './processInvocation.js';
 import { listOwnFiles, ownSourceRoot } from './ownCopy.js';
 import { ownedRootsOf } from './ownedRoots.js';
 import { buildGeneratedTip, runSync } from './syncEngine.js';
@@ -909,7 +910,8 @@ function runCommandSequence(out, commands, run, successDetail) {
     return { state: 'ok', detail: successDetail, error: null, exitCode: EXIT_OK };
 }
 function defaultCiCommandRunner(command) {
-    const result = spawnSync(command.command, [...command.args], {
+    const invocation = processInvocation(command.command, command.args);
+    const result = spawnSync(invocation.command, [...invocation.args], {
         cwd: command.cwd,
         encoding: 'utf8',
         shell: false,

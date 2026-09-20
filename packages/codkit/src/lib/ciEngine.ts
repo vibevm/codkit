@@ -53,6 +53,7 @@ import type { PatchSetRefCheckout } from './inventory.ts';
 import type { Output } from './jsonOut.ts';
 import { isCkError } from './messages.ts';
 import type { CkErrorPayload } from './messages.ts';
+import { processInvocation } from './processInvocation.ts';
 import { listOwnFiles, ownSourceRoot } from './ownCopy.ts';
 import { ownedRootsOf } from './ownedRoots.ts';
 import type { ForkDirResolution } from './paths.ts';
@@ -1155,7 +1156,8 @@ function runCommandSequence(out: Output, commands: readonly CiCommand[], run: Ci
 }
 
 function defaultCiCommandRunner(command: CiCommand): CiCommandResult {
-	const result = spawnSync(command.command, [...command.args], {
+	const invocation = processInvocation(command.command, command.args);
+	const result = spawnSync(invocation.command, [...invocation.args], {
 		cwd: command.cwd,
 		encoding: 'utf8',
 		shell: false,

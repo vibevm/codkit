@@ -15,6 +15,7 @@ import {
 	DAEMON_RECORD_SCHEMA_VERSION,
 	argsMatch,
 	channelByName,
+	daemonIsDetached,
 	downChannel,
 	errorCountFrom,
 	findLastFinishedPass,
@@ -48,6 +49,24 @@ afterAll(cleanupTempRoots);
 
 /** The configuration codkit ships, read through the real loader. */
 const shipped = loadBuildWatch(stubProjectType);
+
+function windowsProcess(pid: number, parentPid: number, commandLine: string | null) {
+	return {
+		pid,
+		parentPid,
+		commandLineBase64: commandLine === null ? null : Buffer.from(commandLine, 'utf8').toString('base64')
+	};
+}
+
+describe('daemon process topology', () => {
+	it('detaches only where process groups carry the daemon lifetime', () => {
+		expect({ windows: daemonIsDetached('win32'), linux: daemonIsDetached('linux'), macos: daemonIsDetached('darwin') }).toEqual({
+			windows: false,
+			linux: true,
+			macos: true
+		});
+	});
+});
 
 // Sanitized lines captured from the live watch-compile daemon. Keeping these
 // byte-exact catches drift between the data file and the real upstream logger.
@@ -875,7 +894,7 @@ describe('probing a command line', () => {
 			invoked.push({ command, args });
 			return {
 				status: 0,
-				stdout: JSON.stringify({ pid: 4242, parentPid: 17, commandLine }),
+				stdout: JSON.stringify(windowsProcess(4242, 17, commandLine)),
 				stderr: ''
 			};
 		};
@@ -889,10 +908,11 @@ describe('probing a command line', () => {
 
 	it('reads the native Windows process table and carries parent pids for watcher ownership', () => {
 		const rows = [
-			{ pid: 101, parentPid: 50, commandLine: 'npm run watch-transpile' },
-			{ pid: 102, parentPid: 101, commandLine: 'node build/watch.mjs transpile --watch C:\\fork tree' },
+			windowsProcess(101, 50, 'npm run watch-transpile'),
+			windowsProcess(102, 101, 'node build/watch.mjs transpile --watch C:\\fork tree'),
+			windowsProcess(103, 50, 'node helper\u0001with-control-character'),
 			// System processes whose command line CIM does not expose are irrelevant.
-			{ pid: 4, parentPid: 0, commandLine: null }
+			windowsProcess(4, 0, null)
 		];
 		const run: ProcessRunner = (command, args) => {
 			expect(command).toBe('powershell.exe');
@@ -902,14 +922,15 @@ describe('probing a command line', () => {
 
 		expect(processTable({ platform: 'win32', run })).toEqual([
 			{ pid: 101, pgid: 50, args: ['npm run watch-transpile'], cwd: null },
-			{ pid: 102, pgid: 101, args: ['node build/watch.mjs transpile --watch C:\\fork tree'], cwd: null }
+			{ pid: 102, pgid: 101, args: ['node build/watch.mjs transpile --watch C:\\fork tree'], cwd: null },
+			{ pid: 103, pgid: 50, args: ['node helper\u0001with-control-character'], cwd: null }
 		]);
 	});
 
 	it('conservatively catches a Windows watcher whose cwd is unavailable', () => {
 		const run: ProcessRunner = () => ({
 			status: 0,
-			stdout: JSON.stringify({ pid: 333, parentPid: 1, commandLine: 'node build/watch.mjs transpile --watch' }),
+			stdout: JSON.stringify(windowsProcess(333, 1, 'node build/watch.mjs transpile --watch')),
 			stderr: ''
 		});
 
@@ -958,7 +979,7 @@ describe('probing a command line', () => {
 	it('does not call an existing Windows process dead when CIM hides its command line', () => {
 		const run: ProcessRunner = () => ({
 			status: 0,
-			stdout: JSON.stringify({ pid: 4242, parentPid: 17, commandLine: null }),
+			stdout: JSON.stringify(windowsProcess(4242, 17, null)),
 			stderr: ''
 		});
 

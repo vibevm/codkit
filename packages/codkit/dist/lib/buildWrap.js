@@ -27,6 +27,7 @@ import { loadBaseConfig } from './configFile.js';
 import { validateChannelSet } from './buildChannel.js';
 import { readContainedFile } from './containedFile.js';
 import { errnoOf, sameEffectivePath } from './containedPath.js';
+import { processInvocation } from './processInvocation.js';
 import { DAEMON_RECORD_SCHEMA_VERSION, closeLog, createReservation, daemonRecordBytes, finalizeReservation, logPath, openLogAppend, readLog as readRuntimeLog, readRecordState, recordPath, removeRecord, rotateLog } from './buildRuntime.js';
 import { acquireDaemonChannelLock, assertDaemonChannelLock } from './daemonChannelLock.js';
 import { ckError, isCkError } from './messages.js';
@@ -382,7 +383,7 @@ function psTable(run) {
 }
 const WINDOWS_PROCESS_SELECT = "Select-Object @{Name='pid';Expression={[int]$_.ProcessId}}," +
     "@{Name='parentPid';Expression={[int]$_.ParentProcessId}}," +
-    "@{Name='commandLine';Expression={$_.CommandLine}}";
+    "@{Name='commandLineBase64';Expression={if ($null -eq $_.CommandLine) {$null} else {[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_.CommandLine))}}}";
 function powershellProcessQuery(query) {
     return [
         '-NoLogo',
@@ -448,10 +449,17 @@ function parseWindowsProcesses(stdout, probe) {
         }
         const pid = row['pid'];
         const parentPid = row['parentPid'];
-        const commandLine = row['commandLine'];
-        if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0 || typeof commandLine !== 'string' || commandLine.trim() === '') {
+        const commandLineBase64 = row['commandLineBase64'];
+        if (typeof pid !== 'number' ||
+            !Number.isInteger(pid) ||
+            pid <= 0 ||
+            typeof commandLineBase64 !== 'string' ||
+            commandLineBase64.trim() === '') {
             continue;
         }
+        const commandLine = Buffer.from(commandLineBase64, 'base64').toString('utf8');
+        if (commandLine.trim() === '')
+            continue;
         processes.push({
             pid,
             parentPid: typeof parentPid === 'number' && Number.isInteger(parentPid) ? parentPid : pid,
@@ -895,9 +903,10 @@ function upChannelLocked(ctx, channel, lock, runtime = ctx.runtime) {
 function spawnDaemon(patchesDir, treeDir, channel, lock) {
     const fd = openLogAppend(patchesDir, channel.name, lock);
     try {
-        const child = spawn(npmCommand(), ['run', channel.script], {
+        const invocation = processInvocation(npmCommand(), ['run', channel.script]);
+        const child = spawn(invocation.command, [...invocation.args], {
             cwd: treeDir,
-            detached: true,
+            detached: daemonIsDetached(),
             stdio: ['ignore', fd, fd],
             env: daemonEnv(),
             shell: false,
@@ -916,6 +925,10 @@ function spawnDaemon(patchesDir, treeDir, channel, lock) {
     finally {
         closeLog(fd);
     }
+}
+/** POSIX needs a process group; Windows uses taskkill /t and must inherit log handles. */
+export function daemonIsDetached(platform = process.platform) {
+    return platform !== 'win32';
 }
 /**
  * Stop the child this command just spawned, after proving it is still that
