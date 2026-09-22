@@ -46,6 +46,29 @@ function readAllFrom(handle) {
     }
     return new Uint8Array(Buffer.concat(chunks));
 }
+const WINDOWS_TRANSIENT_RENAME_ERRORS = new Set(['EACCES', 'EBUSY', 'ENOTEMPTY', 'EPERM']);
+const WINDOWS_RENAME_RETRY_DELAYS_MS = [10, 20, 40, 80, 160];
+const renameWaitCell = new Int32Array(new SharedArrayBuffer(4));
+function waitForRenameRetry(milliseconds) {
+    Atomics.wait(renameWaitCell, 0, 0, milliseconds);
+}
+function replaceTemporaryFile(temporary, absolutePath, options) {
+    const applyRename = options.applyRename ?? renameSync;
+    const platform = options.renamePlatform ?? process.platform;
+    for (let attempt = 0;; attempt += 1) {
+        try {
+            applyRename(temporary, absolutePath);
+            return;
+        }
+        catch (error) {
+            const delay = WINDOWS_RENAME_RETRY_DELAYS_MS[attempt];
+            if (platform !== 'win32' || delay === undefined || !WINDOWS_TRANSIENT_RENAME_ERRORS.has(errnoOf(error) ?? '')) {
+                throw error;
+            }
+            (options.waitForRenameRetry ?? waitForRenameRetry)(delay);
+        }
+    }
+}
 /**
  * The contained read for repository files: the parent directories are proven
  * real directories first, the leaf is opened without following a symlink, and
@@ -378,7 +401,7 @@ export function writeRegularFileAtomic(absolutePath, options) {
             refuse(options, 'the parent or target changed before atomic replacement', 'retry after inspecting the contained path');
         }
         try {
-            renameSync(temporary, absolutePath);
+            replaceTemporaryFile(temporary, absolutePath, options);
         }
         catch (error) {
             refuse(options, `cannot atomically replace ${absolutePath}: ${messageOf(error)}`, 'check the permissions of the parent directory');

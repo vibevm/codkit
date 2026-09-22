@@ -176,6 +176,10 @@ export type AtomicWriteOptions = ContainedFileOptions & {
 	 * held to a test - it was reasoned about, not tested.
 	 */
 	readonly applyMode?: (temporary: string, mode: number) => void;
+	/** Override atomic rename and its Windows retry clock for deterministic tests. */
+	readonly applyRename?: (temporary: string, absolutePath: string) => void;
+	readonly renamePlatform?: NodeJS.Platform;
+	readonly waitForRenameRetry?: (milliseconds: number) => void;
 };
 
 export function lstatIfPresent(path: string): Stats | null {
