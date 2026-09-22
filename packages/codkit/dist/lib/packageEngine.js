@@ -34,6 +34,7 @@ import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/ove
 import { materializerOf } from './layers/ownExtensions.js';
 import { ownedRootsOf } from './ownedRoots.js';
 import { packageOutputPaths, packageScratchPaths } from './packagePaths.js';
+import { processInvocation } from './processInvocation.js';
 import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId, restoreToTip } from './syncEngine.js';
 import { revParse } from './treeCache.js';
 import { treeHeadError } from './treeCommits.js';
@@ -356,7 +357,8 @@ function runCommands(options, build, stamps, into) {
     return { state: 'ok', detail: `${build.length} command(s) passed`, error: null, exitCode: EXIT_OK };
 }
 function defaultPackageCommandRunner(command) {
-    const result = spawnSync(command.command, [...command.args], {
+    const invocation = processInvocation(command.command, command.args);
+    const result = spawnSync(invocation.command, [...invocation.args], {
         cwd: command.cwd,
         env: { ...process.env, ...command.env },
         encoding: 'utf8',

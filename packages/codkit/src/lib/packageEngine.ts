@@ -41,6 +41,7 @@ import { materializerOf } from './layers/ownExtensions.ts';
 import { ownedRootsOf } from './ownedRoots.ts';
 import { packageOutputPaths, packageScratchPaths } from './packagePaths.ts';
 import type { ForkDirResolution } from './paths.ts';
+import { processInvocation } from './processInvocation.ts';
 import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId, restoreToTip } from './syncEngine.ts';
 import { revParse } from './treeCache.ts';
 import { treeHeadError } from './treeCommits.ts';
@@ -494,7 +495,8 @@ function runCommands(
 }
 
 function defaultPackageCommandRunner(command: PackageCommand): PackageCommandResult {
-	const result = spawnSync(command.command, [...command.args], {
+	const invocation = processInvocation(command.command, command.args);
+	const result = spawnSync(invocation.command, [...invocation.args], {
 		cwd: command.cwd,
 		env: { ...process.env, ...command.env },
 		encoding: 'utf8',
