@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
 import { Output } from '../../src/lib/jsonOut.ts';
-import { packageStamps, packageStepPlan, runPackage } from '../../src/lib/packageEngine.ts';
+import { packageStamps, packageStepPlan, packageTargetsFor, runPackage } from '../../src/lib/packageEngine.ts';
 import { packageOutputPaths, packageScratchPaths } from '../../src/lib/packagePaths.ts';
 import type { PackageCommand } from '../../src/lib/packageEngine.ts';
 import { stubType } from '../fixtures/stubType.ts';
@@ -25,6 +25,26 @@ afterAll(() => {
 const BOTH_HALVES = stubType({});
 
 describe('the plan of one package run', () => {
+	it('selects exact, family and all targets only from host-compatible type recipes', () => {
+		const targeted = stubType({
+			build: {
+				...BOTH_HALVES.build,
+				packageTargets: [
+					{ id: 'windows-x64', platform: 'windows', arch: 'x64', supportedHosts: ['win32'], build: [] },
+					{ id: 'windows-arm64', platform: 'windows', arch: 'arm64', supportedHosts: ['win32'], build: [] },
+					{ id: 'linux-x64', platform: 'linux', arch: 'x64', supportedHosts: ['linux', 'win32'], build: [] },
+					{ id: 'macos-arm64', platform: 'macos', arch: 'arm64', supportedHosts: ['darwin'], build: [] }
+				],
+				defaultPackageTargets: ['windows-x64']
+			}
+		});
+		expect(packageTargetsFor(targeted, null, 'win32').map((target) => target.id)).toEqual(['windows-x64']);
+		expect(packageTargetsFor(targeted, 'windows', 'win32').map((target) => target.id)).toEqual(['windows-x64', 'windows-arm64']);
+		expect(packageTargetsFor(targeted, 'all', 'win32').map((target) => target.id)).toEqual(['windows-x64', 'windows-arm64', 'linux-x64']);
+		expect(() => packageTargetsFor(targeted, 'macos', 'win32')).toThrow(/no targets supported/u);
+		expect(() => packageTargetsFor(targeted, 'macos-arm64', 'win32')).toThrow(/not supported/u);
+	});
+
 	it('guards, materializes, stamps, builds and puts the tree back, in that order', () => {
 		expect(packageStepPlan(BOTH_HALVES, { keepOverlay: false, skipTypeBuild: false })).toEqual([
 			'drift guard',

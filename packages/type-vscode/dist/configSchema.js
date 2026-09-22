@@ -16,6 +16,15 @@ import { ownRootProblem } from './layout.js';
  * value handed to a packager that will read it as "not the released channel".
  */
 export const QUALITY_CHANNELS = ['stable', 'insider', 'exploration'];
+export const PACKAGE_TARGET_IDS = [
+    'windows-x64',
+    'windows-arm64',
+    'linux-x64',
+    'linux-arm64',
+    'linux-armhf',
+    'macos-x64',
+    'macos-arm64'
+];
 export const configSchema = z
     .object({
     ownRoot: z
@@ -27,7 +36,15 @@ export const configSchema = z
             context.addIssue({ code: 'custom', message: problem });
         }
     }),
-    quality: z.enum(QUALITY_CHANNELS).optional()
+    quality: z.enum(QUALITY_CHANNELS).optional(),
+    packageTargets: z
+        .array(z.enum(PACKAGE_TARGET_IDS))
+        .min(1)
+        .max(PACKAGE_TARGET_IDS.length)
+        .refine((values) => new Set(values).size === values.length, {
+        message: 'package target ids must be unique'
+    })
+        .optional()
 })
     .strict();
 /** What the type answers for a section that never passed the schema. */

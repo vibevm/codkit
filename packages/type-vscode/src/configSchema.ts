@@ -18,8 +18,18 @@ import { ownRootProblem } from './layout.ts';
  * value handed to a packager that will read it as "not the released channel".
  */
 export const QUALITY_CHANNELS = ['stable', 'insider', 'exploration'] as const;
+export const PACKAGE_TARGET_IDS = [
+	'windows-x64',
+	'windows-arm64',
+	'linux-x64',
+	'linux-arm64',
+	'linux-armhf',
+	'macos-x64',
+	'macos-arm64'
+] as const;
 
 export type VscodeQuality = (typeof QUALITY_CHANNELS)[number];
+export type VscodePackageTargetId = (typeof PACKAGE_TARGET_IDS)[number];
 
 export type VscodeTypeConfig = {
 	readonly ownRoot: string;
@@ -29,6 +39,7 @@ export type VscodeTypeConfig = {
 	 * tag - so an existing patch set reads exactly as it did.
 	 */
 	readonly quality?: VscodeQuality | undefined;
+	readonly packageTargets?: readonly VscodePackageTargetId[] | undefined;
 };
 
 export const configSchema = z
@@ -42,7 +53,15 @@ export const configSchema = z
 					context.addIssue({ code: 'custom', message: problem });
 				}
 			}),
-		quality: z.enum(QUALITY_CHANNELS).optional()
+		quality: z.enum(QUALITY_CHANNELS).optional(),
+		packageTargets: z
+			.array(z.enum(PACKAGE_TARGET_IDS))
+			.min(1)
+			.max(PACKAGE_TARGET_IDS.length)
+			.refine((values) => new Set(values).size === values.length, {
+				message: 'package target ids must be unique'
+			})
+			.optional()
 	})
 	.strict();
 

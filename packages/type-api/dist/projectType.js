@@ -70,6 +70,21 @@ export const OPTIONAL_AREAS = [
  */
 export function projectTypeProblems(type) {
     const problems = [];
+    const packageTargets = type.build.packageTargets ?? [];
+    const packageTargetIds = new Set();
+    for (const target of packageTargets) {
+        if (packageTargetIds.has(target.id))
+            problems.push(`${type.id}: package target ${target.id} is named twice`);
+        packageTargetIds.add(target.id);
+        if (target.build.length === 0)
+            problems.push(`${type.id}: package target ${target.id} has no build command`);
+        if (target.supportedHosts.length === 0)
+            problems.push(`${type.id}: package target ${target.id} names no supported host`);
+    }
+    for (const target of type.build.defaultPackageTargets ?? []) {
+        if (!packageTargetIds.has(target))
+            problems.push(`${type.id}: default package target ${target} is absent from the catalog`);
+    }
     for (const { area, capability } of OPTIONAL_AREAS) {
         const present = type[area] !== undefined;
         const declared = type.capabilities.has(capability);

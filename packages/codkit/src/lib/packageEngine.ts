@@ -29,10 +29,11 @@
 // never a side effect of packaging.
 
 import { spawnSync } from 'node:child_process';
-import type { BuildCommand, BuildStamp, ProjectType } from '@codkit/type-api';
+import type { BuildCommand, BuildStamp, PackageHost, PackageTarget, ProjectType } from '@codkit/type-api';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { driftDirty } from './driftGuard.ts';
+import { ckError } from './messages.ts';
 import type { CkErrorPayload } from './messages.ts';
 import type { Output } from './jsonOut.ts';
 import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/overlay.ts';
@@ -86,9 +87,13 @@ export type PackageFlags = {
  * target), the stamps before the commands that need them, and the restore last
  * and unconditionally - `--keep-overlay` is the one thing that removes it.
  */
-export function packageStepPlan(type: ProjectType, flags: PackageFlags): readonly PackageStepName[] {
+export function packageStepPlan(
+	type: ProjectType,
+	flags: PackageFlags,
+	packageBuild: readonly BuildCommand[] = type.build.packageBuild
+): readonly PackageStepName[] {
 	const steps: PackageStepName[] = ['drift guard', 'overlay apply', 'stamps'];
-	if (!flags.skipTypeBuild && type.build.packageBuild.length > 0) {
+	if (!flags.skipTypeBuild && packageBuild.length > 0) {
 		steps.push('package build');
 	}
 	if (type.build.packageDistributable.length > 0) {
@@ -136,6 +141,7 @@ export type PackageOptions = {
 	readonly out: Output;
 	readonly flags: PackageFlags;
 	readonly timeoutMs: number | null;
+	readonly targetSelector?: string | null;
 	readonly runCommand?: PackageCommandRunner;
 	/** The operator's environment; a test hands its own instead of the process's. */
 	readonly env?: Readonly<Record<string, string | undefined>>;
@@ -155,7 +161,55 @@ export type PackageResult = {
 	readonly stampsFromEnvironment: readonly string[];
 	readonly commands: readonly string[];
 	readonly outputs: readonly string[];
+	readonly targets: readonly string[];
 };
+
+export function packageTargetsFor(type: ProjectType, selector: string | null, host: PackageHost): readonly PackageTarget[] {
+	const catalog = type.build.packageTargets ?? [];
+	if (catalog.length === 0) {
+		if (selector !== null)
+			throw ckError(
+				'CONFIG',
+				`the project type ${type.id} has no selectable package target catalog`,
+				'omit the selector or choose a type that declares package targets'
+			);
+		return [];
+	}
+	const ids =
+		selector === null
+			? (type.build.defaultPackageTargets ?? [])
+			: selector === 'all'
+				? catalog.filter((candidate) => candidate.supportedHosts.includes(host)).map((candidate) => candidate.id)
+				: ['windows', 'linux', 'macos'].includes(selector)
+					? catalog
+							.filter((candidate) => candidate.platform === selector && candidate.supportedHosts.includes(host))
+							.map((candidate) => candidate.id)
+					: [selector];
+	const unique = [...new Set(ids)];
+	const targets = unique
+		.map((id) => catalog.find((candidate) => candidate.id === id))
+		.filter((candidate): candidate is PackageTarget => candidate !== undefined);
+	if (targets.length !== unique.length)
+		throw ckError(
+			'CONFIG',
+			`unknown package target: ${unique.find((id) => !catalog.some((candidate) => candidate.id === id))}`,
+			`choose one of: ${catalog.map((target) => target.id).join(', ')}, a platform family, or all`
+		);
+	const unsupported = targets.find((candidate) => !candidate.supportedHosts.includes(host));
+	if (unsupported !== undefined)
+		throw ckError(
+			'CONFIG',
+			`package target ${unsupported.id} is not supported on host ${host}`,
+			`run this target on one of: ${unsupported.supportedHosts.join(', ')}`
+		);
+	if (targets.length === 0)
+		throw ckError(
+			'CONFIG',
+			`package selector ${selector ?? '(default)'} has no targets supported on host ${host}`,
+			'choose an exact target supported by this host'
+		);
+	return targets;
+}
 
 /** One package run over an already loaded tree. The caller holds the tree lock. */
 export function runPackage(options: PackageOptions): PackageResult {
@@ -167,12 +221,16 @@ export function runPackage(options: PackageOptions): PackageResult {
 	let restored: readonly string[] = [];
 	let scratchRestored: readonly string[] = [];
 	let outputs: readonly string[] = [];
+	const selectedTargets = packageTargetsFor(type, options.targetSelector ?? null, process.platform as PackageHost);
+	const packageBuild = selectedTargets.length === 0 ? type.build.packageBuild : selectedTargets.flatMap((target) => target.build);
+	const targets = selectedTargets.map((target) => target.id);
 	const record = (name: PackageStepName, state: PackageStep['state'], detail: string): void => {
 		steps.push({ name, state, detail });
 		out.info(`package ${name}: ${state}${detail === '' ? '' : ` (${detail})`}`);
 	};
 
-	out.info(`package plan: ${packageStepPlan(type, options.flags).join(' -> ')}`);
+	out.info(`package targets: ${targets.length === 0 ? 'legacy' : targets.join(', ')}`);
+	out.info(`package plan: ${packageStepPlan(type, options.flags, packageBuild).join(' -> ')}`);
 	const overlays = loadOverlays(patchesDir);
 	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir));
 	const stamps = packageStamps(type, config, tree, options.env ?? process.env);
@@ -192,7 +250,8 @@ export function runPackage(options: PackageOptions): PackageResult {
 			stamps: stampValues,
 			stampsFromEnvironment,
 			commands,
-			outputs
+			outputs,
+			targets
 		};
 	}
 	record('drift guard', 'ok', 'the fork tree carries no unextracted work');
@@ -222,7 +281,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 		}
 
 		const halves: readonly { readonly name: PackageStepName; readonly build: readonly BuildCommand[] }[] = [
-			{ name: 'package build', build: options.flags.skipTypeBuild ? [] : type.build.packageBuild },
+			{ name: 'package build', build: options.flags.skipTypeBuild ? [] : packageBuild },
 			{ name: 'package distributable', build: type.build.packageDistributable }
 		];
 		for (const half of halves) {
@@ -263,7 +322,18 @@ export function runPackage(options: PackageOptions): PackageResult {
 			record('restore', 'ok', restored.length === 0 ? 'this run materialized nothing to put back' : restored.join(', '));
 		}
 	}
-	return { exitCode, steps, materialized, restored, scratchRestored, stamps: stampValues, stampsFromEnvironment, commands, outputs };
+	return {
+		exitCode,
+		steps,
+		materialized,
+		restored,
+		scratchRestored,
+		stamps: stampValues,
+		stampsFromEnvironment,
+		commands,
+		outputs,
+		targets
+	};
 }
 
 /** What the outputs step says when it found something, and when it did not. */
@@ -453,12 +523,27 @@ function runCommands(
 	const run = options.runCommand ?? defaultPackageCommandRunner;
 	const tree = options.resolution.path;
 	for (const declared of build) {
+		let targetEnvironment: Readonly<Record<string, string>> = {};
+		try {
+			targetEnvironment = declared.environment?.({ ...process.env, ...stamps }) ?? {};
+		} catch (error) {
+			return {
+				state: 'failed',
+				detail: `${declared.label}: ${error instanceof Error ? error.message : String(error)}`,
+				error: {
+					code: 'PACKAGE-FAILED',
+					message: `${declared.label}: ${error instanceof Error ? error.message : String(error)}`,
+					hint: 'install the target toolchain or add its executable directory to PATH'
+				},
+				exitCode: EXIT_ENVIRONMENT
+			};
+		}
 		const command: PackageCommand = {
 			label: declared.label,
 			command: declared.command === 'npm' ? npmCommand() : declared.command,
 			args: [...declared.args],
 			cwd: tree,
-			env: stamps,
+			env: { ...targetEnvironment, ...stamps },
 			timeoutMs: options.timeoutMs
 		};
 		const rendered = renderCommand(command);

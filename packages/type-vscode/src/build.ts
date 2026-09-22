@@ -6,9 +6,10 @@
 // The order of the steps, the profiles, the transactions and the exit codes are
 // the engine's; the names of the scripts are this type's answer.
 
-import { dirname, join } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BuildArea, BuildCommand, BuildStamp } from '@codkit/type-api';
+import type { BuildArea, BuildCommand, BuildStamp, PackageTarget } from '@codkit/type-api';
 import { PLACEHOLDER_CONFIG } from './configSchema.ts';
 import type { VscodeQuality, VscodeTypeConfig } from './configSchema.ts';
 
@@ -42,6 +43,55 @@ export const HYGIENE: readonly BuildCommand[] = [
  */
 export const PACKAGE_BUILD: readonly BuildCommand[] = [
 	{ label: 'package', command: 'npm', args: ['run', 'gulp', '--', 'vscode-linux-x64'] }
+];
+
+const target = (
+	id: PackageTarget['id'],
+	platform: PackageTarget['platform'],
+	arch: PackageTarget['arch'],
+	gulpTask: string,
+	supportedHosts: PackageTarget['supportedHosts'],
+	environment?: BuildCommand['environment']
+): PackageTarget => ({
+	id,
+	platform,
+	arch,
+	supportedHosts,
+	build: [
+		{ label: `package ${id}`, command: 'npm', args: ['run', 'gulp', '--', gulpTask], ...(environment === undefined ? {} : { environment }) }
+	]
+});
+
+export function windowsSdkEnvironment(environment: Readonly<Record<string, string | undefined>>): Readonly<Record<string, string>> {
+	const path = environment['PATH'] ?? environment['Path'] ?? '';
+	if (path.split(delimiter).some((entry) => entry !== '' && existsSync(join(entry, 'signtool.exe')))) return {};
+	const programFiles = environment['ProgramFiles(x86)'];
+	if (programFiles === undefined || programFiles === '')
+		throw new Error('Windows SDK signtool.exe is not on PATH and ProgramFiles(x86) is unavailable');
+	const bin = join(programFiles, 'Windows Kits', '10', 'bin');
+	const toolArch = process.arch === 'arm64' ? 'arm64' : 'x64';
+	const candidate = existsSync(bin)
+		? readdirSync(bin, { withFileTypes: true })
+				.filter((entry) => entry.isDirectory())
+				.map((entry) => join(bin, entry.name, toolArch))
+				.filter((entry) => existsSync(join(entry, 'signtool.exe')))
+				.sort()
+				.at(-1)
+		: undefined;
+	if (candidate === undefined) throw new Error('Windows SDK signtool.exe was not found; install Windows SDK Signing Tools');
+	return { PATH: `${candidate}${delimiter}${path}` };
+}
+
+/** Raw application bundles. Installer/signing recipes remain separate future targets. */
+export const PACKAGE_TARGETS: readonly PackageTarget[] = [
+	target('windows-x64', 'windows', 'x64', 'vscode-win32-x64', ['win32'], windowsSdkEnvironment),
+	target('windows-arm64', 'windows', 'arm64', 'vscode-win32-arm64', ['win32'], windowsSdkEnvironment),
+	// linux-x64 is measured on both Linux and Windows in the Nimbus package lane.
+	target('linux-x64', 'linux', 'x64', 'vscode-linux-x64', ['linux', 'win32']),
+	target('linux-arm64', 'linux', 'arm64', 'vscode-linux-arm64', ['linux']),
+	target('linux-armhf', 'linux', 'armhf', 'vscode-linux-armhf', ['linux']),
+	target('macos-x64', 'macos', 'x64', 'vscode-darwin-x64', ['darwin']),
+	target('macos-arm64', 'macos', 'arm64', 'vscode-darwin-arm64', ['darwin'])
 ];
 
 /**
@@ -143,12 +193,17 @@ export function ownTests(ownRoot: string): BuildCommand | null {
  * it, and the quality channel is the one thing the product answers for itself.
  */
 export function makeBuild(config: VscodeTypeConfig): BuildArea {
+	const defaults = config.packageTargets ?? ['linux-x64'];
+	const defaultIds = new Set<string>(defaults);
+	const defaultBuild = PACKAGE_TARGETS.filter((candidate) => defaultIds.has(candidate.id)).flatMap((candidate) => candidate.build);
 	return {
 		install: INSTALL,
 		dependencyRoots: DEPENDENCY_ROOTS,
 		hygiene: HYGIENE,
 		ownTests,
-		packageBuild: PACKAGE_BUILD,
+		packageBuild: defaultBuild,
+		packageTargets: PACKAGE_TARGETS,
+		defaultPackageTargets: defaults,
 		packageDistributable: PACKAGE_DISTRIBUTABLE,
 		packageStamps: packageStampsOf(config.quality),
 		packageOutputs: PACKAGE_OUTPUTS,

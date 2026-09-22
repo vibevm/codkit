@@ -63,7 +63,8 @@ async function run(ctx: CommandContext): Promise<number> {
 					keepOverlay: commandFlagGiven(ctx.commandFlags, KEEP_OVERLAY),
 					skipTypeBuild: commandFlagGiven(ctx.commandFlags, SKIP_TYPE_BUILD)
 				},
-				timeoutMs
+				timeoutMs,
+				targetSelector: ctx.args[0] ?? null
 			});
 			ctx.out.setData(dataOf(result));
 			return result.exitCode;
@@ -83,7 +84,8 @@ function dataOf(result: PackageResult): JsonValue {
 		stamps: { ...result.stamps },
 		stampsFromEnvironment: [...result.stampsFromEnvironment],
 		commands: [...result.commands],
-		outputs: [...result.outputs]
+		outputs: [...result.outputs],
+		targets: [...result.targets]
 	};
 }
 
@@ -113,7 +115,7 @@ export const packageCommand: CommandDefinition = {
 	name: 'package',
 	summary: 'build the distributable from the loaded tree and put the tree back',
 	configMode: 'load',
-	maxArgs: 0,
+	maxArgs: 1,
 	commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT],
 	run
 };

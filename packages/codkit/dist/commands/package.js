@@ -49,7 +49,8 @@ async function run(ctx) {
                 keepOverlay: commandFlagGiven(ctx.commandFlags, KEEP_OVERLAY),
                 skipTypeBuild: commandFlagGiven(ctx.commandFlags, SKIP_TYPE_BUILD)
             },
-            timeoutMs
+            timeoutMs,
+            targetSelector: ctx.args[0] ?? null
         });
         ctx.out.setData(dataOf(result));
         return result.exitCode;
@@ -66,7 +67,8 @@ function dataOf(result) {
         stamps: { ...result.stamps },
         stampsFromEnvironment: [...result.stampsFromEnvironment],
         commands: [...result.commands],
-        outputs: [...result.outputs]
+        outputs: [...result.outputs],
+        targets: [...result.targets]
     };
 }
 /** `--timeout <seconds>` for one packaging command; null leaves it unbounded. */
@@ -89,7 +91,7 @@ export const packageCommand = {
     name: 'package',
     summary: 'build the distributable from the loaded tree and put the tree back',
     configMode: 'load',
-    maxArgs: 0,
+    maxArgs: 1,
     commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT],
     run
 };

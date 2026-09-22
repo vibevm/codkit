@@ -3,10 +3,13 @@
 // watch profile, the advisory readers, the conventions defaults and the runtime
 // delivery.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mkdtempSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ADVISORY_PATHS, advisory } from '../src/advisory.ts';
-import { build, makeBuild, packageStampsOf, WATCH_PROFILE_PATH } from '../src/build.ts';
+import { build, makeBuild, packageStampsOf, WATCH_PROFILE_PATH, windowsSdkEnvironment } from '../src/build.ts';
 import { conventions } from '../src/conventions.ts';
 import { identity } from '../src/identity.ts';
 import { layers, PRODUCT_JSON_TARGET, PRODUCT_OVERRIDES_FILE } from '../src/layers.ts';
@@ -121,6 +124,28 @@ describe('build and test', () => {
 		expect(build.packageOutputs).toEqual([]);
 		expect(build.packageDistributable).toEqual([]);
 		expect(build.packageBuild).toHaveLength(1);
+		expect(build.packageTargets?.map((target) => target.id)).toEqual([
+			'windows-x64',
+			'windows-arm64',
+			'linux-x64',
+			'linux-arm64',
+			'linux-armhf',
+			'macos-x64',
+			'macos-arm64'
+		]);
+		expect(makeBuild({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64'] }).defaultPackageTargets).toEqual(['windows-x64']);
+	});
+
+	it('discovers the newest Windows SDK signing tool before a Windows package spawn', () => {
+		const root = mkdtempSync(join(tmpdir(), 'codkit-windows-sdk-'));
+		const older = join(root, 'Windows Kits', '10', 'bin', '10.0.1', 'x64');
+		const newer = join(root, 'Windows Kits', '10', 'bin', '10.0.2', 'x64');
+		mkdirSync(older, { recursive: true });
+		mkdirSync(newer, { recursive: true });
+		writeFileSync(join(older, 'signtool.exe'), 'old');
+		writeFileSync(join(newer, 'signtool.exe'), 'new');
+		const prepared = windowsSdkEnvironment({ 'ProgramFiles(x86)': root, PATH: 'C:\\base' });
+		expect(prepared['PATH']).toContain(newer);
 	});
 
 	it('knows the argv of a watcher somebody else started over the same tree', () => {

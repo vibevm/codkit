@@ -9,7 +9,13 @@ describe('the typeConfig schema', () => {
 	it('accepts the own root and the optional quality channel, and nothing else', () => {
 		expect(configSchema.safeParse({ ownRoot: 'src/vs/patchset' }).success).toBe(true);
 		expect(configSchema.safeParse({ ownRoot: 'src/vs/patchset', quality: 'stable' }).success).toBe(true);
+		expect(configSchema.safeParse({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64', 'linux-x64'] }).success).toBe(true);
 		expect(configSchema.safeParse({ ownRoot: 'src/vs/patchset', ownDirName: 'patchset' }).success).toBe(false);
+	});
+
+	it('refuses duplicate or foreign package targets', () => {
+		expect(configSchema.safeParse({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64', 'windows-x64'] }).success).toBe(false);
+		expect(configSchema.safeParse({ ownRoot: 'src/vs/patchset', packageTargets: ['freebsd-x64'] }).success).toBe(false);
 	});
 
 	it('refuses a quality channel this family does not have', () => {

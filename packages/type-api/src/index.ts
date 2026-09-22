@@ -16,7 +16,7 @@ export type {
 	ServiceOverrideProblem,
 	ServiceOverrideVerifier
 } from './layers.ts';
-export type { BuildArea, BuildCommand, BuildStamp } from './build.ts';
+export type { BuildArea, BuildCommand, BuildStamp, PackageHost, PackageTarget } from './build.ts';
 export type { AdvisoryArea, AdvisoryFiles, AdvisoryReader, AdvisoryValue } from './advisory.ts';
 export type { BrandImagesArea, ImageCodec, ImageFrame, ImagePayload, ImageTargetPattern } from './brandImages.ts';
 export { brokenArtifact, isBrokenArtifact } from './refusal.ts';

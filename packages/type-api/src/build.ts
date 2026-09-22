@@ -13,6 +13,20 @@ export type BuildCommand = {
 	/** Executable name; `npm` is resolved to the platform's npm by the engine. */
 	readonly command: 'npm' | (string & {});
 	readonly args: readonly string[];
+	/** Target-owned environment discovery, evaluated immediately before spawn. */
+	readonly environment?: (environment: Readonly<Record<string, string | undefined>>) => Readonly<Record<string, string>>;
+};
+
+export type PackageHost = 'win32' | 'linux' | 'darwin';
+
+/** One closed package recipe owned by a project type. */
+export type PackageTarget = {
+	readonly id: string;
+	readonly platform: 'windows' | 'linux' | 'macos';
+	readonly arch: 'x64' | 'arm64' | 'armhf';
+	readonly build: readonly BuildCommand[];
+	/** Hosts on which this recipe is known to work, including measured cross-builds. */
+	readonly supportedHosts: readonly PackageHost[];
 };
 
 export type BuildArea = {
@@ -38,6 +52,10 @@ export type BuildArea = {
 	ownTests(ownRoot: string): BuildCommand | null;
 	/** Building the distributable package, after the compile channels are clean. */
 	readonly packageBuild: readonly BuildCommand[];
+	/** Closed target catalog; absent keeps the legacy single packageBuild answer. */
+	readonly packageTargets?: readonly PackageTarget[];
+	/** Target ids used by bare `codkit package`. */
+	readonly defaultPackageTargets?: readonly string[];
 	/**
 	 * What turns the built application into the artifact the product ships -
 	 * an installer, an archive, a signed bundle - or an empty list when this
