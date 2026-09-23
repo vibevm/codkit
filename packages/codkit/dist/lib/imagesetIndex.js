@@ -10,7 +10,8 @@
 // size comes from a hand-made master and which one is generated.
 import { existsSync } from 'node:fs';
 import { codecFor } from './imagesetCodec.js';
-import { chooseMaster, ignoredMasterFiles, knownMasterFiles } from './imagesetMasters.js';
+import { chooseMaster, ignoredMasterFiles, knownMasterFiles, vectorSizeReader } from './imagesetMasters.js';
+import { stretchOf, stretchPhrase } from './imagesetRender.js';
 import { artworkKey, discoverTargets } from './imagesetTargets.js';
 /**
  * Build the index. Nothing is written - not even the seeding `gen` does on a
@@ -21,7 +22,9 @@ export function buildImagesetIndex(options) {
     const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
     const brandingDirExists = existsSync(options.brandingDir);
     const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
-    const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target));
+    // The index seeds nothing, so every master it names is on disk.
+    const masterSize = vectorSizeReader(options.brandingDir, new Map());
+    const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target, masterSize));
     const totals = { master: 0, generated: 0, missing: 0 };
     const perFamily = new Map();
     const artworksOf = new Map();
@@ -50,7 +53,7 @@ export function buildImagesetIndex(options) {
         }))
     };
 }
-function indexTarget(type, brandingDir, target) {
+function indexTarget(type, brandingDir, target, masterSize) {
     const key = artworkKey(target);
     const codec = codecFor(type, target.kind);
     return {
@@ -63,7 +66,12 @@ function indexTarget(type, brandingDir, target) {
         sizes: target.frames.map((frame) => {
             const master = chooseMaster(brandingDir, key, frame.width, frame.height);
             const source = master === null ? 'missing' : master.origin === 'override' ? 'master' : 'generated';
-            return { width: frame.width, height: frame.height, type: frame.type, source, from: master?.file ?? null };
+            // A vector target is emitted unchanged at the size it carries, so
+            // only a raster size a vector master renders can be stretched.
+            const stretch = master !== null && master.origin === 'vector' && !codec.vector
+                ? stretchOf(masterSize(master.file), frame.width, frame.height)
+                : null;
+            return { width: frame.width, height: frame.height, type: frame.type, source, from: master?.file ?? null, stretch };
         }),
         legacyTypes: target.legacyTypes,
         constraints: constraintsOf(codec, target)
@@ -111,7 +119,9 @@ export function indexData(index) {
                 height: size.height,
                 type: size.type,
                 source: size.source,
-                from: size.from
+                from: size.from,
+                stretched: size.stretch?.stretched ?? false,
+                stretchPercent: size.stretch?.percent ?? null
             }))
         }))
     };
@@ -199,7 +209,8 @@ function describeSource(target, size) {
     }
     if (size.source === 'generated') {
         const verb = size.from?.endsWith('.svg') === true ? 'rendered at this size from' : 'resampled to this size from';
-        return `${verb} \`${size.from ?? ''}\``;
+        const stretch = size.stretch !== null && size.stretch.stretched ? `, ${stretchPhrase(size.stretch)}` : '';
+        return `${verb} \`${size.from ?? ''}\`${stretch}`;
     }
     return `no \`${target.key}\` master exists; the run skips this target and exits 1`;
 }

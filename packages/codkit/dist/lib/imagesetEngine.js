@@ -7,9 +7,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { codecFor, readingImage } from './imagesetCodec.js';
-import { chooseMaster, ignoredMasterFiles, inBranding, seedMasters } from './imagesetMasters.js';
+import { chooseMaster, ignoredMasterFiles, inBranding, seedMasters, vectorSizeReader } from './imagesetMasters.js';
 import { decodePng, encodePng } from '@codkit/type-api';
-import { renderSvgToRgba } from './imagesetRender.js';
+import { formatVectorSize, renderSvgToRgba, stretchOf, stretchPhrase } from './imagesetRender.js';
 import { resizeRgba } from './imagesetRaster.js';
 import { artworkKey, discoverTargets } from './imagesetTargets.js';
 import { ckError } from './messages.js';
@@ -38,15 +38,17 @@ export function runImageset(options) {
     }
     // In a dry run the planned seeds are not on disk yet; the plan still has
     // to say which master would serve each frame, so a planned seed counts as
-    // the master it will become.
+    // the master it will become - and its bytes are the master a prediction
+    // reads.
     const virtualMasters = new Set(seeded.map((seed) => seed.file));
+    const predictedSize = vectorSizeReader(brandingDir, new Map(seeded.map((seed) => [seed.file, seed.bytes])));
     const map = loadResourceMap(patchesDir);
     const ownerOf = ownerResolver(patchesDir);
     const declaredTests = ownTestIds(patchesDir);
     const renders = [];
     const skipReport = [];
     for (const target of targets) {
-        const rendered = renderTarget(options.type, brandingDir, target, virtualMasters, dryRun);
+        const rendered = renderTarget(options.type, brandingDir, target, virtualMasters, dryRun, predictedSize);
         if (rendered.skipped !== null) {
             skipReport.push({ target, reason: rendered.skipped });
             continue;
@@ -55,6 +57,16 @@ export function runImageset(options) {
     }
     for (const skip of skipReport) {
         onWarn(`skipped ${skip.target.target}: ${skip.reason}`);
+    }
+    // A stretched frame is delivered all the same, so it is a warning and not a
+    // skip: one line per frame, in the run and in its plan alike, naming the
+    // size of the master that has to change (##IMAGESET-STRETCH-REPORTED).
+    for (const render of renders) {
+        for (const frame of render.frames) {
+            if (frame.stretch?.stretched === true) {
+                onWarn(`${render.target.target}: ${frame.source} (the master is ${formatVectorSize(frame.stretch.master)})`);
+            }
+        }
     }
     const created = [];
     const updated = [];
@@ -140,7 +152,7 @@ export function runImageset(options) {
         report: buildReport(options, seeded, targets, renders, created, updated, skipReport, writes.map((write) => write.path))
     };
 }
-function renderTarget(type, brandingDir, target, virtualMasters, dryRun) {
+function renderTarget(type, brandingDir, target, virtualMasters, dryRun, predictedSize) {
     const codec = codecFor(type, target.kind);
     const key = artworkKey(target);
     if (codec.vector) {
@@ -153,21 +165,25 @@ function renderTarget(type, brandingDir, target, virtualMasters, dryRun) {
         if (master === null) {
             return { bytes: new Uint8Array(0), frames: [], skipped: `no ${key} master in ${brandingDir}` };
         }
-        frames.push({ width: frame.width, height: frame.height, source: describeMaster(master, frame) });
         if (dryRun) {
             // The plan names the master per frame; the pixels are the real
-            // run's business, and the master may not even exist yet.
+            // run's business, and the master may not even exist yet. How far
+            // a vector master stretches the frame needs no pixels: the
+            // rasteriser's parse gives the size the render would fit.
+            const stretch = master.origin === 'vector' ? stretchOf(predictedSize(master.file), frame.width, frame.height) : null;
+            frames.push(reportedFrame(master, frame, stretch));
             continue;
         }
-        const image = masterAt(brandingDir, master, frame);
-        if (image === null) {
+        const produced = masterAt(brandingDir, master, frame);
+        if (produced === null) {
             return {
                 bytes: new Uint8Array(0),
                 frames: [],
                 skipped: `the per-size override ${master.file} does not cover ${frame.width}x${frame.height}`
             };
         }
-        rendered.push({ frame, image });
+        frames.push(reportedFrame(master, frame, produced.stretch));
+        rendered.push({ frame, image: produced.image });
     }
     if (dryRun) {
         return { bytes: new Uint8Array(0), frames, skipped: null };
@@ -198,7 +214,12 @@ function emitVectorTarget(codec, brandingDir, target, key, virtualMasters, dryRu
         return nothing(`${target.target} is a vector target and needs ${key}${codec.extension}; ${master.file} is a raster master`);
     }
     const frames = [
-        { width: frame.width, height: frame.height, source: `emitted ${master.file} unchanged at ${frame.width}x${frame.height}` }
+        {
+            width: frame.width,
+            height: frame.height,
+            source: `emitted ${master.file} unchanged at ${frame.width}x${frame.height}`,
+            stretch: null
+        }
     ];
     if (dryRun) {
         return { bytes: new Uint8Array(0), frames, skipped: null };
@@ -222,26 +243,35 @@ function emitVectorTarget(codec, brandingDir, target, key, virtualMasters, dryRu
     }
     return { bytes, frames, skipped: null };
 }
-/** Render one frame from its master: verbatim override, vector, or resample. */
+/**
+ * Render one frame from its master: verbatim override, vector, or resample.
+ * Only a vector master is measured for a stretch - an override has the size of
+ * its frame, and a resampled raster says so in its own words.
+ */
 function masterAt(brandingDir, master, frame) {
     if (master.origin === 'vector') {
-        return renderSvgToRgba(readFileSync(inBranding(brandingDir, master.file), 'utf8'), frame.width, frame.height).image;
+        return renderSvgToRgba(readFileSync(inBranding(brandingDir, master.file), 'utf8'), frame.width, frame.height);
     }
     const image = readingImage(master.file, () => decodePng(readFileSync(inBranding(brandingDir, master.file))));
     if (master.origin === 'override') {
         if (image.width !== frame.width || image.height !== frame.height) {
             return null;
         }
-        return image;
+        return { image, stretch: null };
     }
-    return resizeRgba(image, frame.width, frame.height);
+    return { image: resizeRgba(image, frame.width, frame.height), stretch: null };
 }
-function describeMaster(master, frame) {
+/** A frame as the reports state it: its origin, and how far it is stretched. */
+function reportedFrame(master, frame, stretch) {
+    return { width: frame.width, height: frame.height, source: describeMaster(master, frame, stretch), stretch };
+}
+function describeMaster(master, frame, stretch) {
     if (master.origin === 'override') {
         return `override ${master.file} verbatim at ${frame.width}x${frame.height}`;
     }
     if (master.origin === 'vector') {
-        return `rendered ${master.file} at ${frame.width}x${frame.height}`;
+        const rendered = `rendered ${master.file} at ${frame.width}x${frame.height}`;
+        return stretch !== null && stretch.stretched ? `${rendered}, ${stretchPhrase(stretch)}` : rendered;
     }
     return `resampled ${master.file} to ${frame.width}x${frame.height}`;
 }

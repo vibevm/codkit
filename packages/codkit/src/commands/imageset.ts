@@ -239,7 +239,14 @@ function dataOf(report: ReturnType<typeof runImageset>['report']): JsonValue {
 			target: target.target,
 			family: target.family,
 			kind: target.kind,
-			frames: target.frames.map((frame) => ({ width: frame.width, height: frame.height, source: frame.source })),
+			frames: target.frames.map((frame) => ({
+				width: frame.width,
+				height: frame.height,
+				source: frame.source,
+				// ##IMAGESET-STRETCH-REPORTED: the stretch as fields, not only inside `source`.
+				stretched: frame.stretch?.stretched ?? false,
+				stretchPercent: frame.stretch?.percent ?? null
+			})),
 			skipped: target.skipped,
 			entry: target.entry,
 			legacyTypes: [...target.legacyTypes]

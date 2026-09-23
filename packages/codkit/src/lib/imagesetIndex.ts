@@ -11,7 +11,9 @@
 
 import { existsSync } from 'node:fs';
 import { codecFor } from './imagesetCodec.ts';
-import { chooseMaster, ignoredMasterFiles, knownMasterFiles } from './imagesetMasters.ts';
+import { chooseMaster, ignoredMasterFiles, knownMasterFiles, vectorSizeReader } from './imagesetMasters.ts';
+import { stretchOf, stretchPhrase } from './imagesetRender.ts';
+import type { VectorSize, VectorStretch } from './imagesetRender.ts';
 import type { DiscoveredTarget, TargetKind } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
 import type { JsonValue } from './jsonOut.ts';
@@ -28,6 +30,11 @@ export type IndexSize = {
 	readonly source: SizeSource;
 	/** Master file that serves this size, or null when none can. */
 	readonly from: string | null;
+	/**
+	 * How far the vector master that renders this size stretches its drawing,
+	 * or null when no vector master renders it (##IMAGESET-STRETCH-REPORTED).
+	 */
+	readonly stretch: VectorStretch | null;
 };
 
 export type IndexTarget = {
@@ -80,7 +87,9 @@ export function buildImagesetIndex(options: {
 	const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
 	const brandingDirExists = existsSync(options.brandingDir);
 	const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
-	const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target));
+	// The index seeds nothing, so every master it names is on disk.
+	const masterSize = vectorSizeReader(options.brandingDir, new Map());
+	const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target, masterSize));
 	const totals = { master: 0, generated: 0, missing: 0 };
 	const perFamily = new Map<string, { master: number; generated: number; missing: number }>();
 	const artworksOf = new Map<string, Set<string>>();
@@ -110,7 +119,12 @@ export function buildImagesetIndex(options: {
 	};
 }
 
-function indexTarget(type: ProjectType, brandingDir: string, target: DiscoveredTarget): IndexTarget {
+function indexTarget(
+	type: ProjectType,
+	brandingDir: string,
+	target: DiscoveredTarget,
+	masterSize: (file: string) => VectorSize
+): IndexTarget {
 	const key = artworkKey(target);
 	const codec = codecFor(type, target.kind);
 	return {
@@ -123,7 +137,13 @@ function indexTarget(type: ProjectType, brandingDir: string, target: DiscoveredT
 		sizes: target.frames.map((frame) => {
 			const master = chooseMaster(brandingDir, key, frame.width, frame.height);
 			const source: SizeSource = master === null ? 'missing' : master.origin === 'override' ? 'master' : 'generated';
-			return { width: frame.width, height: frame.height, type: frame.type, source, from: master?.file ?? null };
+			// A vector target is emitted unchanged at the size it carries, so
+			// only a raster size a vector master renders can be stretched.
+			const stretch =
+				master !== null && master.origin === 'vector' && !codec.vector
+					? stretchOf(masterSize(master.file), frame.width, frame.height)
+					: null;
+			return { width: frame.width, height: frame.height, type: frame.type, source, from: master?.file ?? null, stretch };
 		}),
 		legacyTypes: target.legacyTypes,
 		constraints: constraintsOf(codec, target)
@@ -175,7 +195,9 @@ export function indexData(index: ImagesetIndex): JsonValue {
 				height: size.height,
 				type: size.type,
 				source: size.source,
-				from: size.from
+				from: size.from,
+				stretched: size.stretch?.stretched ?? false,
+				stretchPercent: size.stretch?.percent ?? null
 			}))
 		}))
 	};
@@ -296,7 +318,8 @@ function describeSource(target: IndexTarget, size: IndexSize): string {
 	}
 	if (size.source === 'generated') {
 		const verb = size.from?.endsWith('.svg') === true ? 'rendered at this size from' : 'resampled to this size from';
-		return `${verb} \`${size.from ?? ''}\``;
+		const stretch = size.stretch !== null && size.stretch.stretched ? `, ${stretchPhrase(size.stretch)}` : '';
+		return `${verb} \`${size.from ?? ''}\`${stretch}`;
 	}
 	return `no \`${target.key}\` master exists; the run skips this target and exits 1`;
 }

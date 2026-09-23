@@ -212,3 +212,98 @@ function sixteenPng(): Uint8Array {
 	}
 	return encodePng({ width: 16, height: 16, data });
 }
+
+describe('a vector master stretched to its frame', () => {
+	// PROP-007 ##IMAGESET-STRETCH-REPORTED through the real launcher. The
+	// fixture's large banners are 32x16 and 40x20; a 100x55 banner master is
+	// stretched 9.1% to both, a square icon master fits every icon frame, and a
+	// raster master for the small banner is not assessed.
+	const STRETCHED = "rendered installer-big.svg at 32x16, stretched 9.1% from the master's aspect";
+	const WARNINGS = [
+		`warning: resources/win32/inno-big-100.bmp: ${STRETCHED} (the master is 100x55)`,
+		"warning: resources/win32/inno-big-125.bmp: rendered installer-big.svg at 40x20, stretched 9.1% from the master's aspect (the master is 100x55)"
+	];
+
+	function stretchFixture(label: string) {
+		const fixture = makeImagesetFixture(label);
+		const brandingDir = join(fixture.patchset.dir, 'artwork');
+		mkdirSync(brandingDir, { recursive: true });
+		writeFileSync(
+			join(brandingDir, 'installer-big.svg'),
+			'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="55"><rect width="100" height="55" fill="#167abf"/><circle cx="50" cy="27.5" r="20" fill="#ffffff"/></svg>',
+			'utf8'
+		);
+		writeFileSync(
+			join(brandingDir, 'icon.svg'),
+			'<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" rx="24" fill="#167abf"/><circle cx="64" cy="64" r="28" fill="#ffffff"/></svg>',
+			'utf8'
+		);
+		writeFileSync(join(brandingDir, 'installer-small.png'), sixteenPng());
+		return { ...fixture, brandingDir };
+	}
+
+	const warningsOf = (stderr: string) => stderr.split('\n').filter((line) => line.includes('stretched'));
+
+	type JsonFrame = { width: number; height: number; source: string; stretched: boolean; stretchPercent: number | null };
+	const jsonFrames = (envelope: { data: { targets: { target: string; frames: JsonFrame[] }[] } }, target: string) =>
+		envelope.data.targets.find((candidate) => candidate.target === target)?.frames ?? [];
+
+	it('gen --dry-run predicts it in the plan, in one warning line per frame and in the JSON fields', () => {
+		const fixture = stretchFixture('e2e-stretch-dry');
+		const plan = fixture.run(['imageset', 'gen', '--dry-run', '--branding-dir', fixture.brandingDir]);
+		expect(plan.status).toBe(0);
+		expect(plan.stdout).toContain(`  32x16: ${STRETCHED}`);
+		expect(warningsOf(plan.stderr)).toEqual(WARNINGS);
+		const json = fixture.run(['imageset', 'gen', '--dry-run', '--json', '--branding-dir', fixture.brandingDir]);
+		expect(json.status).toBe(0);
+		const envelope = JSON.parse(json.stdout);
+		expect(jsonFrames(envelope, 'resources/win32/inno-big-100.bmp')).toEqual([
+			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1 }
+		]);
+		expect(existsSync(join(fixture.patchset.dir, 'delta', 'resources'))).toBe(false);
+	});
+
+	it('gen reports it the same way and still delivers the frame at the exact size', () => {
+		const fixture = stretchFixture('e2e-stretch-gen');
+		const json = fixture.run(['imageset', 'gen', '--json', '--branding-dir', fixture.brandingDir]);
+		expect(json.status).toBe(0);
+		const envelope = JSON.parse(json.stdout);
+		expect(jsonFrames(envelope, 'resources/win32/inno-big-100.bmp')).toEqual([
+			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1 }
+		]);
+		const icon = jsonFrames(envelope, 'resources/win32/code.ico');
+		expect(icon.length).toBeGreaterThan(0);
+		expect(icon.every((frame) => !frame.stretched && frame.stretchPercent === 0 && !frame.source.includes('stretched'))).toBe(true);
+		expect(jsonFrames(envelope, 'resources/win32/inno-small-100.bmp')).toEqual([
+			{ width: 12, height: 12, source: 'resampled installer-small.png to 12x12', stretched: false, stretchPercent: null }
+		]);
+		expect(
+			envelope.messages
+				.filter((message: { level: string; text: string }) => message.level === 'warn')
+				.map((message: { text: string }) => `warning: ${message.text}`)
+		).toEqual(WARNINGS);
+		expect(existsSync(artifactOf(fixture.patchset.dir, 'resources/win32/inno-big-100.bmp'))).toBe(true);
+		const text = fixture.run(['imageset', 'gen', '--branding-dir', fixture.brandingDir]);
+		expect(text.status).toBe(0);
+		expect(text.stdout).toContain(`regenerated resources/win32/inno-big-100.bmp: 32x16 (${STRETCHED})`);
+		expect(warningsOf(text.stderr)).toEqual(WARNINGS);
+	});
+
+	it('index shows it to whoever draws, in the Markdown and in the JSON, without writing a thing', () => {
+		const fixture = stretchFixture('e2e-stretch-index');
+		const run = fixture.run(['imageset', 'index', '--branding-dir', fixture.brandingDir]);
+		expect(run.status).toBe(0);
+		expect(run.stdout).toContain(
+			"| 32x16 | - | `generated` | rendered at this size from `installer-big.svg`, stretched 9.1% from the master's aspect |"
+		);
+		expect(run.stdout.split('\n').filter((line) => line.includes('stretched'))).toHaveLength(2);
+		const json = fixture.run(['imageset', 'index', '--json', '--branding-dir', fixture.brandingDir]);
+		expect(json.status).toBe(0);
+		const envelope = JSON.parse(json.stdout);
+		const sizes = (target: string) =>
+			envelope.data.targets.find((candidate: { target: string }) => candidate.target === target)?.sizes ?? [];
+		expect(sizes('resources/win32/inno-big-100.bmp')).toMatchObject([{ width: 32, height: 16, stretched: true, stretchPercent: 9.1 }]);
+		expect(sizes('resources/win32/inno-small-100.bmp')).toMatchObject([{ stretched: false, stretchPercent: null }]);
+		expect(existsSync(join(fixture.patchset.dir, 'delta', 'resources'))).toBe(false);
+	});
+});

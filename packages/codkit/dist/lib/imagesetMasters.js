@@ -20,6 +20,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { codecFor, readingImage } from './imagesetCodec.js';
+import { ckError } from './messages.js';
+import { vectorMasterSize } from './imagesetRender.js';
 import { artworkKey } from './imagesetTargets.js';
 /** Where masters live when the operator did not say otherwise. */
 export function defaultBrandingDir(patchesDir) {
@@ -49,6 +51,29 @@ export function chooseMaster(brandingDir, key, width, height, virtualMasters = n
 /** Absolute path of a master file named with forward slashes. */
 export function inBranding(brandingDir, file) {
     return join(brandingDir, ...file.split('/'));
+}
+/**
+ * The intrinsic size of a vector master for a report that renders nothing,
+ * read once per master: the file in the branding directory or, in a dry run
+ * that plans the seeding, the bytes the seeding would write there - so a plan
+ * measures the very master its run would render (##IMAGESET-STRETCH-REPORTED).
+ */
+export function vectorSizeReader(brandingDir, planned) {
+    const sizes = new Map();
+    return (file) => {
+        const known = sizes.get(file);
+        if (known !== undefined) {
+            return known;
+        }
+        const path = inBranding(brandingDir, file);
+        const bytes = existsSync(path) ? readFileSync(path) : planned.get(file);
+        if (bytes === undefined) {
+            throw ckError('INTERNAL', `the master ${file} was chosen but is neither in ${brandingDir} nor planned for it`);
+        }
+        const size = vectorMasterSize(Buffer.from(bytes).toString('utf8'));
+        sizes.set(file, size);
+        return size;
+    };
 }
 /** Files in the branding directory the convention does not know about. */
 export function ignoredMasterFiles(brandingDir, keys) {
@@ -122,7 +147,7 @@ export function seedMasters(type, brandingDir, treeDir, targets, dryRun = false)
         }
     }
     if (dryRun) {
-        return seeds.map(({ file, seed }) => ({ file, from: seed.from, width: seed.width, height: seed.height }));
+        return seeds.map(({ file, seed }) => ({ file, from: seed.from, width: seed.width, height: seed.height, bytes: seed.bytes }));
     }
     mkdirSync(brandingDir, { recursive: true });
     const seeded = [];
@@ -130,7 +155,7 @@ export function seedMasters(type, brandingDir, treeDir, targets, dryRun = false)
         const path = inBranding(brandingDir, file);
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, seed.bytes);
-        seeded.push({ file, from: seed.from, width: seed.width, height: seed.height });
+        seeded.push({ file, from: seed.from, width: seed.width, height: seed.height, bytes: seed.bytes });
     }
     return seeded;
 }
