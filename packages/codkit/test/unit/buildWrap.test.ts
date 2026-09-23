@@ -15,7 +15,7 @@ import {
 	DAEMON_RECORD_SCHEMA_VERSION,
 	argsMatch,
 	channelByName,
-	daemonIsDetached,
+	daemonInvocation,
 	downChannel,
 	errorCountFrom,
 	findLastFinishedPass,
@@ -59,12 +59,28 @@ function windowsProcess(pid: number, parentPid: number, commandLine: string | nu
 }
 
 describe('daemon process topology', () => {
-	it('detaches only where process groups carry the daemon lifetime', () => {
-		expect({ windows: daemonIsDetached('win32'), linux: daemonIsDetached('linux'), macos: daemonIsDetached('darwin') }).toEqual({
-			windows: false,
-			linux: true,
-			macos: true
+	it('starts npm itself on POSIX', () => {
+		for (const platform of ['linux', 'darwin'] as const) {
+			expect(daemonInvocation('watch-client', platform, '/usr/bin/node', () => false)).toEqual({
+				command: 'npm',
+				args: ['run', 'watch-client']
+			});
+		}
+	});
+
+	it("starts npm's entry point on this node on Windows, never npm.cmd through cmd.exe", () => {
+		const node = 'C:\\Program Files\\nodejs\\node.exe';
+		const npmCli = 'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js';
+		expect(daemonInvocation('watch-client', 'win32', node, (path) => path === npmCli)).toEqual({
+			command: node,
+			args: [npmCli, 'run', 'watch-client']
 		});
+	});
+
+	it('refuses a Windows node that carries no npm instead of starting a daemon that cannot run', () => {
+		expect(() => daemonInvocation('watch-client', 'win32', 'C:\\node\\node.exe', () => false)).toThrow(
+			/npm is not installed next to C:\\node\\node\.exe/
+		);
 	});
 });
 

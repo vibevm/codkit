@@ -21,13 +21,12 @@
 import { randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
-import { basename, delimiter, dirname, isAbsolute, join, sep } from 'node:path';
+import { basename, delimiter, dirname, isAbsolute, join, sep, win32 } from 'node:path';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.js';
 import { validateChannelSet } from './buildChannel.js';
 import { readContainedFile } from './containedFile.js';
 import { errnoOf, sameEffectivePath } from './containedPath.js';
-import { processInvocation } from './processInvocation.js';
 import { DAEMON_RECORD_SCHEMA_VERSION, closeLog, createReservation, daemonRecordBytes, finalizeReservation, logPath, openLogAppend, readLog as readRuntimeLog, readRecordState, recordPath, removeRecord, rotateLog } from './buildRuntime.js';
 import { acquireDaemonChannelLock, assertDaemonChannelLock } from './daemonChannelLock.js';
 import { ckError, isCkError } from './messages.js';
@@ -903,10 +902,10 @@ function upChannelLocked(ctx, channel, lock, runtime = ctx.runtime) {
 function spawnDaemon(patchesDir, treeDir, channel, lock) {
     const fd = openLogAppend(patchesDir, channel.name, lock);
     try {
-        const invocation = processInvocation(npmCommand(), ['run', channel.script]);
+        const invocation = daemonInvocation(channel.script);
         const child = spawn(invocation.command, [...invocation.args], {
             cwd: treeDir,
-            detached: daemonIsDetached(),
+            detached: true,
             stdio: ['ignore', fd, fd],
             env: daemonEnv(),
             shell: false,
@@ -926,9 +925,30 @@ function spawnDaemon(patchesDir, treeDir, channel, lock) {
         closeLog(fd);
     }
 }
-/** POSIX needs a process group; Windows uses taskkill /t and must inherit log handles. */
-export function daemonIsDetached(platform = process.platform) {
-    return platform !== 'win32';
+/**
+ * The argv that starts `npm run <script>` as a detached daemon.
+ *
+ * Detached on every platform. On POSIX it makes npm the leader of the process
+ * group that `down` signals. On Windows it is the only way to outlive
+ * `build up`: libuv places every attached child in a job object that kills it
+ * when codkit exits, so an attached daemon died with the command that started
+ * it and left an empty log.
+ *
+ * Windows also runs npm's own entry point on this node instead of `npm.cmd`. A
+ * detached `cmd.exe` has no console, so the npm it starts is given a fresh one
+ * and loses the log handles: the daemon ran, and its log stayed empty. Node
+ * started directly receives the log handles itself and passes them on
+ * (PROP-010 ##DAEMON-WINDOWS-LAUNCH).
+ */
+export function daemonInvocation(script, platform = process.platform, execPath = process.execPath, exists = existsSync) {
+    if (platform !== 'win32') {
+        return { command: 'npm', args: ['run', script] };
+    }
+    const npmCli = win32.join(win32.dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+    if (!exists(npmCli)) {
+        throw ckError('INTERNAL', `cannot start the ${script} daemon: npm is not installed next to ${execPath}`, `install npm with this node so that ${npmCli} exists`);
+    }
+    return { command: execPath, args: [npmCli, 'run', script] };
 }
 /**
  * Stop the child this command just spawned, after proving it is still that
@@ -976,9 +996,6 @@ export function terminateSpawnedDaemon(pid, script, probe = {}) {
     catch {
         // The owned child exited between the proof and the signal.
     }
-}
-function npmCommand() {
-    return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 function daemonEnv() {
     const env = {};

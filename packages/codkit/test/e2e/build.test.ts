@@ -9,7 +9,7 @@
 // Every test leaves the channels it started stopped; the afterAll hook is the
 // safety net, not the mechanism.
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -420,7 +420,11 @@ describe('codkit build up: a watcher somebody else started', () => {
 	});
 });
 
-describe('codkit build errors: a daemon that is gone', () => {
+// POSIX only: a group whose leader is gone is proven dead there. On Windows an
+// absent recorded root is `unknown`, never `dead` (PROP-010 DAEMON-ORPHAN-GUARD),
+// so the gone-daemon answer cannot be reached; the block after this one pins
+// the Windows answer instead.
+describe.skipIf(process.platform === 'win32')('codkit build errors: a daemon that is gone', () => {
 	/**
 	 * Kill a running daemon the way anything else on the machine would - the
 	 * process and the group it leads, so the compiler under it goes too - and
@@ -500,5 +504,26 @@ describe('codkit build errors: a daemon that is gone', () => {
 		expect(rowOf(outcome.envelope, 'addons')).toEqual({ channel: 'addons', state: 'dead' });
 
 		expect(fixture.run(['build', 'down', '--channel', 'addons']).status).toBe(0);
+	});
+});
+
+describe.runIf(process.platform === 'win32')('codkit build on Windows: a recorded root that is gone', () => {
+	it('is unknown, certifies nothing, tears nothing down and keeps the record', { timeout: 60_000 }, () => {
+		expect(fixture.run(['build', 'up', '--channel', 'addons'], { STUB_MODE: 'never-end' }).status).toBe(0);
+		const pid = record('addons')?.pid ?? 0;
+		expect(pid).toBeGreaterThan(0);
+		expect(rowOf(fixture.json(['build', 'status', '--channel', 'addons']).envelope, 'addons').state).toBe('living');
+
+		// The whole tree, the way anything else on the machine would kill it.
+		expect(spawnSync('taskkill', ['/pid', String(pid), '/t', '/f'], { windowsHide: true }).status).toBe(0);
+
+		expect(rowOf(fixture.json(['build', 'status', '--channel', 'addons']).envelope, 'addons').state).toBe('unknown');
+		expect(fixture.run(['build', 'errors', '--channel', 'addons', ...TIMEOUT]).status).toBe(2);
+		expect(fixture.run(['build', 'down', '--channel', 'addons']).status).toBe(2);
+		expect(record('addons')?.pid).toBe(pid);
+
+		// The taskkill above is the native proof of teardown that `down` asks for;
+		// retiring the record after it is the operator's step.
+		rmSync(fixture.patchesPath('.codkit/build/addons.json'));
 	});
 });
