@@ -7052,7 +7052,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:4fc010e6573fe5c0354f4aea9ef5964bbb32389af5aa8a452be1c223673fed0b",
+      "content_hash": "sha256:69ffd36f864668b2d8b97bb83af4cf575adcb7dbc06a29575f58250275029eb5",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "codkit PROP-010: Build integration - code delivery, watch daemons, tests",
@@ -7088,7 +7088,7 @@
     },
     {
       "anchor": "daemons",
-      "content_hash": "sha256:288a85e6c57a1555b96a366ef52860458224e48663701c4c5a0860ba67a75204",
+      "content_hash": "sha256:12b943dd05b428abe188e914107bba0f99926649384bc51adf8e8704e432e58b",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "2. Watch-daemon wrapper",
@@ -7115,10 +7115,10 @@
     },
     {
       "anchor": "DAEMON-ORPHAN-GUARD",
-      "content_hash": "sha256:580ab8105457bbd5e1e849b0ae308db46004a9ecd404cb9d08534e912cdf3cec",
+      "content_hash": "sha256:a2a0577ede44bc1462206f3d4672be2858723732a1c2dc4b8ebdfec5b1c14f6f",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
-      "heading": "REPAIR-007: POSIX termination uses the platform from the probe and signals exactly the negated recorded pgid; the test observes TERM and KILL and goes red when the signal seam is not called. On Windows a recorded root pid that has already disappeared cannot be safely recovered through `taskkill /t`: status is `unknown`, `down` and a repeated `up` fail closed, and the record is kept with an instruction to prove teardown natively; this is not passed off as `dead`/`not-running`. A native Job Object remains an open proof. @status:impl/done",
+      "heading": "REPAIR-007: POSIX termination uses the platform from the probe and signals exactly the negated recorded pgid; the test observes TERM and KILL and goes red when the signal seam is not called. On Windows a recorded root pid that has already disappeared cannot be safely recovered through `taskkill /t`: status is `unknown`, `down` and a repeated `up` fail closed, and the record is kept with an instruction to prove teardown natively; this is not passed off as `dead`/`not-running`. No retry can settle an absent root, so the instruction names the step left after the proof: the operator removes that record by hand once no process of the recorded tree remains (2026-09-23: a record left by the attached launch of `DAEMON-WINDOWS-LAUNCH` read only as \"retry after proof\", and an agent could not tell the sanctioned removal from a bypass). A native Job Object remains an open proof. @status:impl/done",
       "line": 12,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-ORPHAN-GUARD"
     },

@@ -534,7 +534,10 @@ export function statusOf(patchesDir, channel, probe = {}) {
                 record,
                 recordBytes,
                 treeMatches,
-                detail: `pid ${record.pid} is absent; Windows cannot prove that its descendant process tree is gone`
+                // No retry can settle this: the root stays absent. What is left is the
+                // operator's native proof, so the detail says what to do after it.
+                detail: `pid ${record.pid} is absent; Windows cannot prove that its descendant process tree is gone. ` +
+                    `Once no process of that tree is left, remove ${recordPath(patchesDir, channel)} by hand`
             };
         }
         if (processGroupAlive(record.pid, probe)) {

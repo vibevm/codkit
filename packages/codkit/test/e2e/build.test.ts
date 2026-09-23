@@ -517,7 +517,12 @@ describe.runIf(process.platform === 'win32')('codkit build on Windows: a recorde
 		// The whole tree, the way anything else on the machine would kill it.
 		expect(spawnSync('taskkill', ['/pid', String(pid), '/t', '/f'], { windowsHide: true }).status).toBe(0);
 
-		expect(rowOf(fixture.json(['build', 'status', '--channel', 'addons']).envelope, 'addons').state).toBe('unknown');
+		const gone = rowOf(fixture.json(['build', 'status', '--channel', 'addons']).envelope, 'addons') as ChannelRow & {
+			detail?: string;
+		};
+		expect(gone.state).toBe('unknown');
+		// No retry can settle an absent Windows root, so the status names the step left.
+		expect(gone.detail).toContain(`remove ${fixture.patchesPath('.codkit/build/addons.json')} by hand`);
 		expect(fixture.run(['build', 'errors', '--channel', 'addons', ...TIMEOUT]).status).toBe(2);
 		expect(fixture.run(['build', 'down', '--channel', 'addons']).status).toBe(2);
 		expect(record('addons')?.pid).toBe(pid);
