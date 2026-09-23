@@ -2,10 +2,12 @@
 // PNG decode and encode, hand-written on purpose (IMAGESET-CONTAINERS): the
 // image pipeline needs RGBA buffers for its containers and resamplers, and a
 // full image-processing dependency would be the only non-permissive-licence
-// risk in the closure. Scope: the PNG subset masters actually use - 8-bit
-// gray/RGB/RGBA, palette images at depths 1/2/4/8, tRNS transparency, no
-// interlacing. Anything else is refused with a diagnosable message instead of
-// decoded wrongly.
+// risk in the closure. Decoding reads every variant the PNG format defines
+// (IMAGESET-PNG-MASTERS) - grey at 1, 2, 4, 8 and 16 bits, RGB, grey with
+// alpha and RGBA at 8 and 16 bits, a palette at 1, 2, 4 and 8 bits, tRNS in
+// each, Adam7 interlacing - into 8 bits per channel, which is what the pipeline
+// works in. A file that is not a well-formed PNG is refused with what is wrong
+// with it and what to export instead, rather than decoded wrongly.
 //
 // It lives in the contract package because PNG is the language the contract
 // speaks: a codec of a project type hands the engine `ImagePayload.png` and
@@ -36,8 +38,11 @@ export function rgba(width: number, height: number, fill?: readonly [number, num
 	return { width, height, data };
 }
 
-function broken(message: string, hint: string): Error {
-	return brokenArtifact(`PNG: ${message}`, hint);
+/** Every refusal says what to export instead: the one form every consumer reads. */
+const EXPORT_HINT = 'export the master as an 8-bit RGBA PNG';
+
+function broken(message: string): Error {
+	return brokenArtifact(`PNG: ${message}`, EXPORT_HINT);
 }
 
 /** The PNG signature every payload is checked against. */
@@ -52,44 +57,122 @@ export function pngSize(bytes: Uint8Array): { width: number; height: number } | 
 	if (!isPng(bytes) || bytes.length < 24) {
 		return null;
 	}
-	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+	const view = DataViewAny(bytes);
 	if (latin1(bytes, 12, 4) !== 'IHDR') {
 		return null;
 	}
 	return { width: view.getUint32(16), height: view.getUint32(20) };
 }
 
-/** Decode a PNG into RGBA. Interlaced and 16-bit images are refused, not guessed. */
-export function decodePng(bytes: Uint8Array): Rgba {
-	if (!isPng(bytes)) {
-		throw broken('payload does not carry the PNG signature', 'supply an ordinary 8-bit PNG as the master');
+/** The IHDR of a PNG as the file states it; nothing here is validated. */
+export type PngHeader = {
+	readonly width: number;
+	readonly height: number;
+	/** Bits per sample, or per palette index for a palette image. */
+	readonly bitDepth: number;
+	/** 0 grey, 2 RGB, 3 palette, 4 grey with alpha, 6 RGBA. */
+	readonly colorType: number;
+	readonly interlaced: boolean;
+};
+
+/** The header a report needs - the bit depth above all - without decoding a pixel. */
+export function pngHeader(bytes: Uint8Array): PngHeader | null {
+	if (!isPng(bytes) || bytes.length < 29 || latin1(bytes, 12, 4) !== 'IHDR') {
+		return null;
 	}
-	let width = 0;
-	let height = 0;
-	let bitDepth = 0;
-	let colorType = -1;
-	let interlace = -1;
+	const view = DataViewAny(bytes);
+	return {
+		width: view.getUint32(16),
+		height: view.getUint32(20),
+		bitDepth: bytes[24] ?? 0,
+		colorType: bytes[25] ?? -1,
+		interlaced: (bytes[28] ?? 0) !== 0
+	};
+}
+
+/** The colour types of the format: what each is called, its samples, the depths it may have. */
+const COLOUR_TYPES: ReadonlyMap<number, { readonly name: string; readonly channels: number; readonly depths: readonly number[] }> = new Map(
+	[
+		[0, { name: 'grey', channels: 1, depths: [1, 2, 4, 8, 16] }],
+		[2, { name: 'RGB', channels: 3, depths: [8, 16] }],
+		[3, { name: 'palette', channels: 1, depths: [1, 2, 4, 8] }],
+		[4, { name: 'grey with alpha', channels: 2, depths: [8, 16] }],
+		[6, { name: 'RGBA', channels: 4, depths: [8, 16] }]
+	]
+);
+
+/** Adam7: the origin and the step of each of the seven passes, x then y. */
+const ADAM7: readonly (readonly [number, number, number, number])[] = [
+	[0, 0, 8, 8],
+	[4, 0, 8, 8],
+	[0, 4, 4, 8],
+	[2, 0, 4, 4],
+	[0, 2, 2, 4],
+	[1, 0, 2, 2],
+	[0, 1, 1, 2]
+];
+
+/** A whole image read as one pass. */
+const SINGLE_PASS: readonly (readonly [number, number, number, number])[] = [[0, 0, 1, 1]];
+
+/** How the samples of one image are laid out and turned into RGBA. */
+type Layout = {
+	readonly width: number;
+	readonly height: number;
+	readonly bitDepth: number;
+	readonly colorType: number;
+	readonly channels: number;
+	readonly interlaced: boolean;
+	readonly palette: Uint8Array | null;
+	/** The colour key of a grey or RGB image, in raw samples; null when it has none. */
+	readonly key: readonly number[] | null;
+	/** The alpha of each palette entry; null when the palette image has no tRNS. */
+	readonly paletteAlpha: Uint8Array | null;
+};
+
+/**
+ * Decode a PNG into RGBA with 8 bits per channel. Every variant the format
+ * defines is read: a 16-bit sample becomes round(value * 255 / 65535), a grey
+ * sample of 1, 2 or 4 bits is scaled to the full 8-bit range, tRNS makes a
+ * palette entry or one exact grey or RGB colour transparent, and an Adam7 image
+ * is put back together from its seven passes.
+ */
+export function decodePng(bytes: Uint8Array): Rgba {
+	const { layout, data } = readPng(bytes);
+	const out = rgba(layout.width, layout.height).data;
+	let offset = 0;
+	for (const [x0, y0, dx, dy] of layout.interlaced ? ADAM7 : SINGLE_PASS) {
+		const passWidth = Math.ceil((layout.width - x0) / dx);
+		const passHeight = Math.ceil((layout.height - y0) / dy);
+		if (passWidth <= 0 || passHeight <= 0) {
+			continue;
+		}
+		offset = decodePass(data, offset, passWidth, passHeight, layout, out, (x, y) => ((y0 + y * dy) * layout.width + x0 + x * dx) * 4);
+	}
+	return { width: layout.width, height: layout.height, data: out };
+}
+
+/** The chunks of a PNG, checked against the format, and its image data inflated. */
+function readPng(bytes: Uint8Array): { layout: Layout; data: Buffer } {
+	if (!isPng(bytes)) {
+		throw broken('the file does not carry the PNG signature');
+	}
+	let ihdr: Uint8Array | null = null;
 	let palette: Uint8Array | null = null;
 	let transparency: Uint8Array | null = null;
 	const compressed: Buffer[] = [];
 	let at = 8;
 	while (at + 8 <= bytes.length) {
-		const view = DataViewAny(bytes);
-		const length = view.getUint32(at);
+		const length = DataViewAny(bytes).getUint32(at);
 		const type = latin1(bytes, at + 4, 4);
 		const bodyStart = at + 8;
 		const bodyEnd = bodyStart + length;
 		if (bodyEnd + 4 > bytes.length) {
-			throw broken(`chunk ${type} runs past the end of the file`, 'supply an intact PNG as the master');
+			throw broken(`chunk ${type} runs past the end of the file`);
 		}
 		const body = bytes.subarray(bodyStart, bodyEnd);
 		if (type === 'IHDR') {
-			const header = DataViewAny(body);
-			width = header.getUint32(0);
-			height = header.getUint32(4);
-			bitDepth = body[8] ?? 0;
-			colorType = body[9] ?? -1;
-			interlace = body[12] ?? -1;
+			ihdr = Uint8Array.from(body);
 		} else if (type === 'PLTE') {
 			palette = Uint8Array.from(body);
 		} else if (type === 'tRNS') {
@@ -101,70 +184,95 @@ export function decodePng(bytes: Uint8Array): Rgba {
 		}
 		at = bodyEnd + 4;
 	}
-	if (width <= 0 || height <= 0 || colorType === -1) {
-		throw broken('no intact IHDR chunk was found', 'supply an ordinary PNG as the master');
+	if (ihdr === null || ihdr.length < 13) {
+		throw broken('no intact IHDR chunk was found');
 	}
-	if (interlace !== 0) {
-		throw broken('interlaced PNG masters are not supported', 'save the master without Adam7 interlacing');
+	const fields = DataViewAny(ihdr);
+	const width = fields.getUint32(0);
+	const height = fields.getUint32(4);
+	const bitDepth = ihdr[8] ?? 0;
+	const colorType = ihdr[9] ?? -1;
+	const interlace = ihdr[12] ?? -1;
+	if (width <= 0 || height <= 0) {
+		throw broken(`the header gives the image a size of ${width}x${height}`);
 	}
-	if (colorType !== 3 && bitDepth !== 8) {
-		throw broken(`bit depth ${bitDepth} outside palette mode is not supported`, 'save the master as 8-bit gray, RGB or RGBA');
+	const variant = COLOUR_TYPES.get(colorType);
+	if (variant === undefined) {
+		throw broken(`colour type ${colorType} is not one of the PNG colour types`);
 	}
-	const channels = channelsOf(colorType);
-	let raw: Buffer;
+	if (!variant.depths.includes(bitDepth)) {
+		throw broken(`${variant.name} at ${bitDepth} bits is not a PNG variant: ${variant.name} comes at ${variant.depths.join(', ')} bits`);
+	}
+	if ((ihdr[10] ?? -1) !== 0 || (ihdr[11] ?? -1) !== 0) {
+		throw broken(`compression method ${ihdr[10] ?? -1} and filter method ${ihdr[11] ?? -1} are not the ones PNG defines (0 and 0)`);
+	}
+	if (interlace !== 0 && interlace !== 1) {
+		throw broken(`interlace method ${interlace} is neither none (0) nor Adam7 (1)`);
+	}
+	if (colorType === 3 && palette === null) {
+		throw broken('the palette image carries no PLTE chunk');
+	}
+	let data: Buffer;
 	try {
-		raw = inflateSync(Buffer.concat(compressed));
+		data = inflateSync(Buffer.concat(compressed));
 	} catch (error) {
-		throw broken(
-			`image data does not inflate: ${error instanceof Error ? error.message : String(error)}`,
-			'supply an intact PNG as the master'
-		);
+		throw broken(`the image data does not inflate: ${error instanceof Error ? error.message : String(error)}`);
 	}
-	return unfilter(raw, width, height, channels, bitDepth, colorType, palette, transparency);
+	return {
+		layout: {
+			width,
+			height,
+			bitDepth,
+			colorType,
+			channels: variant.channels,
+			interlaced: interlace === 1,
+			palette,
+			key: colourKey(colorType, transparency),
+			paletteAlpha: colorType === 3 ? transparency : null
+		},
+		data
+	};
 }
 
-function channelsOf(colorType: number): number {
-	if (colorType === 0) return 1;
-	if (colorType === 2) return 3;
-	if (colorType === 3) return 1;
-	if (colorType === 4) return 2;
-	if (colorType === 6) return 4;
-	throw broken(`color type ${colorType} is not a PNG color type`, 'supply an ordinary gray, RGB, palette or RGBA PNG');
+/** tRNS of a grey or RGB image names one colour, sample by sample, that is transparent. */
+function colourKey(colorType: number, transparency: Uint8Array | null): readonly number[] | null {
+	const samples = colorType === 0 ? 1 : colorType === 2 ? 3 : 0;
+	if (transparency === null || samples === 0 || transparency.length < samples * 2) {
+		return null;
+	}
+	const view = DataViewAny(transparency);
+	return Array.from({ length: samples }, (_, index) => view.getUint16(index * 2));
 }
 
 /**
- * Undo the per-scanline filters and expand to RGBA. Palette entries resolve
- * through PLTE, with tRNS supplying the alpha of palette indices.
+ * Undo the scanline filters of one pass and write its pixels through `place`,
+ * which maps a pixel of the pass to its byte offset in the image. Returns where
+ * the next pass starts in the inflated data.
  */
-function unfilter(
-	raw: Buffer,
+function decodePass(
+	data: Buffer,
+	start: number,
 	width: number,
 	height: number,
-	channels: number,
-	bitDepth: number,
-	colorType: number,
-	palette: Uint8Array | null,
-	transparency: Uint8Array | null
-): Rgba {
-	if (colorType === 3 && palette === null) {
-		throw broken('palette image carries no PLTE chunk', 'save the master without stripping its palette');
-	}
-	const bitsPerRow = width * channels * bitDepth;
-	const bytesPerRow = Math.ceil(bitsPerRow / 8);
+	layout: Layout,
+	out: Uint8Array,
+	place: (x: number, y: number) => number
+): number {
+	const bytesPerRow = Math.ceil((width * layout.channels * layout.bitDepth) / 8);
 	const stride = bytesPerRow + 1;
-	if (raw.length < stride * height) {
-		throw broken(`image data is ${raw.length} bytes, expected at least ${stride * height}`, 'supply an intact PNG as the master');
+	if (data.length < start + stride * height) {
+		throw broken(`the image data holds ${data.length} bytes, fewer than the ${start + stride * height} its dimensions need`);
 	}
-	const out = rgba(width, height).data;
+	const unit = Math.max(1, (layout.channels * layout.bitDepth) / 8);
 	const previous = new Uint8Array(bytesPerRow);
 	const line = new Uint8Array(bytesPerRow);
 	for (let row = 0; row < height; row += 1) {
-		const filter = raw[row * stride] ?? 0;
-		const source = raw.subarray(row * stride + 1, row * stride + 1 + bytesPerRow);
+		const filter = data[start + row * stride] ?? 0;
+		const source = data.subarray(start + row * stride + 1, start + row * stride + 1 + bytesPerRow);
 		for (let index = 0; index < bytesPerRow; index += 1) {
-			const left = index >= channelsInBytes(channels, bitDepth) ? (line[index - channelsInBytes(channels, bitDepth)] ?? 0) : 0;
+			const left = index >= unit ? (line[index - unit] ?? 0) : 0;
 			const up = previous[index] ?? 0;
-			const upperLeft = index >= channelsInBytes(channels, bitDepth) ? (previous[index - channelsInBytes(channels, bitDepth)] ?? 0) : 0;
+			const upperLeft = index >= unit ? (previous[index - unit] ?? 0) : 0;
 			const value = source[index] ?? 0;
 			let reconstructed: number;
 			if (filter === 0) {
@@ -182,69 +290,52 @@ function unfilter(
 				const pc = Math.abs(p - upperLeft);
 				reconstructed = value + (pa <= pb && pa <= pc ? left : pb <= pc ? up : upperLeft);
 			} else {
-				throw broken(`scanline ${row} carries filter type ${filter}`, 'supply an ordinary PNG as the master');
+				throw broken(`scanline ${row} carries filter type ${filter}, which PNG does not define`);
 			}
 			line[index] = reconstructed & 0xff;
 		}
-		expandRow(line, out, row, width, channels, bitDepth, colorType, palette, transparency);
+		for (let x = 0; x < width; x += 1) {
+			writePixel(line, x, layout, out, place(x, row));
+		}
 		previous.set(line);
 	}
-	return { width, height, data: out };
+	return start + stride * height;
 }
 
-function channelsInBytes(channels: number, bitDepth: number): number {
-	return Math.max(1, (channels * bitDepth) / 8);
-}
-
-/** One reconstructed scanline to RGBA pixels in the output buffer. */
-function expandRow(
-	line: Uint8Array,
-	out: Uint8Array,
-	row: number,
-	width: number,
-	channels: number,
-	bitDepth: number,
-	colorType: number,
-	palette: Uint8Array | null,
-	transparency: Uint8Array | null
-): void {
-	for (let x = 0; x < width; x += 1) {
-		const target = (row * width + x) * 4;
-		if (colorType === 3) {
-			const index = readSubByte(line, x, bitDepth);
-			const entry = (palette ?? new Uint8Array()).subarray(index * 3, index * 3 + 3);
-			out[target] = entry[0] ?? 0;
-			out[target + 1] = entry[1] ?? 0;
-			out[target + 2] = entry[2] ?? 0;
-			out[target + 3] = transparency !== null && index < transparency.length ? (transparency[index] ?? 0) : 255;
-			continue;
-		}
-		if (colorType === 0) {
-			const gray = line[x] ?? 0;
-			const alpha = colorType === 0 && transparency !== null && transparency.length >= 2 ? (transparency[1] ?? 255) : 255;
-			out[target] = gray;
-			out[target + 1] = gray;
-			out[target + 2] = gray;
-			out[target + 3] = alpha;
-			continue;
-		}
-		const base = x * channels;
-		if (colorType === 4) {
-			out[target] = line[base] ?? 0;
-			out[target + 1] = line[base] ?? 0;
-			out[target + 2] = line[base] ?? 0;
-			out[target + 3] = line[base + 1] ?? 255;
-			continue;
-		}
-		out[target] = line[base] ?? 0;
-		out[target + 1] = line[base + 1] ?? 0;
-		out[target + 2] = line[base + 2] ?? 0;
-		out[target + 3] = colorType === 6 ? (line[base + 3] ?? 255) : 255;
+/** One pixel of a reconstructed scanline, as straight RGBA with 8 bits per channel. */
+function writePixel(line: Uint8Array, x: number, layout: Layout, out: Uint8Array, target: number): void {
+	const { bitDepth, channels, colorType } = layout;
+	const first = x * channels;
+	if (colorType === 3) {
+		const index = sampleAt(line, first, bitDepth);
+		const entry = (layout.palette ?? new Uint8Array()).subarray(index * 3, index * 3 + 3);
+		out[target] = entry[0] ?? 0;
+		out[target + 1] = entry[1] ?? 0;
+		out[target + 2] = entry[2] ?? 0;
+		out[target + 3] = layout.paletteAlpha !== null && index < layout.paletteAlpha.length ? (layout.paletteAlpha[index] ?? 0) : 255;
+		return;
 	}
+	const grey = colorType === 0 || colorType === 4;
+	const red = sampleAt(line, first, bitDepth);
+	const green = grey ? red : sampleAt(line, first + 1, bitDepth);
+	const blue = grey ? red : sampleAt(line, first + 2, bitDepth);
+	out[target] = to8(red, bitDepth);
+	out[target + 1] = to8(green, bitDepth);
+	out[target + 2] = to8(blue, bitDepth);
+	if (colorType === 4 || colorType === 6) {
+		out[target + 3] = to8(sampleAt(line, first + channels - 1, bitDepth), bitDepth);
+		return;
+	}
+	const key = layout.key;
+	const keyed = key !== null && red === key[0] && (grey || (green === key[1] && blue === key[2]));
+	out[target + 3] = keyed ? 0 : 255;
 }
 
-/** Palette indices at depths below eight share bytes; MSB-first within a byte. */
-function readSubByte(line: Uint8Array, index: number, bitDepth: number): number {
+/** The n-th sample of a scanline at the image's own depth; below 8 bits, MSB first within a byte. */
+function sampleAt(line: Uint8Array, index: number, bitDepth: number): number {
+	if (bitDepth === 16) {
+		return ((line[index * 2] ?? 0) << 8) | (line[index * 2 + 1] ?? 0);
+	}
 	if (bitDepth === 8) {
 		return line[index] ?? 0;
 	}
@@ -252,6 +343,17 @@ function readSubByte(line: Uint8Array, index: number, bitDepth: number): number 
 	const at = Math.floor(index / perByte);
 	const shift = 8 - bitDepth * ((index % perByte) + 1);
 	return ((line[at] ?? 0) >> shift) & (0xff >> (8 - bitDepth));
+}
+
+/** A sample at its own depth brought to 8 bits: rounded down from 16, scaled up from 1, 2 or 4. */
+function to8(value: number, bitDepth: number): number {
+	if (bitDepth === 16) {
+		return Math.round((value * 255) / 65535);
+	}
+	if (bitDepth === 8) {
+		return value;
+	}
+	return (value * 255) / ((1 << bitDepth) - 1);
 }
 
 /**

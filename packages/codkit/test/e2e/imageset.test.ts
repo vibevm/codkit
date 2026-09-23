@@ -9,10 +9,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
-import { encodePng } from '@codkit/type-api';
+import { encodePng, rgba } from '@codkit/type-api';
 import { runCli } from '../support/cliFixture.ts';
 import { makeImagesetPatchSet, makeImagesetTree } from '../support/imagesetFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { writePng } from '../../../type-api/test/support/pngVariants.ts';
 
 afterAll(() => {
 	cleanupTempRoots();
@@ -305,5 +306,44 @@ describe('a vector master stretched to its frame', () => {
 		expect(sizes('resources/win32/inno-big-100.bmp')).toMatchObject([{ width: 32, height: 16, stretched: true, stretchPercent: 9.1 }]);
 		expect(sizes('resources/win32/inno-small-100.bmp')).toMatchObject([{ stretched: false, stretchPercent: null }]);
 		expect(existsSync(join(fixture.patchset.dir, 'delta', 'resources'))).toBe(false);
+	});
+});
+
+describe('a PNG master in a variant other than 8-bit RGBA', () => {
+	// PROP-007 ##IMAGESET-PNG-MASTERS through the real launcher: a designer's
+	// 16-bit export is taken as it is, and a file that is not a well-formed PNG
+	// is refused with what is wrong with it and what to export instead.
+	function variantFixture(label: string, icon16: Uint8Array) {
+		const fixture = makeImagesetFixture(label);
+		const brandingDir = join(fixture.patchset.dir, 'artwork');
+		mkdirSync(brandingDir, { recursive: true });
+		writeFileSync(join(brandingDir, 'icon.png'), encodePng(rgba(128, 128, [22, 122, 191, 255])));
+		writeFileSync(join(brandingDir, 'icon-16.png'), icon16);
+		writeFileSync(join(brandingDir, 'installer-big.png'), encodePng(rgba(40, 20, [22, 122, 191, 255])));
+		writeFileSync(join(brandingDir, 'installer-small.png'), encodePng(rgba(12, 12, [22, 122, 191, 255])));
+		return { ...fixture, brandingDir };
+	}
+
+	it('gen takes a 16-bit master as it is', () => {
+		const fixture = variantFixture(
+			'e2e-png16',
+			writePng(16, 16, { colorType: 6, bitDepth: 16 }, () => [65535, 32768, 0, 65535])
+		);
+		const run = fixture.run(['imageset', 'gen', '--branding-dir', fixture.brandingDir]);
+		expect(run.status).toBe(0);
+		expect(run.stdout).toContain('16x16 (override icon-16.png verbatim at 16x16');
+		expect(existsSync(artifactOf(fixture.patchset.dir, 'resources/win32/code.ico'))).toBe(true);
+	});
+
+	it('gen refuses a malformed master with what is wrong with it and what to export', () => {
+		const malformed = encodePng(rgba(16, 16, [1, 2, 3, 255]));
+		malformed[24] = 4;
+		malformed[25] = 2;
+		const fixture = variantFixture('e2e-png-malformed', malformed);
+		const run = fixture.run(['imageset', 'gen', '--branding-dir', fixture.brandingDir]);
+		expect(run.status).toBe(2);
+		expect(run.stderr).toContain(
+			'error CK-E-ARTIFACT-BROKEN: icon-16.png: PNG: RGB at 4 bits is not a PNG variant: RGB comes at 8, 16 bits\nhint: export the master as an 8-bit RGBA PNG'
+		);
 	});
 });

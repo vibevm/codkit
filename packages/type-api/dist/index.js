@@ -4,5 +4,5 @@
 export { CAPABILITIES, isCapability } from './capabilities.js';
 export { oneOwnedDirectory } from './layout.js';
 export { brokenArtifact, isBrokenArtifact } from './refusal.js';
-export { decodePng, encodePng, isPng, pngSize, rgba } from './png.js';
+export { decodePng, encodePng, isPng, pngHeader, pngSize, rgba } from './png.js';
 export { OPTIONAL_AREAS, projectTypeProblems } from './projectType.js';
