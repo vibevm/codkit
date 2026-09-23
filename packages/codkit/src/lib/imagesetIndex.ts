@@ -11,12 +11,21 @@
 
 import { existsSync } from 'node:fs';
 import { codecFor } from './imagesetCodec.ts';
+import { readDeclaration, resolveTargets } from './imagesetDeclaration.ts';
+import type { ImagesetTarget } from './imagesetDeclaration.ts';
 import { planTarget } from './imagesetEngine.ts';
-import { REDUCED_TO_8_BITS, chooseMaster, ignoredMasterFiles, knownMasterFiles, masterReader } from './imagesetMasters.ts';
-import type { MasterReader } from './imagesetMasters.ts';
+import {
+	DECLARATION_FILE,
+	REDUCED_TO_8_BITS,
+	chooseMaster,
+	ignoredMasterFiles,
+	knownMasterFiles,
+	masterReader
+} from './imagesetMasters.ts';
+import type { MasterOrigin, MasterReader } from './imagesetMasters.ts';
 import { stretchPhrase } from './imagesetRender.ts';
 import type { VectorStretch } from './imagesetRender.ts';
-import type { DiscoveredTarget, TargetKind } from './imagesetTargets.ts';
+import type { DiscoveredTarget, TargetFrame, TargetKind } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
 import type { JsonValue } from './jsonOut.ts';
 import type { ImageCodec, ProjectType } from '@codkit/type-api';
@@ -42,6 +51,14 @@ export type IndexSize = {
 	 * and is brought to 8 (##IMAGESET-SELF-CHECK-READS-MASTERS).
 	 */
 	readonly reduced: boolean;
+	/**
+	 * The master key that serves this size, and whether a rule of the
+	 * declaration gave it that key (##IMAGESET-FRAME-SOURCES-REPORTED).
+	 */
+	readonly key: string;
+	readonly keyDeclared: boolean;
+	/** How the master serves the size; null when no master can. */
+	readonly origin: MasterOrigin | null;
 };
 
 export type IndexTarget = {
@@ -54,6 +71,10 @@ export type IndexTarget = {
 	readonly role: string;
 	readonly container: TargetKind;
 	readonly sizes: readonly IndexSize[];
+	/** The sizes are the frame set the product declared (##IMAGESET-DECLARED-FRAMES). */
+	readonly framesDeclared: boolean;
+	/** The frames of the file in the tree, which a declared frame set replaced. */
+	readonly shippedFrames: readonly TargetFrame[];
 	/** Why the run skips the target, in the words of its warning; null when it does not. */
 	readonly skipped: string | null;
 	/** The position of the size the run skips the target at; null when it does not. */
@@ -71,6 +92,8 @@ export type ImagesetIndex = {
 	readonly masters: readonly string[];
 	/** Files in the directory the convention does not know. */
 	readonly ignored: readonly string[];
+	/** The declaration of the image set, when the directory holds one (##IMAGESET-DECLARATION). */
+	readonly declaration: string | null;
 	/** The command that would create the missing directory, or null. */
 	readonly seedCommand: string | null;
 	readonly targets: readonly IndexTarget[];
@@ -97,10 +120,14 @@ export function buildImagesetIndex(options: {
 }): ImagesetIndex {
 	const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
 	const brandingDirExists = existsSync(options.brandingDir);
-	const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
+	// The targets exactly as the run takes them: the declaration is checked in
+	// full, and a frame set or a key it declares is what the index reports.
+	const declaration = readDeclaration(options.brandingDir);
+	const resolved = resolveTargets(options.type, discovered, declaration, options.brandingDir);
+	const keys = [...new Set(resolved.flatMap((target) => [artworkKey(target), ...target.frameSources.map((source) => source.key)]))].sort();
 	// The index seeds nothing, so every master it names is on disk.
 	const masters = masterReader(options.brandingDir, new Map());
-	const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target, masters));
+	const targets = resolved.map((target) => indexTarget(options.type, options.brandingDir, target, masters));
 	const totals = { master: 0, generated: 0, missing: 0 };
 	const perFamily = new Map<string, { master: number; generated: number; missing: number }>();
 	const artworksOf = new Map<string, Set<string>>();
@@ -119,6 +146,7 @@ export function buildImagesetIndex(options: {
 		brandingDirExists,
 		masters: knownMasterFiles(options.brandingDir, keys),
 		ignored: ignoredMasterFiles(options.brandingDir, keys),
+		declaration: declaration?.file ?? null,
 		seedCommand: brandingDirExists ? null : 'codkit imageset gen',
 		targets,
 		totals,
@@ -130,7 +158,7 @@ export function buildImagesetIndex(options: {
 	};
 }
 
-function indexTarget(type: ProjectType, brandingDir: string, target: DiscoveredTarget, masters: MasterReader): IndexTarget {
+function indexTarget(type: ProjectType, brandingDir: string, target: ImagesetTarget, masters: MasterReader): IndexTarget {
 	const key = artworkKey(target);
 	const codec = codecFor(type, target.kind);
 	// The run's own plan of the target, its masters read as the run reads them:
@@ -145,7 +173,8 @@ function indexTarget(type: ProjectType, brandingDir: string, target: DiscoveredT
 		role: target.role,
 		container: target.kind,
 		sizes: target.frames.map((frame, index) => {
-			const master = chooseMaster(brandingDir, key, frame.width, frame.height);
+			const served = target.frameSources[index] ?? { key, declared: false };
+			const master = chooseMaster(brandingDir, served.key, frame.width, frame.height);
 			const source: SizeSource = master === null ? 'missing' : master.origin === 'override' ? 'master' : 'generated';
 			// A size past the one the run skips the target at is not read, as the
 			// run does not read it; it is neither assessed nor reduced.
@@ -157,9 +186,14 @@ function indexTarget(type: ProjectType, brandingDir: string, target: DiscoveredT
 				source,
 				from: master?.file ?? null,
 				stretch: planned?.stretch ?? null,
-				reduced: planned?.reduced ?? false
+				reduced: planned?.reduced ?? false,
+				key: served.key,
+				keyDeclared: served.declared,
+				origin: master?.origin ?? null
 			};
 		}),
+		framesDeclared: target.framesDeclared,
+		shippedFrames: target.shippedFrames,
 		skipped: plan.skipped,
 		skippedAt: plan.skippedAt,
 		legacyTypes: target.legacyTypes,
@@ -196,6 +230,7 @@ export function indexData(index: ImagesetIndex): JsonValue {
 		masters: [...index.masters],
 		byFamily: index.byFamily.map((entry) => ({ family: entry.family, artworks: entry.artworks, totals: { ...entry.totals } })),
 		ignored: [...index.ignored],
+		declaration: index.declaration,
 		seedCommand: index.seedCommand,
 		totals: { ...index.totals },
 		targets: index.targets.map((target) => ({
@@ -207,12 +242,17 @@ export function indexData(index: ImagesetIndex): JsonValue {
 			container: target.container,
 			legacyTypes: [...target.legacyTypes],
 			constraints: [...target.constraints],
+			framesDeclared: target.framesDeclared,
+			shippedFrames: target.shippedFrames.map((frame) => ({ width: frame.width, height: frame.height, type: frame.type })),
 			sizes: target.sizes.map((size) => ({
 				width: size.width,
 				height: size.height,
 				type: size.type,
 				source: size.source,
 				from: size.from,
+				key: size.key,
+				keyDeclared: size.keyDeclared,
+				origin: size.origin,
 				stretched: size.stretch?.stretched ?? false,
 				stretchPercent: size.stretch?.percent ?? null,
 				reducedFrom16Bit: size.reduced
@@ -308,6 +348,13 @@ function mastersSection(index: ImagesetIndex): readonly string[] {
 		'every size, `<key>.png` the raster master resampled to every size, `<key>-<N>.png` a per-size',
 		'master used verbatim at exactly NxN, and `<key>-<W>x<H>.png` the same for a non-square size.'
 	);
+	if (index.declaration !== null) {
+		const declared = index.targets.filter((target) => target.framesDeclared || target.sizes.some((size) => size.keyDeclared)).length;
+		lines.push(
+			'',
+			`Declared: \`${DECLARATION_FILE}\` sets the frames or the master keys of ${declared} target(s) - below, per target and per size.`
+		);
+	}
 	if (index.ignored.length > 0) {
 		lines.push('', `Ignored - matching no convention: ${index.ignored.map((name) => `\`${name}\``).join(', ')}.`);
 	}
@@ -321,6 +368,11 @@ function targetSection(target: IndexTarget): readonly string[] {
 		`- Role: ${target.role}`,
 		`- Family: \`${target.family}\`; artwork: \`${target.key}\`; container: ${target.container.toUpperCase()}; required sizes: ${target.sizes.length}`
 	];
+	if (target.framesDeclared) {
+		lines.push(
+			`- Frames: declared in ${DECLARATION_FILE} - ${sizeList(target.sizes)}; the shipped file carries ${sizeList(target.shippedFrames)}`
+		);
+	}
 	for (const constraint of target.constraints) {
 		lines.push(`- Constraint: ${constraint}`);
 	}
@@ -331,7 +383,18 @@ function targetSection(target: IndexTarget): readonly string[] {
 	return lines;
 }
 
+function sizeList(frames: readonly { readonly width: number; readonly height: number }[]): string {
+	return frames.map((frame) => `${frame.width}x${frame.height}`).join(', ');
+}
+
+/** A size a rule of the declaration gave to its key says so; a missing or refused one names the key already. */
 function describeSource(target: IndexTarget, size: IndexSize, index: number): string {
+	const described = describeServed(target, size, index);
+	const skippedHere = target.skipped !== null && target.skippedAt === index;
+	return size.keyDeclared && size.source !== 'missing' && !skippedHere ? `${described}, from the declared key \`${size.key}\`` : described;
+}
+
+function describeServed(target: IndexTarget, size: IndexSize, index: number): string {
 	// The size the run skips the target at gives the run's reason - unless the
 	// reason is a missing master, which the last case states in its own words.
 	if (target.skipped !== null && target.skippedAt === index && size.source !== 'missing') {
@@ -346,5 +409,5 @@ function describeSource(target: IndexTarget, size: IndexSize, index: number): st
 		const stretch = size.stretch !== null && size.stretch.stretched ? `, ${stretchPhrase(size.stretch)}` : '';
 		return `${verb} \`${size.from ?? ''}\`${stretch}${reduced}`;
 	}
-	return `no \`${target.key}\` master exists; the run skips this target and exits 1`;
+	return `no \`${size.key}\` master exists; the run skips this target and exits 1`;
 }

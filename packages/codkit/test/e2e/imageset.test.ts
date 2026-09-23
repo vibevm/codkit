@@ -252,6 +252,10 @@ describe('a vector master stretched to its frame', () => {
 		stretched: boolean;
 		stretchPercent: number | null;
 		reducedFrom16Bit: boolean;
+		key: string;
+		keyDeclared: boolean;
+		master: string;
+		origin: string;
 	};
 	const jsonFrames = (envelope: { data: { targets: { target: string; frames: JsonFrame[] }[] } }, target: string) =>
 		envelope.data.targets.find((candidate) => candidate.target === target)?.frames ?? [];
@@ -266,7 +270,18 @@ describe('a vector master stretched to its frame', () => {
 		expect(json.status).toBe(0);
 		const envelope = JSON.parse(json.stdout);
 		expect(jsonFrames(envelope, 'resources/win32/inno-big-100.bmp')).toEqual([
-			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1, reducedFrom16Bit: false }
+			{
+				width: 32,
+				height: 16,
+				source: STRETCHED,
+				key: 'installer-big',
+				keyDeclared: false,
+				master: 'installer-big.svg',
+				origin: 'vector',
+				stretched: true,
+				stretchPercent: 9.1,
+				reducedFrom16Bit: false
+			}
 		]);
 		expect(existsSync(join(fixture.patchset.dir, 'delta', 'resources'))).toBe(false);
 	});
@@ -277,7 +292,18 @@ describe('a vector master stretched to its frame', () => {
 		expect(json.status).toBe(0);
 		const envelope = JSON.parse(json.stdout);
 		expect(jsonFrames(envelope, 'resources/win32/inno-big-100.bmp')).toEqual([
-			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1, reducedFrom16Bit: false }
+			{
+				width: 32,
+				height: 16,
+				source: STRETCHED,
+				key: 'installer-big',
+				keyDeclared: false,
+				master: 'installer-big.svg',
+				origin: 'vector',
+				stretched: true,
+				stretchPercent: 9.1,
+				reducedFrom16Bit: false
+			}
 		]);
 		const icon = jsonFrames(envelope, 'resources/win32/code.ico');
 		expect(icon.length).toBeGreaterThan(0);
@@ -287,6 +313,10 @@ describe('a vector master stretched to its frame', () => {
 				width: 12,
 				height: 12,
 				source: 'resampled installer-small.png to 12x12',
+				key: 'installer-small',
+				keyDeclared: false,
+				master: 'installer-small.png',
+				origin: 'raster',
 				stretched: false,
 				stretchPercent: null,
 				reducedFrom16Bit: false
@@ -405,11 +435,26 @@ describe('the self-check reads the masters it vouches for', () => {
 				width: 16,
 				height: 16,
 				source: `override icon-16.png verbatim at 16x16, ${REDUCED}`,
+				key: 'icon',
+				keyDeclared: false,
+				master: 'icon-16.png',
+				origin: 'override',
 				stretched: false,
 				stretchPercent: null,
 				reducedFrom16Bit: true
 			},
-			{ width: 32, height: 32, source: 'resampled icon.png to 32x32', stretched: false, stretchPercent: null, reducedFrom16Bit: false }
+			{
+				width: 32,
+				height: 32,
+				source: 'resampled icon.png to 32x32',
+				key: 'icon',
+				keyDeclared: false,
+				master: 'icon.png',
+				origin: 'raster',
+				stretched: false,
+				stretchPercent: null,
+				reducedFrom16Bit: false
+			}
 		];
 		const icoFrames = (stdout: string) =>
 			JSON.parse(stdout).data.targets.find((target: { target: string }) => target.target === 'resources/win32/code.ico')?.frames;

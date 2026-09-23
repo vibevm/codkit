@@ -66,8 +66,15 @@ export type ImagesetTreeFixture = {
 	readonly pin: { readonly tag: string; readonly sha: string; readonly date: string };
 };
 
-/** A git repository that plays the fork tree: the icon set committed at t1. */
-export function makeImagesetTree(label: string, options: { readonly extended?: boolean } = {}): ImagesetTreeFixture {
+/**
+ * A git repository that plays the fork tree: the icon set committed at t1.
+ * `files` puts other bytes at a path of the tree - a shipped file of another
+ * structure - before the commit.
+ */
+export function makeImagesetTree(
+	label: string,
+	options: { readonly extended?: boolean; readonly files?: ReadonlyMap<string, Uint8Array> } = {}
+): ImagesetTreeFixture {
 	const dir = makeTempRoot(`${label}-tree`);
 	fixtureGit(dir, ['init', '--quiet', '--initial-branch=main', '.']);
 	writeVscodeFingerprintFiles(dir);
@@ -77,6 +84,11 @@ export function makeImagesetTree(label: string, options: { readonly extended?: b
 		const absolute = join(dir, ...relative.split('/'));
 		mkdirSync(dirname(absolute), { recursive: true });
 		copyFileSync(join(fixtureRoot, name), absolute);
+	}
+	for (const [relative, bytes] of options.files ?? new Map<string, Uint8Array>()) {
+		const absolute = join(dir, ...relative.split('/'));
+		mkdirSync(dirname(absolute), { recursive: true });
+		writeFileSync(absolute, bytes);
 	}
 	const sha = fixtureCommit(dir, 'fixture: distribution tree with its icon set', '2026-09-06T00:00:00Z');
 	fixtureGit(dir, ['tag', 't1']);

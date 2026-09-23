@@ -7,7 +7,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { codecFor, readingImage } from './imagesetCodec.js';
-import { REDUCED_TO_8_BITS, chooseMaster, ignoredMasterFiles, masterReader, seedMasters } from './imagesetMasters.js';
+import { readDeclaration, resolveTargets } from './imagesetDeclaration.js';
+import { DECLARATION_FILE, REDUCED_TO_8_BITS, chooseMaster, ignoredMasterFiles, masterReader, seedMasters } from './imagesetMasters.js';
 import { encodePng } from '@codkit/type-api';
 import { formatVectorSize, renderSvgToRgba, stretchOf, stretchPhrase } from './imagesetRender.js';
 import { resizeRgba } from './imagesetRaster.js';
@@ -27,12 +28,15 @@ export function guardTestId(family) {
 export function runImageset(options) {
     const { patchesDir, treeDir, brandingDir, dryRun, onInfo, onWarn } = options;
     onInfo(`branding: ${brandingDir}`);
-    const targets = discoverTargets(options.type, treeDir, onInfo);
-    const seeded = seedMasters(options.type, brandingDir, treeDir, targets, dryRun);
+    const discovered = discoverTargets(options.type, treeDir, onInfo);
+    // The declaration is checked in full before a master is read or a byte is
+    // written (##IMAGESET-DECLARATION); a run that seeds has none to check.
+    const targets = resolveTargets(options.type, discovered, readDeclaration(brandingDir), brandingDir);
+    const seeded = seedMasters(options.type, brandingDir, treeDir, discovered, dryRun);
     for (const seed of seeded) {
         onInfo(`${dryRun ? 'would seed' : 'seeded'} branding/${seed.file} from ${seed.from} (${seed.width}x${seed.height})`);
     }
-    const keys = [...new Set(targets.map((target) => artworkKey(target)))].sort();
+    const keys = [...new Set(targets.flatMap((target) => [artworkKey(target), ...target.frameSources.map((source) => source.key)]))].sort();
     for (const ignored of ignoredMasterFiles(brandingDir, keys)) {
         onWarn(`branding file matches no master convention and was ignored: ${ignored}`);
     }
@@ -182,18 +186,21 @@ function renderTarget(type, brandingDir, target, virtualMasters, dryRun, masters
  */
 export function planTarget(type, brandingDir, target, virtualMasters, masters, produce) {
     const codec = codecFor(type, target.kind);
-    const key = artworkKey(target);
+    // Every frame is served by its own key: the target's, or the one a rule of
+    // the declaration gave it (##IMAGESET-DECLARED-SOURCES).
+    const sourceAt = (index) => target.frameSources[index] ?? { key: artworkKey(target), declared: false };
     if (codec.vector) {
-        return planVectorTarget(codec, brandingDir, target, key, virtualMasters, masters, produce);
+        return planVectorTarget(codec, brandingDir, target, sourceAt(0), virtualMasters, masters, produce);
     }
     const frames = [];
     const images = [];
     // A skip keeps the frames planned before it: the index still states them.
     const skip = (skipped, skippedAt) => ({ frames, skipped, skippedAt, images: [], emitted: null });
     for (const [index, frame] of target.frames.entries()) {
-        const master = chooseMaster(brandingDir, key, frame.width, frame.height, virtualMasters);
+        const source = sourceAt(index);
+        const master = chooseMaster(brandingDir, source.key, frame.width, frame.height, virtualMasters);
         if (master === null) {
-            return skip(`no ${key} master in ${brandingDir}`, index);
+            return skip(`no ${source.key} master in ${brandingDir}`, index);
         }
         if (master.origin === 'vector') {
             // How far a vector master stretches the frame needs no pixels: the
@@ -201,11 +208,11 @@ export function planTarget(type, brandingDir, target, virtualMasters, masters, p
             // it off the instance that rendered the frame.
             if (produce) {
                 const { image, stretch } = renderSvgToRgba(Buffer.from(masters.bytes(master.file)).toString('utf8'), frame.width, frame.height);
-                frames.push(reportedFrame(master, frame, stretch, false));
+                frames.push(reportedFrame(master, frame, stretch, false, source));
                 images.push({ frame, image });
             }
             else {
-                frames.push(reportedFrame(master, frame, stretchOf(masters.vectorSize(master.file), frame.width, frame.height), false));
+                frames.push(reportedFrame(master, frame, stretchOf(masters.vectorSize(master.file), frame.width, frame.height), false, source));
             }
             continue;
         }
@@ -215,7 +222,7 @@ export function planTarget(type, brandingDir, target, virtualMasters, masters, p
         if (master.origin === 'override' && (image.width !== frame.width || image.height !== frame.height)) {
             return skip(`the per-size override ${master.file} does not cover ${frame.width}x${frame.height}`, index);
         }
-        frames.push(reportedFrame(master, frame, null, reduced));
+        frames.push(reportedFrame(master, frame, null, reduced, source));
         if (produce) {
             images.push({ frame, image: master.origin === 'override' ? image : resizeRgba(image, frame.width, frame.height) });
         }
@@ -229,8 +236,9 @@ export function planTarget(type, brandingDir, target, virtualMasters, masters, p
  * otherwise ship silently: the master has to be a vector, and it has to carry
  * the size the distribution ships the image at.
  */
-function planVectorTarget(codec, brandingDir, target, key, virtualMasters, masters, produce) {
+function planVectorTarget(codec, brandingDir, target, source, virtualMasters, masters, produce) {
     const nothing = (skipped) => ({ frames: [], skipped, skippedAt: 0, images: [], emitted: null });
+    const { key } = source;
     const frame = target.frames[0];
     if (frame === undefined) {
         return nothing(`${target.target} carries no readable size`);
@@ -259,20 +267,42 @@ function planVectorTarget(codec, brandingDir, target, key, virtualMasters, maste
     if (size.width !== frame.width || size.height !== frame.height) {
         return nothing(`${master.file} is ${size.width}x${size.height} but ${target.target} ships ${frame.width}x${frame.height}`);
     }
+    const emitted = `emitted ${master.file} unchanged at ${frame.width}x${frame.height}`;
     const frames = [
         {
             width: frame.width,
             height: frame.height,
-            source: `emitted ${master.file} unchanged at ${frame.width}x${frame.height}`,
+            source: declaredKeyNoted(emitted, source),
             stretch: null,
-            reduced: false
+            reduced: false,
+            key,
+            keyDeclared: source.declared,
+            master: master.file,
+            origin: master.origin
         }
     ];
     return { frames, skipped: null, skippedAt: null, images: [], emitted: produce ? bytes : null };
 }
-/** A frame as the reports state it: its origin, how far it is stretched, whether it was reduced. */
-function reportedFrame(master, frame, stretch, reduced) {
-    return { width: frame.width, height: frame.height, source: describeMaster(master, frame, stretch, reduced), stretch, reduced };
+/** A frame as the reports state it: where it came from, how far it is stretched, whether it was reduced. */
+function reportedFrame(master, frame, stretch, reduced, source) {
+    return {
+        width: frame.width,
+        height: frame.height,
+        source: declaredKeyNoted(describeMaster(master, frame, stretch, reduced), source),
+        stretch,
+        reduced,
+        key: source.key,
+        keyDeclared: source.declared,
+        master: master.file,
+        origin: master.origin
+    };
+}
+/**
+ * The master file names its key by the naming convention; a key a rule of the
+ * declaration chose is said in so many words (##IMAGESET-FRAME-SOURCES-REPORTED).
+ */
+function declaredKeyNoted(text, source) {
+    return source.declared ? `${text}, from the declared key ${source.key}` : text;
 }
 function describeMaster(master, frame, stretch, reduced) {
     const size = `${frame.width}x${frame.height}`;
@@ -286,14 +316,22 @@ function describeMaster(master, frame, stretch, reduced) {
 /**
  * What a dry run says the target is made of. A container whose frames carry
  * names is described by those names; one whose frames are told apart by size
- * is described by the sizes.
+ * is described by the sizes. A declared frame set says what it replaced
+ * (##IMAGESET-FRAME-SOURCES-REPORTED).
  */
 function describeFrames(target) {
-    const named = target.frames.length > 0 && target.frames.every((frame) => frame.type !== null);
-    if (named) {
-        return `${target.frames.length} element(s) ${target.frames.map((frame) => frame.type).join(',')}`;
+    const { frames } = target;
+    const named = frames.length > 0 && frames.every((frame) => frame.type !== null);
+    const described = `${frames.length} ${named ? 'element(s)' : 'frame(s)'} ${frameList(frames)}`;
+    if (!target.framesDeclared) {
+        return described;
     }
-    return `${target.frames.length} frame(s) ${target.frames.map((frame) => `${frame.width}x${frame.height}`).join(',')}`;
+    return `${described}, declared in ${DECLARATION_FILE} in place of the shipped ${frameList(target.shippedFrames)}`;
+}
+/** Frames by their element names when every one has a name, by their sizes otherwise. */
+function frameList(frames) {
+    const named = frames.length > 0 && frames.every((frame) => frame.type !== null);
+    return frames.map((frame) => (named ? frame.type : `${frame.width}x${frame.height}`)).join(',');
 }
 /** Artifact id of a brand resource: neutral, derived from the target path. */
 export function brandArtifactId(target) {
@@ -373,6 +411,7 @@ function buildReport(options, seeded, targets, renders, created, updated, skippe
             family: target.family,
             artwork: target.artwork,
             kind: target.kind,
+            framesDeclared: target.framesDeclared,
             frames: byTarget.get(target.target)?.frames ?? [],
             skipped: skipByTarget.get(target.target) ?? null,
             entry: created.includes(target.target) ? 'created' : updated.includes(target.target) ? 'updated' : null,

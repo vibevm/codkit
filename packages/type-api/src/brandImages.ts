@@ -8,6 +8,8 @@
 // are the engine's, and they never name a container by hand: everything they
 // need about a container arrives through a codec.
 
+import type { Refusal } from './layout.ts';
+
 /** One frame inside an image container. */
 export type ImageFrame = {
 	readonly width: number;
@@ -76,6 +78,23 @@ export type ImageCodec = {
 	 * the file stem of the target, for a container that names its own content.
 	 */
 	encode(payloads: readonly ImagePayload[], stem: string): Uint8Array;
+	/**
+	 * Present when a product may declare the frame set of a target of this
+	 * container in place of the frames its shipped file carries
+	 * (spec://codkit/modules/codkit/PROP-007#IMAGESET-DECLARED-FRAMES). The
+	 * sizes are square frame sizes in the order the product declared them.
+	 * Absent, and every declared frame set of such a target is refused.
+	 */
+	readonly declaredFrames?: {
+		/**
+		 * Why these sizes cannot be the frames of a target of this container, or
+		 * null when they can. The engine turns the detail into `CK-E-CONFIG`
+		 * naming the declaration.
+		 */
+		problem(sizes: readonly number[]): Refusal;
+		/** The frames a write carries for sizes `problem` accepted, in the declared order. */
+		frames(sizes: readonly number[]): readonly ImageFrame[];
+	};
 };
 
 /** One file - or one glob of files - of the distribution's image set. */

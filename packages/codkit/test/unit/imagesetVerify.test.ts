@@ -18,14 +18,8 @@ import { encodePng, rgba } from '@codkit/type-api';
 import type { Rgba } from '@codkit/type-api';
 import { containerOf, namedFrame, sizedFrame } from '../support/imagesetCodecs.ts';
 import { resizeRgba } from '../../src/lib/imagesetRaster.ts';
-import {
-	bandFor,
-	meanAbsoluteRgbDifference,
-	renderImagesetVerification,
-	verificationData,
-	verificationExitCode,
-	verifyImageset
-} from '../../src/lib/imagesetVerify.ts';
+import { bandFor, meanAbsoluteRgbDifference, verificationExitCode, verifyImageset } from '../../src/lib/imagesetVerify.ts';
+import { renderImagesetVerification, verificationData } from '../../src/lib/imagesetVerifyReport.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as vscodeType } from '@codkit/type-vscode';
 

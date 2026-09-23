@@ -9,8 +9,10 @@
 //   <key>-<N>.png      per-size override, used verbatim at exactly NxN;
 //   <key>-<W>x<H>.png  per-size override for non-square sizes.
 // A per-size override beats the vector master, and the vector master beats
-// the raster one. Anything else in the directory is reported as ignored -
-// nothing is silently picked up, and nothing is silently skipped.
+// the raster one. The directory also holds the product's declaration of its
+// image set, imageset.json (##IMAGESET-DECLARATION), which is no master.
+// Anything else in the directory is reported as ignored - nothing is silently
+// picked up, and nothing is silently skipped.
 //
 // Seeding: when the directory does not exist, the first run creates it and
 // fills it with the distribution's own artwork, read from the fork tree - per
@@ -73,6 +75,30 @@ export function chooseMaster(
 /** Absolute path of a master file named with forward slashes. */
 export function inBranding(brandingDir: string, file: string): string {
 	return join(brandingDir, ...file.split('/'));
+}
+
+/** The product's declaration of its image set, in the root of the masters directory. */
+export const DECLARATION_FILE = 'imageset.json';
+
+/**
+ * Whether any master of a key exists - its vector, its raster or a per-size
+ * override - on disk or as a seed the run plans. A key the declaration names
+ * with none of them is a mistake of the declaration, not a missing drawing
+ * (##IMAGESET-DECLARED-SOURCES).
+ */
+export function hasMasters(brandingDir: string, key: string, virtualMasters: ReadonlySet<string> = new Set()): boolean {
+	for (const file of [`${key}.svg`, `${key}.png`]) {
+		if (existsSync(inBranding(brandingDir, file)) || virtualMasters.has(file)) {
+			return true;
+		}
+	}
+	const slash = key.lastIndexOf('/');
+	const directory = slash === -1 ? brandingDir : inBranding(brandingDir, key.slice(0, slash));
+	if (!existsSync(directory) || !statSync(directory).isDirectory()) {
+		return false;
+	}
+	const base = key.slice(slash + 1);
+	return readdirSync(directory).some((name) => name.startsWith(`${base}-`) && /^\d+(?:x\d+)?\.png$/u.test(name.slice(base.length + 1)));
 }
 
 /** How every report says that a master's samples lost their low byte on the way in. */
@@ -153,7 +179,7 @@ export function ignoredMasterFiles(brandingDir: string, keys: readonly string[])
 	const keySet = new Set(keys);
 	return listFiles(brandingDir, '')
 		.filter((name) => {
-			if (known.has(name)) {
+			if (name === DECLARATION_FILE || known.has(name)) {
 				return false;
 			}
 			const match = /^(.+)-(\d+(?:x\d+)?)\.png$/.exec(name);
@@ -169,7 +195,7 @@ export function knownMasterFiles(brandingDir: string, keys: readonly string[]): 
 	}
 	const ignored = new Set(ignoredMasterFiles(brandingDir, keys));
 	return listFiles(brandingDir, '')
-		.filter((name) => !ignored.has(name))
+		.filter((name) => name !== DECLARATION_FILE && !ignored.has(name))
 		.sort();
 }
 

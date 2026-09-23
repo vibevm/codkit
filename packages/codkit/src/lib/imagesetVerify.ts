@@ -16,20 +16,26 @@
 // - and there must not be, because two containers of one product are different
 // drawings, not two encodings of one (##IMAGESET-ROUND-TRIP).
 //
-// One model, two renderings, exactly as the index does it: `render` writes the
-// Markdown and `verificationData` the schema-2 payload, both walking the same
-// ImagesetVerification value, so the prose and the JSON cannot disagree about
-// a measured number.
+// A target of the product's declaration is verified against it
+// (##IMAGESET-VERIFY-DECLARED): a declared frame set is the structure the file
+// must have, and the layers are round-tripped one master key at a time - two
+// keys are two drawings, for the same reason two containers are.
+//
+// One model, two renderings, exactly as the index does it: this module builds
+// the ImagesetVerification value, and imagesetVerifyReport.ts renders it as
+// Markdown and as the schema-2 payload, so the prose and the JSON cannot
+// disagree about a measured number.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { decodePng, encodePng } from '@codkit/type-api';
 import type { ImageCodec, ImageFrame, ProjectType, Rgba } from '@codkit/type-api';
 import { articleFor, codecFor, readingImage } from './imagesetCodec.ts';
+import { readDeclaration, resolveTargets } from './imagesetDeclaration.ts';
+import type { ImagesetTarget } from './imagesetDeclaration.ts';
 import { resizeRgba } from './imagesetRaster.ts';
-import type { DiscoveredTarget, TargetKind } from './imagesetTargets.ts';
+import type { DiscoveredTarget, TargetFrame, TargetKind } from './imagesetTargets.ts';
 import { artworkKey, discoverTargets } from './imagesetTargets.ts';
-import type { JsonValue } from './jsonOut.ts';
 import { ckError } from './messages.ts';
 
 /**
@@ -61,11 +67,14 @@ export function bandFor(size: number): Band {
 	return size >= 64 ? BAND_MEDIUM : BAND_SMALL;
 }
 
-export type LayerVerdict = 'master' | 'inside' | 'outside' | 'not-asserted';
+/** `alone`: the only layer of its master key in the file, so nothing in it regenerates that layer. */
+export type LayerVerdict = 'master' | 'alone' | 'inside' | 'outside' | 'not-asserted';
 
 export type VerifiedLayer = {
 	/** The element type of a container that names its elements, or the size. */
 	readonly label: string;
+	/** The master key that serves the layer: its round trip stays inside that key. */
+	readonly key: string;
 	readonly type: string | null;
 	readonly width: number;
 	readonly height: number;
@@ -78,6 +87,11 @@ export type VerifiedLayer = {
 export type VerifiedStructure = {
 	readonly shipped: string;
 	readonly regenerated: string;
+	/** The structure the product declared, or null when it declared none. */
+	readonly declared: string | null;
+	/** Layers the declaration lists and the file lacks, and layers the file carries unlisted. */
+	readonly missing: readonly string[];
+	readonly extra: readonly string[];
 	readonly matches: boolean;
 };
 
@@ -93,6 +107,10 @@ export type VerifiedTarget = {
 	readonly reason: string | null;
 	/** The layer of this same file every other layer was regenerated from. */
 	readonly master: string | null;
+	/** The master layer of every key that serves the target, in file order. */
+	readonly masters: readonly { readonly key: string; readonly label: string }[];
+	/** The frame set is the one the product declared. */
+	readonly framesDeclared: boolean;
 	readonly structure: VerifiedStructure | null;
 	readonly legacyTypes: readonly string[];
 	readonly layers: readonly VerifiedLayer[];
@@ -112,6 +130,8 @@ export type VerificationTotals = {
 export type ImagesetVerification = {
 	readonly treeDir: string;
 	readonly brandingDir: string;
+	/** The declaration the targets were verified against, or null. */
+	readonly declaration: string | null;
 	readonly targets: readonly VerifiedTarget[];
 	readonly totals: VerificationTotals;
 };
@@ -121,7 +141,8 @@ export type ImagesetVerification = {
  * reading, no lock is taken (the argument of ##DECISION-IMAGESET-INDEX-NO-LOCK
  * holds here too), and neither the patchset nor the masters directory is
  * written or seeded - the masters play no part at all, because the master of
- * every round trip is a layer of the shipped file itself.
+ * every round trip is a layer of the shipped file itself. The declaration is
+ * read from the masters directory and checked as `gen` checks it.
  */
 export function verifyImageset(options: {
 	/** The project type of the patch set: the image set is its answer. */
@@ -130,10 +151,18 @@ export function verifyImageset(options: {
 	readonly brandingDir: string;
 	readonly onReport: (text: string) => void;
 }): ImagesetVerification {
-	const targets = discoverTargets(options.type, options.treeDir, options.onReport).map((target) =>
+	const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
+	const declaration = readDeclaration(options.brandingDir);
+	const targets = resolveTargets(options.type, discovered, declaration, options.brandingDir).map((target) =>
 		verifyTarget(options.type, options.treeDir, target)
 	);
-	return { treeDir: options.treeDir, brandingDir: options.brandingDir, targets, totals: totalsOf(targets) };
+	return {
+		treeDir: options.treeDir,
+		brandingDir: options.brandingDir,
+		declaration: declaration?.file ?? null,
+		targets,
+		totals: totalsOf(targets)
+	};
 }
 
 /** 0 when every asserted comparison is inside its band, 1 when one is not. */
@@ -162,7 +191,7 @@ function totalsOf(targets: readonly VerifiedTarget[]): VerificationTotals {
 			totals.structureMismatches += 1;
 		}
 		for (const layer of target.layers) {
-			if (layer.verdict === 'master') {
+			if (layer.verdict === 'master' || layer.verdict === 'alone') {
 				continue;
 			}
 			totals.comparisons += 1;
@@ -206,11 +235,44 @@ function layersOf(codec: ImageCodec, file: string, bytes: Uint8Array): readonly 
 
 /** The structural signature of a container: layers, sizes, in file order. */
 function signatureOf(kind: TargetKind, layers: readonly Layer[]): string {
-	const parts = layers.map((layer) => `${layer.type === null ? '' : `${layer.type}:`}${layer.image.width}x${layer.image.height}`);
-	return `${kind.toUpperCase()} ${parts.join(' ')}`;
+	return framesSignature(
+		kind,
+		layers.map((layer) => ({ type: layer.type, width: layer.image.width, height: layer.image.height }))
+	);
 }
 
-function verifyTarget(type: ProjectType, treeDir: string, target: DiscoveredTarget): VerifiedTarget {
+function framesSignature(kind: TargetKind, frames: readonly { type: string | null; width: number; height: number }[]): string {
+	return `${kind.toUpperCase()} ${frames.map(frameLabel).join(' ')}`;
+}
+
+function frameLabel(frame: { type: string | null; width: number; height: number }): string {
+	return `${frame.type === null ? '' : `${frame.type}:`}${frame.width}x${frame.height}`;
+}
+
+/** What a declaration lists and the file lacks, and what the file carries unlisted. */
+function structuralDrift(declared: readonly TargetFrame[], shipped: readonly Layer[]): { missing: string[]; extra: string[] } {
+	const unmatched = shipped.map((layer) => frameLabel({ type: layer.type, width: layer.image.width, height: layer.image.height }));
+	const missing: string[] = [];
+	for (const frame of declared) {
+		const at = unmatched.indexOf(frameLabel(frame));
+		if (at === -1) {
+			missing.push(frameLabel(frame));
+		} else {
+			unmatched.splice(at, 1);
+		}
+	}
+	return { missing, extra: unmatched };
+}
+
+/** The master key of a layer: the key the target gives the frame of its size, or the target's own. */
+function keyOfLayer(target: ImagesetTarget, layer: Layer): string {
+	const at = target.frames.findIndex(
+		(frame) => frame.width === layer.image.width && frame.height === layer.image.height && frame.type === layer.type
+	);
+	return target.frameSources[at]?.key ?? artworkKey(target);
+}
+
+function verifyTarget(type: ProjectType, treeDir: string, target: ImagesetTarget): VerifiedTarget {
 	const codec = codecFor(type, target.kind);
 	const base = {
 		target: target.target,
@@ -218,13 +280,15 @@ function verifyTarget(type: ProjectType, treeDir: string, target: DiscoveredTarg
 		key: artworkKey(target),
 		role: target.role,
 		container: target.kind,
-		legacyTypes: target.legacyTypes
+		legacyTypes: target.legacyTypes,
+		framesDeclared: target.framesDeclared
 	};
 	const unverifiable = (reason: string): VerifiedTarget => ({
 		...base,
 		verifiable: false,
 		reason,
 		master: null,
+		masters: [],
 		structure: null,
 		layers: []
 	});
@@ -235,50 +299,84 @@ function verifyTarget(type: ProjectType, treeDir: string, target: DiscoveredTarg
 	}
 	const bytes = readFileSync(join(treeDir, ...target.target.split('/')));
 	const shipped = layersOf(codec, target.target, bytes);
-	if (shipped.length < 2) {
+	const shippedSignature = signatureOf(target.kind, shipped);
+	// A declared frame set is the structure the file must have, not the frames
+	// the pin shipped (##IMAGESET-VERIFY-DECLARED).
+	const declared = target.framesDeclared ? framesSignature(target.kind, target.frames) : null;
+	if (shipped.length < 2 && (declared === null || declared === shippedSignature)) {
 		return unverifiable(
 			`the shipped file carries a single layer (${shipped[0]?.label ?? 'none'}), so there is nothing to regenerate it from`
 		);
 	}
 
-	// The master: the largest layer of THIS file, first in file order on a tie
-	// (a container may carry two layers at one size, and the round trip has to
-	// be reproducible rather than dependent on which one was seen last).
-	const master = shipped.reduce((best, layer) => (area(layer.image) > area(best.image) ? layer : best));
+	// Every layer is compared within the master key that serves it, and the
+	// master of a key is its largest layer in THIS file, first in file order on
+	// a tie (a container may carry two layers at one size, and the round trip
+	// has to be reproducible rather than dependent on which one was seen last).
+	const keys = shipped.map((layer) => keyOfLayer(target, layer));
+	const masterOf = new Map<string, Layer>();
+	shipped.forEach((layer, index) => {
+		const key = keys[index] ?? '';
+		const best = masterOf.get(key);
+		if (best === undefined || area(layer.image) > area(best.image)) {
+			masterOf.set(key, layer);
+		}
+	});
+	const masterAt = (index: number): Layer => masterOf.get(keys[index] ?? '') ?? (shipped[index] as Layer);
 	// The regenerated container is decoded back out of its own bytes, so the
 	// comparison runs against what the encoder really wrote and not against the
 	// buffer that went into it.
-	const regenerated = layersOf(codec, target.target, regenerate(codec, target, shipped, master));
-	const shippedSignature = signatureOf(target.kind, shipped);
+	const regenerated = layersOf(codec, target.target, regenerate(codec, target, shipped, masterAt));
 	const regeneratedSignature = signatureOf(target.kind, regenerated);
+	const drift = declared === null ? { missing: [], extra: [] } : structuralDrift(target.frames, shipped);
 	const structure: VerifiedStructure = {
 		shipped: shippedSignature,
 		regenerated: regeneratedSignature,
-		matches: shippedSignature === regeneratedSignature
+		declared,
+		missing: drift.missing,
+		extra: drift.extra,
+		matches: shippedSignature === regeneratedSignature && (declared === null || declared === shippedSignature)
 	};
-	const layers = shipped.map((layer, index) =>
-		compareLayer(layer, layer === master ? null : (regenerated[index] ?? null), structure.matches)
-	);
-	return { ...base, verifiable: true, reason: null, master: master.label, structure, layers };
+	const severalKeys = masterOf.size > 1;
+	const layers = shipped.map((layer, index) => {
+		const key = keys[index] ?? '';
+		const master = masterAt(index);
+		const compared = compareLayer(layer, layer === master ? null : (regenerated[index] ?? null), structure.matches, key);
+		const alone = layer === master && severalKeys && keys.filter((other) => other === key).length === 1;
+		return alone ? { ...compared, verdict: 'alone' as const } : compared;
+	});
+	// The report names the master of the key the largest layer belongs to, as it
+	// always has, and every key's master beside it.
+	const largest = shipped.reduce((best, layer) => (area(layer.image) > area(best.image) ? layer : best));
+	const masters = [...masterOf.entries()].map(([key, layer]) => ({ key, label: layer.label }));
+	return { ...base, verifiable: true, reason: null, master: masterAt(shipped.indexOf(largest)).label, masters, structure, layers };
 }
 
 /**
  * The production pipeline, and only it: decoded master -> resizeRgba -> the
- * container encoder. The master layer keeps its own pixels - it is the source
- * of the round trip, not a result of it.
+ * container encoder. A master layer keeps its own pixels - it is the source of
+ * the round trip of its key, not a result of it.
  */
-function regenerate(codec: ImageCodec, target: DiscoveredTarget, shipped: readonly Layer[], master: Layer): Uint8Array {
-	const payloads = shipped.map((layer) => ({
-		frame: layer.frame,
-		png: encodePng(layer === master ? master.image : resizeRgba(master.image, layer.image.width, layer.image.height))
-	}));
+function regenerate(
+	codec: ImageCodec,
+	target: DiscoveredTarget,
+	shipped: readonly Layer[],
+	masterAt: (index: number) => Layer
+): Uint8Array {
+	const payloads = shipped.map((layer, index) => {
+		const master = masterAt(index);
+		return {
+			frame: layer.frame,
+			png: encodePng(layer === master ? master.image : resizeRgba(master.image, layer.image.width, layer.image.height))
+		};
+	});
 	return readingImage(target.target, () => codec.encode(payloads, target.stem));
 }
 
-function compareLayer(shipped: Layer, regenerated: Layer | null, structureMatches: boolean): VerifiedLayer {
+function compareLayer(shipped: Layer, regenerated: Layer | null, structureMatches: boolean, key: string): VerifiedLayer {
 	const { width, height } = shipped.image;
 	const band = bandFor(Math.max(width, height));
-	const common = { label: shipped.label, type: shipped.type, width, height, band };
+	const common = { label: shipped.label, key, type: shipped.type, width, height, band };
 	if (regenerated === null) {
 		return { ...common, measured: null, verdict: 'master' };
 	}
@@ -320,160 +418,4 @@ export function meanAbsoluteRgbDifference(left: Rgba, right: Rgba): number {
 
 function area(image: Rgba): number {
 	return image.width * image.height;
-}
-
-/** Two decimals: the report is a number someone re-measures, not a verdict. */
-function measured(value: number | null): string {
-	return value === null ? '-' : value.toFixed(2);
-}
-
-/** The envelope payload: the same model, structurally. */
-export function verificationData(verification: ImagesetVerification): JsonValue {
-	return {
-		treeDir: verification.treeDir,
-		brandingDir: verification.brandingDir,
-		metric: 'mean absolute difference over the R, G and B channels of the decoded straight-alpha layers, in units of 1/255',
-		bands: BANDS.map((band) => ({ ceiling: band.ceiling, label: band.label })),
-		totals: { ...verification.totals },
-		targets: verification.targets.map((target) => ({
-			target: target.target,
-			family: target.family,
-			key: target.key,
-			role: target.role,
-			container: target.container,
-			verifiable: target.verifiable,
-			reason: target.reason,
-			master: target.master,
-			structure: target.structure === null ? null : { ...target.structure },
-			legacyTypes: [...target.legacyTypes],
-			layers: target.layers.map((layer) => ({
-				label: layer.label,
-				type: layer.type,
-				width: layer.width,
-				height: layer.height,
-				band: layer.band.ceiling,
-				measured: layer.measured,
-				verdict: layer.verdict
-			}))
-		}))
-	};
-}
-
-/** The Markdown document: the same model, in the form a person reads. */
-export function renderImagesetVerification(verification: ImagesetVerification): string {
-	const lines: string[] = ['# Icon set verification', ''];
-	lines.push(
-		`Every raster target of the fork tree at \`${verification.treeDir}\`, round-tripped against`,
-		'itself: the largest layer of a container is taken as the master, the other layers are',
-		'regenerated from it through the pipeline `codkit imageset gen` uses, and each is compared',
-		'with the layer the distribution ships. The master is always a layer of the same file:',
-		'two containers of one product are different drawings, so comparing them would measure',
-		'the difference between the drawings and not between the pipelines.',
-		'',
-		'The number is the mean absolute difference over the R, G and B channels of the decoded',
-		'layers, in units of 1/255. Alpha is not in the average and nothing is composited onto a',
-		'background: measure it any other way and the figures below stop being comparable with',
-		'the ones the acceptance criterion was set from.',
-		'',
-		...bandSection(),
-		'',
-		...summarySection(verification),
-		'',
-		'## Targets',
-		''
-	);
-	for (const target of verification.targets.filter((candidate) => candidate.verifiable)) {
-		lines.push(...targetSection(target), '');
-	}
-	lines.push(...unverifiableSection(verification));
-	return lines.join('\n');
-}
-
-function bandSection(): readonly string[] {
-	const lines = ['## Bands', '', '| Size range | Accepted mean difference |', '| --- | --- |'];
-	for (const band of BANDS) {
-		const [range, criterion] = splitBandLabel(band);
-		lines.push(`| ${range} | ${criterion} |`);
-	}
-	return lines;
-}
-
-function splitBandLabel(band: Band): readonly [string, string] {
-	const at = band.label.indexOf(':');
-	return [band.label.slice(0, at), band.label.slice(at + 1).trim()];
-}
-
-function summarySection(verification: ImagesetVerification): readonly string[] {
-	const { totals } = verification;
-	const verdict =
-		totals.outside === 0 && totals.structureMismatches === 0
-			? 'Every asserted comparison is inside its band.'
-			: `${totals.outside} comparison(s) outside the band and ${totals.structureMismatches} structural mismatch(es): this is the gate, and it is red.`;
-	return [
-		'## Summary',
-		'',
-		`- targets discovered: ${totals.targets} - ${totals.verified} round-tripped, ${totals.unverifiable} unverifiable`,
-		`- comparisons: ${totals.comparisons} - ${totals.inside} inside the band, ${totals.outside} outside, ${totals.notAsserted} in a range where no pixel criterion is asserted`,
-		`- structure: ${totals.structureMismatches === 0 ? 'every regenerated container matches the shipped one' : `${totals.structureMismatches} target(s) differ`}`,
-		'',
-		verdict
-	];
-}
-
-function targetSection(target: VerifiedTarget): readonly string[] {
-	const lines = [
-		`### \`${target.target}\``,
-		'',
-		`- Role: ${target.role}`,
-		`- Container: ${target.container.toUpperCase()}; family: \`${target.family}\`; master layer: \`${target.master ?? ''}\` - the largest layer of this same file`,
-		`- Structure: ${target.structure?.matches === true ? 'matches the shipped file' : 'DIFFERS from the shipped file'} - \`${target.structure?.shipped ?? ''}\``
-	];
-	if (target.structure?.matches === false) {
-		lines.push(`- Regenerated structure: \`${target.structure.regenerated}\``);
-	}
-	if (target.legacyTypes.length > 0) {
-		lines.push(`- Legacy elements carried by the shipped file and not regenerated: ${target.legacyTypes.join(', ')}`);
-	}
-	lines.push('', '| Layer | Size | Band | Measured | Verdict |', '| --- | --- | --- | --- | --- |');
-	for (const layer of target.layers) {
-		const ceiling = layer.band.ceiling === null ? 'not asserted' : `at most ${layer.band.ceiling}/255`;
-		lines.push(
-			`| \`${layer.label}\` | ${layer.width}x${layer.height} | ${layer.verdict === 'master' ? 'the master' : ceiling} | ${measured(layer.measured)} | ${verdictText(layer)} |`
-		);
-	}
-	return lines;
-}
-
-function verdictText(layer: VerifiedLayer): string {
-	if (layer.verdict === 'master') {
-		return 'the layer everything else is regenerated from';
-	}
-	if (layer.verdict === 'inside') {
-		return 'inside the band';
-	}
-	if (layer.verdict === 'outside') {
-		return 'OUTSIDE the band';
-	}
-	return 'measured, not asserted at this size';
-}
-
-function unverifiableSection(verification: ImagesetVerification): readonly string[] {
-	const unverifiable = verification.targets.filter((target) => !target.verifiable);
-	const lines = ['## Unverifiable targets', ''];
-	if (unverifiable.length === 0) {
-		lines.push('None: every discovered target carries more than one layer.', '');
-		return lines;
-	}
-	lines.push(
-		'These carry no round trip of their own, so they are reported and NOT counted as passed.',
-		'A single-layer target is checked by the guard suite of its family instead.',
-		'',
-		'| Target | Container | Why |',
-		'| --- | --- | --- |'
-	);
-	for (const target of unverifiable) {
-		lines.push(`| \`${target.target}\` | ${target.container.toUpperCase()} | ${target.reason ?? ''} |`);
-	}
-	lines.push('');
-	return lines;
 }

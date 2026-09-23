@@ -168,9 +168,37 @@ function decodeIcoDib(payload: Uint8Array, width: number, height: number): Rgba 
 	return decodeBmp(file);
 }
 
+/** The largest frame a directory byte can state; 256 itself is stored as 0. */
+const ICO_LARGEST_FRAME = 256;
+
+/**
+ * Why a declared list of square sizes cannot be the frames of an .ico, or null
+ * when it can (spec://codkit/modules/vscode/PROP-006#IMAGESET-ICO-FRAME-SET):
+ * at least one frame, every size a whole number of pixels from 1 to 256 - the
+ * most a directory byte states - and no size twice, because the writer puts
+ * exactly one frame of a size into the file.
+ */
+export function icoFrameSetProblem(sizes: readonly number[]): string | null {
+	if (sizes.length === 0) {
+		return 'an ICO carries at least one frame, and the list is empty';
+	}
+	const seen = new Set<number>();
+	for (const size of sizes) {
+		if (!Number.isInteger(size) || size < 1 || size > ICO_LARGEST_FRAME) {
+			return `an ICO frame is square, 1 to ${ICO_LARGEST_FRAME} pixels a side, and ${String(size)} is not`;
+		}
+		if (seen.has(size)) {
+			return `the size ${size} is listed twice, and an ICO carries one frame of a size`;
+		}
+		seen.add(size);
+	}
+	return null;
+}
+
 /**
  * Build an .ico from rendered PNG payloads. Frames keep the caller's order:
- * that order is part of what the distribution's own file declared.
+ * that order is part of what the distribution's own file declared, or of what
+ * the product declared in its place.
  */
 export function encodeIco(frames: readonly { width: number; height: number; png: Uint8Array }[]): Uint8Array {
 	if (frames.length === 0 || frames.length > 0xffff) {

@@ -17,7 +17,7 @@ import { brokenArtifact, decodePng, encodePng, pngSize } from '@codkit/type-api'
 import type { ImageCodec, ImageFrame, ImagePayload } from '@codkit/type-api';
 import { decodeBmp, encodeBmp24, parseBmp } from './bmp.ts';
 import { encodeIcns, icnsElementPayloads, ICNS_PNG_TYPES, parseIcns } from './icns.ts';
-import { encodeIco, icoFramePayloads, parseIco } from './ico.ts';
+import { encodeIco, icoFramePayloads, icoFrameSetProblem, parseIco } from './ico.ts';
 import { parseSvg } from './svg.ts';
 import { encodeXpm, parseXpm } from './xpm.ts';
 
@@ -47,7 +47,8 @@ function only(payloads: readonly ImagePayload[], kind: string): Uint8Array {
 /**
  * The application and file-type icons of Windows: several frames of one drawing
  * in one directory. The frames the distribution ships are what is regenerated,
- * and every one of them is written as a PNG payload.
+ * unless the product declares others, and every one of them is written as a PNG
+ * payload.
  */
 export const icoCodec: ImageCodec = {
 	kind: 'ico',
@@ -61,7 +62,15 @@ export const icoCodec: ImageCodec = {
 	parse: (bytes) => parseIco(bytes).frames.map((entry) => frame(entry.width, entry.height, null, true)),
 	legacyTypes: () => [],
 	extract: (bytes) => icoFramePayloads(bytes).map((entry) => entry.png),
-	encode: (payloads) => encodeIco(payloads.map((item) => ({ width: item.frame.width, height: item.frame.height, png: item.png })))
+	encode: (payloads) => encodeIco(payloads.map((item) => ({ width: item.frame.width, height: item.frame.height, png: item.png }))),
+	// The one container of this family whose frames a product may choose
+	// (spec://codkit/modules/vscode/PROP-006#IMAGESET-ICO-FRAME-SET): the shell
+	// draws the application from whichever frame the display scale asks for.
+	// An added frame is written like a kept one, a PNG payload in list order.
+	declaredFrames: {
+		problem: (sizes) => icoFrameSetProblem(sizes),
+		frames: (sizes) => sizes.map((size) => frame(size, size, null, true))
+	}
 };
 
 /**

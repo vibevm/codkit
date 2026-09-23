@@ -92,6 +92,9 @@ function refusalOf(call: () => unknown): { code: string; message: string; hint: 
 
 const targetOf = (report: ImagesetReport, target: string) => report.targets.find((candidate) => candidate.target === target);
 
+/** Where a frame of a target nothing declares comes from: its own key (##IMAGESET-FRAME-SOURCES-REPORTED). */
+const UNDECLARED = (key: string, master: string, origin: 'override' | 'vector' | 'raster') => ({ key, keyDeclared: false, master, origin });
+
 type IndexJson = {
 	targets: { target: string; skipped: string | null; sizes: { width: number; height: number; reducedFrom16Bit: boolean }[] }[];
 };
@@ -126,14 +129,42 @@ describe('a master with 16 bits per channel', () => {
 		expect(plan.exitCode).toBe(0);
 		expect(performed.exitCode).toBe(0);
 		expect(targetOf(performed.report, 'resources/win32/code.ico')?.frames).toEqual([
-			{ width: 16, height: 16, source: `override icon-16.png verbatim at 16x16, ${REDUCED}`, stretch: null, reduced: true },
-			{ width: 32, height: 32, source: 'resampled icon.png to 32x32', stretch: null, reduced: false }
+			{
+				...UNDECLARED('icon', 'icon-16.png', 'override'),
+				width: 16,
+				height: 16,
+				source: `override icon-16.png verbatim at 16x16, ${REDUCED}`,
+				stretch: null,
+				reduced: true
+			},
+			{
+				...UNDECLARED('icon', 'icon.png', 'raster'),
+				width: 32,
+				height: 32,
+				source: 'resampled icon.png to 32x32',
+				stretch: null,
+				reduced: false
+			}
 		]);
 		expect(targetOf(performed.report, 'resources/win32/inno-small-100.bmp')?.frames).toEqual([
-			{ width: 12, height: 12, source: `resampled installer-small.png to 12x12, ${REDUCED}`, stretch: null, reduced: true }
+			{
+				...UNDECLARED('installer-small', 'installer-small.png', 'raster'),
+				width: 12,
+				height: 12,
+				source: `resampled installer-small.png to 12x12, ${REDUCED}`,
+				stretch: null,
+				reduced: true
+			}
 		]);
 		expect(targetOf(performed.report, 'resources/win32/inno-big-100.bmp')?.frames).toEqual([
-			{ width: 32, height: 16, source: 'resampled installer-big.png to 32x16', stretch: null, reduced: false }
+			{
+				...UNDECLARED('installer-big', 'installer-big.png', 'raster'),
+				width: 32,
+				height: 16,
+				source: 'resampled installer-big.png to 32x16',
+				stretch: null,
+				reduced: false
+			}
 		]);
 		// The plan says it of the same frames, and of no others.
 		expect(plan.report.targets.map((target) => target.frames)).toEqual(performed.report.targets.map((target) => target.frames));

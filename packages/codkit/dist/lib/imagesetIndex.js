@@ -10,8 +10,9 @@
 // size comes from a hand-made master and which one is generated.
 import { existsSync } from 'node:fs';
 import { codecFor } from './imagesetCodec.js';
+import { readDeclaration, resolveTargets } from './imagesetDeclaration.js';
 import { planTarget } from './imagesetEngine.js';
-import { REDUCED_TO_8_BITS, chooseMaster, ignoredMasterFiles, knownMasterFiles, masterReader } from './imagesetMasters.js';
+import { DECLARATION_FILE, REDUCED_TO_8_BITS, chooseMaster, ignoredMasterFiles, knownMasterFiles, masterReader } from './imagesetMasters.js';
 import { stretchPhrase } from './imagesetRender.js';
 import { artworkKey, discoverTargets } from './imagesetTargets.js';
 /**
@@ -22,10 +23,14 @@ import { artworkKey, discoverTargets } from './imagesetTargets.js';
 export function buildImagesetIndex(options) {
     const discovered = discoverTargets(options.type, options.treeDir, options.onReport);
     const brandingDirExists = existsSync(options.brandingDir);
-    const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
+    // The targets exactly as the run takes them: the declaration is checked in
+    // full, and a frame set or a key it declares is what the index reports.
+    const declaration = readDeclaration(options.brandingDir);
+    const resolved = resolveTargets(options.type, discovered, declaration, options.brandingDir);
+    const keys = [...new Set(resolved.flatMap((target) => [artworkKey(target), ...target.frameSources.map((source) => source.key)]))].sort();
     // The index seeds nothing, so every master it names is on disk.
     const masters = masterReader(options.brandingDir, new Map());
-    const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target, masters));
+    const targets = resolved.map((target) => indexTarget(options.type, options.brandingDir, target, masters));
     const totals = { master: 0, generated: 0, missing: 0 };
     const perFamily = new Map();
     const artworksOf = new Map();
@@ -44,6 +49,7 @@ export function buildImagesetIndex(options) {
         brandingDirExists,
         masters: knownMasterFiles(options.brandingDir, keys),
         ignored: ignoredMasterFiles(options.brandingDir, keys),
+        declaration: declaration?.file ?? null,
         seedCommand: brandingDirExists ? null : 'codkit imageset gen',
         targets,
         totals,
@@ -69,7 +75,8 @@ function indexTarget(type, brandingDir, target, masters) {
         role: target.role,
         container: target.kind,
         sizes: target.frames.map((frame, index) => {
-            const master = chooseMaster(brandingDir, key, frame.width, frame.height);
+            const served = target.frameSources[index] ?? { key, declared: false };
+            const master = chooseMaster(brandingDir, served.key, frame.width, frame.height);
             const source = master === null ? 'missing' : master.origin === 'override' ? 'master' : 'generated';
             // A size past the one the run skips the target at is not read, as the
             // run does not read it; it is neither assessed nor reduced.
@@ -81,9 +88,14 @@ function indexTarget(type, brandingDir, target, masters) {
                 source,
                 from: master?.file ?? null,
                 stretch: planned?.stretch ?? null,
-                reduced: planned?.reduced ?? false
+                reduced: planned?.reduced ?? false,
+                key: served.key,
+                keyDeclared: served.declared,
+                origin: master?.origin ?? null
             };
         }),
+        framesDeclared: target.framesDeclared,
+        shippedFrames: target.shippedFrames,
         skipped: plan.skipped,
         skippedAt: plan.skippedAt,
         legacyTypes: target.legacyTypes,
@@ -116,6 +128,7 @@ export function indexData(index) {
         masters: [...index.masters],
         byFamily: index.byFamily.map((entry) => ({ family: entry.family, artworks: entry.artworks, totals: { ...entry.totals } })),
         ignored: [...index.ignored],
+        declaration: index.declaration,
         seedCommand: index.seedCommand,
         totals: { ...index.totals },
         targets: index.targets.map((target) => ({
@@ -127,12 +140,17 @@ export function indexData(index) {
             container: target.container,
             legacyTypes: [...target.legacyTypes],
             constraints: [...target.constraints],
+            framesDeclared: target.framesDeclared,
+            shippedFrames: target.shippedFrames.map((frame) => ({ width: frame.width, height: frame.height, type: frame.type })),
             sizes: target.sizes.map((size) => ({
                 width: size.width,
                 height: size.height,
                 type: size.type,
                 source: size.source,
                 from: size.from,
+                key: size.key,
+                keyDeclared: size.keyDeclared,
+                origin: size.origin,
                 stretched: size.stretch?.stretched ?? false,
                 stretchPercent: size.stretch?.percent ?? null,
                 reducedFrom16Bit: size.reduced
@@ -197,6 +215,10 @@ function mastersSection(index) {
     lines.push(index.masters.length === 0
         ? 'The directory exists but holds no file the naming convention recognises.'
         : `Present: ${index.masters.map((name) => `\`${name}\``).join(', ')}.`, '', 'Convention, where `<key>` is the family for a family holding one drawing and', '`<family>/<artwork>` for one holding several: `<key>.svg` is the vector master rendered at', 'every size, `<key>.png` the raster master resampled to every size, `<key>-<N>.png` a per-size', 'master used verbatim at exactly NxN, and `<key>-<W>x<H>.png` the same for a non-square size.');
+    if (index.declaration !== null) {
+        const declared = index.targets.filter((target) => target.framesDeclared || target.sizes.some((size) => size.keyDeclared)).length;
+        lines.push('', `Declared: \`${DECLARATION_FILE}\` sets the frames or the master keys of ${declared} target(s) - below, per target and per size.`);
+    }
     if (index.ignored.length > 0) {
         lines.push('', `Ignored - matching no convention: ${index.ignored.map((name) => `\`${name}\``).join(', ')}.`);
     }
@@ -209,6 +231,9 @@ function targetSection(target) {
         `- Role: ${target.role}`,
         `- Family: \`${target.family}\`; artwork: \`${target.key}\`; container: ${target.container.toUpperCase()}; required sizes: ${target.sizes.length}`
     ];
+    if (target.framesDeclared) {
+        lines.push(`- Frames: declared in ${DECLARATION_FILE} - ${sizeList(target.sizes)}; the shipped file carries ${sizeList(target.shippedFrames)}`);
+    }
     for (const constraint of target.constraints) {
         lines.push(`- Constraint: ${constraint}`);
     }
@@ -218,7 +243,16 @@ function targetSection(target) {
     }
     return lines;
 }
+function sizeList(frames) {
+    return frames.map((frame) => `${frame.width}x${frame.height}`).join(', ');
+}
+/** A size a rule of the declaration gave to its key says so; a missing or refused one names the key already. */
 function describeSource(target, size, index) {
+    const described = describeServed(target, size, index);
+    const skippedHere = target.skipped !== null && target.skippedAt === index;
+    return size.keyDeclared && size.source !== 'missing' && !skippedHere ? `${described}, from the declared key \`${size.key}\`` : described;
+}
+function describeServed(target, size, index) {
     // The size the run skips the target at gives the run's reason - unless the
     // reason is a missing master, which the last case states in its own words.
     if (target.skipped !== null && target.skippedAt === index && size.source !== 'missing') {
@@ -233,5 +267,5 @@ function describeSource(target, size, index) {
         const stretch = size.stretch !== null && size.stretch.stretched ? `, ${stretchPhrase(size.stretch)}` : '';
         return `${verb} \`${size.from ?? ''}\`${stretch}${reduced}`;
     }
-    return `no \`${target.key}\` master exists; the run skips this target and exits 1`;
+    return `no \`${size.key}\` master exists; the run skips this target and exits 1`;
 }

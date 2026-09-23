@@ -190,6 +190,33 @@ describe('the codecs the engine sees', () => {
 	it('reads the size of a vector document out of its bytes', () => {
 		expect(codecOf('svg').parse(shipped('letterpress.svg'))).toEqual([{ width: 64, height: 64, type: null, pngCapable: false }]);
 	});
+
+	it('takes a declared frame set for ICO alone, in the declared order, and says why it refuses one', () => {
+		// spec://codkit/modules/vscode/PROP-006#IMAGESET-ICO-FRAME-SET
+		expect(codecs.filter((codec) => codec.declaredFrames !== undefined).map((codec) => codec.kind)).toEqual(['ico']);
+		const declared = codecOf('ico').declaredFrames;
+		expect(declared?.problem([256, 16, 40])).toBeNull();
+		expect(declared?.frames([256, 16, 40])).toEqual([
+			{ width: 256, height: 256, type: null, pngCapable: true },
+			{ width: 16, height: 16, type: null, pngCapable: true },
+			{ width: 40, height: 40, type: null, pngCapable: true }
+		]);
+		expect(declared?.problem([])).toBe('an ICO carries at least one frame, and the list is empty');
+		expect(declared?.problem([16, 300])).toBe('an ICO frame is square, 1 to 256 pixels a side, and 300 is not');
+		expect(declared?.problem([1, 256])).toBeNull();
+		expect(declared?.problem([24, 24])).toBe('the size 24 is listed twice, and an ICO carries one frame of a size');
+		// An added frame is written like a kept one: a PNG payload in list order.
+		const frames = declared?.frames([48, 20]) ?? [];
+		const bytes = codecOf('ico').encode(
+			frames.map((frame) => ({ frame, png: encodePng(rgba(frame.width, frame.height, [1, 2, 3, 255])) })),
+			'code'
+		);
+		expect(parseIco(bytes).frames).toEqual([
+			{ width: 48, height: 48 },
+			{ width: 20, height: 20 }
+		]);
+		expect(icoFramePayloads(bytes).every((frame) => decodePng(frame.png).width === frame.width)).toBe(true);
+	});
 });
 
 describe('the pixels a container gives back', () => {

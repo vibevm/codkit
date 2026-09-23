@@ -18,7 +18,8 @@ import { EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requirePro
 import { runImageset } from '../lib/imagesetEngine.js';
 import { buildImagesetIndex, indexData, renderImagesetIndex } from '../lib/imagesetIndex.js';
 import { defaultBrandingDir } from '../lib/imagesetMasters.js';
-import { renderImagesetVerification, verificationData, verificationExitCode, verifyImageset } from '../lib/imagesetVerify.js';
+import { verificationExitCode, verifyImageset } from '../lib/imagesetVerify.js';
+import { renderImagesetVerification, verificationData } from '../lib/imagesetVerifyReport.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { withLock } from '../lib/lock.js';
@@ -66,6 +67,20 @@ own icons, then you replace them piece by piece:
 
 <key> is the family for a family that holds one drawing, and family/artwork
 for one that holds several - so icon.svg, but filetype/json.svg.
+
+What the shipped files cannot say, the product declares in imageset.json in
+the masters directory: the frame set of a target, where its container allows
+one, and which master key serves which of its frames - a target named by its
+path in the fork tree, as imageset index prints it. For instance, nine frames
+for an icon, those up to 64 px drawn from the key taskbar:
+
+  {"codkitImageset": 1, "targets": {"<target path>": {
+    "frames": [16, 20, 24, 32, 40, 48, 64, 128, 256],
+    "sources": [{"key": "taskbar", "maxSize": 64}]}}}
+
+A rule selects frames by "sizes" or by "minSize"/"maxSize". gen, index and
+verify refuse a declaration they cannot apply exactly, and report every frame
+with the key and the master it came from.
 
 Which families a distribution has, what each of them is for, and which
 containers they are stored in are the project type's answer; codkit imageset
@@ -207,10 +222,16 @@ function dataOf(report) {
             target: target.target,
             family: target.family,
             kind: target.kind,
+            // ##IMAGESET-FRAME-SOURCES-REPORTED: a declared frame set, and where every frame came from.
+            framesDeclared: target.framesDeclared,
             frames: target.frames.map((frame) => ({
                 width: frame.width,
                 height: frame.height,
                 source: frame.source,
+                key: frame.key,
+                keyDeclared: frame.keyDeclared,
+                master: frame.master,
+                origin: frame.origin,
                 // ##IMAGESET-STRETCH-REPORTED: the stretch as fields, not only inside `source`.
                 stretched: frame.stretch?.stretched ?? false,
                 stretchPercent: frame.stretch?.percent ?? null,
