@@ -245,7 +245,14 @@ describe('a vector master stretched to its frame', () => {
 
 	const warningsOf = (stderr: string) => stderr.split('\n').filter((line) => line.includes('stretched'));
 
-	type JsonFrame = { width: number; height: number; source: string; stretched: boolean; stretchPercent: number | null };
+	type JsonFrame = {
+		width: number;
+		height: number;
+		source: string;
+		stretched: boolean;
+		stretchPercent: number | null;
+		reducedFrom16Bit: boolean;
+	};
 	const jsonFrames = (envelope: { data: { targets: { target: string; frames: JsonFrame[] }[] } }, target: string) =>
 		envelope.data.targets.find((candidate) => candidate.target === target)?.frames ?? [];
 
@@ -259,7 +266,7 @@ describe('a vector master stretched to its frame', () => {
 		expect(json.status).toBe(0);
 		const envelope = JSON.parse(json.stdout);
 		expect(jsonFrames(envelope, 'resources/win32/inno-big-100.bmp')).toEqual([
-			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1 }
+			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1, reducedFrom16Bit: false }
 		]);
 		expect(existsSync(join(fixture.patchset.dir, 'delta', 'resources'))).toBe(false);
 	});
@@ -270,13 +277,20 @@ describe('a vector master stretched to its frame', () => {
 		expect(json.status).toBe(0);
 		const envelope = JSON.parse(json.stdout);
 		expect(jsonFrames(envelope, 'resources/win32/inno-big-100.bmp')).toEqual([
-			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1 }
+			{ width: 32, height: 16, source: STRETCHED, stretched: true, stretchPercent: 9.1, reducedFrom16Bit: false }
 		]);
 		const icon = jsonFrames(envelope, 'resources/win32/code.ico');
 		expect(icon.length).toBeGreaterThan(0);
 		expect(icon.every((frame) => !frame.stretched && frame.stretchPercent === 0 && !frame.source.includes('stretched'))).toBe(true);
 		expect(jsonFrames(envelope, 'resources/win32/inno-small-100.bmp')).toEqual([
-			{ width: 12, height: 12, source: 'resampled installer-small.png to 12x12', stretched: false, stretchPercent: null }
+			{
+				width: 12,
+				height: 12,
+				source: 'resampled installer-small.png to 12x12',
+				stretched: false,
+				stretchPercent: null,
+				reducedFrom16Bit: false
+			}
 		]);
 		expect(
 			envelope.messages
@@ -309,20 +323,30 @@ describe('a vector master stretched to its frame', () => {
 	});
 });
 
+/** The fixture with 8-bit base masters and the given hand-made icon-16.png. */
+function variantFixture(label: string, icon16: Uint8Array) {
+	const fixture = makeImagesetFixture(label);
+	const brandingDir = join(fixture.patchset.dir, 'artwork');
+	mkdirSync(brandingDir, { recursive: true });
+	writeFileSync(join(brandingDir, 'icon.png'), encodePng(rgba(128, 128, [22, 122, 191, 255])));
+	writeFileSync(join(brandingDir, 'icon-16.png'), icon16);
+	writeFileSync(join(brandingDir, 'installer-big.png'), encodePng(rgba(40, 20, [22, 122, 191, 255])));
+	writeFileSync(join(brandingDir, 'installer-small.png'), encodePng(rgba(12, 12, [22, 122, 191, 255])));
+	return { ...fixture, brandingDir };
+}
+
+/** A PNG whose header declares RGB at 4 bits, a depth the format does not define for RGB. */
+function malformedPng(): Uint8Array {
+	const bytes = encodePng(rgba(16, 16, [1, 2, 3, 255]));
+	bytes[24] = 4;
+	bytes[25] = 2;
+	return bytes;
+}
+
 describe('a PNG master in a variant other than 8-bit RGBA', () => {
 	// PROP-007 ##IMAGESET-PNG-MASTERS through the real launcher: a designer's
 	// 16-bit export is taken as it is, and a file that is not a well-formed PNG
 	// is refused with what is wrong with it and what to export instead.
-	function variantFixture(label: string, icon16: Uint8Array) {
-		const fixture = makeImagesetFixture(label);
-		const brandingDir = join(fixture.patchset.dir, 'artwork');
-		mkdirSync(brandingDir, { recursive: true });
-		writeFileSync(join(brandingDir, 'icon.png'), encodePng(rgba(128, 128, [22, 122, 191, 255])));
-		writeFileSync(join(brandingDir, 'icon-16.png'), icon16);
-		writeFileSync(join(brandingDir, 'installer-big.png'), encodePng(rgba(40, 20, [22, 122, 191, 255])));
-		writeFileSync(join(brandingDir, 'installer-small.png'), encodePng(rgba(12, 12, [22, 122, 191, 255])));
-		return { ...fixture, brandingDir };
-	}
 
 	it('gen takes a 16-bit master as it is', () => {
 		const fixture = variantFixture(
@@ -336,14 +360,85 @@ describe('a PNG master in a variant other than 8-bit RGBA', () => {
 	});
 
 	it('gen refuses a malformed master with what is wrong with it and what to export', () => {
-		const malformed = encodePng(rgba(16, 16, [1, 2, 3, 255]));
-		malformed[24] = 4;
-		malformed[25] = 2;
-		const fixture = variantFixture('e2e-png-malformed', malformed);
+		const fixture = variantFixture('e2e-png-malformed', malformedPng());
 		const run = fixture.run(['imageset', 'gen', '--branding-dir', fixture.brandingDir]);
 		expect(run.status).toBe(2);
 		expect(run.stderr).toContain(
 			'error CK-E-ARTIFACT-BROKEN: icon-16.png: PNG: RGB at 4 bits is not a PNG variant: RGB comes at 8, 16 bits\nhint: export the master as an 8-bit RGBA PNG'
 		);
+	});
+});
+
+describe('the self-check reads the masters it vouches for', () => {
+	// PROP-007 ##IMAGESET-SELF-CHECK-READS-MASTERS through the real launcher:
+	// gen --dry-run and index read every master gen would read, so they refuse
+	// what gen refuses and report a 16-bit master as reduced the way gen does.
+	const REDUCED = 'reduced from 16 to 8 bits per channel';
+	const refusalOf = (stderr: string) => stderr.split('\n').filter((line) => line.startsWith('error ') || line.startsWith('hint: '));
+
+	it('gen --dry-run and index refuse a master gen refuses, with the refusal of gen', () => {
+		const fixture = variantFixture('e2e-self-refuse', malformedPng());
+		const gen = fixture.run(['imageset', 'gen', '--branding-dir', fixture.brandingDir]);
+		const plan = fixture.run(['imageset', 'gen', '--dry-run', '--branding-dir', fixture.brandingDir]);
+		const index = fixture.run(['imageset', 'index', '--branding-dir', fixture.brandingDir]);
+		expect(gen.status).toBe(2);
+		expect(refusalOf(gen.stderr)).toEqual([
+			'error CK-E-ARTIFACT-BROKEN: icon-16.png: PNG: RGB at 4 bits is not a PNG variant: RGB comes at 8, 16 bits',
+			'hint: export the master as an 8-bit RGBA PNG'
+		]);
+		for (const check of [plan, index]) {
+			expect(check.status).toBe(2);
+			expect(refusalOf(check.stderr)).toEqual(refusalOf(gen.stderr));
+		}
+		expect(plan.stdout).not.toContain('dry run: nothing written');
+		expect(index.stdout).not.toContain('# Icon set index');
+		expect(existsSync(join(fixture.patchset.dir, 'delta', 'resources'))).toBe(false);
+	});
+
+	it('gen, its dry run and the index report a 16-bit master as reduced to 8 bits', () => {
+		const fixture = variantFixture(
+			'e2e-self-sixteen',
+			writePng(16, 16, { colorType: 6, bitDepth: 16 }, () => [65535, 32768, 0, 65535])
+		);
+		const frames = [
+			{
+				width: 16,
+				height: 16,
+				source: `override icon-16.png verbatim at 16x16, ${REDUCED}`,
+				stretched: false,
+				stretchPercent: null,
+				reducedFrom16Bit: true
+			},
+			{ width: 32, height: 32, source: 'resampled icon.png to 32x32', stretched: false, stretchPercent: null, reducedFrom16Bit: false }
+		];
+		const icoFrames = (stdout: string) =>
+			JSON.parse(stdout).data.targets.find((target: { target: string }) => target.target === 'resources/win32/code.ico')?.frames;
+		const plan = fixture.run(['imageset', 'gen', '--dry-run', '--branding-dir', fixture.brandingDir]);
+		expect(plan.status).toBe(0);
+		expect(plan.stdout).toContain(`  16x16: override icon-16.png verbatim at 16x16, ${REDUCED}`);
+		const planJson = fixture.run(['imageset', 'gen', '--dry-run', '--json', '--branding-dir', fixture.brandingDir]);
+		expect(icoFrames(planJson.stdout)).toEqual(frames);
+		const index = fixture.run(['imageset', 'index', '--branding-dir', fixture.brandingDir]);
+		expect(index.status).toBe(0);
+		expect(index.stdout).toContain(`| 16x16 | - | \`master\` | \`icon-16.png\`, used verbatim, ${REDUCED} |`);
+		const indexJson = fixture.run(['imageset', 'index', '--json', '--branding-dir', fixture.brandingDir]);
+		const sizes = JSON.parse(indexJson.stdout).data.targets.find(
+			(target: { target: string }) => target.target === 'resources/win32/code.ico'
+		)?.sizes;
+		expect(sizes).toMatchObject([
+			{ width: 16, height: 16, reducedFrom16Bit: true },
+			{ width: 32, height: 32, reducedFrom16Bit: false }
+		]);
+		const gen = fixture.run(['imageset', 'gen', '--json', '--branding-dir', fixture.brandingDir]);
+		expect(gen.status).toBe(0);
+		expect(icoFrames(gen.stdout)).toEqual(frames);
+		// Information, not a warning: no warning line and no warn message says it.
+		for (const run of [plan, index]) {
+			expect(run.stderr).not.toContain(REDUCED);
+		}
+		for (const run of [planJson, indexJson, gen]) {
+			const warned = JSON.parse(run.stdout).messages.filter((message: { level: string }) => message.level === 'warn');
+			expect(JSON.stringify(warned)).not.toContain(REDUCED);
+		}
 	});
 });

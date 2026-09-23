@@ -10,8 +10,9 @@
 // size comes from a hand-made master and which one is generated.
 import { existsSync } from 'node:fs';
 import { codecFor } from './imagesetCodec.js';
-import { chooseMaster, ignoredMasterFiles, knownMasterFiles, vectorSizeReader } from './imagesetMasters.js';
-import { stretchOf, stretchPhrase } from './imagesetRender.js';
+import { planTarget } from './imagesetEngine.js';
+import { REDUCED_TO_8_BITS, chooseMaster, ignoredMasterFiles, knownMasterFiles, masterReader } from './imagesetMasters.js';
+import { stretchPhrase } from './imagesetRender.js';
 import { artworkKey, discoverTargets } from './imagesetTargets.js';
 /**
  * Build the index. Nothing is written - not even the seeding `gen` does on a
@@ -23,8 +24,8 @@ export function buildImagesetIndex(options) {
     const brandingDirExists = existsSync(options.brandingDir);
     const keys = [...new Set(discovered.map((target) => artworkKey(target)))].sort();
     // The index seeds nothing, so every master it names is on disk.
-    const masterSize = vectorSizeReader(options.brandingDir, new Map());
-    const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target, masterSize));
+    const masters = masterReader(options.brandingDir, new Map());
+    const targets = discovered.map((target) => indexTarget(options.type, options.brandingDir, target, masters));
     const totals = { master: 0, generated: 0, missing: 0 };
     const perFamily = new Map();
     const artworksOf = new Map();
@@ -53,9 +54,13 @@ export function buildImagesetIndex(options) {
         }))
     };
 }
-function indexTarget(type, brandingDir, target, masterSize) {
+function indexTarget(type, brandingDir, target, masters) {
     const key = artworkKey(target);
     const codec = codecFor(type, target.kind);
+    // The run's own plan of the target, its masters read as the run reads them:
+    // what the run would refuse, the index refuses, and what the run would
+    // skip or report, the index states (##IMAGESET-SELF-CHECK-READS-MASTERS).
+    const plan = planTarget(type, brandingDir, target, new Set(), masters, false);
     return {
         target: target.target,
         family: target.family,
@@ -63,16 +68,24 @@ function indexTarget(type, brandingDir, target, masterSize) {
         key,
         role: target.role,
         container: target.kind,
-        sizes: target.frames.map((frame) => {
+        sizes: target.frames.map((frame, index) => {
             const master = chooseMaster(brandingDir, key, frame.width, frame.height);
             const source = master === null ? 'missing' : master.origin === 'override' ? 'master' : 'generated';
-            // A vector target is emitted unchanged at the size it carries, so
-            // only a raster size a vector master renders can be stretched.
-            const stretch = master !== null && master.origin === 'vector' && !codec.vector
-                ? stretchOf(masterSize(master.file), frame.width, frame.height)
-                : null;
-            return { width: frame.width, height: frame.height, type: frame.type, source, from: master?.file ?? null, stretch };
+            // A size past the one the run skips the target at is not read, as the
+            // run does not read it; it is neither assessed nor reduced.
+            const planned = plan.frames[index];
+            return {
+                width: frame.width,
+                height: frame.height,
+                type: frame.type,
+                source,
+                from: master?.file ?? null,
+                stretch: planned?.stretch ?? null,
+                reduced: planned?.reduced ?? false
+            };
         }),
+        skipped: plan.skipped,
+        skippedAt: plan.skippedAt,
         legacyTypes: target.legacyTypes,
         constraints: constraintsOf(codec, target)
     };
@@ -121,8 +134,10 @@ export function indexData(index) {
                 source: size.source,
                 from: size.from,
                 stretched: size.stretch?.stretched ?? false,
-                stretchPercent: size.stretch?.percent ?? null
-            }))
+                stretchPercent: size.stretch?.percent ?? null,
+                reducedFrom16Bit: size.reduced
+            })),
+            skipped: target.skipped
         }))
     };
 }
@@ -198,19 +213,25 @@ function targetSection(target) {
         lines.push(`- Constraint: ${constraint}`);
     }
     lines.push('', '| Size | Element | Source | From |', '| --- | --- | --- | --- |');
-    for (const size of target.sizes) {
-        lines.push(`| ${size.width}x${size.height} | ${size.type ?? '-'} | \`${size.source}\` | ${describeSource(target, size)} |`);
+    for (const [index, size] of target.sizes.entries()) {
+        lines.push(`| ${size.width}x${size.height} | ${size.type ?? '-'} | \`${size.source}\` | ${describeSource(target, size, index)} |`);
     }
     return lines;
 }
-function describeSource(target, size) {
+function describeSource(target, size, index) {
+    // The size the run skips the target at gives the run's reason - unless the
+    // reason is a missing master, which the last case states in its own words.
+    if (target.skipped !== null && target.skippedAt === index && size.source !== 'missing') {
+        return `${target.skipped}; the run skips this target and exits 1`;
+    }
+    const reduced = size.reduced ? `, ${REDUCED_TO_8_BITS}` : '';
     if (size.source === 'master') {
-        return `\`${size.from ?? ''}\`, used verbatim`;
+        return `\`${size.from ?? ''}\`, used verbatim${reduced}`;
     }
     if (size.source === 'generated') {
         const verb = size.from?.endsWith('.svg') === true ? 'rendered at this size from' : 'resampled to this size from';
         const stretch = size.stretch !== null && size.stretch.stretched ? `, ${stretchPhrase(size.stretch)}` : '';
-        return `${verb} \`${size.from ?? ''}\`${stretch}`;
+        return `${verb} \`${size.from ?? ''}\`${stretch}${reduced}`;
     }
     return `no \`${target.key}\` master exists; the run skips this target and exits 1`;
 }

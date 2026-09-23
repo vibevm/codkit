@@ -20,7 +20,8 @@
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { ProjectType } from '@codkit/type-api';
+import { decodePng, pngHeader } from '@codkit/type-api';
+import type { ProjectType, Rgba } from '@codkit/type-api';
 import { codecFor, readingImage } from './imagesetCodec.ts';
 import { ckError } from './messages.ts';
 import { vectorMasterSize } from './imagesetRender.ts';
@@ -74,27 +75,68 @@ export function inBranding(brandingDir: string, file: string): string {
 	return join(brandingDir, ...file.split('/'));
 }
 
+/** How every report says that a master's samples lost their low byte on the way in. */
+export const REDUCED_TO_8_BITS = 'reduced from 16 to 8 bits per channel';
+
 /**
- * The intrinsic size of a vector master for a report that renders nothing,
- * read once per master: the file in the branding directory or, in a dry run
- * that plans the seeding, the bytes the seeding would write there - so a plan
- * measures the very master its run would render (##IMAGESET-STRETCH-REPORTED).
+ * The masters of one run, each read once and the way the run reads it - so a
+ * report that renders nothing, a dry run or the index, reads exactly what the
+ * run would (##IMAGESET-SELF-CHECK-READS-MASTERS).
  */
-export function vectorSizeReader(brandingDir: string, planned: ReadonlyMap<string, Uint8Array>): (file: string) => VectorSize {
+export type MasterReader = {
+	/**
+	 * The bytes of a master: the file in the branding directory or, in a dry
+	 * run that plans the seeding, the bytes the seeding would write there.
+	 */
+	bytes(file: string): Uint8Array;
+	/** The intrinsic size of a vector master, as the rasteriser reads it (##IMAGESET-STRETCH-REPORTED). */
+	vectorSize(file: string): VectorSize;
+	/**
+	 * A raster master decoded by the run's own decoder (##IMAGESET-PNG-MASTERS),
+	 * and whether its samples were reduced from 16 bits; a file that does not
+	 * decode is the run's own refusal, naming the master.
+	 */
+	raster(file: string): { readonly image: Rgba; readonly reduced: boolean };
+};
+
+export function masterReader(brandingDir: string, planned: ReadonlyMap<string, Uint8Array>): MasterReader {
+	const files = new Map<string, Uint8Array>();
 	const sizes = new Map<string, VectorSize>();
-	return (file) => {
-		const known = sizes.get(file);
+	const rasters = new Map<string, { readonly image: Rgba; readonly reduced: boolean }>();
+	const bytes = (file: string): Uint8Array => {
+		const known = files.get(file);
 		if (known !== undefined) {
 			return known;
 		}
 		const path = inBranding(brandingDir, file);
-		const bytes = existsSync(path) ? readFileSync(path) : planned.get(file);
-		if (bytes === undefined) {
+		const read = existsSync(path) ? readFileSync(path) : planned.get(file);
+		if (read === undefined) {
 			throw ckError('INTERNAL', `the master ${file} was chosen but is neither in ${brandingDir} nor planned for it`);
 		}
-		const size = vectorMasterSize(Buffer.from(bytes).toString('utf8'));
-		sizes.set(file, size);
-		return size;
+		files.set(file, read);
+		return read;
+	};
+	return {
+		bytes,
+		vectorSize: (file) => {
+			const known = sizes.get(file);
+			if (known !== undefined) {
+				return known;
+			}
+			const size = vectorMasterSize(Buffer.from(bytes(file)).toString('utf8'));
+			sizes.set(file, size);
+			return size;
+		},
+		raster: (file) => {
+			const known = rasters.get(file);
+			if (known !== undefined) {
+				return known;
+			}
+			const data = bytes(file);
+			const raster = { image: readingImage(file, () => decodePng(data)), reduced: pngHeader(data)?.bitDepth === 16 };
+			rasters.set(file, raster);
+			return raster;
+		}
 	};
 }
 

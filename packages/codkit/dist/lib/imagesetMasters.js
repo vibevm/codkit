@@ -19,6 +19,7 @@
 // an existing directory is never touched.
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { decodePng, pngHeader } from '@codkit/type-api';
 import { codecFor, readingImage } from './imagesetCodec.js';
 import { ckError } from './messages.js';
 import { vectorMasterSize } from './imagesetRender.js';
@@ -52,27 +53,46 @@ export function chooseMaster(brandingDir, key, width, height, virtualMasters = n
 export function inBranding(brandingDir, file) {
     return join(brandingDir, ...file.split('/'));
 }
-/**
- * The intrinsic size of a vector master for a report that renders nothing,
- * read once per master: the file in the branding directory or, in a dry run
- * that plans the seeding, the bytes the seeding would write there - so a plan
- * measures the very master its run would render (##IMAGESET-STRETCH-REPORTED).
- */
-export function vectorSizeReader(brandingDir, planned) {
+/** How every report says that a master's samples lost their low byte on the way in. */
+export const REDUCED_TO_8_BITS = 'reduced from 16 to 8 bits per channel';
+export function masterReader(brandingDir, planned) {
+    const files = new Map();
     const sizes = new Map();
-    return (file) => {
-        const known = sizes.get(file);
+    const rasters = new Map();
+    const bytes = (file) => {
+        const known = files.get(file);
         if (known !== undefined) {
             return known;
         }
         const path = inBranding(brandingDir, file);
-        const bytes = existsSync(path) ? readFileSync(path) : planned.get(file);
-        if (bytes === undefined) {
+        const read = existsSync(path) ? readFileSync(path) : planned.get(file);
+        if (read === undefined) {
             throw ckError('INTERNAL', `the master ${file} was chosen but is neither in ${brandingDir} nor planned for it`);
         }
-        const size = vectorMasterSize(Buffer.from(bytes).toString('utf8'));
-        sizes.set(file, size);
-        return size;
+        files.set(file, read);
+        return read;
+    };
+    return {
+        bytes,
+        vectorSize: (file) => {
+            const known = sizes.get(file);
+            if (known !== undefined) {
+                return known;
+            }
+            const size = vectorMasterSize(Buffer.from(bytes(file)).toString('utf8'));
+            sizes.set(file, size);
+            return size;
+        },
+        raster: (file) => {
+            const known = rasters.get(file);
+            if (known !== undefined) {
+                return known;
+            }
+            const data = bytes(file);
+            const raster = { image: readingImage(file, () => decodePng(data)), reduced: pngHeader(data)?.bitDepth === 16 };
+            rasters.set(file, raster);
+            return raster;
+        }
     };
 }
 /** Files in the branding directory the convention does not know about. */

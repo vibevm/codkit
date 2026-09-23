@@ -213,7 +213,9 @@ function dataOf(report) {
                 source: frame.source,
                 // ##IMAGESET-STRETCH-REPORTED: the stretch as fields, not only inside `source`.
                 stretched: frame.stretch?.stretched ?? false,
-                stretchPercent: frame.stretch?.percent ?? null
+                stretchPercent: frame.stretch?.percent ?? null,
+                // ##IMAGESET-SELF-CHECK-READS-MASTERS: a 16-bit master brought to 8 bits.
+                reducedFrom16Bit: frame.reduced
             })),
             skipped: target.skipped,
             entry: target.entry,

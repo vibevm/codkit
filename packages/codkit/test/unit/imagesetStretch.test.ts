@@ -128,10 +128,22 @@ describe('gen reports a stretched vector frame', () => {
 		const outcome = run(false);
 		expect(outcome.exitCode).toBe(0);
 		expect(framesOf(outcome.report, 'resources/win32/inno-big-100.bmp')).toEqual([
-			{ width: 32, height: 16, source: STRETCHED_100, stretch: { master: { width: 100, height: 55 }, percent: 9.1, stretched: true } }
+			{
+				width: 32,
+				height: 16,
+				source: STRETCHED_100,
+				stretch: { master: { width: 100, height: 55 }, percent: 9.1, stretched: true },
+				reduced: false
+			}
 		]);
 		expect(framesOf(outcome.report, 'resources/win32/inno-big-125.bmp')).toEqual([
-			{ width: 40, height: 20, source: STRETCHED_125, stretch: { master: { width: 100, height: 55 }, percent: 9.1, stretched: true } }
+			{
+				width: 40,
+				height: 20,
+				source: STRETCHED_125,
+				stretch: { master: { width: 100, height: 55 }, percent: 9.1, stretched: true },
+				reduced: false
+			}
 		]);
 		expect(outcome.info).toContain(`regenerated resources/win32/inno-big-100.bmp: 32x16 (${STRETCHED_100})`);
 	});
@@ -156,7 +168,7 @@ describe('gen reports a stretched vector frame', () => {
 		}
 		// A raster master is not measured: it says `resampled` already.
 		expect(framesOf(outcome.report, 'resources/win32/inno-small-100.bmp')).toEqual([
-			{ width: 12, height: 12, source: 'resampled installer-small.png to 12x12', stretch: null }
+			{ width: 12, height: 12, source: 'resampled installer-small.png to 12x12', stretch: null, reduced: false }
 		]);
 		expect(outcome.warnings.some((line) => line.includes('icon.svg') || line.includes('installer-small'))).toBe(false);
 	});
@@ -219,7 +231,8 @@ describe('gen --dry-run predicts the stretch without rendering', () => {
 				width: 32,
 				height: 16,
 				source: "rendered letterpress.svg at 32x16, stretched 9.1% from the master's aspect",
-				stretch: { master: { width: 100, height: 55 }, percent: 9.1, stretched: true }
+				stretch: { master: { width: 100, height: 55 }, percent: 9.1, stretched: true },
+				reduced: false
 			}
 		]);
 		const performed = runOnce(false);
