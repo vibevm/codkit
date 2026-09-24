@@ -265,8 +265,13 @@ function materializeWorkspace(
 			{ GIT_INDEX_FILE: index },
 			`cannot materialize patchset snapshot ${sha}`
 		);
+		// The disposable fork lives under the temp directory, deeper than the
+		// tree it copies; on Windows the longest upstream paths then pass the
+		// 260-character limit unless git is told to use long paths (a no-op
+		// elsewhere). codkit's git reads no global or system config, so the fork
+		// carries the setting in its own.
 		const cloned = runGit({
-			args: ['clone', '--quiet', '--shared', '--no-checkout', '--', source.path, fork],
+			args: ['clone', '--quiet', '--shared', '--no-checkout', '--config', 'core.longpaths=true', '--', source.path, fork],
 			cwd: root,
 			netAllowed: true
 		});
