@@ -655,7 +655,11 @@ export type OverlayDrift = {
 export type OverlayMaterialization = {
 	/** True when the tree carries the target at all. */
 	readonly present: boolean;
-	/** True when the file in the tree differs from the clean pin file. */
+	/**
+	 * True when the content of the file in the tree differs from the clean pin
+	 * file - the content git stores for it, not its raw bytes
+	 * (##CMD-OVERLAY-CHECK-TREE): this is what "the target is materialized" means.
+	 */
 	readonly differsFromPin: boolean;
 	/**
 	 * Byte equality of the file in the tree with the materialization of this
@@ -862,12 +866,28 @@ function inspectMaterialization(
 	if (current === null) {
 		return { present: false, differsFromPin: false, matches: null };
 	}
-	const atPin = runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir });
-	const differsFromPin = atPin.status !== 0 || !bytesEqual(current, encodeUtf8(atPin.stdout));
+	const differsFromPin = !holdsPinContent(treeDir, pinSha, target);
 	if (!differsFromPin || context === undefined) {
 		return { present: true, differsFromPin, matches: null };
 	}
 	return { present: true, differsFromPin, matches: bytesEqual(current, renderOverlayTarget(overlays, treeDir, pinSha, context).bytes) };
+}
+
+/**
+ * Is the file in the tree the pin's file? Asked of its content, the way git
+ * sees content (##CMD-OVERLAY-CHECK-TREE): git's own hash of the file under the
+ * tree's attributes against the pin's blob. Raw bytes would call the pin's file
+ * a materialization as soon as a checkout converted it - the CRLF a Windows
+ * checkout writes for a `text=auto` file - and the check would then compare the
+ * pin with the operations and report a drift nobody made.
+ */
+function holdsPinContent(treeDir: string, pinSha: string, target: string): boolean {
+	const atPin = runGit({ args: ['rev-parse', '--verify', '--quiet', `${pinSha}:${target}`], cwd: treeDir });
+	if (atPin.status !== 0) {
+		return false;
+	}
+	const stored = runGit({ args: ['hash-object', '--', target], cwd: treeDir });
+	return stored.status === 0 && stored.stdout.trim() === atPin.stdout.trim();
 }
 
 function readFileIfPresent(path: string): Uint8Array | null {

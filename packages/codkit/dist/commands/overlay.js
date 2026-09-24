@@ -108,7 +108,9 @@ function knownTargets(overlays) {
 /**
  * `check`: the pin side already agreed, so what is left is the tree side. A
  * materialized target that is not "the pin plus the operations" is a file
- * somebody edited by hand, and the layer cannot own it any more.
+ * somebody edited by hand, and the layer cannot own it any more. A target that
+ * is not materialized has nothing to be compared with, and the check says so
+ * rather than claiming a drift (##CMD-OVERLAY-CHECK-TREE).
  */
 function reportCheck(ctx, selected, report) {
     ctx.out.setData(buildData('check', selected, report, null));
@@ -121,9 +123,24 @@ function reportCheck(ctx, selected, report) {
         });
         return EXIT_CHECK_FAILED;
     }
-    const state = report.materialization?.differsFromPin === true ? 'materialized' : 'at the pin';
-    ctx.out.info(`${selected.target}: ${selected.overlays.length} overlay(s) agree with the pin; the file in the tree is ${state}`);
+    ctx.out.info(`${selected.target}: ${selected.overlays.length} overlay(s) agree with the pin; ${treeSentence(selected.target, inTree(report))}`);
     return EXIT_OK;
+}
+function inTree(report) {
+    const materialization = report.materialization;
+    if (materialization === null || !materialization.present) {
+        return 'absent';
+    }
+    return materialization.differsFromPin ? 'materialized' : 'pin';
+}
+function treeSentence(target, state) {
+    if (state === 'materialized') {
+        return 'the target is materialized in the fork tree and is the pin plus the operations';
+    }
+    if (state === 'pin') {
+        return "the target is not materialized in the fork tree (the file there is the pin's), so there is nothing to compare with the operations";
+    }
+    return `the target is not materialized: the fork tree has no ${target}`;
 }
 /** `apply`: rewrite the target in the tree. A writing command, so it locks. */
 function applyTarget(ctx, config, tree, selected, report, context) {
@@ -152,8 +169,10 @@ function buildData(mode, selected, report, changed) {
             actualAbsent: entry.actual === undefined
         })),
         warnings: [...report.warnings],
-        materialized: report.materialization?.differsFromPin === true,
-        matchesOperations: report.materialization?.matches !== false
+        inTree: inTree(report),
+        materialized: inTree(report) === 'materialized',
+        // Compared only when there is a materialization to compare.
+        matchesOperations: inTree(report) === 'materialized' ? report.materialization?.matches !== false : null
     };
     if (changed !== null) {
         data['changed'] = changed;
