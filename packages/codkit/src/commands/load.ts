@@ -179,6 +179,10 @@ function buildData(result: SyncResult, flags: { fresh: boolean; dryRun: boolean;
 	if (result.fastPathReason !== null) {
 		data['fastPathReason'] = result.fastPathReason;
 	}
+	// PROP-008 ##WORKTREE-DELTA-BYTES: the files whose converted bytes this run put back.
+	if (result.restoredBytes.length > 0) {
+		data['restoredBytes'] = [...result.restoredBytes];
+	}
 	return data;
 }
 

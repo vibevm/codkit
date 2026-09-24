@@ -88,6 +88,7 @@ import type { TreeCommit, TreeCommits } from './treeCommits.ts';
 import { assertCompletedRebaseMoveSyncTree, completedRebaseMoveForSync, finishCompletedRebaseMoveSync } from './rebaseOntoPinMove.ts';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.ts';
 import { refuseOverLiveSyncTransaction } from './syncTransaction.ts';
+import { restoreDeltaBytes } from './workTreeBytes.ts';
 import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.ts';
 
 /** Patch artifacts live here, relative to the patchset root. */
@@ -294,6 +295,12 @@ export type SyncResult = {
 	readonly discardedPaths: readonly string[];
 	/** Why the fast path was refused; null when it was taken. */
 	readonly fastPathReason: string | null;
+	/**
+	 * Files the delta writes whose working copy this run gave the tip's bytes
+	 * back, because git's checkout had converted them (PROP-008
+	 * ##WORKTREE-DELTA-BYTES); in path order, empty when none needed it.
+	 */
+	readonly restoredBytes: readonly string[];
 };
 
 type PatchArtifact = {
@@ -647,6 +654,10 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 				generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : []
 			});
 		}
+		// The branch vouches for the content of the files the delta writes, not
+		// for the bytes an earlier checkout left of them (##WORKTREE-DELTA-BYTES):
+		// this is also where a tree written before that rule heals.
+		const restoredBytes = restoreDeltaBytesOf(tree, prebuiltPlan, out);
 		// Own code is verified on every run: locally it is not part of the
 		// branch commits, so the branch cannot vouch for it. The own extensions
 		// are materialized on the same terms (##OWN-EXTENSION-UNIT).
@@ -663,7 +674,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			branch,
 			branchTip: cache?.branchTip ?? null,
 			own,
-			generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : []
+			generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : [],
+			restoredBytes
 		});
 	}
 	if (options.verbose) {
@@ -716,6 +728,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// the generated branch, or the run refuses with every ref, index and work
 	// tree unchanged.
 	let changedPaths: readonly string[];
+	let restoredBytes: readonly string[];
 	let discardedRef: string | null = null;
 	const coordination = acquireCommonRepositoryLock(tree, `generated ref refs/heads/${branch}`);
 	try {
@@ -757,6 +770,9 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		}
 		updateRef(tree, branch, built.top);
 		changedPaths = moveWorkTree(tree, branch);
+		// What the checkout of the move converted gets the patch set's bytes back
+		// (##WORKTREE-DELTA-BYTES).
+		restoredBytes = restoreDeltaBytesOf(tree, prebuiltPlan, out);
 	} catch (error) {
 		if (isCkError(error) && error.code === 'WORKTREE-REF-SHARED') {
 			out.addError(error.toPayload());
@@ -858,7 +874,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		discarded: discard === null ? [] : discard.commits.map((commit) => commit.sha),
 		discardedRef,
 		discardedPaths,
-		fastPathReason: verdict.reason
+		fastPathReason: verdict.reason,
+		restoredBytes
 	});
 }
 
@@ -1010,6 +1027,21 @@ function layerTargets(plan: readonly Artifact[]): readonly GeneratedLayerTarget[
 		}
 		return { layer: artifact.kind, target: toPosix(artifact.target), artifactPaths: [artifact.artifactPath], ids: [artifact.id] };
 	});
+}
+
+/**
+ * ##WORKTREE-DELTA-BYTES over every target the delta names - of its patches,
+ * its overlays and its resource entries - announcing the files it rewrote.
+ */
+function restoreDeltaBytesOf(treeDir: string, plan: readonly Artifact[], out: Output): readonly string[] {
+	const restored = restoreDeltaBytes(
+		treeDir,
+		plan.map((artifact) => toPosix(artifact.target))
+	);
+	if (restored.length > 0) {
+		out.info(`restored the bytes of ${restored.length} file(s) the delta writes: ${restored.join(', ')}`);
+	}
+	return restored;
 }
 
 function warnFrom(out: Output): (text: string) => void {
@@ -2461,6 +2493,7 @@ type ResultParts = {
 	readonly discardedRef?: string | null;
 	readonly discardedPaths?: readonly string[];
 	readonly fastPathReason?: string;
+	readonly restoredBytes?: readonly string[];
 };
 
 function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncResult {
@@ -2482,7 +2515,8 @@ function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncR
 		discarded: parts.discarded ?? [],
 		discardedRef: parts.discardedRef ?? null,
 		discardedPaths: parts.discardedPaths ?? [],
-		fastPathReason: parts.fastPathReason ?? null
+		fastPathReason: parts.fastPathReason ?? null,
+		restoredBytes: parts.restoredBytes ?? []
 	};
 }
 

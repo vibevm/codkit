@@ -4,10 +4,11 @@
 // PROP-002 sec. 2 (##GIT-ENV-ISOLATION) is the contract: every git invocation runs
 // with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_SYSTEM=/dev/null,
 // GIT_CONFIG_NOSYSTEM=1, LC_ALL=C, TZ=UTC and with explicit
-// `-c core.autocrlf=false -c core.quotepath=false`. Repository-selection and
-// config-injection variables inherited from the parent are removed before the
-// child starts. Machine-level git configuration must never change what codkit
-// computes.
+// `-c core.autocrlf=false -c core.eol=lf -c core.quotepath=false`.
+// Repository-selection and config-injection variables inherited from the parent
+// are removed before the child starts. Machine-level git configuration must
+// never change what codkit computes, and neither may the platform: `core.eol`
+// defaults to `native`, which is CRLF on Windows (##GIT-ENV-EOL).
 import { spawnSync } from 'node:child_process';
 import { ckError } from './messages.js';
 /**
@@ -24,8 +25,14 @@ const ISOLATION_ENV = {
     LC_ALL: 'C',
     TZ: 'UTC'
 };
-/** Deterministic byte/path options shared with the narrow human-commit seam. */
-const BASE_CONFIG = ['-c', 'core.autocrlf=false', '-c', 'core.quotepath=false'];
+/**
+ * Deterministic byte/path options shared with the narrow human-commit seam.
+ * `core.eol=lf`: a checkout writes a text file with its blob's line endings on
+ * every OS, as it does on Linux - left at `native`, a checkout on Windows writes
+ * CRLF for every `text=auto` file it touches (##GIT-ENV-EOL). It changes only
+ * what git writes; what it reads is normalized as before.
+ */
+const BASE_CONFIG = ['-c', 'core.autocrlf=false', '-c', 'core.eol=lf', '-c', 'core.quotepath=false'];
 /** Extra isolation that must not suppress hooks on gitLocal human commits. */
 const ISOLATED_CONFIG = [...BASE_CONFIG, '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false'];
 /**

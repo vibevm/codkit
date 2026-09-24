@@ -84,6 +84,31 @@ describe('runGit environment isolation', () => {
 		expect(result.stdout.trim()).toBe('false');
 	});
 
+	it('checks a text file out with its blob line endings where the platform writes CRLF', () => {
+		// ##GIT-ENV-EOL: under `text=auto` a checkout writes `core.eol`, whose
+		// default `native` is CRLF on Windows; elsewhere the repository says so.
+		writeFileSync(join(repo, '.gitattributes'), '* text=auto\n', 'utf8');
+		writeFileSync(join(repo, 'app.desktop'), '[Desktop Entry]\nName=App\n', 'utf8');
+		expect(runGit({ args: ['add', '--', '.gitattributes', 'app.desktop'], cwd: repo }).status).toBe(0);
+		expect(runGit({ args: ['commit', '--quiet', '--message', 'fixture'], cwd: repo, env: COMMIT_ENV }).status).toBe(0);
+		if (process.platform !== 'win32') {
+			expect(runGit({ args: ['config', '--local', 'core.eol', 'crlf'], cwd: repo }).status).toBe(0);
+		}
+
+		unlinkSync(join(repo, 'app.desktop'));
+		const control = spawnSync('git', ['-c', 'core.autocrlf=false', 'checkout', 'HEAD', '--', 'app.desktop'], {
+			cwd: repo,
+			env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+			encoding: 'utf8'
+		});
+		expect(control.status).toBe(0);
+		expect(readFileSync(join(repo, 'app.desktop'), 'utf8')).toBe('[Desktop Entry]\r\nName=App\r\n');
+
+		unlinkSync(join(repo, 'app.desktop'));
+		expect(runGit({ args: ['checkout', 'HEAD', '--', 'app.desktop'], cwd: repo }).status).toBe(0);
+		expect(readFileSync(join(repo, 'app.desktop'), 'utf8')).toBe('[Desktop Entry]\nName=App\n');
+	});
+
 	it('passes through non-isolation variables from the caller', () => {
 		const result = runGit({
 			args: ['var', 'GIT_AUTHOR_IDENT'],

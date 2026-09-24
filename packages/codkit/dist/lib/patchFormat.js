@@ -156,7 +156,7 @@ function splitPatchLines(text, file) {
     const lines = text.split('\n');
     for (let index = 0; index < lines.length; index += 1) {
         if ((lines[index] ?? '').includes('\r')) {
-            throw ckError('CRLF', 'patch file has CRLF line endings', 'codkit artifacts are LF-only; set core.autocrlf=false and re-check out the file', file, index + 1);
+            throw ckError('CRLF', 'patch file has CRLF line endings', 'codkit artifacts are LF-only; set core.autocrlf=false and core.eol=lf, then re-check out the file', file, index + 1);
         }
     }
     // A file that ends with LF splits into a trailing empty element; the format

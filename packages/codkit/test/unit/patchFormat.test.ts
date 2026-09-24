@@ -222,6 +222,14 @@ describe('parseCkpatch body validation', () => {
 		expect(codeOf(() => parse(SPEC_SAMPLE_LINES.join('\n')))).toBe('ARTIFACT-BROKEN');
 	});
 
+	it('refuses CRLF line endings, naming both settings a checkout on Windows needs for LF', () => {
+		const crlf = SPEC_SAMPLE.split('\n').join('\r\n');
+
+		expect(codeOf(() => parse(crlf))).toBe('CRLF');
+		expect(hintOf(() => parse(crlf))).toContain('core.autocrlf=false');
+		expect(hintOf(() => parse(crlf))).toContain('core.eol=lf');
+	});
+
 	it('refuses a second file in the same patch', () => {
 		const doubled = `${SPEC_SAMPLE}--- a/source/other.ts\n+++ b/source/other.ts\n@@ -1 +1 @@\n-a\n+b\n`;
 

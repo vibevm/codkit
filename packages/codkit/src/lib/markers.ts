@@ -127,7 +127,7 @@ export function parseMarkers(bytes: Uint8Array, ext: string, conventions: Marker
 				ckError(
 					'CRLF',
 					'file has CRLF line endings',
-					'codkit works on LF only; set core.autocrlf=false and re-check out the tree',
+					'codkit works on LF only; set core.autocrlf=false and core.eol=lf, then re-check out the tree',
 					file,
 					lineNumber
 				)

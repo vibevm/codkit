@@ -32,7 +32,7 @@
 - Feature commits живут в patchset; `save --commit` коммитит только извлечённые own/patch пути.
 - Generated branch дерева создаёт codkit с техническим автором `codkit <codkit@patchset.invalid>` и детерминированными датами.
 - patchset commits принадлежат людям/ботам, которые приняли изменение; дерево не является местом ручной истории.
-- Репозиторные bytes — UTF-8/LF. Git-вызовы codkit принудительно используют `core.autocrlf=false`.
+- Репозиторные bytes — UTF-8/LF. Git-вызовы codkit принудительно используют `core.autocrlf=false` и `core.eol=lf`, поэтому checkout codkit пишет LF на любой ОС; файлы, которые пишет дельта, после каждого `load` держат байты patchset.
 - На Windows `core.longpaths=true` в дереве проверяется `check-tree` и предупреждением резолвера.
 
 ## Blame в generated tree

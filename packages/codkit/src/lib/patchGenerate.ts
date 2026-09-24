@@ -133,7 +133,7 @@ export function checkBytePredicates(targetPath: string, pinBytes: Uint8Array, cu
 		throw ckError(
 			'CRLF',
 			`${targetPath} has a carriage return in it`,
-			'codkit works on LF only; set core.autocrlf=false, delete the file and check it out again',
+			'codkit works on LF only; set core.autocrlf=false and core.eol=lf, delete the file and check it out again',
 			targetPath
 		);
 	}

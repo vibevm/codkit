@@ -77,7 +77,7 @@ export function checkBytePredicates(targetPath, pinBytes, curBytes) {
         throw ckError('ENCODING', `${targetPath} is not valid UTF-8`, 'codkit reads and writes UTF-8 only; re-save the file as UTF-8 without a byte order mark', targetPath);
     }
     if (containsByte(curBytes, CR_BYTE)) {
-        throw ckError('CRLF', `${targetPath} has a carriage return in it`, 'codkit works on LF only; set core.autocrlf=false, delete the file and check it out again', targetPath);
+        throw ckError('CRLF', `${targetPath} has a carriage return in it`, 'codkit works on LF only; set core.autocrlf=false and core.eol=lf, delete the file and check it out again', targetPath);
     }
     if (endsWithNewline(pinBytes) && curBytes.length > 0 && !endsWithNewline(curBytes)) {
         throw ckError('EOF-NEWLINE', `${targetPath} lost the newline at the end of the file it has at the pin`, 'restore the final newline; an editor that strips it turns every later diff into noise', targetPath);

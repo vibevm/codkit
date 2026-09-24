@@ -169,6 +169,8 @@ describe('marker parser byte rules', () => {
 		expect(codes(result)).toEqual(['CRLF']);
 		expect(result.errors[0]?.line).toBe(1);
 		expect(result.errors[0]?.hint).toContain('core.autocrlf=false');
+		// ##GIT-ENV-EOL: without core.eol=lf a checkout on Windows writes the CRLF again.
+		expect(result.errors[0]?.hint).toContain('core.eol=lf');
 		expect(result.blocks).toEqual([]);
 	});
 

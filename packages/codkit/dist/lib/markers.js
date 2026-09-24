@@ -72,7 +72,7 @@ export function parseMarkers(bytes, ext, conventions, file) {
         const lineNumber = index + 1;
         if (line.includes('\r')) {
             // A carriage return makes every later line number a guess; stop here.
-            errors.push(ckError('CRLF', 'file has CRLF line endings', 'codkit works on LF only; set core.autocrlf=false and re-check out the tree', file, lineNumber));
+            errors.push(ckError('CRLF', 'file has CRLF line endings', 'codkit works on LF only; set core.autocrlf=false and core.eol=lf, then re-check out the tree', file, lineNumber));
             return { blocks: [], errors };
         }
         const match = pattern.exec(line);

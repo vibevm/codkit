@@ -216,6 +216,19 @@ describe('regeneratePatch byte predicates', () => {
 		expect(codeOf(() => generate(PIN, 'const one = 1;\r\nconst two = 2;\r\n', { targetPath: 'source/a.ts' }))).toBe('CRLF');
 	});
 
+	it('names both settings a checkout on Windows needs to write LF again', () => {
+		// ##GIT-ENV-EOL: core.autocrlf=false alone leaves core.eol at native, which is CRLF there.
+		let hint = '';
+		try {
+			generate(PIN, 'const one = 1;\r\nconst two = 2;\r\n', { targetPath: 'source/a.ts' });
+		} catch (error) {
+			hint = isCkError(error) ? (error.hint ?? '') : '';
+		}
+
+		expect(hint).toContain('core.autocrlf=false');
+		expect(hint).toContain('core.eol=lf');
+	});
+
 	it('refuses a target that lost the newline it has at the pin', () => {
 		expect(codeOf(() => generate(PIN, 'const one = 1;\nconst two = 2;', { targetPath: 'source/a.ts' }))).toBe('EOF-NEWLINE');
 	});

@@ -44,6 +44,7 @@ import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, foreignCommits, treeHeadError,
 import { assertCompletedRebaseMoveSyncTree, completedRebaseMoveForSync, finishCompletedRebaseMoveSync } from './rebaseOntoPinMove.js';
 import { hasRebasePendingRecords } from './rebaseOntoPinPending.js';
 import { refuseOverLiveSyncTransaction } from './syncTransaction.js';
+import { restoreDeltaBytes } from './workTreeBytes.js';
 import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.js';
 /** Patch artifacts live here, relative to the patchset root. */
 export const PATCHES_DIR = 'delta/patches';
@@ -399,6 +400,10 @@ export function runSync(options) {
                 generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : []
             });
         }
+        // The branch vouches for the content of the files the delta writes, not
+        // for the bytes an earlier checkout left of them (##WORKTREE-DELTA-BYTES):
+        // this is also where a tree written before that rule heals.
+        const restoredBytes = restoreDeltaBytesOf(tree, prebuiltPlan, out);
         // Own code is verified on every run: locally it is not part of the
         // branch commits, so the branch cannot vouch for it. The own extensions
         // are materialized on the same terms (##OWN-EXTENSION-UNIT).
@@ -414,7 +419,8 @@ export function runSync(options) {
             branch,
             branchTip: cache?.branchTip ?? null,
             own,
-            generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : []
+            generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : [],
+            restoredBytes
         });
     }
     if (options.verbose) {
@@ -458,6 +464,7 @@ export function runSync(options) {
     // the generated branch, or the run refuses with every ref, index and work
     // tree unchanged.
     let changedPaths;
+    let restoredBytes;
     let discardedRef = null;
     const coordination = acquireCommonRepositoryLock(tree, `generated ref refs/heads/${branch}`);
     try {
@@ -499,6 +506,9 @@ export function runSync(options) {
         }
         updateRef(tree, branch, built.top);
         changedPaths = moveWorkTree(tree, branch);
+        // What the checkout of the move converted gets the patch set's bytes back
+        // (##WORKTREE-DELTA-BYTES).
+        restoredBytes = restoreDeltaBytesOf(tree, prebuiltPlan, out);
     }
     catch (error) {
         if (isCkError(error) && error.code === 'WORKTREE-REF-SHARED') {
@@ -593,7 +603,8 @@ export function runSync(options) {
         discarded: discard === null ? [] : discard.commits.map((commit) => commit.sha),
         discardedRef,
         discardedPaths,
-        fastPathReason: verdict.reason
+        fastPathReason: verdict.reason,
+        restoredBytes
     });
 }
 // ---------------------------------------------------------------------------
@@ -719,6 +730,17 @@ function layerTargets(plan) {
         }
         return { layer: artifact.kind, target: toPosix(artifact.target), artifactPaths: [artifact.artifactPath], ids: [artifact.id] };
     });
+}
+/**
+ * ##WORKTREE-DELTA-BYTES over every target the delta names - of its patches,
+ * its overlays and its resource entries - announcing the files it rewrote.
+ */
+function restoreDeltaBytesOf(treeDir, plan, out) {
+    const restored = restoreDeltaBytes(treeDir, plan.map((artifact) => toPosix(artifact.target)));
+    if (restored.length > 0) {
+        out.info(`restored the bytes of ${restored.length} file(s) the delta writes: ${restored.join(', ')}`);
+    }
+    return restored;
 }
 function warnFrom(out) {
     return (text) => out.warn(text);
@@ -1876,7 +1898,8 @@ function result(status, exitCode, parts) {
         discarded: parts.discarded ?? [],
         discardedRef: parts.discardedRef ?? null,
         discardedPaths: parts.discardedPaths ?? [],
-        fastPathReason: parts.fastPathReason ?? null
+        fastPathReason: parts.fastPathReason ?? null,
+        restoredBytes: parts.restoredBytes ?? []
     };
 }
 /** git takes forward slashes on every platform; paths in argv are converted. */

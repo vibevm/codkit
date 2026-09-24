@@ -271,7 +271,7 @@ function splitPatchLines(text: string, file: string): string[] {
 			throw ckError(
 				'CRLF',
 				'patch file has CRLF line endings',
-				'codkit artifacts are LF-only; set core.autocrlf=false and re-check out the file',
+				'codkit artifacts are LF-only; set core.autocrlf=false and core.eol=lf, then re-check out the file',
 				file,
 				index + 1
 			);
