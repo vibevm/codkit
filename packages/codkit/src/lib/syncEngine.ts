@@ -46,6 +46,18 @@ import type { GeneratedLayerTarget, GeneratedOwnEvidence } from './generatedBran
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.ts';
 import type { GitEnv } from './gitx.ts';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.ts';
+import type { ProducedInput } from './inputsBuild.ts';
+import { assertInputPlacement } from './inputsPlacement.ts';
+import type { InputMode } from './inputsSource.ts';
+import {
+	appendInputCommits,
+	deliverInputs,
+	inputTreePaths,
+	inputsHistoryFingerprint,
+	produceInputs,
+	warnInputEdits
+} from './inputsTree.ts';
+import type { InputDelivery } from './inputsTree.ts';
 import type { Output } from './jsonOut.ts';
 import {
 	OVERLAYS_DIR,
@@ -197,6 +209,21 @@ export type SyncEngineOptions = {
 	/** Internal source of Git modes for an object-only scratch patchset checkout. */
 	readonly generatedModeSource?: { readonly repositoryRoot: string; readonly ref: string };
 	/**
+	 * Where the inputs of the configuration come from in this run (PROP-008
+	 * ##INPUTS-LOAD): `load` passes the working tree of each input's repository
+	 * by default and the pinned commit on request; `ci` and `publish` pass the
+	 * pinned commit. Absent, the run delivers no input and leaves what the tree
+	 * carries as it is - `save`, `sync` and the cycle rebuild the tree without
+	 * asking another repository for anything.
+	 */
+	readonly inputs?: InputMode;
+	/**
+	 * `ci` and `publish` (PROP-007 ##INPUTS-GENERATED): on a generated branch the
+	 * inputs are one commit each on top of the history, from their pinned
+	 * commits, instead of untracked files.
+	 */
+	readonly commitInputs?: boolean;
+	/**
 	 * Only `save` sets this. It has just extracted every change of the tree into
 	 * patchset, so what the guard would call unextracted work is exactly the work it
 	 * is about to put on the branch (PROP-008 sec. 4, step 3). No other caller may
@@ -301,6 +328,8 @@ export type SyncResult = {
 	 * ##WORKTREE-DELTA-BYTES); in path order, empty when none needed it.
 	 */
 	readonly restoredBytes: readonly string[];
+	/** The inputs this run delivered into the tree (##INPUTS-LOAD); empty when it delivered none. */
+	readonly inputs: readonly InputDelivery[];
 };
 
 type PatchArtifact = {
@@ -409,12 +438,25 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		}
 	}
 
+	// The inputs of the configuration (PROP-008 ##INPUTS-LOAD): their
+	// directories are hidden like the owned ones - those declared, and those the
+	// tree still carries from an earlier declaration until this run takes them
+	// away. They are committed instead only on a generated branch of `ci` and
+	// `publish` (##INPUTS-GENERATED).
+	const declaredInputs = config.inputs ?? [];
+	const inputMode = options.inputs;
+	const committingInputs = generatedBranch && options.commitInputs === true && inputMode !== undefined && declaredInputs.length > 0;
+	if (committingInputs && inputMode !== 'pinned') {
+		throw ckError('INTERNAL', 'a generated branch takes the inputs from their pinned commits only');
+	}
+	const inputPaths = inputTreePaths(tree, declaredInputs, (text) => out.warn(text));
+
 	// A shared file is classified before any mutation. A malformed managed
 	// block is a human decision: load must not repair it after moving refs or
 	// rewriting work-tree files.
 	let excludePlan: ExcludePlan;
 	try {
-		excludePlan = planExclude(tree, roots);
+		excludePlan = planExclude(tree, roots, undefined, inputPaths);
 	} catch (error) {
 		return reportBroken(out, error, branch);
 	}
@@ -447,6 +489,18 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	} catch (error) {
 		return reportBroken(out, error, branch);
 	}
+	// ##INPUTS-PLACEMENT: every `to` is checked on every run that writes the
+	// exclude block, whether or not it delivers inputs - a line of that block
+	// hides what git would otherwise show.
+	assertInputPlacement({
+		inputs: declaredInputs,
+		treeDir: tree,
+		pinSha: config.pin.sha,
+		type: options.type,
+		roots,
+		cleanupWhitelist: prebuiltConventions.cleanupWhitelist,
+		deliveredTargets: prebuiltPlan.map((artifact) => artifact.target)
+	});
 
 	// 3. What patchset asks for, and what this tree was last brought to. Reading
 	// them is free of effects, and the guard below needs to know which side of
@@ -455,7 +509,12 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// ##TREE-MARK).
 	const deltaState = deltaFiles(patchesDir, config.pin.sha);
 	const delta = deltaState.fingerprint;
-	const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice) : delta;
+	const historyFingerprint = generatedBranch
+		? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice)
+		: delta;
+	// A committed input is part of the history, so its declaration is part of
+	// what the fast path compares: a new pin of an input rebuilds the branch.
+	const fingerprint = committingInputs ? inputsHistoryFingerprint(historyFingerprint, declaredInputs) : historyFingerprint;
 	const id = treeId(tree);
 	const warn = (text: string): void => {
 		out.warn(text);
@@ -634,6 +693,26 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		}
 	}
 
+	// 4b. The inputs a tree carries untracked are built now, before the first
+	// write of the run, so a failing build leaves the tree as it was; the edits
+	// found in their directories are named before anything replaces them
+	// (##INPUTS-LOAD, ##INPUTS-EDITS). A dry run builds none.
+	const deliveringInputs = inputMode !== undefined && !committingInputs && !dryRun;
+	let producedInputs: readonly ProducedInput[] = [];
+	if (deliveringInputs) {
+		warnInputEdits(tree, declaredInputs, out);
+		producedInputs = produceInputs({
+			treeDir: tree,
+			inputs: declaredInputs,
+			mode: inputMode,
+			rebuild: options.fresh,
+			out,
+			verbose: options.verbose
+		});
+	} else if (dryRun && inputMode !== undefined && declaredInputs.length > 0) {
+		out.info(`inputs: ${declaredInputs.length} declared; a dry run builds and delivers none`);
+	}
+
 	// 5. The fast path.
 	// --fresh is an explicit request for a from-scratch pass: it must not be
 	// answered with "up to date", or the cleanup it asks for would never run.
@@ -666,6 +745,9 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		const ownExtensions =
 			materializer === null ? NO_OWN_EXTENSIONS : syncOwnExtensions(materializer, patchesDir, tree, declaredOwnExtensions(patchesDir));
 		writeExcludePlan(excludePlan);
+		// The inputs are delivered on every run, like own code: the branch
+		// cannot vouch for files it does not carry.
+		const inputs = deliveringInputs ? deliverInputs({ treeDir: tree, produced: producedInputs, out }) : [];
 		writeTreeHook(tree, branch, out);
 		reportOwn(out, own);
 		reportOwnExtensions(out, ownExtensions);
@@ -675,7 +757,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			branchTip: cache?.branchTip ?? null,
 			own,
 			generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : [],
-			restoredBytes
+			restoredBytes,
+			inputs
 		});
 	}
 	if (options.verbose) {
@@ -702,13 +785,20 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	}
 
 	// 8. Build the commits in a temporary index; the work tree is not touched.
+	// A generated branch of `ci` and `publish` ends with one commit per input,
+	// built from its pinned commit (##INPUTS-GENERATED); the tree keeps no
+	// record of them, so the only reuse is of a build of the same content.
+	const committedInputs = committingInputs
+		? produceInputs({ treeDir: tree, inputs: declaredInputs, mode: 'pinned', rebuild: false, out, verbose: options.verbose })
+		: [];
 	let built: BuildOutcome;
 	try {
 		built = buildBranch(
 			completedRebase === null ? options : { ...options, generatedBranch: true, materializeOverlays: true },
 			plan,
 			context,
-			id
+			id,
+			committedInputs
 		);
 	} catch (error) {
 		return reportBroken(out, error, branch);
@@ -814,6 +904,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		writeDevChannel(options.type, tree, overlays, context, config.pin.sha, warn);
 	}
 	writeExcludePlan(excludePlan);
+	const inputs = deliveringInputs ? deliverInputs({ treeDir: tree, produced: producedInputs, out }) : [];
 	writeTreeHook(tree, branch, out);
 	// The own state is recorded after the copy, when both sides are identical by
 	// construction: that is what makes the map usable as "who moved" evidence.
@@ -875,7 +966,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		discardedRef,
 		discardedPaths,
 		fastPathReason: verdict.reason,
-		restoredBytes
+		restoredBytes,
+		inputs
 	});
 }
 
@@ -1071,7 +1163,13 @@ type BuildOutcome = {
 	readonly patchSetCommit: string;
 };
 
-function buildBranch(options: SyncEngineOptions, plan: readonly Artifact[], context: OverlayVarContext, id: string): BuildOutcome {
+function buildBranch(
+	options: SyncEngineOptions,
+	plan: readonly Artifact[],
+	context: OverlayVarContext,
+	id: string,
+	inputs: readonly ProducedInput[] = []
+): BuildOutcome {
 	const { patchesDir, config, out } = options;
 	const tree = options.resolution.path;
 	assertGeneratedTargetOwnership(
@@ -1169,6 +1267,18 @@ function buildBranch(options: SyncEngineOptions, plan: readonly Artifact[], cont
 			}
 		}
 		if (options.generatedBranch === true && !ownCommitted) appendOwn();
+		if (inputs.length > 0) {
+			parent = appendInputCommits({
+				treeDir: tree,
+				indexEnv,
+				commitEnv,
+				parent,
+				produced: inputs,
+				patchSetCommit,
+				pinTag: config.pin.tag,
+				pinSha: config.pin.sha
+			});
+		}
 		return { top: parent, pinDateIso, patchSetCommit };
 	} finally {
 		rmSync(indexFile, { force: true });
@@ -1621,8 +1731,13 @@ export type ExcludeCheckpoints = {
 	readonly afterCoreSet?: () => void;
 };
 
-export function writeExclude(treeDir: string, roots: readonly OwnedRoot[], checkpoints?: ExcludeCheckpoints): void {
-	const plan = planExclude(treeDir, roots, checkpoints?.afterOpen);
+export function writeExclude(
+	treeDir: string,
+	roots: readonly OwnedRoot[],
+	checkpoints?: ExcludeCheckpoints,
+	inputPaths: readonly string[] = []
+): void {
+	const plan = planExclude(treeDir, roots, checkpoints?.afterOpen, inputPaths);
 	checkpoints?.afterPlan?.();
 	writeExcludePlan(plan, checkpoints);
 }
@@ -1630,13 +1745,20 @@ export function writeExclude(treeDir: string, roots: readonly OwnedRoot[], check
 /**
  * The managed block carries one line per owned directory, in the order the type
  * answered: git reads them as it reads any exclude file, and a family that owns
- * one directory gets exactly the single line it always got.
+ * one directory gets exactly the single line it always got. The directories of
+ * the inputs follow, one line each (##INPUTS-LOAD): delivered untracked like own
+ * code, they are hidden from git the same way.
  */
-function excludeBody(roots: readonly OwnedRoot[]): string {
-	return roots.map((owned) => `/${owned.path}/`).join('\n');
+function excludeBody(roots: readonly OwnedRoot[], inputPaths: readonly string[]): string {
+	return [...roots.map((owned) => owned.path), ...inputPaths].map((path) => `/${path}/`).join('\n');
 }
 
-function planExclude(treeDir: string, roots: readonly OwnedRoot[], afterOpen?: () => void): ExcludePlan {
+function planExclude(
+	treeDir: string,
+	roots: readonly OwnedRoot[],
+	afterOpen?: () => void,
+	inputPaths: readonly string[] = []
+): ExcludePlan {
 	const listings = listWorktrees(treeDir);
 	if (listings === null) {
 		// Keep the historical lower-level fallback for a path that is not a git
@@ -1661,10 +1783,10 @@ function planExclude(treeDir: string, roots: readonly OwnedRoot[], afterOpen?: (
 			treeDir,
 			adminRoot,
 			adminSegments: segments,
-			...planManagedBlock(path, existing, excludeBody(roots))
+			...planManagedBlock(path, existing, excludeBody(roots, inputPaths))
 		};
 	}
-	const body = excludeBody(roots);
+	const body = excludeBody(roots, inputPaths);
 	if (listings.length > 1) {
 		return planWorktreeExclude(treeDir, body);
 	}
@@ -2494,6 +2616,7 @@ type ResultParts = {
 	readonly discardedPaths?: readonly string[];
 	readonly fastPathReason?: string;
 	readonly restoredBytes?: readonly string[];
+	readonly inputs?: readonly InputDelivery[];
 };
 
 function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncResult {
@@ -2516,7 +2639,8 @@ function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncR
 		discardedRef: parts.discardedRef ?? null,
 		discardedPaths: parts.discardedPaths ?? [],
 		fastPathReason: parts.fastPathReason ?? null,
-		restoredBytes: parts.restoredBytes ?? []
+		restoredBytes: parts.restoredBytes ?? [],
+		inputs: parts.inputs ?? []
 	};
 }
 

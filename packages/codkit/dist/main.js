@@ -16,6 +16,7 @@ import { gcCommand } from './commands/gc.js';
 import { genBrandCommand, genCommand, genFeatureCommand } from './commands/gen.js';
 import { hooksCommand } from './commands/hooks.js';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.js';
+import { inputsCommand, inputsPinCommand } from './commands/inputs.js';
 import { inventoryCommand } from './commands/inventory.js';
 import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.js';
 import { loadCommand } from './commands/load.js';
@@ -82,6 +83,8 @@ const COMMANDS = new Map([
     ciCommand,
     packageCommand,
     publishCommand,
+    inputsCommand,
+    inputsPinCommand,
     hooksCommand,
     imagesetCommand,
     imagesetGenCommand,

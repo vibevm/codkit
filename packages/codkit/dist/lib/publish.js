@@ -10,6 +10,7 @@ import { CONFIG_FILE_NAME, loadLocalConfig, mergeLocal, parseBaseConfig } from '
 import { loadConventions } from './conventionsFile.js';
 import { treeId } from './fingerprint.js';
 import { runGit } from './gitx.js';
+import { releasedInputs } from './inputsTree.js';
 import { resolvePatchSetRef } from './inventory.js';
 import { acquireLock } from './lock.js';
 import { ckError } from './messages.js';
@@ -30,7 +31,7 @@ export async function runPublish(options) {
         throw ckError('CONFIG', '--scrub needs --squash', 'a history that carries the markers is not a clean release; add --squash');
     }
     const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
-    const snapshotConfig = configAtCommit(options.patchesDir, patchSetSha);
+    const snapshotConfig = locatedInputs(options.patchesDir, configAtCommit(options.patchesDir, patchSetSha));
     const branchName = options.branch === undefined || options.branch === null
         ? `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${snapshotConfig.pin.tag}`
         : checkedBranch(options.patchesDir, options.branch, [snapshotConfig, options.config]);
@@ -176,6 +177,9 @@ export async function runPublish(options) {
             options.checkpoint?.('branch-pushed');
         }
         const status = pushedBranch || pushedTag ? 'published' : 'up-to-date';
+        const inputs = releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []);
+        for (const input of inputs)
+            options.out.info(`input ${input.name}: ${input.commit.slice(0, 12)} -> ${input.to}: ${input.files} file(s)`);
         options.out.info(`${status}: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}`);
         return publishResult(EXIT_OK, status, {
             ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
@@ -183,7 +187,8 @@ export async function runPublish(options) {
             pushedBranch,
             pushedTag,
             squash: squashed,
-            scrub: scrubReport
+            scrub: scrubReport,
+            inputs
         });
     }
     finally {
@@ -233,6 +238,11 @@ function checkedBranch(patchesDir, name, configs) {
         }
     }
     return name;
+}
+/** ##LOCAL-CONFIG-RULE: the inputs of the published commit, found where this machine keeps them. */
+function locatedInputs(patchesDir, snapshot) {
+    const local = loadLocalConfig(patchesDir);
+    return local === null || snapshot.inputs === undefined ? snapshot : { ...snapshot, inputs: mergeLocal(snapshot, local).inputs };
 }
 /** The `publish` section of the published commit's codkit.json joined with the local one. */
 function releasePublishConfig(patchesDir, snapshot) {
@@ -429,7 +439,8 @@ function baseResult(patchSetSha, pinTag, branch, tag, observed, checks) {
         pushedTag: false,
         checks,
         squash: null,
-        scrub: null
+        scrub: null,
+        inputs: []
     };
 }
 function publishResult(exitCode, status, parts) {

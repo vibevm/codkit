@@ -1422,6 +1422,12 @@ function checkCompleteness(
 		if (patchTargets.has(path) || overlayTargets.has(path) || resourceTargets.has(path)) {
 			continue;
 		}
+		// PROP-007 ##INPUTS-GENERATED: a branch built by `ci` or `publish` ends with
+		// the commits of the inputs, and a path under the `to` of a declared input
+		// is explained by that input.
+		if ((config.inputs ?? []).some((input) => path.startsWith(`${input.to}/`))) {
+			continue;
+		}
 		findings.push(
 			finding(
 				'UNTRACKED-INTERVENTION',

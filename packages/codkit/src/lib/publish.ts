@@ -13,6 +13,8 @@ import type { CodkitConfig, PublishConfig } from './configFile.ts';
 import { loadConventions } from './conventionsFile.ts';
 import { treeId } from './fingerprint.ts';
 import { runGit } from './gitx.ts';
+import { releasedInputs } from './inputsTree.ts';
+import type { ReleasedInput } from './inputsTree.ts';
 import { resolvePatchSetRef } from './inventory.ts';
 import type { Output } from './jsonOut.ts';
 import { acquireLock } from './lock.ts';
@@ -78,6 +80,8 @@ export type PublishResult = {
 	readonly checks: CiResult | null;
 	readonly squash: PublishSquash | null;
 	readonly scrub: ScrubReport | null;
+	/** The inputs of the published commit as the pushed tree carries them (##INPUTS-GENERATED). */
+	readonly inputs: readonly ReleasedInput[];
 };
 
 type RemoteObservation = { readonly branch: string | null; readonly tag: string | null };
@@ -93,7 +97,7 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 		throw ckError('CONFIG', '--scrub needs --squash', 'a history that carries the markers is not a clean release; add --squash');
 	}
 	const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
-	const snapshotConfig = configAtCommit(options.patchesDir, patchSetSha);
+	const snapshotConfig = locatedInputs(options.patchesDir, configAtCommit(options.patchesDir, patchSetSha));
 	const branchName =
 		options.branch === undefined || options.branch === null
 			? `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${snapshotConfig.pin.tag}`
@@ -258,6 +262,9 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			options.checkpoint?.('branch-pushed');
 		}
 		const status = pushedBranch || pushedTag ? 'published' : 'up-to-date';
+		const inputs = releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []);
+		for (const input of inputs)
+			options.out.info(`input ${input.name}: ${input.commit.slice(0, 12)} -> ${input.to}: ${input.files} file(s)`);
 		options.out.info(`${status}: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}`);
 		return publishResult(EXIT_OK, status, {
 			...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
@@ -265,7 +272,8 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			pushedBranch,
 			pushedTag,
 			squash: squashed,
-			scrub: scrubReport
+			scrub: scrubReport,
+			inputs
 		});
 	} finally {
 		workspace?.release();
@@ -320,6 +328,12 @@ function checkedBranch(patchesDir: string, name: string, configs: readonly Codki
 		}
 	}
 	return name;
+}
+
+/** ##LOCAL-CONFIG-RULE: the inputs of the published commit, found where this machine keeps them. */
+function locatedInputs(patchesDir: string, snapshot: CodkitConfig): CodkitConfig {
+	const local = loadLocalConfig(patchesDir);
+	return local === null || snapshot.inputs === undefined ? snapshot : { ...snapshot, inputs: mergeLocal(snapshot, local).inputs };
 }
 
 /** The `publish` section of the published commit's codkit.json joined with the local one. */
@@ -565,7 +579,8 @@ function baseResult(
 		pushedTag: false,
 		checks,
 		squash: null,
-		scrub: null
+		scrub: null,
+		inputs: []
 	};
 }
 

@@ -94,7 +94,8 @@ function dataOf(result) {
                 excluded: [...result.scrub.excluded],
                 leftovers: result.scrub.leftovers.map((leftover) => ({ ...leftover, tokens: [...leftover.tokens] })),
                 vocabulary: { ...result.scrub.vocabulary }
-            }
+            },
+        inputs: result.inputs.map((input) => ({ ...input }))
     };
 }
 export const publishCommand = {

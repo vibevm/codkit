@@ -221,6 +221,9 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 						? {}
 						: { generatedModeSource: { repositoryRoot: options.patchesRepositoryRoot, ref: options.patchSetCommit } })
 				};
+	// PROP-007 ##INPUTS-GENERATED: every pass of ci takes the inputs from their
+	// pinned commits, and a generated branch carries them as commits.
+	const pinnedInputs = { inputs: 'pinned', commitInputs: true } as const;
 
 	const done = (exitCode: number): CiResult => {
 		summarize(out, profile, steps.steps, exitCode);
@@ -335,7 +338,8 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		verbose: options.verbose,
 		generatedBranch: profile !== 'build',
 		omitLicenceNotice: options.omitLicenceNotice === true,
-		...immutableSource
+		...immutableSource,
+		...pinnedInputs
 	});
 	branchTip = applied.branchTip;
 	generatedOwnPaths = applied.generatedOwnPaths;
@@ -402,7 +406,8 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 			verbose: options.verbose,
 			generatedBranch: true,
 			omitLicenceNotice: options.omitLicenceNotice === true,
-			...immutableSource
+			...immutableSource,
+			...pinnedInputs
 		});
 		branchTip = applied.branchTip;
 		generatedOwnPaths = applied.generatedOwnPaths;
@@ -751,7 +756,10 @@ function effectiveDiffStep(options: CiOptions, tip: string | null): EffectiveDif
 			};
 		}
 
-		const patch = gitOutput(resolution.path, ['diff', baseTip, currentTip]);
+		// The inputs are reviewed in their own repositories, and the base tip is
+		// built without them: the diff leaves their directories out (##INPUTS-GENERATED).
+		const inputScope = inputDiffScope([...(options.config.inputs ?? []), ...(baseConfig.inputs ?? [])]);
+		const patch = gitOutput(resolution.path, ['diff', baseTip, currentTip, ...inputScope]);
 		if (patch === null) {
 			return {
 				state: 'warned',
@@ -760,7 +768,7 @@ function effectiveDiffStep(options: CiOptions, tip: string | null): EffectiveDif
 				diff: null
 			};
 		}
-		const stat = gitOutput(resolution.path, ['diff', '--stat', baseTip, currentTip]) ?? '';
+		const stat = gitOutput(resolution.path, ['diff', '--stat', baseTip, currentTip, ...inputScope]) ?? '';
 		const patchPath = writeOut(patchesDir, EFFECTIVE_DIFF_PATH, patch);
 		out.info(`effective diff ${baseTip.slice(0, 8)}..${currentTip.slice(0, 8)} -> ${EFFECTIVE_DIFF_PATH}`);
 		for (const line of stat.split('\n')) {
@@ -785,6 +793,12 @@ function effectiveDiffStep(options: CiOptions, tip: string | null): EffectiveDif
 	} finally {
 		checkout.release();
 	}
+}
+
+/** The pathspec that leaves the directories of the inputs out of a diff; empty without inputs. */
+function inputDiffScope(inputs: readonly { readonly to: string }[]): readonly string[] {
+	if (inputs.length === 0) return [];
+	return ['--', '.', ...[...new Set(inputs.map((input) => input.to))].map((to) => `:(exclude,literal)${to}`)];
 }
 
 function writeOut(patchesDir: string, relative: string, content: string): string {

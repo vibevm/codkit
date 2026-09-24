@@ -31,6 +31,8 @@ import { NO_OWN_EXTENSIONS, materializerOf, strandedExtensionClassifier, syncOwn
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
+import { assertInputPlacement } from './inputsPlacement.js';
+import { appendInputCommits, deliverInputs, inputTreePaths, inputsHistoryFingerprint, produceInputs, warnInputEdits } from './inputsTree.js';
 import { OVERLAYS_DIR, checkOverlay, isExactOverlayMaterialization, loadOverlays, overlayDriftErrors, renderOverlayTarget, writeDevChannel } from './layers/overlay.js';
 import { RESOURCE_MAP_PATH, assertTargetAtPin, loadResourceMap, resourceSourcePath } from './layers/resource.js';
 import { ckError, isCkError } from './messages.js';
@@ -160,12 +162,24 @@ export function runSync(options) {
             materializeOverlays = true;
         }
     }
+    // The inputs of the configuration (PROP-008 ##INPUTS-LOAD): their
+    // directories are hidden like the owned ones - those declared, and those the
+    // tree still carries from an earlier declaration until this run takes them
+    // away. They are committed instead only on a generated branch of `ci` and
+    // `publish` (##INPUTS-GENERATED).
+    const declaredInputs = config.inputs ?? [];
+    const inputMode = options.inputs;
+    const committingInputs = generatedBranch && options.commitInputs === true && inputMode !== undefined && declaredInputs.length > 0;
+    if (committingInputs && inputMode !== 'pinned') {
+        throw ckError('INTERNAL', 'a generated branch takes the inputs from their pinned commits only');
+    }
+    const inputPaths = inputTreePaths(tree, declaredInputs, (text) => out.warn(text));
     // A shared file is classified before any mutation. A malformed managed
     // block is a human decision: load must not repair it after moving refs or
     // rewriting work-tree files.
     let excludePlan;
     try {
-        excludePlan = planExclude(tree, roots);
+        excludePlan = planExclude(tree, roots, undefined, inputPaths);
     }
     catch (error) {
         return reportBroken(out, error, branch);
@@ -199,6 +213,18 @@ export function runSync(options) {
     catch (error) {
         return reportBroken(out, error, branch);
     }
+    // ##INPUTS-PLACEMENT: every `to` is checked on every run that writes the
+    // exclude block, whether or not it delivers inputs - a line of that block
+    // hides what git would otherwise show.
+    assertInputPlacement({
+        inputs: declaredInputs,
+        treeDir: tree,
+        pinSha: config.pin.sha,
+        type: options.type,
+        roots,
+        cleanupWhitelist: prebuiltConventions.cleanupWhitelist,
+        deliveredTargets: prebuiltPlan.map((artifact) => artifact.target)
+    });
     // 3. What patchset asks for, and what this tree was last brought to. Reading
     // them is free of effects, and the guard below needs to know which side of
     // an own-code difference moved. The walk is taken once: the fingerprint and
@@ -206,7 +232,12 @@ export function runSync(options) {
     // ##TREE-MARK).
     const deltaState = deltaFiles(patchesDir, config.pin.sha);
     const delta = deltaState.fingerprint;
-    const fingerprint = generatedBranch ? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice) : delta;
+    const historyFingerprint = generatedBranch
+        ? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice)
+        : delta;
+    // A committed input is part of the history, so its declaration is part of
+    // what the fast path compares: a new pin of an input rebuilds the branch.
+    const fingerprint = committingInputs ? inputsHistoryFingerprint(historyFingerprint, declaredInputs) : historyFingerprint;
     const id = treeId(tree);
     const warn = (text) => {
         out.warn(text);
@@ -381,6 +412,26 @@ export function runSync(options) {
             out.info(`discard ${path}`);
         }
     }
+    // 4b. The inputs a tree carries untracked are built now, before the first
+    // write of the run, so a failing build leaves the tree as it was; the edits
+    // found in their directories are named before anything replaces them
+    // (##INPUTS-LOAD, ##INPUTS-EDITS). A dry run builds none.
+    const deliveringInputs = inputMode !== undefined && !committingInputs && !dryRun;
+    let producedInputs = [];
+    if (deliveringInputs) {
+        warnInputEdits(tree, declaredInputs, out);
+        producedInputs = produceInputs({
+            treeDir: tree,
+            inputs: declaredInputs,
+            mode: inputMode,
+            rebuild: options.fresh,
+            out,
+            verbose: options.verbose
+        });
+    }
+    else if (dryRun && inputMode !== undefined && declaredInputs.length > 0) {
+        out.info(`inputs: ${declaredInputs.length} declared; a dry run builds and delivers none`);
+    }
     // 5. The fast path.
     // --fresh is an explicit request for a from-scratch pass: it must not be
     // answered with "up to date", or the cleanup it asks for would never run.
@@ -411,6 +462,9 @@ export function runSync(options) {
         const materializer = materializerOf(options.type);
         const ownExtensions = materializer === null ? NO_OWN_EXTENSIONS : syncOwnExtensions(materializer, patchesDir, tree, declaredOwnExtensions(patchesDir));
         writeExcludePlan(excludePlan);
+        // The inputs are delivered on every run, like own code: the branch
+        // cannot vouch for files it does not carry.
+        const inputs = deliveringInputs ? deliverInputs({ treeDir: tree, produced: producedInputs, out }) : [];
         writeTreeHook(tree, branch, out);
         reportOwn(out, own);
         reportOwnExtensions(out, ownExtensions);
@@ -420,7 +474,8 @@ export function runSync(options) {
             branchTip: cache?.branchTip ?? null,
             own,
             generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : [],
-            restoredBytes
+            restoredBytes,
+            inputs
         });
     }
     if (options.verbose) {
@@ -443,9 +498,15 @@ export function runSync(options) {
         return dryRunPlan(options, plan, context, branch);
     }
     // 8. Build the commits in a temporary index; the work tree is not touched.
+    // A generated branch of `ci` and `publish` ends with one commit per input,
+    // built from its pinned commit (##INPUTS-GENERATED); the tree keeps no
+    // record of them, so the only reuse is of a build of the same content.
+    const committedInputs = committingInputs
+        ? produceInputs({ treeDir: tree, inputs: declaredInputs, mode: 'pinned', rebuild: false, out, verbose: options.verbose })
+        : [];
     let built;
     try {
-        built = buildBranch(completedRebase === null ? options : { ...options, generatedBranch: true, materializeOverlays: true }, plan, context, id);
+        built = buildBranch(completedRebase === null ? options : { ...options, generatedBranch: true, materializeOverlays: true }, plan, context, id, committedInputs);
     }
     catch (error) {
         return reportBroken(out, error, branch);
@@ -548,6 +609,7 @@ export function runSync(options) {
         writeDevChannel(options.type, tree, overlays, context, config.pin.sha, warn);
     }
     writeExcludePlan(excludePlan);
+    const inputs = deliveringInputs ? deliverInputs({ treeDir: tree, produced: producedInputs, out }) : [];
     writeTreeHook(tree, branch, out);
     // The own state is recorded after the copy, when both sides are identical by
     // construction: that is what makes the map usable as "who moved" evidence.
@@ -604,7 +666,8 @@ export function runSync(options) {
         discardedRef,
         discardedPaths,
         fastPathReason: verdict.reason,
-        restoredBytes
+        restoredBytes,
+        inputs
     });
 }
 // ---------------------------------------------------------------------------
@@ -758,7 +821,7 @@ function listPatchFiles(patchesDir) {
         .filter((name) => name.endsWith(PATCH_FILE_SUFFIX))
         .sort((left, right) => Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8')));
 }
-function buildBranch(options, plan, context, id) {
+function buildBranch(options, plan, context, id, inputs = []) {
     const { patchesDir, config, out } = options;
     const tree = options.resolution.path;
     assertGeneratedTargetOwnership(patchesDir, options.type, ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), layerTargets(plan));
@@ -840,6 +903,18 @@ function buildBranch(options, plan, context, id) {
         }
         if (options.generatedBranch === true && !ownCommitted)
             appendOwn();
+        if (inputs.length > 0) {
+            parent = appendInputCommits({
+                treeDir: tree,
+                indexEnv,
+                commitEnv,
+                parent,
+                produced: inputs,
+                patchSetCommit,
+                pinTag: config.pin.tag,
+                pinSha: config.pin.sha
+            });
+        }
         return { top: parent, pinDateIso, patchSetCommit };
     }
     finally {
@@ -1168,20 +1243,22 @@ function pruneEmptyDirectories(root, candidates) {
         }
     }
 }
-export function writeExclude(treeDir, roots, checkpoints) {
-    const plan = planExclude(treeDir, roots, checkpoints?.afterOpen);
+export function writeExclude(treeDir, roots, checkpoints, inputPaths = []) {
+    const plan = planExclude(treeDir, roots, checkpoints?.afterOpen, inputPaths);
     checkpoints?.afterPlan?.();
     writeExcludePlan(plan, checkpoints);
 }
 /**
  * The managed block carries one line per owned directory, in the order the type
  * answered: git reads them as it reads any exclude file, and a family that owns
- * one directory gets exactly the single line it always got.
+ * one directory gets exactly the single line it always got. The directories of
+ * the inputs follow, one line each (##INPUTS-LOAD): delivered untracked like own
+ * code, they are hidden from git the same way.
  */
-function excludeBody(roots) {
-    return roots.map((owned) => `/${owned.path}/`).join('\n');
+function excludeBody(roots, inputPaths) {
+    return [...roots.map((owned) => owned.path), ...inputPaths].map((path) => `/${path}/`).join('\n');
 }
-function planExclude(treeDir, roots, afterOpen) {
+function planExclude(treeDir, roots, afterOpen, inputPaths = []) {
     const listings = listWorktrees(treeDir);
     if (listings === null) {
         // Keep the historical lower-level fallback for a path that is not a git
@@ -1202,10 +1279,10 @@ function planExclude(treeDir, roots, afterOpen) {
             treeDir,
             adminRoot,
             adminSegments: segments,
-            ...planManagedBlock(path, existing, excludeBody(roots))
+            ...planManagedBlock(path, existing, excludeBody(roots, inputPaths))
         };
     }
-    const body = excludeBody(roots);
+    const body = excludeBody(roots, inputPaths);
     if (listings.length > 1) {
         return planWorktreeExclude(treeDir, body);
     }
@@ -1899,7 +1976,8 @@ function result(status, exitCode, parts) {
         discardedRef: parts.discardedRef ?? null,
         discardedPaths: parts.discardedPaths ?? [],
         fastPathReason: parts.fastPathReason ?? null,
-        restoredBytes: parts.restoredBytes ?? []
+        restoredBytes: parts.restoredBytes ?? [],
+        inputs: parts.inputs ?? []
     };
 }
 /** git takes forward slashes on every platform; paths in argv are converted. */

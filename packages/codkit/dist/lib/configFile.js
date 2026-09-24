@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import { CR_BYTE, decodeUtf8Strict, LF_BYTE } from './bytes.js';
 import { readContainedFile } from './containedFile.js';
+import { INPUT_FIELD_DOCS, LOCAL_INPUT_FIELD_DOCS, inputsSchema, localInputContentField, localInputsSchema, locateInputs } from './inputsDeclaration.js';
 import { ckError } from './messages.js';
 import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.js';
 export const CONFIG_FILE_NAME = 'codkit.json';
@@ -82,15 +83,17 @@ const configSchema = z.object({
     publishRemoteUrl: z.string().nullable().default(null),
     buildWatchFile: repositoryFilePath.nullable().default(null),
     conventionsExtensionFile: repositoryFilePath.nullable().default(null),
+    inputs: inputsSchema.optional(),
     publish: publishSchema.optional()
 });
-/** codkit.local.json: same field vocabulary, everything optional. */
+/** codkit.local.json: same field vocabulary, everything optional; an input carries only its location. */
 const localConfigSchema = z.object({
     typeConfig: typeConfigSchema.optional(),
     generatedBranchPrefix: z.string().min(1).optional(),
     cycleBranchPrefix: z.string().min(1).optional(),
     releaseRefPrefix: z.string().min(1).optional(),
     publishRemoteUrl: z.string().nullable().optional(),
+    inputs: localInputsSchema.optional(),
     publish: publishSchema.optional()
 });
 const CONFIG_KEYS = [
@@ -105,6 +108,7 @@ const CONFIG_KEYS = [
     'publishRemoteUrl',
     'buildWatchFile',
     'conventionsExtensionFile',
+    'inputs',
     'publish'
 ];
 const PIN_KEYS = ['tag', 'sha', 'date'];
@@ -115,6 +119,7 @@ const LOCAL_ALLOWED_KEYS = [
     'cycleBranchPrefix',
     'releaseRefPrefix',
     'publishRemoteUrl',
+    'inputs',
     'publish'
 ];
 /** Fields that exist in the base config but must never be overridden locally. */
@@ -237,8 +242,11 @@ const FIELD_DOCS = {
         required: 'publish.scrub.allow is optional',
         invalid: 'publish.scrub.allow must be a list of non-empty tokens',
         hint: 'set "allow": ["<a token the release may carry where the scrub leaves it>"]'
-    }
+    },
+    ...INPUT_FIELD_DOCS
 };
+/** codkit.local.json reads the same table, with its own words for an input entry. */
+const LOCAL_FIELD_DOCS = { ...FIELD_DOCS, ...LOCAL_INPUT_FIELD_DOCS };
 const FALLBACK_DOC = {
     required: 'is required',
     invalid: 'has an invalid value',
@@ -335,11 +343,19 @@ export function parseLocalConfig(raw, fileLabel) {
     if (isPlainObject(scrub) && Object.prototype.hasOwnProperty.call(scrub, 'allow')) {
         throw ckError('CONFIG', 'publish.scrub.allow cannot be set locally: a local file can scrub and check more of a release, never less', `remove "allow" from ${LOCAL_CONFIG_FILE_NAME}; keep the list in ${CONFIG_FILE_NAME}, where it is reviewed`, fileLabel);
     }
+    refuseLocalInputContent(object['inputs'], fileLabel);
     const parsed = localConfigSchema.safeParse(object);
     if (!parsed.success) {
-        throw schemaError(parsed.error.issues, object, fileLabel);
+        throw schemaError(parsed.error.issues, object, fileLabel, LOCAL_FIELD_DOCS);
     }
     return parsed.data;
+}
+/** ##LOCAL-CONFIG-RULE: a local entry of `inputs` names the location of an input and nothing it takes. */
+function refuseLocalInputContent(inputs, fileLabel) {
+    const field = localInputContentField(inputs);
+    if (field === null)
+        return;
+    throw ckError('CONFIG', `inputs.${field} cannot be set locally: ${LOCAL_CONFIG_FILE_NAME} may name only the repository of an input on this machine`, `remove "${field}" from ${LOCAL_CONFIG_FILE_NAME}; what an input takes is declared in ${CONFIG_FILE_NAME}, where it is reviewed`, fileLabel);
 }
 /** Apply the non-empty fields of codkit.local.json on top of the base config. */
 export function mergeLocal(base, local) {
@@ -355,6 +371,7 @@ export function mergeLocal(base, local) {
         publishRemoteUrl: overrideOrKeep(base.publishRemoteUrl, local.publishRemoteUrl),
         buildWatchFile: base.buildWatchFile,
         conventionsExtensionFile: base.conventionsExtensionFile,
+        ...(base.inputs === undefined ? {} : { inputs: locateInputs(base.inputs, local.inputs) }),
         publish: joinPublish(base.publish, local.publish)
     };
 }
@@ -395,6 +412,7 @@ export function serializeBaseConfig(config) {
         buildWatchFile: parsed.buildWatchFile,
         conventionsExtensionFile: parsed.conventionsExtensionFile,
         // Absent stays absent: JSON.stringify drops an undefined member.
+        inputs: parsed.inputs,
         publish: parsed.publish
     };
     return `${JSON.stringify(canonical, null, 2)}\n`;
@@ -463,21 +481,37 @@ function assertKnownKeys(object, known, fileLabel, prefix) {
     const rendered = unknownKeys.map((key) => `${prefix}${key}`).join(', ');
     throw ckError('CONFIG', `unknown field(s): ${rendered}`, `remove them; the allowed fields are: ${known.map((key) => `${prefix}${key}`).join(', ')}`, fileLabel);
 }
-function schemaError(issues, raw, fileLabel) {
+function schemaError(issues, raw, fileLabel, docs = FIELD_DOCS) {
     const issue = issues[0];
     if (issue === undefined) {
         return ckError('CONFIG', 'failed validation', FALLBACK_DOC.hint, fileLabel);
     }
     const path = issue.path.map((segment) => String(segment)).join('.');
-    // An issue inside a list is documented by the list: `publish.exclude.0` is `publish.exclude`.
+    // An issue inside a list is documented by the list: `publish.exclude.0` is
+    // `publish.exclude`; a field of a list entry by its name without the index:
+    // `inputs.1.ref` is `inputs.ref`.
     const index = issue.path.findIndex((segment) => typeof segment === 'number');
     const list = index === -1 ? path : issue.path.slice(0, index).map(String).join('.');
-    const documented = FIELD_DOCS[path] === undefined && FIELD_DOCS[list] !== undefined ? list : path;
-    const doc = FIELD_DOCS[documented] ?? FALLBACK_DOC;
+    // The deepest documented field on the way, list indexes left out: a key of
+    // `inputs.0.env` is documented by `inputs.env`.
+    const segments = issue.path.filter((segment) => typeof segment !== 'number').map(String);
+    const field = segments
+        .map((_, count) => segments.slice(0, segments.length - count).join('.'))
+        .find((candidate) => candidate !== '' && docs[candidate] !== undefined) ?? '';
+    const documented = docs[path] !== undefined ? path : field !== '' ? field : docs[list] !== undefined ? list : path;
+    const doc = docs[documented] ?? FALLBACK_DOC;
     // Distinguish "absent" from "present but wrong" by looking at the raw input
     // rather than at validator-specific issue codes.
     const absent = valueAtPath(raw, issue.path) === undefined;
-    return ckError('CONFIG', withFieldPath(documented, absent ? doc.required : doc.invalid), doc.hint, fileLabel);
+    return ckError('CONFIG', `${withFieldPath(documented, absent ? doc.required : doc.invalid)}${inputEntryOf(raw, issue.path)}`, doc.hint, fileLabel);
+}
+/** Which entry of `inputs` an issue is about: its position, and its name when it has one. */
+function inputEntryOf(raw, path) {
+    const position = path[1];
+    if (path[0] !== 'inputs' || typeof position !== 'number')
+        return '';
+    const name = valueAtPath(raw, ['inputs', position, 'name']);
+    return ` (input ${position + 1}${typeof name === 'string' && name !== '' ? `, ${name}` : ''})`;
 }
 /** Field texts already name their field; only generic fallbacks need the prefix. */
 function withFieldPath(path, text) {

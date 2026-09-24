@@ -14,6 +14,9 @@ import { extname, join } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
+import { loadLocalConfig } from '../lib/configFile.ts';
+import { inputRepositoryState } from '../lib/inputsRepository.ts';
+import { inspectInputCopies } from '../lib/inputsTree.ts';
 import { loadConventions } from '../lib/conventionsFile.ts';
 import type { Conventions } from '../lib/conventionsFile.ts';
 import { expandCollapsedUntracked, porcelainZEntries } from '../lib/driftGuard.ts';
@@ -192,6 +195,12 @@ async function run(ctx: CommandContext): Promise<number> {
 		ctx.out.info(`  ... and ${stranded.length - LIST_LIMIT} more`);
 	}
 
+	// 2b. The inputs (PROP-007 ##CMD-STATUS-INPUTS): what the tree carries of
+	// each, the edits in their directories, and where each repository stands
+	// against its pin - a pin behind HEAD or a working tree with changes of its
+	// own is what would make a release take other content than the tree shows.
+	const inputs = reportInputs(ctx, config, tree);
+
 	// 3. Upstream files: what git sees outside the own directory and outside
 	// the declared own extensions, and whether the markers of those files are
 	// still valid.
@@ -269,7 +278,8 @@ async function run(ctx: CommandContext): Promise<number> {
 			packagingScratch: [...packagingScratch]
 		},
 		patchset: { uncommittedDelta: [...uncommitted] },
-		pendingHeaders: pending.map((entry) => entry.header.id)
+		pendingHeaders: pending.map((entry) => entry.header.id),
+		inputs: inputs.data
 	});
 
 	if (unextracted > 0) {
@@ -278,7 +288,82 @@ async function run(ctx: CommandContext): Promise<number> {
 	// A stranded materialization raises the code without joining `unextracted`:
 	// there is something to remove, but `save` is not what removes it, and the
 	// recipe stands beside the path itself.
-	return unextracted > 0 || stranded.length > 0 || markerErrors > 0 ? EXIT_CHECK_FAILED : EXIT_OK;
+	// An edit in the directory of an input raises the code too, on the same
+	// terms: the recipe stands beside it, and it is not `save`.
+	return unextracted > 0 || stranded.length > 0 || markerErrors > 0 || inputs.edits > 0 ? EXIT_CHECK_FAILED : EXIT_OK;
+}
+
+/**
+ * One line per input: what the tree carries of it and the edits of its
+ * directory; then a line for a pin behind the HEAD of its repository, for
+ * changes its working tree has of its own, and for a repository that is not
+ * there. A location codkit.local.json gives for an input codkit.json does not
+ * declare is named as well.
+ */
+function reportInputs(ctx: CommandContext, config: CodkitConfig, tree: string): { readonly data: JsonValue; readonly edits: number } {
+	const declared = config.inputs ?? [];
+	const unmatched = unmatchedLocalInputs(ctx.patchesDir, declared);
+	if (declared.length === 0 && unmatched.length === 0) return { data: [], edits: 0 };
+	ctx.out.info(`inputs: ${declared.length} declared`);
+	let edits = 0;
+	const data: JsonValue[] = [];
+	for (const copy of inspectInputCopies(tree, declared, (text) => ctx.out.warn(text))) {
+		const { input, recorded } = copy;
+		const delivered =
+			recorded === null
+				? 'not delivered yet'
+				: `${Object.keys(recorded.files).length} file(s) from ${recorded.commit === null ? 'the working tree' : recorded.commit.slice(0, 12)}`;
+		ctx.out.info(
+			`  ${input.name} -> ${input.to}: ${delivered}${copy.edits.length === 0 ? '' : `, ${copy.edits.length} path(s) edited in the fork tree`}`
+		);
+		for (const edit of copy.edits.slice(0, LIST_LIMIT)) {
+			ctx.out.info(`    ${edit.kind.padEnd(8)} ${input.to}/${edit.path} - belongs to ${input.repository}; codkit load puts the input back`);
+		}
+		edits += copy.edits.length;
+		const state = inputRepositoryState(input);
+		if (!state.present) ctx.out.warn(`input ${input.name}: the repository ${input.repository} is not there`);
+		if (state.pin === 'behind') {
+			ctx.out.warn(
+				`input ${input.name}: the pin ${input.ref.slice(0, 12)} is ${state.behind ?? '?'} commit(s) behind HEAD ${state.head?.slice(0, 12) ?? ''} of its repository; codkit inputs pin ${input.name} moves it`
+			);
+		} else if (state.pin === 'diverged' || state.pin === 'missing-commit') {
+			ctx.out.warn(
+				`input ${input.name}: the pin ${input.ref.slice(0, 12)} is ${state.pin === 'diverged' ? 'not an ancestor of' : 'not a commit of the repository at'} HEAD ${state.head?.slice(0, 12) ?? ''}`
+			);
+		}
+		if (state.uncommitted.length > 0) {
+			ctx.out.warn(
+				`input ${input.name}: the working tree of ${input.repository} has ${state.uncommitted.length} uncommitted change(s); the pin does not carry them`
+			);
+		}
+		data.push({
+			name: input.name,
+			to: input.to,
+			repository: input.repository,
+			ref: input.ref,
+			delivered: recorded === null ? null : { mode: recorded.mode, commit: recorded.commit, files: Object.keys(recorded.files).length },
+			edits: copy.edits.map((edit) => ({ path: `${input.to}/${edit.path}`, kind: edit.kind })),
+			repositoryState: {
+				present: state.present,
+				head: state.head,
+				pin: state.pin,
+				behind: state.behind,
+				uncommitted: state.uncommitted.length
+			}
+		});
+	}
+	for (const name of unmatched) ctx.out.warn(`codkit.local.json names input ${name}, which codkit.json does not declare`);
+	return { data, edits };
+}
+
+/** Names of codkit.local.json inputs that codkit.json does not declare; none when the file does not read. */
+function unmatchedLocalInputs(patchesDir: string, declared: readonly { readonly name: string }[]): readonly string[] {
+	try {
+		const local = loadLocalConfig(patchesDir);
+		return (local?.inputs ?? []).map((entry) => entry.name).filter((name) => !declared.some((input) => input.name === name));
+	} catch {
+		return [];
+	}
 }
 
 /**

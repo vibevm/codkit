@@ -277,6 +277,110 @@ describe('publish.scrub', () => {
 	});
 });
 
+describe('inputs', () => {
+	const input = {
+		name: 'pages',
+		repository: process.platform === 'win32' ? 'C:/work/pages' : '/work/pages',
+		ref: 'c'.repeat(40),
+		build: [['node', 'build.mjs']],
+		dependencyRoots: ['deps'],
+		env: { PAGES_MODE: 'release' },
+		from: 'out/site',
+		to: 'handbook'
+	};
+
+	it('reads an input, fills the optional lists and writes it canonically before publish', () => {
+		const parsed = parseBaseConfig(
+			{ ...VALID_SAMPLE, inputs: [{ name: 'a', repository: input.repository, ref: input.ref, from: 'out', to: 'a' }] },
+			CONFIG_FILE_NAME
+		);
+		expect(parsed.inputs).toEqual([
+			{ name: 'a', repository: input.repository, ref: input.ref, build: [], dependencyRoots: [], env: {}, from: 'out', to: 'a' }
+		]);
+		const written = JSON.parse(
+			serializeBaseConfig(parseBaseConfig({ ...VALID_SAMPLE, publish: { exclude: [] }, inputs: [input] }, CONFIG_FILE_NAME))
+		) as Record<string, unknown>;
+		expect(Object.keys(written).slice(-2)).toEqual(['inputs', 'publish']);
+		expect(Object.keys((written['inputs'] as object[])[0] ?? {})).toEqual([
+			'name',
+			'repository',
+			'ref',
+			'build',
+			'dependencyRoots',
+			'env',
+			'from',
+			'to'
+		]);
+	});
+
+	it('refuses a ref that is not a full commit id, a remote or relative repository and a malformed build', () => {
+		const cases: readonly (readonly [Record<string, unknown>, string])[] = [
+			[{ ref: 'main' }, 'inputs.ref must be a full 40-hex commit id (input 1, pages)'],
+			[{ ref: 'C'.repeat(40) }, 'inputs.ref must be a full 40-hex commit id'],
+			[{ ref: undefined }, 'inputs.ref is required'],
+			[{ repository: 'https://git.example.org/pages.git' }, 'a remote address is not supported'],
+			[{ repository: 'git@example.org:pages.git' }, 'a remote address is not supported'],
+			[{ repository: 'pages' }, 'inputs.repository must be the absolute path of a local git repository'],
+			[{ build: ['node build.mjs'] }, 'inputs.build must be a list of commands'],
+			[{ build: [[]] }, 'inputs.build must be a list of commands'],
+			[{ build: [['', 'x']] }, 'inputs.build must be a list of commands'],
+			[{ env: { '1BAD': 'x' } }, 'inputs.env must map variable names'],
+			[{ env: { Path: 'a', PATH: 'b' } }, 'inputs.env must map variable names'],
+			[{ from: '../out' }, 'inputs.from must be a safe path'],
+			[{ to: 'docs/.git/x' }, 'inputs.to must be a safe path from the tree root without a .git segment'],
+			[{ name: 'two words' }, 'inputs.name must be one portable name'],
+			[{ extra: true }, 'inputs must be a list of objects whose fields are']
+		];
+		for (const [change, text] of cases) {
+			const entry: Record<string, unknown> = { ...input, ...change };
+			for (const key of Object.keys(change)) if (change[key] === undefined) delete entry[key];
+			const error = configError(() => parseBaseConfig({ ...VALID_SAMPLE, inputs: [entry] }, CONFIG_FILE_NAME));
+			expect(error.message, JSON.stringify(change)).toContain(text);
+		}
+	});
+
+	it('refuses two inputs with one name, or with directories that meet', () => {
+		const twice = configError(() => parseBaseConfig({ ...VALID_SAMPLE, inputs: [input, { ...input, to: 'other' }] }, CONFIG_FILE_NAME));
+		expect(twice.message).toContain(
+			'inputs.name must be one portable name (letters, digits, dot, underscore or dash) that no other input uses (input 2, pages)'
+		);
+		for (const to of ['handbook', 'handbook/extra', 'Handbook']) {
+			const meets = configError(() =>
+				parseBaseConfig({ ...VALID_SAMPLE, inputs: [input, { ...input, name: 'other', to }] }, CONFIG_FILE_NAME)
+			);
+			expect(meets.message, to).toContain('neither equal to, inside nor around the to of another input (input 2, other)');
+		}
+	});
+
+	it('lets codkit.local.json name where an input is on this machine, and nothing else about it', () => {
+		const local = parseLocalConfig(
+			{
+				inputs: [
+					{ name: 'pages', repository: '/elsewhere/pages' },
+					{ name: 'gone', repository: '/x' }
+				]
+			},
+			LOCAL_CONFIG_FILE_NAME
+		);
+		const base = parseBaseConfig({ ...VALID_SAMPLE, inputs: [input] }, CONFIG_FILE_NAME);
+		expect(mergeLocal(base, local).inputs).toEqual([{ ...input, repository: '/elsewhere/pages' }]);
+		expect(mergeLocal(parseBaseConfig(VALID_SAMPLE, CONFIG_FILE_NAME), local).inputs).toBeUndefined();
+		for (const field of ['ref', 'build', 'to']) {
+			const refused = configError(() =>
+				parseLocalConfig(
+					{ inputs: [{ name: 'pages', repository: '/x', [field]: input[field as keyof typeof input] }] },
+					LOCAL_CONFIG_FILE_NAME
+				)
+			);
+			expect(refused.message, field).toContain(`inputs.${field} cannot be set locally`);
+		}
+		const remote = configError(() =>
+			parseLocalConfig({ inputs: [{ name: 'pages', repository: 'ssh://host/pages' }] }, LOCAL_CONFIG_FILE_NAME)
+		);
+		expect(remote.message).toContain('a remote address is not supported');
+	});
+});
+
 function configError(action: () => unknown): CkError {
 	try {
 		action();

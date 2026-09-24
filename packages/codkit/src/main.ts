@@ -17,6 +17,7 @@ import { gcCommand } from './commands/gc.ts';
 import { genBrandCommand, genCommand, genFeatureCommand } from './commands/gen.ts';
 import { hooksCommand } from './commands/hooks.ts';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.ts';
+import { inputsCommand, inputsPinCommand } from './commands/inputs.ts';
 import { inventoryCommand } from './commands/inventory.ts';
 import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.ts';
 import { loadCommand } from './commands/load.ts';
@@ -91,6 +92,8 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		ciCommand,
 		packageCommand,
 		publishCommand,
+		inputsCommand,
+		inputsPinCommand,
 		hooksCommand,
 		imagesetCommand,
 		imagesetGenCommand,

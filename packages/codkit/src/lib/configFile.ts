@@ -13,6 +13,15 @@
 import { z } from 'zod';
 import { CR_BYTE, decodeUtf8Strict, LF_BYTE } from './bytes.ts';
 import { readContainedFile } from './containedFile.ts';
+import {
+	INPUT_FIELD_DOCS,
+	LOCAL_INPUT_FIELD_DOCS,
+	inputsSchema,
+	localInputContentField,
+	localInputsSchema,
+	locateInputs
+} from './inputsDeclaration.ts';
+import type { InputConfig } from './inputsDeclaration.ts';
 import { ckError } from './messages.ts';
 import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.ts';
 export const CONFIG_FILE_NAME = 'codkit.json';
@@ -68,6 +77,8 @@ export type PublishConfig = {
 	readonly scrub?: ScrubConfig | undefined;
 };
 
+export type { InputConfig } from './inputsDeclaration.ts';
+
 /** Where a patch set keeps its spec documents unless `publish.scrub.specRoots` says otherwise. */
 export const DEFAULT_SPEC_ROOTS: readonly string[] = ['vibevm/vibespecs'];
 
@@ -84,6 +95,8 @@ export type CodkitConfig = {
 	readonly publishRemoteUrl: string | null;
 	readonly buildWatchFile: string | null;
 	readonly conventionsExtensionFile: string | null;
+	/** Absent unless the file carries it; written before `publish` (##CFG-INPUTS). */
+	readonly inputs?: readonly InputConfig[] | undefined;
 	/** Absent unless the file carries it; written last (##CFG-PUBLISH-EXCLUDE). */
 	readonly publish?: PublishConfig | undefined;
 };
@@ -150,16 +163,18 @@ const configSchema = z.object({
 	publishRemoteUrl: z.string().nullable().default(null),
 	buildWatchFile: repositoryFilePath.nullable().default(null),
 	conventionsExtensionFile: repositoryFilePath.nullable().default(null),
+	inputs: inputsSchema.optional(),
 	publish: publishSchema.optional()
 });
 
-/** codkit.local.json: same field vocabulary, everything optional. */
+/** codkit.local.json: same field vocabulary, everything optional; an input carries only its location. */
 const localConfigSchema = z.object({
 	typeConfig: typeConfigSchema.optional(),
 	generatedBranchPrefix: z.string().min(1).optional(),
 	cycleBranchPrefix: z.string().min(1).optional(),
 	releaseRefPrefix: z.string().min(1).optional(),
 	publishRemoteUrl: z.string().nullable().optional(),
+	inputs: localInputsSchema.optional(),
 	publish: publishSchema.optional()
 });
 
@@ -177,6 +192,7 @@ const CONFIG_KEYS: readonly string[] = [
 	'publishRemoteUrl',
 	'buildWatchFile',
 	'conventionsExtensionFile',
+	'inputs',
 	'publish'
 ];
 
@@ -189,6 +205,7 @@ const LOCAL_ALLOWED_KEYS: readonly string[] = [
 	'cycleBranchPrefix',
 	'releaseRefPrefix',
 	'publishRemoteUrl',
+	'inputs',
 	'publish'
 ];
 
@@ -316,8 +333,12 @@ const FIELD_DOCS: Readonly<Record<string, FieldDoc>> = {
 		required: 'publish.scrub.allow is optional',
 		invalid: 'publish.scrub.allow must be a list of non-empty tokens',
 		hint: 'set "allow": ["<a token the release may carry where the scrub leaves it>"]'
-	}
+	},
+	...INPUT_FIELD_DOCS
 };
+
+/** codkit.local.json reads the same table, with its own words for an input entry. */
+const LOCAL_FIELD_DOCS: Readonly<Record<string, FieldDoc>> = { ...FIELD_DOCS, ...LOCAL_INPUT_FIELD_DOCS };
 
 const FALLBACK_DOC: FieldDoc = {
 	required: 'is required',
@@ -440,12 +461,25 @@ export function parseLocalConfig(raw: unknown, fileLabel: string): LocalConfig {
 			fileLabel
 		);
 	}
+	refuseLocalInputContent(object['inputs'], fileLabel);
 
 	const parsed = localConfigSchema.safeParse(object);
 	if (!parsed.success) {
-		throw schemaError(parsed.error.issues, object, fileLabel);
+		throw schemaError(parsed.error.issues, object, fileLabel, LOCAL_FIELD_DOCS);
 	}
 	return parsed.data;
+}
+
+/** ##LOCAL-CONFIG-RULE: a local entry of `inputs` names the location of an input and nothing it takes. */
+function refuseLocalInputContent(inputs: unknown, fileLabel: string): void {
+	const field = localInputContentField(inputs);
+	if (field === null) return;
+	throw ckError(
+		'CONFIG',
+		`inputs.${field} cannot be set locally: ${LOCAL_CONFIG_FILE_NAME} may name only the repository of an input on this machine`,
+		`remove "${field}" from ${LOCAL_CONFIG_FILE_NAME}; what an input takes is declared in ${CONFIG_FILE_NAME}, where it is reviewed`,
+		fileLabel
+	);
 }
 
 /** Apply the non-empty fields of codkit.local.json on top of the base config. */
@@ -462,6 +496,7 @@ export function mergeLocal(base: CodkitConfig, local: LocalConfig): CodkitConfig
 		publishRemoteUrl: overrideOrKeep(base.publishRemoteUrl, local.publishRemoteUrl),
 		buildWatchFile: base.buildWatchFile,
 		conventionsExtensionFile: base.conventionsExtensionFile,
+		...(base.inputs === undefined ? {} : { inputs: locateInputs(base.inputs, local.inputs) }),
 		publish: joinPublish(base.publish, local.publish)
 	};
 }
@@ -504,6 +539,7 @@ export function serializeBaseConfig(config: CodkitConfig): string {
 		buildWatchFile: parsed.buildWatchFile,
 		conventionsExtensionFile: parsed.conventionsExtensionFile,
 		// Absent stays absent: JSON.stringify drops an undefined member.
+		inputs: parsed.inputs,
 		publish: parsed.publish
 	};
 	return `${JSON.stringify(canonical, null, 2)}\n`;
@@ -595,21 +631,48 @@ function assertKnownKeys(object: Readonly<Record<string, unknown>>, known: reado
 
 type SchemaIssue = { readonly path: ReadonlyArray<PropertyKey>; readonly message: string };
 
-function schemaError(issues: readonly SchemaIssue[], raw: unknown, fileLabel: string): Error {
+function schemaError(
+	issues: readonly SchemaIssue[],
+	raw: unknown,
+	fileLabel: string,
+	docs: Readonly<Record<string, FieldDoc>> = FIELD_DOCS
+): Error {
 	const issue = issues[0];
 	if (issue === undefined) {
 		return ckError('CONFIG', 'failed validation', FALLBACK_DOC.hint, fileLabel);
 	}
 	const path = issue.path.map((segment) => String(segment)).join('.');
-	// An issue inside a list is documented by the list: `publish.exclude.0` is `publish.exclude`.
+	// An issue inside a list is documented by the list: `publish.exclude.0` is
+	// `publish.exclude`; a field of a list entry by its name without the index:
+	// `inputs.1.ref` is `inputs.ref`.
 	const index = issue.path.findIndex((segment) => typeof segment === 'number');
 	const list = index === -1 ? path : issue.path.slice(0, index).map(String).join('.');
-	const documented = FIELD_DOCS[path] === undefined && FIELD_DOCS[list] !== undefined ? list : path;
-	const doc = FIELD_DOCS[documented] ?? FALLBACK_DOC;
+	// The deepest documented field on the way, list indexes left out: a key of
+	// `inputs.0.env` is documented by `inputs.env`.
+	const segments = issue.path.filter((segment) => typeof segment !== 'number').map(String);
+	const field =
+		segments
+			.map((_, count) => segments.slice(0, segments.length - count).join('.'))
+			.find((candidate) => candidate !== '' && docs[candidate] !== undefined) ?? '';
+	const documented = docs[path] !== undefined ? path : field !== '' ? field : docs[list] !== undefined ? list : path;
+	const doc = docs[documented] ?? FALLBACK_DOC;
 	// Distinguish "absent" from "present but wrong" by looking at the raw input
 	// rather than at validator-specific issue codes.
 	const absent = valueAtPath(raw, issue.path) === undefined;
-	return ckError('CONFIG', withFieldPath(documented, absent ? doc.required : doc.invalid), doc.hint, fileLabel);
+	return ckError(
+		'CONFIG',
+		`${withFieldPath(documented, absent ? doc.required : doc.invalid)}${inputEntryOf(raw, issue.path)}`,
+		doc.hint,
+		fileLabel
+	);
+}
+
+/** Which entry of `inputs` an issue is about: its position, and its name when it has one. */
+function inputEntryOf(raw: unknown, path: ReadonlyArray<PropertyKey>): string {
+	const position = path[1];
+	if (path[0] !== 'inputs' || typeof position !== 'number') return '';
+	const name = valueAtPath(raw, ['inputs', position, 'name']);
+	return ` (input ${position + 1}${typeof name === 'string' && name !== '' ? `, ${name}` : ''})`;
 }
 
 /** Field texts already name their field; only generic fallbacks need the prefix. */

@@ -26,6 +26,7 @@ import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { gitLocal, runGit } from './gitx.ts';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.ts';
+import { inputSaveRefusal } from './inputsTree.ts';
 import type { Output } from './jsonOut.ts';
 import { parseMarkers } from './markers.ts';
 import { ckError, isCkError } from './messages.ts';
@@ -333,6 +334,16 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// way whether they were typed relative, absolute or with a trailing slash.
 	const filters = normalizeFilters(options.paths, tree);
 	const allowNewFile = normalizeFilters(options.allowNewFile, tree);
+	// PROP-007 ##INPUTS-EDITS: the directory of an input belongs to another
+	// repository. An edit there is never extracted into the patch set and never
+	// dropped without a word: save refuses it, naming where it belongs, before
+	// anything is written - and so it refuses a path that names such a directory.
+	const inputRefusal = inputSaveRefusal(tree, config.inputs ?? [], filters, (text) => out.warn(text));
+	if (inputRefusal !== null) {
+		for (const line of inputRefusal.lines) out.info(`  ${line}`);
+		out.addError({ code: 'DIRTY-TREE', message: inputRefusal.message, hint: inputRefusal.hint });
+		return result('blocked', 1, { branch });
+	}
 	const forcedPaths = [
 		...new Set([...(options.forcedPaths ?? []), ...listRebasePendingRecords(patchesDir).map((entry) => entry.targetPath)])
 	];

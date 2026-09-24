@@ -938,6 +938,12 @@ function checkCompleteness(type, patchesDir, treeDir, config, patches, overlays,
         if (patchTargets.has(path) || overlayTargets.has(path) || resourceTargets.has(path)) {
             continue;
         }
+        // PROP-007 ##INPUTS-GENERATED: a branch built by `ci` or `publish` ends with
+        // the commits of the inputs, and a path under the `to` of a declared input
+        // is explained by that input.
+        if ((config.inputs ?? []).some((input) => path.startsWith(`${input.to}/`))) {
+            continue;
+        }
         findings.push(finding('UNTRACKED-INTERVENTION', `${path} differs from pin ${config.pin.tag} on ${branch}, and no artifact of the delta explains it`, 'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit load --fresh', path));
     }
     // The other direction: an artifact whose target the branch does not carry is

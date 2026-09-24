@@ -20,7 +20,7 @@
 // Cloning is not a side effect of a typo: a missing tree is an error unless
 // --clone-if-missing says otherwise, and even then --ci refuses, because a
 // container run must never start downloading gigabytes.
-import { EXIT_ENVIRONMENT, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.js';
+import { EXIT_ENVIRONMENT, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
@@ -31,6 +31,8 @@ const FRESH = '--fresh';
 const DRY_RUN = '--dry-run';
 const CLONE_IF_MISSING = '--clone-if-missing';
 const DISCARD = '--discard';
+const INPUTS = '--inputs';
+const NO_INPUTS = '--no-inputs';
 async function run(ctx) {
     // Before anything is resolved or read: a non-interactive run must never
     // decide on its own to drop somebody's work (D11). The flag names a loss, and
@@ -48,6 +50,7 @@ async function run(ctx) {
     const config = requireConfig(ctx.config);
     const fresh = commandFlagGiven(ctx.commandFlags, FRESH);
     const dryRun = commandFlagGiven(ctx.commandFlags, DRY_RUN);
+    const inputs = inputModeOf(ctx);
     if (!resolution.exists && commandFlagGiven(ctx.commandFlags, CLONE_IF_MISSING)) {
         const cloned = cloneMissingTree(ctx, resolution, config);
         if (cloned !== null) {
@@ -71,6 +74,7 @@ async function run(ctx) {
             verbose: ctx.flags.verbose,
             discardTreeCommits: discard,
             discardWorktreeEdits: discard && fresh,
+            ...(inputs === null ? {} : { inputs }),
             // PROP-008 ##DRIFT-GUARD-PREDICATE: `load` is the one command
             // that passes over a materialization nobody declares any more
             // (modules/vscode/PROP-002 ##OWN-EXTENSION-STRANDED). It is set here rather
@@ -84,6 +88,25 @@ async function run(ctx) {
     }, (text) => {
         ctx.out.warn(text);
     });
+}
+/**
+ * PROP-007 ##CMD-LOAD-INPUTS: the source of the inputs of this load - the
+ * working tree of each input's repository unless `--inputs pinned` asks for the
+ * pinned commits, the way `ci` and `publish` take them; `--no-inputs` delivers
+ * none and leaves what the tree carries as it is. Null means none.
+ */
+function inputModeOf(ctx) {
+    const named = commandFlagValue(ctx.commandFlags, INPUTS);
+    if (commandFlagGiven(ctx.commandFlags, NO_INPUTS)) {
+        if (named !== null)
+            throw ckError('CONFIG', `${INPUTS} and ${NO_INPUTS} contradict each other`, 'give one of them');
+        return null;
+    }
+    if (named === null || named === 'working')
+        return 'working';
+    if (named === 'pinned')
+        return 'pinned';
+    throw ckError('CONFIG', `${INPUTS} takes working or pinned, got ${named}`, `example: codkit load ${INPUTS} pinned`);
 }
 function requireConfig(config) {
     if (config === null) {
@@ -150,6 +173,10 @@ function buildData(result, flags) {
     if (result.restoredBytes.length > 0) {
         data['restoredBytes'] = [...result.restoredBytes];
     }
+    // PROP-008 ##INPUTS-LOAD: what each input delivered.
+    if (result.inputs.length > 0) {
+        data['inputs'] = result.inputs.map((input) => ({ ...input }));
+    }
     return data;
 }
 export const loadCommand = {
@@ -157,6 +184,6 @@ export const loadCommand = {
     summary: 'bring the fork tree to the pin and apply the delta',
     configMode: 'load',
     maxArgs: 0,
-    commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING, DISCARD],
+    commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING, DISCARD, INPUTS, NO_INPUTS],
     run
 };

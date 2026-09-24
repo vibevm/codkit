@@ -22,7 +22,7 @@
 // container run must never start downloading gigabytes.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
-import { EXIT_ENVIRONMENT, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.ts';
+import { EXIT_ENVIRONMENT, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { treeId } from '../lib/fingerprint.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
@@ -30,6 +30,7 @@ import { withLock } from '../lib/lock.ts';
 import { ckError } from '../lib/messages.ts';
 import { formatForkTreeLine, refreshResolution } from '../lib/paths.ts';
 import type { ForkDirResolution } from '../lib/paths.ts';
+import type { InputMode } from '../lib/inputsSource.ts';
 import { runSync } from '../lib/syncEngine.ts';
 import type { SyncResult } from '../lib/syncEngine.ts';
 import { cloneForkTree } from './clone.ts';
@@ -38,6 +39,8 @@ const FRESH = '--fresh';
 const DRY_RUN = '--dry-run';
 const CLONE_IF_MISSING = '--clone-if-missing';
 const DISCARD = '--discard';
+const INPUTS = '--inputs';
+const NO_INPUTS = '--no-inputs';
 
 async function run(ctx: CommandContext): Promise<number> {
 	// Before anything is resolved or read: a non-interactive run must never
@@ -61,6 +64,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	const config = requireConfig(ctx.config);
 	const fresh = commandFlagGiven(ctx.commandFlags, FRESH);
 	const dryRun = commandFlagGiven(ctx.commandFlags, DRY_RUN);
+	const inputs = inputModeOf(ctx);
 
 	if (!resolution.exists && commandFlagGiven(ctx.commandFlags, CLONE_IF_MISSING)) {
 		const cloned = cloneMissingTree(ctx, resolution, config);
@@ -90,6 +94,7 @@ async function run(ctx: CommandContext): Promise<number> {
 				verbose: ctx.flags.verbose,
 				discardTreeCommits: discard,
 				discardWorktreeEdits: discard && fresh,
+				...(inputs === null ? {} : { inputs }),
 				// PROP-008 ##DRIFT-GUARD-PREDICATE: `load` is the one command
 				// that passes over a materialization nobody declares any more
 				// (modules/vscode/PROP-002 ##OWN-EXTENSION-STRANDED). It is set here rather
@@ -105,6 +110,23 @@ async function run(ctx: CommandContext): Promise<number> {
 			ctx.out.warn(text);
 		}
 	);
+}
+
+/**
+ * PROP-007 ##CMD-LOAD-INPUTS: the source of the inputs of this load - the
+ * working tree of each input's repository unless `--inputs pinned` asks for the
+ * pinned commits, the way `ci` and `publish` take them; `--no-inputs` delivers
+ * none and leaves what the tree carries as it is. Null means none.
+ */
+function inputModeOf(ctx: CommandContext): InputMode | null {
+	const named = commandFlagValue(ctx.commandFlags, INPUTS);
+	if (commandFlagGiven(ctx.commandFlags, NO_INPUTS)) {
+		if (named !== null) throw ckError('CONFIG', `${INPUTS} and ${NO_INPUTS} contradict each other`, 'give one of them');
+		return null;
+	}
+	if (named === null || named === 'working') return 'working';
+	if (named === 'pinned') return 'pinned';
+	throw ckError('CONFIG', `${INPUTS} takes working or pinned, got ${named}`, `example: codkit load ${INPUTS} pinned`);
 }
 
 function requireConfig(config: CodkitConfig | null): CodkitConfig {
@@ -183,6 +205,10 @@ function buildData(result: SyncResult, flags: { fresh: boolean; dryRun: boolean;
 	if (result.restoredBytes.length > 0) {
 		data['restoredBytes'] = [...result.restoredBytes];
 	}
+	// PROP-008 ##INPUTS-LOAD: what each input delivered.
+	if (result.inputs.length > 0) {
+		data['inputs'] = result.inputs.map((input) => ({ ...input }));
+	}
 	return data;
 }
 
@@ -191,6 +217,6 @@ export const loadCommand: CommandDefinition = {
 	summary: 'bring the fork tree to the pin and apply the delta',
 	configMode: 'load',
 	maxArgs: 0,
-	commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING, DISCARD],
+	commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING, DISCARD, INPUTS, NO_INPUTS],
 	run
 };

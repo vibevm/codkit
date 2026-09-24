@@ -40,6 +40,10 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--dry-run', 'boolean'],
     ['--clone-if-missing', 'boolean'],
     ['--discard', 'boolean'],
+    // load's source of the inputs (PROP-007 ##CMD-LOAD-INPUTS): --no-inputs here,
+    // --inputs working|pinned below with package's --inputs <dir>; inputs pin takes --all
+    ['--no-inputs', 'boolean'],
+    ['--all', 'boolean'],
     // save (PROP-007 sec. 7)
     ['--commit', 'boolean'],
     ['--message', 'value'],

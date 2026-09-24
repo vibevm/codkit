@@ -67,6 +67,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	const wantMarkdown = commandFlagGiven(ctx.commandFlags, MD);
 	writeInventory(ctx.patchesDir, inventory, wantMarkdown, ctx.out);
 	printSummary(ctx.out, inventory);
+	printInputs(ctx.out, config);
 
 	const ref = commandFlagValue(ctx.commandFlags, DIFF);
 	// The inventory of another commit of patchset, built from a scratch checkout of
@@ -82,7 +83,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	for (const item of findings) {
 		ctx.out.addError(item);
 	}
-	ctx.out.setData(dataOf(inventory, findings, ref, diff));
+	ctx.out.setData(dataOf(inventory, findings, ref, diff, inputsData(config)));
 	if (findings.length > 0) {
 		ctx.out.info(`inventory: generated, but ${findings.length} consistency violation(s) were found; run codkit verify for the detail`);
 		return EXIT_CHECK_FAILED;
@@ -116,6 +117,23 @@ function printSummary(out: Output, inventory: Inventory): void {
 	out.info(`guard tests: ${coverage.covered} entry(ies) covered; ${coverage.requiredCovered}/${coverage.requiredTotal} required`);
 }
 
+/**
+ * PROP-007 ##CMD-INVENTORY-INPUTS: what the patch set takes from other
+ * repositories, beside what it changes itself - each input with its pinned
+ * commit and where it lands. The inventory document does not carry them: it is
+ * the list of interventions, and an input is none.
+ */
+function printInputs(out: Output, config: CodkitConfig): void {
+	const inputs = config.inputs ?? [];
+	if (inputs.length === 0) return;
+	out.info(`${inputs.length} input(s) from other repositories:`);
+	for (const input of inputs) out.info(`  ${input.name.padEnd(18)} ${input.ref.slice(0, 12)} -> ${input.to}`);
+}
+
+function inputsData(config: CodkitConfig): JsonValue {
+	return (config.inputs ?? []).map((input) => ({ name: input.name, ref: input.ref, from: input.from, to: input.to }));
+}
+
 function renderCounts(counts: Readonly<Record<string, number>>): string {
 	const parts = Object.entries(counts).map(([key, value]) => `${key} ${value}`);
 	return parts.length === 0 ? 'none' : parts.join(', ');
@@ -146,9 +164,16 @@ function printDiff(out: Output, ref: string, diff: InventoryDiff): void {
 // Envelope
 // ---------------------------------------------------------------------------
 
-function dataOf(inventory: Inventory, findings: readonly Finding[], ref: string | null, diff: InventoryDiff | null): JsonValue {
+function dataOf(
+	inventory: Inventory,
+	findings: readonly Finding[],
+	ref: string | null,
+	diff: InventoryDiff | null,
+	inputs: JsonValue
+): JsonValue {
 	const data: { [key: string]: JsonValue } = {
 		inventory: inventory as unknown as JsonValue,
+		inputs,
 		path: INVENTORY_JSON_PATH,
 		findings: findings.map((item) => serializeErrorPayload(item) as unknown as JsonValue)
 	};
