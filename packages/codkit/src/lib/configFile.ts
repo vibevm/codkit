@@ -46,10 +46,30 @@ export type TypeConfig = {
 	readonly [field: string]: unknown;
 };
 
+/** One entry of `publish.scrub.vocabulary`: a literal token, or a regular expression. */
+export type VocabularyEntry = string | { readonly regex: string };
+
+/**
+ * `publish.scrub` (##CFG-PUBLISH-SCRUB-SPEC-ROOTS, ##CFG-PUBLISH-SCRUB-VOCABULARY,
+ * ##CFG-PUBLISH-SCRUB-ALLOW): where the vocabulary of a scrubbed release comes
+ * from beyond the intervention ids, what the owner adds to it, and which tokens
+ * the release may still carry.
+ */
+export type ScrubConfig = {
+	/** Absent means DEFAULT_SPEC_ROOTS. */
+	readonly specRoots?: readonly string[] | undefined;
+	readonly vocabulary: readonly VocabularyEntry[];
+	readonly allow: readonly string[];
+};
+
 /** The `publish` section (##CFG-PUBLISH-EXCLUDE): what a scrubbed release leaves out. */
 export type PublishConfig = {
 	readonly exclude: readonly string[];
+	readonly scrub?: ScrubConfig | undefined;
 };
+
+/** Where a patch set keeps its spec documents unless `publish.scrub.specRoots` says otherwise. */
+export const DEFAULT_SPEC_ROOTS: readonly string[] = ['vibevm/vibespecs'];
 
 export type CodkitConfig = {
 	readonly codkitConfig: number;
@@ -93,7 +113,27 @@ const typeConfigSchema = z
 	})
 	.loose();
 
-const publishSchema = z.strictObject({ exclude: z.array(repositoryFilePath).default([]) });
+/** A literal token of the vocabulary starts and ends with a letter, a digit or `_`. */
+const WORD_BOUNDED = /^[\p{L}\p{N}_](?:.*[\p{L}\p{N}_])?$/su;
+
+/** A pattern of the vocabulary compiles as a `u` regular expression and never matches nothing. */
+function usablePattern(source: string): boolean {
+	try {
+		return !new RegExp(`^(?:${source})$`, 'u').test('');
+	} catch {
+		return false;
+	}
+}
+
+const scrubSchema = z.strictObject({
+	specRoots: z.array(repositoryFilePath).optional(),
+	vocabulary: z
+		.array(z.union([z.string().regex(WORD_BOUNDED), z.strictObject({ regex: z.string().min(1).refine(usablePattern) })]))
+		.default([]),
+	allow: z.array(z.string().min(1)).default([])
+});
+
+const publishSchema = z.strictObject({ exclude: z.array(repositoryFilePath).default([]), scrub: scrubSchema.optional() });
 
 const configSchema = z.object({
 	codkitConfig: z.literal(CONFIG_SCHEMA_VERSION),
@@ -247,13 +287,35 @@ const FIELD_DOCS: Readonly<Record<string, FieldDoc>> = {
 	},
 	publish: {
 		required: 'publish is optional',
-		invalid: 'publish must be an object whose one field is exclude',
+		invalid: 'publish must be an object whose fields are exclude and scrub',
 		hint: 'set "publish": { "exclude": ["<path from the tree root>"] }'
 	},
 	'publish.exclude': {
 		required: 'publish.exclude is optional',
 		invalid: 'publish.exclude must be a list of safe paths from the tree root',
 		hint: 'set "publish": { "exclude": ["<path from the tree root>"] }'
+	},
+	'publish.scrub': {
+		required: 'publish.scrub is optional',
+		invalid: 'publish.scrub must be an object whose fields are specRoots, vocabulary and allow',
+		hint: 'set "publish": { "scrub": { "specRoots": ["vibevm/vibespecs"], "vocabulary": [], "allow": [] } }'
+	},
+	'publish.scrub.specRoots': {
+		required: 'publish.scrub.specRoots is optional',
+		invalid: 'publish.scrub.specRoots must be a list of safe paths from the patch-set root',
+		hint: 'set "specRoots": ["vibevm/vibespecs"]'
+	},
+	'publish.scrub.vocabulary': {
+		required: 'publish.scrub.vocabulary is optional',
+		invalid:
+			'publish.scrub.vocabulary must be a list of literal tokens that start and end with a letter or a digit, ' +
+			'or of { "regex": "<pattern>" } objects whose pattern compiles with the u flag and never matches the empty string',
+		hint: 'set "vocabulary": ["RISK-018", { "regex": "RISK-[0-9]+" }]'
+	},
+	'publish.scrub.allow': {
+		required: 'publish.scrub.allow is optional',
+		invalid: 'publish.scrub.allow must be a list of non-empty tokens',
+		hint: 'set "allow": ["<a token the release may carry where the scrub leaves it>"]'
 	}
 };
 
@@ -368,6 +430,16 @@ export function parseLocalConfig(raw: unknown, fileLabel: string): LocalConfig {
 		}
 	}
 	assertKnownKeys(object, LOCAL_ALLOWED_KEYS, fileLabel, '');
+	const publish = object['publish'];
+	const scrub = isPlainObject(publish) ? publish['scrub'] : undefined;
+	if (isPlainObject(scrub) && Object.prototype.hasOwnProperty.call(scrub, 'allow')) {
+		throw ckError(
+			'CONFIG',
+			'publish.scrub.allow cannot be set locally: a local file can scrub and check more of a release, never less',
+			`remove "allow" from ${LOCAL_CONFIG_FILE_NAME}; keep the list in ${CONFIG_FILE_NAME}, where it is reviewed`,
+			fileLabel
+		);
+	}
 
 	const parsed = localConfigSchema.safeParse(object);
 	if (!parsed.success) {
@@ -397,8 +469,23 @@ export function mergeLocal(base: CodkitConfig, local: LocalConfig): CodkitConfig
 /** ##LOCAL-CONFIG-RULE: a local file can leave more out of a release, never less. */
 function joinPublish(base: PublishConfig | undefined, local: PublishConfig | undefined): PublishConfig | undefined {
 	if (local === undefined) return base;
-	if (base === undefined) return local;
-	return { exclude: [...new Set([...base.exclude, ...local.exclude])] };
+	const scrub = joinScrub(base?.scrub, local.scrub);
+	return { exclude: union(base?.exclude ?? [], local.exclude), ...(scrub === undefined ? {} : { scrub }) };
+}
+
+/** A local file adds spec roots and vocabulary; `allow` is the base file's alone. */
+function joinScrub(base: ScrubConfig | undefined, local: ScrubConfig | undefined): ScrubConfig | undefined {
+	if (local === undefined) return base;
+	const specRoots = local.specRoots === undefined ? base?.specRoots : union(base?.specRoots ?? DEFAULT_SPEC_ROOTS, local.specRoots);
+	return {
+		...(specRoots === undefined ? {} : { specRoots }),
+		vocabulary: [...(base?.vocabulary ?? []), ...local.vocabulary],
+		allow: base?.allow ?? []
+	};
+}
+
+function union(base: readonly string[], local: readonly string[]): readonly string[] {
+	return [...new Set([...base, ...local])];
 }
 
 /** Canonical base config bytes; local overrides are never serialized here. */
@@ -514,11 +601,15 @@ function schemaError(issues: readonly SchemaIssue[], raw: unknown, fileLabel: st
 		return ckError('CONFIG', 'failed validation', FALLBACK_DOC.hint, fileLabel);
 	}
 	const path = issue.path.map((segment) => String(segment)).join('.');
-	const doc = FIELD_DOCS[path] ?? FALLBACK_DOC;
+	// An issue inside a list is documented by the list: `publish.exclude.0` is `publish.exclude`.
+	const index = issue.path.findIndex((segment) => typeof segment === 'number');
+	const list = index === -1 ? path : issue.path.slice(0, index).map(String).join('.');
+	const documented = FIELD_DOCS[path] === undefined && FIELD_DOCS[list] !== undefined ? list : path;
+	const doc = FIELD_DOCS[documented] ?? FALLBACK_DOC;
 	// Distinguish "absent" from "present but wrong" by looking at the raw input
 	// rather than at validator-specific issue codes.
 	const absent = valueAtPath(raw, issue.path) === undefined;
-	return ckError('CONFIG', withFieldPath(path, absent ? doc.required : doc.invalid), doc.hint, fileLabel);
+	return ckError('CONFIG', withFieldPath(documented, absent ? doc.required : doc.invalid), doc.hint, fileLabel);
 }
 
 /** Field texts already name their field; only generic fallbacks need the prefix. */
@@ -532,6 +623,10 @@ function withFieldPath(path: string, text: string): string {
 function valueAtPath(raw: unknown, path: ReadonlyArray<PropertyKey>): unknown {
 	let current: unknown = raw;
 	for (const segment of path) {
+		if (Array.isArray(current) && typeof segment === 'number') {
+			current = current[segment];
+			continue;
+		}
 		if (!isPlainObject(current)) {
 			return undefined;
 		}

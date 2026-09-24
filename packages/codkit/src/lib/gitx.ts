@@ -35,6 +35,8 @@ export type RunGitOptions = {
 	readonly gitConfigGlobal?: string;
 	/** Bytes of stdout/stderr to buffer. */
 	readonly maxBuffer?: number;
+	/** What git reads on its standard input, e.g. the object names `cat-file --batch` answers for. */
+	readonly input?: string | Uint8Array;
 	/**
 	 * A pure path-resolution call (`rev-parse --git-path`): skip the two extra
 	 * `-c` flags of the isolated config. `core.hooksPath=/dev/null` makes
@@ -255,7 +257,8 @@ function spawnGit(options: RunGitOptions, isolate: boolean): RawGitResult {
 		env,
 		maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
 		shell: false,
-		windowsHide: true
+		windowsHide: true,
+		...(options.input === undefined ? {} : { input: options.input })
 	});
 
 	if (result.error !== undefined) {

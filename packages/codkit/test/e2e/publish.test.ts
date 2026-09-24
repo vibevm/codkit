@@ -408,6 +408,24 @@ describe('publish clean release', () => {
 				` * @implements spec://fixture/FEAT-001#HELLO\n */\nexport const greeting = 'hello';\n`,
 			'utf8'
 		);
+		// Bare references the patch set learns from its own spec document and inventory.
+		writeFileSync(
+			hello,
+			`${readFileSync(hello, 'utf8')}// FEAT-001 GR-PLAIN: the greeting is plain text (intervention CK-shell-902).\nexport const plain = true;\n`,
+			'utf8'
+		);
+		writeFileSync(
+			fixture.patchesPath('delta/own/test/GUIDE.md'),
+			'# Guide\n\nThe greeting follows the rule of FEAT-001 section 2.\n',
+			'utf8'
+		);
+		const spec = fixture.patchesPath('vibevm/vibespecs/modules/fixture/FEAT-001-greeting.xml');
+		mkdirSync(join(spec, '..'), { recursive: true });
+		writeFileSync(
+			spec,
+			'<spec><title id="root">fixture FEAT-001: The greeting</title><GR-GREETING fact="true">g</GR-GREETING><GR-PLAIN fact="true">p</GR-PLAIN></spec>\n',
+			'utf8'
+		);
 		writeFileSync(fixture.patchesPath('delta/own/test/NOTES.md'), 'The fixture specs live in vibevm/vibespecs.\n', 'utf8');
 		fixtureCommit(fixture.patchesDir, 'fixture: own code for a clean release', '2026-02-08T00:00:00Z');
 		const remote = makeRemote(fixture, 'publish-clean');
@@ -437,17 +455,33 @@ describe('publish clean release', () => {
 		expect(data['squash']).toMatchObject({ parent: fixture.upstream.t1.sha, author: RELEASE_AUTHOR });
 		// Nothing of the tooling in the tree; the excluded note is not there; the prose is.
 		expect(runGit({ args: ['grep', '-i', '-E', 'codkit:(begin|end)|spec://|vibevm', tip], cwd: remote }).status).toBe(1);
+		expect(runGit({ args: ['grep', '-w', '-E', 'FEAT-001|GR-PLAIN|GR-GREETING|CK-shell-902', tip], cwd: remote }).status).toBe(1);
 		const files = remoteOut(remote, ['ls-tree', '-r', '--name-only', tip]).split('\n');
 		expect(files).toContain('source/own/hello.ts');
 		expect(files).not.toContain('source/own/test/NOTES.md');
 		expect(remoteOut(remote, ['show', `${tip}:source/own/hello.ts`])).toContain(
-			" * The greeting of the fixture.\n */\nexport const greeting = 'hello';"
+			" * The greeting of the fixture.\n */\nexport const greeting = 'hello';\n// the greeting is plain text.\nexport const plain = true;"
 		);
+		expect(remoteOut(remote, ['show', `${tip}:source/own/test/GUIDE.md`])).toBe('# Guide\n\nThe greeting follows the rule.');
 		expect(remoteOut(remote, ['show', `${tip}:${EXAMPLE_PART_PATH}`])).toContain(
 			'// (hook body lives in own/ code; this block only delegates)'
 		);
-		const scrub = data['scrub'] as { files: { path: string; markers: number }[]; excluded: string[]; leftovers: unknown[] };
-		expect(scrub.files).toContainEqual({ path: 'source/own/hello.ts', markers: 0, specRefs: 2, droppedLines: 2 });
+		const scrub = data['scrub'] as {
+			files: { path: string; markers: number }[];
+			excluded: string[];
+			leftovers: unknown[];
+			vocabulary: { [source: string]: number };
+		};
+		const groups = { parenthetical: 1, lead: 1, sentence: 0, preposition: 0 };
+		expect(scrub.files).toContainEqual({ path: 'source/own/hello.ts', markers: 0, specRefs: 2, droppedLines: 2, groups });
+		expect(scrub.files).toContainEqual({
+			path: 'source/own/test/GUIDE.md',
+			markers: 0,
+			specRefs: 0,
+			droppedLines: 0,
+			groups: { parenthetical: 0, lead: 0, sentence: 0, preposition: 1 }
+		});
+		expect(scrub.vocabulary).toMatchObject({ documents: 1, facts: 2, modules: 1 });
 		expect(scrub.files.find((file) => file.path === EXAMPLE_PART_PATH)?.markers).toBeGreaterThanOrEqual(2);
 		expect(scrub.excluded).toEqual(['source/own/test/NOTES.md']);
 		expect(scrub.leftovers).toEqual([]);
@@ -458,13 +492,22 @@ describe('publish clean release', () => {
 		expect(repeat.envelope.data).toMatchObject({ status: 'up-to-date', tip, pushedBranch: false, pushedTag: false });
 
 		// A reference in code is a leftover: the publish stops with its line, and nothing moves.
-		writeFileSync(hello, `${readFileSync(hello, 'utf8')}export const address = 'spec://fixture/FEAT-001#IN-CODE';\n`, 'utf8');
+		writeFileSync(
+			hello,
+			`${readFileSync(hello, 'utf8')}export const address = 'spec://fixture/FEAT-001#IN-CODE';\nexport const rule = 'GR-PLAIN';\n`,
+			'utf8'
+		);
 		fixtureCommit(fixture.patchesDir, 'fixture: a spec reference in code', '2026-02-09T00:00:00Z');
 		const refused = await invoke(fixture, flags);
 		expect(refused.exitCode).toBe(1);
 		expect(objectData(refused.envelope)['status']).toBe('scrub-failed');
 		expect(refused.envelope.errors.map((error) => error.message)).toContainEqual(
 			expect.stringMatching(/^the scrubbed release still carries tooling: source\/own\/hello\.ts:\d+: export const address = 'spec:\/\//)
+		);
+		expect(refused.envelope.errors.map((error) => error.message)).toContainEqual(
+			expect.stringMatching(
+				/^the scrubbed release still carries a reference \(GR-PLAIN\): source\/own\/hello\.ts:\d+: export const rule = 'GR-PLAIN';$/
+			)
 		);
 		expect(remoteSha(remote, 'refs/heads/nimbus/rc/1.0.0')).toBe(tip);
 		expect(remoteSha(remote, releaseTag(fixture, '1.0.0'))).toBe(tip);

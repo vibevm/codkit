@@ -12,6 +12,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
 import { markerFormFor } from '../../src/lib/markers.ts';
 import type { MarkerConventions } from '../../src/lib/markers.ts';
+import { NO_GROUPS } from '../../src/lib/publishReferences.ts';
 import { scrubReleaseTree } from '../../src/lib/publishRelease.ts';
 import { commentSyntaxOf, markerFormsOf, scrubText } from '../../src/lib/publishScrub.ts';
 import type { ScrubbedText } from '../../src/lib/publishScrub.ts';
@@ -213,8 +214,8 @@ describe('publish scrub: the release tree', () => {
 		});
 
 		expect(report.files).toEqual([
-			{ path: 'src/a.ts', markers: 2, specRefs: 0, droppedLines: 0 },
-			{ path: 'src/own/x.ts', markers: 0, specRefs: 1, droppedLines: 0 }
+			{ path: 'src/a.ts', markers: 2, specRefs: 0, droppedLines: 0, groups: NO_GROUPS },
+			{ path: 'src/own/x.ts', markers: 0, specRefs: 1, droppedLines: 0, groups: NO_GROUPS }
 		]);
 		expect(report.excluded).toEqual(['src/own/NOTES.md']);
 		expect(report.unmatched).toEqual(['src/missing']);

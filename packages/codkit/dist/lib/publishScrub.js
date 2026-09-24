@@ -13,8 +13,6 @@ import { escapeRegExp } from './bytes.js';
 import { markerFormFor } from './markers.js';
 /** What the fail-closed search of the release tree looks for, ignoring case. */
 export const LEFTOVER_PATTERN = 'codkit:(begin|end)|spec://|vibevm';
-/** What makes a delivered file worth reading for the scrub at all. */
-export const SCRUB_CANDIDATE_PATTERN = 'codkit:(begin|end)|spec://';
 const MARKER_KEYWORD = 'codkit:';
 const SPEC_SCHEME = 'spec://';
 const DOC_KEY_PREFIX = '_';
@@ -124,7 +122,7 @@ export function scrubText(text, syntax, forms) {
 function markerLinePattern(form) {
     return new RegExp(`^\\s*${escapeRegExp(form.open.trimEnd())}(?:begin|end)\\s+[A-Za-z0-9][A-Za-z0-9._-]*\\s*${escapeRegExp(form.close.trim())}\\s*$`);
 }
-function readCommentLine(line, syntax, inBlock) {
+export function readCommentLine(line, syntax, inBlock) {
     const block = syntax.block;
     if (inBlock && block !== null) {
         return blockLine('continue', line, continuationLead(line, block.open), block.close);
@@ -169,7 +167,7 @@ function continuationLead(line, open) {
  * A line left without text can go when that loses no delimiter and no code: a
  * line comment, a line inside a block, or a whole block on one line.
  */
-function droppable(comment) {
+export function droppable(comment) {
     if (comment.kind === 'line')
         return true;
     if (comment.kind === 'continue')
@@ -177,7 +175,7 @@ function droppable(comment) {
     return comment.closes && !comment.codeAfter;
 }
 /** What a line that opens or closes a block keeps when its text is gone. */
-function delimitersOnly(comment) {
+export function delimitersOnly(comment) {
     const opening = comment.prefix.trimEnd();
     if (comment.kind === 'open')
         return comment.closes ? `${opening} ${comment.suffix.trimStart()}` : opening;

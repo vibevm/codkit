@@ -228,6 +228,65 @@ describe('mergeLocal', () => {
 	});
 });
 
+describe('publish.scrub', () => {
+	const scrub = { specRoots: ['docs/specs'], vocabulary: ['RISK-018', { regex: 'VC-R-[0-9]+' }], allow: ['BU-D2'] };
+
+	it('reads the spec roots, the vocabulary and the allowed tokens of the base file', () => {
+		const parsed = parseBaseConfig({ ...VALID_SAMPLE, publish: { scrub } }, CONFIG_FILE_NAME);
+		expect(parsed.publish).toEqual({ exclude: [], scrub });
+		expect(parseBaseConfig({ ...VALID_SAMPLE, publish: { scrub: {} } }, CONFIG_FILE_NAME).publish?.scrub).toEqual({
+			vocabulary: [],
+			allow: []
+		});
+		// The canonical file spells out the lists of a present `scrub`, and `specRoots` only when set.
+		const canonical = serializeBaseConfig(parseBaseConfig({ ...VALID_SAMPLE, publish: { scrub: { allow: ['BU-D2'] } } }, CONFIG_FILE_NAME));
+		const written = (JSON.parse(canonical) as { publish: { scrub: object } }).publish;
+		expect(written).toEqual({ exclude: [], scrub: { vocabulary: [], allow: ['BU-D2'] } });
+		expect(Object.keys(written.scrub)).toEqual(['vocabulary', 'allow']);
+	});
+
+	it('refuses a token that does not start and end like a word, and a pattern that fails or matches nothing', () => {
+		for (const vocabulary of [[' RISK-018'], ['RISK-'], [{ regex: '(' }], [{ regex: 'x*' }], [{ pattern: 'x' }]]) {
+			const error = configError(() => parseBaseConfig({ ...VALID_SAMPLE, publish: { scrub: { vocabulary } } }, CONFIG_FILE_NAME));
+			expect(error.message, JSON.stringify(vocabulary)).toContain('publish.scrub.vocabulary must be a list of literal tokens');
+		}
+		const unknown = configError(() => parseBaseConfig({ ...VALID_SAMPLE, publish: { scrub: { tokens: [] } } }, CONFIG_FILE_NAME));
+		expect(unknown.message).toContain('publish.scrub must be an object whose fields are specRoots, vocabulary and allow');
+	});
+
+	it('lets a local file add spec roots and vocabulary to the default, and never allow a token', () => {
+		const refused = configError(() => parseLocalConfig({ publish: { scrub: { allow: ['BU-D8'] } } }, LOCAL_CONFIG_FILE_NAME));
+		expect(refused.message).toContain('publish.scrub.allow cannot be set locally');
+		const local = parseLocalConfig(
+			{ publish: { exclude: ['a.md'], scrub: { specRoots: ['docs/specs'], vocabulary: ['RISK-019'] } } },
+			LOCAL_CONFIG_FILE_NAME
+		);
+		const bare = parseBaseConfig(VALID_SAMPLE, CONFIG_FILE_NAME);
+		expect(mergeLocal(bare, local).publish).toEqual({
+			exclude: ['a.md'],
+			scrub: { specRoots: ['vibevm/vibespecs', 'docs/specs'], vocabulary: ['RISK-019'], allow: [] }
+		});
+		const withScrub = parseBaseConfig(
+			{ ...VALID_SAMPLE, publish: { exclude: ['b.md'], scrub: { vocabulary: ['RISK-018'], allow: ['BU-D2'] } } },
+			CONFIG_FILE_NAME
+		);
+		expect(mergeLocal(withScrub, local).publish).toEqual({
+			exclude: ['b.md', 'a.md'],
+			scrub: { specRoots: ['vibevm/vibespecs', 'docs/specs'], vocabulary: ['RISK-018', 'RISK-019'], allow: ['BU-D2'] }
+		});
+	});
+});
+
+function configError(action: () => unknown): CkError {
+	try {
+		action();
+	} catch (error) {
+		if (isCkError(error)) return error;
+		throw error;
+	}
+	throw new Error('expected a config error');
+}
+
 describe('loadConfig', () => {
 	it('returns null when codkit.json is absent', () => {
 		expect(loadConfig(makeTempRoot('patchset'))).toBeNull();

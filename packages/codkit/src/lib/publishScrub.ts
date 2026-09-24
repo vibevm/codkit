@@ -36,9 +36,6 @@ export type ScrubbedText = ScrubCounts & { readonly text: string };
 /** What the fail-closed search of the release tree looks for, ignoring case. */
 export const LEFTOVER_PATTERN = 'codkit:(begin|end)|spec://|vibevm';
 
-/** What makes a delivered file worth reading for the scrub at all. */
-export const SCRUB_CANDIDATE_PATTERN = 'codkit:(begin|end)|spec://';
-
 const MARKER_KEYWORD = 'codkit:';
 const SPEC_SCHEME = 'spec://';
 const DOC_KEY_PREFIX = '_';
@@ -152,7 +149,7 @@ function markerLinePattern(form: MarkerForm): RegExp {
 	);
 }
 
-type CommentLine = {
+export type CommentLine = {
 	/** A line comment, the line that opens a block, or a line inside one. */
 	readonly kind: 'line' | 'open' | 'continue';
 	/** Everything before the text: the indentation and the opening delimiter. */
@@ -167,7 +164,7 @@ type CommentLine = {
 	readonly inBlockAfter: boolean;
 };
 
-function readCommentLine(line: string, syntax: CommentSyntax, inBlock: boolean): CommentLine | null {
+export function readCommentLine(line: string, syntax: CommentSyntax, inBlock: boolean): CommentLine | null {
 	const block = syntax.block;
 	if (inBlock && block !== null) {
 		return blockLine('continue', line, continuationLead(line, block.open), block.close);
@@ -215,14 +212,14 @@ function continuationLead(line: string, open: string): string {
  * A line left without text can go when that loses no delimiter and no code: a
  * line comment, a line inside a block, or a whole block on one line.
  */
-function droppable(comment: CommentLine): boolean {
+export function droppable(comment: CommentLine): boolean {
 	if (comment.kind === 'line') return true;
 	if (comment.kind === 'continue') return !comment.closes;
 	return comment.closes && !comment.codeAfter;
 }
 
 /** What a line that opens or closes a block keeps when its text is gone. */
-function delimitersOnly(comment: CommentLine): string {
+export function delimitersOnly(comment: CommentLine): string {
 	const opening = comment.prefix.trimEnd();
 	if (comment.kind === 'open') return comment.closes ? `${opening} ${comment.suffix.trimStart()}` : opening;
 	const indent = /^\s*/.exec(comment.prefix)?.[0] ?? '';

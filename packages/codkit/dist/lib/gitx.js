@@ -160,7 +160,8 @@ function spawnGit(options, isolate) {
         env,
         maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
         shell: false,
-        windowsHide: true
+        windowsHide: true,
+        ...(options.input === undefined ? {} : { input: options.input })
     });
     if (result.error !== undefined) {
         throw ckError('INTERNAL', `failed to run git in ${options.cwd}: ${result.error.message}`, 'install git >= 2.40 and make sure it is on PATH');

@@ -9,7 +9,7 @@ import { runCi } from './ciEngine.ts';
 import type { CiProfile, CiResult } from './ciEngine.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import { CONFIG_FILE_NAME, loadLocalConfig, mergeLocal, parseBaseConfig } from './configFile.ts';
-import type { CodkitConfig } from './configFile.ts';
+import type { CodkitConfig, PublishConfig } from './configFile.ts';
 import { loadConventions } from './conventionsFile.ts';
 import { treeId } from './fingerprint.ts';
 import { runGit } from './gitx.ts';
@@ -18,8 +18,9 @@ import type { Output } from './jsonOut.ts';
 import { acquireLock } from './lock.ts';
 import { ckError } from './messages.ts';
 import type { ForkDirResolution } from './paths.ts';
-import { scrubReleaseTree, squashCommit, treeOf } from './publishRelease.ts';
+import { reportScrub, scrubReleaseTree, squashCommit, treeOf } from './publishRelease.ts';
 import type { ScrubReport, SquashRequest } from './publishRelease.ts';
+import { scrubSettingsOf, vocabularySources } from './publishVocabulary.ts';
 import type { ProjectType } from '@codkit/type-api';
 
 const ZERO_SHA = '0'.repeat(40);
@@ -102,7 +103,8 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 	const tagRef = tagName === null ? null : `refs/tags/${tagName}`;
 	assertRef(options.patchesDir, branchRef);
 	if (tagRef !== null) assertRef(options.patchesDir, tagRef);
-	const exclude = scrub ? releaseExclusions(options.patchesDir, snapshotConfig, options.resolution.path) : [];
+	const publishConfig = scrub ? releasePublishConfig(options.patchesDir, snapshotConfig) : undefined;
+	const exclude = scrub ? releaseExclusions(publishConfig?.exclude ?? [], snapshotConfig, options.resolution.path) : [];
 	const squashDate = squash === null ? null : committerDate(options.patchesDir, patchSetSha);
 
 	// The initial access gate happens before lock/scratch/tree/ref mutation. A
@@ -159,23 +161,44 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			const scratchDir = join(workspace.root, 'release');
 			let tree = treeOf(workspace.resolution.path, tip);
 			if (scrub) {
+				const learned = vocabularySources({
+					snapshotDir: workspace.patchesDir,
+					type: options.type,
+					config: snapshotConfig,
+					patchSetSha,
+					settings: scrubSettingsOf(publishConfig?.scrub)
+				});
+				const configuredRoots = publishConfig?.scrub?.specRoots ?? [];
+				for (const root of learned.missing.filter((entry) => configuredRoots.includes(entry))) {
+					options.out.warn(`publish.scrub.specRoots entry ${root} names no directory of the published commit`);
+				}
 				const scrubbed = scrubReleaseTree({
 					treeDir: workspace.resolution.path,
 					scratchDir,
 					pinSha: snapshotConfig.pin.sha,
 					tip,
 					conventions: loadConventions(options.type, workspace.patchesDir),
-					exclude
+					exclude,
+					references: learned.sources
 				});
 				scrubReport = scrubbed.report;
 				reportScrub(options.out, scrubbed.report);
 				if (scrubbed.report.leftovers.length > 0) {
 					for (const leftover of scrubbed.report.leftovers) {
-						options.out.addError({
-							code: 'CONFIG',
-							message: `the scrubbed release still carries tooling: ${leftover.path}${leftover.line === null ? ' (binary)' : `:${leftover.line}: ${leftover.text}`}`,
-							hint: 'leave the file out through publish.exclude, or change it in the patch set; nothing was pushed'
-						});
+						const where = `${leftover.path}${leftover.line === null ? ' (binary)' : `:${leftover.line}: ${leftover.text}`}`;
+						options.out.addError(
+							leftover.tokens.length === 0
+								? {
+										code: 'CONFIG',
+										message: `the scrubbed release still carries tooling: ${where}`,
+										hint: 'leave the file out through publish.exclude, or change it in the patch set; nothing was pushed'
+									}
+								: {
+										code: 'CONFIG',
+										message: `the scrubbed release still carries a reference (${leftover.tokens.join(', ')}): ${where}`,
+										hint: 'reword the place in the patch set, or name the token in publish.scrub.allow if the release may carry it; nothing was pushed'
+									}
+						);
 					}
 					return publishResult(EXIT_CHECK_FAILED, 'scrub-failed', {
 						...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks),
@@ -299,14 +322,18 @@ function checkedBranch(patchesDir: string, name: string, configs: readonly Codki
 	return name;
 }
 
-/**
- * ##PUBLISH-EXCLUDE: the list of the published commit's codkit.json joined with
- * the local one, every entry proven to name no path of the pin - an exclusion
- * leaves out what the patch set adds, never an upstream file.
- */
-function releaseExclusions(patchesDir: string, snapshot: CodkitConfig, treeDir: string): readonly string[] {
+/** The `publish` section of the published commit's codkit.json joined with the local one. */
+function releasePublishConfig(patchesDir: string, snapshot: CodkitConfig): PublishConfig | undefined {
 	const local = loadLocalConfig(patchesDir);
-	const exclude = (local === null ? snapshot : mergeLocal(snapshot, local)).publish?.exclude ?? [];
+	return (local === null ? snapshot : mergeLocal(snapshot, local)).publish;
+}
+
+/**
+ * ##PUBLISH-EXCLUDE: every entry of the joined list proven to name no path of
+ * the pin - an exclusion leaves out what the patch set adds, never an upstream
+ * file.
+ */
+function releaseExclusions(exclude: readonly string[], snapshot: CodkitConfig, treeDir: string): readonly string[] {
 	for (const entry of exclude) {
 		const listed = runGit({
 			args: ['--literal-pathspecs', 'ls-tree', '-r', '--name-only', '-z', snapshot.pin.sha, '--', entry],
@@ -339,27 +366,6 @@ function committerDate(patchesDir: string, sha: string): string {
 	if (shown.status !== 0 || date === '')
 		throw ckError('CONFIG', `cannot read the date of patchset commit ${sha}: ${firstLine(shown.stderr)}`);
 	return date;
-}
-
-/** Every changed file with its counts, every excluded file, and the totals. */
-function reportScrub(out: Output, report: ScrubReport): void {
-	let markers = 0;
-	let specRefs = 0;
-	let dropped = 0;
-	for (const file of report.files) {
-		markers += file.markers;
-		specRefs += file.specRefs;
-		dropped += file.droppedLines;
-		out.info(
-			`scrub: ${file.path}: ${file.markers} marker line(s), ${file.specRefs} spec reference(s), ${file.droppedLines} emptied line(s) dropped`
-		);
-	}
-	for (const path of report.excluded) out.info(`scrub: ${path}: left out of the release (publish.exclude)`);
-	for (const entry of report.unmatched) out.warn(`publish.exclude entry ${entry} matches no file the release delivers`);
-	out.info(
-		`scrub: ${report.files.length} file(s) changed: ${markers} marker line(s), ${specRefs} spec reference(s), ` +
-			`${dropped} line(s) dropped; ${report.excluded.length} file(s) excluded; ${report.leftovers.length} leftover(s)`
-	);
 }
 
 function configAtCommit(patchesDir: string, sha: string): CodkitConfig {

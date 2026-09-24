@@ -109,9 +109,10 @@ function dataOf(result: PublishResult): JsonValue {
 			result.scrub === null
 				? null
 				: {
-						files: result.scrub.files.map((file) => ({ ...file })),
+						files: result.scrub.files.map((file) => ({ ...file, groups: { ...file.groups } })),
 						excluded: [...result.scrub.excluded],
-						leftovers: result.scrub.leftovers.map((leftover) => ({ ...leftover }))
+						leftovers: result.scrub.leftovers.map((leftover) => ({ ...leftover, tokens: [...leftover.tokens] })),
+						vocabulary: { ...result.scrub.vocabulary }
 					}
 	};
 }

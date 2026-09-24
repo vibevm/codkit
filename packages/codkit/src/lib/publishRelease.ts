@@ -1,9 +1,10 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
 // The clean release of `publish` (PROP-007 ##PUBLISH-SQUASH, ##PUBLISH-SCRUB,
-// ##PUBLISH-EXCLUDE, ##PUBLISH-SCRUB-FAIL-CLOSED): the release tree built from
-// the unsquashed tip in a temporary index of the disposable fork, the
-// fail-closed search of that tree, and the one squashed commit on the pin.
-// Every object is written into the disposable fork; nothing here pushes.
+// ##PUBLISH-SCRUB-GROUPS, ##PUBLISH-EXCLUDE, ##PUBLISH-SCRUB-FAIL-CLOSED): the
+// release tree built from the unsquashed tip in a temporary index of the
+// disposable fork, the fail-closed search of that tree, and the one squashed
+// commit on the pin. Every object is written into the disposable fork; nothing
+// here pushes.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -11,19 +12,36 @@ import { decodeUtf8Strict, encodeUtf8 } from './bytes.ts';
 import { messageOf } from './configFile.ts';
 import { gitOk, runGit, runGitBytes } from './gitx.ts';
 import type { GitEnv } from './gitx.ts';
+import type { Output } from './jsonOut.ts';
 import type { MarkerConventions } from './markers.ts';
 import { ckError } from './messages.ts';
-import { LEFTOVER_PATTERN, SCRUB_CANDIDATE_PATTERN, commentSyntaxOf, markerFormsOf, scrubText } from './publishScrub.ts';
+import { isMarkdownProse, scrubReferences } from './publishReferences.ts';
+import type { GroupCounts } from './publishReferences.ts';
+import { LEFTOVER_PATTERN, commentSyntaxOf, markerFormsOf, scrubText } from './publishScrub.ts';
+import { EMPTY_SETTINGS, findTokens, learnVocabulary } from './publishVocabulary.ts';
+import type { Vocabulary, VocabularyCounts, VocabularySources } from './publishVocabulary.ts';
 
 export type ReleaseAuthor = { readonly name: string; readonly email: string };
 
 /** What `--squash` needs: who signs the commit and what it says. */
 export type SquashRequest = { readonly author: ReleaseAuthor; readonly message: string };
 
-export type ScrubbedFile = { readonly path: string; readonly markers: number; readonly specRefs: number; readonly droppedLines: number };
+export type ScrubbedFile = {
+	readonly path: string;
+	readonly markers: number;
+	readonly specRefs: number;
+	readonly droppedLines: number;
+	/** The reference groups removed, by the rule that removed them. */
+	readonly groups: GroupCounts;
+};
 
-/** One hit of the fail-closed search; a binary file has no line. */
-export type ScrubLeftover = { readonly path: string; readonly line: number | null; readonly text: string };
+/** One hit of the fail-closed search; a binary file has no line. `tokens` names the vocabulary a line still carries. */
+export type ScrubLeftover = {
+	readonly path: string;
+	readonly line: number | null;
+	readonly text: string;
+	readonly tokens: readonly string[];
+};
 
 export type ScrubReport = {
 	readonly files: readonly ScrubbedFile[];
@@ -31,6 +49,7 @@ export type ScrubReport = {
 	/** Exclusion entries that matched no delivered file. */
 	readonly unmatched: readonly string[];
 	readonly leftovers: readonly ScrubLeftover[];
+	readonly vocabulary: VocabularyCounts;
 };
 
 export type ReleaseTreeOptions = {
@@ -44,12 +63,20 @@ export type ReleaseTreeOptions = {
 	/** The effective conventions of the published patch set: its marker forms. */
 	readonly conventions: MarkerConventions;
 	readonly exclude: readonly string[];
+	/** What the vocabulary is learned from besides the delivered files (##PUBLISH-SCRUB-VOCABULARY). */
+	readonly references?: VocabularySources;
 };
 
 const AUTHOR = /^([^<>\r\n]*)<([^<>\s]+)>$/;
 const UTF8_BOM: readonly number[] = [0xef, 0xbb, 0xbf];
 const LEFTOVER_TEXT_LIMIT = 200;
 const PATHS_PER_CALL = 50;
+const BLOBS_PER_CALL = 500;
+const BLOB_BUFFER = 1024 * 1024 * 1024;
+const NO_SOURCES: VocabularySources = { interventionIds: [], specDocuments: [], settings: EMPTY_SETTINGS };
+
+/** A scrubbed file written to the scratch directory, to be stored and staged. */
+type StagedFile = { readonly mode: string; readonly path: string; readonly scratch: string };
 
 /** `--author "<Name> <email>"`: the author and the committer of the squashed commit. */
 export function parseAuthor(raw: string): ReleaseAuthor {
@@ -111,27 +138,88 @@ export function scrubReleaseTree(options: ReleaseTreeOptions): { readonly tree: 
 		git(options.treeDir, ['update-index', '--force-remove', '--', ...chunk], env, 'cannot leave an excluded file out of the release');
 	}
 
+	// Every delivered file is read once, in one git process per batch: the
+	// vocabulary is learned from all of them before any is scrubbed.
 	const skipped = new Set(excluded);
-	const candidates = matchingPaths(options.treeDir, options.tip);
+	const kept = delivered.filter((file) => file.regular && !skipped.has(file.path));
+	const blobs = readBlobs(
+		options.treeDir,
+		kept.map((file) => file.sha)
+	);
+	const texts = new Map<string, string>();
+	for (const file of kept) {
+		const bytes = blobs.get(file.sha) ?? new Uint8Array();
+		const text = bytes.includes(0) ? null : decodeUtf8Strict(bytes);
+		if (text !== null) texts.set(file.path, text);
+	}
+	const vocabulary = learnVocabulary(options.references ?? NO_SOURCES, texts.values());
 	const forms = markerFormsOf(options.conventions);
 	const files: ScrubbedFile[] = [];
-	for (const file of delivered) {
-		if (!file.regular || skipped.has(file.path) || !candidates.has(file.path)) continue;
-		const bytes = blobBytes(options.treeDir, file.sha);
-		const bom = UTF8_BOM.every((byte, index) => bytes[index] === byte);
-		const text = bytes.includes(0) ? null : decodeUtf8Strict(bytes);
-		if (text === null) continue;
-		const scrubbed = scrubText(text, commentSyntaxOf(file.path, options.conventions), forms);
-		if (scrubbed.text === text) continue;
+	const found: ScrubLeftover[] = [];
+	const staged: StagedFile[] = [];
+	for (const file of kept) {
+		const text = texts.get(file.path);
+		if (text === undefined) {
+			found.push(...binaryLeftovers(file.path, blobs.get(file.sha) ?? new Uint8Array(), vocabulary));
+			continue;
+		}
+		const syntax = commentSyntaxOf(file.path, options.conventions);
+		const scrubbed = scrubText(text, syntax, forms);
+		const references = scrubReferences(scrubbed.text, syntax, isMarkdownProse(file.path), vocabulary);
+		found.push(...textLeftovers(file.path, references.text, vocabulary));
+		if (references.text === text) continue;
+		const bom = UTF8_BOM.every((byte, index) => blobs.get(file.sha)?.[index] === byte);
 		const scratch = join(options.scratchDir, `blob-${files.length}`);
-		const body = encodeUtf8(scrubbed.text);
+		const body = encodeUtf8(references.text);
 		writeFileSync(scratch, bom ? Buffer.concat([Buffer.from(UTF8_BOM), body]) : body);
-		const blob = git(options.treeDir, ['hash-object', '-w', '--no-filters', '--', scratch], env, `cannot store the scrubbed ${file.path}`);
-		git(options.treeDir, ['update-index', '--cacheinfo', file.mode, blob, file.path], env, `cannot stage the scrubbed ${file.path}`);
-		files.push({ path: file.path, markers: scrubbed.markers, specRefs: scrubbed.specRefs, droppedLines: scrubbed.droppedLines });
+		staged.push({ mode: file.mode, path: file.path, scratch });
+		files.push({
+			path: file.path,
+			markers: scrubbed.markers,
+			specRefs: scrubbed.specRefs,
+			droppedLines: scrubbed.droppedLines + references.droppedLines,
+			groups: references.groups
+		});
 	}
+	stageScrubbed(options.treeDir, env, staged);
 	const tree = git(options.treeDir, ['write-tree'], env, 'cannot write the release tree');
-	return { tree, report: { files, excluded, unmatched, leftovers: leftoversOf(options.treeDir, tree) } };
+	const tooling = leftoversOf(options.treeDir, tree);
+	const listed = new Set(tooling.map((leftover) => `${leftover.path}\0${leftover.line ?? ''}`));
+	const leftovers = [...tooling, ...found.filter((leftover) => !listed.has(`${leftover.path}\0${leftover.line ?? ''}`))].sort(
+		(left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : (left.line ?? 0) - (right.line ?? 0))
+	);
+	return { tree, report: { files, excluded, unmatched, leftovers, vocabulary: vocabulary.counts } };
+}
+
+/** Every changed file with its counts, every excluded file, the vocabulary, and the totals. */
+export function reportScrub(out: Output, report: ScrubReport): void {
+	const total = { markers: 0, specRefs: 0, dropped: 0, parenthetical: 0, lead: 0, sentence: 0, preposition: 0 };
+	for (const file of report.files) {
+		const groups = file.groups.parenthetical + file.groups.lead + file.groups.sentence + file.groups.preposition;
+		total.markers += file.markers;
+		total.specRefs += file.specRefs;
+		total.dropped += file.droppedLines;
+		for (const rule of ['parenthetical', 'lead', 'sentence', 'preposition'] as const) total[rule] += file.groups[rule];
+		out.info(
+			`scrub: ${file.path}: ${file.markers} marker line(s), ${file.specRefs} spec reference(s), ${groups} reference group(s), ` +
+				`${file.droppedLines} emptied line(s) dropped`
+		);
+	}
+	for (const path of report.excluded) out.info(`scrub: ${path}: left out of the release (publish.exclude)`);
+	for (const entry of report.unmatched) out.warn(`publish.exclude entry ${entry} matches no file the release delivers`);
+	const learned = report.vocabulary;
+	out.info(
+		`scrub: vocabulary: ${learned.interventions} intervention id(s), ${learned.documents} document id(s), ${learned.stems} document stem(s), ` +
+			`${learned.facts} fact id(s), ${learned.modules} module name(s), ${learned.configured} configured; ${learned.allowed} allowed`
+	);
+	out.info(
+		`scrub: reference groups removed: ${total.parenthetical} parenthetical, ${total.lead} leading with a colon, ` +
+			`${total.sentence} sentence, ${total.preposition} after a preposition`
+	);
+	out.info(
+		`scrub: ${report.files.length} file(s) changed: ${total.markers} marker line(s), ${total.specRefs} spec reference(s), ` +
+			`${total.dropped} line(s) dropped; ${report.excluded.length} file(s) excluded; ${report.leftovers.length} leftover(s)`
+	);
 }
 
 /** The tree of a commit, as a full object name. */
@@ -197,20 +285,6 @@ function deliveredFiles(treeDir: string, pinSha: string, tip: string): readonly 
 	return files;
 }
 
-/** The text files of the tip that carry something the scrub removes. */
-function matchingPaths(treeDir: string, tip: string): ReadonlySet<string> {
-	const result = runGit({ args: ['grep', '-l', '-z', '-I', '-E', '-e', SCRUB_CANDIDATE_PATTERN, tip], cwd: treeDir });
-	if (result.status === 1) return new Set();
-	if (result.status !== 0) throw ckError('CONFIG', `cannot search the release for markers: ${firstLine(result.stderr)}`);
-	const prefix = `${tip}:`;
-	return new Set(
-		result.stdout
-			.split('\0')
-			.filter((entry) => entry.startsWith(prefix))
-			.map((entry) => entry.slice(prefix.length))
-	);
-}
-
 /** ##PUBLISH-SCRUB-FAIL-CLOSED: every hit in the whole tree, binary files included. */
 function leftoversOf(treeDir: string, tree: string): readonly ScrubLeftover[] {
 	const result = runGit({ args: ['grep', '-n', '-z', '-i', '-E', '-e', LEFTOVER_PATTERN, tree], cwd: treeDir });
@@ -222,23 +296,85 @@ function leftoversOf(treeDir: string, tree: string): readonly ScrubLeftover[] {
 		if (entry === '') continue;
 		const binary = /^Binary file (.*) matches$/.exec(entry);
 		if (binary !== null) {
-			leftovers.push({ path: (binary[1] ?? '').slice(prefix.length), line: null, text: '' });
+			leftovers.push({ path: (binary[1] ?? '').slice(prefix.length), line: null, text: '', tokens: [] });
 			continue;
 		}
 		const [where = '', line = '', ...rest] = entry.split('\0');
 		leftovers.push({
 			path: where.startsWith(prefix) ? where.slice(prefix.length) : where,
 			line: Number.parseInt(line, 10) || null,
-			text: rest.join('\0').trim().slice(0, LEFTOVER_TEXT_LIMIT)
+			text: rest.join('\0').trim().slice(0, LEFTOVER_TEXT_LIMIT),
+			tokens: []
 		});
 	}
 	return leftovers;
 }
 
-function blobBytes(treeDir: string, sha: string): Uint8Array {
-	const result = runGitBytes({ args: ['cat-file', 'blob', sha], cwd: treeDir });
-	if (result.status !== 0) throw ckError('CONFIG', `cannot read the delivered blob ${sha}: ${firstLine(result.stderr)}`);
-	return result.stdout;
+/** ##PUBLISH-SCRUB-FAIL-CLOSED: every line of a delivered text file that still carries vocabulary. */
+function textLeftovers(path: string, text: string, vocabulary: Vocabulary): readonly ScrubLeftover[] {
+	if (leftTokens(vocabulary, text).length === 0) return [];
+	const leftovers: ScrubLeftover[] = [];
+	text.split('\n').forEach((line, index) => {
+		const tokens = leftTokens(vocabulary, line);
+		if (tokens.length > 0) leftovers.push({ path, line: index + 1, text: line.trim().slice(0, LEFTOVER_TEXT_LIMIT), tokens });
+	});
+	return leftovers;
+}
+
+/** A delivered binary file that carries vocabulary, read byte for character; it has no line. */
+function binaryLeftovers(path: string, bytes: Uint8Array, vocabulary: Vocabulary): readonly ScrubLeftover[] {
+	const tokens = leftTokens(vocabulary, Buffer.from(bytes).toString('latin1'));
+	return tokens.length === 0 ? [] : [{ path, line: null, text: '', tokens: [...new Set(tokens)] }];
+}
+
+/** The tokens of a text the release may not carry: all but the ones `publish.scrub.allow` names. */
+function leftTokens(vocabulary: Vocabulary, text: string): readonly string[] {
+	return findTokens(vocabulary, text)
+		.map((match) => match.token)
+		.filter((token) => !vocabulary.allowed.has(token));
+}
+
+/** Store the scrubbed files and stage them in the temporary index: one git process for each step. */
+function stageScrubbed(treeDir: string, env: GitEnv, staged: readonly StagedFile[]): void {
+	if (staged.length === 0) return;
+	const stored = gitOk(
+		{
+			args: ['hash-object', '-w', '--no-filters', '--stdin-paths'],
+			cwd: treeDir,
+			env,
+			input: staged.map((file) => `${file.scratch}\n`).join('')
+		},
+		{ code: 'CONFIG', message: 'cannot store the scrubbed files of the release' }
+	).stdout.split('\n');
+	const entries = staged.map((file, index) => `${file.mode} ${stored[index] ?? ''}\t${file.path}\0`).join('');
+	gitOk(
+		{ args: ['update-index', '-z', '--index-info'], cwd: treeDir, env, input: entries },
+		{ code: 'CONFIG', message: 'cannot stage the scrubbed files of the release' }
+	);
+}
+
+/** The delivered blobs, read through `cat-file --batch`, a few hundred per git process. */
+function readBlobs(treeDir: string, shas: readonly string[]): ReadonlyMap<string, Uint8Array> {
+	const unique = [...new Set(shas)];
+	const blobs = new Map<string, Uint8Array>();
+	for (let index = 0; index < unique.length; index += BLOBS_PER_CALL) {
+		const chunk = unique.slice(index, index + BLOBS_PER_CALL);
+		const result = runGitBytes({ args: ['cat-file', '--batch'], cwd: treeDir, input: `${chunk.join('\n')}\n`, maxBuffer: BLOB_BUFFER });
+		if (result.status !== 0) throw ckError('CONFIG', `cannot read the delivered blobs: ${firstLine(result.stderr)}`);
+		const out = Buffer.from(result.stdout.buffer, result.stdout.byteOffset, result.stdout.byteLength);
+		let at = 0;
+		for (const sha of chunk) {
+			const eol = out.indexOf(0x0a, at);
+			const header = out.toString('utf8', at, eol === -1 ? out.length : eol).split(' ');
+			const size = Number.parseInt(header[2] ?? '', 10);
+			if (eol === -1 || header[0] !== sha || header[1] !== 'blob' || !Number.isInteger(size)) {
+				throw ckError('CONFIG', `cannot read the delivered blob ${sha}: ${header.join(' ')}`);
+			}
+			blobs.set(sha, new Uint8Array(out.subarray(eol + 1, eol + 1 + size)));
+			at = eol + 1 + size + 1;
+		}
+	}
+	return blobs;
 }
 
 function git(cwd: string, args: readonly string[], env: GitEnv, message: string): string {
