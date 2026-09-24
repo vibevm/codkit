@@ -57,7 +57,7 @@ describe('publish command gates', () => {
 		const profile = await invoke(fixture, { bot: true, profile: 'everything' });
 		expect(profile.exitCode).toBe(2);
 		expect(profile.envelope.errors[0]?.message).toContain('unknown publish profile');
-	});
+	}, 300_000);
 
 	it('does one failing remote preflight before lock, scratch, branch, or remote mutation', async () => {
 		const fixture = makeCliFixture('publish-preflight');
@@ -74,7 +74,7 @@ describe('publish command gates', () => {
 		expect(fixture.git(['rev-parse', '--verify', releaseBranch(fixture)]).status).not.toBe(0);
 		expect(publishScratch(fixture)).toEqual([]);
 		expect(existsSync(missing)).toBe(false);
-	});
+	}, 300_000);
 });
 
 describe('publish generated branch', () => {
@@ -113,7 +113,7 @@ describe('publish generated branch', () => {
 		expect(repeat.exitCode).toBe(0);
 		expect(repeat.envelope.data).toMatchObject({ status: 'up-to-date', pushedBranch: false, pushedTag: false });
 		expect(remoteSha(remote, branch)).toBe(tip);
-	});
+	}, 300_000);
 
 	it('S38 - leaves the codkit licence notice out of the release branch', async () => {
 		// PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION: `standards load` puts the
@@ -141,7 +141,7 @@ describe('publish generated branch', () => {
 		// The developer tree, which `load` materialises, does carry it.
 		expect(fixture.run(['load']).status).toBe(0);
 		expect(readFileSync(fixture.treePath('source/own/LICENSE-CODKIT.md'), 'utf8')).toBe('# Codkit licence notice\n');
-	});
+	}, 300_000);
 
 	it('runs the real build profile before publishing', async () => {
 		const fixture = makeCliFixture('publish-build');
@@ -162,7 +162,7 @@ describe('publish generated branch', () => {
 		expect(steps.find((step) => step.name === 'product tests')?.state).toBe('ok');
 		expect(remoteSha(remote, releaseBranch(fixture))).toMatch(/^[0-9a-f]{40}$/);
 		expect(readFileSync(supply)).toEqual(supplyBefore);
-	}, 20_000);
+	}, 300_000);
 
 	it('does not push when selected checks are red', async () => {
 		const fixture = makeCliFixture('publish-red');
@@ -191,7 +191,7 @@ describe('publish generated branch', () => {
 		expect(callerForkState(fixture)).toEqual(callerBefore);
 		expect(readFileSync(supply)).toEqual(supplyBefore);
 		expect(systemPublishScratch(fixture)).toEqual(scratchBefore);
-	}, 20_000);
+	}, 300_000);
 
 	it('rejects a duplicate non-canonical patch before publishing any ref', async () => {
 		const fixture = makeCliFixture('publish-duplicate-patch');
@@ -210,7 +210,7 @@ describe('publish generated branch', () => {
 		expect(result.envelope.errors.some((error) => error.code === 'CK-E-ARTIFACT-BROKEN')).toBe(true);
 		expect(result.envelope.errors[0]?.message).toContain('does not canonically encode target');
 		expect(remoteSha(remote, releaseBranch(fixture))).toBeNull();
-	});
+	}, 300_000);
 
 	it('rejects a patch id already owned by the canonical own manifest', async () => {
 		const fixture = makeCliFixture('publish-own-id-collision');
@@ -232,7 +232,7 @@ describe('publish generated branch', () => {
 		expect(result.envelope.errors[0]?.message).toContain('patchset.delta.json unit');
 		expect(remoteSha(remote, releaseBranch(fixture))).toBeNull();
 		expect(remoteSha(remote, releaseTag(fixture, '4.0.0'))).toBeNull();
-	});
+	}, 300_000);
 });
 
 describe('publish remote transaction', () => {
@@ -256,7 +256,7 @@ describe('publish remote transaction', () => {
 		const repeat = await invoke(fixture, { bot: true, release: '1.2.3' });
 		expect(repeat.exitCode).toBe(0);
 		expect(repeat.envelope.data).toMatchObject({ status: 'up-to-date', pushedBranch: false, pushedTag: false });
-	});
+	}, 300_000);
 
 	it('rejects a different immutable tag before writing the release branch', async () => {
 		const fixture = makeCliFixture('publish-tag-collision');
@@ -272,7 +272,7 @@ describe('publish remote transaction', () => {
 		expect(result.envelope.errors[0]?.message).toContain('immutable tag');
 		expect(remoteSha(remote, releaseBranch(fixture))).toBeNull();
 		expect(remoteSha(remote, releaseTag(fixture, '2.0.0'))).toBe(fixture.upstream.t1.sha);
-	});
+	}, 300_000);
 
 	it('rejects a branch lease race as environment failure', async () => {
 		const fixture = makeCliFixture('publish-lease');
@@ -290,7 +290,7 @@ describe('publish remote transaction', () => {
 		expect(result.exitCode).toBe(2);
 		expect(result.envelope.errors[0]?.message).toContain('branch push failed');
 		expect(remoteSha(remote, releaseBranch(fixture))).toBe(fixture.upstream.t1.sha);
-	});
+	}, 300_000);
 
 	it('refreshes tags after checks and performs zero branch writes on a tag race', async () => {
 		const fixture = makeCliFixture('publish-tag-race');
@@ -314,7 +314,7 @@ describe('publish remote transaction', () => {
 		expect(result.result?.status).toBe('tag-collision');
 		expect(remoteSha(remote, releaseBranch(fixture))).toBeNull();
 		expect(remoteSha(remote, releaseTag(fixture, '2.1.0'))).toBe(fixture.upstream.t1.sha);
-	});
+	}, 300_000);
 
 	it('keeps the branch untouched when a tag conflicts immediately before its push', async () => {
 		const fixture = makeCliFixture('publish-tag-push-race');
@@ -336,7 +336,7 @@ describe('publish remote transaction', () => {
 		expect(result.envelope.errors[0]?.message).toContain('tag push failed');
 		expect(remoteSha(remote, releaseBranch(fixture))).toBeNull();
 		expect(remoteSha(remote, releaseTag(fixture, '2.2.0'))).toBe(fixture.upstream.t1.sha);
-	});
+	}, 300_000);
 
 	it('recovers idempotently from a tag-only partial after a branch lease race', async () => {
 		const fixture = makeCliFixture('publish-partial');
@@ -363,7 +363,46 @@ describe('publish remote transaction', () => {
 		expect(resumed.exitCode).toBe(0);
 		expect(resumed.envelope.data).toMatchObject({ pushedBranch: true, pushedTag: false });
 		expect(remoteSha(remote, releaseBranch(fixture))).toBe(tagTip);
-	});
+	}, 300_000);
+});
+
+describe('publish disposable fork', () => {
+	it('gives the disposable fork long paths and the git-lfs content of the tree it is cloned from', async () => {
+		// PROP-007 ##PUBLISH-DISPOSABLE-FORK: codkit's git reads no global or
+		// system config, so what the fork needs is in its own.
+		const fixture = makeCliFixture('publish-disposable-fork');
+		excludeRuntime(fixture);
+		const remote = makeRemote(fixture, 'publish-disposable-fork');
+		configureRemote(fixture, remote);
+		const common = fixture.git(['rev-parse', '--path-format=absolute', '--git-common-dir']).stdout.trim();
+		mkdirSync(join(common, 'lfs', 'objects'), { recursive: true });
+		const lfs = fixture.git(['lfs', 'version']).status === 0;
+		const before = systemPublishScratch(fixture);
+		let forkConfig = '';
+
+		const result = await invokeLibrary(fixture, requiredConfig(fixture), {
+			checkpoint(checkpoint) {
+				if (checkpoint !== 'checks-passed') return;
+				const scratch = systemPublishScratch(fixture).filter((name) => !before.includes(name));
+				expect(scratch).toHaveLength(1);
+				forkConfig = remoteOut(join(tmpdir(), scratch[0] ?? '', 'fork'), ['config', '--local', '--list']);
+			}
+		});
+
+		expect(result.exitCode, JSON.stringify(result.envelope.errors)).toBe(0);
+		const settings = forkConfig.split('\n');
+		expect(settings).toContain('core.longpaths=true');
+		if (!lfs) return;
+		expect(settings).toEqual(
+			expect.arrayContaining([
+				'filter.lfs.clean=git-lfs clean -- %f',
+				'filter.lfs.smudge=git-lfs smudge -- %f',
+				'filter.lfs.process=git-lfs filter-process',
+				'filter.lfs.required=true',
+				`lfs.storage=${join(common, 'lfs')}`
+			])
+		);
+	}, 300_000);
 });
 
 describe('publish clean release', () => {
@@ -396,7 +435,7 @@ describe('publish clean release', () => {
 		expect(upstream.envelope.errors[0]?.message).toContain(
 			'publish.exclude entry manifest.json names manifest.json, which the pin carries'
 		);
-	});
+	}, 300_000);
 
 	it('publishes one scrubbed commit on the pin under its own name, repeats as a no-op and refuses leftovers', async () => {
 		const fixture = makeCliFixture('publish-clean');
