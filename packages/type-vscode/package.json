@@ -15,6 +15,7 @@
 	},
 	"files": [
 		"config",
+		"container",
 		"dist",
 		"src",
 		"npm-shrinkwrap.json",

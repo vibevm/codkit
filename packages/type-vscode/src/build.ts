@@ -6,10 +6,10 @@
 // The order of the steps, the profiles, the transactions and the exit codes are
 // the engine's; the names of the scripts are this type's answer.
 
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BuildArea, BuildCommand, BuildStamp, PackageTarget } from '@codkit/type-api';
+import type { BuildArea, BuildCommand, BuildStamp, PackageContainer, PackageInput, PackageTarget } from '@codkit/type-api';
 import { PLACEHOLDER_CONFIG } from './configSchema.ts';
 import type { VscodeQuality, VscodeTypeConfig } from './configSchema.ts';
 
@@ -82,25 +82,279 @@ export function windowsSdkEnvironment(environment: Readonly<Record<string, strin
 	return { PATH: `${candidate}${delimiter}${path}` };
 }
 
-/** Raw application bundles. Installer/signing recipes remain separate future targets. */
-export const PACKAGE_TARGETS: readonly PackageTarget[] = [
-	target('windows-x64', 'windows', 'x64', 'vscode-win32-x64', ['win32'], windowsSdkEnvironment),
-	target('windows-arm64', 'windows', 'arm64', 'vscode-win32-arm64', ['win32'], windowsSdkEnvironment),
-	// linux-x64 is measured on both Linux and Windows in the Nimbus package lane.
-	target('linux-x64', 'linux', 'x64', 'vscode-linux-x64', ['linux', 'win32']),
-	target('linux-arm64', 'linux', 'arm64', 'vscode-linux-arm64', ['linux']),
-	target('linux-armhf', 'linux', 'armhf', 'vscode-linux-armhf', ['linux']),
-	target('macos-x64', 'macos', 'x64', 'vscode-darwin-x64', ['darwin']),
-	target('macos-arm64', 'macos', 'arm64', 'vscode-darwin-arm64', ['darwin'])
+/**
+ * ##VSCODE-LINUX-CONTAINER-RECIPE: the Linux container the installer targets are
+ * built in on a host that is not Linux - a public Ubuntu 22.04 with exactly the
+ * prerequisites of upstream's Linux build, Node of the tree's `.nvmrc`, and the
+ * entry that installs the Linux dependencies and runs the commands.
+ */
+export const LINUX_CONTAINER_RECIPE = join(packageRoot, 'container', 'linux');
+
+const PROXY_VARIABLES: readonly string[] = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy'];
+
+export const LINUX_CONTAINER: PackageContainer = {
+	hosts: ['win32', 'darwin'],
+	recipe: LINUX_CONTAINER_RECIPE,
+	treeArguments: { NODE_VERSION: '.nvmrc' },
+	buildEnvironment: ['NODEJS_ORG_MIRROR', ...PROXY_VARIABLES],
+	runEnvironment: [...PROXY_VARIABLES, 'NODE_USE_ENV_PROXY', 'npm_config_registry', 'NODEJS_ORG_MIRROR', 'ELECTRON_MIRROR', 'GITHUB_TOKEN']
+};
+
+/**
+ * ##VSCODE-LINUX-INSTALLER-TARGETS: the client sysroot `setup-env.sh` installs
+ * for the native modules; the deb and rpm steps and the glibc check take it
+ * unless the operator, or a provisioned input, sets `VSCODE_SYSROOT_DIR`.
+ */
+const CLIENT_SYSROOT = '.build/sysroots/glibc-2.28-gcc-10.5.0';
+const SYSROOT = `export VSCODE_SYSROOT_DIR="\${VSCODE_SYSROOT_DIR:-$PWD/${CLIENT_SYSROOT}}"`;
+
+/** Lines of upstream's Linux pipeline, run by bash in the tree. */
+const pipelineLines = (label: string, lines: readonly string[]): BuildCommand => ({
+	label,
+	command: 'bash',
+	args: ['-c', ['set -e', ...lines].join('\n')]
+});
+
+const gulp = (label: string, task: string): BuildCommand => ({ label, command: 'npm', args: ['run', 'gulp', '--', task] });
+
+/**
+ * ##VSCODE-LINUX-INPUTS: a static server of the loopback for a pre-provisioned
+ * Electron. The bundle task downloads Electron with `@electron/get`, which reads
+ * the archive from its cache but fetches `SHASUMS256.txt` on every run past it,
+ * so a cache alone never makes the task offline; `ELECTRON_MIRROR`, the variable
+ * `@electron/get` reads for its base address, can point at a copy served here.
+ * Arguments: the directory to serve and the file the port is written to.
+ */
+const ELECTRON_MIRROR_SERVER = [
+	'const http = require("node:http"), fs = require("node:fs"), path = require("node:path");',
+	'const [root, portFile] = process.argv.slice(1);',
+	'const server = http.createServer((request, response) => {',
+	'  const file = path.join(root, decodeURIComponent(new URL(request.url, "http://mirror").pathname));',
+	'  if (!file.startsWith(path.join(root, path.sep)) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {',
+	'    response.writeHead(404);',
+	'    response.end();',
+	'    return;',
+	'  }',
+	'  response.writeHead(200, { "content-length": fs.statSync(file).size });',
+	'  if (request.method === "HEAD") return response.end();',
+	'  fs.createReadStream(file).pipe(response);',
+	'});',
+	'server.listen(0, "127.0.0.1", () => fs.writeFileSync(portFile, String(server.address().port)));'
+].join('\n');
+
+/**
+ * The raw bundle every installer target starts from: `../VSCode-linux-x64`.
+ * When `CODKIT_ELECTRON_MIRROR_DIR` names a pre-provisioned Electron, laid out
+ * like the release downloads (`v<version>/<file>`), it is served on the loopback
+ * for the run of the task, `ELECTRON_MIRROR` points at it, and the loopback is
+ * taken out of any proxy - the offline fence points the proxies at a closed port.
+ */
+const BUNDLE_LINUX_X64 = pipelineLines('bundle linux-x64', [
+	'if [ -n "${CODKIT_ELECTRON_MIRROR_DIR:-}" ]; then',
+	'  mirror_run="$(mktemp -d)"',
+	`  node -e '${ELECTRON_MIRROR_SERVER}' "$CODKIT_ELECTRON_MIRROR_DIR" "$mirror_run/port" >"$mirror_run/log" 2>&1 &`,
+	'  trap "kill $! 2>/dev/null || true" EXIT',
+	'  for _ in $(seq 1 100); do [ -s "$mirror_run/port" ] && break; sleep 0.1; done',
+	'  if [ ! -s "$mirror_run/port" ]; then echo "the Electron mirror of $CODKIT_ELECTRON_MIRROR_DIR did not start:" >&2; cat "$mirror_run/log" >&2; exit 1; fi',
+	'  export ELECTRON_MIRROR="http://127.0.0.1:$(cat "$mirror_run/port")/"',
+	'  export NO_PROXY="127.0.0.1${NO_PROXY:+,$NO_PROXY}" no_proxy="127.0.0.1${no_proxy:+,$no_proxy}"',
+	'  echo "Electron mirror: $ELECTRON_MIRROR serves $CODKIT_ELECTRON_MIRROR_DIR"',
+	'fi',
+	'npm run gulp -- vscode-linux-x64'
+]);
+
+/**
+ * Upstream's glibc check (product-build-linux-compile.yml, lines 339-342) over
+ * the client bundle, after the sysroot download of the same pipeline (lines
+ * 127-138): the script reads the output of a missing objdump as no requirement
+ * at all and passes, so the objdump is required first.
+ */
+const GLIBC_CHECK = pipelineLines('glibc check', [
+	SYSROOT,
+	`SYSROOT_ARCH=amd64 node -e 'import { getVSCodeSysroot } from "./build/linux/debian/install-sysroot.ts"; (async () => { await getVSCodeSysroot(process.env["SYSROOT_ARCH"]); })()'`,
+	'objdump="$VSCODE_SYSROOT_DIR/x86_64-linux-gnu/x86_64-linux-gnu/bin/objdump"',
+	'if [ ! -x "$objdump" ]; then echo "the glibc check needs the objdump of the sysroot, and $objdump is not there" >&2; exit 1; fi',
+	'EXPECTED_GLIBC_VERSION="2.28" EXPECTED_GLIBCXX_VERSION="3.4.25" SEARCH_PATH=../VSCode-linux-x64 VSCODE_ARCH=x64 bash ./build/azure-pipelines/linux/verify-glibc-requirements.sh'
+]);
+
+/**
+ * ##DECISION-VSCODE-RAW-LINUX-BUNDLE-IS-LINUX-HOSTED: why the raw Linux bundle
+ * is refused off Linux, and the container route to take instead.
+ */
+const RAW_LINUX_BUNDLE_REFUSAL = {
+	reason:
+		'a raw Linux bundle built here carries the native modules of this host - on win32 19 of its 20 .node files were Windows binaries on 2026-09-24 - and a directory of Linux files copied onto this host loses the modes it needs',
+	hint: `build linux-x64-tar instead: it builds the same bundle in the Linux container of ${LINUX_CONTAINER_RECIPE} and keeps its modes in the archive; or run linux-x64 on a Linux host`
+};
+
+/**
+ * ##VSCODE-LINUX-INPUTS: what the Linux x64 targets download, read from the
+ * tree - the Electron version from `.npmrc`, the Chromium version from
+ * `cgmanifest.json` - because a new pin names new inputs.
+ */
+export function linuxInputs(treeDir: string, withDeb: boolean): readonly PackageInput[] {
+	const electron = electronVersionOf(treeDir);
+	const inputs: PackageInput[] = [
+		{
+			name: `Electron ${electron} for linux-x64`,
+			from: `https://github.com/electron/electron/releases/download/ (v${electron}/electron-v${electron}-linux-x64.zip and v${electron}/SHASUMS256.txt)`,
+			path: 'electron-mirror',
+			use: { kind: 'environment', variable: 'CODKIT_ELECTRON_MIRROR_DIR' }
+		},
+		{
+			name: 'the built-in extensions of product.json',
+			from: 'the release of each entry of builtInExtensions in product.json',
+			path: 'builtInExtensions',
+			use: { kind: 'tree', target: '.build/builtInExtensions' }
+		},
+		{
+			name: 'the VS Code sysroot x86_64-linux-gnu-glibc-2.28-gcc-10.5.0',
+			from: 'https://github.com/microsoft/vscode-linux-build-agent/releases',
+			path: 'vscode-sysroot',
+			use: { kind: 'environment', variable: 'VSCODE_SYSROOT_DIR' }
+		}
+	];
+	if (!withDeb) {
+		return inputs;
+	}
+	const sysrootsJson = `https://raw.githubusercontent.com/electron/electron/v${electron}/script/sysroots.json`;
+	const shlibdeps = `https://raw.githubusercontent.com/chromium/chromium/${chromiumVersionOf(treeDir)}/third_party/dpkg-shlibdeps/dpkg-shlibdeps.pl`;
+	return [
+		...inputs,
+		{
+			name: "the Chromium sysroot of Electron's sysroots.json",
+			from: 'https://msftelectronbuild.z5.web.core.windows.net/sysroots/toolchain',
+			path: 'tmp',
+			use: { kind: 'directory', variable: 'TMPDIR' }
+		},
+		{ name: "Electron's sysroots.json", from: sysrootsJson, path: 'sysroots.json', use: { kind: 'fetch', url: sysrootsJson } },
+		{ name: "Chromium's dpkg-shlibdeps.pl", from: shlibdeps, path: 'dpkg-shlibdeps.pl', use: { kind: 'fetch', url: shlibdeps } }
+	];
+}
+
+/** The Electron version of the tree: `target` of its `.npmrc`. */
+function electronVersionOf(treeDir: string): string {
+	return /^target="(.*)"$/mu.exec(readTreeFile(treeDir, '.npmrc'))?.[1] ?? 'unknown';
+}
+
+type CgManifest = {
+	readonly registrations?: readonly {
+		readonly component?: { readonly type?: string; readonly git?: { readonly name?: string } };
+		readonly version?: string;
+	}[];
+};
+
+/** The Chromium version of the tree: the git registration named chromium in `cgmanifest.json`. */
+function chromiumVersionOf(treeDir: string): string {
+	try {
+		const manifest = JSON.parse(readTreeFile(treeDir, 'cgmanifest.json')) as CgManifest;
+		const chromium = manifest.registrations?.find(
+			(registration) => registration.component?.type === 'git' && registration.component.git?.name === 'chromium'
+		);
+		return chromium?.version ?? 'unknown';
+	} catch {
+		return 'unknown';
+	}
+}
+
+function readTreeFile(treeDir: string, name: string): string {
+	const path = join(treeDir, name);
+	return existsSync(path) ? readFileSync(path, 'utf8') : '';
+}
+
+/** One of the three Linux x64 installer targets: the bundle, the glibc check, then its own steps. */
+const linuxInstaller = (id: string, steps: readonly BuildCommand[], outputs: readonly string[], withDeb: boolean): PackageTarget => ({
+	id,
+	platform: 'linux',
+	arch: 'x64',
+	supportedHosts: ['linux'],
+	container: LINUX_CONTAINER,
+	outputs,
+	build: [BUNDLE_LINUX_X64, GLIBC_CHECK, ...steps],
+	inputs: (treeDir) => linuxInputs(treeDir, withDeb)
+});
+
+/**
+ * ##VSCODE-LINUX-INSTALLER-TARGETS: what upstream's Linux pipeline runs after the
+ * bundle (build/azure-pipelines/linux/steps/product-build-linux-compile.yml at
+ * the pin 1.135.0), line for line.
+ */
+export const LINUX_INSTALLER_TARGETS: readonly PackageTarget[] = [
+	linuxInstaller(
+		'linux-x64-tar',
+		[
+			// "Archive client", lines 265 and 297, after the archives of an earlier run.
+			pipelineLines('archive', [
+				'rm -f .build/linux/client/code-*-x64-*.tar.gz',
+				'ARCHIVE_PATH=".build/linux/client/code-${VSCODE_QUALITY}-x64-$(date +%s).tar.gz"',
+				'mkdir -p $(dirname $ARCHIVE_PATH)',
+				'tar -czf $ARCHIVE_PATH -C .. VSCode-linux-x64'
+			])
+		],
+		['.build/linux/client/code-*-x64-*.tar.gz'],
+		false
+	),
+	linuxInstaller(
+		'linux-x64-deb',
+		[
+			// "Prepare deb package", line 352, over the client sysroot of the tree.
+			pipelineLines('prepare deb', [SYSROOT, 'npm run gulp -- vscode-linux-x64-prepare-deb']),
+			// "Build deb package", lines 359-366: the task, then the check of the compression.
+			gulp('build deb', 'vscode-linux-x64-build-deb'),
+			pipelineLines('check deb', [
+				'file_output=$(file $(ls .build/linux/deb/amd64/deb/*.deb))',
+				'if [[ "$file_output" != *"data compression xz"* ]]; then',
+				'  echo "Error: unknown compression. $file_output"',
+				'  exit 1',
+				'fi'
+			])
+		],
+		['.build/linux/deb/amd64/deb/*.deb'],
+		true
+	),
+	linuxInstaller(
+		'linux-x64-rpm',
+		[
+			// "Prepare rpm package", lines 373-383.
+			pipelineLines('prepare rpm', [
+				'TRIPLE="x86_64-linux-gnu"',
+				SYSROOT,
+				'export STRIP="$VSCODE_SYSROOT_DIR/$TRIPLE/$TRIPLE/bin/strip"',
+				'npm run gulp -- vscode-linux-x64-prepare-rpm'
+			]),
+			// "Build rpm package", line 390.
+			gulp('build rpm', 'vscode-linux-x64-build-rpm')
+		],
+		['.build/linux/rpm/x86_64/*.rpm'],
+		false
+	)
 ];
 
 /**
- * ##VSCODE-PACKAGE-OUTPUTS: the task above writes its result **beside** the
- * managed tree, in a sibling directory whose name carries the platform and the
- * architecture. `packageOutputs` is tree-relative by contract - a pattern that
- * left the tree would point `codkit package` at a directory the tool neither
- * manages nor guards - so this type states honestly that it can name none, and
- * the operator reads the location from the packager's own output.
+ * The catalog (##VSCODE-PACKAGE-TARGET-CATALOG): the raw application bundles,
+ * one upstream task each, and the Linux x64 installer targets.
+ */
+export const PACKAGE_TARGETS: readonly PackageTarget[] = [
+	target('windows-x64', 'windows', 'x64', 'vscode-win32-x64', ['win32'], windowsSdkEnvironment),
+	target('windows-arm64', 'windows', 'arm64', 'vscode-win32-arm64', ['win32'], windowsSdkEnvironment),
+	// A raw Linux bundle built off Linux carries the host's native modules
+	// (##DECISION-VSCODE-RAW-LINUX-BUNDLE-IS-LINUX-HOSTED).
+	{ ...target('linux-x64', 'linux', 'x64', 'vscode-linux-x64', ['linux']), hostRefusal: RAW_LINUX_BUNDLE_REFUSAL },
+	target('linux-arm64', 'linux', 'arm64', 'vscode-linux-arm64', ['linux']),
+	target('linux-armhf', 'linux', 'armhf', 'vscode-linux-armhf', ['linux']),
+	target('macos-x64', 'macos', 'x64', 'vscode-darwin-x64', ['darwin']),
+	target('macos-arm64', 'macos', 'arm64', 'vscode-darwin-arm64', ['darwin']),
+	...LINUX_INSTALLER_TARGETS
+];
+
+/**
+ * ##VSCODE-PACKAGE-OUTPUTS: a raw bundle is written **beside** the managed tree,
+ * in a sibling directory whose name carries the platform and the architecture.
+ * `packageOutputs` is tree-relative by contract - a pattern that left the tree
+ * would point `codkit package` at a directory the tool neither manages nor
+ * guards - so this type states honestly that it can name none, and the operator
+ * reads the location from the packager's own output. The installer targets
+ * write inside the tree and name their outputs themselves.
  */
 export const PACKAGE_OUTPUTS: readonly string[] = [];
 

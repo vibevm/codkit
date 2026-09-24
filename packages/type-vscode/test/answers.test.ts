@@ -118,9 +118,10 @@ describe('build and test', () => {
 		expect(build.packageScratch).toEqual(['extensions/*/package.json']);
 	});
 
-	it('names no package output, because its packager writes beside the managed tree', () => {
+	it('names no package output for a raw bundle, because its packager writes beside the managed tree', () => {
 		// ##VSCODE-PACKAGE-OUTPUTS: the gulp task of this family writes a sibling
-		// directory of the tree, and the contract keeps the patterns inside it.
+		// directory of the tree, and the contract keeps the patterns inside it;
+		// only the installer targets, which write inside the tree, name outputs.
 		expect(build.packageOutputs).toEqual([]);
 		expect(build.packageDistributable).toEqual([]);
 		expect(build.packageBuild).toHaveLength(1);
@@ -131,7 +132,15 @@ describe('build and test', () => {
 			'linux-arm64',
 			'linux-armhf',
 			'macos-x64',
-			'macos-arm64'
+			'macos-arm64',
+			'linux-x64-tar',
+			'linux-x64-deb',
+			'linux-x64-rpm'
+		]);
+		expect(build.packageTargets?.filter((target) => target.outputs !== undefined).map((target) => target.id)).toEqual([
+			'linux-x64-tar',
+			'linux-x64-deb',
+			'linux-x64-rpm'
 		]);
 		expect(makeBuild({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64'] }).defaultPackageTargets).toEqual(['windows-x64']);
 	});

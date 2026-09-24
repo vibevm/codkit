@@ -25,7 +25,10 @@ export const PACKAGE_TARGET_IDS = [
 	'linux-arm64',
 	'linux-armhf',
 	'macos-x64',
-	'macos-arm64'
+	'macos-arm64',
+	'linux-x64-tar',
+	'linux-x64-deb',
+	'linux-x64-rpm'
 ] as const;
 
 export type VscodeQuality = (typeof QUALITY_CHANNELS)[number];
