@@ -41,7 +41,17 @@ export const FAMILY_DICTIONARY: readonly string[] = [
 	// A channel name of one family: the pair `transpile,typecheck` was a module
 	// constant of the wrapper until a family whose channels are `typecheck` and
 	// `bundle` met it, and the profile of that family therefore never bundled.
-	'transpile'
+	'transpile',
+	// The Linux packaging of one family: its task runner, its variables, its
+	// sysroots, its Debian and RPM tools and the directory its bundle lands in.
+	// The container route of the engine runs them without naming them
+	// (PROP-007 ##DECISION-PACKAGE-CONTAINER-ROUTE).
+	'gulp',
+	'VSCODE_',
+	'sysroot',
+	'dpkg',
+	'rpmbuild',
+	'VSCode-linux'
 ];
 
 const dictionary = new RegExp(FAMILY_DICTIONARY.join('|'), 'u');

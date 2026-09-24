@@ -27,13 +27,25 @@
 // makes (##OVERLAY-KNOWN-MATERIALIZATION): unextracted work still stops the run,
 // and `--discard` is not a flag of this command - giving up somebody's edits is
 // never a side effect of packaging.
+//
+// A target of a catalog runs on the route its type answers for this host
+// (##CMD-PACKAGE-HOST-ROUTES): natively in the tree, or in the type's container
+// over a read-only view of it (packageContainer.ts). What its build downloads is
+// checked first, before any write, so that an offline run with a missing input
+// is refused while nothing has happened yet (packageInputs.ts).
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
 import { driftDirty } from './driftGuard.js';
+import { treeId } from './fingerprint.js';
 import { ckError } from './messages.js';
 import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/overlay.js';
 import { materializerOf } from './layers/ownExtensions.js';
 import { ownedRootsOf } from './ownedRoots.js';
+import { DEFAULT_CONTAINER_PREFIX, containerCommands, containerInputEnvironment, containerMounts, containerNames, containerRunArgs, containerShim, containerTreeInputs, dockerPlatform, imageBuildArgs, passedEnvironment, recipeHash, takeContainerOutputs, treeArguments, treeModes, writeContainerIo } from './packageContainer.js';
+import { checkInputs, inputLines, inputsOf, missingInputsRefusal, nativeInputEnvironment } from './packageInputs.js';
 import { packageOutputPaths, packageScratchPaths } from './packagePaths.js';
 import { processInvocation } from './processInvocation.js';
 import { overlayMaterializationClassifier, overlayVarContext, pinCommitDate, patchSetCommitId, restoreToTip } from './syncEngine.js';
@@ -50,10 +62,13 @@ const FAILURE_TAIL_LINES = 20;
  * in the control flow of `runPackage` so that a test can read it: the guard
  * before any write, the overlay before the build (a packaged product reads the
  * target), the stamps before the commands that need them, and the restore last
- * and unconditionally - `--keep-overlay` is the one thing that removes it.
+ * and unconditionally - `--keep-overlay` is the one thing that removes it. The
+ * inputs come before all of it when the selected targets declare any
+ * (##CMD-PACKAGE-INPUTS): the check only reads, and an offline run that misses
+ * one is refused before the guard has even looked at the tree.
  */
-export function packageStepPlan(type, flags, packageBuild = type.build.packageBuild) {
-    const steps = ['drift guard', 'overlay apply', 'stamps'];
+export function packageStepPlan(type, flags, packageBuild = type.build.packageBuild, hasInputs = false) {
+    const steps = [...(hasInputs ? ['inputs'] : []), 'drift guard', 'overlay apply', 'stamps'];
     if (!flags.skipTypeBuild && packageBuild.length > 0) {
         steps.push('package build');
     }
@@ -72,6 +87,16 @@ export function packageStepPlan(type, flags, packageBuild = type.build.packageBu
     }
     return steps;
 }
+/** The route of a target on a host: native, in the type's container, or none (##CMD-PACKAGE-HOST-ROUTES). */
+export function routeOf(target, host) {
+    if (target.supportedHosts.includes(host)) {
+        return 'native';
+    }
+    if (target.container?.hosts.includes(host) === true) {
+        return 'container';
+    }
+    return null;
+}
 export function packageTargetsFor(type, selector, host) {
     const catalog = type.build.packageTargets ?? [];
     if (catalog.length === 0) {
@@ -82,10 +107,10 @@ export function packageTargetsFor(type, selector, host) {
     const ids = selector === null
         ? (type.build.defaultPackageTargets ?? [])
         : selector === 'all'
-            ? catalog.filter((candidate) => candidate.supportedHosts.includes(host)).map((candidate) => candidate.id)
+            ? catalog.filter((candidate) => routeOf(candidate, host) !== null).map((candidate) => candidate.id)
             : ['windows', 'linux', 'macos'].includes(selector)
                 ? catalog
-                    .filter((candidate) => candidate.platform === selector && candidate.supportedHosts.includes(host))
+                    .filter((candidate) => candidate.platform === selector && routeOf(candidate, host) !== null)
                     .map((candidate) => candidate.id)
                 : [selector];
     const unique = [...new Set(ids)];
@@ -94,9 +119,12 @@ export function packageTargetsFor(type, selector, host) {
         .filter((candidate) => candidate !== undefined);
     if (targets.length !== unique.length)
         throw ckError('CONFIG', `unknown package target: ${unique.find((id) => !catalog.some((candidate) => candidate.id === id))}`, `choose one of: ${catalog.map((target) => target.id).join(', ')}, a platform family, or all`);
-    const unsupported = targets.find((candidate) => !candidate.supportedHosts.includes(host));
-    if (unsupported !== undefined)
-        throw ckError('CONFIG', `package target ${unsupported.id} is not supported on host ${host}`, `run this target on one of: ${unsupported.supportedHosts.join(', ')}`);
+    const unsupported = targets.find((candidate) => routeOf(candidate, host) === null);
+    if (unsupported !== undefined) {
+        const reason = unsupported.hostRefusal?.reason;
+        const hosts = [...unsupported.supportedHosts, ...(unsupported.container?.hosts ?? [])];
+        throw ckError('CONFIG', `package target ${unsupported.id} is not supported on host ${host}${reason === undefined ? '' : `: ${reason}`}`, unsupported.hostRefusal?.hint ?? `run this target on one of: ${hosts.join(', ')}`);
+    }
     if (targets.length === 0)
         throw ckError('CONFIG', `package selector ${selector ?? '(default)'} has no targets supported on host ${host}`, 'choose an exact target supported by this host');
     return targets;
@@ -105,48 +133,85 @@ export function packageTargetsFor(type, selector, host) {
 export function runPackage(options) {
     const { out, config, patchesDir, type } = options;
     const tree = options.resolution.path;
+    const env = options.env ?? process.env;
+    const offline = options.offline ?? false;
+    const inputsDir = options.inputsDir ?? null;
+    const host = options.host ?? process.platform;
     const steps = [];
     const materialized = [];
     const commands = [];
     let restored = [];
     let scratchRestored = [];
     let outputs = [];
-    const selectedTargets = packageTargetsFor(type, options.targetSelector ?? null, process.platform);
+    const selectedTargets = packageTargetsFor(type, options.targetSelector ?? null, host);
+    const routed = selectedTargets.map((target) => routedTarget(options, target, host));
     const packageBuild = selectedTargets.length === 0 ? type.build.packageBuild : selectedTargets.flatMap((target) => target.build);
     const targets = selectedTargets.map((target) => target.id);
+    const routes = routed.map((entry) => ({
+        target: entry.target.id,
+        route: entry.route,
+        image: entry.container?.names.image ?? null,
+        volume: entry.container?.names.volume ?? null
+    }));
+    const checked = checkInputs(inputsOf(selectedTargets, tree), inputsDir);
+    const inputs = checked.map((entry) => ({ name: entry.input.name, path: entry.input.path, from: entry.input.from, state: entry.state }));
     const record = (name, state, detail) => {
         steps.push({ name, state, detail });
         out.info(`package ${name}: ${state}${detail === '' ? '' : ` (${detail})`}`);
     };
-    out.info(`package targets: ${targets.length === 0 ? 'legacy' : targets.join(', ')}`);
-    out.info(`package plan: ${packageStepPlan(type, options.flags, packageBuild).join(' -> ')}`);
+    out.info(`package targets: ${targets.length === 0 ? 'legacy' : routed.map((entry) => `${entry.target.id} (${entry.route})`).join(', ')}`);
+    out.info(`package plan: ${packageStepPlan(type, options.flags, packageBuild, checked.length > 0).join(' -> ')}`);
     const overlays = loadOverlays(patchesDir);
     const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir));
-    const stamps = packageStamps(type, config, tree, options.env ?? process.env);
+    const stamps = packageStamps(type, config, tree, env);
     const stampValues = Object.fromEntries(stamps.map((stamp) => [stamp.name, stamp.value]));
     const stampsFromEnvironment = stamps.filter((stamp) => stamp.fromEnvironment).map((stamp) => stamp.name);
+    const result = (exitCode) => ({
+        exitCode,
+        steps,
+        materialized,
+        restored,
+        scratchRestored,
+        stamps: stampValues,
+        stampsFromEnvironment,
+        commands,
+        outputs,
+        targets,
+        routes,
+        inputs
+    });
+    // The checks that only read come before any write: the inputs, and what the
+    // container route needs of the host (##CMD-PACKAGE-INPUTS,
+    // ##CMD-PACKAGE-CONTAINER).
+    if (checked.length > 0) {
+        for (const line of inputLines(checked)) {
+            out.info(line);
+        }
+        const missing = checked.filter((entry) => entry.state === 'missing');
+        if (offline && missing.length > 0) {
+            record('inputs', 'failed', `${missing.length} of ${checked.length} input(s) are not pre-provisioned`);
+            out.addError(missingInputsRefusal(missing, inputsDir).toPayload());
+            return result(EXIT_ENVIRONMENT);
+        }
+        record('inputs', 'ok', `${checked.length - missing.length} of ${checked.length} input(s) pre-provisioned${offline ? ', offline' : ''}`);
+    }
+    const preflight = containerPreflight(options, routed, offline);
+    if (preflight !== null) {
+        out.addError(preflight.error);
+        return result(preflight.exitCode);
+    }
     const guard = guardStep(options, overlays, context);
     if (guard !== null) {
         record('drift guard', 'failed', guard.detail);
         out.addError(guard.error);
-        return {
-            exitCode: guard.exitCode,
-            steps,
-            materialized,
-            restored,
-            scratchRestored,
-            stamps: stampValues,
-            stampsFromEnvironment,
-            commands,
-            outputs,
-            targets
-        };
+        return result(guard.exitCode);
     }
     record('drift guard', 'ok', 'the fork tree carries no unextracted work');
     // From here on the tree carries bytes this run wrote, so the restore is a
     // `finally`: a build that fails halfway must not leave a developer's tree in
     // packaging state (R14 - what was announced is what happens).
     let exitCode = EXIT_OK;
+    let runDir = null;
     try {
         for (const group of overlayTargets(overlays)) {
             if (applyOverlaysToTree(group.overlays, tree, config.pin.sha, context).changed) {
@@ -161,27 +226,43 @@ export function runPackage(options) {
         if (options.flags.skipTypeBuild) {
             out.info(`skip-type-build: the application build of ${type.id} is not run; the tree is taken as already built`);
         }
-        const halves = [
-            { name: 'package build', build: options.flags.skipTypeBuild ? [] : packageBuild },
-            { name: 'package distributable', build: type.build.packageDistributable }
-        ];
-        for (const half of halves) {
-            if (half.build.length === 0) {
-                continue;
-            }
-            const outcome = runCommands(options, half.build, stampValues, commands);
-            record(half.name, outcome.state, outcome.detail);
+        if (!options.flags.skipTypeBuild && packageBuild.length > 0) {
+            // The inputs are wired once per run, and only for a native target that
+            // runs: the container route wires them inside its container.
+            let wired = null;
+            const nativeEnvironment = () => {
+                if (!offline && !checked.some((entry) => entry.state === 'provisioned')) {
+                    return stampValues;
+                }
+                if (wired === null) {
+                    runDir = mkdtempSync(join(tmpdir(), 'codkit-package-'));
+                    wired = { ...stampValues, ...nativeInputEnvironment(checked, runDir, tree, offline, env['PATH'] ?? env['Path'] ?? '') };
+                }
+                return wired;
+            };
+            const outcome = routed.length === 0
+                ? runCommands(options, packageBuild, stampValues, commands)
+                : runRoutedTargets(options, routed, stampValues, nativeEnvironment, checked, commands);
+            record('package build', outcome.state, outcome.detail);
             if (outcome.error !== null) {
                 out.addError(outcome.error);
                 exitCode = outcome.exitCode;
-                break;
+            }
+        }
+        if (exitCode === EXIT_OK && type.build.packageDistributable.length > 0) {
+            const outcome = runCommands(options, type.build.packageDistributable, stampValues, commands);
+            record('package distributable', outcome.state, outcome.detail);
+            if (outcome.error !== null) {
+                out.addError(outcome.error);
+                exitCode = outcome.exitCode;
             }
         }
         if (exitCode === EXIT_OK) {
-            outputs = packageOutputPaths(tree, type.build.packageOutputs, (text) => {
+            const patterns = outputPatterns(type, selectedTargets);
+            outputs = packageOutputPaths(tree, patterns, (text) => {
                 out.warn(text);
             });
-            record('outputs', 'ok', outputsDetail(type, outputs));
+            record('outputs', 'ok', outputsDetail(type, patterns, outputs));
             for (const path of outputs) {
                 out.info(`artifact ${path}`);
             }
@@ -203,26 +284,169 @@ export function runPackage(options) {
         else {
             record('restore', 'ok', restored.length === 0 ? 'this run materialized nothing to put back' : restored.join(', '));
         }
+        if (runDir !== null) {
+            rmSync(runDir, { recursive: true, force: true });
+        }
     }
-    return {
-        exitCode,
-        steps,
-        materialized,
-        restored,
-        scratchRestored,
-        stamps: stampValues,
-        stampsFromEnvironment,
-        commands,
-        outputs,
-        targets
-    };
+    return result(exitCode);
+}
+/** The route of a selected target and, for the container route, the names of its image and volume. */
+function routedTarget(options, target, host) {
+    const route = routeOf(target, host) ?? 'native';
+    const container = target.container;
+    if (route === 'native' || container === undefined) {
+        return { target, route: 'native', container: null };
+    }
+    const tree = options.resolution.path;
+    const args = treeArguments(container, tree);
+    const names = containerNames(options.containerPrefix ?? DEFAULT_CONTAINER_PREFIX, options.type.id, target, recipeHash(container.recipe, args), treeId(tree));
+    return { target, route: 'container', container: { names, args } };
+}
+/**
+ * What the container route needs of the host, asked before any write: a docker
+ * that starts, and - for an offline run, which cannot build one - the image.
+ */
+function containerPreflight(options, routed, offline) {
+    const inContainer = routed.filter((entry) => entry.container !== null);
+    if (inContainer.length === 0) {
+        return null;
+    }
+    const run = options.runCommand ?? defaultPackageCommandRunner;
+    const probe = runQuietly(run, options, ['version', '--format', '{{.Server.Version}}']);
+    if (probe.status !== EXIT_OK || probe.error !== undefined) {
+        return {
+            error: {
+                code: 'PACKAGE-FAILED',
+                message: `docker could not be started for the container route of ${inContainer.map((entry) => entry.target.id).join(', ')}: ${probe.error?.message ?? (lastLine(probe.stderr) || `docker version exited ${probe.status}`)}`,
+                hint: 'the container route needs a running Docker engine and the docker command on PATH'
+            },
+            exitCode: EXIT_ENVIRONMENT
+        };
+    }
+    if (!offline) {
+        return null;
+    }
+    for (const entry of inContainer) {
+        const image = entry.container?.names.image ?? '';
+        if (runQuietly(run, options, ['image', 'inspect', image]).status !== EXIT_OK) {
+            return {
+                error: {
+                    code: 'NET-FORBIDDEN',
+                    message: `an offline run fetches nothing, and the image ${image} of the container route of ${entry.target.id} is not there: building it needs the network`,
+                    hint: 'run the same codkit package once without --ci, or load the image into docker under that name'
+                },
+                exitCode: EXIT_ENVIRONMENT
+            };
+        }
+    }
+    return null;
+}
+/** The build commands of every selected target, each on its route, stopping at the first that fails. */
+function runRoutedTargets(options, routed, stamps, nativeEnvironment, checked, into) {
+    const details = [];
+    for (const entry of routed) {
+        const outcome = entry.container === null
+            ? runCommands(options, entry.target.build, nativeEnvironment(), into)
+            : runContainerTarget(options, entry.target, entry.container, stamps, checked, into);
+        if (outcome.error !== null) {
+            return outcome;
+        }
+        details.push(`${entry.target.id}: ${outcome.detail}`);
+    }
+    return { state: 'ok', detail: details.join('; '), error: null, exitCode: EXIT_OK };
+}
+/**
+ * One target on the container route (##CMD-PACKAGE-CONTAINER): the image when it
+ * is not there, the volume, the files of the protocol, the run, and the
+ * artifacts back into the tree. The run's directory goes whatever the verdict.
+ */
+function runContainerTarget(options, target, container, stamps, checked, into) {
+    const recipe = target.container;
+    if (recipe === undefined) {
+        throw new Error(`package target ${target.id} has no container`);
+    }
+    const env = options.env ?? process.env;
+    const tree = options.resolution.path;
+    const offline = options.offline ?? false;
+    const platform = dockerPlatform(target.arch);
+    const run = options.runCommand ?? defaultPackageCommandRunner;
+    const { names, args } = container;
+    const valuesOf = (namesOfVariables) => Object.fromEntries(namesOfVariables.map((name) => [name, env[name] ?? '']));
+    if (runQuietly(run, options, ['image', 'inspect', names.image]).status !== EXIT_OK) {
+        const buildEnvironment = passedEnvironment(recipe.buildEnvironment, env);
+        const buildArgs = imageBuildArgs(recipe, names, platform, args, buildEnvironment);
+        const built = runOne(options, `container image ${names.image}`, 'docker', buildArgs, valuesOf(buildEnvironment), into);
+        if (built.error !== null) {
+            return {
+                ...built,
+                error: {
+                    ...built.error,
+                    hint: `build the image yourself under the name ${names.image}, with the options your network needs, and run again: docker ${buildArgs.join(' ')}`
+                }
+            };
+        }
+    }
+    const volume = runOne(options, `container volume ${names.volume}`, 'docker', ['volume', 'create', names.volume], {}, into);
+    if (volume.error !== null) {
+        return volume;
+    }
+    const ioDir = mkdtempSync(join(tmpdir(), 'codkit-package-'));
+    try {
+        writeContainerIo(ioDir, {
+            commands: containerCommands(target.build, { ...stamps, ...containerInputEnvironment(checked) }),
+            outputs: target.outputs ?? [],
+            modes: treeModes(tree),
+            treeInputs: containerTreeInputs(checked),
+            shim: containerShim(checked, offline)
+        });
+        const runEnvironment = passedEnvironment(recipe.runEnvironment, env);
+        const runArgs = containerRunArgs({
+            names,
+            platform,
+            mounts: containerMounts(tree, names.volume, ioDir, options.inputsDir ?? null, checked),
+            offline,
+            runEnvironment
+        });
+        const outcome = runOne(options, `package ${target.id} in the container`, 'docker', runArgs, valuesOf(runEnvironment), into);
+        if (outcome.error !== null) {
+            // A container that --timeout stopped outlives its docker client.
+            runQuietly(run, options, ['rm', '--force', names.volume]);
+            return outcome;
+        }
+        const arrived = takeContainerOutputs(ioDir, tree, target.outputs ?? [], (text) => {
+            options.out.warn(text);
+        });
+        for (const path of arrived) {
+            options.out.info(`container artifact ${path} copied into the fork tree`);
+        }
+        return { ...outcome, detail: `in the container ${names.image}, ${arrived.length} artifact(s) copied into the fork tree` };
+    }
+    finally {
+        rmSync(ioDir, { recursive: true, force: true });
+    }
+}
+/** A docker command whose output nobody reads: a probe, or a cleanup. */
+function runQuietly(run, options, args) {
+    try {
+        return run({ label: 'docker', command: 'docker', args: [...args], cwd: options.resolution.path, env: {}, timeoutMs: null });
+    }
+    catch (error) {
+        return { status: null, stdout: '', stderr: '', error: error instanceof Error ? error : new Error(String(error)) };
+    }
+}
+function lastLine(text) {
+    return outputLines(text).at(-1) ?? '';
+}
+/** The output patterns of the selected targets and then the type's own, each once. */
+function outputPatterns(type, targets) {
+    return [...new Set([...targets.flatMap((target) => target.outputs ?? []), ...type.build.packageOutputs])];
 }
 /** What the outputs step says when it found something, and when it did not. */
-function outputsDetail(type, outputs) {
+function outputsDetail(type, patterns, outputs) {
     if (outputs.length > 0) {
         return outputs.join(', ');
     }
-    return type.build.packageOutputs.length === 0
+    return patterns.length === 0
         ? `the project type ${type.id} names no package output inside the tree`
         : 'no declared output exists in the tree';
 }
@@ -358,8 +582,6 @@ function valueOfStamp(stamp, config, treeDir) {
     }
 }
 function runCommands(options, build, stamps, into) {
-    const run = options.runCommand ?? defaultPackageCommandRunner;
-    const tree = options.resolution.path;
     for (const declared of build) {
         let targetEnvironment = {};
         try {
@@ -377,46 +599,54 @@ function runCommands(options, build, stamps, into) {
                 exitCode: EXIT_ENVIRONMENT
             };
         }
-        const command = {
-            label: declared.label,
-            command: declared.command === 'npm' ? npmCommand() : declared.command,
-            args: [...declared.args],
-            cwd: tree,
-            env: { ...targetEnvironment, ...stamps },
-            timeoutMs: options.timeoutMs
-        };
-        const rendered = renderCommand(command);
-        options.out.info(`--- ${command.label}: ${rendered}`);
-        into.push(rendered);
-        let result;
-        try {
-            result = run(command);
+        const outcome = runOne(options, declared.label, declared.command === 'npm' ? npmCommand() : declared.command, declared.args, { ...targetEnvironment, ...stamps }, into);
+        if (outcome.error !== null) {
+            return outcome;
         }
-        catch (error) {
-            result = { status: null, stdout: '', stderr: '', error: error instanceof Error ? error : new Error(String(error)) };
-        }
-        const lines = [...outputLines(result.stdout), ...outputLines(result.stderr)];
-        for (const line of lines) {
-            options.out.info(`[${command.label}] ${line}`);
-        }
-        if (result.status === EXIT_OK && result.error === undefined) {
-            continue;
-        }
-        const couldNotRun = result.status === null || result.error !== undefined;
-        const why = couldNotRun ? failureReason(result) : `exited ${result.status}`;
-        const tail = lines.slice(-FAILURE_TAIL_LINES);
-        return {
-            state: 'failed',
-            detail: `${command.label}: ${why}`,
-            error: {
-                code: 'PACKAGE-FAILED',
-                message: `${command.label}: ${why}${tail.length === 0 ? '' : `; last output: ${tail.join(' | ')}`}`,
-                hint: `run the command in the fork tree to see it fail on its own: ${rendered}`
-            },
-            exitCode: couldNotRun ? EXIT_ENVIRONMENT : EXIT_CHECK_FAILED
-        };
     }
     return { state: 'ok', detail: `${build.length} command(s) passed`, error: null, exitCode: EXIT_OK };
+}
+/** One command in the tree: announced, run, its whole output printed, its failure turned into the refusal. */
+function runOne(options, label, executable, args, env, into) {
+    const run = options.runCommand ?? defaultPackageCommandRunner;
+    const command = {
+        label,
+        command: executable,
+        args: [...args],
+        cwd: options.resolution.path,
+        env,
+        timeoutMs: options.timeoutMs
+    };
+    const rendered = renderCommand(command);
+    options.out.info(`--- ${command.label}: ${rendered}`);
+    into.push(rendered);
+    let result;
+    try {
+        result = run(command);
+    }
+    catch (error) {
+        result = { status: null, stdout: '', stderr: '', error: error instanceof Error ? error : new Error(String(error)) };
+    }
+    const lines = [...outputLines(result.stdout), ...outputLines(result.stderr)];
+    for (const line of lines) {
+        options.out.info(`[${command.label}] ${line}`);
+    }
+    if (result.status === EXIT_OK && result.error === undefined) {
+        return { state: 'ok', detail: '1 command(s) passed', error: null, exitCode: EXIT_OK };
+    }
+    const couldNotRun = result.status === null || result.error !== undefined;
+    const why = couldNotRun ? failureReason(result) : `exited ${result.status}`;
+    const tail = lines.slice(-FAILURE_TAIL_LINES);
+    return {
+        state: 'failed',
+        detail: `${command.label}: ${why}`,
+        error: {
+            code: 'PACKAGE-FAILED',
+            message: `${command.label}: ${why}${tail.length === 0 ? '' : `; last output: ${tail.join(' | ')}`}`,
+            hint: `run the command in the fork tree to see it fail on its own: ${rendered}`
+        },
+        exitCode: couldNotRun ? EXIT_ENVIRONMENT : EXIT_CHECK_FAILED
+    };
 }
 function defaultPackageCommandRunner(command) {
     const invocation = processInvocation(command.command, command.args);

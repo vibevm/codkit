@@ -1,8 +1,11 @@
 // The contract's own gate: the shape rules a type must satisfy before the
 // engine will trust it (##TYPE-CONTRACT-IS-CLOSED, ##TYPE-TERM-CAPABILITY).
 
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import type { PackageContainer, PackageTarget } from '../src/build.ts';
 import { CAPABILITIES, isCapability } from '../src/capabilities.ts';
 import { OPTIONAL_AREAS, projectTypeProblems } from '../src/projectType.ts';
 import type { Capability } from '../src/capabilities.ts';
@@ -230,5 +233,51 @@ describe('the typeConfig schema', () => {
 	it('is the gate of the type over typeConfig and refuses by field', () => {
 		const parsed = bareType().configSchema.safeParse({ ownRoot: '' });
 		expect(parsed.success).toBe(false);
+	});
+});
+
+describe('the package targets', () => {
+	const recipe = join(tmpdir(), 'codkit-recipe');
+	const containerTarget = (overrides: Partial<PackageTarget> = {}): PackageTarget => ({
+		id: 'linux-x64-pkg',
+		platform: 'linux',
+		arch: 'x64',
+		supportedHosts: ['linux'],
+		build: [{ label: 'bundle', command: 'npm', args: ['run', 'bundle'] }],
+		container: { hosts: ['win32'], recipe, treeArguments: {}, buildEnvironment: [], runEnvironment: [] },
+		outputs: ['.build/out/*.pkg'],
+		...overrides
+	});
+	const withTargets = (targets: readonly PackageTarget[]): ProjectType => {
+		const base = bareType();
+		return bareType({ build: { ...base.build, packageTargets: targets } });
+	};
+
+	it('accepts a container route for hosts the target cannot build on natively', () => {
+		expect(projectTypeProblems(withTargets([containerTarget()]))).toEqual([]);
+	});
+
+	it('refuses a container that names no host, or a host that builds natively', () => {
+		const base = containerTarget().container as PackageContainer;
+		expect(projectTypeProblems(withTargets([containerTarget({ container: { ...base, hosts: [] } })]))).toEqual([
+			'bare: package target linux-x64-pkg has a container that names no host'
+		]);
+		expect(projectTypeProblems(withTargets([containerTarget({ container: { ...base, hosts: ['win32', 'linux'] } })]))).toEqual([
+			'bare: package target linux-x64-pkg names linux both as a native host and as a container host'
+		]);
+	});
+
+	it('refuses a recipe that is not an absolute path', () => {
+		const base = containerTarget().container as PackageContainer;
+		expect(projectTypeProblems(withTargets([containerTarget({ container: { ...base, recipe: 'container/linux' } })]))).toEqual([
+			'bare: package target linux-x64-pkg names a container recipe that is not an absolute path: container/linux'
+		]);
+	});
+
+	it('refuses an output that would leave the tree', () => {
+		expect(projectTypeProblems(withTargets([containerTarget({ outputs: ['../beside/*.pkg', '.build//x', '.build/ok/'] })]))).toEqual([
+			'bare: package target linux-x64-pkg names an output that is not a path inside the tree: ../beside/*.pkg',
+			'bare: package target linux-x64-pkg names an output that is not a path inside the tree: .build//x'
+		]);
 	});
 });

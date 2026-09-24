@@ -7,22 +7,28 @@
 // overlay targets, stamp what the family asks for, run the packager, put the
 // tree back - was a sequence people typed by hand and got wrong at both ends.
 //
-// It is not a daemon and not a container run, so it needs no wrapper of
-// PROP-007 sec. 13: one synchronous command after another, their whole output
-// printed, and `--timeout` bounding each of them. It holds the per-tree lock
+// It is not a daemon, so it needs no wrapper of PROP-007 sec. 13: one
+// synchronous command after another, their whole output printed, and
+// `--timeout` bounding each of them - a target on its container route runs as
+// one such command, `docker run` (##CMD-PACKAGE-CONTAINER). It holds the per-tree lock
 // like every writing command, and it refuses over a dirty tree exactly as
 // `load` does - there is no `--discard` here, because giving up somebody's
 // edits is never a side effect of packaging.
+import { existsSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { EXIT_ENVIRONMENT, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
+import { DEFAULT_CONTAINER_PREFIX, requireContainerPrefix } from '../lib/packageContainer.js';
 import { runPackage } from '../lib/packageEngine.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { checkTree } from '../lib/treeIdentity.js';
 const KEEP_OVERLAY = '--keep-overlay';
 const SKIP_TYPE_BUILD = '--skip-type-build';
 const TIMEOUT = '--timeout';
+const INPUTS = '--inputs';
+const CONTAINER_PREFIX = '--container-prefix';
 async function run(ctx) {
     const resolution = forkResolution(ctx);
     ctx.out.setForkTree(resolution.path, resolution.source);
@@ -33,6 +39,8 @@ async function run(ctx) {
     const config = requireConfig(ctx.config);
     const type = requireProjectType(ctx);
     const timeoutMs = requireTimeout(commandFlagValue(ctx.commandFlags, TIMEOUT));
+    const inputsDir = requireInputsDir(commandFlagValue(ctx.commandFlags, INPUTS));
+    const containerPrefix = requireContainerPrefix(commandFlagValue(ctx.commandFlags, CONTAINER_PREFIX) ?? DEFAULT_CONTAINER_PREFIX);
     const identity = checkTree(resolution, config, { mode: 'write', type });
     if (identity.fatal !== null) {
         ctx.out.addError(identity.fatal.toPayload());
@@ -50,7 +58,10 @@ async function run(ctx) {
                 skipTypeBuild: commandFlagGiven(ctx.commandFlags, SKIP_TYPE_BUILD)
             },
             timeoutMs,
-            targetSelector: ctx.args[0] ?? null
+            targetSelector: ctx.args[0] ?? null,
+            inputsDir,
+            offline: ctx.flags.ci,
+            containerPrefix
         });
         ctx.out.setData(dataOf(result));
         return result.exitCode;
@@ -68,7 +79,9 @@ function dataOf(result) {
         stampsFromEnvironment: [...result.stampsFromEnvironment],
         commands: [...result.commands],
         outputs: [...result.outputs],
-        targets: [...result.targets]
+        targets: [...result.targets],
+        routes: result.routes.map((route) => ({ target: route.target, route: route.route, image: route.image, volume: route.volume })),
+        inputs: result.inputs.map((input) => ({ name: input.name, path: input.path, from: input.from, state: input.state }))
     };
 }
 /** `--timeout <seconds>` for one packaging command; null leaves it unbounded. */
@@ -81,6 +94,17 @@ function requireTimeout(raw) {
     }
     return Number.parseInt(raw, 10) * 1000;
 }
+/** `--inputs <dir>`: an existing directory, as an absolute path; null without the flag. */
+function requireInputsDir(raw) {
+    if (raw === null) {
+        return null;
+    }
+    const path = resolve(raw);
+    if (!existsSync(path) || !statSync(path).isDirectory()) {
+        throw ckError('CONFIG', `${INPUTS} names no directory: ${path}`, `usage: ${INPUTS} <dir>, the directory of the pre-provisioned inputs`);
+    }
+    return path;
+}
 function requireConfig(config) {
     if (config === null) {
         throw ckError('CONFIG', 'codkit.json was not found in the patchset root: package needs the pin, the delta and the project type of this repository', 'run package from a patchset checkout that carries codkit.json');
@@ -92,6 +116,6 @@ export const packageCommand = {
     summary: 'build the distributable from the loaded tree and put the tree back',
     configMode: 'load',
     maxArgs: 1,
-    commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT],
+    commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT, INPUTS, CONTAINER_PREFIX],
     run
 };

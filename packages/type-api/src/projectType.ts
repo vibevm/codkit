@@ -9,10 +9,11 @@
 // `@codkit/type-api` is the only import a type package takes from the tool, and
 // the CLI imports a type only through this interface (##TYPE-API-STABILITY).
 
+import { isAbsolute } from 'node:path';
 import type { ZodType } from 'zod';
 import type { AdvisoryArea } from './advisory.ts';
 import type { BrandImagesArea } from './brandImages.ts';
-import type { BuildArea } from './build.ts';
+import type { BuildArea, PackageTarget } from './build.ts';
 import type { Capability } from './capabilities.ts';
 import type { ConventionsArea } from './conventions.ts';
 import type { GeneratorsArea } from './generators.ts';
@@ -110,6 +111,36 @@ function ownedDirectoryProblems(type: ProjectType): readonly string[] {
 }
 
 /**
+ * ##TYPE-PACKAGE-TARGETS: the shape of the optional answers of one package
+ * target. A container route is for hosts the target cannot build on natively,
+ * so it names at least one and none of the native ones; its recipe is a
+ * directory of the type package and must be given as an absolute path; an
+ * output pattern stays inside the tree, like `packageOutputs`.
+ */
+function packageTargetShapeProblems(typeId: string, target: PackageTarget): readonly string[] {
+	const problems: string[] = [];
+	const container = target.container;
+	if (container !== undefined) {
+		if (container.hosts.length === 0) problems.push(`${typeId}: package target ${target.id} has a container that names no host`);
+		for (const host of container.hosts) {
+			if (target.supportedHosts.includes(host)) {
+				problems.push(`${typeId}: package target ${target.id} names ${host} both as a native host and as a container host`);
+			}
+		}
+		if (!isAbsolute(container.recipe)) {
+			problems.push(`${typeId}: package target ${target.id} names a container recipe that is not an absolute path: ${container.recipe}`);
+		}
+	}
+	for (const pattern of target.outputs ?? []) {
+		const segments = (pattern.endsWith('/') ? pattern.slice(0, -1) : pattern).split('/');
+		if (segments.some((segment) => segment === '' || segment === '.' || segment === '..') || pattern.includes('\\')) {
+			problems.push(`${typeId}: package target ${target.id} names an output that is not a path inside the tree: ${pattern}`);
+		}
+	}
+	return problems;
+}
+
+/**
  * The areas that are optional in the interface, paired with the capability that
  * must be declared exactly when the area is present. Both the engine and a
  * type's own suite check the pairing, so a type cannot declare an ability it
@@ -134,6 +165,7 @@ export function projectTypeProblems(type: ProjectType): readonly string[] {
 		packageTargetIds.add(target.id);
 		if (target.build.length === 0) problems.push(`${type.id}: package target ${target.id} has no build command`);
 		if (target.supportedHosts.length === 0) problems.push(`${type.id}: package target ${target.id} names no supported host`);
+		problems.push(...packageTargetShapeProblems(type.id, target));
 	}
 	for (const target of type.build.defaultPackageTargets ?? []) {
 		if (!packageTargetIds.has(target)) problems.push(`${type.id}: default package target ${target} is absent from the catalog`);

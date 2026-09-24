@@ -25,9 +25,71 @@ export type PackageTarget = {
 	readonly platform: 'windows' | 'linux' | 'macos';
 	readonly arch: 'x64' | 'arm64' | 'armhf';
 	readonly build: readonly BuildCommand[];
-	/** Hosts on which this recipe is known to work, including measured cross-builds. */
+	/** Hosts on which the build commands run natively, in the fork tree. */
 	readonly supportedHosts: readonly PackageHost[];
+	/**
+	 * Where the artifacts of this target land, as path patterns from the tree
+	 * root read like `BuildArea.packageOutputs`; absent for a target whose
+	 * packager writes beside the tree
+	 * (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-TARGET-OUTPUTS`).
+	 */
+	readonly outputs?: readonly string[];
+	/**
+	 * The container route: on the hosts it names, the same build commands run
+	 * in a container of the type's recipe over a read-only view of the tree
+	 * (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-CONTAINER`).
+	 */
+	readonly container?: PackageContainer;
+	/**
+	 * Why a host with no route is refused and what to run there instead; without
+	 * it the refusal names the hosts that have a route.
+	 */
+	readonly hostRefusal?: { readonly reason: string; readonly hint: string };
+	/**
+	 * What the build of this target downloads unless a pre-provisioned copy is
+	 * given, computed from the tree it builds
+	 * (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-INPUTS`).
+	 */
+	readonly inputs?: (treeDir: string) => readonly PackageInput[];
 };
+
+/** The container a target is built in on a host that cannot build it natively. */
+export type PackageContainer = {
+	/** The hosts that take this route; none of them is a native host of the target. */
+	readonly hosts: readonly PackageHost[];
+	/**
+	 * The absolute path of the recipe inside the type package: a directory with
+	 * a `Dockerfile` whose entrypoint is the type's entry, and the files it copies.
+	 */
+	readonly recipe: string;
+	/** Build arguments read from the tree: argument name to a tree-relative file whose first line is the value. */
+	readonly treeArguments: Readonly<Record<string, string>>;
+	/** Variables of codkit's environment the image build receives when they are set; their values are never printed. */
+	readonly buildEnvironment: readonly string[];
+	/** Variables, or `prefix*` patterns, of codkit's environment the container receives when they are set. */
+	readonly runEnvironment: readonly string[];
+};
+
+/** Something a build downloads, and how the build is pointed at a pre-provisioned copy of it. */
+export type PackageInput = {
+	/** What it is, for the report. */
+	readonly name: string;
+	/** Where the build fetches it from when it is not provisioned. */
+	readonly from: string;
+	/** Its path inside the inputs directory, with `/` separators. */
+	readonly path: string;
+	readonly use: PackageInputUse;
+};
+
+export type PackageInputUse =
+	/** The variable of the upstream that names its location gets the path of the copy. */
+	| { readonly kind: 'environment'; readonly variable: string }
+	/** The upstream fetches this address with `curl` on every run; the fetch answer serves it from the copy. */
+	| { readonly kind: 'fetch'; readonly url: string }
+	/** The upstream looks inside the directory this variable names; the run's own directory holds every entry of the copy. */
+	| { readonly kind: 'directory'; readonly variable: string }
+	/** A cache of the build inside the tree, at this tree-relative path; the copy replaces it. */
+	| { readonly kind: 'tree'; readonly target: string };
 
 export type BuildArea = {
 	/** Installing the tree's dependencies. */

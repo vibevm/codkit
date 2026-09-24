@@ -66,6 +66,8 @@ const COMMAND_FLAG_KINDS = new Map([
     // package (PROP-007 sec. 27); --timeout above is shared with build and ci
     ['--keep-overlay', 'boolean'],
     ['--skip-type-build', 'boolean'],
+    ['--inputs', 'value'],
+    ['--container-prefix', 'value'],
     // ci (PROP-007 sec. 17, PROP-011)
     ['--profile', 'value'],
     ['--effective-diff', 'value'],
