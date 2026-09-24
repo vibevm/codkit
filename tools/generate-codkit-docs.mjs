@@ -135,6 +135,9 @@ const valueLabels = {
 	'--patch': 'contained-old-patch',
 	'--ref': 'ref',
 	'--release': 'semver',
+	'--branch': 'name',
+	'--author': 'name-and-email',
+	'--message-file': 'path',
 	'--keep-consumed': 'n',
 	'--older-than': 'days',
 	'--branding-dir': 'path',
@@ -270,7 +273,7 @@ const commandGuidance = {
 		positional: '<immutable-patchset-ref>',
 		requiredFlags: ['--yes-i-am-publish-bot'],
 		detail:
-			'Release-bot-only network transaction. It requires `--yes-i-am-publish-bot`, rejects global `--ci`, gates with `ls-remote` before mutation, and only then checks and pushes leased/immutable refs.'
+			'Release-bot-only network transaction. It requires `--yes-i-am-publish-bot`, rejects global `--ci`, gates with `ls-remote` before mutation, and only then checks and pushes leased/immutable refs. `--branch <name>` names the release branch instead of `codkit/release/<patchset12>+<pin.tag>`, outside the prefixes of the patch set. `--squash` publishes one commit on the pin whose tree is the checked tree, with `--author` as author and committer and the UTF-8 `--message-file` as its message, dated like the patchset commit and without Codkit trailers; the `--release` tag names that commit. `--scrub` (with `--squash`) removes the codkit marker lines and the `spec://` references of comment lines from the delivered files, leaves out the files `publish.exclude` names, and refuses to push while `codkit:begin`, `codkit:end`, `spec://` or `vibevm` is left anywhere in the tree.'
 	},
 	hooks: {
 		positional: '<install | check>',
