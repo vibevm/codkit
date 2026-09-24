@@ -271,6 +271,7 @@ function materializeWorkspace(
 			netAllowed: true
 		});
 		if (cloned.status !== 0) throw ckError('CONFIG', `cannot create disposable publish fork: ${firstLine(cloned.stderr)}`);
+		shareLfsContent(source.path, fork);
 		mustLocalGit(fork, ['checkout', '--quiet', '--detach', config.pin.sha], {}, `cannot check out publish pin ${config.pin.sha}`);
 		copySupplyKit(source.path, fork, dependencyRoots);
 	} catch (error) {
@@ -283,6 +284,34 @@ function materializeWorkspace(
 		resolution: { path: realpathSync(fork), source: source.source, exists: true, warning: null },
 		release
 	};
+}
+
+/** What `git lfs install --local --skip-repo` writes: the filters, and no hooks. */
+const LFS_FILTER_CONFIG: readonly (readonly [string, string])[] = [
+	['filter.lfs.clean', 'git-lfs clean -- %f'],
+	['filter.lfs.smudge', 'git-lfs smudge -- %f'],
+	['filter.lfs.process', 'git-lfs filter-process'],
+	['filter.lfs.required', 'true']
+];
+
+/**
+ * The disposable fork shares the git-lfs content of the tree it is cloned from,
+ * the way `--shared` shares its objects. codkit's git reads no global or system
+ * config, where git-lfs keeps its filters, so the fork carries them in its own
+ * config, and its lfs storage is the source's: the checkout of the pin then
+ * smudges from local content, without the network. A source without git-lfs or
+ * without lfs content is left alone; check-tree names what is missing.
+ */
+function shareLfsContent(sourceTree: string, fork: string): void {
+	if (runGit({ args: ['lfs', 'version'], cwd: fork }).status !== 0) return;
+	const common = runGit({ args: ['rev-parse', '--path-format=absolute', '--git-common-dir'], cwd: sourceTree });
+	if (common.status !== 0) return;
+	const storage = join(common.stdout.trim(), 'lfs');
+	if (!existsSync(join(storage, 'objects'))) return;
+	for (const [key, value] of LFS_FILTER_CONFIG) {
+		mustLocalGit(fork, ['config', key, value], {}, 'cannot configure git-lfs in the disposable publish fork');
+	}
+	mustLocalGit(fork, ['config', 'lfs.storage', storage], {}, 'cannot share git-lfs content with the disposable publish fork');
 }
 
 function mustLocalGit(cwd: string, args: readonly string[], env: Readonly<Record<string, string>>, message: string): void {
