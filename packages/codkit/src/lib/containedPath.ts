@@ -176,6 +176,14 @@ export type AtomicWriteOptions = ContainedFileOptions & {
 	 * held to a test - it was reasoned about, not tested.
 	 */
 	readonly applyMode?: (temporary: string, mode: number) => void;
+	/**
+	 * How many milliseconds of waits a Windows replacement may spend for
+	 * another handle on its target to close (PROP-002
+	 * ##CONTAINED-WINDOWS-REPLACE-RETRY). Absent means the 310 ms every
+	 * administrative write gets; a caller that replaces a file it published
+	 * moments before names a longer one.
+	 */
+	readonly windowsReplaceBudgetMs?: number;
 	/** Override atomic rename and its Windows retry clock for deterministic tests. */
 	readonly applyRename?: (temporary: string, absolutePath: string) => void;
 	readonly renamePlatform?: NodeJS.Platform;

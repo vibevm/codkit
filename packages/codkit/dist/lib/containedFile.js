@@ -46,8 +46,19 @@ function readAllFrom(handle) {
     }
     return new Uint8Array(Buffer.concat(chunks));
 }
+// Windows refuses a rename over a target that any other handle holds open -
+// with EPERM, whatever sharing that handle allows, because Node's rename there
+// has no POSIX semantics - and the holder measured on a file written moments
+// before was a kernel-mode handle codkit cannot close (PROP-002
+// ##CONTAINED-WINDOWS-REPLACE-RETRY). The rename is tried again after waits
+// that double from 10 ms up to 250 ms, for as long as their sum stays inside
+// the budget of the write; then the refusal is the one a failed rename has
+// always been. The target is never removed first.
 const WINDOWS_TRANSIENT_RENAME_ERRORS = new Set(['EACCES', 'EBUSY', 'ENOTEMPTY', 'EPERM']);
-const WINDOWS_RENAME_RETRY_DELAYS_MS = [10, 20, 40, 80, 160];
+const WINDOWS_RENAME_FIRST_WAIT_MS = 10;
+const WINDOWS_RENAME_WAIT_CAP_MS = 250;
+/** The waits of 10, 20, 40, 80 and 160 ms every administrative write gets. */
+const WINDOWS_REPLACE_DEFAULT_BUDGET_MS = 310;
 const renameWaitCell = new Int32Array(new SharedArrayBuffer(4));
 function waitForRenameRetry(milliseconds) {
     Atomics.wait(renameWaitCell, 0, 0, milliseconds);
@@ -55,17 +66,19 @@ function waitForRenameRetry(milliseconds) {
 function replaceTemporaryFile(temporary, absolutePath, options) {
     const applyRename = options.applyRename ?? renameSync;
     const platform = options.renamePlatform ?? process.platform;
-    for (let attempt = 0;; attempt += 1) {
+    const budget = options.windowsReplaceBudgetMs ?? WINDOWS_REPLACE_DEFAULT_BUDGET_MS;
+    let waited = 0;
+    for (let wait = WINDOWS_RENAME_FIRST_WAIT_MS;; wait = Math.min(wait * 2, WINDOWS_RENAME_WAIT_CAP_MS)) {
         try {
             applyRename(temporary, absolutePath);
             return;
         }
         catch (error) {
-            const delay = WINDOWS_RENAME_RETRY_DELAYS_MS[attempt];
-            if (platform !== 'win32' || delay === undefined || !WINDOWS_TRANSIENT_RENAME_ERRORS.has(errnoOf(error) ?? '')) {
+            if (platform !== 'win32' || waited + wait > budget || !WINDOWS_TRANSIENT_RENAME_ERRORS.has(errnoOf(error) ?? '')) {
                 throw error;
             }
-            (options.waitForRenameRetry ?? waitForRenameRetry)(delay);
+            (options.waitForRenameRetry ?? waitForRenameRetry)(wait);
+            waited += wait;
         }
     }
 }

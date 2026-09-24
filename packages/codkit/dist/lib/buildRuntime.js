@@ -11,6 +11,13 @@ import { assertDaemonChannelLock } from './daemonChannelLock.js';
 export { validateChannelName } from './buildChannel.js';
 export const BUILD_DIR = '.codkit/build';
 export const DAEMON_RECORD_SCHEMA_VERSION = 1;
+/**
+ * How long the pid transition may wait on Windows for another handle on the
+ * record to close: it replaces a reservation published milliseconds before,
+ * and a file that fresh is the one a kernel-mode holder keeps open, for tens
+ * of seconds under load (PROP-010 ##DAEMON-RECORD-REPLACE-BUDGET).
+ */
+const RECORD_REPLACE_BUDGET_MS = 60_000;
 const recordSchema = z
     .object({
     codkitBuildDaemon: z.literal(DAEMON_RECORD_SCHEMA_VERSION),
@@ -92,7 +99,7 @@ export function createReservation(patchesDir, record, lock) {
         what: recordPath(patchesDir, record.channel)
     });
 }
-export function finalizeReservation(patchesDir, reservation, pid, lock, afterCompare) {
+export function finalizeReservation(patchesDir, reservation, pid, lock, afterCompare, replace = {}) {
     assertDaemonChannelLock(lock, patchesDir, reservation.channel);
     const current = readRecordState(patchesDir, reservation.channel);
     if (current.state !== 'valid' || !Buffer.from(current.bytes).equals(Buffer.from(daemonRecordBytes(reservation))))
@@ -102,8 +109,10 @@ export function finalizeReservation(patchesDir, reservation, pid, lock, afterCom
     if (confirmed.state !== 'valid' || !Buffer.from(confirmed.bytes).equals(Buffer.from(current.bytes)))
         return false;
     writeContainedFileAtomic(patchesDir, runtimeRelative(recordName(reservation.channel)), {
+        ...replace,
         bytes: daemonRecordBytes({ ...reservation, pid }),
-        what: recordPath(patchesDir, reservation.channel)
+        what: recordPath(patchesDir, reservation.channel),
+        windowsReplaceBudgetMs: RECORD_REPLACE_BUDGET_MS
     });
     return true;
 }

@@ -13,6 +13,7 @@ import {
 	writeContainedFileAtomic,
 	writeContainedFileExclusive
 } from './containedFile.ts';
+import type { AtomicWriteOptions } from './containedPath.ts';
 import { ckError } from './messages.ts';
 import { validateChannelName } from './buildChannel.ts';
 import { assertDaemonChannelLock } from './daemonChannelLock.ts';
@@ -21,6 +22,17 @@ export { validateChannelName } from './buildChannel.ts';
 
 export const BUILD_DIR = '.codkit/build';
 export const DAEMON_RECORD_SCHEMA_VERSION = 1;
+
+/**
+ * How long the pid transition may wait on Windows for another handle on the
+ * record to close: it replaces a reservation published milliseconds before,
+ * and a file that fresh is the one a kernel-mode holder keeps open, for tens
+ * of seconds under load (PROP-010 ##DAEMON-RECORD-REPLACE-BUDGET).
+ */
+const RECORD_REPLACE_BUDGET_MS = 60_000;
+
+/** Test seams of the Windows replacement that ends a pid transition. */
+export type RecordReplaceSeams = Pick<AtomicWriteOptions, 'applyRename' | 'renamePlatform' | 'waitForRenameRetry'>;
 
 export type DaemonRecord = {
 	readonly codkitBuildDaemon: number;
@@ -130,7 +142,8 @@ export function finalizeReservation(
 	reservation: DaemonRecord,
 	pid: number,
 	lock: DaemonChannelLock,
-	afterCompare?: () => void
+	afterCompare?: () => void,
+	replace: RecordReplaceSeams = {}
 ): boolean {
 	assertDaemonChannelLock(lock, patchesDir, reservation.channel);
 	const current = readRecordState(patchesDir, reservation.channel);
@@ -139,8 +152,10 @@ export function finalizeReservation(
 	const confirmed = readRecordState(patchesDir, reservation.channel);
 	if (confirmed.state !== 'valid' || !Buffer.from(confirmed.bytes).equals(Buffer.from(current.bytes))) return false;
 	writeContainedFileAtomic(patchesDir, runtimeRelative(recordName(reservation.channel)), {
+		...replace,
 		bytes: daemonRecordBytes({ ...reservation, pid }),
-		what: recordPath(patchesDir, reservation.channel)
+		what: recordPath(patchesDir, reservation.channel),
+		windowsReplaceBudgetMs: RECORD_REPLACE_BUDGET_MS
 	});
 	return true;
 }
