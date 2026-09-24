@@ -16,7 +16,7 @@ import type { Envelope } from '../../src/lib/jsonOut.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { runPublish } from '../../src/lib/publish.ts';
 import type { PublishOptions, PublishResult } from '../../src/lib/publish.ts';
-import { fixtureCommit } from '../fixtures/makeUpstream.ts';
+import { EXAMPLE_PART_PATH, fixtureCommit } from '../fixtures/makeUpstream.ts';
 import { OWN_UNIT_ID, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
@@ -366,12 +366,141 @@ describe('publish remote transaction', () => {
 	});
 });
 
+describe('publish clean release', () => {
+	it('refuses a malformed clean release before the network gate', async () => {
+		const fixture = makeCliFixture('publish-clean-gates');
+		excludeRuntime(fixture);
+		// No remote at all: a refusal that reached the ls-remote gate would name it instead.
+		configureCleanRemote(fixture, join(makeTempRoot('publish-clean-gates-remote'), 'absent.git'), []);
+		const message = messageFile('publish-clean-gates');
+		const squash = { squash: true, author: RELEASE_AUTHOR, messageFile: message };
+		const cases: readonly (readonly [InvocationOptions, string])[] = [
+			[{ scrub: true }, '--scrub needs --squash'],
+			[{ squash: true, author: RELEASE_AUTHOR }, '--squash needs --author and --message-file'],
+			[{ author: RELEASE_AUTHOR, messageFile: message }, 'belong to --squash'],
+			[{ ...squash, author: 'Иван Петров' }, '--author expects'],
+			[{ ...squash, messageFile: join(message, '..', 'absent.txt') }, '--message-file cannot be read'],
+			[{ branch: 'codkit/applied/rc' }, 'collides with the patch-set namespace codkit/applied/'],
+			[{ branch: 'codkit' }, 'collides with the patch-set namespace'],
+			[{ branch: 'nimbus/rc..1' }, 'not a valid branch name']
+		];
+		for (const [options, text] of cases) {
+			const result = await invoke(fixture, { bot: true, ...options });
+			expect(result.exitCode, text).toBe(2);
+			expect(result.envelope.errors[0]?.message, text).toContain(text);
+		}
+		// An exclusion never takes an upstream file out of the release.
+		configureCleanRemote(fixture, join(makeTempRoot('publish-clean-gates-remote'), 'absent.git'), ['manifest.json']);
+		const upstream = await invoke(fixture, { bot: true, ...squash, scrub: true });
+		expect(upstream.exitCode).toBe(2);
+		expect(upstream.envelope.errors[0]?.message).toContain(
+			'publish.exclude entry manifest.json names manifest.json, which the pin carries'
+		);
+	});
+
+	it('publishes one scrubbed commit on the pin under its own name, repeats as a no-op and refuses leftovers', async () => {
+		const fixture = makeCliFixture('publish-clean');
+		excludeRuntime(fixture);
+		const hello = fixture.patchesPath('delta/own/hello.ts');
+		writeFileSync(
+			hello,
+			`${readFileSync(hello, 'utf8')}\n/**\n * The greeting of the fixture\n * (spec://fixture/FEAT-001#GREETING).\n` +
+				` * @implements spec://fixture/FEAT-001#HELLO\n */\nexport const greeting = 'hello';\n`,
+			'utf8'
+		);
+		writeFileSync(fixture.patchesPath('delta/own/test/NOTES.md'), 'The fixture specs live in vibevm/vibespecs.\n', 'utf8');
+		fixtureCommit(fixture.patchesDir, 'fixture: own code for a clean release', '2026-02-08T00:00:00Z');
+		const remote = makeRemote(fixture, 'publish-clean');
+		configureCleanRemote(fixture, remote, ['source/own/test/NOTES.md']);
+		const flags: InvocationOptions = {
+			bot: true,
+			release: '1.0.0',
+			branch: 'nimbus/rc/1.0.0',
+			squash: true,
+			author: RELEASE_AUTHOR,
+			messageFile: messageFile('publish-clean'),
+			scrub: true
+		};
+
+		const first = await invoke(fixture, flags);
+		expect(first.exitCode, JSON.stringify(first.envelope.errors)).toBe(0);
+		const data = objectData(first.envelope);
+		expect(data).toMatchObject({ status: 'published', branch: 'nimbus/rc/1.0.0', pushedBranch: true, pushedTag: true });
+		const tip = remoteSha(remote, 'refs/heads/nimbus/rc/1.0.0');
+		expect(tip).toBe(data['tip']);
+		if (tip === null) return;
+		expect(remoteSha(remote, releaseTag(fixture, '1.0.0'))).toBe(tip);
+		// One commit straight on the pin, signed by the owner, with his message and no trailer.
+		expect(remoteOut(remote, ['rev-list', '--parents', '-n', '1', tip])).toBe(`${tip} ${fixture.upstream.t1.sha}`);
+		expect(remoteOut(remote, ['log', '-1', '--format=%an <%ae>%n%cn <%ce>', tip])).toBe(`${RELEASE_AUTHOR}\n${RELEASE_AUTHOR}`);
+		expect(remoteOut(remote, ['log', '-1', '--format=%B', tip])).toBe(RELEASE_MESSAGE_LF.trimEnd());
+		expect(data['squash']).toMatchObject({ parent: fixture.upstream.t1.sha, author: RELEASE_AUTHOR });
+		// Nothing of the tooling in the tree; the excluded note is not there; the prose is.
+		expect(runGit({ args: ['grep', '-i', '-E', 'codkit:(begin|end)|spec://|vibevm', tip], cwd: remote }).status).toBe(1);
+		const files = remoteOut(remote, ['ls-tree', '-r', '--name-only', tip]).split('\n');
+		expect(files).toContain('source/own/hello.ts');
+		expect(files).not.toContain('source/own/test/NOTES.md');
+		expect(remoteOut(remote, ['show', `${tip}:source/own/hello.ts`])).toContain(
+			" * The greeting of the fixture.\n */\nexport const greeting = 'hello';"
+		);
+		expect(remoteOut(remote, ['show', `${tip}:${EXAMPLE_PART_PATH}`])).toContain(
+			'// (hook body lives in own/ code; this block only delegates)'
+		);
+		const scrub = data['scrub'] as { files: { path: string; markers: number }[]; excluded: string[]; leftovers: unknown[] };
+		expect(scrub.files).toContainEqual({ path: 'source/own/hello.ts', markers: 0, specRefs: 2, droppedLines: 2 });
+		expect(scrub.files.find((file) => file.path === EXAMPLE_PART_PATH)?.markers).toBeGreaterThanOrEqual(2);
+		expect(scrub.excluded).toEqual(['source/own/test/NOTES.md']);
+		expect(scrub.leftovers).toEqual([]);
+
+		// The same patchset commit, author and message make the same commit.
+		const repeat = await invoke(fixture, flags);
+		expect(repeat.exitCode, JSON.stringify(repeat.envelope.errors)).toBe(0);
+		expect(repeat.envelope.data).toMatchObject({ status: 'up-to-date', tip, pushedBranch: false, pushedTag: false });
+
+		// A reference in code is a leftover: the publish stops with its line, and nothing moves.
+		writeFileSync(hello, `${readFileSync(hello, 'utf8')}export const address = 'spec://fixture/FEAT-001#IN-CODE';\n`, 'utf8');
+		fixtureCommit(fixture.patchesDir, 'fixture: a spec reference in code', '2026-02-09T00:00:00Z');
+		const refused = await invoke(fixture, flags);
+		expect(refused.exitCode).toBe(1);
+		expect(objectData(refused.envelope)['status']).toBe('scrub-failed');
+		expect(refused.envelope.errors.map((error) => error.message)).toContainEqual(
+			expect.stringMatching(/^the scrubbed release still carries tooling: source\/own\/hello\.ts:\d+: export const address = 'spec:\/\//)
+		);
+		expect(remoteSha(remote, 'refs/heads/nimbus/rc/1.0.0')).toBe(tip);
+		expect(remoteSha(remote, releaseTag(fixture, '1.0.0'))).toBe(tip);
+	}, 300_000);
+});
+
+/** A Cyrillic identity: the name has to reach the commit as it was typed. */
+const RELEASE_AUTHOR = 'Иван Петров <ivan.petrov@example.org>';
+const RELEASE_MESSAGE = 'Выпуск 1.0.0\r\n\r\nОдин коммит поверх апстрима, без следов инструмента.\r\n\r\n';
+const RELEASE_MESSAGE_LF = 'Выпуск 1.0.0\n\nОдин коммит поверх апстрима, без следов инструмента.\n';
+
+function messageFile(label: string): string {
+	const path = join(makeTempRoot(`${label}-message`), 'message-ru.txt');
+	writeFileSync(path, RELEASE_MESSAGE, 'utf8');
+	return path;
+}
+
+function configureCleanRemote(fixture: CliFixture, remote: string, exclude: readonly string[]): void {
+	writeFileSync(
+		fixture.patchesPath('codkit.local.json'),
+		`${JSON.stringify({ publishRemoteUrl: remote, publish: { exclude } }, null, 2)}\n`,
+		'utf8'
+	);
+}
+
 type InvocationOptions = {
 	readonly bot?: boolean;
 	readonly ci?: boolean;
 	readonly profile?: string;
 	readonly release?: string;
 	readonly args?: readonly string[];
+	readonly branch?: string;
+	readonly squash?: boolean;
+	readonly author?: string;
+	readonly messageFile?: string;
+	readonly scrub?: boolean;
 };
 type Invocation = { readonly exitCode: number; readonly envelope: Envelope };
 
@@ -382,6 +511,11 @@ async function invoke(fixture: CliFixture, options: InvocationOptions = {}): Pro
 	if (options.bot === true) commandFlags.set('--yes-i-am-publish-bot', true);
 	if (options.profile !== undefined) commandFlags.set('--profile', options.profile);
 	if (options.release !== undefined) commandFlags.set('--release', options.release);
+	if (options.branch !== undefined) commandFlags.set('--branch', options.branch);
+	if (options.squash === true) commandFlags.set('--squash', true);
+	if (options.author !== undefined) commandFlags.set('--author', options.author);
+	if (options.messageFile !== undefined) commandFlags.set('--message-file', options.messageFile);
+	if (options.scrub === true) commandFlags.set('--scrub', true);
 	const context: CommandContext = {
 		toolRoot: fixture.patchesDir,
 		locations: {

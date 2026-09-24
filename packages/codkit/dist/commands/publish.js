@@ -5,8 +5,14 @@ import { CI_PROFILES } from '../lib/ciEngine.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { runPublish } from '../lib/publish.js';
+import { parseAuthor, readMessageFile } from '../lib/publishRelease.js';
 const PROFILE = '--profile';
 const RELEASE = '--release';
+const BRANCH = '--branch';
+const SQUASH = '--squash';
+const AUTHOR = '--author';
+const MESSAGE_FILE = '--message-file';
+const SCRUB = '--scrub';
 const BOT_CONFIRMATION = '--yes-i-am-publish-bot';
 async function run(ctx) {
     if (ctx.args.length !== 1 || ctx.args[0] === undefined) {
@@ -29,10 +35,28 @@ async function run(ctx) {
         release: commandFlagValue(ctx.commandFlags, RELEASE),
         confirmed: commandFlagGiven(ctx.commandFlags, BOT_CONFIRMATION),
         ci: ctx.flags.ci,
-        verbose: ctx.flags.verbose
+        verbose: ctx.flags.verbose,
+        branch: commandFlagValue(ctx.commandFlags, BRANCH),
+        squash: squashRequest(ctx),
+        scrub: commandFlagGiven(ctx.commandFlags, SCRUB)
     });
     ctx.out.setData(dataOf(result));
     return result.exitCode;
+}
+/** ##PUBLISH-SQUASH: `--squash` takes both `--author` and `--message-file`, and they take it. */
+function squashRequest(ctx) {
+    const author = commandFlagValue(ctx.commandFlags, AUTHOR);
+    const messageFile = commandFlagValue(ctx.commandFlags, MESSAGE_FILE);
+    if (!commandFlagGiven(ctx.commandFlags, SQUASH)) {
+        if (author !== null || messageFile !== null) {
+            throw ckError('CONFIG', `${AUTHOR} and ${MESSAGE_FILE} belong to ${SQUASH}`, `add ${SQUASH}, or drop them`);
+        }
+        return null;
+    }
+    if (author === null || messageFile === null) {
+        throw ckError('CONFIG', `${SQUASH} needs ${AUTHOR} and ${MESSAGE_FILE}`, `example: ${SQUASH} ${AUTHOR} "Jane Doe <jane@example.org>" ${MESSAGE_FILE} release-message.txt`);
+    }
+    return { author: parseAuthor(author), message: readMessageFile(messageFile) };
 }
 function requireConfig(config) {
     if (config === null) {
@@ -61,7 +85,15 @@ function dataOf(result) {
         pushedBranch: result.pushedBranch,
         pushedTag: result.pushedTag,
         profile: result.checks?.profile ?? null,
-        steps: result.checks?.steps.map((step) => ({ name: step.name, state: step.state, detail: step.detail })) ?? []
+        steps: result.checks?.steps.map((step) => ({ name: step.name, state: step.state, detail: step.detail })) ?? [],
+        squash: result.squash === null ? null : { ...result.squash },
+        scrub: result.scrub === null
+            ? null
+            : {
+                files: result.scrub.files.map((file) => ({ ...file })),
+                excluded: [...result.scrub.excluded],
+                leftovers: result.scrub.leftovers.map((leftover) => ({ ...leftover }))
+            }
     };
 }
 export const publishCommand = {
@@ -69,6 +101,6 @@ export const publishCommand = {
     summary: 'publish one checked immutable patchset commit through a leased release ref',
     configMode: 'load',
     maxArgs: 1,
-    commandFlags: [PROFILE, RELEASE, BOT_CONFIRMATION],
+    commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, AUTHOR, MESSAGE_FILE, SCRUB, BOT_CONFIRMATION],
     run
 };

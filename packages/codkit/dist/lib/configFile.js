@@ -46,6 +46,7 @@ const typeConfigSchema = z
         .refine((value) => repoRelativePathProblem(value) === null)
 })
     .loose();
+const publishSchema = z.strictObject({ exclude: z.array(repositoryFilePath).default([]) });
 const configSchema = z.object({
     codkitConfig: z.literal(CONFIG_SCHEMA_VERSION),
     pin: pinSchema,
@@ -60,7 +61,8 @@ const configSchema = z.object({
     releaseRefPrefix: z.string().min(1),
     publishRemoteUrl: z.string().nullable().default(null),
     buildWatchFile: repositoryFilePath.nullable().default(null),
-    conventionsExtensionFile: repositoryFilePath.nullable().default(null)
+    conventionsExtensionFile: repositoryFilePath.nullable().default(null),
+    publish: publishSchema.optional()
 });
 /** codkit.local.json: same field vocabulary, everything optional. */
 const localConfigSchema = z.object({
@@ -68,7 +70,8 @@ const localConfigSchema = z.object({
     generatedBranchPrefix: z.string().min(1).optional(),
     cycleBranchPrefix: z.string().min(1).optional(),
     releaseRefPrefix: z.string().min(1).optional(),
-    publishRemoteUrl: z.string().nullable().optional()
+    publishRemoteUrl: z.string().nullable().optional(),
+    publish: publishSchema.optional()
 });
 const CONFIG_KEYS = [
     'codkitConfig',
@@ -81,7 +84,8 @@ const CONFIG_KEYS = [
     'releaseRefPrefix',
     'publishRemoteUrl',
     'buildWatchFile',
-    'conventionsExtensionFile'
+    'conventionsExtensionFile',
+    'publish'
 ];
 const PIN_KEYS = ['tag', 'sha', 'date'];
 /** Fields codkit.local.json may carry; the rest are pin-bearing and refused. */
@@ -90,7 +94,8 @@ const LOCAL_ALLOWED_KEYS = [
     'generatedBranchPrefix',
     'cycleBranchPrefix',
     'releaseRefPrefix',
-    'publishRemoteUrl'
+    'publishRemoteUrl',
+    'publish'
 ];
 /** Fields that exist in the base config but must never be overridden locally. */
 const LOCAL_REFUSED_KEYS = [
@@ -181,6 +186,16 @@ const FIELD_DOCS = {
         required: 'conventionsExtensionFile is required',
         invalid: 'conventionsExtensionFile must be a safe repository-relative path or null',
         hint: 'set "conventionsExtensionFile": null or name a versioned JSON file inside the patch-set repository'
+    },
+    publish: {
+        required: 'publish is optional',
+        invalid: 'publish must be an object whose one field is exclude',
+        hint: 'set "publish": { "exclude": ["<path from the tree root>"] }'
+    },
+    'publish.exclude': {
+        required: 'publish.exclude is optional',
+        invalid: 'publish.exclude must be a list of safe paths from the tree root',
+        hint: 'set "publish": { "exclude": ["<path from the tree root>"] }'
     }
 };
 const FALLBACK_DOC = {
@@ -205,6 +220,11 @@ export function loadConfig(patchesDir) {
     }
     const local = parseLocalConfig(parseJsonText(localBytes, LOCAL_CONFIG_FILE_NAME), LOCAL_CONFIG_FILE_NAME);
     return mergeLocal(base, local);
+}
+/** Read only codkit.local.json; null when the patch set has none. */
+export function loadLocalConfig(patchesDir) {
+    const bytes = readConfigBytes(patchesDir, LOCAL_CONFIG_FILE_NAME);
+    return bytes === null ? null : parseLocalConfig(parseJsonText(bytes, LOCAL_CONFIG_FILE_NAME), LOCAL_CONFIG_FILE_NAME);
 }
 /** Read only the shared base config, before any personal local overrides. */
 export function loadBaseConfig(patchesDir) {
@@ -288,8 +308,17 @@ export function mergeLocal(base, local) {
         releaseRefPrefix: overrideOrKeep(base.releaseRefPrefix, local.releaseRefPrefix),
         publishRemoteUrl: overrideOrKeep(base.publishRemoteUrl, local.publishRemoteUrl),
         buildWatchFile: base.buildWatchFile,
-        conventionsExtensionFile: base.conventionsExtensionFile
+        conventionsExtensionFile: base.conventionsExtensionFile,
+        publish: joinPublish(base.publish, local.publish)
     };
+}
+/** ##LOCAL-CONFIG-RULE: a local file can leave more out of a release, never less. */
+function joinPublish(base, local) {
+    if (local === undefined)
+        return base;
+    if (base === undefined)
+        return local;
+    return { exclude: [...new Set([...base.exclude, ...local.exclude])] };
 }
 /** Canonical base config bytes; local overrides are never serialized here. */
 export function serializeBaseConfig(config) {
@@ -305,7 +334,9 @@ export function serializeBaseConfig(config) {
         releaseRefPrefix: parsed.releaseRefPrefix,
         publishRemoteUrl: parsed.publishRemoteUrl,
         buildWatchFile: parsed.buildWatchFile,
-        conventionsExtensionFile: parsed.conventionsExtensionFile
+        conventionsExtensionFile: parsed.conventionsExtensionFile,
+        // Absent stays absent: JSON.stringify drops an undefined member.
+        publish: parsed.publish
     };
     return `${JSON.stringify(canonical, null, 2)}\n`;
 }

@@ -8,8 +8,9 @@ import { join } from 'node:path';
 import { runCi } from './ciEngine.ts';
 import type { CiProfile, CiResult } from './ciEngine.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
-import { CONFIG_FILE_NAME, parseBaseConfig } from './configFile.ts';
+import { CONFIG_FILE_NAME, loadLocalConfig, mergeLocal, parseBaseConfig } from './configFile.ts';
 import type { CodkitConfig } from './configFile.ts';
+import { loadConventions } from './conventionsFile.ts';
 import { treeId } from './fingerprint.ts';
 import { runGit } from './gitx.ts';
 import { resolvePatchSetRef } from './inventory.ts';
@@ -17,6 +18,8 @@ import type { Output } from './jsonOut.ts';
 import { acquireLock } from './lock.ts';
 import { ckError } from './messages.ts';
 import type { ForkDirResolution } from './paths.ts';
+import { scrubReleaseTree, squashCommit, treeOf } from './publishRelease.ts';
+import type { ScrubReport, SquashRequest } from './publishRelease.ts';
 import type { ProjectType } from '@codkit/type-api';
 
 const ZERO_SHA = '0'.repeat(40);
@@ -40,10 +43,24 @@ export type PublishOptions = {
 	readonly confirmed: boolean;
 	readonly ci: boolean;
 	readonly verbose: boolean;
+	/** `--branch`: the name of the published branch (PROP-007 ##PUBLISH-BRANCH-NAME). */
+	readonly branch?: string | null;
+	/** `--squash`: one commit on the pin instead of the history (##PUBLISH-SQUASH). */
+	readonly squash?: SquashRequest | null;
+	/** `--scrub`: the release tree without the tooling (##PUBLISH-SCRUB). */
+	readonly scrub?: boolean;
 	readonly checkpoint?: (checkpoint: PublishCheckpoint) => void;
 };
 
-export type PublishStatus = 'published' | 'up-to-date' | 'tag-collision' | 'check-failed' | 'environment-failed';
+export type PublishStatus = 'published' | 'up-to-date' | 'tag-collision' | 'check-failed' | 'scrub-failed' | 'environment-failed';
+
+/** What `--squash` made of the checked history. */
+export type PublishSquash = {
+	readonly parent: string;
+	readonly tree: string;
+	readonly unsquashedTip: string;
+	readonly author: string;
+};
 
 export type PublishResult = {
 	readonly exitCode: number;
@@ -58,6 +75,8 @@ export type PublishResult = {
 	readonly pushedBranch: boolean;
 	readonly pushedTag: boolean;
 	readonly checks: CiResult | null;
+	readonly squash: PublishSquash | null;
+	readonly scrub: ScrubReport | null;
 };
 
 type RemoteObservation = { readonly branch: string | null; readonly tag: string | null };
@@ -67,14 +86,24 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 	const remote = requiredRemote(options.config);
 	if (options.patchSetRef.startsWith('-')) throw ckError('CONFIG', 'publish patchset ref must not start with a dash');
 	const release = checkedRelease(options.release);
+	const squash = options.squash ?? null;
+	const scrub = options.scrub === true;
+	if (scrub && squash === null) {
+		throw ckError('CONFIG', '--scrub needs --squash', 'a history that carries the markers is not a clean release; add --squash');
+	}
 	const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
 	const snapshotConfig = configAtCommit(options.patchesDir, patchSetSha);
-	const branchName = `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${snapshotConfig.pin.tag}`;
+	const branchName =
+		options.branch === undefined || options.branch === null
+			? `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${snapshotConfig.pin.tag}`
+			: checkedBranch(options.patchesDir, options.branch, [snapshotConfig, options.config]);
 	const branchRef = `refs/heads/${branchName}`;
 	const tagName = release === null ? null : `patchset-v${release}+${snapshotConfig.pin.tag}`;
 	const tagRef = tagName === null ? null : `refs/tags/${tagName}`;
 	assertRef(options.patchesDir, branchRef);
 	if (tagRef !== null) assertRef(options.patchesDir, tagRef);
+	const exclude = scrub ? releaseExclusions(options.patchesDir, snapshotConfig, options.resolution.path) : [];
+	const squashDate = squash === null ? null : committerDate(options.patchesDir, patchSetSha);
 
 	// The initial access gate happens before lock/scratch/tree/ref mutation. A
 	// second read after checks refreshes the exact lease/tag verdict before push.
@@ -123,7 +152,53 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 				baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks)
 			);
 		}
-		const tip = checks.branchTip;
+		let tip = checks.branchTip;
+		let squashed: PublishSquash | null = null;
+		let scrubReport: ScrubReport | null = null;
+		if (squash !== null && squashDate !== null) {
+			const scratchDir = join(workspace.root, 'release');
+			let tree = treeOf(workspace.resolution.path, tip);
+			if (scrub) {
+				const scrubbed = scrubReleaseTree({
+					treeDir: workspace.resolution.path,
+					scratchDir,
+					pinSha: snapshotConfig.pin.sha,
+					tip,
+					conventions: loadConventions(options.type, workspace.patchesDir),
+					exclude
+				});
+				scrubReport = scrubbed.report;
+				reportScrub(options.out, scrubbed.report);
+				if (scrubbed.report.leftovers.length > 0) {
+					for (const leftover of scrubbed.report.leftovers) {
+						options.out.addError({
+							code: 'CONFIG',
+							message: `the scrubbed release still carries tooling: ${leftover.path}${leftover.line === null ? ' (binary)' : `:${leftover.line}: ${leftover.text}`}`,
+							hint: 'leave the file out through publish.exclude, or change it in the patch set; nothing was pushed'
+						});
+					}
+					return publishResult(EXIT_CHECK_FAILED, 'scrub-failed', {
+						...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks),
+						tip: null,
+						scrub: scrubReport
+					});
+				}
+				tree = scrubbed.tree;
+			}
+			const unsquashedTip = tip;
+			tip = squashCommit({
+				treeDir: workspace.resolution.path,
+				scratchDir,
+				tree,
+				parent: snapshotConfig.pin.sha,
+				request: squash,
+				date: squashDate
+			});
+			squashed = { parent: snapshotConfig.pin.sha, tree, unsquashedTip, author: `${squash.author.name} <${squash.author.email}>` };
+			options.out.info(
+				`squash: ${unsquashedTip.slice(0, 12)} -> ${tip.slice(0, 12)} on ${snapshotConfig.pin.sha.slice(0, 12)} (tree ${tree.slice(0, 12)})`
+			);
+		}
 		options.checkpoint?.('checks-passed');
 		const refreshed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
 		options.checkpoint?.('remote-refreshed');
@@ -137,7 +212,9 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			});
 			return publishResult(EXIT_CHECK_FAILED, 'tag-collision', {
 				...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
-				tip
+				tip,
+				squash: squashed,
+				scrub: scrubReport
 			});
 		}
 		const tagSatisfied = tagRef !== null && refreshed.tag === tip;
@@ -163,7 +240,9 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
 			tip,
 			pushedBranch,
-			pushedTag
+			pushedTag,
+			squash: squashed,
+			scrub: scrubReport
 		});
 	} finally {
 		workspace?.release();
@@ -192,6 +271,95 @@ function checkedRelease(release: string | null): string | null {
 	if (release === null) return null;
 	if (!SEMVER.test(release)) throw ckError('CONFIG', `--release expects strict semver, got ${release}`, 'example: --release 1.2.3');
 	return release;
+}
+
+/**
+ * ##PUBLISH-BRANCH-NAME: the short name of a branch that git accepts and that
+ * stays out of the namespaces the patch set manages itself.
+ */
+function checkedBranch(patchesDir: string, name: string, configs: readonly CodkitConfig[]): string {
+	if (name.startsWith('-') || name.startsWith('refs/') || name === 'HEAD') {
+		throw ckError('CONFIG', `--branch expects the short name of a branch, got ${name}`, 'example: --branch nimbus/rc/1.0.0');
+	}
+	const checked = runGit({ args: ['check-ref-format', `refs/heads/${name}`], cwd: patchesDir });
+	if (checked.status !== 0) {
+		throw ckError('CONFIG', `--branch is not a valid branch name: ${name}`, 'see git check-ref-format; example: --branch nimbus/rc/1.0.0');
+	}
+	for (const config of configs) {
+		for (const prefix of [config.generatedBranchPrefix, config.cycleBranchPrefix, config.releaseRefPrefix]) {
+			if (name.startsWith(prefix) || prefix.startsWith(`${name}/`)) {
+				throw ckError(
+					'CONFIG',
+					`--branch ${name} collides with the patch-set namespace ${prefix}`,
+					'name the release branch outside the generated, cycle and release prefixes of the configuration'
+				);
+			}
+		}
+	}
+	return name;
+}
+
+/**
+ * ##PUBLISH-EXCLUDE: the list of the published commit's codkit.json joined with
+ * the local one, every entry proven to name no path of the pin - an exclusion
+ * leaves out what the patch set adds, never an upstream file.
+ */
+function releaseExclusions(patchesDir: string, snapshot: CodkitConfig, treeDir: string): readonly string[] {
+	const local = loadLocalConfig(patchesDir);
+	const exclude = (local === null ? snapshot : mergeLocal(snapshot, local)).publish?.exclude ?? [];
+	for (const entry of exclude) {
+		const listed = runGit({
+			args: ['--literal-pathspecs', 'ls-tree', '-r', '--name-only', '-z', snapshot.pin.sha, '--', entry],
+			cwd: treeDir
+		});
+		if (listed.status !== 0) {
+			throw ckError(
+				'CONFIG',
+				`cannot read the pin to check publish.exclude: ${firstLine(listed.stderr)}`,
+				'run publish over a fork tree that holds the pin'
+			);
+		}
+		const upstream = listed.stdout.split('\0').find((path) => path !== '');
+		if (upstream !== undefined) {
+			throw ckError(
+				'CONFIG',
+				`publish.exclude entry ${entry} names ${upstream}, which the pin carries`,
+				'an exclusion leaves out what the patch set adds; it never deletes or reverts an upstream file',
+				CONFIG_FILE_NAME
+			);
+		}
+	}
+	return exclude;
+}
+
+/** Both dates of the squashed commit: the committer date of the patchset commit. */
+function committerDate(patchesDir: string, sha: string): string {
+	const shown = runGit({ args: ['show', '-s', '--format=%cI', sha], cwd: patchesDir });
+	const date = shown.stdout.trim();
+	if (shown.status !== 0 || date === '')
+		throw ckError('CONFIG', `cannot read the date of patchset commit ${sha}: ${firstLine(shown.stderr)}`);
+	return date;
+}
+
+/** Every changed file with its counts, every excluded file, and the totals. */
+function reportScrub(out: Output, report: ScrubReport): void {
+	let markers = 0;
+	let specRefs = 0;
+	let dropped = 0;
+	for (const file of report.files) {
+		markers += file.markers;
+		specRefs += file.specRefs;
+		dropped += file.droppedLines;
+		out.info(
+			`scrub: ${file.path}: ${file.markers} marker line(s), ${file.specRefs} spec reference(s), ${file.droppedLines} emptied line(s) dropped`
+		);
+	}
+	for (const path of report.excluded) out.info(`scrub: ${path}: left out of the release (publish.exclude)`);
+	for (const entry of report.unmatched) out.warn(`publish.exclude entry ${entry} matches no file the release delivers`);
+	out.info(
+		`scrub: ${report.files.length} file(s) changed: ${markers} marker line(s), ${specRefs} spec reference(s), ` +
+			`${dropped} line(s) dropped; ${report.excluded.length} file(s) excluded; ${report.leftovers.length} leftover(s)`
+	);
 }
 
 function configAtCommit(patchesDir: string, sha: string): CodkitConfig {
@@ -237,6 +405,8 @@ function observeRemote(patchesDir: string, remote: string, branchRef: string, ta
 }
 
 type PublishWorkspace = {
+	/** The scratch root of this run; everything under it goes with `release`. */
+	readonly root: string;
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly release: () => void;
@@ -285,6 +455,7 @@ function materializeWorkspace(
 	}
 	rmSync(index, { force: true });
 	return {
+		root,
 		patchesDir: snapshot,
 		resolution: { path: realpathSync(fork), source: source.source, exists: true, warning: null },
 		release
@@ -386,7 +557,9 @@ function baseResult(
 		observedTag: observed.tag,
 		pushedBranch: false,
 		pushedTag: false,
-		checks
+		checks,
+		squash: null,
+		scrub: null
 	};
 }
 

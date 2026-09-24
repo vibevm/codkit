@@ -90,8 +90,12 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--patch', 'value'],
     // forecast (PROP-007 sec. 15)
     ['--ref', 'value'],
-    // publish (PROP-007 sec. 18)
+    // publish (PROP-007 sec. 18); --squash above is shared with save and sync
     ['--release', 'value'],
+    ['--branch', 'value'],
+    ['--author', 'value'],
+    ['--message-file', 'value'],
+    ['--scrub', 'boolean'],
     ['--yes-i-am-publish-bot', 'boolean'],
     // imageset (PROP-007 sec. 21); --dry-run above is shared with load, sync
     // and gc. --help is imageset's own for now: it is the one command whose
