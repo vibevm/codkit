@@ -3497,7 +3497,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c2ed990bd1c88cdd85750cd52e5b39c8bfbd938b625264a1c2d01872a7b6d510",
+      "content_hash": "sha256:cce98b0494a400e1995bec41ace6c824258be52e905b5342724ebc2cd4f80787",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "codkit PROP-002: Code layout, launch, toolchain, components",
@@ -3569,7 +3569,7 @@
     },
     {
       "anchor": "toolchain",
-      "content_hash": "sha256:0dfc919a885b7756160c958a14c3a52e87aba825af8ffded5e64956fd8b9e738",
+      "content_hash": "sha256:2555fe6ff650b38f54c4e57edda267c3846222f47b98cbce3a04e4f184dfe915",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "2. Launch and toolchain",
@@ -3641,12 +3641,21 @@
     },
     {
       "anchor": "GIT-ENV-ISOLATION",
-      "content_hash": "sha256:33a9061e60a0b7363fc535de8f199e1d15630e426522d82acedd4ddf211cf68f",
+      "content_hash": "sha256:cbb9240440b807cb9152a8a06a92769c8fa4d8d37e7fff1f42ad574c707908ab",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "**The isolation of the Git environment is the foundation of determinism:** every git run from codkit is executed with the environment `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, `LC_ALL=C`, `TZ=UTC` and with explicit `-c core.autocrlf=false -c core.quotepath=false`; the repository settings that are needed are passed as `-c` flags. The exceptions are the operations obliged to see the config of the repository or of the container (reading `safe.directory` in CI, PROP-011 §5; their list is fixed there) and the single read-only query `rev-parse --git-path hooks/<name>` with the machine config visible (the `machineConfig` flag of the wrapper, legal ONLY together with `pathResolution`): the effective location of a configured hook is a property of the user's git, an isolated view does not see it, and to declare the guard active without asking the user's git would be a lie (PROP-008 §3 `##TREE-HOOK-STEP`, REPAIR-006). @status:spec/done",
+      "heading": "**The isolation of the Git environment is the foundation of determinism:** every git run from codkit is executed with the environment `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, `LC_ALL=C`, `TZ=UTC` and with explicit `-c core.autocrlf=false -c core.eol=lf -c core.quotepath=false` (the line ending: `##GIT-ENV-EOL` below); the repository settings that are needed are passed as `-c` flags. The exceptions are the operations obliged to see the config of the repository or of the container (reading `safe.directory` in CI, PROP-011 §5; their list is fixed there) and the single read-only query `rev-parse --git-path hooks/<name>` with the machine config visible (the `machineConfig` flag of the wrapper, legal ONLY together with `pathResolution`): the effective location of a configured hook is a property of the user's git, an isolated view does not see it, and to declare the guard active without asking the user's git would be a lie (PROP-008 §3 `##TREE-HOOK-STEP`, REPAIR-006). @status:spec/done",
       "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-002#GIT-ENV-ISOLATION"
+    },
+    {
+      "anchor": "GIT-ENV-EOL",
+      "content_hash": "sha256:0478eae2c1d2d6ebff9dd608aca1af7143875392996ffb58043821fa8fac1098",
+      "doc_path": "modules/codkit/PROP-002",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
+      "heading": "**The line ending a checkout writes is not a platform default.** `core.autocrlf=false` keeps the machine's configuration out of the bytes git writes, but not the platform: for a file the tree's attributes mark as text (upstream VS Code declares `* text=auto`), the line ending a checkout writes is `core.eol`, whose default `native` is CRLF on Windows and LF everywhere else. That is how a fork tree on Windows came to hold CRLF where the applied branch stores the patch set's LF (`git ls-files --eol`: `i/lf w/crlf`): the checkout with which `load` moves the tree onto a new tip (PROP-008 §3) and the one with which `package` puts back the overlay targets and the packager's scratch paths wrote every text file they touched with CRLF, where the same run on Linux writes LF, and a package built from that working copy - a Linux one built on Windows too, with its `*.desktop`, `debian/control` and `rpm` spec templates - carried the CRLF. Every git run from codkit therefore also carries `-c core.eol=lf`: a checkout by codkit writes a text file with the blob's line endings on every OS, which is what a checkout on Linux writes. It is a flag of codkit's own command lines, not configuration written into the tree: a checkout codkit does not make is not affected, and the user's own git in the fork tree keeps its settings. It changes what a checkout writes and nothing that git reads: a working file is normalized the same way before `status`, `diff` or `hash-object` compare it, so the drift guard sees what it saw before. The tree's own declarations for a path still hold, and identically on every OS: `eol=crlf` on upstream's `*.bat`, `*.cmd` and licence texts makes a checkout write CRLF on Linux as well. For a file the delta writes, PROP-008 `##WORKTREE-DELTA-BYTES` makes the bytes exact whatever the attributes say, and says how a tree written before this rule heals. The advice codkit gives where it finds a carriage return in a file it reads (`CK-E-CRLF`) names both settings for the same reason: after `core.autocrlf=false` alone, the user's own checkout on Windows writes the CRLF again. @status:impl/done",
+      "line": 61,
+      "uri": "spec://codkit/modules/codkit/PROP-002#GIT-ENV-EOL"
     },
     {
       "anchor": "CONTAINED-FILE-IO",
@@ -3654,7 +3663,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "**The administrative files touched by REPAIR-006 (the git mark, the hooks, the exclude) and the configuration reads of `codkit.json` / `codkit.local.json` / the declared build-watch and conventions all go through one implementation, `containedFile.ts`.** Reading: the parent components are checked with lstat (a symbolic link is a refusal), the leaf is opened with a single descriptor with `O_NOFOLLOW` (the platforms without it — Windows — check the leaf before the open and compare the descriptor afterwards; the remaining check-then-open window is documented, not hidden), the descriptor must be a regular file, and after the open it is proved that it names a file inside the root (realpath + a comparison of dev/ino with the canonical path) — a parent component swapped for a symlink after the check is caught by the post-open proof and its bytes are not used. Writing: an atomic replacement (an exclusive temporary file + rename) only inside a parent which, immediately before the write, must be a real canonical directory; a leaf symlink is a refusal (`codkit never writes through a link`), and a symlink swapped in after the check of the leaf is replaced by the rename itself — the target of the link does not change; after the write the identity and realpath of the parent are re-checked. The limitation of the Node `fs` is recorded honestly: the portable API gives no `openat`/`renameat` relative to a held directory descriptor, so a malicious swap of the parent itself in the narrow window between the last check and the creation of the temporary file is detected post-write but is not prevented before the first byte on every platform; a pre-existing parent or leaf symlink and a swap during a read are refused before the data is used. The administrative directories (`hooks/`, `codkit/`, `info/`) are created only as real directories — a symlink component is a refusal. The module does not decide «whose bytes these are»: ownership and refusal stay with the calling layer. @status:impl/done",
-      "line": 61,
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONTAINED-FILE-IO"
     },
     {
@@ -3663,7 +3672,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "REPAIR-007: the tree mark, the common/worktree exclude, the tree hook and the patch-set hooks use `readContainedFile(root, relative)` end-to-end, and the writes use `writeContainedFileAtomic`; a checked parent is not then handed to a weaker leaf-only reader. On a real FS `writeConfigPin` reads descriptor-held bytes, performs a repeated contained CAS read and writes a contained atomic replacement; the injectable legacy FS stays a test seam only. Every public consumer has a deterministic after-open parent-swap regression with an unchanged outside sentinel. @status:impl/done",
-      "line": 62,
+      "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONTAINED-CONSUMERS"
     },
     {
@@ -3672,7 +3681,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "REPAIR-009: mutating the pin in `codkit.json` requires a LIVE capability of this patch set's cycle-global lock, not merely a structurally similar handle: a forged, a copied, an already released and a foreign (another patchesDir) handle all refuse. The bytes are re-read before the replacement, so an external edit that arrived after the comparison is preserved and the call returns a locked/config failure. The residual limitation is recorded honestly: an external editor whose last system call writes after our repeated read can still be overwritten — Node gives no atomic compare-and-swap over an ordinary file. @status:impl/done",
-      "line": 63,
+      "line": 64,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONFIG-PIN-CAPABILITY"
     },
     {
@@ -3681,7 +3690,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "3. Components (the modules of packages/codkit/src/lib/)",
-      "line": 65,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/PROP-002#components"
     },
     {
@@ -3690,7 +3699,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "The file names are a recommendation, the responsibilities are normative: @status:spec/done",
-      "line": 66,
+      "line": 67,
       "uri": "spec://codkit/modules/codkit/PROP-002#components-lead"
     },
     {
@@ -3699,7 +3708,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "`layers/*`, `applyEngine` and `inventory` know nothing about the CLI; the commands receive explicit toolRoot, patchesDir, forkDir and the patch-set config object instead of reopening the roots through cwd. This is the cell rule of AI-native TypeScript as well: one module = one cell with a single public entry. @status:spec/done",
-      "line": 103,
+      "line": 104,
       "uri": "spec://codkit/modules/codkit/PROP-002#DEPENDENCY-RULE-BETWEEN-MODULES"
     },
     {
@@ -3708,7 +3717,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "4. Cross-platform support — the conditions of acceptance",
-      "line": 105,
+      "line": 106,
       "uri": "spec://codkit/modules/codkit/PROP-002#cross-platform"
     },
     {
@@ -3717,7 +3726,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "Acceptance requires a native test «a double regeneration gives an empty diff» separately on Linux, macOS and Windows (S16). The current Linux run is not a proof for the two other operating systems. @status:spec/plan",
-      "line": 107,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-DOUBLE-REGEN"
     },
     {
@@ -3726,7 +3735,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "No mechanism assumes that the three roots are neighbours; the tests use three unrelated random paths (PROP-013 §1). @status:spec/done",
-      "line": 108,
+      "line": 109,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-NO-NEIGHBOR-ASSUMPTION"
     },
     {
@@ -3735,7 +3744,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "Symlinks are not used as a mechanism (code is delivered by copying); on Windows linking is replaced by a copy everywhere. @status:spec/done",
-      "line": 109,
+      "line": 110,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-NO-SYMLINKS"
     },
     {
@@ -5234,7 +5243,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b74ddde1854d3cde527528124012188f0dff7ccb2ab94e44c27717440d5ade23",
+      "content_hash": "sha256:8ab6dd553d887d84e50eb4d5935f6acb1b877329cda937f83c642db2093adcee",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -5567,7 +5576,7 @@
     },
     {
       "anchor": "cmd-overlay",
-      "content_hash": "sha256:df136c71a362f0a19afa965dced934b225e51a4cdaf876d3873472facad2b194",
+      "content_hash": "sha256:0c7a54b1496f478e301e89e8f6db914d2aa53717af75913b11183e61c21e17cb",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "12. codkit overlay new|apply|check file",
@@ -5584,12 +5593,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-OVERLAY"
     },
     {
+      "anchor": "CMD-OVERLAY-CHECK-TREE",
+      "content_hash": "sha256:5602908634820675783015d5608f48891c17a40cb697e79b2300520f22753de2",
+      "doc_path": "modules/codkit/PROP-007",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
+      "heading": "**What `check` calls a materialized target** - the tree side of `##CMD-OVERLAY`, which compares the file with \"the pin + the operations\" only when the target is materialized. The target counts as materialized when its **content** differs from the pin's blob, and the content of a file is what git stores for it at its path: git's own hash of the file under the tree's attributes (`git hash-object -- <target>` in codkit's isolated configuration, PROP-002 `##GIT-ENV-ISOLATION`), not its raw bytes. A file that differs from the pin's blob only by git's working-copy conversion is the pin's file, because git itself calls it unchanged: the CRLF line endings a checkout on Windows writes for a `text=auto` file of upstream - which is what a `git checkout -- <target>` there leaves behind - are not an edit. On such a tree, and on one that has no such file at all, the target is **not materialized**: `check` does not compare it with the operations and does not report `CK-E-OVERLAY-DRIFT` over it; it says so in its own line (`<target>: N overlay(s) agree with the pin; the target is not materialized in the fork tree …`) and in its own status, `data.inTree: \"pin\"` or `\"absent\"` with `matchesOperations: null`, and exits 0. The codes of `##CMD-OVERLAY` stay 0, 1 and 2: a target that is not materialized is a check that passed, and it is the everyday state of a development tree, whose `product.json` stays the pin's while `load` writes the dev channel. A materialized target (`data.inTree: \"materialized\"`, `materialized: true`) is compared byte for byte with the strict composition of PROP-005 `##OVERLAY-KNOWN-MATERIALIZATION`: equal bytes are `matchesOperations: true` and exit 0; any other bytes - a hand edit of the pin's file or of a materialization, a stale materialization, a converted copy of one - are `CK-E-OVERLAY-DRIFT`, exit 1, `matchesOperations: false`. `apply` reports the same three fields for the file as it found it. @status:impl/done",
+      "line": 56,
+      "uri": "spec://codkit/modules/codkit/PROP-007#CMD-OVERLAY-CHECK-TREE"
+    },
+    {
       "anchor": "CMD-OVERLAY-NEW",
       "content_hash": "sha256:9d9031cd921b5ee271a7ebb57f6e7b4b76487314d28dcdb3fb13ba5ef2172f98",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit overlay new <target> --id CK-… --type t --owner o --reason text [--category c] --contract-test <id>…` scaffolds the artifact of this layer, the way `marker new` scaffolds a patch and `gen feature` an own unit. It exists because writing one by hand was a refusal by construction: the metadata has to be canonical JSON in the **schema's key order**, and `CK-E-ARTIFACT-BROKEN: metadata bytes are not canonical JSON` names the rules - key order, two-space indentation, UTF-8 without BOM, LF, one final LF - without naming the order, which lives in the serializer. Every first overlay of every patch set therefore cost one refusal that taught nothing. The command writes `delta/overlays/<target with / as __>.overlay.json`: the canonical metadata, the pin of `codkit.json` as `<tag>@<sha>`, `link` and `cause` as the literal `none`, the guard tests of `--contract-test`, and an **empty** list of operations for the author to fill in. `--contract-test` is repeatable and required - a guard test is mandatory for this layer (PROP-005 §5), because the overlay leaves no marker in the target file and the test is the only thing that fails when upstream takes the key away - and there is no `--layer`: the artifact IS the layer. The metadata is held to the same vocabularies `marker new` holds an intervention to (the id pattern, the intervention types, the categories, an owner of `delta/owners.json`), the id must be free among the overlays of the delta, and an existing artifact of the target is never overwritten. A target the project type does not declare is a warning and not a refusal - the layer already restricts an undeclared target to the strictest keys the type states (PROP-005 `##OVERLAY-NON-PRODUCT-TARGETS`) - and no fork tree is touched or needed: the target is a path in the tree, not a file this command reads. Codes: 0; 1 - the state of the delta (`CK-E-MARKER-BAD-ID`, `CK-E-MARKER-DUP-ID`, `CK-E-OWNER-UNKNOWN`, `CK-E-GEN-EXISTS`); 2 - what was typed or the configuration (`CK-E-CONFIG`). `--json`: `data: {artifact, target, id, type, category, owner, reason, pin, contractTests, operations: 0}`. @status:spec/done",
-      "line": 56,
+      "line": 57,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-OVERLAY-NEW"
     },
     {
@@ -5598,7 +5616,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "13. codkit build up|down|status|errors [--channel c] [--mine] [--timeout s]",
-      "line": 58,
+      "line": 59,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-build"
     },
     {
@@ -5607,7 +5625,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "A wrapper over the watch daemons (PROP-010 §2). Channels: `transpile`, `typecheck`, `extensions`, `copilot` for the `vscode` type, `typecheck` and `bundle` for `theia`, whatever the patch set declared for `generic`; `--channel all` is all of them. **The default of `up` - and of the one pass of `ci --profile build` - is the type's own answer** (`build.defaultChannels`, `spec://codkit/modules/codkit/PROP-016#TYPE-BUILD-CHANNELS`) and not a pair of names the engine carries: the pair `transpile,typecheck` was a module constant until a family whose channels are `typecheck` and `bundle` met it, and that family's build profile therefore never bundled its application. A name the profile does not declare is ignored, and a type that names none has every declared channel as its default, so the bare form of the command is never a refusal over a name from another family (clarified on 2026-09-09 with the `theia` type, corrected the same day when the constant was found in the ci engine as well). `up` starts the missing daemons in the background (detached, logs in `.codkit/build/<channel>.log`) and does not wait for the end of a pass; `down` stops them (by the process tree); `status` reports living/dead per channel (by probing the command line of the process, not by a pid file); `errors` waits for the end of the current pass and prints the errors of the last finished pass in full (`--mine` narrows it to files from the inventory and own code). The rule (in our own words from the clean-room rewriting): running the compiler over the whole project directly is forbidden - the daemons carry the compilation; `errors` is called once and its output is read in full. The codes of `errors`: 0 there are no errors; 1 there are errors; 2 the daemon is not running AND there is no finished pass in the log (hint \"codkit build up\"); a dead daemon with a FINISHED pass in the log gives the result of that pass (0/1) plus a warning (useful for a single CI pass; the M1 clarification). The bounds of the post-mortem view (the M1 implementation): a pass from the log is given out only when a daemon record EXISTS (the record ties the log to a particular start and a particular tree; `up` rotates the log exactly when it creates the record) - a channel without a record was either never started or was stopped by `build down`, which retires the channel together with its answer; the LAST FINISHED pass is what is given out (a daemon that died inside a new pass gives out the previous finished one); without `--channel` the channels that have an answer are listed (the living ones and the dead ones with a pass). The codes of the other subcommands (the M1 clarification): `up` - 0 started or already living, 1 a refusal (a foreign watcher, no script, a channel of another tree, a concurrent start), 2 the tree is unfit; `down`/`status` - always 0. The spelling of \"all channels\" is `--channel all` (one single form). Dedicated `CK-E-*` codes for these refusals are deliberately not created until their machine consumer (the skill of the cycle, M2) appears. @status:spec/done",
-      "line": 59,
+      "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-BUILD"
     },
     {
@@ -5616,7 +5634,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "REPAIR-009 clarifies the semantics without changing the codes: `build status` stays report-only and its exit 0 means that the OBSERVATION succeeded, not that every daemon is healthy - `starting` and `unknown` stay visible states in the line and in the JSON, and this is said explicitly in the reference and JSON documentation. `up` and `down` hold a contained per-channel operation lock (PROP-010 ##DAEMON-CHANNEL-LOCK) from the first probe to the final publication or the exact retirement; a competitor that loses returns a refusal without touching either the record or the process. `status`, `down` and `errors` are bound to the current tree: a record of another tree is shown honestly, `down` sends no signals, `errors` does not certify a foreign log, and a mutating or certifying mismatch is an environment code. @status:impl/done",
-      "line": 60,
+      "line": 61,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-BUILD-EXITS-REPAIR009"
     },
     {
@@ -5625,7 +5643,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "14. codkit cycle start tag|sha / continue / status / restart [--yes] [--ci]",
-      "line": 62,
+      "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-cycle"
     },
     {
@@ -5634,7 +5652,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The orchestrator of the upgrade (PROP-009). `start` - preconditions: there is no active cycle (no `cycle/state.json`), the working tree of patchset is clean, and the target pin is reachable in the tree (otherwise 2 with a hint saying which fetch to run - there is no network); it creates the cycle branch and the pin commit, and starts the apply phase. `continue` - after a manual or agent resolution: it re-reads the state, extracts the resolutions that remain (a `save` of the affected files) and carries on through the phases. `status` - print the phase, the outcome counters and `nextAction`. `restart` - a reset to the beginning of the cycle: `git reset --hard` of the cycle branch to the parent of the pin commit plus the removal of `cycle/state.json` (confirmed by the `--yes` flag; under `--ci` only with `--yes`). `--ci` is the non-interactive keep-alive mode: the stopping points do not wait but end the process with code 3 and a full report. Codes: 0 the phase or the cycle is finished; 1 checks; 2 the environment; 3 a stop for a human. @status:spec/done",
-      "line": 63,
+      "line": 64,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-CYCLE"
     },
     {
@@ -5643,7 +5661,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "15. codkit forecast [--ref upstream-ref]",
-      "line": 65,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-forecast"
     },
     {
@@ -5652,7 +5670,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "A dry run of applying the delta onto an upstream ref. The choice is deterministic: the explicit `--ref <ref>`, otherwise exactly `refs/remotes/upstream/main`; searching for \"the freshest\" among similar refs, and a fallback to `origin/main`, are forbidden. The chosen name is resolved once through `git rev-parse --verify '<ref>^{commit}'` into a full SHA, and that SHA is printed and used by the whole run; a missing ref → exit 2 with a hint to pass `--ref` or to update the mirror beforehand. Under the global `--ci` the `--ref` flag is required, and its absence → exit 2 before the tree is read or changed. The implementation: the same apply engine in dry-run mode against the resolved SHA instead of the pin. The output is a report by owner: for every artifact whose outcome is worse than `clean` - the id, the owner, the outcome and the cause. There is no network: the freshness of the ref is the duty of CI (the mirror bot). Codes: 0 everything is clean; 1 there are future breakages (the \"informational redness\" of a nightly job); 2. @status:spec/done",
-      "line": 66,
+      "line": 67,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-FORECAST"
     },
     {
@@ -5661,7 +5679,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "16. codkit rebase-onto-pin",
-      "line": 68,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-rebase"
     },
     {
@@ -5670,7 +5688,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Rebinding the patches of a patchset feature branch to the pin of the target branch after an ordinary merge (guard R2b). The command does not guess `main` by name and does not use the merged `HEAD` as a source of feature patches. @status:spec/done",
-      "line": 69,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-REBASE-ONTO-PIN"
     },
     {
@@ -5679,7 +5697,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`HEAD` must be a merge commit with exactly two parents: `HEAD^1` is the feature tip before the merge, `HEAD^2` is the merged-in target branch. A non-merge, an octopus merge, an unfinished merge and swapped parent roles are rejected with code 2 and a hint to repeat `git merge <target>` on the feature branch. The target pin is taken only from `codkit.json` at `HEAD^2`; the pin in the merged `HEAD` must match it. The source pin is taken from `codkit.json` at `HEAD^1`; both full SHAs must be reachable in the tree. @status:spec/done",
-      "line": 71,
+      "line": 72,
       "uri": "spec://codkit/modules/codkit/PROP-007#REBASE-TWO-PARENT-CONTRACT"
     },
     {
@@ -5688,7 +5706,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`M = git merge-base HEAD^1 HEAD^2` is computed. The transferable set is the `delta/patches/*.ckpatch` files existing at `HEAD^1` whose paths appear in `git diff --name-status M..HEAD^1 -- delta/patches/`; the blob of every patch is read strictly from `HEAD^1`. Feature deletions and renames are already resolved by the merge itself and are taken from the merged working state; patches changed by the target branch alone are not part of the transfer. @status:spec/done",
-      "line": 72,
+      "line": 73,
       "uri": "spec://codkit/modules/codkit/PROP-007#REBASE-FEATURE-PATCH-SET"
     },
     {
@@ -5697,7 +5715,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The target baseline is built in a scratch index and scratch objects from the patchset state at `HEAD^2`: its delta is applied onto its target pin, without the feature patches of the transferable set. Checking out a patchset ref, changing the refs of the tree and using already merged blobs for the baseline are forbidden. The feature patches from `HEAD^1` are applied onto that baseline one by one through PROP-008 §5; only after the full classification is the result carried into the working tree. @status:spec/done",
-      "line": 73,
+      "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-007#REBASE-SCRATCH-TARGET-BASELINE"
     },
     {
@@ -5706,7 +5724,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "For `clean|shifted|merged|target-renamed` the patch is regenerated as the state \"the target pin → the transferred file\": every other header field is preserved, and `pin` becomes the exact `<tag>@<sha>` from `HEAD^2`. The old `cause` is preserved only for `clean` without a rename; for `shifted|merged|conflict|target-renamed|target-deleted` the cause of the change between the source and the target pin is computed per PROP-008 §7 (including `approx`; for `target-deleted` it stays in the red report until a human decides). For a conflict the target `pin/cause` are held in the local pending context of the operation and are written into the `.ckpatch` only together with the new body, by a subsequent `codkit save`; the intermediate pair \"a new pin + an old body\" is never written. @status:spec/done",
-      "line": 74,
+      "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-007#REBASE-PIN-CAUSE-RULE"
     },
     {
@@ -5715,7 +5733,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Conflicts are materialized with the standard markers in the tree files over the scratch baseline of the target branch, and they are listed in full; after a manual resolution `codkit save` is run, and it finishes the pending regeneration. Codes: 0 - everything transferred cleanly; 1 - there are conflicts or broken feature artifacts; 2 - the merge or environment contract is violated. @status:spec/done",
-      "line": 75,
+      "line": 76,
       "uri": "spec://codkit/modules/codkit/PROP-007#REBASE-CONFLICT-RULE"
     },
     {
@@ -5724,7 +5742,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "17. codkit ci [--profile verify|build] [--effective-diff base-ref]",
-      "line": 78,
+      "line": 79,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-ci"
     },
     {
@@ -5733,7 +5751,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The container run \"from scratch\" (PROP-011). It always implies `--ci` (zero network). Profiles: `verify` (the default) - identity → a fresh bring-up to the pin → the apply → `verify` plus the race guards; `build` - the same plus the dependencies (the fast path), one compilation pass through the daemons, own tests and contract tests. Codes: 0; 1; 2. @status:spec/done",
-      "line": 79,
+      "line": 80,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-CI"
     },
     {
@@ -5742,7 +5760,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The implementation after the post-M1 audit. The full signature: `ci [--profile verify|build] [--effective-diff <base-ref>] [--pin-guard-base <ref>] [--timeout <sec>]`; the command holds a per-tree lock for the whole run. The steps of verify (7 of them, printed in order with progress): the source of the path → the safe.directory probe (PROP-011 §5) → check-tree (in write mode) → a fresh load with the overlay targets materialized into the branch → verify → pin-guard (only with `--pin-guard-base`; otherwise the step is explicitly skipped) → effective-diff (only with the flag). Build runs 12 steps: the source → safe.directory → check-tree → a fresh load **without** the overlay targets → the dependencies → the real `npm run hygiene` and `npm run eslint` over the unmaterialized overlay → a second fresh load with overlay apply → verify → pin-guard → effective-diff → one pass of the daemons the type names (`build.defaultChannels`) → the real product/contract tests through `npm run test-node -- --runGlob vs/<ownDirName>/**/test/{common,node}/**/*.test.js` (the `common` and `node` layers of every `test/` directory under the own directory: the tests of the product, of the delivered library and of the feature directories; `--runGlob` goes around the standard exclusion of those layers by the node runner, while the suites of the `browser` layer run under the electron runner outside `ci` - PROP-010 §4). A red hygiene or test ends the command with code 1; a missing runner or script is code 2 `CK-E-LOG-INCOMPLETE`; there are no stubs that exit 0. The daemons are stopped in a finally block; an unfinished pass is `CK-E-LOG-INCOMPLETE`. Codes: 0; 1 - the checks, pin-guard, compilation or tests; 2 - the environment (`NET-FORBIDDEN`, `DEPS-MISSING`, a missing required runner). The step order is universal; the named scripts and globs are the project type's answer (VS Code type: `spec://codkit/modules/vscode/PROP-004#VSCODE-BUILD-STEPS`). @status:impl/done",
-      "line": 80,
+      "line": 81,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-CI-IMPL"
     },
     {
@@ -5751,7 +5769,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "18. codkit publish patchset-ref [--profile verify|build] [--release semver] --yes-i-am-publish-bot",
-      "line": 82,
+      "line": 83,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-publish"
     },
     {
@@ -5760,7 +5778,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Build the generated branch from an immutable patchset commit and publish it into the fork. `patchset-ref` is required and is resolved once into a full commit SHA; `--profile verify|build` selects the checks and defaults to `verify`; `--release <semver>` additionally creates a release tag. The command requires a configured `publishRemoteUrl` and an explicit `--yes-i-am-publish-bot`; this is neither a human mode nor `--ci`: a `--ci` that is passed is rejected with code 2 `CK-E-NET-FORBIDDEN`, because publish has to reach the network. @status:spec/done",
-      "line": 83,
+      "line": 84,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-PUBLISH"
     },
     {
@@ -5769,7 +5787,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Before the fresh materialization and before any local or remote mutation, `git ls-remote <publishRemoteUrl>` is run; a failure → exit 2 naming the exact access required, with the tree and the refs unchanged. Only after the gate succeeds are the build and the push allowed; `publish` is the one codkit command where `netAllowed=true`, and only under the bot flag. @status:spec/done",
-      "line": 85,
+      "line": 86,
       "uri": "spec://codkit/modules/codkit/PROP-007#PUBLISH-NETWORK-GATE"
     },
     {
@@ -5778,7 +5796,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The history is built from the pin in `codkit.json` at the resolved `patchset-ref`, strictly in this order: (1) the patch commits one by one, lexicographically by the UTF-8 path of the `.ckpatch`; (2) one own commit for the snapshot of `delta/own/**` when the own code being delivered is non-empty - minus `LICENSE-CODKIT.md`: the release branch does not carry the Codkit notice (PROP-014 §4a `STD-NOTICE-RELEASE-EXCLUSION`); an own snapshot made of that one notice is empty, and the commit is skipped; (3) the overlay commits by target, lexicographically by target, with the overlay composition of one target; (4) the resource commits by entries sorted by target. Then the selected profile of checks is run. Every one of these generated commits carries the canonical trailers with the exact case: `Codkit-Patchset-Commit: <the full 40-hex SHA of patchset-ref>` and `Codkit-Upstream-Pin: <pin.tag>@<the full 40-hex pin.sha>`. @status:spec/done",
-      "line": 86,
+      "line": 87,
       "uri": "spec://codkit/modules/codkit/PROP-007#PUBLISH-GENERATED-ORDER"
     },
     {
@@ -5787,7 +5805,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The branch is always named `codkit/release/<patchset12>+<pin.tag>`, where `patchset12` is exactly the first 12 lower-case hex characters of the resolved patchset SHA; the branch is pushed with `--force-with-lease`. With `--release <semver>` the local test contract, pending the owner's decision of PROP-012 §5, creates the tag `patchset-v<semver>+<pin.tag>` on the generated tip. The tag is immutable: an absent one is published without force; one that already points at the same tip is an idempotent success; one that points at another tip is exit 1, with the tag neither moved nor deleted. An idempotent repeat after an interruption repeats only the pushes that were not delivered. Codes: 0; 1 - the checks or a conflict of the immutable tag; 2 - the network, the permissions or the environment. @status:spec/done",
-      "line": 87,
+      "line": 88,
       "uri": "spec://codkit/modules/codkit/PROP-007#PUBLISH-REFS"
     },
     {
@@ -5796,7 +5814,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "19. codkit hooks install|check",
-      "line": 90,
+      "line": 91,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-hooks"
     },
     {
@@ -5805,7 +5823,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`install`: it installs (a) a `commit-msg` hook in patchset: when `cycle/state.json` exists it appends the trailer `Codkit-Cycle: <targetTag>`, and it checks the format of the `Cause:` trailer when one is present; (b) a `pre-commit` hook in patchset: a fast check of the markers and of the schemas of the changed `delta/**` files (fractions of a second per file). Success of `install`/`check` means not only the exact owned bytes but proof that the real Git executes exactly this path: the effective `--git-path hooks/<name>` is resolved across every local/global/system scope and compared canonically (on Windows: slash and case semantics). A linked worktree (the hooks are shared), any custom `core.hooksPath`, `/dev/null`, a failed resolution and a foreign hook are an explicit inactive/refusal; Codkit does not write implicitly into a shared, global or foreign location. `check` is green only for effective and current owned bytes. CI checks the trailers independently. The hook of the tree is PROP-012 §5 and has the same linked/custom/foreign exceptions. @status:spec/done",
-      "line": 91,
+      "line": 92,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-HOOKS"
     },
     {
@@ -5814,7 +5832,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "20. codkit gc [--dry-run] [--keep-consumed n] [--older-than days]",
-      "line": 93,
+      "line": 94,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-gc"
     },
     {
@@ -5823,7 +5841,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Remove the spent runtime state of patchset; the closed list of classes is PROP-006 §1 `##GC-CLASSES` (the TREE-COMMITS-SAVE campaign, Phase 9, decision D22). Order: the tree lock → the plan → the removal. The plan prints every candidate with its class and its remove/keep action - the kept classes included, with an explanation (the transaction of a stopped `sync`, the pending drafts, the daemon records, the lock of a live owner with its pid and command): the plan is what the operator reviews, not merely a list of removals. A stale lock of **its own** tree is lifted by the acquisition itself (as always, PROP-006 §2), and gc names that lifting in the plan; locks of foreign trees with a dead pid are lifted by gc through the same acquisition protocol, and with a live pid it keeps them. It removes: `refs/codkit/consumed/*` older than `--older-than` days (default 30) beyond the last `--keep-consumed` (default 5; the refs are shared by every worktree - the removal happens under the lock of the shared repository), `.codkit/tmp/*`, the cache `.codkit/trees/<id>.json` of a tree that does not exist, and `.codkit/out/*`. Never: the transactions, the receipts and pending, `.codkit/build/*`, the `daemon-*` locks, and the git objects of the tree. `--dry-run` is the same plan without the removal; the actual removal must match the printed plan one for one (R14). `--json`: `data.plan`, `data.removed`, `data.kept`. Codes: 0; 2 (the environment; an invalid `--keep-consumed`/`--older-than` is a refusal before any lock). @status:impl/done",
-      "line": 94,
+      "line": 95,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-GC"
     },
     {
@@ -5832,7 +5850,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "21. codkit imageset gen|index|verify",
-      "line": 96,
+      "line": 97,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-imageset"
     },
     {
@@ -5841,7 +5859,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit imageset gen [--dry-run] [--branding-dir path]` regenerates the product's icon set from the branding masters; it is delivered by the resource-file layer (PROP-005 §6): the files land in `delta/resources/files/`, the entries in `delta/resources/map.json`, and an ordinary `load` materializes them - the product repository receives resource artifacts indistinguishable from hand-made ones, with no trace of how they were produced. Only the operator runs the command (the namespace is `##IMAGESET-NAMESPACE`): no codkit command calls it and it calls nothing that mutates; a human reviews and commits the patchset diff. Preconditions: the config (the map entries carry the pin `tag@sha`), the fork tree exists (the targets are read from it). The first run, when the masters directory is absent, creates it and fills it with the icons of the distribution itself from the tree (seeding, `##IMAGESET-MASTERS`) - with a report; an existing directory is never overwritten. A new map entry requires a guard test `guard.brand.<family>` declared under own beforehand (`CK-E-GUARD-MISSING`, a refusal BEFORE the first write - the resource layer has no markers, so the guard is mandatory) and an owner: the first key of `delta/owners.json` whose paths cover the target (with nothing covering it - `CK-E-OWNER-UNKNOWN`); for an existing entry only the bytes of its source and the pin are updated. `--dry-run` is the same plan (the seeding, the targets, the frames, the origin of every frame, the entries) without a single write, and it reads every master the run would read, so it refuses and skips as the run does (`##IMAGESET-SELF-CHECK-READS-MASTERS`). A target without a family master is a warning and exit 1. `--help` lives on the namespace and prints the long help BEFORE the roots are resolved (`##IMAGESET-NO-TOOLS`). `--json`: `data.brandingDir`, `data.seeded`, `data.targets[]` (the frames, each with where it came from - `##IMAGESET-FRAME-SOURCES-REPORTED` - `skipped`, `entry`, `legacyTypes`), `data.written`. What the shipped files cannot say - the frame set of a target, the master key of some of its frames - the product declares in its masters directory (`##IMAGESET-DECLARATION`). Codes: 0; 1 (there are skipped targets); 2 (the environment: no tree, a broken target container, no guard or owner, no native rasterizer). @status:impl/done",
-      "line": 97,
+      "line": 98,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-IMAGESET"
     },
     {
@@ -5850,7 +5868,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-006#IMAGESET-TARGET-DISCOVERY; the address stays for citations. @status:spec/done",
-      "line": 98,
+      "line": 99,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-TARGET-DISCOVERY"
     },
     {
@@ -5859,7 +5877,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The masters live by default in `<patchset>/branding/` - a derivative of the root of the product repository; `--branding-dir` exists only to override that, and a run without the flag has to work. The naming convention, where `<key>` is the family for a family holding one drawing and `<family>/<artwork>` for one holding several (`##IMAGESET-ARTWORK`): `<key>.svg` is a vector master (rendered at every size, preferred), `<key>.png` a raster one (resampling), `<key>-<N>.png` an override for the NxN size, `<key>-<W>x<H>.png` one for the non-square sizes; an override is used verbatim and has to match the size of the frame, otherwise the target is honestly skipped. Precedence: an override > svg > png - the operator generates the small sizes with external tools and puts them alongside, and masters of the exact size beat generated reductions. A file that fits no convention is printed as ignored - nothing is picked up or skipped silently; the walk of the directory is recursive, because the subdirectories of the families are part of the convention and not stray folders. The declaration of the image set, `imageset.json` in the root of the directory (`##IMAGESET-DECLARATION`), is recognised as well - it is not a master - and so is every master of a key a rule of it names: neither is ever reported as ignored. Seeding: when the directory is absent it is created and filled with the distribution's own artwork - for every key the largest raster among ITS OWN targets is taken and placed as `<key>.png`, and for a vector family the vector itself is placed as `<key>.svg`. A container codkit can only write and not read (the ICO frames, the XPM palette) contributes nothing to the seeding - which is why the `icon` family is seeded from the PNG and ICNS targets the same family carries, and not from the `.ico`. The seeding is always printed; an existing directory is never overwritten. @status:impl/done",
-      "line": 99,
+      "line": 100,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-MASTERS"
     },
     {
@@ -5868,7 +5886,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The container codecs are hand-written, with no image dependencies: ICO - a 6-byte header plus 16 bytes per directory frame, PNG payloads (legal since Vista), a size byte of 0 meaning 256; ICNS - `icns` plus the total length, elements of `<type><length including the header><PNG>`; the BMP of the installer graphics - 24 bits without alpha, the background written explicitly (white), rows bottom-up aligned to 4; XPM - the XPM3 form `static char * …_xpm[]`, the palette from a histogram of the exact colors (flat artwork keeps a small palette) with a median cut on overflow, 1–2 characters per pixel, transparency as the color `None`; PNG - a codec of our own (decoding: which variants are read and what a refused file is told is `##IMAGESET-PNG-MASTERS`; encoding is deterministic: filter 0, a fixed deflate level - a repeated regeneration gives an empty diff). @status:impl/done",
-      "line": 100,
+      "line": 101,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-CONTAINERS"
     },
     {
@@ -5877,7 +5895,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "A PNG master is read in every variant the PNG format defines, because whatever a designer's tool exports has to be usable as it is, without a conversion by hand: grey at 1, 2, 4, 8 and 16 bits; RGB, grey with alpha and RGBA at 8 and 16 bits; a palette at 1, 2, 4 and 8 bits; a `tRNS` chunk in each - an alpha for every palette entry, and for grey and RGB the one colour, compared sample by sample at the depth of the file, that is transparent; and Adam7 interlacing. The pipeline works in 8 bits per channel (`##IMAGESET-RASTER`, `##IMAGESET-CONTAINERS`), so a 16-bit sample is brought to 8 bits by rounding, value8 = round(value16 × 255 / 65535) - the nearest of the 256 levels, exact at both ends because 65535 = 255 × 257 - and a grey sample of 1, 2 or 4 bits is scaled to the full range, value × 255 / (2^depth − 1). The samples are taken as stored: no gamma or colour-space chunk is applied. Only a file that is not a well-formed PNG is refused - no signature, no intact IHDR, a colour type or a depth the format does not define (RGB at 4 bits, for instance), a compression, filter or interlace method it does not define, a palette image without PLTE, image data that does not inflate or does not fill the passes its header declares, a scanline filter it does not define - and the refusal says what is wrong with the file and what to export instead: an 8-bit RGBA PNG. It stays `CK-E-ARTIFACT-BROKEN` naming the master, the one refusal the contract carries (`spec://codkit/modules/codkit/PROP-016#TYPE-API-STABILITY`); a precise message, not a new code, is what the operator needs to act on. @status:impl/done",
-      "line": 101,
+      "line": 102,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-PNG-MASTERS"
     },
     {
@@ -5886,7 +5904,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The raster path is only for raster masters and mismatched aspects: a separable Lanczos-3 over premultiplied alpha with normalized weights and clamps (ringing must not wrap the alpha modulo 256); the vector path does not resample at all - every size is rendered by the rasterizer at its native resolution. The quantization of the XPM palette is in `##IMAGESET-CONTAINERS`. The candidate dependency `sharp` is excluded by the licence rule (libvips is LGPL) without discussion. @status:impl/done",
-      "line": 102,
+      "line": 103,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-RASTER"
     },
     {
@@ -5895,7 +5913,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Rasterization is `@resvg/resvg-js` 2.6.2 (MPL-2.0), the only dependency of the command: twelve prebuilt platform binaries (darwin x64/arm64, linux x64/arm64/arm in gnu and musl, win32 x64/ia32/arm64, android), and nothing is installed onto the host. The native module is loaded lazily - the other commands do not pay for it and do not fall over a platform binary that is not theirs; a missing module is `CK-E-DEPS-MISSING`. When the aspect of the master does not match the target: render by width, then resample to the exact sizes. @status:impl/done",
-      "line": 103,
+      "line": 104,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-RENDER"
     },
     {
@@ -5904,7 +5922,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "When the aspect of a vector master differs from the aspect of a raster frame it renders, the frame is still produced at the exact size (`##IMAGESET-RENDER` renders by width, `##IMAGESET-RASTER` resamples to the exact height), but the drawing loses its proportions - a fact of the design whoever draws has to see - so every report of that frame says it is stretched and by how much. **The measure** is one for every report: with the intrinsic size of the master `w`x`h` and the frame `W`x`H`, the stretch is |H·w / (W·h) − 1|, how far the height of the frame departs from the height the master's own aspect gives it at the width of the frame, as a percentage rounded to one decimal; a frame is stretched when that figure is at least 0.1%. A 400x800 master comes out of the rasteriser at 164x328 for a 164x314 frame and is stretched 4.3%. **The wording** is one as well: the origin of the frame in `gen` and `gen --dry-run` reads `rendered <master> at <W>x<H>, stretched <p>% from the master's aspect`, and the From column of `index` reads `rendered at this size from <master>, stretched <p>% from the master's aspect`. Both runs of `gen` also print one warning line per stretched frame through the ordinary warning channel, naming the target and the master's own size; the exit code does not change, because the frame is delivered. **The fields:** under `--json` every frame of `data.targets[].frames[]` (`gen`) and every size of `data.targets[].sizes[]` (`index`) carries `stretched` and `stretchPercent`. A frame no vector master renders is not assessed and carries `stretched: false` and `stretchPercent: null`: a per-size override is used at exactly its own size, a raster master already reports `resampled`, and a vector target is emitted unchanged at the size it has to carry (`##IMAGESET-SVG-PASSTHROUGH`). **The prediction** of `gen --dry-run` and `index` renders nothing and still cannot disagree with the run, because the intrinsic size is the rasteriser's own reading of the master the run would render - in a dry run that plans the seeding, the bytes the seeding would write: `@resvg/resvg-js` parses it as the render does - the render only adds the fit to the width of the frame, which sizes the output and leaves the parse alone - and, without rendering, gives the size of its tree on the root element of `Resvg#toString()`; the run reads the same root off the instance that rendered the frame. The `Resvg#width` and `Resvg#height` getters are not used, because they round that size to whole pixels - a 32.5x65 master reads as 33x65 there and would report 1.5% at a 164x328 frame the render fills exactly - and no second reader of the document is used either, because usvg resolves units, percentages and a missing `height` by rules of its own: `width=\"200\"` with the viewBox `0 0 400 800` and no `height` is a 200x800 drawing to it. @status:impl/done",
-      "line": 104,
+      "line": 105,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-STRETCH-REPORTED"
     },
     {
@@ -5913,7 +5931,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`gen --dry-run` and `index` are the self-check a designer runs before the real `gen`, so neither may promise a run that then fails: each reads every master the run would read, with the code the run reads it with, and says what the run would say. **What is read** is what the run reads, in its order: target by target and frame by frame, the master the run chooses for the frame (`##IMAGESET-MASTERS`) - in a dry run that plans the seeding, the bytes the seeding would write - and a target is read no further than the frame the run gives it up at, so a file the run never opens cannot fail the check; a size of `index` past that frame is neither assessed for a stretch nor reported as reduced. **A PNG master**, a per-size override or `<key>.png`, is decoded in full by the run's decoder (`##IMAGESET-PNG-MASTERS`). A file the run refuses is refused with the same `CK-E-ARTIFACT-BROKEN`, message and hint, exit 2 - by `index` too, because an index that listed the master would describe a run that does not happen. An override whose decoded size is not the size of its frame gets the run's own skip: in the dry run the warning `skipped <target>: the per-size override <file> does not cover <W>x<H>` and exit 1, in `index` the same reason in the From column of that size. **The master of a vector target** is parsed and its size compared as the run does (`##IMAGESET-SVG-PASSTHROUGH`): whatever makes the run skip the target - a master that is not a vector, does not parse or has another size - is the same skip, with the same reason, in both. **A vector master** is read for its stretch (`##IMAGESET-STRETCH-REPORTED`), which already refuses one the rasteriser cannot parse. **A 16-bit master** is reported as reduced to 8 bits, because that is a fact of the file the designer delivered: the origin of every frame it serves ends in `, reduced from 16 to 8 bits per channel` in `gen` and `gen --dry-run`, the From column of `index` ends in the same words, and under `--json` every frame of `gen` and every size of `index` carries `reducedFrom16Bit`. It is not a warning - the delivered images carry 8 bits per channel whatever the master holds - and a master of fewer bits, expanded to 8 without a loss, is not reported. Under `--json` every target of `index` also carries `skipped`: the reason the run skips it, in the words of the run's warning, or null. Only the pixels are left out: the check resamples, renders and encodes nothing. @status:impl/done",
-      "line": 105,
+      "line": 106,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-SELF-CHECK-READS-MASTERS"
     },
     {
@@ -5922,7 +5940,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**The product declares what its shipped files cannot say, in one data file next to the masters it names** (`##DECISION-IMAGESET-DECLARATION-FILE`). The file is `imageset.json` in the root of the masters directory - `<patchset>/branding/imageset.json`, or the root of the directory `--branding-dir` names - and it is versioned with the masters in the product repository; without it nothing changes. Version 1 is an object `{\"codkitImageset\": 1, \"targets\": {…}}` whose `targets` maps a target, named by its path in the fork tree with forward slashes exactly as `codkit imageset index` prints it, to an entry with `frames`, the frame set of the target (`##IMAGESET-DECLARED-FRAMES`), and `sources`, the rules that give some of its frames to another master key (`##IMAGESET-DECLARED-SOURCES`); an entry carries at least one of the two. The complete declaration of the case it was made for: `{\"codkitImageset\": 1, \"targets\": {\"resources/win32/code.ico\": {\"frames\": [16, 20, 24, 32, 40, 48, 64, 128, 256], \"sources\": [{\"key\": \"taskbar\", \"maxSize\": 64}]}}}` - nine frames in place of the four the pin ships, those up to 64 px from the masters of the key `taskbar` and the larger ones from the target's own key `icon`, with `resources/server/favicon.ico` and the rest of the family untouched. `gen`, `gen --dry-run`, `index` and `verify` read the file and validate all of it before they read a master or write a byte, and every problem is `CK-E-CONFIG`, exit 2, naming the file, the target and the rule: a file that is not a JSON object, a `codkitImageset` other than 1, a member version 1 does not define at any level, a target path that is not a target of the distribution, an entry that declares nothing, and each problem the two facts below name. A declaration is applied exactly or refused: nothing in it is ignored, applied in part or replaced by a fallback. @status:impl/done",
-      "line": 106,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-DECLARATION"
     },
     {
@@ -5931,7 +5949,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**A declared frame set replaces the frames the shipped file carries.** `frames` lists the sizes of the frames the target is written with - square frames, a size each, in the order the written file carries them - and may add frames the shipped file lacks and drop frames it carries. What such a list may be is a question of the container, so the engine asks the codec of the target's container (the member `declaredFrames` of `ImageCodec`, `spec://codkit/modules/codkit/PROP-016#TYPE-AREA-BRAND-IMAGES`) and names no container itself: the codec answers the frames a write carries, or the reason it refuses the list, and the engine turns the reason into `CK-E-CONFIG`. A container whose codec answers no frame set refuses every declared frame set of its targets - `a declared frame set is not supported for a target of the <kind> container` - so a declaration is never silently ignored. The run renders exactly the declared frames, each from its own master (`##IMAGESET-MASTERS`, `##IMAGESET-DECLARED-SOURCES`), and the container is written from them in the declared order by the codec's ordinary writer; which lists a container takes and how its writer encodes a frame it adds is the answer of the type (`spec://codkit/modules/vscode/PROP-006#IMAGESET-ICO-FRAME-SET`). The dry run, the index and the verification take the same frames. A target the declaration does not name, or names with `sources` alone, keeps the frames of its shipped file (`spec://codkit/modules/vscode/PROP-006#IMAGESET-TARGET-DISCOVERY`), and a patch set that declares nothing gets every file `gen` writes byte for byte as before declarations existed: a test pins the sha256 of every file of two runs over the fixture - a seeded one and one from vector, raster, per-size and 16-bit masters of the whole brand surface - to what the generator wrote before this fact. @status:impl/done",
-      "line": 107,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-DECLARED-FRAMES"
     },
     {
@@ -5940,7 +5958,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**A declared source gives some frames of a target to another master key.** A rule of `sources` names a `key` and selects frames by their size - an NxN frame has the size N, and a frame that is not square is never selected - with exactly one selector: `sizes`, the explicit list, or `minSize` and `maxSize`, an inclusive range with at least one bound. The rules apply to the frames of the target once `frames` has been applied - the declared ones or the shipped ones - and a frame no rule selects keeps the target's own key (`spec://codkit/modules/vscode/PROP-006#IMAGESET-ARTWORK`). A key is written like any key, one segment or `<family>/<artwork>`, of letters, digits, `.`, `_` and `-`, no segment starting with `.`; its masters follow the one naming convention and precedence of `##IMAGESET-MASTERS` - `<key>-<N>.png` over `<key>.svg` over `<key>.png` - and are reported like the masters of any key, the stretch (`##IMAGESET-STRETCH-REPORTED`) and the 16-bit reduction (`##IMAGESET-SELF-CHECK-READS-MASTERS`) included; a frame its key has no master for skips the target the usual way. `CK-E-CONFIG` refuses, with no fallback: a key none of whose masters exists in the directory; overlapping rules - one frame selected by two rules, whatever their keys - and contradicting ones - `sizes` together with a range, a `minSize` greater than its `maxSize`, a size listed twice; and a selector that matches no frame - a listed size that is not a frame of the target, a range that selects none. The frames of `resources/win32/code.ico` up to 64 px from the key `taskbar` - `taskbar.svg`, `taskbar-16.png`, `taskbar-32.png` - are the rule `{\"key\": \"taskbar\", \"maxSize\": 64}`. @status:impl/done",
-      "line": 108,
+      "line": 109,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-DECLARED-SOURCES"
     },
     {
@@ -5949,7 +5967,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Every report says where each frame came from.** `gen` and `gen --dry-run` state per frame, as before, the size, the master file and how it was used - `override <file> verbatim`, `rendered <file>`, `resampled <file>` - with the stretch and the 16-bit reduction, the file naming its key by the naming convention; a frame a rule of the declaration gave to its key adds `, from the declared key <key>`, and the line of the dry run that opens a target with a declared frame set adds `, declared in imageset.json in place of the shipped <sizes>`. Under `--json` every frame of `data.targets[].frames[]` also carries `key`, `keyDeclared`, `master` and `origin` (`override`, `vector` or `raster`), and every target `framesDeclared`. `imageset index` records the declaration: a target with a declared frame set has the line `- Frames: declared in imageset.json - <sizes>; the shipped file carries <sizes>`, the From column of a size a rule gave to its key adds `, from the declared key <key>`, and the section of the masters names the declaration; under `--json` every size of `data.targets[].sizes[]` carries `key`, `keyDeclared` and `origin` beside `from` - `origin` null where no master serves the size - every target `framesDeclared` and `shippedFrames`, and `data.declaration` names the file. The text about a target nothing declares does not change; its JSON carries the same fields, with the target's own key, `keyDeclared: false` and `framesDeclared: false`. @status:impl/done",
-      "line": 109,
+      "line": 110,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-FRAME-SOURCES-REPORTED"
     },
     {
@@ -5958,7 +5976,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**`imageset verify` checks a declared target against its declaration and never compares two keys.** It reads the declaration of the masters directory it is pointed at and validates it as `gen` does (`##IMAGESET-DECLARATION`); the masters still take no part in any measurement. The layers of a target are grouped by the master key that serves them, and each group has its own round trip: regenerated from its own largest layer - the first in file order on a tie - and compared within the bands (`##DECISION-IMAGESET-ACCEPTANCE-CRITERION`). A layer of one key is never compared with a layer of another, because two keys are two drawings for the same reason two containers are (`##IMAGESET-ROUND-TRIP`). A group of one layer has nothing to regenerate it from and says so - `the only layer of key <key> in this file, so nothing here regenerates it` - and is no comparison. For a target with a declared frame set the structure of the file in the tree is compared with the declaration, not with the frames the pin shipped: a frame the declaration lists and the file lacks, a frame the file carries and the declaration does not list, or another order, is a structural mismatch - the gate, exit 1 - and the report names the missing and the extra frames. The drift the gate catches is therefore a missing frame, an extra frame, and a frame drawn from the wrong key wherever the group of its key asserts a band - at 64 px and above, in a group of more than one layer; below 64 px no pixel criterion is asserted at all, so there such a frame is measured and printed, not failed. Under `--json` every layer carries its `key`, every target `framesDeclared` and `masters` - one `{key, label}` per group - and `structure` also `declared`, `missing` and `extra`; `data.declaration` names the file, and the summary says the targets were verified against it. A target nothing declares is verified, and reported in the text, exactly as before. @status:impl/done",
-      "line": 110,
+      "line": 111,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-VERIFY-DECLARED"
     },
     {
@@ -5967,7 +5985,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "The acceptance criterion is a round trip on the distribution's own artifact: take the largest image of the distribution as the master, regenerate, and compare with the shipped one. The structure EXACTLY: the same container type, the same list of frames/types, the same sizes, in the order of the file; this is asserted by a test against the shipped binary (not against a file the test has just written), and a mutation of the encoder must turn the test red. The pixels do not have to match at the small sizes: the small layers upstream are drawn separately rather than obtained by reduction; the tolerance is set by size ranges and is justified by the worker's own measurement, not by a reference to somebody else's figure. The worker's own measurement on the upstream tree (the master is the largest layer of THE SAME container - `.icns` must not be compared with `.ico`, they are different drawings: mean alpha 158.7/255 against 219.1/255): the mean absolute RGB channel difference against the shipped layer is 1.0/255 at 512x512 and 2.3/255 at 256x256 (`code.icns` from `ic10` 1024), 4.7/255 at 128x128 (`code.icns`), 13.1/255 at 128x128 (`code.ico` from its own 256 frame), 17.9/255 and 20.2/255 at 32x32 (`code.ico` and `code.icns`) and 65.6/255 at 16x16 (`code.ico`). Hence the tolerance by ranges - `##DECISION-IMAGESET-ACCEPTANCE-CRITERION`. The cross-container difference was measured twice and the two results diverged (96.5 against 130.9); the analysis of 2026-09-06 showed that the honest figure is **96.5/255**: it is the same MAE over the three RGB channels on raw buffers as every other row of the table, computed between the shipped 256x256 frame of `code.ico` and the shipped `ic13` element of `code.icns`, without resampling on either side. An exhaustive sweep of frame×element pairs gives a range of 94.8–102.9 by this metric, so 130.9 is unreachable by it on any pair: it is a quantity of the RMS family (a global RMSE over RGBA gives 131.1, and `magick compare -metric RMSE` reports the same), and it has no place in a table of mean absolute differences. The share of fully transparent pixels says more than any of these figures: **32.6% for `ic13` against 14.1% for the 256x256 frame of the `.ico`** - that is exactly the rounded macOS margin, and it must not be confused with the MAE. @status:impl/done",
-      "line": 111,
+      "line": 112,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-ROUND-TRIP"
     },
     {
@@ -5976,7 +5994,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit imageset --help` must answer honestly the question \"which tools have to be installed\": with this construction the answer is \"none, on every supported OS\", and it is printed plainly, with the list of the linked libraries and their licences (the npm closure: `@resvg/resvg-js` and its platform binaries - MPL-2.0; the statically linked crates: resvg/usvg - MPL-2.0, tiny-skia - BSD-3-Clause, rustybuzz/ttf-parser/roxmltree/svgtypes/simplecss/fontdb/data-url/xmlwriter/png/flate2/serde_json - Apache-2.0 OR MIT, zlib - Zlib), so that the reader can check the claim rather than believe it. Inventing a list of \"optional tools\" for the look of it is forbidden. The licence scan must cover the closure of the dependencies and not the top-level package, and its output is recorded in the report; there is no GPL/LGPL/AGPL in the closure in any form. @status:impl/done",
-      "line": 112,
+      "line": 113,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-NO-TOOLS"
     },
     {
@@ -5985,7 +6003,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`imageset` is a namespace, not a command with flags. The verbs: `imageset gen` (`##CMD-IMAGESET`), `imageset index` (`##IMAGESET-INDEX`) and `imageset verify` (`##IMAGESET-VERIFY`). A bare `codkit imageset` without a subcommand, and `codkit imageset <unknown>`, print the list of subcommands and exit 2 - by the same `usageFail` path an unknown command answers through, and BEFORE any root is resolved; no work at all is done. The name is resolved by the existing longest-match mechanism of `main.ts` (`MAX_COMMAND_WORDS`), the same one `marker new`, `overlay apply|check` and `build up|down|status|errors` use. The exception is `codkit imageset --help`: the one flag of the namespace, it prints the long help and the list of subcommands (`##IMAGESET-NO-TOOLS`), exit 0. @status:impl/done",
-      "line": 113,
+      "line": 114,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-NAMESPACE"
     },
     {
@@ -5994,7 +6012,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit imageset index [--branding-dir path]` is read-only: an index of the icon set computed from the same two sources `gen` uses (the targets of the distribution and the masters directory), so it reports the discovered state and cannot go stale (`##DECISION-IMAGESET-INDEX-IS-COMPUTED`). It writes nothing, seeding included: the index of an unseeded directory reports `missing` for every size and names the command that seeds. It takes no lock (`##DECISION-IMAGESET-INDEX-NO-LOCK`). Per target: the path in the tree and the **role** - where a human sees the image (`##DECISION-IMAGESET-ROLE-TABLE`); the container type and the exact list of required sizes/types discovered from the distribution, or declared by the product (`##IMAGESET-DECLARED-FRAMES`); per size the key and the file it comes from (`##IMAGESET-FRAME-SOURCES-REPORTED`) and its **source**: `master` (a master of exactly this size exists and is taken verbatim), `generated` (it will be rendered or resampled from a base master named by name) or `missing` (there is no master, the run will skip the target); and the constraints that come before drawing - whether transparency or an explicitly filled background is expected, that the master fills the frame without margins, and that a master of the exact size whose dimensions do not match drops the whole target. Once, the document states the rule that hand-made masters are preferred, together with the measurement that justifies it (`##DECISION-IMAGESET-PER-SIZE-MASTERS`). The output defaults to Markdown (the form handed to an agent); `--json` is the ordinary schema-2 envelope with the same data structurally, and both forms are rendered from ONE model and cannot diverge. Exit 0 no matter how many masters are missing: a missing master is information, not a refusal; a non-zero code is reserved for a real breakage (an unreadable tree, an unparsable container or a master `gen` would refuse - 2, `##IMAGESET-SELF-CHECK-READS-MASTERS`). Before the list of targets comes the summary by family (`## Families`: drawings, from a master, generated, missing) - on a set of eighty-odd targets it is what people read, while the per-target list remains for whoever came for a particular picture. **The reading of the criterion \"a hand-made master appears - one row flips\"** (owner's decision of 2026-09-06): one row means one row of the PER-SIZE table. The row of the masters inventory and the totals count that same flip and must change together with it - a total that does not change when the source changes would be a defect. The test pins the exact list of changed rows and not their number: a second flip hidden behind the totals must turn it red. @status:impl/done",
-      "line": 114,
+      "line": 115,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-INDEX"
     },
     {
@@ -6003,7 +6021,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-006#IMAGESET-ARTWORK; the address stays for citations. @status:spec/done",
-      "line": 115,
+      "line": 116,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-ARTWORK"
     },
     {
@@ -6012,7 +6030,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Some of the brand images are loaded by the distribution as vectors (the empty-editor watermarks), and there is no point in rasterizing them: the master is the artifact, and regeneration is handing out its bytes without a single change. Exactly two things are checked, both so that a wrong master does not travel into the product silently: the master must be a vector (`<key>.svg`; a raster master on a vector target is an honest skip of the target with a named reason, not a silent resampling), and it must carry the nominal size the distribution ships (otherwise the watermark would slide about in the layout). There is no resampling, no palette, no background and no tolerance on this path at all: either the bytes are exactly the same, or the target is skipped. A consequence whoever draws has to know: the whole content of the master, the SVG comments included, reaches the sources of the product verbatim. @status:impl/done",
-      "line": 116,
+      "line": 117,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-SVG-PASSTHROUGH"
     },
     {
@@ -6021,7 +6039,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit imageset verify [--branding-dir path] [--json]` is the acceptance run of the tolerance bands (`##DECISION-IMAGESET-ACCEPTANCE-CRITERION`) against the distribution the operator already has, and the one place where those bands become an executable gate (`##DECISION-IMAGESET-VERIFY-COMMAND`). For every raster target of the fork tree the largest layer of THAT SAME container is taken, the other layers are regenerated from it through the working pipeline, and each is compared with the shipped one: the structure exactly (the container type, the list of frames and elements, the sizes, the order of the file), the pixels within the bands. A comparison between containers is forbidden by construction: the master is always a layer of the same file, and no flag can go around it (`##IMAGESET-ROUND-TRIP` explains why a cross-container comparison measures different drawings). A target with exactly one layer (PNG, BMP, XPM, SVG) yields no round trip and is marked unverifiable - it is not counted as passed. A target of the product's declaration is verified against the declaration, one master key at a time (`##IMAGESET-VERIFY-DECLARED`). The command only reads: the fork tree is opened for reading, it takes no lock (the same argument as `##DECISION-IMAGESET-INDEX-NO-LOCK`), it writes nothing into patchset or into the masters directory, and it does not seed the masters directory. The report names, for every comparison, the target, the size, the band and the measured value - a figure has to be re-checkable, not taken on faith; `--json` carries the same data structurally, from the same model as the Markdown. Codes: 0 - every verifiable target is inside its band; 1 - at least one is outside, and that is the gate; 2 - the environment (no tree, an unparsable container). @status:impl/done",
-      "line": 117,
+      "line": 118,
       "uri": "spec://codkit/modules/codkit/PROP-007#IMAGESET-VERIFY"
     },
     {
@@ -6030,7 +6048,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the rasterizer is `@resvg/resvg-js` 2.6.2, and it is the only dependency the feature adds.\n\n**Why:** The MPL-2.0 licence is inside the permitted set (`##DECISION-IMAGESET-PERMISSIVE-LICENCES`); zero runtime dependencies in the npm closure; twelve prebuilt platform binaries (darwin x64/arm64; linux x64/arm64/arm, each in gnu and musl; win32 x64/ia32/arm64; android), so nothing is installed onto the host and the `--help` answer to the question \"which tools are needed\" - \"none, on every supported OS\" - is checkable and not merely declared.\n\n**Considered and rejected:**\n- `sharp` - it pulls in libvips under LGPL, which the licence rule forbids without discussion;\n- system tools (`icotool`, `iconutil`, ImageMagick) - platform-dependent, they require an installation and break the cross-platform property the prebuilt binaries were chosen for;\n- a pure-JS SVG rasterizer - no candidate covers the usvg profile, and a divergence in rendering would be discovered only on somebody else's machine.\n\n**When to revisit:** if `@resvg/resvg-js` publishes no release for 24 months; or a platform codkit supports disappears from the set of its platform binaries (observed through the `optionalDependencies` list in `npm-shrinkwrap.json`); or its licence in the closure stops being MPL-2.0. @status:impl/done",
-      "line": 118,
+      "line": 119,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-RASTERISER"
     },
     {
@@ -6039,7 +6057,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the ICO, ICNS, BMP, XPM and PNG codecs are hand-written inside codkit; there are no codec packages.\n\n**Why:** The containers are trivial: ICO - a 6-byte header and 16 bytes per directory frame with a PNG payload, ICNS - `icns` plus the length and elements of `<type><length><PNG>`; all together that is ~800 lines in `packages/codkit/src/lib/imageset*.ts`. The result was checked not by our own parser but by other people's: `icotool -l` showed four frames 16/32/128/256 at 32 bits, `icns2png -l` showed every type at the right sizes and depth, plus Pillow independently.\n\n**Considered and rejected:**\n- encoder packages (`png-to-ico`, `icns-lib`, `jimp`) - a dependency and a licence surface each, for a few dozen lines;\n- calling the system `icotool`/`iconutil` - platform-dependent, the same argument as in `##DECISION-IMAGESET-RASTERISER`.\n\n**When to revisit:** if upstream puts into an `.ico` or an `.icns` an element that is not a PNG payload and has to be reproduced - observed through a non-empty `data.targets[].legacyTypes` for a type that stopped being legacy. @status:impl/done",
-      "line": 128,
+      "line": 129,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-CONTAINER-ENCODERS"
     },
     {
@@ -6048,7 +6066,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** every size is rendered by the rasterizer at its own native resolution; there is no resampling in the vector path at all.\n\n**Why:** This is exactly the reason no image-processing library is needed: the only resampler in the code is the Lanczos-3 for raster masters (`##IMAGESET-RASTER`), and it never takes part when the master is a vector. The price of the alternative has been measured: a reduction 256→16 gives a mean difference of 65.6/255 against the shipped layer (`##IMAGESET-ROUND-TRIP`), whereas a native render goes through the full usvg pipeline on the geometry of the target size.\n\n**Considered and rejected:**\n- one big render followed by a reduction - it requires a resampler (and usually an image library as well) and loses quality at exactly the sizes where it matters most;\n- rendering at 2x and halving - the same resampler, only disguised as \"supersampling\".\n\n**When to revisit:** if a full run of `codkit imageset gen` on a real distribution (20 targets, 30 required sizes by `imageset index`) becomes longer than 60 s by `time` - then reusing one render would start to pay for the loss of quality. @status:impl/done",
-      "line": 137,
+      "line": 138,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-NATIVE-SIZE-RENDER"
     },
     {
@@ -6057,7 +6075,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** a hand-made master of the exact size (`<family>-<N>.png`) is used verbatim and beats any generation; generation is the fallback path, not the default.\n\n**Why:** Measured on the distribution's own artwork (the upstream tree; the master is the largest layer of the same container): the mean absolute RGB channel difference against the shipped layer is 1.0/255 at 512x512, 2.3/255 at 256x256, 4.7/255 at 128x128 for `code.icns`, 13.1/255 at 128x128 for `code.ico`, 17.9–20.2/255 at 32x32 and 65.6/255 at 16x16. That is, the shipped 16x16 layer is not a reduction of a large one but a separately drawn, simplified mark: upstream itself draws the small sizes separately, and that is what forbids throwing the small masters away as \"duplicates\".\n\n**Considered and rejected:**\n- always generate - measurably worse: 65.6/255 at 16x16 against 2.3/255 at 256x256, a difference of thirtyfold;\n- simplify the mark automatically on reduction - codkit does not know the semantics of the mark and would replace the designer's decision with a guess.\n\n**When to revisit:** if the measurement at 16x16 (the round-trip script, the campaign report) drops below 10/255 - then generation becomes indistinguishable and separate masters stop being mandatory. @status:impl/done",
-      "line": 146,
+      "line": 147,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-PER-SIZE-MASTERS"
     },
     {
@@ -6066,7 +6084,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the result is delivered by the existing resource-file layer: the files in `delta/resources/files/`, the entries in `delta/resources/map.json`.\n\n**Why:** `codkit load` already materializes this layer into the fork tree (PROP-005 §6), so not a line of new machinery is needed, and the product repository receives ordinary resource artifacts - nothing in them tells that `imageset` generated them. Checked e2e: `gen` writes `delta/resources/files/resources/win32/code.ico`, and the next `load` puts the byte-for-byte same file into the tree.\n\n**Considered and rejected:**\n- a separate imageset layer - new machinery in `load`, `verify` and `inventory`, and it would leak into the product repository as an implementation detail;\n- writing straight into the fork tree - it bypasses patchset, and the next `load` would wipe the result out.\n\n**When to revisit:** if the resource-file layer stops accepting binary targets, or its map gets a format incompatible with the `CK-brand-*` entries. @status:impl/done",
-      "line": 155,
+      "line": 156,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-RESOURCE-LAYER-DELIVERY"
     },
     {
@@ -6075,7 +6093,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the structure of every target is read from the bytes of the distribution's file; only the list of paths and globs is fixed in the code.\n\n**Why:** The upstream frame sets are irregular and they change: in the tree that was checked `code.ico` carries 4 frames (16/32/128/256), `code.icns` carries 8 PNG-capable elements plus the legacy `ic04`, `ic05`, `info`, and the installer graphics exist at seven scales with non-square sizes (`inno-small-125.bmp` - 64x68, `inno-small-225.bmp` - 119x123, `inno-big-250.bmp` - 410x797). In total, 20 targets and 30 required sizes. A hard-coded table would diverge from the tree silently - exactly the failure the command has to prevent.\n\n**Considered and rejected:**\n- a table of sizes in the code - it goes stale silently and without a single signal;\n- reading the sizes from `product.json` or `build/` - they are not there, they would have to be put there and a second copy of the truth maintained.\n\n**When to revisit:** if upstream moves off the fixed paths `resources/win32`, `resources/darwin`, `resources/linux` - observed through the line \"target absent in the tree\" in the output of `gen` and `index`. @status:impl/done",
-      "line": 164,
+      "line": 165,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-DISCOVERED-TARGETS"
     },
     {
@@ -6084,7 +6102,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** acceptance is exact structural equality with the shipped binary plus a tolerance by size ranges: 256 px and above - mean |ΔRGB| ≤ 10/255; 64–255 px - ≤ 25/255; **below 64 px** - no pixel criterion is asserted at all, only the structure is checked.\n\n**Why:** The thresholds are taken from our own measurement with a twofold margin: the maximum measured at ≥256 is 2.3/255, at 64–128 it is 13.1/255, and at 32 and 16 it is 20.2/255 and 65.6/255 (`##IMAGESET-ROUND-TRIP`). A threshold that would always be red is one somebody will loosen - this project has already fallen that way; so at the small sizes the criterion is honestly absent, and its place is taken by `index`, which names by name the missing master of the exact size.\n\n**Considered and rejected:**\n- pixel equality with the shipped file - unreachable (65.6/255 at 16x16), it would be red forever and then loosened;\n- one tolerance for every size - it either lets a regression at 512 through or is red forever at 16;\n- a structural test against a file the test has just written itself - it proves nothing: the comparison is with the shipped binary, and a mutation of the encoder must turn the test red.\n\n**The boundary is 64, not 32.** The first edition said \"32 px and below\" and left 33–63 px without any rule at all: the implementation could assert nothing there, because there is not a single measurement of our own in that range, and a threshold from the neighboring band would have been carried over without a basis. The distribution does carry real frames in that range (20, 24, 48 px among the file-type icons), they are measured and printed in the report, but they do not count as acceptance - the hole in the rule is closed by an honest \"not asserted\" and not by a guess.\n\n**When to revisit:** if the measurement in the ≥256 range exceeds 10/255, or in 64–255 exceeds 25/255 - the rasterizer or the resampler has changed, and the threshold is revisited together with the cause and not on its own; or when a measurement of our own appears at 33–63 px with which that band can be justified. @status:impl/done",
-      "line": 173,
+      "line": 174,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-ACCEPTANCE-CRITERION"
     },
     {
@@ -6093,7 +6111,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** `imageset` is a namespace: generation lives in `imageset gen`, the report in `imageset index`, and a bare `codkit imageset` prints the list of subcommands and exits 2, doing nothing.\n\n**Why:** The owner's direction of 2026-09-06. The mechanism is not new: `marker new`, `overlay apply|check` and `build up|down|status|errors` are already resolved by the longest match in `main.ts`, and the `imageset` subcommands are resolved by the same code. A root that generates \"just in case\" is exactly the dumping ground the split is made against.\n\n**Considered and rejected:**\n- one command with flags (`--index`) - the root becomes a dumping ground as the verbs appear;\n- the bare root as a synonym for `gen` - it silently does work where a human asked for help, and that is exactly the failure that is forbidden.\n\n**When to revisit:** if `imageset` is left with one subcommand - observed through the number of definitions prefixed `imageset ` in the `COMMANDS` map (`packages/codkit/src/main.ts`). @status:impl/done",
-      "line": 185,
+      "line": 186,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-NAMESPACE"
     },
     {
@@ -6102,7 +6120,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** a missing masters directory is not an error: the first `gen` creates it and fills it with the distribution's own artwork from the fork tree; an existing directory is never overwritten.\n\n**Why:** The owner's direction. And it is what makes the round trip meaningful on the very first day: the operator starts from real upstream material and replaces it piece by piece. Checked e2e: the first `gen` seeds `icon.png`, `installer-big.png` and `installer-small.png` and prints which file and which size each of them was taken from.\n\n**Considered and rejected:**\n- treating the absence as an error - the operator has nowhere to take the first master from, and a first run becomes impossible;\n- topping up an existing directory - it would overwrite hand-made masters, that is, destroy exactly what is worth most.\n\n**When to revisit:** if the distribution turns out to have no raster icon at all to seed from - observed through an empty `data.seeded` while the directory is absent. @status:impl/done",
-      "line": 194,
+      "line": 195,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-SEEDING"
     },
     {
@@ -6111,7 +6129,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the masters live by default in `<patchset>/branding/`; `--branding-dir` exists only to override that, and a run without the flag has to work.\n\n**Why:** The owner's direction. The path is derived from the root of the product repository, which codkit resolves anyway (`--patches-dir`, the environment variable, the settings file), so no new configuration appears, and the masters are versioned by the same commit as the delta they produce.\n\n**Considered and rejected:**\n- requiring the flag on every run - the run stops being reproducible from memory;\n- a key in `codkit.json` - one more configuration field for a value that is unambiguously derived from the root.\n\n**When to revisit:** if more than one set of masters is needed in one patchset (a separate dark mark, for instance) - then the default has to become a list rather than one path. @status:impl/done",
-      "line": 203,
+      "line": 204,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-DEFAULT-MASTERS-DIR"
     },
     {
@@ -6120,7 +6138,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** `index` computes the report on every run from the targets of the distribution and the masters directory; there is no static document about the icon set in the repository.\n\n**Why:** The two sources change independently: upstream changes the set of frames, the operator puts masters in and takes them out. One tree that was checked gives 20 targets and 30 required sizes - nobody is going to maintain that number by hand, and a static text would go stale on the very first change of either side. A computed one cannot go stale by construction.\n\n**Considered and rejected:**\n- a README with the layout of the upstream icons - it goes stale silently, and silent staleness is exactly the failure the index is written against;\n- generating a document into the repository in CI - the same stale file, only with a ritual around it.\n\n**When to revisit:** if a consumer appears that needs the index without a fork tree at hand - then a serialized snapshot will be needed, and its staleness will have to be detected explicitly. @status:impl/done",
-      "line": 212,
+      "line": 213,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-INDEX-IS-COMPUTED"
     },
     {
@@ -6129,7 +6147,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** only MIT, Apache-2.0, BSD, MPL-2.0 and Zlib are admissible in the closure of the dependencies; what is checked is a scan of the CLOSURE and not of the top-level package, and its output is recorded in the report.\n\n**Why:** The owner's rule, not open to discussion, and it has already done its work: `sharp` was taken off the table because it pulls in libvips under LGPL. The top level proves nothing: `@resvg/resvg-js` declares MPL-2.0, while the statically linked crates carry BSD-3-Clause (tiny-skia), Apache-2.0 OR MIT (rustybuzz, ttf-parser, roxmltree, svgtypes, simplecss, fontdb, data-url, xmlwriter, png, flate2, serde_json) and Zlib.\n\n**Considered and rejected:**\n- reading only the `license` field of the top package - it does not see the closure, and the prohibition applies precisely to the closure;\n- trusting the wording in the package README - not checkable by a third party.\n\n**The owner's clarification of 2026-09-06 - ISC is admissible.** The rule forbids viral copyleft, and ISC is not copyleft at all: it is effectively MIT with two phrases struck out, and the default npm licence. The enumeration of four names was an enumeration and not a closed list. In the closure, ISC is carried by `picocolors` and `siginfo` - transitive dependencies of vitest, that is, of development only; in the runtime closure of `imageset` there is nothing but MPL-2.0.\n\n**When to revisit:** on every change to `npm-shrinkwrap.json` that touches the dependencies of `imageset`; observed through the closure scan, whose output has to lie in the campaign report. @status:impl/done",
-      "line": 221,
+      "line": 222,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-PERMISSIVE-LICENCES"
     },
     {
@@ -6138,7 +6156,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-006#DECISION-IMAGESET-ROLE-TABLE; the address stays for citations. @status:spec/done",
-      "line": 232,
+      "line": 233,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-ROLE-TABLE"
     },
     {
@@ -6147,7 +6165,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** `index` does not take the tree lock, unlike `gen`.\n\n**Why:** It opens the same two sources `gen` does and writes neither of them; the worst consequence of a race is a report that is a moment out of date. A lock, meanwhile, would be held for the whole time `gen` runs - minutes of rendering thirty sizes - and reading the report would turn into waiting for a write.\n\n**Considered and rejected:**\n- taking the same exclusive lock - it serializes a read behind a write of many minutes, for a report that does not have to be transactional anyway;\n- introducing a shared read lock - locks in codkit are exclusive (PROP-006 §2), and a new class of lock would have to be created for a command that writes nothing.\n\n**When to revisit:** if `index` starts writing anything - a cache, a snapshot, anything at all; then the lock is mandatory. @status:impl/done",
-      "line": 233,
+      "line": 234,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-INDEX-NO-LOCK"
     },
     {
@@ -6156,7 +6174,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-006#DECISION-IMAGESET-WHOLE-BRAND-SURFACE; the address stays for citations. @status:spec/done",
-      "line": 242,
+      "line": 243,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-WHOLE-BRAND-SURFACE"
     },
     {
@@ -6165,7 +6183,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the identifier of the guard test is derived from the family and not from the artwork: `guard.brand.<family>`, five suites for 84 targets.\n\n**Why:** The rule \"a new map entry requires a guard test declared beforehand\" stays in force without a single exception - only the granularity changes. Nobody would write fifty-five suites for the file-type icons; they would be written as one suite with fifty-five nearly identical bodies or, more likely, the rule would be evaded. A requirement that cannot be met honestly cancels itself, and it is better to notice that in the specification than in somebody's evasion of it.\n\n**Considered and rejected:**\n- `guard.brand.<artwork>` - 60 suites; the rule turns into a formality filled in by copy-paste;\n- one common `guard.brand` for everything - it loses what a guard exists for: the installer suite and the file-type-icon suite check different contracts (an opaque background against transparency, one frame against nine);\n- deriving the guard from the container instead of the family - `icon` lives in five containers at once and their drawing is one; splitting it by container means splitting one contract.\n\n**When to revisit:** if one family ends up holding artworks with different contracts - then the family has stopped being a guard group and has to split. @status:impl/done",
-      "line": 243,
+      "line": 244,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-GUARD-PER-FAMILY"
     },
     {
@@ -6174,7 +6192,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the artworks of a family with several drawings live in a subdirectory of the family - `branding/filetype/json.svg`; the flat form `branding/icon.svg` is kept for a family with one drawing.\n\n**Why:** The flat name `filetype-json.svg` would collide in meaning with the already occupied form `<key>-<N>.png`: one and the same hyphen would mean a size in one place and the name of a drawing in another, and the reader of a directory of sixty files could not tell an override from an artwork except by checking whether the tail consists of digits. A subdirectory separates the two meanings syntactically rather than by convention, and it makes the masters directory readable into the bargain: one family, one folder.\n\n**Considered and rejected:**\n- flat names with a hyphen - the collision of meanings described above;\n- a separate index file mapping a target to a master - one more document that has to be kept from going stale; the whole command is built on the opposite principle (`##DECISION-IMAGESET-INDEX-IS-COMPUTED`);\n- a directory for EVERY family, the single ones included - `branding/icon/icon.svg` stutters, and there is no reason to demand a migration of the existing flat masters.\n\n**When to revisit:** if a family with one drawing gains a second one - then its master moves into a subdirectory, and that is the only migration the convention allows. @status:impl/done",
-      "line": 253,
+      "line": 254,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-ARTWORK-SUBDIR"
     },
     {
@@ -6183,7 +6201,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** an SVG target is delivered byte for byte from the vector master; no rendering, no normalization, no rewriting of the document.\n\n**Why:** The application loads these files as vectors and scales them itself. Rasterizing a vector in order to hand a raster to a place that expects a vector is a loss without a gain; normalizing the document (rewriting the paths, cleaning out the attributes) means taking on the responsibility that the drawing did not change after the rewrite, and that can be checked only by rasterization, which is the very thing we wanted to avoid. An empty diff on a repeated regeneration comes free here, because the bytes were never touched.\n\n**Considered and rejected:**\n- rasterizing to PNG and swapping the reference - it changes how the application loads the resource, that is, it patches upstream code for the sake of a picture;\n- running it through an SVG optimizer - a new dependency, output that is not deterministic across versions, and the same uncheckability of the result;\n- not checking the size of the master - a watermark of the wrong size would travel into the product silently, and it would be seen in the layout.\n\n**When to revisit:** if upstream starts assembling these SVGs from a template at build time - then the target stops being a file, and the delivery has to move into a layer that can patch the generator. @status:impl/done",
-      "line": 263,
+      "line": 264,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-VECTOR-PASSTHROUGH"
     },
     {
@@ -6192,7 +6210,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the tolerance bands are checked by a third subcommand, `imageset verify`, working against the operator's fork tree, and not by a test of codkit's unit suite.\n\n**Why:** The bands can be checked only on the real artwork of a distribution, and putting it into the repository of a generic tool is impossible for two reasons at once: it is somebody else's artwork, and it is a hundred kilobytes of binaries in a tool that is not tied to that distribution. A test that reads a tree from the operator's disk is not hermetic and is red in the tool's CI for a reason unrelated to the code. The command removes both problems: the gate is real where there is something to compare, and the suite stays hermetic and measures fixtures. The owner's decision of 2026-09-06.\n\n**Considered and rejected:**\n- putting the upstream artwork into codkit's fixtures - somebody else's artwork and a licence question inside a generic tool;\n- an `index --verify` flag - it breaks the property of `index` that it is \"read-only, asserts nothing, always exits 0\", the very property it was separated from `gen` for;\n- an acceptance script next to the campaign reports - the gate would not outlive the campaign and would not reach the other consumers of codkit;\n- leaving the bands written down in the specification and checking them with nothing - exactly the state this decision leads out of: a criterion nobody executes stops being true after two refactorings, and nobody notices.\n\n**When to revisit:** if a publicly available set of reference artwork appears that can legally be carried in the tool's repository - then part of the check returns to the hermetic suite. @status:impl/done",
-      "line": 273,
+      "line": 274,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-VERIFY-COMMAND"
     },
     {
@@ -6201,7 +6219,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "**Decision:** the product declares frame sets and master sources in `imageset.json` in the root of the masters directory, a data file versioned with the masters in the product repository, and not in a section of `codkit.json`.\n\n**Why:** The owner's direction of 2026-09-23 was to teach the generator what a product needs, and to teach it configurably, instead of shipping a container built by hand. The declaration names master keys, so it belongs next to the masters it names: one directory then holds the drawings and the rules for which frame each of them serves, and a second masters directory given with `--branding-dir` carries its own rules instead of borrowing those of another set of drawings. `codkit.json` is the configuration of the whole patch set: every command reads it and its schema belongs to the core, so a malformed image rule there would stop commands that never touch an image, and the core schema would have to learn the vocabulary of one command. The masters directory is already the image set's own place in the product repository, and `##DECISION-IMAGESET-DEFAULT-MASTERS-DIR` kept its path out of `codkit.json` for the same reason.\n\n**Considered and rejected:**\n- a section of `codkit.json` - the reasons above;\n- a container built by hand and dropped into the patch set - exactly what the owner did not want: it is regenerated by nobody, and it drifts from the masters at the first new drawing;\n- flags of `imageset gen` - not versioned, not reviewed, and forgotten on the next run.\n\n**When to revisit:** if a declaration has to span several masters directories, or a command outside the `imageset` namespace has to read it. @status:impl/done",
-      "line": 284,
+      "line": 285,
       "uri": "spec://codkit/modules/codkit/PROP-007#DECISION-IMAGESET-DECLARATION-FILE"
     },
     {
@@ -6210,7 +6228,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "23. codkit license check [<dir>] | annotate | notices",
-      "line": 295,
+      "line": 296,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-license"
     },
     {
@@ -6219,7 +6237,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`license` is a namespace (like `imageset`): a bare `codkit license` and an unknown subcommand print the list of subcommands and exit 2 through `usageFail`, before the roots are resolved; it has no `--help` of its own - the command reference answers the question about it. The subcommands: `check`, `annotate`, `notices`. @status:spec/done",
-      "line": 296,
+      "line": 297,
       "uri": "spec://codkit/modules/codkit/PROP-007#LICENSE-NAMESPACE"
     },
     {
@@ -6228,7 +6246,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit license check [<dir>]` is the check of the licence markup of a package directory per PROP-014 §3 (`LIC-CHECK-ALGORITHM`): the carriers of every file in REUSE precedence order, the own/third-party classification, the `REUSE.toml` registry and the allowlist, orphan sidecars, and the consistency of `vibe.toml`/`LICENSE`/`LICENSES/`/`THIRD-PARTY-NOTICES.md`. `<dir>` is a path (relative to cwd or absolute); without the argument it is the standards package from toolRoot (PROP-014 `STD-PACKAGE-LOCATION`). No roots are needed (`roots: 'none'`, `configMode: 'none'`): checking a directory does not have to know a patch set. Read-only; git is not called; symbolic links are not resolved. The output is `LIC-CHECK-REPORT`; `--json` is `data: {dir, files, checked, problems, policy}`. Codes: 0 clean; 1 there are problems (`CK-E-LICENSE-HEADER`, `CK-E-LICENSE-THIRD-PARTY`, `CK-E-LICENSE-PACKAGE`); 2 the environment (no directory, a broken policy or SPDX list - `CK-E-CONFIG`, an unreadable file). It is idempotent. @status:spec/done",
-      "line": 297,
+      "line": 298,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LICENSE-CHECK"
     },
     {
@@ -6237,7 +6255,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit license annotate [--dir <package>] <paths…> [--dry-run] [--year <YYYY>] [--holder <name>] [--third-party --license <SPDX-ID> --source <text>]` places the carrier (PROP-014 §3 `LIC-ANNOTATE`): on an own file a four-line header in the style of its extension, after the prelude, or a sidecar; on a third-party file (`--third-party`, and then `--holder` and `--license` are required) a carrier with the other party's holder and licence plus an annotation appended to the end of `REUSE.toml`. It is idempotent: a file that already carries its markup is `unchanged`. No roots are needed (`roots: 'none'`, `configMode: 'none'`); `maxArgs` is not limited (the paths); the flags `--dir`, `--year`, `--holder`, `--license`, `--source` take values, `--third-party` is boolean, and `--dry-run` is the common one. `--json`: `data: {dir, files: [{path, action: \"header\"|\"sidecar\"|\"unchanged\", kind}], registry: {path, appended}}`. Codes: 0; 1 (a path outside `--dir`, a licence outside the allowlist or not an SPDX one, a holder outside the policy without `--third-party`, `--third-party` without `--holder`/`--license`); 2 (the environment). @status:spec/done",
-      "line": 298,
+      "line": 299,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LICENSE-ANNOTATE"
     },
     {
@@ -6246,7 +6264,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit license notices [--dir <package>] [--dry-run]` generates `THIRD-PARTY-NOTICES.md` from the registry (PROP-014 §2 `LIC-NOTICES-FILE`, §3 `LIC-NOTICES`): a non-empty registry → the file is written atomically (`written`/`unchanged`); an empty one → there is no file, and an existing one is removed with a printed line (`removed`); `--dry-run` prints the result to stdout without writing. No roots are needed. `--json`: `data: {dir, path, action, rows}`. Codes: 0; 1 (`REUSE.toml` does not parse, or an annotation is incomplete); 2 (the environment). @status:spec/done",
-      "line": 299,
+      "line": 300,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LICENSE-NOTICES"
     },
     {
@@ -6255,7 +6273,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "24. codkit standards load [--dry-run] | check | license",
-      "line": 301,
+      "line": 302,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-standards"
     },
     {
@@ -6264,7 +6282,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`standards` is a namespace: a bare `codkit standards` and an unknown subcommand give the list of subcommands and exit 2 before the roots are resolved; the subcommands are `load`, `check` and `license`. The first two need patchesDir and `codkit.json` (`configMode: 'load'`; the fork tree is not read, the tree lock is not taken), because the packages delivered are the universal ones plus the ones the patch set's project type names (PROP-014 `STD-PACKAGES-OF-THE-TYPE`), and `license` needs no root at all (`roots: 'none'`); under `--ci` all three are allowed - there is no network. In an agent session over the product repository all three are outside the read-only allowlist of the hook (`load` writes; `check`/`license` are candidates for the allowlist and are deferred) - these are commands of a human or of an orchestrator. @status:spec/done",
-      "line": 302,
+      "line": 303,
       "uri": "spec://codkit/modules/codkit/PROP-007#STANDARDS-NAMESPACE"
     },
     {
@@ -6273,7 +6291,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit standards load [--dry-run] [--upgrade]` delivers **every shipped package** (`standards`, `agent-skills`; PROP-014 `STD-SHIPPED-PACKAGES`, `STD-LOAD-ALL-PACKAGES`) into the product repository (the algorithm is PROP-014 §5); at the end come the lines `next: vibe install --offline` (after `--upgrade`, `vibe install --offline --force`) and, when a package carries skills, `next: vibe skill install`. `--upgrade` replaces a drifted or outdated copy as a whole (PROP-014 `STD-LOAD-UPGRADE`, `DECISION-STD-MUTABLE-EDITION`). Order: the package in toolRoot → the licence check of the package (a failure is a report, exit 1 and not a single write; there is no bypass flag) → the preconditions of the manifest (`vibe.toml` with `[project]`, without CR) and the classification of the block → the classification of the target `vibevm/vibepacks/org.vibevm.codkit/standards/v<version>/` (`absent` / `identical` / `drift`) → `--dry-run` prints the plan and exits with the same code without writing → the files are written into a temporary directory and renamed → the two copies of `LICENSE-CODKIT.md` (the product root and `delta/own/`, PROP-014 §4a) → the manifest block → the block of rows in `vibevm/scrape/contract.toml` when the contract exists (PROP-014 §4a `STD-SCRAPE-STATE-MACHINE`; its absence is the information `no-contract`) → the summary with `next: vibe install --offline`, the note about the licences (`STD-LOAD-LICENCE-NOTE`) and the recommendations for the notice file (`STD-LOAD-NOTICE-PRINT`). Side effects: the version directory in the product's `vibevm/vibepacks/` (a byte-for-byte copy), the two copies of `LICENSE-CODKIT.md`, the block in `vibe.toml`, the block in an existing `vibevm/scrape/contract.toml`; nothing more - `vibe` is not called, and `vibe.lock` and `vibedeps` are not touched. A repeat is `up to date`, exit 0, with not a byte changed. Codes: 0; 1 (`CK-E-LICENSE-*` of the package; `CK-E-STANDARDS-DRIFT` - the installed copy of the package or the copy of `LICENSE-CODKIT.md` differs, with the list of `modified`/`extra`/`missing`; `CK-E-CONFIG` - the manifest block or the scrape-contract block is malformed, a package entry or a notice row is outside its own block; `CK-E-CRLF`); 2 (no `vibe.toml`, or no `[project]` in it - `CK-E-CONFIG` with a hint about `vibe init`; no permissions; a corrupted installation - `CK-E-INTERNAL`). `--json`: `data` per PROP-014 `STD-LOAD-STEP-REPORT`. @status:spec/done",
-      "line": 303,
+      "line": 304,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-STANDARDS-LOAD"
     },
     {
@@ -6282,7 +6300,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit standards check` is read-only (PROP-014 §6): the state of the installed copy (`absent`/`identical`/`drift` with the list), the licence check of the copy, the state of both `LICENSE-CODKIT.md` copies, the state of the manifest block (`absent`/`current`/`stale`/`malformed`/`entry-outside-block`), the state of the scrape-contract block (`no-contract` is information, not a finding; otherwise the same five states), a warning about a tail after the block, and other versions alongside. Codes: 0 - `identical` plus a clean copy plus `current`; 1 - any finding, each on a line of its own with a code (`CK-E-STANDARDS-DRIFT`, `CK-E-LICENSE-*`, `CK-E-CONFIG`) and the hint `run codkit standards load`; 2 - the environment. `--json`: `data: {target, license, noticeFiles, manifest, scrape, otherVersions}`. @status:spec/done",
-      "line": 304,
+      "line": 305,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-STANDARDS-CHECK"
     },
     {
@@ -6291,7 +6309,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit standards license` only prints and needs no root (`roots: 'none'`, `configMode: 'none'`, `maxArgs: 0`, no flags): the full text of the file `LICENSE-CODKIT.md` that `load` places in the two roots of the product; then the recommendations - where the copies live, that nobody edits them, that links to the file are placed by the product owner alone, from the README of the product and from the patch-set intervention in the README of the fork, and where the three licence scopes end; then, verbatim, the two rows of the `vibe scrape` contract (`[[classify]]` delete and `[[assert]]` paths-absent for `LICENSE-CODKIT.md` and `delta/own/LICENSE-CODKIT.md`) - the very rows `standards load` maintains in the product's `vibevm/scrape/contract.toml` itself; they are printed for a contract at a non-standard path (`vibe scrape --contract`) and for review (PROP-014 §4a `STD-SCRAPE-CONTRACT-ROWS`); then the ready `[[annotations]]` entry for the product's `REUSE.toml` (`STD-LICENSE-PRINTS-REUSE-ROWS`). The text of the file is printed with a components block computed for patchesDir when one is given (`--patches-dir` or the configuration), and otherwise with an empty block and a note. `--json`: `data: {file: \"LICENSE-CODKIT.md\", text, recommendations: [...], scrapeContractRows, reuseAnnotation}`. Codes: 0; 2 - the environment only (an unreadable shipped file - `CK-E-INTERNAL`). @status:spec/done",
-      "line": 305,
+      "line": 306,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-STANDARDS-LICENSE"
     },
     {
@@ -6300,7 +6318,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "25. codkit runtime load [--dry-run] [--upgrade] | check",
-      "line": 307,
+      "line": 308,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-runtime"
     },
     {
@@ -6309,7 +6327,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`runtime` is a namespace modeled on `standards`: a bare `codkit runtime` and an unknown subcommand give the list of subcommands and exit 2 before the roots are resolved; the subcommands are `load` and `check`; both need only patchesDir (`configMode: 'none'`, the tree is not read, the tree lock is not taken); under `--ci` they are allowed - there is no network. In an agent session over the product repository, `load` is outside the read-only allowlist of the hook. @status:spec/done",
-      "line": 308,
+      "line": 309,
       "uri": "spec://codkit/modules/codkit/PROP-007#RUNTIME-NAMESPACE"
     },
     {
@@ -6318,7 +6336,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit runtime load [--dry-run] [--upgrade]` delivers the runtime library into the product's `delta/own/codkit/` (the algorithm is PROP-015 §4 `RT-LOAD-STEPS`): the source in toolRoot → the licence check of the version directory (a failure is exit 2 and not a single write) → the classification of the target (`absent` / `identical` / `drift`; a `drift` without `--upgrade` is exit 1) → `--dry-run` prints the plan → the write through a temporary directory → the notice copies with the components block (PROP-014 §4a) → the summary with three hints (the graft in the composition root, the `code-import-patterns` block from `LAYERS.md`, `codkit gen feature`). A warning when the product's `pin.tag` is not in `CODKIT_RUNTIME_VERIFIED_UPSTREAM`. `--json`: `data: {version, target, state, files:{written, removed}, notice, verifiedUpstream:boolean}`. Codes: 0; 1 - `CK-E-RUNTIME-DRIFT`; 2 - `CK-E-RUNTIME-PACKAGE`, `CK-E-LICENSE-PACKAGE`, the environment. @status:spec/done",
-      "line": 309,
+      "line": 310,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-RUNTIME-LOAD"
     },
     {
@@ -6327,7 +6345,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit runtime check` is read-only (PROP-015 `RT-CHECK`): the state of the installed copy (`absent` is the information `runtime not installed`, `identical`, `drift` with the list), the state of both notice copies and `legacy-copy`. Codes: 0 - `identical`, or `absent` while the notice copies are clean; 1 - `CK-E-RUNTIME-DRIFT` / `CK-E-STANDARDS-DRIFT` (the notice copies) with the hint `run codkit runtime load --upgrade`; 2 - the environment. `--json`: `data: {target:{state, version, paths}, noticeFiles}`. @status:spec/done",
-      "line": 310,
+      "line": 311,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-RUNTIME-CHECK"
     },
     {
@@ -6336,7 +6354,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "26. codkit gen feature <id> | brand",
-      "line": 312,
+      "line": 313,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-gen"
     },
     {
@@ -6345,7 +6363,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`gen` is a namespace: a bare `codkit gen` and an unknown subcommand give the list of subcommands and exit 2; the subcommands are `feature` and `brand`; both read the patch set's configuration (`configMode: 'load'`), because the skeleton and the graft are the project type's answer and the type is named there (PROP-016 `TYPE-AREA-GENERATORS`); no fork tree is needed. Flags: `--title <text>` (a value), `--setting`, `--cold` (boolean), `--holder`, `--license`, `--year` (values, as for `license annotate`), `--header-style line|block`, `--header-file <path>` (values; PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`). @status:spec/done",
-      "line": 313,
+      "line": 314,
       "uri": "spec://codkit/modules/codkit/PROP-007#GEN-NAMESPACE"
     },
     {
@@ -6354,7 +6372,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit gen feature <id> --title <text> [--setting] [--cold] [--holder …] [--license …] [--year …] [--header-style line|block] [--header-file <path>]` is the skeleton of a product feature (PROP-015 §5 `GEN-FEATURE`, `GEN-HEADER-IS-THE-PRODUCTS`, `GEN-TEST-LIVES-WITH-THE-FEATURE`, `GEN-REFUSES-EXISTING`): three files under `delta/own/contrib/<name>/` (the test in the `test/browser/` of the feature), the import line for the composition root and the reminder about the unit. Codes: 0; 1 - `CK-E-GEN-EXISTS`; 2 - `CK-E-GEN-ID`, a missing `--title`, incompatible header flags, an unreadable `--header-file`, the environment. `--json`: `data: {id, files:[…], importLine, headerWritten:boolean, headerStyle: \"line\"|\"block\"|\"file\"|null}`. @status:spec/done",
-      "line": 314,
+      "line": 315,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-GEN-FEATURE"
     },
     {
@@ -6363,7 +6381,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit gen brand [--holder …] [--license …] [--year …] [--header-style line|block] [--header-file <path>]` is the scaffold of the brand table (the header flags are the same as for `gen feature`, PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`) `delta/own/common/brand.ts`, plus the printing of the hook text for `_format` with its reminders (PROP-015 `GEN-BRAND`). Codes: 0; 1 - `CK-E-GEN-EXISTS`; 2 - the environment. `--json`: `data: {file, hookText, reminders:[…]}`. @status:spec/done",
-      "line": 315,
+      "line": 316,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-GEN-BRAND"
     },
     {
@@ -6372,7 +6390,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "27. codkit package [--keep-overlay] [--skip-type-build] [--timeout s]",
-      "line": 317,
+      "line": 318,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-package"
     },
     {
@@ -6381,7 +6399,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Build the product's distributable out of the already loaded fork tree. It exists because `ci --profile build` stops at the compile channels and the own tests: until this verb, `build.packageBuild` was a field of the type contract that no module of the engine read, and the last step of a release was a sequence of commands typed by hand whose two ends people got wrong. The order of one run is fixed and is printed before it starts: (1) the drift guard of `load` - unextracted work is `CK-E-DIRTY-TREE`, exit 1, and the one exemption is the one `load --fresh` makes, a tracked overlay target carrying exactly the strict composition of the configured overlays (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`), which a previous `--keep-overlay` run may have left; (2) the overlay targets are materialized into the tree, because a packaged product reads the target file itself and not the dev-channel sidecar; (3) the stamps the type names (`build.packageStamps`) are put into the environment of the commands below, filled from the tree head, the pin or the type's own answer - except a name the operator already exported with a non-empty value, which keeps the operator's value and is printed as `stamp <name>=<value> (from environment)` (`spec://codkit/modules/codkit/PROP-016#TYPE-STAMPS-FILL-A-GAP`); (4) `build.packageBuild` of the type runs in the tree, each command's whole output printed; (5) then `build.packageDistributable` - the packaging step the patch set declared - runs on the same terms; (6) the existing artifacts matching `build.packageOutputs` are printed; (6a) the paths the type names as the residue of its packaging (`build.packageScratch`, `spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-SCRATCH`) are returned to the tip of the loaded tree - only the tracked ones that changed, whatever the verdict of the packaging, and **also under `--keep-overlay`**, which keeps the materialization and never the residue; (7) the overlay targets **this run materialized itself** are returned to the pin and the dev channel is rewritten, exactly as `load --fresh --discard` does for those files - not a fresh pass: build outputs, dependency roots and everything else in the tree are left alone. Step 7 runs whatever the verdict of steps 4-5, so a build that fails halfway never leaves a developer's tree in packaging state. It is not a daemon, so the wrapper of §13 does not apply and `--timeout <seconds>` bounds one command instead of one pass; it holds the per-tree lock like every writing command. Flags: `--keep-overlay` (skip step 7 - never step 6a - for a hand check of the package in the tree; `codkit load --fresh` is the way back), `--skip-type-build` (skip step 4, when the watch channels already built the application), `--timeout <seconds>`, `--json`. There is deliberately **no `--discard`**: giving up somebody's unextracted work is never a side effect of packaging, and the guard of this command may only be narrowed by codkit's own materialization. Codes: 0; 1 - the guard, or a packaging command that exited non-zero (`CK-E-PACKAGE-FAILED`, naming the label, the exit code and the tail of what the command printed); 2 - the environment (an unusable tree, a command that could not be started at all, a malformed `--timeout`). `--json`: `data: {steps:[{name,state,detail}], materialized:[…], restored:[…], scratchRestored:[…], stamps:{…}, stampsFromEnvironment:[…], commands:[…], outputs:[…]}`. @status:spec/done",
-      "line": 318,
+      "line": 319,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE"
     },
     {
@@ -6390,7 +6408,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit package [<selector>]` accepts an exact type-owned target id, a platform family (`windows`, `linux`, `macos`) or `all`. With no selector it uses `typeConfig` through the configured type's `defaultPackageTargets`. A family selector and `all` retain only recipes whose `supportedHosts` includes the current OS; an exact incompatible target refuses rather than attempting an unproved cross-build. The selected ids are printed before the plan and returned as `data.targets`. @status:impl/done",
-      "line": 319,
+      "line": 320,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-TARGETS"
     },
     {
@@ -6399,7 +6417,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "Where the artifact lands is the type's answer and the answer is **tree-relative** (`spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-ANSWERS`). A family whose packager writes into a sibling directory of the managed tree therefore names no output at all, and the command says so - `the project type <id> names no package output inside the tree` - instead of printing a path the tool neither manages, guards, nor cleans. This is a refusal to widen the tool's reach, not a gap: the operator reads the location from the packager's own output, which the command printed in full. @status:spec/done",
-      "line": 320,
+      "line": 321,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-OUTPUTS-STAY-IN-THE-TREE"
     },
     {
@@ -6408,7 +6426,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "22. Command roster",
-      "line": 322,
+      "line": 323,
       "uri": "spec://codkit/modules/codkit/PROP-007#cmd-summary"
     },
     {
@@ -6417,7 +6435,7 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`where`, `check-tree`, `clone`, `load`, `status`, `save`, `sync`, `gc`, `marker new`, `reresolve`, `inventory`, `verify`, `overlay new|apply|check`, `build up|down|status|errors`, `cycle start|continue|status|restart`, `forecast`, `rebase-onto-pin`, `ci`, `publish`, `hooks install|check`, `imageset`, `license check|annotate|notices`, `standards load|check|license`, `runtime load|check`, `gen feature|brand`, `package`. Planned (PROP-016): `types`. @status:spec/done",
-      "line": 323,
+      "line": 324,
       "uri": "spec://codkit/modules/codkit/PROP-007#COMMAND-ROSTER"
     },
     {
@@ -6426,12 +6444,12 @@
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "`codkit types` - the contract of the verb lives in `spec://codkit/modules/codkit/PROP-016#CMD-TYPES` and is not restated here: it prints the registered types, their package and version and the capability matrix, needs no patch set and writes nothing. Two more facts of PROP-016 bind the roster to the types: every verb keeps its name, flags and exit codes and names the type where it matters (`spec://codkit/modules/codkit/PROP-016#TYPE-VERBS-UNIVERSAL`), and a verb whose capability the type does not declare refuses with `CK-E-TYPE-CAPABILITY` before any write (`spec://codkit/modules/codkit/PROP-016#TYPE-CAPABILITY-REFUSAL`). @status:spec/plan",
-      "line": 324,
+      "line": 325,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-TYPES-XREF"
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:5fdcfe0371830415c1029b6b3dbd93a86b7bd08cee7c1121ed82d1511ca65caa",
+      "content_hash": "sha256:12c68d3c1c37d1dbd333e0e726c3a6faa91c7b4f40c503ab8c8078f06512822b",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: The engines — the resolver, identity, load, save, 3-way, renames, the cause",
@@ -6557,7 +6575,7 @@
     },
     {
       "anchor": "sync",
-      "content_hash": "sha256:b4ca14968aa9e08fe83de098a6a92fced17cf4c19a800239d86ee513b5cd5772",
+      "content_hash": "sha256:b14127386437093c9299c5407c910c8dc727e2044524ce38887f3337de103adc",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "3. load: bringing the tree to the pin and building the generated branch",
@@ -6579,7 +6597,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "`writeTreeHook()` — the installation of the reminder pre-commit hook of the tree (the norm PROP-012 §5 `##FORK-TREE-PRECOMMIT-HOOK`; campaign TREE-COMMITS-SAVE, decision D9): in an ordinary tree (per-worktree admin dir == common dir) it writes only into the repository's own administrative path — `hooks/pre-commit` under the absolute git directory of the tree (`--absolute-git-dir`) — with our script (shebang `sh`, portable), which NEVER rejects a commit: without `CODKIT_INTERNAL_COMMIT=1` it prints the reminder (on the branch `codkit/applied/*` — the work reaches patchset only through codkit save/sync; off the branch while the branch exists — `save` will refuse until the return `git switch codkit/applied/<tag>`, the concrete tag substituted into the text at installation), with the variable it stays silent; on a read-only mount a write error is not fatal (as with the mark, `CK-W-MARK-RO`). The effective path `git rev-parse --path-format=absolute --git-path hooks/pre-commit` is deliberately NOT used for the installation: it follows `core.hooksPath`, and that one may point outside the administrative directory of the repository (a per-user or site-wide set of hooks) — codkit has the authority neither to follow that config nor to write there. While a configured `core.hooksPath` stands, git runs the configured hook and not the administrative copy: the copy is installed all the same (a file of the repository itself, restored by every load and becoming a live reminder as soon as the config is removed), but `writeTreeHook()` returns false and issues an explicit fail-soft warning (`CK-W-MARK-RO`) that the reminder does not print while that config stands. The effective path is resolved in TWO scopes (REPAIR-006): in isolation (it sees the local config of the repository) and with the machine config (`machineConfig` — the single exception to the isolation of PROP-002, a read-only path resolution): a global/system `core.hooksPath` is caught too. A failure of the resolution (for example, a local `core.hooksPath=/dev/null` makes `--git-path hooks/*` fatal) is NOT counted as proof of a printing reminder: `writeTreeHook()` returns false with the warning \"it cannot be proven which hook git runs\" — an honest \"does not print\" instead of a silent \"prints\" (a false-positive active guard — a finding of REPAIR-006; the class is the same, the promise is now softer, the honesty is not). Ownership: the hook carries the marker `# codkit-hook v1` under the shebang (like the patch-set hooks, PROP-007 §19); a FOREIGN `hooks/pre-commit` file is neither overwritten nor chained — a warning and false, the bytes untouched (a finding of REPAIR-006); the exact bytes of a hook written by codkit before the marker was introduced are recognized as our own and updated. In a linked worktree the hook is NOT installed, neither into the shared common dir nor at the old appended path: `--git-path hooks/...` resolves into the shared common dir, and the reminder would speak in the name of the branch of one tree in every sibling worktree of the repository, including trees codkit does not manage; `writeTreeHook()` returns false and issues an explicit fail-soft warning that the reminder is unavailable in this tree (the protection is the refusal of `load`/`save` over foreign commits, not the hook). The single rule for the administrative paths of the tree: administrative files are never built by appending a suffix to `--absolute-git-dir` — in a linked worktree it points into the per-worktree directory, which git does not read for these files; `info/exclude` is always asked of git itself through `--git-path` (in an ordinary tree this gives the same `<tree>/.git/...`, in a linked worktree the common dir), and the hook is the single exception to \"ask git\": its effective `--git-path` follows `core.hooksPath`, so only the repository's own admin path is written, while `--git-path hooks/...` itself is used only to check whether git runs our copy. If the administrative path or the effective location does not resolve, that is a refusal / an unproven reminder, not a fallback to a constructed path. A worktree-scoped hook (`extensions.worktreeConfig` + a per-worktree `core.hooksPath`) is an open architectural item for the owner (PROP-012 §5) and is not authorized here. @status:impl/done",
-      "line": 87,
+      "line": 89,
       "uri": "spec://codkit/modules/codkit/PROP-008#TREE-HOOK-STEP"
     },
     {
@@ -6588,7 +6606,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "REPAIR-008: the distinction between the normal (`git-dir == common-dir`) and the linked layout itself uses the same platform-aware canonical path equality as the effective hook: Windows slash/case aliases do not create a false linked verdict; a distinct per-worktree path stays linked. Native Windows proof remains open. @status:impl/done",
-      "line": 88,
+      "line": 90,
       "uri": "spec://codkit/modules/codkit/PROP-008#TREE-HOOK-LAYOUT-CANONICAL"
     },
     {
@@ -6597,7 +6615,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**A branch is an object shared by every worktree of the repository; the movement of the ref is guarded (REPAIR-006).** Git plumbing allows two worktrees on one branch (`symbolic-ref` checks nothing): moving `refs/heads/<generated>` from the second leaves the index/worktree of the first dirty against a HEAD nobody moved. Therefore every mutation/selection of the generated ref (`updateRef()` of step 9 of `load`; the `update-ref` claim AND the `symbolic-ref HEAD` of the cycle — PROP-009 materialize, resume included, where the ref already points at the tip) is performed only as \"lock → preflight → mutate\": the lock of the shared repository is taken (the hard-link lock of the PROP-006 `##LOCK-MECHANISM` protocol on the file `<common-dir>/codkit/refs.lock`, the directory contained), then a FRESH `git worktree list --porcelain` proves that no OTHER worktree stands on `refs/heads/<branch>` (self exempt; a record without a branch is detached), and only then `update-ref` + `symbolic-ref HEAD`. An inability to obtain the list is a failure of the safety proof (`CK-E-ARTIFACT-BROKEN`), never an empty list / fail-open. A taken branch is `CK-E-WORKTREE-REF-SHARED` (load: exit 2 `unfit`): both trees are named, every ref/index/worktree untouched. The coordination closes the \"checked→swapped\" race for codkit processes (two patch sets on two worktrees of one repository are serialized by the shared lock too); a foreign `git symbolic-ref` in that microsecond window remains possible — a git-side interlock does not exist, the window is narrowed to lock→mutate under the lock and documented. An extension of the same lock serializes the writes of the shared files of the repository (the worktree-local exclude writes the shared config and the shared `info/exclude` during the migration). @status:impl/done",
-      "line": 89,
+      "line": 91,
       "uri": "spec://codkit/modules/codkit/PROP-008#GENERATED-REF-WORKTREE-PREFLIGHT"
     },
     {
@@ -6606,7 +6624,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "REPAIR-007: a full load first builds the tip without changing the live tree, then takes the common-repository lock, runs a fresh worktree/ref preflight and holds the lock through the `--fresh` cleanup, update-ref, HEAD/index/worktree move. Not one untracked byte is deleted before a successful preflight. A refusal on a sibling ref preserves the removable sentinel, ref, index tree and HEAD tree exactly. @status:impl/done",
-      "line": 90,
+      "line": 92,
       "uri": "spec://codkit/modules/codkit/PROP-008#FRESH-REF-PREFLIGHT"
     },
     {
@@ -6615,7 +6633,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The canonical order of the layers of the generated CI/publish history is `patch → own → overlay → resource`; an empty layer is skipped, the order of the rest does not change. An ordinary local `load` keeps the former semantics: `opts.commitOwn=false`, own does not reach the index or the commits of the branch but is copied by the `syncOwnCode()` step after HEAD is moved, and is excluded locally (the rule PROP-005 `##OWN-EXCLUDED-LOCALLY`: in a single repository — a block in the effective `info/exclude`, in a multi-worktree repository — a worktree-local file; the rule of the administrative paths is `##TREE-HOOK-STEP` above); the choice of the dev channel of the overlay does not change either. The alignment of the publish history therefore does not turn local own code into tracked files. @status:spec/done",
-      "line": 91,
+      "line": 93,
       "uri": "spec://codkit/modules/codkit/PROP-008#GENERATED-BRANCH-LAYER-ORDER"
     },
     {
@@ -6624,7 +6642,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The copying of own code** (`syncOwnCode` / `mirrorOwnBack`): a walk over `delta/own/**` and `<tree>/src/vs/<ownDirName>/**`; for every file a comparison of the bytes (the fast filter is the size; on equal sizes — a full comparison of the content; mtime is NOT used as a criterion — false positives on checkout); a difference → a copy (source→destination for `load`, destination→source for `save`); absence in the source → deletion in the destination; empty directories are deleted. Symlinks inside own are forbidden (an error). @status:spec/done",
-      "line": 93,
+      "line": 95,
       "uri": "spec://codkit/modules/codkit/PROP-008#OWN-COPY-ALGORITHM"
     },
     {
@@ -6633,8 +6651,17 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The mtime requirement**: regenerating the branch changes neither the content nor the mtime of files whose final state did not change (step 2 rewrites only `changed`) — otherwise the watch daemons stage a recompilation storm. The control experiment is P3-S10 (FEAT-001 §6). @status:spec/done",
-      "line": 94,
+      "line": 96,
       "uri": "spec://codkit/modules/codkit/PROP-008#MTIME-DISCIPLINE"
+    },
+    {
+      "anchor": "WORKTREE-DELTA-BYTES",
+      "content_hash": "sha256:512c55bbff025297d46b0768910740b092192833d91379d69452f503aa519e6b",
+      "doc_path": "modules/codkit/PROP-008",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
+      "heading": "**The working copy of a file the delta writes holds the patch set's bytes, on every OS.** The files the delta writes are the targets it names - of its patches, its overlays and its resource entries - and codkit stores their bytes in the branch as they are (`hash-object --no-filters`), so the blob of such a path at the tip is the patch set's bytes (for an overlay target of a development tree, the pin's). After every `load` - the full apply once it has moved the tree, the fast path once the drift guard has passed - the working file of each such target that is a regular file both at the tip and in the tree holds exactly those bytes. A checkout alone does not promise it: git converts a text file on its way into the working copy when the platform or the tree's attributes say so (PROP-002 `##GIT-ENV-EOL`; an upstream `eol=crlf`, an `ident` or a filter still apply on every OS). So `load` compares the raw bytes of each such target with the tip's blob, and a target that differs only in a way git itself calls no difference - git's hash of the file under the tree's attributes is the tip's blob - is rewritten with the blob's bytes, and its index entry is recorded again - the same blob with the new size and time, without which git, which trusts a changed size, would call the file modified. Nothing else is touched: a target whose content really differs belongs to the drift guard and to the move of the tree, and a target that already holds the bytes keeps its mtime (`##MTIME-DISCIPLINE`). The rewritten paths are reported: `restored the bytes of N file(s) the delta writes: …`, and under `--json` as `data.restoredBytes`, present when there are any. A consequence, stated because it is deliberate: a file the delta writes carries the patch set's line endings even where upstream declares others for that path (a `*.cmd` under `eol=crlf`), so a patch set that wants CRLF there stores CRLF. **Healing a tree written before this rule** needs nothing but the next `load` of that tree - an ordinary one, which may answer `up to date`: it rewrites the CRLF copies of the delta's files with the patch set's bytes, the overlay target an earlier `package` put back included, and names them. A file the delta does not name keeps the bytes an earlier checkout left in it: it is upstream's, and `##GIT-ENV-EOL` reaches it the next time a checkout by codkit writes it. @status:impl/done",
+      "line": 97,
+      "uri": "spec://codkit/modules/codkit/PROP-008#WORKTREE-DELTA-BYTES"
     },
     {
       "anchor": "save",
@@ -6642,7 +6669,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "4. save/extract and the drift guard",
-      "line": 97,
+      "line": 100,
       "uri": "spec://codkit/modules/codkit/PROP-008#save"
     },
     {
@@ -6651,7 +6678,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "An interruption between the writing of a patch and the rebuilding of the branch is safe: the next `load`/`save` sees the mismatch of the fingerprint and rebuilds the branch; the artifacts are already correct. @status:spec/done",
-      "line": 143,
+      "line": 146,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-INTERRUPT-SAFE"
     },
     {
@@ -6660,7 +6687,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The lineage of the tree** (campaign TREE-COMMITS-SAVE, decision D17): \"what the tree was loaded from\" = the value of the `Codkit-Patchset-Commit` trailer of the base commit (the upper generated tip of the line; ##TREE-IS-TRUTH — the branch, not the mark), or the field `mark.patchSetCommit` when base = the pin and there are no generated commits at all (an empty patchset at the first load, F19). The value is a 40-hex sha, `dirty` or `none`. `save` (and the future two-way `sync`): a sha → `git merge-base --is-ancestor <sha> HEAD` in patchset; not an ancestor → exit 1 `CK-E-PATCHSET-MOVED`: \"the tree was loaded from patchset commit <sha>, which is not an ancestor of patchset HEAD <sha2>; the tree's work belongs to that state\" + the recipe `##PATCHSET-MOVED-RULE`. `dirty`/`none` → a warning and continuation: a state that cannot be named cannot be checked either, but the work of the tree belongs to it all the same. An old mark without the field when base = the pin is a silent skip (\"unnamed\"): not a value of D17 but an honest \"I do not know\". Rejected: extracting silently into a foreign branch (the former behaviour after a `git switch` without a `save`). It is switched off only by the flag `skipPatchsetMovedCheck`, together with the byte check (D12/D18). @status:impl/done",
-      "line": 144,
+      "line": 147,
       "uri": "spec://codkit/modules/codkit/PROP-008#LINEAGE-CHECK"
     },
     {
@@ -6669,7 +6696,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**A patchset that moved under a loaded tree is a refusal before the first write** (campaign TREE-COMMITS-SAVE, Phase 7, decisions D16/D18; it closes hypothesis H1/S0.7: `CK-E-INTERNAL` AFTER the ref had been moved and the file overwritten). The mark of the tree carries the `artifacts` map — the sha256 of every `delta/` file outside `delta/own/**` (own is covered by `ownFiles`) at the moment of the load (PROP-006 §1 `##TREE-MARK`). Before any write — the mirroring of own and pass 2 of the replay included — `save` compares the **bytes** of the artifacts with the map, not the sha of a commit: any way of returning the same bytes passes. **The scope of the check is the patch layer `delta/patches/**`** (a refinement by the worker of Phase 7 after a red test of the M1 procedure): the overlay/resource/rule/removed layers are authored only in patchset, and their materialization into the tree by the rebuild is the regular flow (`##SAVE-EXTRACTS-TWO-LAYERS`: a hand-written resource artifact between two saves is a documented procedure, not a foreign edit), so refusing on them would return the M1 defect in the shape of a new refusal. A foreign move of a **patch artifact** is the dangerous case: the rebuild would apply it to a file the work of the tree belongs to (H1). The classification (the module `lib/syncMerge.ts`): `patchsetChanged` — the bytes differ from the map; `treeChanged` — the target is in the selection of `changesSince(base, worktree)`. For `save`: `patchsetOnly ∪ both` non-empty → exit 1 `CK-E-PATCHSET-MOVED`, nothing written; the text holds the sha of the load, the list of artifacts and the manual recipe D18: (1) return the patchset artifacts to the loaded state (`git stash`, `git switch <branch>` or `git checkout <sha> -- delta/`); (2) `codkit save`; (3) bring the move back (`git stash pop` / `git merge` / `git rebase`); (4) `codkit load`. The one-command form is the future two-way `codkit sync` (Phase 8); while it does not exist it does not enter the hint: a hint must be executable on the day it is printed. **A refinement of the implementation to the letter of D16/R13** (the worker of Phase 7): an artifact from \"both\" is not counted as moved when its bytes reproduce one of the states of the tree (the working file or the blob of one of the foreign commits) — that is codkit's own partial extraction (an addressed save, an interrupted replay) and not a foreign edit, and refusing it would lock the documented recovery paths (an addressed save → a full save; an interruption → a repeated save). Without the map (an old mark) `save` does not refuse but warns: a mismatch of the fingerprint by itself does not tell a foreign edit from our own extraction. `status` prints `loaded from patchset commit: <sha|dirty>` and, when it has moved, `patchset moved since load: N artifact(s)` — the data of the recipe (PROP-007 §6). The exception `skipPatchsetMovedCheck` is only the cycle (D12: its phases regenerate and commit the artifacts themselves) and the rebase-onto-pin/completed-rebase paths, which move the artifacts themselves; an internal flag, not a public one. The two-way `sync` (Phase 8) takes the same classification: the tree only → extract; patchset only → apply the patchset version, where overwriting the target during the rebuild is **explainable** (an extension of the `assertNothingMoved` set); both sides → the stop `CK-E-BOTH-SIDES-EDITED` (the message is generalized from own to the whole patch layer, F20). @status:impl/done",
-      "line": 145,
+      "line": 148,
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-MOVED-RULE"
     },
     {
@@ -6678,7 +6705,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The drift guard**: `dirty(tree)` = (`git status --porcelain` is non-empty outside the own directory) ∨ (an own divergence of the classes `both` — the bytes differ — or `tree-only` — the file exists only in the tree) ∨ (**the third half**, campaign TREE-COMMITS-SAVE, decision D7) the foreign commits of the tree are non-empty (`##TREE-COMMITS-ARE-WORK`): the commits of the first-parent line above the last generated tip, which the other two halves do not see — over a commit `git status` gives a clean tree. The list for the human holds the lines `commit <short> \"<subject>\" (not in patchset)`; the refusal is exit 1 `CK-E-DIRTY-TREE`: for edits \"N path(s) … not in patchset yet\", for commits \"N commit(s) in the fork tree since the last codkit apply are not in patchset yet\", with a hint (\"codkit save\" or \"codkit status\"). **The order of the refusals (owner ruling 2026-09-06, spike S0.12)**: the preflight of a shared generated ref (`##GENERATED-REF-WORKTREE-PREFLIGHT`) runs BEFORE any dirt check, unconditionally, in every guarding command: a commit of a neighbouring worktree on the shared branch moves the shared ref and makes the index of THIS tree \"staged-dirty\" — phantom dirt whose cause is the sharing of the ref, not local work; the refusal `CK-E-WORKTREE-REF-SHARED` (exit 2) names both trees and does not advise `save` — a hint \"run codkit save\" would here pull foreign work into this patch set as an edit of our own. The cause is diagnosed before the symptom; `CK-E-TREE-HEAD` obeys the same order (D8: an anomaly of the line, or HEAD off the branch with foreign — exit 1, with the same code from `##TREE-COMMITS-ARE-WORK`). A file that exists ONLY in the `delta/own/` of patchset (`patchset-only`) is NOT dirt: otherwise the first load of any tree would be impossible (a refinement of the M0 implementation). `--fresh` suppresses the fast path and does not count untracked paths as dirt (otherwise fresh would never clean anything), but it does NOT lift the refusal over commits: `--fresh` is about the untracked, while a commit is the same unextracted work as an edit. `--dry-run` does not run the guard; `skipDriftGuard` is the only bypass, only for `save` / the future two-way `sync` after the extraction. The refinement of REPAIR-005 (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`): before refusing, `load --fresh` classifies every tracked overlay target that differs from HEAD — bytes exactly equal to the strict composition of the configured overlays at the pin in the context of the run are a known materialization of codkit, which this run replaces (and says so in the output), not dirt; everything else stays dirt, `--fresh` is not a blanket reset. An ordinary `load` gets no such exception: the fast path could answer \"up to date\" and leave the packaging bytes. `ci` deliberately passes no classifier: ci materializes overlay targets only through the commits of the generated branch, ci's own runs do not create that state, and the single source of such bytes in a ci tree is an out-of-band `overlay apply`, that is a reused developer tree, which the guard must name out loud; the way out there too is a codkit command (`load --fresh` of that tree) or a single-use fresh tree, not a direct git restore. **The exception for a stranded materialization of an own extension (2026-09-08, PROP-005 `OWN-EXTENSION-STRANDED`):** for an ordinary `load` (without `--fresh`; not for `cycle start`, which refuses `CK-E-DIRTY-TREE` over such a tree, and not for the two-way `sync`, where the extracting half fires before the guard with `CK-E-NEW-FILE-IN-UPSTREAM-ZONE`; `ci` and `publish` go by a fresh pass, where the untracked is taken away by the cleanup, and do not meet the guard on that path — measured 2026-09-08) a first-level untracked directory under `extensions/` that no record of the `extensions` section of the manifest declares and that the pin does not ship is not dirt: `load` writes not a byte into such a directory and does not delete it, so a refusal would guard nothing and would lock a daily command after a legitimate step in patchset (the removal of the declaration); the reminder about the directory is taken over by `status` (PROP-007 `CMD-STATUS`, the line about stranded materializations with the recipe `load --fresh`). The predicate gets a hook into the same pure classification as `status` (`isStrandedExtension` next to `isKnownMaterialization` and `isDiscardable`); the rule about a new file in the upstream zone does not change for anything else. @status:impl/done",
-      "line": 147,
+      "line": 150,
       "uri": "spec://codkit/modules/codkit/PROP-008#DRIFT-GUARD-PREDICATE"
     },
     {
@@ -6687,7 +6714,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**Commits in the fork tree are work** (campaign TREE-COMMITS-SAVE, decisions D1/D2/D8). Work = the uncommitted ∨ the commits of the first-parent line unreachable from the last generated tip. The detector `foreignCommits(tree, pin, branch)` (`lib/treeCommits.ts`): `git rev-list --first-parent --format=…` for `<ref>` ∈ {HEAD, `refs/heads/<branch>`} (those that exist), the lower bound is always the pin; a commit is generated ⟺ the author is `codkit@patchset.invalid` AND the trailer `Codkit-Upstream-Pin` is non-empty (F13); `base` = the topmost generated one, and when there is none — `base = pin.sha` (an empty patchset, the branch is not created); `foreign` = the commits above `base`, from the old to the new. An anomaly: a non-generated commit below `base` — the history under the generated tip was rewritten → `CK-E-TREE-HEAD` (exit 1, \"reset the branch to <sha> or restore it from refs/codkit/consumed/…\"). The same code refuses when the branch exists, HEAD is off it and the line of HEAD carries foreign work (\"HEAD is on <ref|detached> with N commit(s) not in patchset; switch to <branch> (git switch) or merge them there, then run codkit save\"). When there is no branch, the chain of HEAD above the pin is work wherever HEAD may be (the first load after a clone); the generated tip itself is not work. Rejected: a base from the cache/mark (they are not authoritative, `##TREE-IS-TRUTH`); a rev-list without `--first-parent` (the states of side branches never existed on the line of the branch). The format of a record is NOT NUL-clean: before every record there is a `commit <sha>` line, and the trailer adds its own `\\n` (S0.2); the parser cuts by `/^commit [0-9a-f]{40}\\n/m`, then by `\\0`, stripping the trailing `\\n`. Consumed commits stay reachable through `refs/codkit/consumed/*` (PROP-006 §1 `##CONSUMED-REFS`). @status:impl/done",
-      "line": 148,
+      "line": 151,
       "uri": "spec://codkit/modules/codkit/PROP-008#TREE-COMMITS-ARE-WORK"
     },
     {
@@ -6696,7 +6723,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The reverse direction, file by file and for every layer of the delta (a generalization from own code to the whole patch layer, campaign TREE-COMMITS-SAVE, decision D16): own is told apart by the `ownFiles` map of the mark (PROP-006 §1 `##TREE-MARK`), the remaining `delta/**` files outside `delta/own/**` by the `artifacts` map of the same mark (Phase 7). The tree file == the mark → patchset changed (apply patchset); the patchset file == the mark → the tree changed (the dirt of the guard, extracted by save); both sides != the mark — a conflict of the two sides: for own — exit 1 `CK-E-BOTH-SIDES-EDITED` with the name of the file; for non-own artifacts in `save` — the refusal `CK-E-PATCHSET-MOVED` with the recipe (`##PATCHSET-MOVED-RULE`: an extraction into a foreign moved artifact neither stays silent nor merges), in the two-way `sync` (Phase 8) — the same stop `CK-E-BOTH-SIDES-EDITED`, generalized from own to the patch layer (F20). The overlay/resource/rule/removed layers are authored only in patchset and are always \"patchset only\". For own over a clean tree `load` warns `CK-W-PATCHSET-SIDE-EDIT` and applies the patchset version (at the moment of a load the direction of truth is patchset). Rejected: auto-merging patches (3-way is the territory of the cycle; the diff3 materialization for a human is Phase 8b, not an auto-merge). @status:impl/done",
-      "line": 149,
+      "line": 152,
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-SIDE-EDIT-RULE"
     },
     {
@@ -6705,7 +6732,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`save` extracts the final state of the tree relative to the last applied tip** (campaign TREE-COMMITS-SAVE, decisions D3/D4/D6). The selection is `changesSince(tree, base, state)` (`lib/treeState.ts`): `git diff --name-status --no-renames <base>` (staged+unstaged+committed together — the final state) ∪ the `??` records of `git status --porcelain -z` (the only thing the diff does not see), minus the own prefix, plus the `forcedPaths` of internal calls; the bytes of a file come through `bytesOf(state, path)` (the working file, or `git cat-file blob` for a commit state — the foundation of the replay `##SAVE-REPLAYS-TREE-COMMITS`). The selection is NOT `git status`: over a commit it is empty, and committed work used to be invisible (F7). A rename under `--no-renames` = a deletion + a new file — the deletion refuses `CK-E-DELETES-UPSTREAM-FILE`, as an unstaged rename does today. \"Nothing to save\" takes the commits into account: a tree with empty commits and no file changes is not nothing but a consumption. The precondition before the rebuild (D6): the foreign set has not changed since the extraction began, otherwise `CK-E-INTERNAL` (exit 2) BEFORE `updateRef`/`moveWorkTree` — it closes the order of F3 (destruction before the check). Consumed commits stay reachable: `refs/codkit/consumed/<UTC yyyymmddThhmmssZ>-<short7>` → the former HEAD of the tree, `update-ref` under the shared lock of the repository, the message `tree commits consumed: N (<first>..<last>); kept as …`. An addressed `save <paths>` with foreign commits: the branch is not touched (##SAVE-SCOPED-BRANCH-RULE), the commits stay in the tree — `info` \"N tree commit(s) stay in the tree until a full save\", no consumed ref is written. The patchset commits made from the consumed ones — see `##SAVE-REPLAYS-TREE-COMMITS`: by default one per state, `--squash` — one folded commit. Rejected: two lists, `diff base..HEAD` + `status` — it duplicates paths and loses the staged ones; a refusal without `--commit` — an extraction must not demand a flag. @status:impl/done",
-      "line": 150,
+      "line": 153,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-CONSUMES-TREE-COMMITS"
     },
     {
@@ -6714,7 +6741,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`save` replays the commits of the tree into the history of patchset one by one** (campaign TREE-COMMITS-SAVE, Phase 4, decision D5; owner ruling RP-3: the mode with commits is the default, \"rebase and merge\"). The states `S_1…S_n` = the foreign first-parent commits from the old to the new, then `S_wt` = the working tree. **Two passes** (`lib/saveReplay.ts`). Pass 1 (`planStates`) writes nothing: `planFile` for every `S_i` over an in-memory `ArtifactStore` (an overlay over `delta/patches` and `.codkit/pending`; it records the consumption of the pending drafts — the later states see the artifacts and the drafts of the earlier ones as they will be after those are written). Any error → `blocked`, exit 1, **nothing written** (no artifact, no own byte, no commit), the text carrying the sha and the subject of the source state; the validation of `Cause:` uses the same code as `hooks commit-msg` (F12: the patchset hooks do not run on the commits of `save`, and pass 1 does their work). Pass 2 (`writeStates`): for `S_1…S_n` the writing of the artifacts (`commitArtifacts`) + a patchset commit; for `S_wt` own (`mirrorOwnBack`) + the artifacts, with a commit only under `--commit`. The patchset commit for `S_i`: the paths = the changed artifacts of the state; the message = the original one verbatim (`%B`) + an empty line + `Codkit-Tree-Commit: <sha40>` (the separator is unconditional: a subject of the form \"work: …\" is indistinguishable from a trailer line, and guessing would glue the trailer to the subject paragraph); `GIT_AUTHOR_*` = the author of the tree commit, committer = the one who runs it (`commitIdentity()`). A state whose staged diff is empty → the commit is skipped with a message (the skip is visible: an empty tree of commits is consumed work too, but the history for it is empty). **Idempotence**: `git log --fixed-strings --grep=\"Codkit-Tree-Commit: <sha>\" -1` in patchset; a state that is found is skipped (an interruption after its commit — the repeated `save` does not duplicate it), and `--squash` after a partial replay finishes the rest in one commit. `--squash`: the intermediate states are validated all the same (a naive single-pass implementation lets through a violation hidden by a later commit — the P4 prediction was proven by a red run: with the state-by-state validation switched off, S17c-reverted gives a false exit 0), while only the final state is written and committed — the plan is written from the disk, not from the store (the store describes the state after writes that never happened). The test seam `replayCheckpoint` (`CODKIT_TEST_SAVE_REPLAY_CRASH_AT`, the test build only): a hard exit after the commit of a state — the crash point of idempotence. Rejected: a single-pass write (a half-extracted delta is worse than one a human edits and repeats); squash by default (RP-3); own per commit (F14: own is excluded locally, the commits of the tree do not carry it). @status:impl/done",
-      "line": 151,
+      "line": 154,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-REPLAYS-TREE-COMMITS"
     },
     {
@@ -6723,7 +6750,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "5. The 3-way apply at a foreign pin and the classification of the outcomes",
-      "line": 154,
+      "line": 157,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify"
     },
     {
@@ -6732,7 +6759,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Used by `cycle`, `forecast` and `rebase-onto-pin` (at one's own pin there are no conflicts by construction — the self-consistency invariant). Input: an artifact A with the target F, the old pin `oldPin`, the target ref `newRef`. Output: an outcome from the classes below + the materials. @status:spec/done",
-      "line": 155,
+      "line": 158,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify-usage"
     },
     {
@@ -6741,7 +6768,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The names of the outcome classes in the state of the cycle: `clean`, `shifted`, `merged`, `conflict`, `target-deleted`, `target-renamed` (from §6), `rule-broken`, `contract-failed`. @status:spec/done",
-      "line": 171,
+      "line": 174,
       "uri": "spec://codkit/modules/codkit/PROP-008#OUTCOME-CLASS-NAMES"
     },
     {
@@ -6750,7 +6777,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The engine does not stop at the first conflict: it goes through every independent artifact and gives back the full classified list; exit 3 belongs to the final mandatory human stop. @status:spec/done",
-      "line": 172,
+      "line": 175,
       "uri": "spec://codkit/modules/codkit/PROP-008#ENGINE-NEVER-STOPS-AT-FIRST"
     },
     {
@@ -6759,7 +6786,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The materialization for the resolve: for a `conflict` the orchestrator writes the result of `merge-file --diff3` with the standard conflict markers into the working file of the tree — a human and an agent edit it in the IDE the ordinary way. @status:spec/done",
-      "line": 173,
+      "line": 176,
       "uri": "spec://codkit/modules/codkit/PROP-008#CONFLICT-MATERIALIZATION"
     },
     {
@@ -6768,7 +6795,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "5a. sync: merging the two sides",
-      "line": 176,
+      "line": 179,
       "uri": "spec://codkit/modules/codkit/PROP-008#sync-two-way"
     },
     {
@@ -6777,7 +6804,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**Two passes, and both orders are deliberate** (campaign TREE-COMMITS-SAVE, Phase 8, decisions D15/D16/D19). The first pass is reading: the lineage (D17), the D16 classification (`classifyTargets`, `##PATCHSET-MOVED-RULE`), both sides of own and of the patch layer; a conflict is found **before the first write**, and every 3-way merge is computed before it too (Phase 8b, D19): a conflict of the patch layer is materialized with diff3 markers (`##SYNC-CONFLICT-DIFF3` below) with exit 1 and a live transaction; an own conflict is `CK-E-BOTH-SIDES-EDITED` without markers (own code has no marker blocks), F20, with the manual recipe \"pick a side\": to take the tree — `git checkout <sha> -- delta/own/<F>` in patchset, then `save`; to take patchset — roll back the edit of F in the tree, then `sync`. The second pass is the write under the transaction: the save half (`runSave` with `skipPatchsetMovedCheck` — a moved patchset is input data here, not a refusal — and `explainedRewrites` = the `patchsetOnly` targets: a rebuild that applies the patchset version to them is explainable, an extension of the set \"nothing moved\"), then the consumed ref and the mark with the new map; when the tree has no work, the write is a single load half (`runSync`). `--discard` (D11/D15) discards the commits of the tree deliberately (the same branch of the load engine: the consumed ref before the rebuild, the file halves of the guard armed); under `--ci` — exit 2. `--squash`/`--commit`/`--message` are the inheritance of the save half, `--fresh` of the load half. Auto-merging is rejected here too: the human resolves the diff3 markers themselves (the materialization is `##SYNC-CONFLICT-DIFF3`, the recovery is `##SYNC-ABORT`/`##SYNC-CONTINUE`, Phase 8b); under `--discard` the uncommitted both-part keeps the recipe \"pick a side\" — `--continue` is an extraction, not a discard (D11). @status:impl/done",
-      "line": 219,
+      "line": 222,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-TWO-PASS"
     },
     {
@@ -6786,7 +6813,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The transaction** (decision D20): the file `.codkit/sync-transaction.json` in the root of patchset (the ownership protocol is PROP-006 §1 `##SYNC-TRANSACTION-FILE`), written by `writeContainedFileExclusive` **before the first mutation** — a repeated start over a live record is impossible by construction (link-EEXIST → a refusal) — and removed after the last one. The record: `{codkitSyncTransaction, id, startedAt, patchset:{head, dirtyBefore}, tree:{head, branchTip, markSnapshot}, rewrite:[{repo, path, blob}], patchsetCommits:[], consumedRef: null, conflicts:[{path, materialized}]}` (the shape of conflicts is Phase 8b: `materialized` is the sha256 of the written markers, `null` means the merge did not reach the file); the snapshots are `git hash-object -w` of only the files the run is going to rewrite (the artifacts of the tree selection in patchset, the `patchsetOnly` targets in the tree, the diverging own files of both sides; an absent file is a null blob, \"a snapshot of absence\"). Every patchset commit that is created carries the trailer `Codkit-Sync-Transaction: <id>` (recognition by content survives an interruption of the list in the record) and is appended to `patchsetCommits` by an atomic rewrite. While the file exists, step 0 of `load`/`save`/`sync` (and of every call of the engines) is exit 1 `CK-E-SYNC-IN-PROGRESS`, and the hint names both recovery commands; `status` prints `sync in progress: <id>, conflicts: N`. A refusal without a single write removes the record itself (the snapshots matched, HEAD did not move — a proof by checking, not by guessing); a refusal after a write leaves it. The crash tests are the seam `CODKIT_TEST_SYNC_CRASH_AT` (the test build only), the atoms: transaction-written, conflict-materialized, state-committed, worktree-moved, mark-written (PROP-013 §5 `##SYNC-CRASH-TESTS`). The recovery `--abort`/`--continue` is Phase 8b (D21, `##SYNC-ABORT`/`##SYNC-CONTINUE`); an \"undo\" after a successful sync was rejected there as well. @status:impl/done",
-      "line": 220,
+      "line": 223,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-TRANSACTION"
     },
     {
@@ -6795,7 +6822,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The materialization of a both-sides conflict** (Phase 8b of the campaign TREE-COMMITS-SAVE, decisions D19/D21; `codkit sync`, e2e `syncConflict.test.ts`, S26). When the D16 classification puts a target into `both`, `sync` neither refuses nor merges by itself: it puts the 3-way into the tree file with the standard diff3 markers **inside the marker block** `codkit:begin/end`. The sides (D19): the base is the file as the last apply loaded it (`<base>:<F>`, the tip of the generated branch); ours is the working file (or `HEAD:<F>` when the working one cannot be read); theirs is the pin + the current artifact through `applyUnified`. The merge is `runMergeFile` (classifyEngine, the single diff3 implementation in codkit, spike S0.8; `replayPatch` is wrong here: theirs = the pin + the artifact, not the base + the patch). The order: every merge is computed **before** any write (an artifact that does not land on the pin refuses the run while not a byte has been written) → the transaction with the ours snapshots of the conflicting files (`rewrite`, blob) → every merge is written by a durable single-file write (a wx temp + a rename that preserves the mode, the precedent `atomicReplace`) and is marked in the record with the atom `conflict-materialized` carrying the sha256 of the written bytes → exit 1 `CK-E-BOTH-SIDES-EDITED` with the list of the files and both roads onward. The human resolves the markers as in the resolve phase of the cycle (keep both sides and the ids of the blocks; the procedure is 05-upgrade-cycle), then `codkit sync --continue`. Under `--discard` the recipe is not materialized for the uncommitted both-part: `--continue` is an extraction, not a discard (D11). Our own 3-way auto-merge is rejected here too. @status:impl/done",
-      "line": 221,
+      "line": 224,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-CONFLICT-DIFF3"
     },
     {
@@ -6804,7 +6831,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`codkit sync --continue`** (decision D21; e2e S26): finish an interrupted run from the record. No record — an honest exit 2: there is nothing to restore. The completeness check over `conflicts[]`, file by file: the markers are still there (the same four lines the manual procedure greps for) → the refusal `CK-E-BOTH-SIDES-EDITED` with the names; `materialized = null` and the file equals the ours snapshot byte for byte → the refusal \"the merge did not reach the file\" (a crash between the writing of the record and the writing of the markers does not pass itself off as the human \"take the tree\"; a real \"take the tree\" after the materialization gives the same bytes, but the record already carries the sha — the difference is the proof). Then the same writing pass as in a fresh run (`runSave` with `skipPatchsetMovedCheck` + `explainedRewrites`, the same atoms and trailers) under the same record; new both-targets that appeared after the stop get the same answer — the markers, exit 1, the record extended; the snapshots of the artifacts the record lacked are added before the pass (an abort after a crash in the continuation covers them too). On success the record is removed, exit 0. The extraction flags (`--squash`/`--commit`/`--message`/`--fresh`) apply to the continuation; `--discard`/`--dry-run` do not. @status:impl/done",
-      "line": 222,
+      "line": 225,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-CONTINUE"
     },
     {
@@ -6813,7 +6840,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`codkit sync --abort`** (decision D21; e2e S27): give everything back as the run found it. This is the load-bearing half of the phase: materializing the markers is easy; the promise that the operator can always come back is what makes the markers a safe offer. No record — exit 2. The audit **before the first mutation**: the patchset commits above the recorded HEAD are removed only if each carries the trailer `Codkit-Sync-Transaction: <id>` of this record and HEAD stayed on the recorded line; the tree commits above the recorded HEAD only if each is generated (the codkit author + the pin trailer, F13; a descendancy check is NOT required for the tree — the rebuild leaves the line as a matter of course, D6); HEAD of the tree on a foreign ref, or a history that cannot be enumerated — a refusal with an explanation and the names; a foreign commit on top is **never thrown away** — the refusal `CK-E-SYNC-IN-PROGRESS` names its sha and subject. The mutations come in an order that makes an interrupted abort restartable (every step is idempotent, the record is removed last): patchset — a `reset --mixed` to the recorded HEAD (the index is resynchronized, the removed commits do not survive as staged changes) and the artifacts from the snapshots byte for byte (the blob from the object database, a wx temp + a rename with the mode); the tree — the files from the snapshots (those that were absent are deleted), the branch to `tree.head` with a guard of the current tip (a branch the run created is deleted), HEAD to the same place (a detached one stays detached, `--no-deref`), with a moved HEAD a `reset --mixed` of the index, the mark from `markSnapshot` (when there was none, it is removed). `refs/codkit/consumed/*` stays (harmless, D22 cleans it). The patchset commits are removed with `--mixed`, not `--soft`: the D21 plan called both mechanisms one family; the index must come back together with HEAD, otherwise what was removed survives as staged. An \"undo\" after a successful sync does not exist — that is `git reset --hard <before>` in patchset + `codkit load` (the recipe D18). @status:impl/done",
-      "line": 223,
+      "line": 226,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-ABORT"
     },
     {
@@ -6822,7 +6849,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "6. Following the renames between pins",
-      "line": 225,
+      "line": 228,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames"
     },
     {
@@ -6831,7 +6858,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "A separate explicit step before the apply (not an auto-detection inside it — on large diffs git switches rename detection off silently). @status:spec/done",
-      "line": 226,
+      "line": 229,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames-when"
     },
     {
@@ -6840,7 +6867,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Pairs with `similarity < 100` are marked \"needs a human eye\" in the report (the carry-over is done, but it lands on the red list of the review). The check case of the polygon: the rename `src/vs/platform/agentHost/browser/remoteAgentHostProtocolClient.ts → agentHostProtocolClient.ts` (R096, the window `1.134.0→1.135.0`). @status:spec/done",
-      "line": 238,
+      "line": 241,
       "uri": "spec://codkit/modules/codkit/PROP-008#RENAME-BELOW-100-FLAGGED"
     },
     {
@@ -6849,7 +6876,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "7. Finding the cause commit",
-      "line": 240,
+      "line": 243,
       "uri": "spec://codkit/modules/codkit/PROP-008#cause"
     },
     {
@@ -6858,7 +6885,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "`git log --format=%H --follow oldPin..newPin -- F` — the commits that touched the file. @status:spec/done",
-      "line": 242,
+      "line": 245,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-LOG"
     },
     {
@@ -6867,7 +6894,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "One commit → it is the cause. Several → narrow down by lines: for every hunk of the artifact take the range of the affected lines at `oldPin` and run `git log -L<start>,<end>:F oldPin..newPin --format=%H`; the cause commit is the earliest commit that crossed the range; when `-L` is not applicable (the file was deleted/renamed), the cause commit is declared to be the last commit of the first step, marked `approx`. @status:spec/done",
-      "line": 243,
+      "line": 246,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-NARROW"
     },
     {
@@ -6876,7 +6903,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "For `target-deleted`/`target-renamed` — the commit that deleted/renamed it (`git log --diff-filter=D|R --follow`). @status:spec/done",
-      "line": 244,
+      "line": 247,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-DELETED"
     },
     {
@@ -6885,7 +6912,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Output: `{sha, approx: bool}`; it is written into the `cause` of the patch header (by the regeneration step), into the journal and into the `Cause:` trailer of the fix commit. The report of the cycle is grouped by cause commits (dozens of refusals → a handful of causes). @status:spec/done",
-      "line": 245,
+      "line": 248,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-OUTPUT"
     },
     {
@@ -12237,7 +12264,7 @@
     {
       "code": "long-section",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "line": 96,
+      "line": 97,
       "message": "section `21. codkit imageset gen|index|verify` spans 199 lines (threshold 120) — long sections read poorly and churn often; split into smaller leaves"
     },
     {
