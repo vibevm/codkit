@@ -172,18 +172,19 @@ const commandGuidance = {
 	},
 	load: {
 		positional: '',
+		flagLabels: { '--inputs': 'working|pinned' },
 		detail:
-			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`; `--discard` drops fork-tree commits on purpose (kept reachable under `refs/codkit/consumed/`) and is likewise refused under `--ci`. With `--fresh`, `--discard` also drops the working-tree edits of tracked upstream files that carry no marker block - a build artifact in a dev tree - printing `discard <path>` for each before the first write and reporting them in `data.discardedPaths`; a file with a marker block, own code, own extensions and untracked paths are never dropped. A plain load also passes over a materialized own extension no record declares any more instead of refusing over it: it neither writes into that directory nor removes it, `codkit status` names it, and `--fresh` is what sweeps it. Every other guarded command treats the directory as it did.'
+			'Apply the delta at the configured pin. `--dry-run` reports without writing; `--fresh` uses the configured cleanup whitelist and replaces an overlay target that still carries the exact materialization `overlay apply` wrote; `--clone-if-missing` is networked and therefore rejected by `--ci`; `--discard` drops fork-tree commits on purpose (kept reachable under `refs/codkit/consumed/`) and is likewise refused under `--ci`. With `--fresh`, `--discard` also drops the working-tree edits of tracked upstream files that carry no marker block - a build artifact in a dev tree - printing `discard <path>` for each before the first write and reporting them in `data.discardedPaths`; a file with a marker block, own code, own extensions and untracked paths are never dropped. A plain load also passes over a materialized own extension no record declares any more instead of refusing over it: it neither writes into that directory nor removes it, `codkit status` names it, and `--fresh` is what sweeps it. Every other guarded command treats the directory as it did. `--inputs working|pinned` chooses where the inputs of the configuration come from - the working tree of each input\'s repository, uncommitted edits included (the default), or its pinned commit - and `--no-inputs` delivers none and leaves the delivered ones as they are; an input lands untracked at its `to`, hidden by the managed exclude block, a build is skipped while the stamp of its content stays the same, and an edit made in an input directory is named and replaced by the input\'s bytes.'
 	},
 	status: {
 		positional: '',
 		detail:
-			'Show the pin/generated branch and work in the fork tree that has not been extracted. The own-extension line also counts the stranded materializations - untracked `extensions/<name>/` directories that no record of the manifest declares and the pin does not ship, which only `codkit load --fresh` removes; each is listed with that recipe and raises the exit code to 1. Changed upstream files that are exactly the overlay materialization codkit itself writes are reported in `data.upstream.materializedOverlayTargets`, and when they are the only thing the tree carries the printed next step is `codkit load --fresh` rather than `codkit save`, which is not what withdraws an overlay target.'
+			'Show the pin/generated branch and work in the fork tree that has not been extracted. The own-extension line also counts the stranded materializations - untracked `extensions/<name>/` directories that no record of the manifest declares and the pin does not ship, which only `codkit load --fresh` removes; each is listed with that recipe and raises the exit code to 1. Changed upstream files that are exactly the overlay materialization codkit itself writes are reported in `data.upstream.materializedOverlayTargets`, and when they are the only thing the tree carries the printed next step is `codkit load --fresh` rather than `codkit save`, which is not what withdraws an overlay target. Every input of the configuration is reported: what the tree carries of it, each path edited in its directory (exit 1; the change belongs to the input\'s repository), and warnings for a pin behind the HEAD of that repository or a repository with uncommitted changes.'
 	},
 	save: {
 		positional: '[path ...]',
 		detail:
-			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`).'
+			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`). An edit in the directory of an input is refused before anything is written: that content belongs to the repository of the input.'
 	},
 	sync: {
 		positional: '',
@@ -207,7 +208,7 @@ const commandGuidance = {
 	},
 	inventory: {
 		positional: '',
-		detail: 'Write `.codkit/out/inventory.json`; `--md` also writes Markdown and `--diff` compares with a local patchset ref.'
+		detail: 'Write `.codkit/out/inventory.json`; `--md` also writes Markdown and `--diff` compares with a local patchset ref. The inputs of the configuration are listed with their pinned commits.'
 	},
 	verify: {
 		positional: '',
@@ -262,7 +263,7 @@ const commandGuidance = {
 	ci: {
 		positional: '',
 		detail:
-			'Run the no-network container threshold. Profile defaults to `verify`; `build` additionally requires supplied tree `node_modules`. Pin-guard/effective-diff refs must already exist locally.'
+			'Run the no-network container threshold. Profile defaults to `verify`; `build` additionally requires supplied tree `node_modules`. Pin-guard/effective-diff refs must already exist locally. Every input is built from its pinned commit and committed on the generated branch; the effective diff leaves the directories of the inputs out.'
 	},
 	package: {
 		positional: '[<selector>]',
@@ -273,7 +274,7 @@ const commandGuidance = {
 		positional: '<immutable-patchset-ref>',
 		requiredFlags: ['--yes-i-am-publish-bot'],
 		detail:
-			'Release-bot-only network transaction. It requires `--yes-i-am-publish-bot`, rejects global `--ci`, gates with `ls-remote` before mutation, and only then checks and pushes leased/immutable refs. `--branch <name>` names the release branch instead of `codkit/release/<patchset12>+<pin.tag>`, outside the prefixes of the patch set. `--squash` publishes one commit on the pin whose tree is the checked tree, with `--author` as author and committer and the UTF-8 `--message-file` as its message, dated like the patchset commit and without Codkit trailers; the `--release` tag names that commit. `--scrub` (with `--squash`) removes the codkit marker lines and the `spec://` references of comment lines from the delivered files, and the bare references the patch set learns from itself - its intervention ids and the ids of its spec documents under `publish.scrub.specRoots` (default `vibevm/vibespecs`), plus `publish.scrub.vocabulary` - as whole groups in comment text and Markdown prose: a parenthetical of references, a sentence of them, a leading group with its colon, a group after a preposition. It leaves out the files `publish.exclude` names, and refuses to push while `codkit:begin`, `codkit:end`, `spec://` or `vibevm` is left anywhere in the tree, or a learned reference in any delivered file.'
+			'Release-bot-only network transaction. It requires `--yes-i-am-publish-bot`, rejects global `--ci`, gates with `ls-remote` before mutation, and only then checks and pushes leased/immutable refs. `--branch <name>` names the release branch instead of `codkit/release/<patchset12>+<pin.tag>`, outside the prefixes of the patch set. `--squash` publishes one commit on the pin whose tree is the checked tree, with `--author` as author and committer and the UTF-8 `--message-file` as its message, dated like the patchset commit and without Codkit trailers; the `--release` tag names that commit. `--scrub` (with `--squash`) removes the codkit marker lines and the `spec://` references of comment lines from the delivered files, and the bare references the patch set learns from itself - its intervention ids and the ids of its spec documents under `publish.scrub.specRoots` (default `vibevm/vibespecs`), plus `publish.scrub.vocabulary` - as whole groups in comment text and Markdown prose: a parenthetical of references, a sentence of them, a leading group with its colon, a group after a preposition. It leaves out the files `publish.exclude` names, and refuses to push while `codkit:begin`, `codkit:end`, `spec://` or `vibevm` is left anywhere in the tree, or a learned reference in any delivered file. The inputs of the patch set enter the release from their pinned commits: one commit each on top of the history, part of the one commit under `--squash`, and scrubbed and searched like every file the patch set adds; the result names each input with its commit and file count.'
 	},
 	hooks: {
 		positional: '<install | check>',
@@ -355,6 +356,16 @@ const commandGuidance = {
 		detail:
 			'Read-only report on the installed runtime library: `runtime not installed` when `delta/own/codkit/` is absent (exit 0), `identical` when it matches the shipped library, or `CK-E-RUNTIME-DRIFT` with every modified, extra and missing path and the hint `run codkit runtime load --upgrade` (exit 1). It also reports the state of both `LICENSE-CODKIT.md` copies - an edited copy is `CK-E-STANDARDS-DRIFT`, an out-of-date components block is reported without being a finding - and warns about a legacy copy at `delta/own/`.'
 	},
+	inputs: {
+		positional: '<pin>',
+		detail:
+			'A namespace, not a command: bare `codkit inputs` prints its subcommand and exits 2 before any root is resolved. The inputs themselves are declared in the top-level `inputs` list of `codkit.json`.'
+	},
+	'inputs pin': {
+		positional: '[name ...]',
+		detail:
+			"Move the pin (`ref` in `codkit.json`) of the named inputs, or of every input with `--all`, to the HEAD of each input's repository, rewriting `codkit.json` canonically. A repository with uncommitted changes is refused with its paths before anything is written, because a pin names committed content; commit the new pin together with the change that needs it."
+	},
 	gen: {
 		positional: '<feature | brand>',
 		detail:
@@ -386,7 +397,7 @@ function renderCommands({ commands, globalFlags }, kinds) {
 			if (!command.flags.includes(flag)) throw new Error(`${command.name} marks an unadvertised flag required: ${flag}`);
 		}
 		const ownFlags = command.flags.map((flag) => {
-			const rendered = renderFlag(flag, kinds);
+			const rendered = renderFlag(flag, kinds, guide.flagLabels);
 			return required.has(flag) ? rendered : `[${rendered}]`;
 		});
 		const synopsis = ['codkit', command.name, guide.positional, ...ownFlags].filter((part) => part !== '').join(' ');
@@ -441,11 +452,13 @@ See [conventions](conventions.md), [failure guidance](faq.md), and the [air-gapp
 	);
 }
 
-function renderFlag(flag, kinds) {
+function renderFlag(flag, kinds, commandLabels = {}) {
 	const kind = kinds.get(flag);
 	if (kind === undefined) throw new Error(`help advertises flag absent from COMMAND_FLAG_KINDS: ${flag}`);
 	if (kind === 'boolean') return flag;
-	const label = valueLabels[flag];
+	// A flag two commands spell alike may take another value on each: `load --inputs
+	// working|pinned` and `package --inputs <dir>`.
+	const label = commandLabels[flag] ?? valueLabels[flag];
 	if (label === undefined) throw new Error(`value label missing for ${flag}`);
 	return `${flag} <${label}>${kind === 'repeatable' ? ' ...' : ''}`;
 }
