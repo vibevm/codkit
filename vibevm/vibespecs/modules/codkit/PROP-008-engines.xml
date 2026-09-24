@@ -43,8 +43,9 @@ assertDisjoint(toolRoot, patchesDir, forkDir):
       exit 1 CK-E-DIRTY-TREE (list of files)
   fp = deltaFingerprint(patchset)                   # PROP-006 §1
   if fastPathOk(cache, mark, fp, B):             # comparison rule PROP-006 §1
-      syncOwnCode(); writeExclude(); exit 0 "up to date"
+      restoreDeltaBytes(); syncOwnCode(); writeExclude(); exit 0 "up to date"
       # own code is always compared: locally it is not part of the branch commits
+      # restoreDeltaBytes: the files of the delta hold the patch set's bytes (##WORKTREE-DELTA-BYTES)
   if opts.fresh: cleanUntracked(tree, cleanupWhitelist)   # PROP-011 §4
   # 1. build the target commits in the index without touching the working files
   tmpIndex = new GIT_INDEX_FILE
@@ -78,6 +79,7 @@ assertDisjoint(toolRoot, patchesDir, forkDir):
                                                  # files absent from the new tip are deleted (rm)
   bring the INDEX to HEAD (diff-index --cached -> reset of the paths)  # NORM (lesson of M0): otherwise the index
                                                  # describes the former tip and status gives false dirt
+  restoreDeltaBytes()                            # ##WORKTREE-DELTA-BYTES: what the checkout converted is put back
   # git clean is NOT run (untracked content is cleaned only by --fresh, by the whitelist)
   # 3. own code and the dev overlay
   syncOwnCode()                                  # §3.1
@@ -92,6 +94,7 @@ assertDisjoint(toolRoot, patchesDir, forkDir):
     <facts ordered="false">
       <OWN-COPY-ALGORITHM fact="true" status="spec/done">**The copying of own code** (`syncOwnCode` / `mirrorOwnBack`): a walk over `delta/own/**` and `&lt;tree&gt;/src/vs/&lt;ownDirName&gt;/**`; for every file a comparison of the bytes (the fast filter is the size; on equal sizes — a full comparison of the content; mtime is NOT used as a criterion — false positives on checkout); a difference → a copy (source→destination for `load`, destination→source for `save`); absence in the source → deletion in the destination; empty directories are deleted. Symlinks inside own are forbidden (an error).</OWN-COPY-ALGORITHM>
       <MTIME-DISCIPLINE fact="true" status="spec/done">**The mtime requirement**: regenerating the branch changes neither the content nor the mtime of files whose final state did not change (step 2 rewrites only `changed`) — otherwise the watch daemons stage a recompilation storm. The control experiment is P3-S10 (FEAT-001 §6).</MTIME-DISCIPLINE>
+      <WORKTREE-DELTA-BYTES fact="true" status="spec/plan">**The working copy of a file the delta writes holds the patch set's bytes, on every OS.** The files the delta writes are the targets it names - of its patches, its overlays and its resource entries - and codkit stores their bytes in the branch as they are (`hash-object --no-filters`), so the blob of such a path at the tip is the patch set's bytes (for an overlay target of a development tree, the pin's). After every `load` - the full apply once it has moved the tree, the fast path once the drift guard has passed - the working file of each such target that is a regular file both at the tip and in the tree holds exactly those bytes. A checkout alone does not promise it: git converts a text file on its way into the working copy when the platform or the tree's attributes say so (PROP-002 `##GIT-ENV-EOL`; an upstream `eol=crlf`, an `ident` or a filter still apply on every OS). So `load` compares the raw bytes of each such target with the tip's blob, and a target that differs only in a way git itself calls no difference - git's hash of the file under the tree's attributes is the tip's blob - is rewritten with the blob's bytes, and its index entry is recorded again - the same blob with the new size and time, without which git, which trusts a changed size, would call the file modified. Nothing else is touched: a target whose content really differs belongs to the drift guard and to the move of the tree, and a target that already holds the bytes keeps its mtime (`##MTIME-DISCIPLINE`). The rewritten paths are reported: `restored the bytes of N file(s) the delta writes: …`, and under `--json` as `data.restoredBytes`, present when there are any. A consequence, stated because it is deliberate: a file the delta writes carries the patch set's line endings even where upstream declares others for that path (a `*.cmd` under `eol=crlf`), so a patch set that wants CRLF there stores CRLF. **Healing a tree written before this rule** needs nothing but the next `load` of that tree - an ordinary one, which may answer `up to date`: it rewrites the CRLF copies of the delta's files with the patch set's bytes, the overlay target an earlier `package` put back included, and names them. A file the delta does not name keeps the bytes an earlier checkout left in it: it is upstream's, and `##GIT-ENV-EOL` reaches it the next time a checkout by codkit writes it.</WORKTREE-DELTA-BYTES>
     </facts>
   </sync>
   <save title="4. save/extract and the drift guard">
