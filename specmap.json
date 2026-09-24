@@ -3497,7 +3497,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:cce98b0494a400e1995bec41ace6c824258be52e905b5342724ebc2cd4f80787",
+      "content_hash": "sha256:1182855769f6aaf1420422ad1853c6453db818513c775b73c9e9c0427e139c45",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "codkit PROP-002: Code layout, launch, toolchain, components",
@@ -3569,7 +3569,7 @@
     },
     {
       "anchor": "toolchain",
-      "content_hash": "sha256:2555fe6ff650b38f54c4e57edda267c3846222f47b98cbce3a04e4f184dfe915",
+      "content_hash": "sha256:64c9a952645b7aef9ec8d84746b232104dea56e22dd988ca03b69a37cb7ba40f",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "2. Launch and toolchain",
@@ -3659,12 +3659,21 @@
     },
     {
       "anchor": "CONTAINED-FILE-IO",
-      "content_hash": "sha256:fe8f09f1d693be13df0222f4e503acf8f5e02ae65ab068a3e4d4ff441859d785",
+      "content_hash": "sha256:a019d5b89073cffd32002fa049aac0a161915a77785c528172297e662ed7201b",
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
-      "heading": "**The administrative files touched by REPAIR-006 (the git mark, the hooks, the exclude) and the configuration reads of `codkit.json` / `codkit.local.json` / the declared build-watch and conventions all go through one implementation, `containedFile.ts`.** Reading: the parent components are checked with lstat (a symbolic link is a refusal), the leaf is opened with a single descriptor with `O_NOFOLLOW` (the platforms without it — Windows — check the leaf before the open and compare the descriptor afterwards; the remaining check-then-open window is documented, not hidden), the descriptor must be a regular file, and after the open it is proved that it names a file inside the root (realpath + a comparison of dev/ino with the canonical path) — a parent component swapped for a symlink after the check is caught by the post-open proof and its bytes are not used. Writing: an atomic replacement (an exclusive temporary file + rename) only inside a parent which, immediately before the write, must be a real canonical directory; a leaf symlink is a refusal (`codkit never writes through a link`), and a symlink swapped in after the check of the leaf is replaced by the rename itself — the target of the link does not change; after the write the identity and realpath of the parent are re-checked. The limitation of the Node `fs` is recorded honestly: the portable API gives no `openat`/`renameat` relative to a held directory descriptor, so a malicious swap of the parent itself in the narrow window between the last check and the creation of the temporary file is detected post-write but is not prevented before the first byte on every platform; a pre-existing parent or leaf symlink and a swap during a read are refused before the data is used. The administrative directories (`hooks/`, `codkit/`, `info/`) are created only as real directories — a symlink component is a refusal. The module does not decide «whose bytes these are»: ownership and refusal stay with the calling layer. @status:impl/done",
+      "heading": "**The administrative files touched by REPAIR-006 (the git mark, the hooks, the exclude) and the configuration reads of `codkit.json` / `codkit.local.json` / the declared build-watch and conventions all go through one implementation, `containedFile.ts`.** Reading: the parent components are checked with lstat (a symbolic link is a refusal), the leaf is opened with a single descriptor with `O_NOFOLLOW` (the platforms without it — Windows — check the leaf before the open and compare the descriptor afterwards; the remaining check-then-open window is documented, not hidden), the descriptor must be a regular file, and after the open it is proved that it names a file inside the root (realpath + a comparison of dev/ino with the canonical path) — a parent component swapped for a symlink after the check is caught by the post-open proof and its bytes are not used. Writing: an atomic replacement (an exclusive temporary file + rename) only inside a parent which, immediately before the write, must be a real canonical directory; a leaf symlink is a refusal (`codkit never writes through a link`), and a symlink swapped in after the check of the leaf is replaced by the rename itself — the target of the link does not change; after the write the identity and realpath of the parent are re-checked. On Windows a rename refused because another handle holds the target open is tried again within a bounded budget before it refuses (`##CONTAINED-WINDOWS-REPLACE-RETRY`). The limitation of the Node `fs` is recorded honestly: the portable API gives no `openat`/`renameat` relative to a held directory descriptor, so a malicious swap of the parent itself in the narrow window between the last check and the creation of the temporary file is detected post-write but is not prevented before the first byte on every platform; a pre-existing parent or leaf symlink and a swap during a read are refused before the data is used. The administrative directories (`hooks/`, `codkit/`, `info/`) are created only as real directories — a symlink component is a refusal. The module does not decide «whose bytes these are»: ownership and refusal stay with the calling layer. @status:impl/done",
       "line": 62,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONTAINED-FILE-IO"
+    },
+    {
+      "anchor": "CONTAINED-WINDOWS-REPLACE-RETRY",
+      "content_hash": "sha256:27ef0a415689cf228354af406be6e9664d8c5db2405be1f481428a8dbae000df",
+      "doc_path": "modules/codkit/PROP-002",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
+      "heading": "**On Windows the rename of an atomic replacement waits for another handle on its target to close, within a bounded budget, and then refuses exactly as before.** Windows refuses to rename a file over a target that any other handle holds open: Node's rename there does not use the POSIX rename semantics. Measured on 2026-09-24 (Node 24.18, Windows 11): a handle on the target in another process - of any sharing mode, one that allows deletion and a plain Node read included - makes `renameSync(temporary, target)` fail with `EPERM`; a handle without delete sharing on the temporary makes it fail with `EBUSY`; a handle that allows deletion on the temporary does not stop it. Such a holder is not codkit's to close: the one measured on a file written moments before was a kernel-mode handle (PROP-010 `##DAEMON-RECORD-REPLACE-BUDGET` has the measurements). So on `win32`, and only there, a replacement whose rename fails with `EPERM`, `EACCES`, `EBUSY` or `ENOTEMPTY` is tried again after a wait: the first wait is 10 ms, each next one doubles, no wait is longer than 250 ms, and no wait is taken that would bring the sum of the waits above the budget of the write. The default budget, the one every contained atomic write gets, is 310 ms: waits of 10, 20, 40, 80 and 160 ms, six attempts in all - a rename refused five times succeeds on its sixth attempt, one refused six times refuses. A caller that replaces a file it published moments before names a longer budget of its own; the pid transition of a daemon record is the one that does (PROP-010 `##DAEMON-RECORD-REPLACE-BUDGET`). The retry never removes the target first: until a rename succeeds, the previous bytes stay under the name. When the budget is spent, the answer is the refusal a failed rename has always been - `CK-E-CONFIG` `<what>: cannot atomically replace <path>: <errno message>` with the hint `check the permissions of the parent directory`, and the temporary removed. A real permission error therefore still refuses: on Windows once the budget is spent, since a denied rename and a held target both report `EPERM`, and at the first failure for any other errno and on every other platform. The tests drive the retry through the seams `applyRename`, `renamePlatform` and `waitForRenameRetry` of the atomic write (`containedFileWindowsRetry.test.ts`). @status:impl/done",
+      "line": 63,
+      "uri": "spec://codkit/modules/codkit/PROP-002#CONTAINED-WINDOWS-REPLACE-RETRY"
     },
     {
       "anchor": "CONTAINED-CONSUMERS",
@@ -3672,7 +3681,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "REPAIR-007: the tree mark, the common/worktree exclude, the tree hook and the patch-set hooks use `readContainedFile(root, relative)` end-to-end, and the writes use `writeContainedFileAtomic`; a checked parent is not then handed to a weaker leaf-only reader. On a real FS `writeConfigPin` reads descriptor-held bytes, performs a repeated contained CAS read and writes a contained atomic replacement; the injectable legacy FS stays a test seam only. Every public consumer has a deterministic after-open parent-swap regression with an unchanged outside sentinel. @status:impl/done",
-      "line": 63,
+      "line": 64,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONTAINED-CONSUMERS"
     },
     {
@@ -3681,7 +3690,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "REPAIR-009: mutating the pin in `codkit.json` requires a LIVE capability of this patch set's cycle-global lock, not merely a structurally similar handle: a forged, a copied, an already released and a foreign (another patchesDir) handle all refuse. The bytes are re-read before the replacement, so an external edit that arrived after the comparison is preserved and the call returns a locked/config failure. The residual limitation is recorded honestly: an external editor whose last system call writes after our repeated read can still be overwritten — Node gives no atomic compare-and-swap over an ordinary file. @status:impl/done",
-      "line": 64,
+      "line": 65,
       "uri": "spec://codkit/modules/codkit/PROP-002#CONFIG-PIN-CAPABILITY"
     },
     {
@@ -3690,7 +3699,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "3. Components (the modules of packages/codkit/src/lib/)",
-      "line": 66,
+      "line": 67,
       "uri": "spec://codkit/modules/codkit/PROP-002#components"
     },
     {
@@ -3699,7 +3708,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "The file names are a recommendation, the responsibilities are normative: @status:spec/done",
-      "line": 67,
+      "line": 68,
       "uri": "spec://codkit/modules/codkit/PROP-002#components-lead"
     },
     {
@@ -3708,7 +3717,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "`layers/*`, `applyEngine` and `inventory` know nothing about the CLI; the commands receive explicit toolRoot, patchesDir, forkDir and the patch-set config object instead of reopening the roots through cwd. This is the cell rule of AI-native TypeScript as well: one module = one cell with a single public entry. @status:spec/done",
-      "line": 104,
+      "line": 105,
       "uri": "spec://codkit/modules/codkit/PROP-002#DEPENDENCY-RULE-BETWEEN-MODULES"
     },
     {
@@ -3717,7 +3726,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "4. Cross-platform support — the conditions of acceptance",
-      "line": 106,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-002#cross-platform"
     },
     {
@@ -3726,7 +3735,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "Acceptance requires a native test «a double regeneration gives an empty diff» separately on Linux, macOS and Windows (S16). The current Linux run is not a proof for the two other operating systems. @status:spec/plan",
-      "line": 108,
+      "line": 109,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-DOUBLE-REGEN"
     },
     {
@@ -3735,7 +3744,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "No mechanism assumes that the three roots are neighbours; the tests use three unrelated random paths (PROP-013 §1). @status:spec/done",
-      "line": 109,
+      "line": 110,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-NO-NEIGHBOR-ASSUMPTION"
     },
     {
@@ -3744,7 +3753,7 @@
       "doc_path": "modules/codkit/PROP-002",
       "file": "vibevm/vibespecs/modules/codkit/PROP-002-runtime-and-layout.xml",
       "heading": "Symlinks are not used as a mechanism (code is delivered by copying); on Windows linking is replaced by a copy everywhere. @status:spec/done",
-      "line": 110,
+      "line": 111,
       "uri": "spec://codkit/modules/codkit/PROP-002#XPLAT-NO-SYMLINKS"
     },
     {
@@ -7169,7 +7178,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:69ffd36f864668b2d8b97bb83af4cf575adcb7dbc06a29575f58250275029eb5",
+      "content_hash": "sha256:920b4334b6892921f68d6eadae92b4600ec752ed1cc66c4df2e7cbbb7fec8f97",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "codkit PROP-010: Build integration - code delivery, watch daemons, tests",
@@ -7205,7 +7214,7 @@
     },
     {
       "anchor": "daemons",
-      "content_hash": "sha256:12b943dd05b428abe188e914107bba0f99926649384bc51adf8e8704e432e58b",
+      "content_hash": "sha256:70d9658845b55e9e91ef14cd3ca0d8c62a2ac9319e958bcd8326cdb954c9839a",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "2. Watch-daemon wrapper",
@@ -7259,12 +7268,21 @@
     },
     {
       "anchor": "DAEMON-RUNTIME-STATE",
-      "content_hash": "sha256:11f10dad3f8a55df1607e25ba20bcfa46bd33568219e73c15d4dfb0ad0014c1c",
+      "content_hash": "sha256:01f318fe4811549e3004f5d2777cac07a135309f02cda8162daa2757b3432933",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
-      "heading": "REPAIR-008 state machine: a daemon record is absent, invalid, starting (`pid:0` exclusive reservation or a bounded unproven startup), living (argv or a surviving POSIX pgid proven), dead (a valid owner proven gone) or unknown. A reservation is published as already complete JSON by a single exclusive hard link, carries a UUID nonce and moves to the final pid only by CAS on the exact generation. A second `up` and concurrent `down/status/errors` neither remove nor seize a starting record; a displaced owner terminates its own spawned process. An empty/truncated/malformed/schema-invalid/unreadable record is `unknown` and is preserved by every command; `errors` does not read an old log for starting/unknown. @status:impl/done",
+      "heading": "REPAIR-008 state machine: a daemon record is absent, invalid, starting (`pid:0` exclusive reservation or a bounded unproven startup), living (argv or a surviving POSIX pgid proven), dead (a valid owner proven gone) or unknown. A reservation is published as already complete JSON by a single exclusive hard link, carries a UUID nonce and moves to the final pid only by CAS on the exact generation (on Windows that replacement may wait for another handle on the record to close, `##DAEMON-RECORD-REPLACE-BUDGET`). A second `up` and concurrent `down/status/errors` neither remove nor seize a starting record; a displaced owner terminates its own spawned process. An empty/truncated/malformed/schema-invalid/unreadable record is `unknown` and is preserved by every command; `errors` does not read an old log for starting/unknown. @status:impl/done",
       "line": 15,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-RUNTIME-STATE"
+    },
+    {
+      "anchor": "DAEMON-RECORD-REPLACE-BUDGET",
+      "content_hash": "sha256:8be57996f870bbb4b0bdb8180055a174077664a7b9d722263d3937d17828a9ec",
+      "doc_path": "modules/codkit/PROP-010",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
+      "heading": "**Decision:** the pid transition of a daemon record - the atomic replacement with which `finalizeReservation` turns the `pid:0` reservation into the record of the spawned pid (`##DAEMON-RUNTIME-STATE`) - has a Windows retry budget of 60 000 ms instead of the default 310 ms of PROP-002 `##CONTAINED-WINDOWS-REPLACE-RETRY`: after the waits of 10, 20, 40, 80 and 160 ms come 238 waits of 250 ms, 59 810 ms of waits and 244 attempts in all. No other write of the record needs it: the reservation is published by an exclusive hard link and a record is retired by an unlink, neither of them a replacement - Node unlinks with the POSIX delete semantics on Windows (measured on 2026-09-24: a holder that allows deletion does not stop the unlink, and the name is free at once for the next hard link). The log rotation, `<channel>.log` renamed over `<channel>.log.1`, is a rename over an existing file too and has no retry at all; its target is the log of the run before the previous one, and no refusal of it was seen in the 100 runs below.\n\n**Why:** the transition replaces a file published milliseconds before, and a file written moments before is the one a holder keeps open. On 2026-09-24 a vitest run that started fixture daemons one after another failed `build up --channel transpile` with `CK-E-CONFIG` `... .codkit\\build\\transpile.json: cannot atomically replace ... EPERM`, the default budget spent. Reproduced the same day under load - four loops of `build up --channel transpile` (never-ending stub, process-table polling, `taskkill /t /f`) next to two loops creating fixtures and, for part of the time, the file-level experiment below: 5 of 100 `build up` runs had the replacement refused, for 1.9, 19.7, 20.5, 20.9 and 28.3 s. Each time the only other holder of the record was pid 4 (System), a kernel-mode handle - the one antivirus file filter running on that machine, Microsoft Defender's `WdFilter`, being its likely owner - and nothing held the temporary; codkit, its process probe and the daemon's own processes held nothing, so there was no handle of codkit's to close. The holder follows the age of the file, not its name: replacing a file published by hard link a moment before was refused 14 times in 350 (for 0.16 to 23.2 s), replacing files written 30 s before 0 times in 150. With 310 ms all five `up` runs would have failed; the minute is about twice the longest hold measured, 28.3 s. While the retry waits, the channel lock stays held - another `up` or a `down` of the channel is refused as locked - and the record stays the `pid:0` reservation, which `status` reads as `starting`; when the minute is spent, `up` ends as before - the spawned daemon is terminated and the reservation retired, and the refusal is the one of PROP-002. The tests are `buildRecordReplace.test.ts` (the transition outlasts a hold the default budget does not; a hold longer than the minute refuses with the reservation kept) and `containedFileWindowsRetry.test.ts`.\n\n**Considered and rejected:**\n- raising the default budget of every contained write - the holds were measured on files replaced moments after they were written, a replacement of an older file never waited, and every other writer would answer a real permission error up to a minute later for nothing;\n- an unbounded retry - a real permission error, or a holder that never lets go, would keep `build up` and its channel lock forever;\n- removing the record before the rename - the name would be empty in between: a lock-free `status` reads `dead`, and a crash in that window leaves a running daemon that no record names, the leak `##DAEMON-RUNTIME-STATE` exists to prevent;\n- the POSIX rename semantics of Windows (`FILE_RENAME_FLAG_POSIX_SEMANTICS`), under which a holder that allows deletion no longer stops a replacement - Node's `fs` does not offer them, and a native addon for one call is a new binary dependency.\n\n**When to revisit:** a `build up` on Windows still refuses with `cannot atomically replace <patchesDir>\\.codkit\\build\\<channel>.json: ... EPERM` - the holds on that machine outgrew the minute; an `up` interrupted during such a wait is seen leaving a `pid:0` reservation over a running daemon - the window of that residue is now as long as the wait; or Node's rename on Windows adopts the POSIX rename semantics - then a holder that allows deletion no longer refuses the rename and the budget is no longer spent. @status:impl/done",
+      "line": 16,
+      "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-RECORD-REPLACE-BUDGET"
     },
     {
       "anchor": "DAEMON-RUNTIME-CONTAINMENT",
@@ -7272,7 +7290,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "All daemon records/logs/rotation and the dependency receipt in `.codkit/build` are read/created/replaced/renamed/removed only through the contained runtime-root API: `.codkit`, `build`, the leaf and the rotation target must be real non-symlink regular paths; the open descriptor and the parent identity are re-proven. Before any path or mutation a channel key must be a single portable basename: empty/dot/dot-dot, separators/traversal, absolute/drive/UNC/device/reserved/control/platform aliases are forbidden with a stable `CK-E-CONFIG`; derived files are direct children of the runtime dir only. Node without portable `openat`/`renameat` keeps the narrow parent-swap limit already documented in PROP-002. @status:impl/done",
-      "line": 16,
+      "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-RUNTIME-CONTAINMENT"
     },
     {
@@ -7281,7 +7299,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "REPAIR-009: daemon record transitions are serialized by a short-lived contained per-channel operation lock in the administrative area of the patch set (`.codkit/locks/daemon-<key>.lock`). The key is the full SHA-256 of the ASCII-case-folded channel name, so two spellings of one channel cannot hold two locks over one runtime file. The complete nonce-carrying bytes are published by a single exclusive hard link; the reader distinguishes absent/valid/invalid, and a malformed/unreadable/symlinked/schema-invalid lock is a refusal and is NEVER removed automatically. Only a valid lock whose owner pid is proven absent is recovered; EPERM or a reused pid stays \"possibly alive\" and refuses. `upChannel` and `downChannel` take the lock before the first inspection of the record or the process and hold it across the whole mutation: for up, the probe, the retirement of a stale record, the reservation, the rotation, the spawn and the final publication or the exact cleanup; for down, the identity proof, TERM/wait/KILL/wait and the exact retirement. Two channel locks are never held at once; the outer order stays global/cycle → tree → daemon-channel. Replacement, removal and signals require an unforgeable live channel-bound capability or stay private inside the locked closure; before the final replace, removal, TERM and KILL the exact generation is re-read and re-checked. Immutable generation pointers are rejected: portable Node has no conditional pointer replace, and they add crash/GC states without closing the race. @status:impl/done",
-      "line": 17,
+      "line": 28,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-CHANNEL-LOCK"
     },
     {
@@ -7290,7 +7308,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "REPAIR-012 (a correction of REPAIR-011): **every artifact the lock protocol publishes carries a provable owner.** The public lock carries a pid and a nonce checked by the liveness machinery; so does the claim that recovers an orphaned generation, but in its bytes rather than in its name: a strict JSON record with its own schema (in the style of the lock record) names the pid and the nonce of the publisher and the exact dev/ino of the published generation, and is validated on publication. The claim name is single and fixed per publication (`<public>.orphan-<dev>-<ino>.owner`): the election is the exclusive publication of that name, where `EEXIST` is exactly a lost election, that is, an atomic primitive decided by the file system and not by reading a directory. REPAIR-013 (a correction of REPAIR-012, two independent audits): **an inode number is an identity only while the inode is pinned.** On a file system that reuses numbers (ext4 hands a freed number to the next file of the same directory almost always; tmpfs never), a successor that published a new generation under the public name could get the very number recorded in the claim, and the dev/ino comparison then passed against another file: two contenders unlinked one public name. REPAIR-014 (a correction of REPAIR-013, audit A1/B13-4): the pin is opened **at the start of the pass**, where the identity is taken, before the claim name and bytes are derived from it, and is held across the election, the proofs and the unlink until the `finally` of every exit. Opening it AFTER the election, as in REPAIR-013, pinned whatever stood under the name by then: a contender whose publication had already been unlinked compared the name with itself, a tautology on any file system, and measurement on ext4 showed that the reproduced failure was closed precisely by the re-read `nlink` (with the REPAIR-013 pin and `nlink` removed: 16/120 double acquisitions; with the REPAIR-014 pin and `nlink` removed: 0/120, so each of the two guards now closes the failure on its own and both are kept). The claim name is derived from the pinned `fstat` as well: two contenders on one inode get one name and collide in the election, while a contender on another inode does not enter that election - its binding refuses before the unlink. The identity for the re-proof is taken from the `fstat` of the descriptor and not from a path `lstat`; before the public name is unlinked exactly two proofs are re-checked - the public name is still that pinned inode (`lstat` against `fstat`; a divergence is `'lost'`, not a refusal), and the parent is still the directory whose identity was taken on entry; `nlink` is re-read within that same proof instead of being trusted from the stat at the start of the pass (a living successor under the name, or an owner that hard-linked the publication while the scan ran, is visible only in a fresh stat). `nlink === 0` on the pinned inode means the publication was unlinked while the pass held it: `'lost'`. The unlink itself tolerates `ENOENT` as `'lost'`. The rule `nlink != 1` carries a clean meaning: an extra hard link to the publication is a living owner. The same law of pinning is applied to the private-link removal (`removeContainedHardlinkGeneration`): the publication is pinned before that path's own election and both unlinks tolerate `ENOENT`. Whether the fixed claim name is occupied is decided by a fresh read of that path and not by a stale scan: a valid claim naming this publication is a competitor (the election answers atomically, a live publisher's claim is never removed and is never offered for removal by a hint); damage - a non-regular entry, or bytes that do not name the inode which encodes their own name - is a loud refusal naming the file. The winner's `finally` re-checks that the file at its claim path is still the one it publishes, by the same re-proof as the sweep. Recovery distinguishes three states and NEVER collapses them into one: a claim whose publisher may be alive is a lost election (retry); a claim whose publisher is proven absent is the debris of a recoverer killed midway, it is buried (with a re-proof that the file at that path is still the one whose record was read) and the pass is repeated; any other extra link is a living owner and a refusal. A reused pid is read as possibly alive and its claim is not touched: a refusal, never a theft. The limit of the law is named honestly: the number in the BYTES of another claim, and the name derived from it, outlive any descriptor - the claim of a killed recoverer is a freely dangling inode number; while the pid of its publisher is alive, a refusal stays the right direction. The alternatives of REPAIR-011/012 are rejected and named: an anonymous claim link (exactly the CK-A32 wedge - debris indistinguishable from a living competitor); a timeout or an age check (guessing where a proof is available); and the publisher in the claim NAME - a unique name per contender destroys the collision the election rested on, the `EEXIST` branch goes dead, and the election degenerates into read-then-act, where two contenders unlink one public lock name (the REPAIR-011 regression). The alternatives of REPAIR-013 are rejected and named: a return to an election by hard-linking the publication (brings back the anonymous CK-A32 wedge); a content hash or a generation counter (the bytes of the publication are not ours to constrain). Narrowing `nlink != 1` is NO LONGER listed as a rejected alternative: in REPAIR-013 it was the load-bearing guard of the reproduced failure, and the record that called it \"not a proof\" was a mistake of the parent, corrected in REPAIR-014. The residue of pinning is named honestly: on Windows `O_NOFOLLOW` is zero and an open handle interacts with deletion differently - the guarantee is a POSIX one, native Windows is unverified (CK-A04). The generation election lives in `containedGeneration.ts` and the claim grammar in `containedClaim.ts`, apart from `containedFile.ts`: this half needs an injectable liveness oracle that nobody else needs, and the containment layer still does not decide the policy of whose bytes these are. Test base: tests that compare dev/ino, count `nlink` or run the lock election must get their fixtures on a root where number reuse is MEASURED (create/unlink/create, not the predicate \"not tmpfs\": btrfs and APFS pass such a predicate and never reuse), chosen explicitly and failing loudly when there is no such root (test/support/diskRoot.ts) - for three rounds in a row the defect was invisible because every fixture lived on the single file system where the central assumption of the protocol comes for free. @status:impl/done",
-      "line": 18,
+      "line": 29,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-LOCK-CLAIM-OWNER"
     },
     {
@@ -7299,7 +7317,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "REPAIR-009: new daemon records are strict - the reservation and the final record must carry a nonce, unknown fields are forbidden, and `startedAt` must be a real canonical finite ISO timestamp (round-trip `toISOString`). Semantic invalidity is `unknown`; the exact bytes and the mtime of the record are preserved by every command. The exported collapsing `readRecord()` is gone: the only public reader is the discriminated `readRecordState()`, so a future production caller cannot merge absent and invalid. Log readers (`errors`) fail closed too: an invalid record is an environment failure, never `gone`, and an old finished pass is not certified. @status:impl/done",
-      "line": 19,
+      "line": 30,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-RECORD-STRICT"
     },
     {
@@ -7308,7 +7326,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "REPAIR-009: `status`, `down` and `errors` are bound to the currently resolved tree id/path. `status` stays lock-free, read-only and point-in-time, and reports recorded tree ownership and a mismatch honestly; on a mismatch `down` sends no signal at all and `errors` does not certify another tree's log. Mutating and certifying mismatches return an environment failure. `errors` holds no lock while it waits: a snapshot of the generation, the read/poll of the log, a second read, and certification only if the same final generation still owns the current tree; a rotation, a change of generation, starting/invalid/unknown or a loss of ownership is an environment failure, never a mixed or an old green. @status:impl/done",
-      "line": 20,
+      "line": 31,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-TREE-BINDING"
     },
     {
@@ -7317,7 +7335,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "REPAIR-009: the whole channel set is validated before caching, before any path is created and before any mutation. Case-insensitively, `all` and `deps-hash` are reserved; ASCII-case-fold duplicates and collisions of the derived `.json`/`.log`/`.log.1` names are rejected with a diagnostic naming both original spellings; a name whose actual plus candidate/temp file name exceeds the portable component limit (255 bytes) is rejected before `.codkit` is created. @status:impl/done",
-      "line": 21,
+      "line": 32,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-CHANNEL-NAMESPACE"
     },
     {
@@ -7326,7 +7344,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "REPAIR-009: every contained writer loops until all bytes are written or it fails - a short `writeSync` never publishes truncated bytes. Directory identity is re-proven by dev/ino and not by the returned path string, for exclusive publication, append, rename, remove and runtime mutations: a swap to a DIFFERENT ordinary directory must refuse without touching the replacement or the external sentinel files. An append/write over an existing runtime leaf with more than one hard link refuses, so that an internal log does not mutate an external hard-link peer. The honest portable limit is kept: without `openat`/`renameat` a narrow parent-swap window remains (PROP-002), and the hard-link/ctime limitation is recorded in the risks. @status:impl/done",
-      "line": 22,
+      "line": 33,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-RUNTIME-WRITE-INTEGRITY"
     },
     {
@@ -7335,7 +7353,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "REPAIR-009: `build status` stays report-only and exits 0 when the OBSERVATION succeeded, not when every daemon is healthy. `starting` and `unknown` stay visible states of the line/JSON; the command/reference and the JSON documentation must say so explicitly, so that exit 0 is not read as a health check. @status:impl/done",
-      "line": 23,
+      "line": 34,
       "uri": "spec://codkit/modules/codkit/PROP-010#BUILD-STATUS-EXIT-MEANING"
     },
     {
@@ -7344,7 +7362,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Channels (npm scripts of the tree): @status:spec/done",
-      "line": 24,
+      "line": 35,
       "uri": "spec://codkit/modules/codkit/PROP-010#daemon-channels-lead"
     },
     {
@@ -7353,7 +7371,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-004#DAEMON-TRAPS; the address stays for citations. @status:spec/done",
-      "line": 33,
+      "line": 44,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-TRAPS"
     },
     {
@@ -7362,7 +7380,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "The launch is `npm run <script>` with cwd = the tree, and Node is the same binary (`process.execPath`). @status:spec/done",
-      "line": 34,
+      "line": 45,
       "uri": "spec://codkit/modules/codkit/PROP-010#DAEMON-LAUNCH"
     },
     {
@@ -7371,7 +7389,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "The environment contract of the daemons on Linux (M1 measurement on a live tree): a watch over 17 948 files requires `fs.inotify.max_user_watches` ≥ 524288; with the default 65536 the transpile daemon finishes the first pass (the boundaries are printed normally) but fails with `ENOSPC` while installing the watchers. Before the start `build up` reads `/proc/sys/fs/inotify/max_user_watches` and, at a value < 262144, warns with the remedy command (`sudo sysctl fs.inotify.max_user_watches=524288` plus an entry in /etc/sysctl.d); this is the owner's machine setting and codkit does not change it. For a single CI pass the result of the pass before the watchers fail is usable. @status:impl/done",
-      "line": 35,
+      "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-010#INOTIFY-ENV-REQUIREMENT"
     },
     {
@@ -7380,7 +7398,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "The pass-boundary detector is strict versioned data. The default is the project type's: a type that ships a profile answers a path inside its own package, and a type whose channels come from `typeConfig` answers the same document as data (PROP-016 `TYPE-CONFIGURED`); a type that answers neither has no channels, and `build` over it refuses. The patch set selected by the user may supply a complete fork-specific profile only through an explicit contained `codkit.json.buildWatchFile`, which wins over either answer. An implicit file at the same path does not shadow the shipped default. Channels declare `passStart`, `passEnd`, `errorLine`, `errorCountLine`, `falseEndGuards`; unknown fields are forbidden, and a channel without `errorLine` and `errorCountLine` is invalid. The counting detector `errorCountLine` is validated on load: every pattern must contain a capturing group for the number (group 1 is the only one the counter reads), otherwise `CK-E-CONFIG` before any log is read; and during the read: a pattern that MATCHED a count line but yielded no numeric group 1 (no group, or a group that captured non-digits) is also `CK-E-CONFIG` and not \"no summary\" (REPAIR-006: a silent `stated:null` with zero parsed diagnostics produced a false green). A custom profile must have stored green/red log fixtures; the cycle re-checks the expressions on the new pin. @status:spec/done",
-      "line": 37,
+      "line": 48,
       "uri": "spec://codkit/modules/codkit/PROP-010#PASS-BOUNDARIES-ARE-DATA"
     },
     {
@@ -7389,7 +7407,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "In a finished pass a count-only channel (`errorCountLine` non-empty, `errorLine` empty) MUST have a matched summary line: a mismatch or a drift of wording is `CK-E-CONFIG`, not an effective zero. A fallback to the number of parsed diagnostics is allowed only when a real `errorLine` detector exists. @status:impl/done",
-      "line": 38,
+      "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-010#COUNT-EVIDENCE"
     },
     {
@@ -7398,7 +7416,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-004#FALSE-END-GUARDS; the address stays for citations. @status:spec/done",
-      "line": 47,
+      "line": 58,
       "uri": "spec://codkit/modules/codkit/PROP-010#FALSE-END-GUARDS"
     },
     {
@@ -7407,7 +7425,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "The logs contain ANSI unconditionally (the colour package writes without a TTY check), so the wrapper strips ANSI with a regular expression before matching. The upstream `.build/log*` is useless in watch mode; the only source is the daemon's stdout+stderr (our log files). @status:spec/done",
-      "line": 48,
+      "line": 59,
       "uri": "spec://codkit/modules/codkit/PROP-010#ANSI-STRIPPING"
     },
     {
@@ -7416,7 +7434,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "**`build errors`**: finds the last `passStart` line in the log; if no `passEnd` follows it, waits for `passEnd` to appear (polling the file, a 500 ms interval, the `--timeout` timeout, default 600 s - exit 2 on timeout); then prints every line between the pair in full plus the parsed errors; `--mine` filters by the paths of the own directory and by the inventory files. The first pass after `up` is given the same wait (usually half a minute to a minute; the command waits by itself, so no separate sleep is needed). @status:spec/done",
-      "line": 49,
+      "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-010#BUILD-ERRORS-ALGORITHM"
     },
     {
@@ -7425,7 +7443,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "3. Overlay for product.json - the order against hygiene",
-      "line": 52,
+      "line": 63,
       "uri": "spec://codkit/modules/codkit/PROP-010#product-overlay"
     },
     {
@@ -7434,7 +7452,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-003#PRODUCT-OVERLAY-FACTS; the address stays for citations. @status:spec/done",
-      "line": 53,
+      "line": 64,
       "uri": "spec://codkit/modules/codkit/PROP-010#PRODUCT-OVERLAY-FACTS"
     },
     {
@@ -7443,7 +7461,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "4. Product tests",
-      "line": 55,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/PROP-010#tests"
     },
     {
@@ -7452,7 +7470,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-004#TESTS-LAYER-SPLIT; the address stays for citations. @status:spec/done",
-      "line": 56,
+      "line": 67,
       "uri": "spec://codkit/modules/codkit/PROP-010#TESTS-LAYER-SPLIT"
     },
     {
@@ -7461,7 +7479,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "**Our own fast runner**: the codkit tests are vitest in patchset (PROP-013). **Product tests** (contract/guard) are `*.test.ts` files in the own directory under `src/vs/patchset/test/**`, executed by the upstream runners from `out/vs/patchset/test/**` automatically (the unit runners collect `**/test/**/*.test.js` from `out/`). A targeted run: `--run src/vs/patchset/test/...` (the runner maps src→out itself). @status:spec/done",
-      "line": 58,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/PROP-010#TESTS-TWO-RUNNERS"
     },
     {
@@ -7470,7 +7488,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Contract tests are mandatory for interventions outside the zone of the markers and of the compiler: resource, overlay, a changed default, hide, a service seam. The test id comes from the `contractTests` of the artifact; verify confirms that it is declared in the own tests. A declaration is a direct call of `suite`, `test`, `describe` or `it` with the id as its first argument: both interfaces of the same runner are accepted, because which of them a family writes its tests in is the family's habit and not the tool's (the BDD names were added on 2026-09-09 with the `theia` type, whose upstream writes `describe`). The file of such a test is found under a `test/` directory of the own layer by either suffix the two families use, `*.test.*` or `*.spec.*`, and for the same reason. @status:spec/done",
-      "line": 59,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/PROP-010#CONTRACT-TESTS-MANDATE"
     },
     {
@@ -7479,7 +7497,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "The upstream tests are run without edits. Any filter requires a separate proof on a clean pin and an addressable decision; a green narrow runner does not replace the full baseline of the selected upstream/Electron runner. @status:spec/done",
-      "line": 60,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-010#UPSTREAM-TESTS-POLICY"
     },
     {
@@ -7488,7 +7506,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "5. What changes in the package.json of the tree",
-      "line": 63,
+      "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-010#package-json"
     },
     {
@@ -7497,7 +7515,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Only the **addition** of npm scripts when needed (the overlay target `package.json`, PROP-005 §5); the MVP adds nothing (the wrapper calls the existing scripts). Any future addition is an overlay artifact with an inventory entry. @status:spec/done",
-      "line": 64,
+      "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-010#TREE-PACKAGE-JSON-RULE"
     },
     {
