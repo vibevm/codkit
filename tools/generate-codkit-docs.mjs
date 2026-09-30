@@ -138,6 +138,8 @@ const valueLabels = {
 	'--branch': 'name',
 	'--author': 'name-and-email',
 	'--message-file': 'path',
+	'--export-bare': 'dir',
+	'--export-repo': 'dir',
 	'--keep-consumed': 'n',
 	'--older-than': 'days',
 	'--branding-dir': 'path',
@@ -274,7 +276,7 @@ const commandGuidance = {
 		positional: '<immutable-patchset-ref>',
 		requiredFlags: ['--yes-i-am-publish-bot'],
 		detail:
-			'Release-bot-only network transaction. It requires `--yes-i-am-publish-bot`, rejects global `--ci`, gates with `ls-remote` before mutation, and only then checks and pushes leased/immutable refs. `--branch <name>` names the release branch instead of `codkit/release/<patchset12>+<pin.tag>`, outside the prefixes of the patch set. `--squash` publishes one commit on the pin whose tree is the checked tree, with `--author` as author and committer and the UTF-8 `--message-file` as its message, dated like the patchset commit and without Codkit trailers; the `--release` tag names that commit. `--scrub` (with `--squash`) removes the codkit marker lines and the `spec://` references of comment lines from the delivered files, and the bare references the patch set learns from itself - its intervention ids and the ids of its spec documents under `publish.scrub.specRoots` (default `vibevm/vibespecs`), plus `publish.scrub.vocabulary` - as whole groups in comment text and Markdown prose: a parenthetical of references, a sentence of them, a leading group with its colon, a group after a preposition. It leaves out the files `publish.exclude` names, and refuses to push while `codkit:begin`, `codkit:end`, `spec://` or `vibevm` is left anywhere in the tree, or a learned reference in any delivered file. The inputs of the patch set enter the release from their pinned commits: one commit each on top of the history, part of the one commit under `--squash`, and scrubbed and searched like every file the patch set adds; the result names each input with its commit and file count.'
+			'Release-bot-only transaction. It requires `--yes-i-am-publish-bot` and rejects global `--ci`; into `publishRemoteUrl` it gates with `ls-remote` before mutation, and only then checks and pushes leased/immutable refs. `--branch <name>` names the release branch instead of `codkit/release/<patchset12>+<pin.tag>`, outside the prefixes of the patch set. Three forms of the history: without `--squash`, the pin\'s history and the generated commits, one per artifact and input, with the Codkit trailers; `--squash` publishes one commit on the pin whose tree is the checked tree, with `--author` as author and committer and the UTF-8 `--message-file` as its message, dated like the patchset commit and without Codkit trailers; `--squash --orphan` writes that commit without a parent - one commit for the whole product, which a push into an empty repository carries without upstream history. The `--release` tag names the published tip. `--scrub` (with `--squash`) removes the codkit marker lines and the `spec://` references of comment lines from the delivered files, and the bare references the patch set learns from itself - its intervention ids and the ids of its spec documents under `publish.scrub.specRoots` (default `vibevm/vibespecs`), plus `publish.scrub.vocabulary` - as whole groups in comment text and Markdown prose: a parenthetical of references, a sentence of them, a leading group with its colon, a group after a preposition. It leaves out the files `publish.exclude` names, and refuses to push while `codkit:begin`, `codkit:end`, `spec://` or `vibevm` is left anywhere in the tree, or a learned reference in any delivered file. `--no-lfs` publishes a tip that needs no git-lfs: it leaves out every path the tree\'s own `.gitattributes` give to `filter=lfs` whose blob is a pointer, and removes each rule that names `filter=lfs` with the comment lines directly above it - in the squashed tree, or as one more generated commit, `codkit: leave out git-lfs content`, without `--squash`; a tree without git-lfs content stays as it is, and a rule the rewrite does not remove, such as a macro, stops the run with `lfs-failed` before anything is written. `--export-bare <dir>` or `--export-repo <dir>` writes the release into a new bare repository, or a new repository with the branch checked out, instead of `publishRemoteUrl`, which is then neither required nor read - no gate, no push, no network. The directory must be new or empty, with an existing parent, outside the patch set and the fork tree; the repository gets the branch, the release tag and only the objects the tip reaches, with no remote and no alternates, `core.longpaths=true`, and `core.autocrlf=false` with `core.eol=lf` for a working tree that plain git sees clean. Unless `--no-lfs` is given, the export carries the git-lfs objects of the tip, copied from the lfs storage of the fork tree and checked against their pointers; a missing object is `CK-E-LFS` before anything is created. A failed run leaves no export behind, and a second run into the same directory is refused. The inputs of the patch set enter the release from their pinned commits: one commit each on top of the history, part of the one commit under `--squash`, and scrubbed and searched like every file the patch set adds; the result names each input with its commit and file count.'
 	},
 	hooks: {
 		positional: '<install | check>',
@@ -445,7 +447,7 @@ With \`--json\`, an invoked command writes one versioned envelope to stdout. Hum
 - Global \`--ci\` is non-interactive and forbids Codkit network operations. The \`ci\` command implies the same restriction even when \`--ci\` is not typed.
 - \`clone\` and \`load --clone-if-missing\` are the local, explicit ways to obtain a missing tree; both are rejected in \`--ci\` mode.
 - \`forecast\`, \`check-tree\`, and \`ci\` use only objects/refs already present locally. The CI wrapper must provide missing refs, LFS objects, and dependencies.
-- \`publish\` is intentionally not a CI-mode command. It is the only release push path, requires the bot confirmation flag, and refuses the combination with \`--ci\`.
+- \`publish\` is intentionally not a CI-mode command. It is the only release push path, requires the bot confirmation flag, and refuses the combination with \`--ci\`. An export into a new local repository (\`--export-bare\`, \`--export-repo\`) reaches no network and pushes nothing, and keeps both refusals.
 
 See [conventions](conventions.md), [failure guidance](faq.md), and the [air-gapped supply-kit contract](../ci-examples/air-gapped-supply-kit.md).
 `
@@ -545,7 +547,7 @@ const faqEntries = {
 	],
 	LFS: [
 		'Git LFS support or required LFS content is missing.',
-		'Install Git LFS and populate LFS objects outside `--ci`, or include them in the offline fork-tree supply.'
+		'Install Git LFS and populate LFS objects outside `--ci`, or include them in the offline fork-tree supply. A `publish` export that keeps git-lfs needs every object of the tip in the lfs storage of the fork tree: fetch them there (`git -C <fork tree> lfs fetch origin <pin.sha>`), or publish with `--no-lfs`.'
 	],
 	LOCKED: [
 		'Another Codkit operation owns the per-tree lock.',
@@ -788,7 +790,7 @@ ${warningRows.join('\n')}
 
 - Running \`codkit --help\`: help is currently the no-argument invocation; \`--help\` is an unknown flag and exits 2.
 - Expecting \`ci\` to clone, fetch, pull LFS, install dependencies, or push: it does none of those. Prepare the Codkit installation, patch-set checkout, fork checkout, and caches first.
-- Adding global \`--ci\` to \`publish\`: publication is a separate release-bot operation and deliberately rejects that combination.
+- Adding global \`--ci\` to \`publish\`: publication - an export into a local repository included - is a separate release-bot operation and deliberately rejects that combination.
 - Treating \`verify\` exit 1 as a crash: it means the report completed and found violations. Read all findings from the same run.
 - Editing a materialized overlay target or generated patch by hand: update the overlay source or edit inside the fork-tree marker and run \`save\`.
 

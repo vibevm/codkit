@@ -16,7 +16,7 @@ Use `--json` and branch on `exitCode` plus `errors[].code`. Exit 1 is a red chec
 | `CK-E-NOT-A-REPO` | The resolved fork path is not a usable Git work tree. | Check `codkit where`, then point `--fork-dir`/`CODKIT_FORK_DIR` at the supplied checkout or run `codkit clone` outside CI. |
 | `CK-E-NOT-UPSTREAM` | The tree does not contain the configured upstream anchor. | Supply the correct fork repository; do not repurpose an unrelated checkout. |
 | `CK-E-PIN-UNREACHABLE` | The configured pin/ref is absent or outside the expected upstream history. | Fetch/provide that object outside Codkit CI, then rerun `codkit check-tree`; Codkit does not fetch it implicitly. |
-| `CK-E-LFS` | Git LFS support or required LFS content is missing. | Install Git LFS and populate LFS objects outside `--ci`, or include them in the offline fork-tree supply. |
+| `CK-E-LFS` | Git LFS support or required LFS content is missing. | Install Git LFS and populate LFS objects outside `--ci`, or include them in the offline fork-tree supply. A `publish` export that keeps git-lfs needs every object of the tip in the lfs storage of the fork tree: fetch them there (`git -C <fork tree> lfs fetch origin <pin.sha>`), or publish with `--no-lfs`. |
 | `CK-E-LOCKED` | Another Codkit operation owns the per-tree lock. | Wait for the named process; if it is gone, follow the stale-lock hint instead of deleting active state blindly. |
 | `CK-E-DIRTY-TREE` | Unextracted or otherwise disallowed work makes the requested transition unsafe. | Run `codkit status`, then `codkit save` for work to keep or restore it deliberately. Fork-tree commits can also be dropped on purpose with `codkit load --discard` (they stay reachable under `refs/codkit/consumed/`, where `codkit gc` eventually spends them; the flag is refused under `--ci`). A tracked upstream file a build rewrote is dropped by name with `codkit load --fresh --discard`, which announces every path it drops and never touches a file carrying a marker block - extract that one with `codkit save`, or move the edit out of the file. A tree left by `overlay apply` returns to dev mode with `codkit load --fresh` (only the exact overlay materialization is replaced). CI should receive a disposable clean tree. |
 | `CK-E-TREE-READONLY` | Codkit cannot write the fork tree or its required runtime state. | Fix ownership/permissions and rerun. The patchset source may be read-only only when `.codkit` is supplied as a separate writable mount; the fork tree itself must be writable for `ci`. |
@@ -86,7 +86,7 @@ Warnings do not by themselves define the process exit status; read the surroundi
 
 - Running `codkit --help`: help is currently the no-argument invocation; `--help` is an unknown flag and exits 2.
 - Expecting `ci` to clone, fetch, pull LFS, install dependencies, or push: it does none of those. Prepare the Codkit installation, patch-set checkout, fork checkout, and caches first.
-- Adding global `--ci` to `publish`: publication is a separate release-bot operation and deliberately rejects that combination.
+- Adding global `--ci` to `publish`: publication - an export into a local repository included - is a separate release-bot operation and deliberately rejects that combination.
 - Treating `verify` exit 1 as a crash: it means the report completed and found violations. Read all findings from the same run.
 - Editing a materialized overlay target or generated patch by hand: update the overlay source or edit inside the fork-tree marker and run `save`.
 
