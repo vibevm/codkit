@@ -3,8 +3,8 @@
 // ##PUBLISH-SCRUB-GROUPS, ##PUBLISH-EXCLUDE, ##PUBLISH-SCRUB-FAIL-CLOSED): the
 // release tree built from the unsquashed tip in a temporary index of the
 // disposable fork, the fail-closed search of that tree, and the one squashed
-// commit on the pin. Every object is written into the disposable fork; nothing
-// here pushes.
+// commit - on the pin, or without a parent (##PUBLISH-ORPHAN). Every object is
+// written into the disposable fork; nothing here pushes.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { decodeUtf8Strict, encodeUtf8 } from './bytes.js';
@@ -159,8 +159,9 @@ export function treeOf(treeDir, commit) {
     return git(treeDir, ['rev-parse', '--verify', `${commit}^{tree}`], {}, `cannot read the tree of ${commit}`);
 }
 /**
- * The one commit of `--squash`: the release tree on the pin, signed by the
- * owner's author, dated with the patchset commit so a repeat makes it again.
+ * The one commit of `--squash`: the release tree on the pin - or without a
+ * parent under `--orphan` - signed by the owner's author, dated with the
+ * patchset commit so a repeat makes it again.
  */
 export function squashCommit(options) {
     mkdirSync(options.scratchDir, { recursive: true });
@@ -175,7 +176,8 @@ export function squashCommit(options) {
         GIT_COMMITTER_EMAIL: email,
         GIT_COMMITTER_DATE: options.date
     };
-    return git(options.treeDir, ['commit-tree', options.tree, '-p', options.parent, '-F', messageFile], env, 'cannot write the squashed release commit');
+    const parents = options.parent === null ? [] : ['-p', options.parent];
+    return git(options.treeDir, ['commit-tree', options.tree, ...parents, '-F', messageFile], env, 'cannot write the squashed release commit');
 }
 /** The files in which the unsquashed tip differs from the pin; deletions deliver nothing. */
 function deliveredFiles(treeDir, pinSha, tip) {

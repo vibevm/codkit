@@ -7,19 +7,19 @@ import { join } from 'node:path';
 import { runCi } from './ciEngine.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
 import { CONFIG_FILE_NAME, loadLocalConfig, mergeLocal, parseBaseConfig } from './configFile.js';
-import { loadConventions } from './conventionsFile.js';
 import { treeId } from './fingerprint.js';
 import { runGit } from './gitx.js';
 import { releasedInputs } from './inputsTree.js';
 import { resolvePatchSetRef } from './inventory.js';
 import { acquireLock } from './lock.js';
 import { ckError } from './messages.js';
-import { reportScrub, scrubReleaseTree, squashCommit, treeOf } from './publishRelease.js';
-import { scrubSettingsOf, vocabularySources } from './publishVocabulary.js';
+import { orphanRefusal, shapeTip } from './publishTip.js';
 const ZERO_SHA = '0'.repeat(40);
 const SHA = /^[0-9a-f]{40}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 export async function runPublish(options) {
+    if (options.orphan === true && (options.squash ?? null) === null)
+        throw orphanRefusal();
     assertPublishGate(options);
     const remote = requiredRemote(options.config);
     if (options.patchSetRef.startsWith('-'))
@@ -78,70 +78,31 @@ export async function runPublish(options) {
             }
             return publishResult(checks.exitCode === EXIT_OK ? EXIT_ENVIRONMENT : checks.exitCode, checks.exitCode === EXIT_CHECK_FAILED ? 'check-failed' : 'environment-failed', baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks));
         }
-        let tip = checks.branchTip;
-        let squashed = null;
-        let scrubReport = null;
-        if (squash !== null && squashDate !== null) {
-            const scratchDir = join(workspace.root, 'release');
-            let tree = treeOf(workspace.resolution.path, tip);
-            if (scrub) {
-                const learned = vocabularySources({
-                    snapshotDir: workspace.patchesDir,
-                    type: options.type,
-                    config: snapshotConfig,
-                    patchSetSha,
-                    settings: scrubSettingsOf(publishConfig?.scrub)
-                });
-                const configuredRoots = publishConfig?.scrub?.specRoots ?? [];
-                for (const root of learned.missing.filter((entry) => configuredRoots.includes(entry))) {
-                    options.out.warn(`publish.scrub.specRoots entry ${root} names no directory of the published commit`);
-                }
-                const scrubbed = scrubReleaseTree({
-                    treeDir: workspace.resolution.path,
-                    scratchDir,
-                    pinSha: snapshotConfig.pin.sha,
-                    tip,
-                    conventions: loadConventions(options.type, workspace.patchesDir),
-                    exclude,
-                    references: learned.sources
-                });
-                scrubReport = scrubbed.report;
-                reportScrub(options.out, scrubbed.report);
-                if (scrubbed.report.leftovers.length > 0) {
-                    for (const leftover of scrubbed.report.leftovers) {
-                        const where = `${leftover.path}${leftover.line === null ? ' (binary)' : `:${leftover.line}: ${leftover.text}`}`;
-                        options.out.addError(leftover.tokens.length === 0
-                            ? {
-                                code: 'CONFIG',
-                                message: `the scrubbed release still carries tooling: ${where}`,
-                                hint: 'leave the file out through publish.exclude, or change it in the patch set; nothing was pushed'
-                            }
-                            : {
-                                code: 'CONFIG',
-                                message: `the scrubbed release still carries a reference (${leftover.tokens.join(', ')}): ${where}`,
-                                hint: 'reword the place in the patch set, or name the token in publish.scrub.allow if the release may carry it; nothing was pushed'
-                            });
-                    }
-                    return publishResult(EXIT_CHECK_FAILED, 'scrub-failed', {
-                        ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks),
-                        tip: null,
-                        scrub: scrubReport
-                    });
-                }
-                tree = scrubbed.tree;
-            }
-            const unsquashedTip = tip;
-            tip = squashCommit({
-                treeDir: workspace.resolution.path,
-                scratchDir,
-                tree,
-                parent: snapshotConfig.pin.sha,
-                request: squash,
-                date: squashDate
+        const shaped = shapeTip({
+            workspaceRoot: workspace.root,
+            treeDir: workspace.resolution.path,
+            snapshotDir: workspace.patchesDir,
+            type: options.type,
+            config: snapshotConfig,
+            patchSetSha,
+            checkedTip: checks.branchTip,
+            squash,
+            squashDate,
+            orphan: options.orphan === true,
+            scrub,
+            publishConfig,
+            exclude,
+            out: options.out
+        });
+        if (!shaped.ok) {
+            return publishResult(EXIT_CHECK_FAILED, shaped.status, {
+                ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks),
+                tip: null,
+                scrub: shaped.scrub
             });
-            squashed = { parent: snapshotConfig.pin.sha, tree, unsquashedTip, author: `${squash.author.name} <${squash.author.email}>` };
-            options.out.info(`squash: ${unsquashedTip.slice(0, 12)} -> ${tip.slice(0, 12)} on ${snapshotConfig.pin.sha.slice(0, 12)} (tree ${tree.slice(0, 12)})`);
         }
+        const tip = shaped.tip;
+        const shapes = { squash: shaped.squash, scrub: shaped.scrub };
         options.checkpoint?.('checks-passed');
         const refreshed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
         options.checkpoint?.('remote-refreshed');
@@ -155,8 +116,7 @@ export async function runPublish(options) {
             return publishResult(EXIT_CHECK_FAILED, 'tag-collision', {
                 ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
                 tip,
-                squash: squashed,
-                scrub: scrubReport
+                ...shapes
             });
         }
         const tagSatisfied = tagRef !== null && refreshed.tag === tip;
@@ -186,8 +146,7 @@ export async function runPublish(options) {
             tip,
             pushedBranch,
             pushedTag,
-            squash: squashed,
-            scrub: scrubReport,
+            ...shapes,
             inputs
         });
     }

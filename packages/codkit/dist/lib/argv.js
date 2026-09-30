@@ -97,6 +97,7 @@ const COMMAND_FLAG_KINDS = new Map([
     // publish (PROP-007 sec. 18); --squash above is shared with save and sync
     ['--release', 'value'],
     ['--branch', 'value'],
+    ['--orphan', 'boolean'],
     ['--author', 'value'],
     ['--message-file', 'value'],
     ['--scrub', 'boolean'],

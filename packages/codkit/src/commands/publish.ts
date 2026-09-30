@@ -13,11 +13,13 @@ import { runPublish } from '../lib/publish.ts';
 import type { PublishResult } from '../lib/publish.ts';
 import { parseAuthor, readMessageFile } from '../lib/publishRelease.ts';
 import type { SquashRequest } from '../lib/publishRelease.ts';
+import { orphanRefusal } from '../lib/publishTip.ts';
 
 const PROFILE = '--profile';
 const RELEASE = '--release';
 const BRANCH = '--branch';
 const SQUASH = '--squash';
+const ORPHAN = '--orphan';
 const AUTHOR = '--author';
 const MESSAGE_FILE = '--message-file';
 const SCRUB = '--scrub';
@@ -50,17 +52,22 @@ async function run(ctx: CommandContext): Promise<number> {
 		verbose: ctx.flags.verbose,
 		branch: commandFlagValue(ctx.commandFlags, BRANCH),
 		squash: squashRequest(ctx),
+		orphan: commandFlagGiven(ctx.commandFlags, ORPHAN),
 		scrub: commandFlagGiven(ctx.commandFlags, SCRUB)
 	});
 	ctx.out.setData(dataOf(result));
 	return result.exitCode;
 }
 
-/** ##PUBLISH-SQUASH: `--squash` takes both `--author` and `--message-file`, and they take it. */
+/**
+ * ##PUBLISH-SQUASH: `--squash` takes both `--author` and `--message-file`, and
+ * they take it; ##PUBLISH-ORPHAN: `--orphan` takes `--squash` too.
+ */
 function squashRequest(ctx: CommandContext): SquashRequest | null {
 	const author = commandFlagValue(ctx.commandFlags, AUTHOR);
 	const messageFile = commandFlagValue(ctx.commandFlags, MESSAGE_FILE);
 	if (!commandFlagGiven(ctx.commandFlags, SQUASH)) {
+		if (commandFlagGiven(ctx.commandFlags, ORPHAN)) throw orphanRefusal();
 		if (author !== null || messageFile !== null) {
 			throw ckError('CONFIG', `${AUTHOR} and ${MESSAGE_FILE} belong to ${SQUASH}`, `add ${SQUASH}, or drop them`);
 		}
@@ -123,6 +130,6 @@ export const publishCommand: CommandDefinition = {
 	summary: 'publish one checked immutable patchset commit through a leased release ref',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, AUTHOR, MESSAGE_FILE, SCRUB, BOT_CONFIRMATION],
+	commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, ORPHAN, AUTHOR, MESSAGE_FILE, SCRUB, BOT_CONFIRMATION],
 	run
 };
