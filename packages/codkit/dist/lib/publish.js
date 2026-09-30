@@ -1,6 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-011#root */
 // Immutable publish transaction: observe remote, build/check one patchset commit,
 // reject tag collisions, create the tag without force, then lease the branch.
+import { join } from 'node:path';
 import { runCi } from './ciEngine.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
 import { CONFIG_FILE_NAME, loadLocalConfig, mergeLocal, parseBaseConfig } from './configFile.js';
@@ -10,16 +11,23 @@ import { releasedInputs } from './inputsTree.js';
 import { resolvePatchSetRef } from './inventory.js';
 import { acquireLock } from './lock.js';
 import { ckError } from './messages.js';
+import { assertExportTarget, writeExport } from './publishExport.js';
 import { orphanRefusal, shapeTip } from './publishTip.js';
 import { materializeWorkspace } from './publishWorkspace.js';
 const ZERO_SHA = '0'.repeat(40);
 const SHA = /^[0-9a-f]{40}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+/** An export observes no remote. */
+const UNOBSERVED = { branch: null, tag: null };
 export async function runPublish(options) {
     if (options.orphan === true && (options.squash ?? null) === null)
         throw orphanRefusal();
     assertPublishGate(options);
-    const remote = requiredRemote(options.config);
+    const destination = options.export ?? null;
+    // An export has no remote: publishRemoteUrl is neither required nor read (##PUBLISH-EXPORT).
+    const remote = destination === null ? requiredRemote(options.config) : null;
+    if (destination !== null)
+        assertExportTarget(destination, options.patchesDir, options.resolution.path);
     if (options.patchSetRef.startsWith('-'))
         throw ckError('CONFIG', 'publish patchset ref must not start with a dash');
     const release = checkedRelease(options.release);
@@ -44,10 +52,15 @@ export async function runPublish(options) {
     const squashDate = squash === null ? null : committerDate(options.patchesDir, patchSetSha);
     // The initial access gate happens before lock/scratch/tree/ref mutation. A
     // second read after checks refreshes the exact lease/tag verdict before push.
-    const observed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
-    options.checkpoint?.('remote-observed');
-    options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: remote branch ${observed.branch?.slice(0, 12) ?? 'absent'}, ` +
-        `tag ${observed.tag?.slice(0, 12) ?? 'absent'}`);
+    const observed = remote === null ? UNOBSERVED : observeRemote(options.patchesDir, remote, branchRef, tagRef);
+    if (remote !== null) {
+        options.checkpoint?.('remote-observed');
+        options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: remote branch ${observed.branch?.slice(0, 12) ?? 'absent'}, ` +
+            `tag ${observed.tag?.slice(0, 12) ?? 'absent'}`);
+    }
+    else if (destination !== null) {
+        options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: into ${exportName(destination)}`);
+    }
     const handle = acquireLock(options.patchesDir, treeId(options.resolution.path), 'publish', (text) => options.out.warn(text));
     let workspace = null;
     try {
@@ -104,6 +117,29 @@ export async function runPublish(options) {
         const tip = shaped.tip;
         const shapes = { squash: shaped.squash, scrub: shaped.scrub, lfs: shaped.lfs };
         options.checkpoint?.('checks-passed');
+        if (remote === null) {
+            if (destination === null)
+                throw ckError('INTERNAL', 'publish has neither a remote nor an export');
+            const exported = writeExport({
+                request: destination,
+                forkDir: workspace.resolution.path,
+                scratchDir: join(workspace.root, 'export'),
+                branchRef,
+                tagRef,
+                tip,
+                out: options.out,
+                created: () => options.checkpoint?.('export-created')
+            });
+            const inputs = reportInputs(options.out, releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []));
+            options.out.info(`published: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}; into ${exportName(destination)}`);
+            return publishResult(EXIT_OK, 'published', {
+                ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, UNOBSERVED, checks),
+                tip,
+                ...shapes,
+                inputs,
+                export: exported
+            });
+        }
         const refreshed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
         options.checkpoint?.('remote-refreshed');
         // Immutable tag verdict precedes every remote write, including the branch.
@@ -137,9 +173,7 @@ export async function runPublish(options) {
             options.checkpoint?.('branch-pushed');
         }
         const status = pushedBranch || pushedTag ? 'published' : 'up-to-date';
-        const inputs = releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []);
-        for (const input of inputs)
-            options.out.info(`input ${input.name}: ${input.commit.slice(0, 12)} -> ${input.to}: ${input.files} file(s)`);
+        const inputs = reportInputs(options.out, releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []));
         options.out.info(`${status}: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}`);
         return publishResult(EXIT_OK, status, {
             ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
@@ -155,13 +189,28 @@ export async function runPublish(options) {
         handle.release();
     }
 }
+/** The two gates of the release bot; an export keeps both, and their words name it (##PUBLISH-EXPORT). */
 function assertPublishGate(options) {
+    const exporting = (options.export ?? null) !== null;
     if (options.ci) {
-        throw ckError('NET-FORBIDDEN', 'publish cannot run with global --ci: publish is an explicit network operation');
+        throw ckError('NET-FORBIDDEN', exporting
+            ? 'publish cannot run with global --ci: publish is an explicit operation of the release bot, an export into a local repository included'
+            : 'publish cannot run with global --ci: publish is an explicit network operation');
     }
     if (!options.confirmed) {
-        throw ckError('CONFIG', 'publish requires --yes-i-am-publish-bot', 'only the release bot may run this network mutation');
+        throw ckError('CONFIG', 'publish requires --yes-i-am-publish-bot', exporting
+            ? 'only the release bot may publish a release, into a remote or into a new local repository'
+            : 'only the release bot may run this network mutation');
     }
+}
+/** One line per input of the published commit, with its commit and the files the published tree carries. */
+function reportInputs(out, inputs) {
+    for (const input of inputs)
+        out.info(`input ${input.name}: ${input.commit.slice(0, 12)} -> ${input.to}: ${input.files} file(s)`);
+    return inputs;
+}
+function exportName(request) {
+    return `the new ${request.kind === 'bare' ? 'bare repository' : 'repository'} ${request.path}`;
 }
 function requiredRemote(config) {
     const remote = config.publishRemoteUrl;
@@ -311,7 +360,8 @@ function baseResult(patchSetSha, pinTag, branch, tag, observed, checks) {
         squash: null,
         scrub: null,
         lfs: null,
-        inputs: []
+        inputs: [],
+        export: null
     };
 }
 function publishResult(exitCode, status, parts) {

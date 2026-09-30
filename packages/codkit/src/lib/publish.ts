@@ -2,6 +2,7 @@
 // Immutable publish transaction: observe remote, build/check one patchset commit,
 // reject tag collisions, create the tag without force, then lease the branch.
 
+import { join } from 'node:path';
 import { runCi } from './ciEngine.ts';
 import type { CiProfile, CiResult } from './ciEngine.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
@@ -16,6 +17,8 @@ import type { Output } from './jsonOut.ts';
 import { acquireLock } from './lock.ts';
 import { ckError } from './messages.ts';
 import type { ForkDirResolution } from './paths.ts';
+import { assertExportTarget, writeExport } from './publishExport.ts';
+import type { ExportRequest, PublishExport } from './publishExport.ts';
 import type { LfsReport } from './publishLfs.ts';
 import type { ScrubReport, SquashRequest } from './publishRelease.ts';
 import { orphanRefusal, shapeTip } from './publishTip.ts';
@@ -24,6 +27,7 @@ import { materializeWorkspace } from './publishWorkspace.ts';
 import type { PublishWorkspace } from './publishWorkspace.ts';
 import type { ProjectType } from '@codkit/type-api';
 
+export type { ExportRequest, PublishExport } from './publishExport.ts';
 export type { LfsReport } from './publishLfs.ts';
 export type { PublishSquash } from './publishTip.ts';
 
@@ -33,7 +37,14 @@ const SEMVER =
 	/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 export type PublishCheckpoint =
-	'remote-observed' | 'checks-passed' | 'remote-refreshed' | 'before-branch-push' | 'branch-pushed' | 'before-tag-push' | 'tag-pushed';
+	| 'remote-observed'
+	| 'checks-passed'
+	| 'remote-refreshed'
+	| 'before-branch-push'
+	| 'branch-pushed'
+	| 'before-tag-push'
+	| 'tag-pushed'
+	| 'export-created';
 
 export type PublishOptions = {
 	readonly patchesDir: string;
@@ -58,6 +69,8 @@ export type PublishOptions = {
 	readonly scrub?: boolean;
 	/** `--no-lfs`: a tip that needs no git-lfs (##PUBLISH-NO-LFS). */
 	readonly noLfs?: boolean;
+	/** `--export-bare` or `--export-repo`: a new local repository instead of the remote (##PUBLISH-EXPORT). */
+	readonly export?: ExportRequest | null;
 	readonly checkpoint?: (checkpoint: PublishCheckpoint) => void;
 };
 
@@ -81,16 +94,24 @@ export type PublishResult = {
 	readonly scrub: ScrubReport | null;
 	/** What `--no-lfs` left out; null without the flag (##PUBLISH-NO-LFS). */
 	readonly lfs: LfsReport | null;
+	/** The repository an export created; null without an export flag (##PUBLISH-EXPORT). */
+	readonly export: PublishExport | null;
 	/** The inputs of the published commit as the pushed tree carries them (##INPUTS-GENERATED). */
 	readonly inputs: readonly ReleasedInput[];
 };
 
 type RemoteObservation = { readonly branch: string | null; readonly tag: string | null };
 
+/** An export observes no remote. */
+const UNOBSERVED: RemoteObservation = { branch: null, tag: null };
+
 export async function runPublish(options: PublishOptions): Promise<PublishResult> {
 	if (options.orphan === true && (options.squash ?? null) === null) throw orphanRefusal();
 	assertPublishGate(options);
-	const remote = requiredRemote(options.config);
+	const destination = options.export ?? null;
+	// An export has no remote: publishRemoteUrl is neither required nor read (##PUBLISH-EXPORT).
+	const remote = destination === null ? requiredRemote(options.config) : null;
+	if (destination !== null) assertExportTarget(destination, options.patchesDir, options.resolution.path);
 	if (options.patchSetRef.startsWith('-')) throw ckError('CONFIG', 'publish patchset ref must not start with a dash');
 	const release = checkedRelease(options.release);
 	const squash = options.squash ?? null;
@@ -115,12 +136,16 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 
 	// The initial access gate happens before lock/scratch/tree/ref mutation. A
 	// second read after checks refreshes the exact lease/tag verdict before push.
-	const observed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
-	options.checkpoint?.('remote-observed');
-	options.out.info(
-		`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: remote branch ${observed.branch?.slice(0, 12) ?? 'absent'}, ` +
-			`tag ${observed.tag?.slice(0, 12) ?? 'absent'}`
-	);
+	const observed = remote === null ? UNOBSERVED : observeRemote(options.patchesDir, remote, branchRef, tagRef);
+	if (remote !== null) {
+		options.checkpoint?.('remote-observed');
+		options.out.info(
+			`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: remote branch ${observed.branch?.slice(0, 12) ?? 'absent'}, ` +
+				`tag ${observed.tag?.slice(0, 12) ?? 'absent'}`
+		);
+	} else if (destination !== null) {
+		options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: into ${exportName(destination)}`);
+	}
 
 	const handle = acquireLock(options.patchesDir, treeId(options.resolution.path), 'publish', (text) => options.out.warn(text));
 	let workspace: PublishWorkspace | null = null;
@@ -188,6 +213,28 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 		const tip = shaped.tip;
 		const shapes: Pick<PublishResult, 'squash' | 'scrub' | 'lfs'> = { squash: shaped.squash, scrub: shaped.scrub, lfs: shaped.lfs };
 		options.checkpoint?.('checks-passed');
+		if (remote === null) {
+			if (destination === null) throw ckError('INTERNAL', 'publish has neither a remote nor an export');
+			const exported = writeExport({
+				request: destination,
+				forkDir: workspace.resolution.path,
+				scratchDir: join(workspace.root, 'export'),
+				branchRef,
+				tagRef,
+				tip,
+				out: options.out,
+				created: () => options.checkpoint?.('export-created')
+			});
+			const inputs = reportInputs(options.out, releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []));
+			options.out.info(`published: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}; into ${exportName(destination)}`);
+			return publishResult(EXIT_OK, 'published', {
+				...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, UNOBSERVED, checks),
+				tip,
+				...shapes,
+				inputs,
+				export: exported
+			});
+		}
 		const refreshed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
 		options.checkpoint?.('remote-refreshed');
 
@@ -222,9 +269,7 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			options.checkpoint?.('branch-pushed');
 		}
 		const status = pushedBranch || pushedTag ? 'published' : 'up-to-date';
-		const inputs = releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []);
-		for (const input of inputs)
-			options.out.info(`input ${input.name}: ${input.commit.slice(0, 12)} -> ${input.to}: ${input.files} file(s)`);
+		const inputs = reportInputs(options.out, releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []));
 		options.out.info(`${status}: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}`);
 		return publishResult(EXIT_OK, status, {
 			...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
@@ -240,13 +285,36 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 	}
 }
 
+/** The two gates of the release bot; an export keeps both, and their words name it (##PUBLISH-EXPORT). */
 function assertPublishGate(options: PublishOptions): void {
+	const exporting = (options.export ?? null) !== null;
 	if (options.ci) {
-		throw ckError('NET-FORBIDDEN', 'publish cannot run with global --ci: publish is an explicit network operation');
+		throw ckError(
+			'NET-FORBIDDEN',
+			exporting
+				? 'publish cannot run with global --ci: publish is an explicit operation of the release bot, an export into a local repository included'
+				: 'publish cannot run with global --ci: publish is an explicit network operation'
+		);
 	}
 	if (!options.confirmed) {
-		throw ckError('CONFIG', 'publish requires --yes-i-am-publish-bot', 'only the release bot may run this network mutation');
+		throw ckError(
+			'CONFIG',
+			'publish requires --yes-i-am-publish-bot',
+			exporting
+				? 'only the release bot may publish a release, into a remote or into a new local repository'
+				: 'only the release bot may run this network mutation'
+		);
 	}
+}
+
+/** One line per input of the published commit, with its commit and the files the published tree carries. */
+function reportInputs(out: Output, inputs: readonly ReleasedInput[]): readonly ReleasedInput[] {
+	for (const input of inputs) out.info(`input ${input.name}: ${input.commit.slice(0, 12)} -> ${input.to}: ${input.files} file(s)`);
+	return inputs;
+}
+
+function exportName(request: ExportRequest): string {
+	return `the new ${request.kind === 'bare' ? 'bare repository' : 'repository'} ${request.path}`;
 }
 
 function requiredRemote(config: CodkitConfig): string {
@@ -434,7 +502,8 @@ function baseResult(
 		squash: null,
 		scrub: null,
 		lfs: null,
-		inputs: []
+		inputs: [],
+		export: null
 	};
 }
 

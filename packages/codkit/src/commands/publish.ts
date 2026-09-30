@@ -1,5 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
-// codkit publish - guarded network publication of one immutable patchset commit.
+// codkit publish - guarded publication of one immutable patchset commit, over
+// the network into its remote or into a new local repository.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import { commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.ts';
@@ -11,6 +12,8 @@ import { ckError } from '../lib/messages.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { runPublish } from '../lib/publish.ts';
 import type { PublishResult } from '../lib/publish.ts';
+import { exportFlagsRefusal, exportRequestOf } from '../lib/publishExport.ts';
+import type { ExportRequest } from '../lib/publishExport.ts';
 import { parseAuthor, readMessageFile } from '../lib/publishRelease.ts';
 import type { SquashRequest } from '../lib/publishRelease.ts';
 import { orphanRefusal } from '../lib/publishTip.ts';
@@ -24,6 +27,8 @@ const AUTHOR = '--author';
 const MESSAGE_FILE = '--message-file';
 const SCRUB = '--scrub';
 const NO_LFS = '--no-lfs';
+const EXPORT_BARE = '--export-bare';
+const EXPORT_REPO = '--export-repo';
 const BOT_CONFIRMATION = '--yes-i-am-publish-bot';
 
 async function run(ctx: CommandContext): Promise<number> {
@@ -55,10 +60,20 @@ async function run(ctx: CommandContext): Promise<number> {
 		squash: squashRequest(ctx),
 		orphan: commandFlagGiven(ctx.commandFlags, ORPHAN),
 		scrub: commandFlagGiven(ctx.commandFlags, SCRUB),
-		noLfs: commandFlagGiven(ctx.commandFlags, NO_LFS)
+		noLfs: commandFlagGiven(ctx.commandFlags, NO_LFS),
+		export: exportRequest(ctx)
 	});
 	ctx.out.setData(dataOf(result));
 	return result.exitCode;
+}
+
+/** ##PUBLISH-EXPORT: `--export-bare <dir>` or `--export-repo <dir>`, never both, relative to the current directory. */
+function exportRequest(ctx: CommandContext): ExportRequest | null {
+	const bare = commandFlagValue(ctx.commandFlags, EXPORT_BARE);
+	const repository = commandFlagValue(ctx.commandFlags, EXPORT_REPO);
+	if (bare !== null && repository !== null) throw exportFlagsRefusal();
+	if (bare !== null) return exportRequestOf('bare', bare, process.cwd());
+	return repository === null ? null : exportRequestOf('repository', repository, process.cwd());
 }
 
 /**
@@ -124,15 +139,16 @@ function dataOf(result: PublishResult): JsonValue {
 						vocabulary: { ...result.scrub.vocabulary }
 					},
 		lfs: result.lfs === null ? null : { dropped: [...result.lfs.dropped], attributes: [...result.lfs.attributes] },
+		export: result.export === null ? null : { ...result.export },
 		inputs: result.inputs.map((input) => ({ ...input }))
 	};
 }
 
 export const publishCommand: CommandDefinition = {
 	name: 'publish',
-	summary: 'publish one checked immutable patchset commit through a leased release ref',
+	summary: 'publish one checked immutable patchset commit through a leased release ref, or into a new local repository',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, ORPHAN, AUTHOR, MESSAGE_FILE, SCRUB, NO_LFS, BOT_CONFIRMATION],
+	commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, ORPHAN, AUTHOR, MESSAGE_FILE, SCRUB, NO_LFS, EXPORT_BARE, EXPORT_REPO, BOT_CONFIRMATION],
 	run
 };
