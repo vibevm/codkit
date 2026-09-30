@@ -90,6 +90,7 @@ export async function runPublish(options) {
             squashDate,
             orphan: options.orphan === true,
             scrub,
+            noLfs: options.noLfs === true,
             publishConfig,
             exclude,
             out: options.out
@@ -98,11 +99,12 @@ export async function runPublish(options) {
             return publishResult(EXIT_CHECK_FAILED, shaped.status, {
                 ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks),
                 tip: null,
-                scrub: shaped.scrub
+                scrub: shaped.scrub,
+                lfs: shaped.lfs
             });
         }
         const tip = shaped.tip;
-        const shapes = { squash: shaped.squash, scrub: shaped.scrub };
+        const shapes = { squash: shaped.squash, scrub: shaped.scrub, lfs: shaped.lfs };
         options.checkpoint?.('checks-passed');
         const refreshed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
         options.checkpoint?.('remote-refreshed');
@@ -399,6 +401,7 @@ function baseResult(patchSetSha, pinTag, branch, tag, observed, checks) {
         checks,
         squash: null,
         scrub: null,
+        lfs: null,
         inputs: []
     };
 }

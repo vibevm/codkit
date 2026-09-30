@@ -3,28 +3,31 @@
 // ##PUBLISH-FORMS: the checked history as it is, one squashed commit on the pin
 // (##PUBLISH-SQUASH), or one squashed commit without a parent
 // (##PUBLISH-ORPHAN) - the squashed tree scrubbed under --scrub
-// (##PUBLISH-SCRUB). Every object is written into the disposable fork; nothing
+// (##PUBLISH-SCRUB), and every form without its git-lfs content under --no-lfs
+// (##PUBLISH-NO-LFS). Every object is written into the disposable fork; nothing
 // here pushes.
 import { join } from 'node:path';
 import { loadConventions } from './conventionsFile.js';
 import { ckError } from './messages.js';
+import { dropLfsContent, lfsCommit } from './publishLfs.js';
 import { reportScrub, scrubReleaseTree, squashCommit, treeOf } from './publishRelease.js';
 import { scrubSettingsOf, vocabularySources } from './publishVocabulary.js';
+import { pinCommitDate } from './syncEngine.js';
 /** ##PUBLISH-ORPHAN: `--orphan` is a modifier of `--squash`; alone it is refused before any gate. */
 export function orphanRefusal() {
     return ckError('CONFIG', '--orphan needs --squash', '--orphan writes the squashed commit without a parent; add --squash with --author and --message-file');
 }
 /**
  * The published tip in the form the flags ask for. Without `--squash` it is the
- * checked tip itself; with it, one commit over the tree the checked history ends
- * at - scrubbed under `--scrub` - on the pin, or without a parent under
- * `--orphan`. A scrub that leaves anything behind is reported and nothing is
- * committed.
+ * checked tip - followed by one generated commit that leaves out the git-lfs
+ * content under `--no-lfs`; with it, one commit over the tree the checked
+ * history ends at - scrubbed under `--scrub`, without git-lfs content under
+ * `--no-lfs` - on the pin, or without a parent under `--orphan`. A scrub or a
+ * rewrite that leaves anything behind is reported, and nothing is committed.
  */
 export function shapeTip(request) {
-    if (request.squash === null || request.squashDate === null) {
-        return { ok: true, tip: request.checkedTip, squash: null, scrub: null };
-    }
+    if (request.squash === null || request.squashDate === null)
+        return generatedTip(request);
     const scratchDir = join(request.workspaceRoot, 'release');
     let tree = treeOf(request.treeDir, request.checkedTip);
     let scrubReport = null;
@@ -32,15 +35,70 @@ export function shapeTip(request) {
         const scrubbed = scrubbedTree(request, scratchDir);
         scrubReport = scrubbed.report;
         if (scrubbed.report.leftovers.length > 0)
-            return { ok: false, status: 'scrub-failed', scrub: scrubbed.report };
+            return { ok: false, status: 'scrub-failed', scrub: scrubbed.report, lfs: null };
         tree = scrubbed.tree;
+    }
+    let lfsReport = null;
+    if (request.noLfs) {
+        const outcome = withoutLfs(request, tree);
+        lfsReport = outcome.report;
+        if (outcome.leftovers.length > 0)
+            return { ok: false, status: 'lfs-failed', scrub: scrubReport, lfs: outcome.report };
+        tree = outcome.tree;
     }
     const parent = request.orphan ? null : request.config.pin.sha;
     const tip = squashCommit({ treeDir: request.treeDir, scratchDir, tree, parent, request: request.squash, date: request.squashDate });
     const author = `${request.squash.author.name} <${request.squash.author.email}>`;
     const base = parent === null ? 'without a parent' : `on ${parent.slice(0, 12)}`;
     request.out.info(`squash: ${request.checkedTip.slice(0, 12)} -> ${tip.slice(0, 12)} ${base} (tree ${tree.slice(0, 12)})`);
-    return { ok: true, tip, squash: { parent, tree, unsquashedTip: request.checkedTip, author }, scrub: scrubReport };
+    return { ok: true, tip, squash: { parent, tree, unsquashedTip: request.checkedTip, author }, scrub: scrubReport, lfs: lfsReport };
+}
+/** The third form: the checked history, and under `--no-lfs` one more generated commit when the tree changes. */
+function generatedTip(request) {
+    if (!request.noLfs)
+        return { ok: true, tip: request.checkedTip, squash: null, scrub: null, lfs: null };
+    const tree = treeOf(request.treeDir, request.checkedTip);
+    const outcome = withoutLfs(request, tree);
+    if (outcome.leftovers.length > 0)
+        return { ok: false, status: 'lfs-failed', scrub: null, lfs: outcome.report };
+    if (outcome.tree === tree)
+        return { ok: true, tip: request.checkedTip, squash: null, scrub: null, lfs: outcome.report };
+    const tip = lfsCommit({
+        treeDir: request.treeDir,
+        parent: request.checkedTip,
+        tree: outcome.tree,
+        patchSetCommit: request.patchSetSha,
+        pinTag: request.config.pin.tag,
+        pinSha: request.config.pin.sha,
+        date: pinCommitDate(request.treeDir, request.config.pin.sha)
+    });
+    request.out.info(`no-lfs: ${request.checkedTip.slice(0, 12)} -> ${tip.slice(0, 12)} (tree ${outcome.tree.slice(0, 12)})`);
+    return { ok: true, tip, squash: null, scrub: null, lfs: outcome.report };
+}
+/** ##PUBLISH-NO-LFS over one tree, reported line by line; every leftover of the check is an error. */
+function withoutLfs(request, tree) {
+    const outcome = dropLfsContent({ treeDir: request.treeDir, scratchDir: join(request.workspaceRoot, 'lfs'), tree });
+    for (const leftover of outcome.leftovers) {
+        const rules = leftover.rules.map((rule) => `${rule.file}:${rule.line} (${rule.text})`).join(', ');
+        request.out.addError({
+            code: 'CONFIG',
+            message: leftover.path === null
+                ? `--no-lfs left a rule that names filter=lfs: ${rules}`
+                : `--no-lfs left ${leftover.path} to git-lfs: its filter still resolves to lfs; the rule comes from ${rules === '' ? 'an attribute file above it that names no filter=lfs in a line of its own' : rules}`,
+            hint: 'the rewrite removes a rule that names a pattern and filter=lfs, not a macro or another form: change the attributes through the patch set, or publish without --no-lfs; nothing was pushed or exported'
+        });
+    }
+    if (outcome.leftovers.length > 0)
+        return outcome;
+    if (outcome.tree === tree) {
+        request.out.info('no-lfs: the tree carries no git-lfs content and no git-lfs rule; nothing was left out');
+        return outcome;
+    }
+    for (const rewrite of outcome.rewrites) {
+        request.out.info(`no-lfs: ${rewrite.path}: ${rewrite.rules} rule(s) removed${rewrite.removed ? '; nothing is left, the file is left out' : ''}`);
+    }
+    request.out.info(`no-lfs: ${outcome.report.dropped.length} git-lfs path(s) left out, ${outcome.report.attributes.length} attribute file(s) changed`);
+    return outcome;
 }
 /** ##PUBLISH-SCRUB: the scrubbed release tree, every leftover reported as an error. */
 function scrubbedTree(request, scratchDir) {

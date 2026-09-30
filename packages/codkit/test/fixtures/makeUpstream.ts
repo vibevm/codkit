@@ -22,6 +22,8 @@ import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { gitOk } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
+import { lfsFilesAtAnchor, lfsFilesAtPin, lfsObjectsOf } from './lfsUpstream.ts';
+import type { LfsKind, LfsObject } from './lfsUpstream.ts';
 
 export type UpstreamRef = {
 	readonly tag: string;
@@ -37,6 +39,14 @@ export type UpstreamFixture = {
 	readonly anchorSha: string;
 	readonly t1: UpstreamRef;
 	readonly t2: UpstreamRef;
+	/** The git-lfs objects the history names; none unless the fixture asked for git-lfs content. */
+	readonly lfsObjects?: readonly LfsObject[];
+};
+
+/** What a fixture may add to the history below; nothing by default. */
+export type UpstreamOptions = {
+	/** git-lfs content under the anchor and the pin (fixtures/lfsUpstream.ts). */
+	readonly lfs?: LfsKind;
 };
 
 /** Target of the sample patch and of the sample rewrite rule. */
@@ -63,17 +73,19 @@ const FIRST_COMMIT_ISO = '2026-01-01T00:00:00Z';
  * Generate the fixture into `dir` (created if absent, expected to be empty).
  * Returns the anchor and both pins.
  */
-export function makeUpstream(dir: string): UpstreamFixture {
+export function makeUpstream(dir: string, options: UpstreamOptions = {}): UpstreamFixture {
 	mkdirSync(dir, { recursive: true });
 	fixtureGit(dir, ['init', '--quiet', '--initial-branch=main', '.']);
 
 	let clock = 0;
 
 	writeAll(dir, rootCommitFiles());
+	if (options.lfs !== undefined) writeAll(dir, lfsFilesAtAnchor(options.lfs));
 	const anchorSha = fixtureCommit(dir, 'fixture: initial upstream tree', commitDate(clock));
 	clock += 1;
 
 	writeAll(dir, secondCommitFiles());
+	if (options.lfs !== undefined) writeAll(dir, lfsFilesAtPin(options.lfs));
 	const t1Date = commitDate(clock);
 	const t1Sha = fixtureCommit(dir, 'fixture: titlebar part and example service', t1Date);
 	fixtureGit(dir, ['tag', 't1']);
@@ -106,7 +118,8 @@ export function makeUpstream(dir: string): UpstreamFixture {
 		dir,
 		anchorSha,
 		t1: { tag: 't1', sha: t1Sha, dateIso: t1Date },
-		t2: { tag: 't2', sha: t2Sha, dateIso: t2Date }
+		t2: { tag: 't2', sha: t2Sha, dateIso: t2Date },
+		...(options.lfs === undefined ? {} : { lfsObjects: lfsObjectsOf(options.lfs) })
 	};
 }
 

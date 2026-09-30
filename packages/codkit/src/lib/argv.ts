@@ -117,6 +117,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--author', 'value'],
 	['--message-file', 'value'],
 	['--scrub', 'boolean'],
+	['--no-lfs', 'boolean'],
 	['--yes-i-am-publish-bot', 'boolean'],
 	// imageset (PROP-007 sec. 21); --dry-run above is shared with load, sync
 	// and gc. --help is imageset's own for now: it is the one command whose

@@ -238,6 +238,47 @@ export function treeFiles(repository: string, treeish: string): readonly string[
 		.filter((path) => path !== '');
 }
 
+/**
+ * What makes a commit need git-lfs, read from its own tree the way the owner's
+ * release was accepted: the paths its attributes give to lfs, the blobs that
+ * are pointers, and the attribute files that name filter=lfs at all.
+ */
+export function lfsNeeds(
+	repository: string,
+	commit: string
+): { readonly filtered: readonly string[]; readonly pointers: readonly string[]; readonly rules: readonly string[] } {
+	const entries = gitOut(repository, ['ls-tree', '-r', '-l', '-z', commit])
+		.split('\0')
+		.filter((record) => record !== '')
+		.map((record) => {
+			const [meta = '', path = ''] = record.split('\t');
+			const [, type = '', blob = '', size = ''] = meta.split(/ +/);
+			return { type, blob, size: Number(size), path };
+		})
+		.filter((entry) => entry.type === 'blob');
+	const attr = runGit({
+		args: ['-c', 'core.attributesFile=/dev/null', 'check-attr', `--source=${commit}`, '-z', '--stdin', 'filter'],
+		cwd: repository,
+		env: { GIT_ATTR_NOSYSTEM: '1' },
+		input: entries.map((entry) => `${entry.path}\0`).join('')
+	});
+	expect(attr.status, attr.stderr).toBe(0);
+	const fields = attr.stdout.split('\0');
+	const filtered: string[] = [];
+	for (let index = 0; index + 2 < fields.length; index += 3) if (fields[index + 2] === 'lfs') filtered.push(fields[index] ?? '');
+	const header = 'version https://git-lfs.github.com/spec/v1\n';
+	const pointers = entries
+		.filter((entry) => entry.size <= 1024 && gitOut(repository, ['cat-file', 'blob', entry.blob]).startsWith(header))
+		.map((entry) => entry.path);
+	const rules = entries
+		.filter(
+			(entry) =>
+				entry.path.endsWith('.gitattributes') && /(^|\s)filter=lfs(\s|$)/m.test(gitOut(repository, ['cat-file', 'blob', entry.blob]))
+		)
+		.map((entry) => entry.path);
+	return { filtered, pointers, rules };
+}
+
 export function objectData(envelope: Envelope): { [key: string]: unknown } {
 	return envelope.data !== null && typeof envelope.data === 'object' && !Array.isArray(envelope.data)
 		? (envelope.data as { [key: string]: unknown })

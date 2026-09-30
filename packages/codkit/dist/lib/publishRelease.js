@@ -256,8 +256,8 @@ function stageScrubbed(treeDir, env, staged) {
     const entries = staged.map((file, index) => `${file.mode} ${stored[index] ?? ''}\t${file.path}\0`).join('');
     gitOk({ args: ['update-index', '-z', '--index-info'], cwd: treeDir, env, input: entries }, { code: 'CONFIG', message: 'cannot stage the scrubbed files of the release' });
 }
-/** The delivered blobs, read through `cat-file --batch`, a few hundred per git process. */
-function readBlobs(treeDir, shas) {
+/** Blobs of the object database, read through `cat-file --batch`, a few hundred per git process. */
+export function readBlobs(treeDir, shas) {
     const unique = [...new Set(shas)];
     const blobs = new Map();
     for (let index = 0; index < unique.length; index += BLOBS_PER_CALL) {

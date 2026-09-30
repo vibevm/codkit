@@ -19,11 +19,13 @@ import type { Output } from './jsonOut.ts';
 import { acquireLock } from './lock.ts';
 import { ckError } from './messages.ts';
 import type { ForkDirResolution } from './paths.ts';
+import type { LfsReport } from './publishLfs.ts';
 import type { ScrubReport, SquashRequest } from './publishRelease.ts';
 import { orphanRefusal, shapeTip } from './publishTip.ts';
 import type { PublishSquash } from './publishTip.ts';
 import type { ProjectType } from '@codkit/type-api';
 
+export type { LfsReport } from './publishLfs.ts';
 export type { PublishSquash } from './publishTip.ts';
 
 const ZERO_SHA = '0'.repeat(40);
@@ -55,10 +57,13 @@ export type PublishOptions = {
 	readonly orphan?: boolean;
 	/** `--scrub`: the release tree without the tooling (##PUBLISH-SCRUB). */
 	readonly scrub?: boolean;
+	/** `--no-lfs`: a tip that needs no git-lfs (##PUBLISH-NO-LFS). */
+	readonly noLfs?: boolean;
 	readonly checkpoint?: (checkpoint: PublishCheckpoint) => void;
 };
 
-export type PublishStatus = 'published' | 'up-to-date' | 'tag-collision' | 'check-failed' | 'scrub-failed' | 'environment-failed';
+export type PublishStatus =
+	'published' | 'up-to-date' | 'tag-collision' | 'check-failed' | 'scrub-failed' | 'lfs-failed' | 'environment-failed';
 
 export type PublishResult = {
 	readonly exitCode: number;
@@ -75,6 +80,8 @@ export type PublishResult = {
 	readonly checks: CiResult | null;
 	readonly squash: PublishSquash | null;
 	readonly scrub: ScrubReport | null;
+	/** What `--no-lfs` left out; null without the flag (##PUBLISH-NO-LFS). */
+	readonly lfs: LfsReport | null;
 	/** The inputs of the published commit as the pushed tree carries them (##INPUTS-GENERATED). */
 	readonly inputs: readonly ReleasedInput[];
 };
@@ -166,6 +173,7 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			squashDate,
 			orphan: options.orphan === true,
 			scrub,
+			noLfs: options.noLfs === true,
 			publishConfig,
 			exclude,
 			out: options.out
@@ -174,11 +182,12 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			return publishResult(EXIT_CHECK_FAILED, shaped.status, {
 				...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks),
 				tip: null,
-				scrub: shaped.scrub
+				scrub: shaped.scrub,
+				lfs: shaped.lfs
 			});
 		}
 		const tip = shaped.tip;
-		const shapes: Pick<PublishResult, 'squash' | 'scrub'> = { squash: shaped.squash, scrub: shaped.scrub };
+		const shapes: Pick<PublishResult, 'squash' | 'scrub' | 'lfs'> = { squash: shaped.squash, scrub: shaped.scrub, lfs: shaped.lfs };
 		options.checkpoint?.('checks-passed');
 		const refreshed = observeRemote(options.patchesDir, remote, branchRef, tagRef);
 		options.checkpoint?.('remote-refreshed');
@@ -531,6 +540,7 @@ function baseResult(
 		checks,
 		squash: null,
 		scrub: null,
+		lfs: null,
 		inputs: []
 	};
 }

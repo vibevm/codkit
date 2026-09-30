@@ -15,6 +15,7 @@ const ORPHAN = '--orphan';
 const AUTHOR = '--author';
 const MESSAGE_FILE = '--message-file';
 const SCRUB = '--scrub';
+const NO_LFS = '--no-lfs';
 const BOT_CONFIRMATION = '--yes-i-am-publish-bot';
 async function run(ctx) {
     if (ctx.args.length !== 1 || ctx.args[0] === undefined) {
@@ -41,7 +42,8 @@ async function run(ctx) {
         branch: commandFlagValue(ctx.commandFlags, BRANCH),
         squash: squashRequest(ctx),
         orphan: commandFlagGiven(ctx.commandFlags, ORPHAN),
-        scrub: commandFlagGiven(ctx.commandFlags, SCRUB)
+        scrub: commandFlagGiven(ctx.commandFlags, SCRUB),
+        noLfs: commandFlagGiven(ctx.commandFlags, NO_LFS)
     });
     ctx.out.setData(dataOf(result));
     return result.exitCode;
@@ -103,6 +105,7 @@ function dataOf(result) {
                 leftovers: result.scrub.leftovers.map((leftover) => ({ ...leftover, tokens: [...leftover.tokens] })),
                 vocabulary: { ...result.scrub.vocabulary }
             },
+        lfs: result.lfs === null ? null : { dropped: [...result.lfs.dropped], attributes: [...result.lfs.attributes] },
         inputs: result.inputs.map((input) => ({ ...input }))
     };
 }
@@ -111,6 +114,6 @@ export const publishCommand = {
     summary: 'publish one checked immutable patchset commit through a leased release ref',
     configMode: 'load',
     maxArgs: 1,
-    commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, ORPHAN, AUTHOR, MESSAGE_FILE, SCRUB, BOT_CONFIRMATION],
+    commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, ORPHAN, AUTHOR, MESSAGE_FILE, SCRUB, NO_LFS, BOT_CONFIRMATION],
     run
 };

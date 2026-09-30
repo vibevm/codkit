@@ -16,8 +16,9 @@ import { runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
 import type { PublicErrorPayload } from '../../src/lib/messages.ts';
 import { DEPENDENCY_ROOTS, STUB_TYPE_ID, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
+import { provideLfsContent } from '../fixtures/lfsUpstream.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
-import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
+import type { UpstreamFixture, UpstreamOptions } from '../fixtures/makeUpstream.ts';
 import { makePatchSet } from '../fixtures/makePatchSet.ts';
 import { makeTempRoot } from './tmp.ts';
 
@@ -100,15 +101,26 @@ export type CliFixture = {
 	readonly patchesPath: (relative: string) => string;
 };
 
-export function makeCliFixture(label: string): CliFixture {
-	const upstream = makeUpstream(makeTempRoot(`${label}-upstream`));
+/**
+ * The fixture triple. With `upstream.lfs` the history carries git-lfs content,
+ * and the fork tree has its objects in its lfs storage before the checkout of
+ * the pin, the way a clone made with git-lfs has them.
+ */
+export function makeCliFixture(label: string, options: { readonly upstream?: UpstreamOptions } = {}): CliFixture {
+	const upstream = makeUpstream(makeTempRoot(`${label}-upstream`), options.upstream ?? {});
 	const patchesDir = makeTempRoot(`${label}-patchset`);
 	makePatchSet(patchesDir, upstream);
 
 	const treeDir = join(makeTempRoot(`${label}-tree`), 'fork-tree');
 	mkdirSync(dirname(treeDir), { recursive: true });
 	runGit({ args: ['clone', '--quiet', '--no-checkout', upstream.dir, treeDir], cwd: dirname(treeDir), netAllowed: true });
-	runGit({ args: ['checkout', '--quiet', '--detach', upstream.t1.sha], cwd: treeDir });
+	// git-lfs, which the checkout of git-lfs content starts, installs its hooks
+	// where core.hooksPath points, and reads the /dev/null of codkit's isolated
+	// git as a directory of the working tree on Windows: the tree's own hooks
+	// directory is named instead.
+	const hooks = upstream.lfsObjects === undefined ? [] : ['-c', `core.hooksPath=${join(treeDir, '.git', 'hooks')}`];
+	if (upstream.lfsObjects !== undefined) provideLfsContent(treeDir, upstream.lfsObjects);
+	runGit({ args: [...hooks, 'checkout', '--quiet', '--detach', upstream.t1.sha], cwd: treeDir });
 
 	const run = (args: readonly string[], env?: Readonly<Record<string, string>>): Run =>
 		runCli(patchesDir, ['--patches-dir', patchesDir, '--fork-dir', treeDir, ...args], withStubType(env));
