@@ -49,7 +49,7 @@ export function materializeWorkspace(patchesDir, sha, source, config, dependency
     };
 }
 /** What `git lfs install --local --skip-repo` writes: the filters, and no hooks. */
-const LFS_FILTER_CONFIG = [
+export const LFS_FILTER_CONFIG = [
     ['filter.lfs.clean', 'git-lfs clean -- %f'],
     ['filter.lfs.smudge', 'git-lfs smudge -- %f'],
     ['filter.lfs.process', 'git-lfs filter-process'],

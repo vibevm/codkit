@@ -71,7 +71,7 @@ export function materializeWorkspace(
 }
 
 /** What `git lfs install --local --skip-repo` writes: the filters, and no hooks. */
-const LFS_FILTER_CONFIG: readonly (readonly [string, string])[] = [
+export const LFS_FILTER_CONFIG: readonly (readonly [string, string])[] = [
 	['filter.lfs.clean', 'git-lfs clean -- %f'],
 	['filter.lfs.smudge', 'git-lfs smudge -- %f'],
 	['filter.lfs.process', 'git-lfs filter-process'],

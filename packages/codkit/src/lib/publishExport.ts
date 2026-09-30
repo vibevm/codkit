@@ -8,8 +8,9 @@
 // `pack-objects --revs` writes from the disposable fork straight into its
 // object directory - exactly what the tip reaches, with no alternates and no
 // remote; its refs are written without a reflog, so no identity of the machine
-// goes in either. Nothing here reaches the network: no git call below is one
-// `gitx` counts as a network call.
+// goes in either. The git-lfs objects of the tip come along unless --no-lfs
+// left them out (##PUBLISH-EXPORT-LFS). Nothing here reaches the network: no
+// git call below is one `gitx` counts as a network call.
 
 import { existsSync, mkdirSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';
@@ -19,6 +20,7 @@ import type { GitEnv } from './gitx.ts';
 import type { Output } from './jsonOut.ts';
 import { ckError } from './messages.ts';
 import type { CkError } from './messages.ts';
+import { configureLfsFilters, copyLfsObjects, tipLfsObjects } from './publishExportLfs.ts';
 
 export type ExportKind = 'bare' | 'repository';
 
@@ -37,6 +39,11 @@ export type ExportOptions = {
 	readonly branchRef: string;
 	readonly tagRef: string | null;
 	readonly tip: string;
+	/** Without `--no-lfs`: carry the git-lfs objects of the tip (##PUBLISH-EXPORT-LFS). */
+	readonly keepLfs: boolean;
+	/** The fork tree whose git-lfs storage holds those objects. */
+	readonly forkTree: string;
+	readonly pinSha: string;
 	readonly out: Output;
 	/** Called once the repository exists and before anything goes into it. */
 	readonly created?: () => void;
@@ -121,6 +128,16 @@ export function writeExport(options: ExportOptions): PublishExport {
 			'name a new or an empty directory and run again'
 		);
 	}
+	// Every git-lfs object is found and checked before the repository exists.
+	const lfs = options.keepLfs
+		? tipLfsObjects({
+				forkDir: options.forkDir,
+				scratchDir: join(options.scratchDir, 'lfs'),
+				tip: options.tip,
+				forkTree: options.forkTree,
+				pinSha: options.pinSha
+			})
+		: [];
 	const existed = existsSync(request.path);
 	try {
 		const gitDir = createRepository(options);
@@ -138,13 +155,29 @@ export function writeExport(options: ExportOptions): PublishExport {
 			'cannot write the refs of the export',
 			refs.map((ref) => `create ${ref} ${options.tip}\n`).join('')
 		);
+		if (lfs.length > 0) {
+			const storage = copyLfsObjects(lfs, gitDir);
+			options.out.info(`export: ${lfs.length} git-lfs object(s) of the tip copied into ${storage} and checked`);
+		}
 		if (request.kind === 'repository') {
+			const smudged = lfs.length > 0 && configureLfsFilters(request.path);
+			// The checkout runs no hook. git-lfs, which its smudge starts, installs
+			// its hooks into core.hooksPath, and it reads the /dev/null of codkit's
+			// isolated git as a directory of the working tree on Windows: the
+			// repository's own hooks directory is named instead.
+			const hooks = ['-c', `core.hooksPath=${join(gitDir, 'hooks')}`];
 			gitOk(
-				{ args: [...CHECKOUT_CONFIG, 'read-tree', '-m', '-u', 'HEAD'], cwd: request.path, env: CHECKOUT_ENV },
+				{ args: [...CHECKOUT_CONFIG, ...hooks, 'read-tree', '-m', '-u', 'HEAD'], cwd: request.path, env: CHECKOUT_ENV },
 				{ code: 'CONFIG', message: `cannot check out the release in ${request.path}` }
 			);
+			if (lfs.length > 0 && !smudged) {
+				const paths = lfs.reduce((count, object) => count + object.paths.length, 0);
+				options.out.warn(
+					`git-lfs is not installed: the working tree of ${request.path} holds the git-lfs pointers of ${paths} path(s); their objects are in its lfs storage`
+				);
+			}
 		}
-		return { kind: request.kind, path: request.path, lfsObjects: 0 };
+		return { kind: request.kind, path: request.path, lfsObjects: lfs.length };
 	} catch (error) {
 		removeCreated(request.path, existed, options.out);
 		throw error;

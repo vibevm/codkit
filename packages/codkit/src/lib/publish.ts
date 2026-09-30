@@ -222,6 +222,9 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 				branchRef,
 				tagRef,
 				tip,
+				keepLfs: options.noLfs !== true,
+				forkTree: options.resolution.path,
+				pinSha: snapshotConfig.pin.sha,
 				out: options.out,
 				created: () => options.checkpoint?.('export-created')
 			});
