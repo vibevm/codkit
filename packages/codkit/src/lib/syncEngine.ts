@@ -27,7 +27,7 @@ import { ensureAdminDirectory, sameEffectivePath } from './containedPath.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
-import { driftDirty, porcelainPaths } from './driftGuard.ts';
+import { driftDirty, porcelainPaths, porcelainZEntries } from './driftGuard.ts';
 import type { DriftResult, PorcelainEntry } from './driftGuard.ts';
 import {
 	MARKER_BLOCK_DISCARD_HINT,
@@ -37,7 +37,14 @@ import {
 } from './discardWorktree.ts';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.ts';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.ts';
-import { NO_OWN_EXTENSIONS, materializerOf, strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.ts';
+import {
+	NO_OWN_EXTENSIONS,
+	classifyOwnExtensions,
+	materializerOf,
+	ownExtensionTreePrefixes,
+	strandedExtensionClassifier,
+	syncOwnExtensions
+} from './layers/ownExtensions.ts';
 import type { Materializer } from './layers/ownExtensions.ts';
 import type { OwnExtensionDivergence, OwnExtensionSyncReport } from './layers/ownExtensions.ts';
 import { loadOwnManifest } from './layers/ownManifest.ts';
@@ -628,7 +635,9 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			return refuseDrift(`${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`);
 		}
 		if (drift.dirty) {
-			const verdict = judgeOwnSides(drift, patchesDir, tree, roots, mark, fingerprint);
+			const artifacts =
+				mark !== null && mark.pinSha === config.pin.sha && mark.branchTip === drift.treeCommits.head ? (mark.artifacts ?? null) : null;
+			const verdict = judgeOwnSides(drift, patchesDir, tree, roots, mark, fingerprint, driftMaterializer, artifacts);
 			if (verdict.kind === 'both-sides') {
 				out.addError(verdict.error.toPayload());
 				return result('dirty', 1, { branch, dirtyFiles: drift.files });
@@ -2419,20 +2428,27 @@ function judgeOwnSides(
 	treeDir: string,
 	roots: readonly OwnedRoot[],
 	mark: TreeMark | null,
-	fingerprint: string
+	fingerprint: string,
+	materializer: Materializer | null,
+	artifacts: Readonly<Record<string, string>> | null
 ): OwnSideVerdict {
 	if (drift.upstream.length > 0) {
 		return { kind: 'unextracted' };
 	}
-	// ##OWN-EXTENSION-UNIT: an extension file the tree carries and the delta does
-	// not, or one whose bytes moved apart, is unextracted work exactly like own
-	// code. There is no per-file map for it in the mark, so the two sides cannot
-	// be told apart and the conservative verdict is the only honest one: `save`
-	// mirrors the tree back, and this run does not overwrite it.
-	if (drift.extensions.some((divergence) => divergence.kind !== 'patchset-only')) {
+	const extensions = loadOwnManifest(patchesDir).extensions;
+	const prefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, extensions);
+	const status = runGit({ cwd: treeDir, args: ['status', '--porcelain=v1', '-z', '--untracked-files=no'] });
+	if (
+		status.status !== 0 ||
+		porcelainZEntries(status.stdout).some((entry) => entry.status[0] !== ' ' && prefixes.some((prefix) => entry.path.startsWith(prefix)))
+	) {
 		return { kind: 'unextracted' };
 	}
-	const classes = classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)).filter(
+	const extensionClasses = materializer === null ? [] : classifyOwnExtensions(materializer, patchesDir, treeDir, extensions, artifacts);
+	if (extensionClasses.some((entry) => entry.kind === 'unknown' && entry.tree !== null)) {
+		return { kind: 'unextracted' };
+	}
+	const classes = [...classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)), ...extensionClasses].filter(
 		(entry) => entry.kind !== 'same'
 	);
 	const bothSides = classes.find((entry) => entry.kind === 'both-edited');

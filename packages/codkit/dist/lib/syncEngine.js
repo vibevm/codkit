@@ -23,11 +23,11 @@ import { encodeUtf8 } from './bytes.js';
 import { readContainedFile, removeContainedFile, writeContainedFileAtomic } from './containedFile.js';
 import { ensureAdminDirectory, sameEffectivePath } from './containedPath.js';
 import { loadConventions, matchesPatternList } from './conventionsFile.js';
-import { driftDirty, porcelainPaths } from './driftGuard.js';
+import { driftDirty, porcelainPaths, porcelainZEntries } from './driftGuard.js';
 import { MARKER_BLOCK_DISCARD_HINT, emptyWorktreeDiscardPlan, markerBlockDirtMessage, worktreeDiscardClassifier } from './discardWorktree.js';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.js';
 import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.js';
-import { NO_OWN_EXTENSIONS, materializerOf, strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.js';
+import { NO_OWN_EXTENSIONS, classifyOwnExtensions, materializerOf, ownExtensionTreePrefixes, strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
@@ -349,7 +349,8 @@ export function runSync(options) {
             return refuseDrift(`${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`);
         }
         if (drift.dirty) {
-            const verdict = judgeOwnSides(drift, patchesDir, tree, roots, mark, fingerprint);
+            const artifacts = mark !== null && mark.pinSha === config.pin.sha && mark.branchTip === drift.treeCommits.head ? (mark.artifacts ?? null) : null;
+            const verdict = judgeOwnSides(drift, patchesDir, tree, roots, mark, fingerprint, driftMaterializer, artifacts);
             if (verdict.kind === 'both-sides') {
                 out.addError(verdict.error.toPayload());
                 return result('dirty', 1, { branch, dirtyFiles: drift.files });
@@ -1808,19 +1809,22 @@ function reportBroken(out, error, branch) {
  * map: the fingerprint is then the only evidence that patchset is the side that
  * moved.
  */
-function judgeOwnSides(drift, patchesDir, treeDir, roots, mark, fingerprint) {
+function judgeOwnSides(drift, patchesDir, treeDir, roots, mark, fingerprint, materializer, artifacts) {
     if (drift.upstream.length > 0) {
         return { kind: 'unextracted' };
     }
-    // ##OWN-EXTENSION-UNIT: an extension file the tree carries and the delta does
-    // not, or one whose bytes moved apart, is unextracted work exactly like own
-    // code. There is no per-file map for it in the mark, so the two sides cannot
-    // be told apart and the conservative verdict is the only honest one: `save`
-    // mirrors the tree back, and this run does not overwrite it.
-    if (drift.extensions.some((divergence) => divergence.kind !== 'patchset-only')) {
+    const extensions = loadOwnManifest(patchesDir).extensions;
+    const prefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, extensions);
+    const status = runGit({ cwd: treeDir, args: ['status', '--porcelain=v1', '-z', '--untracked-files=no'] });
+    if (status.status !== 0 ||
+        porcelainZEntries(status.stdout).some((entry) => entry.status[0] !== ' ' && prefixes.some((prefix) => entry.path.startsWith(prefix)))) {
         return { kind: 'unextracted' };
     }
-    const classes = classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
+    const extensionClasses = materializer === null ? [] : classifyOwnExtensions(materializer, patchesDir, treeDir, extensions, artifacts);
+    if (extensionClasses.some((entry) => entry.kind === 'unknown' && entry.tree !== null)) {
+        return { kind: 'unextracted' };
+    }
+    const classes = [...classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)), ...extensionClasses].filter((entry) => entry.kind !== 'same');
     const bothSides = classes.find((entry) => entry.kind === 'both-edited');
     if (bothSides !== undefined) {
         return { kind: 'both-sides', error: bothSidesError(bothSides) };

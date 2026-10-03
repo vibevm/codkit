@@ -25,6 +25,8 @@ import { runGit } from '../gitx.ts';
 import { ckError } from '../messages.ts';
 import { fileContentEqual } from '../ownCopy.ts';
 import { resolveContainedPath } from '../pathSafety.ts';
+import { classifyOwn } from '../ownSides.ts';
+import type { OwnSideClass } from '../ownSides.ts';
 import type { ExtensionMaterializer, ProjectType } from '@codkit/type-api';
 import { OWN_MANIFEST_PATH } from './ownManifest.ts';
 import type { OwnExtension } from './ownManifest.ts';
@@ -476,6 +478,34 @@ export function compareOwnExtensions(
 	}
 	diverged.sort((left, right) => Buffer.from(left.relative, 'utf8').compare(Buffer.from(right.relative, 'utf8')));
 	return diverged;
+}
+
+/** The recorded artifact map supplies the same per-file direction evidence as ownFiles supplies for own code. */
+export function classifyOwnExtensions(
+	materializer: Materializer,
+	patchesDir: string,
+	treeDir: string,
+	extensions: readonly OwnExtension[],
+	artifacts: Readonly<Record<string, string>> | null
+): readonly OwnSideClass[] {
+	return extensions
+		.filter((extension) => isSafeExtensionName(materializer, extension.name))
+		.flatMap((extension) => {
+			const deltaDir = `${materializer.deltaRoot}/${extension.name}`;
+			const prefix = deltaDir + '/';
+			const entries = artifacts === null ? null : Object.entries(artifacts).filter(([path]) => path.startsWith(prefix));
+			const baseline =
+				entries !== null && entries.every(([, hash]) => /^[0-9a-f]{64}$/.test(hash))
+					? Object.fromEntries(entries.map(([path, hash]) => [path.slice(prefix.length), hash]))
+					: null;
+			return classifyOwn(
+				patchesDir,
+				treeDir,
+				{ role: 'own', path: materializer.materializedPath(extension.name), deltaDir, buildOutputs: [], upstreamPaths: new Set() },
+				baseline,
+				true
+			);
+		});
 }
 
 // ---------------------------------------------------------------------------
