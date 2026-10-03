@@ -114,6 +114,25 @@
       ]
     },
     {
+      "id": "consumer-license-check",
+      "field": "codkitConsumerLicenseCheck",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/consumerLicenseCheck.ts",
+      "owner": "Codkit consumer licensing capability",
+      "trustBoundary": "Contained consumer bytes are inspected against separately selected trusted organization policy; report data cannot authorize a policy.",
+      "compatibility": "Strict version 1 report binds policy, source and carrier hashes; incomplete evidence remains explicit.",
+      "migration": "Re-run source inspection for the selected policy; unsupported reports refuse.",
+      "fingerprint": "Source/carrier/policy digests identify inspected evidence; consumer delta/history fingerprints are unchanged.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#CONSUMER-LICENSE-CHECK",
+      "tests": [
+        "packages/codkit/test/unit/consumerLicenseCheck.test.ts",
+        "packages/codkit/test/unit/organizationPolicy.test.ts"
+      ]
+    },
+    {
       "id": "conventions",
       "field": "codkitConventions",
       "version": 1,

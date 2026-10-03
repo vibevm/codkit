@@ -52,14 +52,14 @@ export function readReuseRegistry(dir, present) {
  * remembering the registry it came from and the directory its paths are
  * relative to. `paths` are the POSIX-relative files of the tree.
  */
-export function readReuseRegistries(dir, paths) {
+export function readReuseRegistries(dir, paths, readText) {
     const annotations = [];
     const problems = [];
     for (const relative of paths) {
         const name = relative.slice(relative.lastIndexOf('/') + 1);
         if (name !== REUSE_REGISTRY_NAME)
             continue;
-        const registry = readOneRegistry(dir, relative);
+        const registry = readOneRegistry(dir, relative, readText);
         annotations.push(...registry.annotations);
         problems.push(...registry.problems);
     }
@@ -70,11 +70,11 @@ export function registryBase(registryPath) {
     const slash = registryPath.lastIndexOf('/');
     return slash === -1 ? '' : registryPath.slice(0, slash + 1);
 }
-function readOneRegistry(dir, registryPath) {
+function readOneRegistry(dir, registryPath, readText) {
     const fail = (message) => ({ code: 'LICENSE-PACKAGE', file: registryPath, message });
     let raw;
     try {
-        raw = parseToml(readFileSync(join(dir, ...registryPath.split('/')), 'utf8'));
+        raw = parseToml(readText === undefined ? readFileSync(join(dir, ...registryPath.split('/')), 'utf8') : readText(registryPath));
     }
     catch (error) {
         return { annotations: [], problems: [fail(`cannot parse: ${error instanceof Error ? error.message : String(error)}`)] };

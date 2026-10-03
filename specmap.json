@@ -11561,7 +11561,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:070be6f2b9188257d5cd7d3fb9d46ec6060b3d87fa94f59a70f8b88a2a2502dc",
+      "content_hash": "sha256:bd26149e78501e4913c03652f7696600a7edd4b87bf175b8f10313d6fa863165",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -11570,7 +11570,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:9f174a1b92771311f2e1f6ae67966f6a26ee19516bf26e4769f505247dd49c71",
+      "content_hash": "sha256:40a8f90f306c9d2245e6ab97f77a0ed63c4e002251ce33e197bd2590158419df",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -11605,12 +11605,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-SELECTION"
     },
     {
+      "anchor": "CONSUMER-LICENSE-CHECK",
+      "content_hash": "sha256:8e4b21ebb9082fd9470f82484c6014f0a801f4d9bc95460046193e1d8a9881e5",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "Consumer source scanning uses the same sidecar/override/header/annotation precedence and nested REUSE matching as supply scanning, but its readers prove contained regular-file paths and its permission verdicts come only from the selected organization policy. All stated copyright holders must be organization holders for own scope; mixed/foreign holders remain third-party, with provenance annotation required. Modifications copyright does not replace upstream ownership. Exactly one SPDX expression and own copyright year are required; orphan sidecars and source symlinks refuse. Carrier/annotation disagreement refuses. Own sidecars/override annotations cannot erase declared upstream ownership in the original header. Checked source bytes, exact carrier path/bytes and selected policy digest bind a deterministic codkitConsumerLicenseCheck:1 report. Existing Codkit supply rules and default carrier readers remain unchanged; consumer-specific permissions never alter the supply authority. @status:impl/done",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-019#CONSUMER-LICENSE-CHECK"
+    },
+    {
       "anchor": "ORGANIZATION-DISTRIBUTION-EVIDENCE",
       "content_hash": "sha256:b5f1919b6879a0ce58b3315d196067639d42a12208d14af0b31b2d7f861a6015",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Consumer source scanning, actual artifact NOTICE/carrier checks and selected SBOM export must bind the selected trusted policy before package/publish enforcement is accepted. A minified artifact without required attached notice is incomplete/red even when source headers were valid. Report evidence complete/incomplete, never a legal-compatibility ruling. Mechanism fixtures are labelled examples, not real commercial approvals or external partner evidence. @status:spec/done",
-      "line": 9,
+      "line": 10,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-DISTRIBUTION-EVIDENCE"
     },
     {
