@@ -467,7 +467,7 @@ describe('post-comparison barriers', () => {
 		let gone = false;
 		// A Windows process table: the recorded root answers until the teardown,
 		// and is absent afterwards.
-		const row = JSON.stringify({ pid: 4242, parentPid: 1, commandLine: `npm run ${CHANNEL.script}` });
+		const row = JSON.stringify({ pid: 4242, parentPid: 1, commandLineBase64: Buffer.from(`npm run ${CHANNEL.script}`).toString('base64') });
 		const run: ProcessRunner = () => ({ status: 0, stdout: gone ? '' : row, stderr: '' });
 
 		await expect(
