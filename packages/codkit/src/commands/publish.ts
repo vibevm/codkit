@@ -10,8 +10,8 @@ import type { CodkitConfig } from '../lib/configFile.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { ckError } from '../lib/messages.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
-import { runPublish } from '../lib/publish.ts';
-import type { PublishResult } from '../lib/publish.ts';
+import { runPublishReceipt } from '../lib/publishReceipt.ts';
+import type { PublishReceiptResult } from '../lib/publishReceipt.ts';
 import { exportFlagsRefusal, exportRequestOf } from '../lib/publishExport.ts';
 import type { ExportRequest } from '../lib/publishExport.ts';
 import { parseAuthor, readMessageFile } from '../lib/publishRelease.ts';
@@ -44,8 +44,11 @@ async function run(ctx: CommandContext): Promise<number> {
 	ctx.out.info(formatForkTreeLine(resolution));
 	if (resolution.warning !== null) ctx.out.warn(resolution.warning);
 	const config = requireConfig(ctx.config);
-	const result = await runPublish({
+	const componentId = commandFlagValue(ctx.commandFlags, '--component-id');
+	const result = await runPublishReceipt({
+		...(componentId === null ? {} : { componentId }),
 		patchesDir: ctx.patchesDir,
+		...(ctx.typeDeclaration === undefined ? {} : { registration: ctx.typeDeclaration }),
 		resolution,
 		config,
 		type: requireProjectType(ctx),
@@ -114,9 +117,10 @@ function requireProfile(raw: string | null): CiProfile {
 	return profile;
 }
 
-function dataOf(result: PublishResult): JsonValue {
+function dataOf(result: PublishReceiptResult): JsonValue {
 	return {
 		status: result.status,
+		release: result.release === null ? null : { ...result.release, missing: [...result.release.missing] },
 		patchSetSha: result.patchSetSha,
 		pinTag: result.pinTag,
 		tip: result.tip,
@@ -149,6 +153,20 @@ export const publishCommand: CommandDefinition = {
 	summary: 'publish one checked immutable patchset commit through a leased release ref, or into a new local repository',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, ORPHAN, AUTHOR, MESSAGE_FILE, SCRUB, NO_LFS, EXPORT_BARE, EXPORT_REPO, BOT_CONFIRMATION],
+	commandFlags: [
+		PROFILE,
+		RELEASE,
+		BRANCH,
+		SQUASH,
+		ORPHAN,
+		AUTHOR,
+		MESSAGE_FILE,
+		SCRUB,
+		NO_LFS,
+		EXPORT_BARE,
+		EXPORT_REPO,
+		BOT_CONFIRMATION,
+		'--component-id'
+	],
 	run
 };

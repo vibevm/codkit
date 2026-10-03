@@ -65,6 +65,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		() => {
 			const result = runPackageRelease({
 				patchesDir: ctx.patchesDir,
+				...(ctx.typeDeclaration === undefined ? {} : { registration: ctx.typeDeclaration }),
 				resolution,
 				config,
 				type,

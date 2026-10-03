@@ -1,0 +1,91 @@
+/** @scope spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-PUBLISH */
+// Bind checked and delivered Git objects without changing publish leases or trees.
+import { createHash } from 'node:crypto';
+import { sealComponentRelease, writeComponentRelease } from './componentRelease.js';
+import { captureComponentRelease } from './releaseFacts.js';
+import { releaseTypeRegistration } from './packageRelease.js';
+import { runPublish } from './publish.js';
+import { ckError } from './messages.js';
+export async function runPublishReceipt(options) {
+    if (options.componentId !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(options.componentId))
+        throw ckError('CONFIG', 'component identifier must be one non-empty portable release identifier');
+    const capture = { release: null };
+    const result = await runPublish({
+        ...options,
+        onPreparedRelease: (facts) => {
+            options.onPreparedRelease?.(facts);
+            const registration = options.registration ?? releaseTypeRegistration(facts.config.type);
+            if (registration.manifest.id !== options.type.id)
+                throw ckError('TYPE-UNKNOWN', 'publish type and selected snapshot declaration must agree');
+            const release = captureComponentRelease({
+                patchesDir: options.patchesDir,
+                forkDir: facts.forkDir,
+                config: facts.config,
+                registration,
+                operation: 'publish',
+                tip: facts.tip,
+                generatedTip: facts.generatedTip,
+                patchsetCommit: facts.patchsetCommit,
+                outputs: [],
+                ...(options.componentId === undefined ? {} : { componentId: options.componentId }),
+                recipe: {
+                    operation: 'publish',
+                    profile: options.profile,
+                    squash: options.squash ?? null,
+                    orphan: options.orphan ?? false,
+                    scrub: options.scrub ?? false,
+                    noLfs: options.noLfs ?? false
+                }
+            });
+            if (!release.ok)
+                throw ckError('CONFIG', release.problem.message);
+            capture.release = release.value;
+        }
+    });
+    if (result.exitCode !== 0 || result.tip === null)
+        return { ...result, release: null };
+    const captured = capture.release;
+    if (captured === null)
+        throw ckError('INTERNAL', 'successful publish has no captured release inputs');
+    // Record a historical successful delivery, not a promise that a mutable remote branch stays put.
+    const delivery = {
+        branch: result.branch,
+        tag: result.tag,
+        tip: result.tip,
+        patchset: result.patchSetSha,
+        destination: result.export === null ? 'remote' : result.export.kind
+    };
+    const { descriptorSha256, ...body } = captured;
+    void descriptorSha256;
+    const sealed = sealComponentRelease({
+        ...body,
+        distribution: {
+            ...body.distribution,
+            evidence: [
+                ...body.distribution.evidence,
+                {
+                    requirement: 'delivery',
+                    reference: `git-ref:${result.branch}@${result.tip}`,
+                    sha256: createHash('sha256').update(JSON.stringify(delivery)).digest('hex')
+                }
+            ],
+            missing: body.distribution.missing.filter((requirement) => requirement !== 'delivery'),
+            status: body.distribution.missing.some((requirement) => requirement !== 'delivery') ? 'incomplete' : 'complete'
+        }
+    });
+    if (!sealed.ok)
+        throw ckError('CONFIG', sealed.problem.message);
+    const stored = writeComponentRelease(options.patchesDir, sealed.value);
+    if (!stored.ok)
+        throw ckError('CONFIG', `delivery succeeded but descriptor recording failed: ${stored.problem.message}`, 'repair the receipt store and retry the immutable publish operation');
+    options.out.info(`release descriptor ${stored.value.path}; distribution evidence ${stored.value.release.distribution.status}`);
+    return {
+        ...result,
+        release: {
+            path: stored.value.path,
+            sha256: stored.value.release.descriptorSha256,
+            evidenceStatus: stored.value.release.distribution.status,
+            missing: stored.value.release.distribution.missing
+        }
+    };
+}

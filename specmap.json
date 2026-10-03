@@ -11453,7 +11453,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:9830221fb79b4ce938a702ae4659c77e27a300c79aa09a793bdcb83797ddad71",
+      "content_hash": "sha256:fcd29202832ec7948adfd0ad8e4c29ac0eb25016807449c6b7a8c39ba0497f28",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "PROP-018: Immutable component release descriptors",
@@ -11462,7 +11462,7 @@
     },
     {
       "anchor": "format",
-      "content_hash": "sha256:4baf089a249da569c8812c4815973f556fe7067404914d974427b0a2be08097c",
+      "content_hash": "sha256:853f5dedc8c92280fba869233a4a2688c3096773f6ecde0c0982694ffeee91e0",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Descriptor data and integrity",
@@ -11533,12 +11533,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-PACKAGE"
     },
     {
+      "anchor": "COMPONENT-RELEASE-PUBLISH",
+      "content_hash": "sha256:ce1f9112888fe694d9e9c148ca88721dcb4c9432cee4ea601902dd7d73419ca8",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "The public publish receipt capability captures facts from the selected immutable patchset commit and the disposable checked checkout before delivery. The checked generated tip remains distinct from shaped/squashed/orphan delivered Git objects. Successful export/ref delivery records an immutable historical delivery receipt after the existing lease/tag transaction finishes and the disposable checkout is released; a failed gate or tag collision has no successful descriptor. Repeating an up-to-date immutable release is deterministic. Local receipt failure after delivery reports that delivery already succeeded and requests repair/retry; no cross-repository rollback or signing/legal approval is implied. Explicit type declarations come from a composition root or trusted registry, never patchset executable data. @status:impl/done",
+      "line": 13,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-PUBLISH"
+    },
+    {
       "anchor": "COMPONENT-RELEASE-EVIDENCE",
       "content_hash": "sha256:a16da9fdbbe14d31474a5278539934e2c4992fdde37a5710c18b87c819927cf1",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Completeness is relative to the explicit selected policy requirements and their actual evidence receipts. Emitters must obtain hashes from the objects and bytes they observed, name the licence-policy scope, retain unavailable evidence as missing and avoid inventing an external approval. The schema alone cannot attest how facts were obtained. Package/publish integration must bind the descriptor to the exact checked inputs and preserve package restore, publish leases, immutable tags and existing operation refusal behavior. @status:spec/done",
-      "line": 13,
+      "line": 14,
       "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-EVIDENCE"
     },
     {
@@ -11547,7 +11556,7 @@
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Implement the source proposal's single-component release descriptor before a coordinator. Use a content-addressed immutable receipt rather than a mutable latest-release pointer: deterministic retries can compare exact bytes and conflicting data remains inspectable. Do not introduce signatures or organization commercial rulings without the corresponding external inputs. Revisit distribution requirements when P0.10 supplies trusted organization enforcement and real artifact evidence. @status:impl/done",
-      "line": 14,
+      "line": 15,
       "uri": "spec://codkit/modules/codkit/PROP-018#DECISION-COMPONENT-RECEIPT"
     },
     {

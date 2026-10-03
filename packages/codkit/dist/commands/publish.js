@@ -5,7 +5,7 @@ import { commandFlagGiven, commandFlagValue, forkResolution, requireProjectType 
 import { CI_PROFILES } from '../lib/ciEngine.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
-import { runPublish } from '../lib/publish.js';
+import { runPublishReceipt } from '../lib/publishReceipt.js';
 import { exportFlagsRefusal, exportRequestOf } from '../lib/publishExport.js';
 import { parseAuthor, readMessageFile } from '../lib/publishRelease.js';
 import { orphanRefusal } from '../lib/publishTip.js';
@@ -31,8 +31,11 @@ async function run(ctx) {
     if (resolution.warning !== null)
         ctx.out.warn(resolution.warning);
     const config = requireConfig(ctx.config);
-    const result = await runPublish({
+    const componentId = commandFlagValue(ctx.commandFlags, '--component-id');
+    const result = await runPublishReceipt({
+        ...(componentId === null ? {} : { componentId }),
         patchesDir: ctx.patchesDir,
+        ...(ctx.typeDeclaration === undefined ? {} : { registration: ctx.typeDeclaration }),
         resolution,
         config,
         type: requireProjectType(ctx),
@@ -100,6 +103,7 @@ function requireProfile(raw) {
 function dataOf(result) {
     return {
         status: result.status,
+        release: result.release === null ? null : { ...result.release, missing: [...result.release.missing] },
         patchSetSha: result.patchSetSha,
         pinTag: result.pinTag,
         tip: result.tip,
@@ -130,6 +134,20 @@ export const publishCommand = {
     summary: 'publish one checked immutable patchset commit through a leased release ref, or into a new local repository',
     configMode: 'load',
     maxArgs: 1,
-    commandFlags: [PROFILE, RELEASE, BRANCH, SQUASH, ORPHAN, AUTHOR, MESSAGE_FILE, SCRUB, NO_LFS, EXPORT_BARE, EXPORT_REPO, BOT_CONFIRMATION],
+    commandFlags: [
+        PROFILE,
+        RELEASE,
+        BRANCH,
+        SQUASH,
+        ORPHAN,
+        AUTHOR,
+        MESSAGE_FILE,
+        SCRUB,
+        NO_LFS,
+        EXPORT_BARE,
+        EXPORT_REPO,
+        BOT_CONFIRMATION,
+        '--component-id'
+    ],
     run
 };

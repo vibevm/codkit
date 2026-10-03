@@ -5,6 +5,7 @@
 // the libraries; each receives an already-resolved context and returns an exit
 // code, so a command can be exercised without a process.
 
+import type { RegisteredManifest } from '../types/manifest.ts';
 import type { ProjectType } from '@codkit/type-api';
 import type { CodkitConfig } from './configFile.ts';
 import type { Output } from './jsonOut.ts';
@@ -74,6 +75,8 @@ export type CommandContext = {
 	 * that has a configuration always has a type, because schema 2 requires one.
 	 */
 	readonly type: ProjectType | null;
+	/** An explicitly resolved declaration supplied by a composition root; never patchset data. */
+	readonly typeDeclaration?: RegisteredManifest;
 	readonly out: Output;
 };
 

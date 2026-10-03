@@ -39,6 +39,8 @@ export async function runPublish(options) {
     }
     const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
     const snapshotConfig = locatedInputs(options.patchesDir, configAtCommit(options.patchesDir, patchSetSha));
+    if (snapshotConfig.type !== options.type.id)
+        throw ckError('TYPE-UNKNOWN', 'selected immutable patchset type differs from the supplied project type', 'resolve the selected snapshot type before publishing');
     const branchName = options.branch === undefined || options.branch === null
         ? `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${pinKey(snapshotConfig.pin)}`
         : checkedBranch(options.patchesDir, options.branch, [snapshotConfig, options.config]);
@@ -118,6 +120,15 @@ export async function runPublish(options) {
         const tip = shaped.tip;
         const shapes = { squash: shaped.squash, scrub: shaped.scrub, lfs: shaped.lfs };
         options.checkpoint?.('checks-passed');
+        options.onPreparedRelease?.({
+            forkDir: workspace.resolution.path,
+            config: snapshotConfig,
+            patchsetCommit: patchSetSha,
+            generatedTip: checks.branchTip,
+            tip,
+            branch: branchName,
+            tag: tagName
+        });
         if (remote === null) {
             if (destination === null)
                 throw ckError('INTERNAL', 'publish has neither a remote nor an export');

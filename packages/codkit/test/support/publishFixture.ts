@@ -20,7 +20,8 @@ import { isCkError } from '../../src/lib/messages.ts';
 import { runPublish } from '../../src/lib/publish.ts';
 import type { PublishOptions, PublishResult } from '../../src/lib/publish.ts';
 import { fixtureCommit } from '../fixtures/makeUpstream.ts';
-import { projectType as stubProjectType } from '../fixtures/stubType.ts';
+import { readTypeManifest } from '../../src/types/manifest.ts';
+import { projectType as stubProjectType, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 import type { CliFixture } from './cliFixture.ts';
 import { makeTempRoot } from './tmp.ts';
 
@@ -65,6 +66,7 @@ export async function invokePublish(fixture: CliFixture, flags: PublishFlags = {
 		env: {},
 		config: requiredConfig(fixture),
 		type: stubProjectType,
+		typeDeclaration: readTypeManifest('stub', STUB_TYPE_MODULE),
 		out
 	};
 	let exitCode: number;

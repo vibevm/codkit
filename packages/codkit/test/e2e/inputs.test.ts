@@ -18,7 +18,8 @@ import { Output } from '../../src/lib/jsonOut.ts';
 import type { Envelope } from '../../src/lib/jsonOut.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { fixtureCommit } from '../fixtures/makeUpstream.ts';
-import { projectType as stubProjectType } from '../fixtures/stubType.ts';
+import { readTypeManifest } from '../../src/types/manifest.ts';
+import { projectType as stubProjectType, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture, Envelope as CliEnvelope, Run } from '../support/cliFixture.ts';
 import { makeGenericFixture } from '../support/genericFixture.ts';
@@ -253,6 +254,7 @@ async function invoke(fixture: CliFixture, flags: { squash?: boolean; scrub?: bo
 		env: {},
 		config,
 		type: stubProjectType,
+		typeDeclaration: readTypeManifest('stub', STUB_TYPE_MODULE),
 		out
 	};
 	let exitCode: number;

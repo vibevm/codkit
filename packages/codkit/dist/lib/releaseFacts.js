@@ -17,7 +17,9 @@ export function captureComponentRelease(options) {
         const recipe = z.json().safeParse(options.recipe);
         if (!recipe.success)
             return refuse('release recipe identity requires JSON data');
-        const patchsetCommit = git(options.patchesDir, ['rev-parse', '--verify', 'HEAD^{commit}']);
+        if (options.patchsetCommit !== undefined && !/^[0-9a-f]{40}$/.test(options.patchsetCommit))
+            return refuse('patchset release ref must be a full commit ID');
+        const patchsetCommit = git(options.patchesDir, ['rev-parse', '--verify', `${options.patchsetCommit ?? 'HEAD'}^{commit}`]);
         if (options.expectedPatchsetCommit !== undefined && patchsetCommit !== options.expectedPatchsetCommit)
             return refuse('patchset commit changed during the release operation');
         const tip = git(options.forkDir, ['rev-parse', '--verify', `${options.tip}^{commit}`]);
@@ -39,11 +41,19 @@ export function captureComponentRelease(options) {
             { kind: 'git-commit', objectId: tip },
             { kind: 'git-tree', objectId: tree }
         ]);
-        const dirty = git(options.patchesDir, ['status', '--porcelain', '--untracked-files=no']);
+        const generatedTip = options.generatedTip ?? tip;
+        if (!/^[0-9a-f]{40}$/.test(generatedTip))
+            return refuse('checked generated tip must be a full commit ID');
+        const generatedTree = git(options.forkDir, ['rev-parse', '--verify', `${generatedTip}^{tree}`]);
+        const dirty = options.operation === 'publish' && options.patchsetCommit !== undefined
+            ? ''
+            : git(options.patchesDir, ['status', '--porcelain', '--untracked-files=no']);
         const policy = licensePolicySnapshot();
         const requirements = ['artifact-inventory', 'patchset-clean', 'organization-policy', 'distribution-notices', 'sbom'];
         if (options.operation === 'package')
             requirements.push('package-artifacts');
+        else
+            requirements.push('delivery');
         const evidence = [{ requirement: 'artifact-inventory', reference: 'descriptor:artifacts', sha256: hash(JSON.stringify(artifacts)) }];
         if (dirty === '')
             evidence.push({ requirement: 'patchset-clean', reference: `git:${patchsetCommit}`, sha256: hash(patchsetCommit) });
@@ -72,7 +82,7 @@ export function captureComponentRelease(options) {
                 manifestSha256: options.registration.sha256
             },
             discipline: disciplineOf(options.config),
-            generated: { tip, tree },
+            generated: { tip: generatedTip, tree: generatedTree },
             artifacts,
             buildRecipeSha256: hash(JSON.stringify(recipe.data)),
             licensePolicies: [{ scope: 'codkit-supply', id: 'codkit-supply', version: policy.version, sha256: policy.sha256 }],

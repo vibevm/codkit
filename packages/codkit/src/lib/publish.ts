@@ -47,7 +47,18 @@ export type PublishCheckpoint =
 	| 'tag-pushed'
 	| 'export-created';
 
+export type PreparedPublishRelease = {
+	readonly forkDir: string;
+	readonly config: CodkitConfig;
+	readonly patchsetCommit: string;
+	readonly generatedTip: string;
+	readonly tip: string;
+	readonly branch: string;
+	readonly tag: string | null;
+};
 export type PublishOptions = {
+	/** Inspect immutable checked/shaped inputs before any delivery; never a patchset-provided callback. */
+	readonly onPreparedRelease?: (facts: PreparedPublishRelease) => void;
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
@@ -122,6 +133,12 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 	}
 	const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
 	const snapshotConfig = locatedInputs(options.patchesDir, configAtCommit(options.patchesDir, patchSetSha));
+	if (snapshotConfig.type !== options.type.id)
+		throw ckError(
+			'TYPE-UNKNOWN',
+			'selected immutable patchset type differs from the supplied project type',
+			'resolve the selected snapshot type before publishing'
+		);
 	const branchName =
 		options.branch === undefined || options.branch === null
 			? `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${pinKey(snapshotConfig.pin)}`
@@ -214,6 +231,15 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 		const tip = shaped.tip;
 		const shapes: Pick<PublishResult, 'squash' | 'scrub' | 'lfs'> = { squash: shaped.squash, scrub: shaped.scrub, lfs: shaped.lfs };
 		options.checkpoint?.('checks-passed');
+		options.onPreparedRelease?.({
+			forkDir: workspace.resolution.path,
+			config: snapshotConfig,
+			patchsetCommit: patchSetSha,
+			generatedTip: checks.branchTip,
+			tip,
+			branch: branchName,
+			tag: tagName
+		});
 		if (remote === null) {
 			if (destination === null) throw ckError('INTERNAL', 'publish has neither a remote nor an export');
 			const exported = writeExport({

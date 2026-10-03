@@ -21,7 +21,9 @@ import { OWN_UNIT_ID, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture, provideTreeDependencies } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
-import { projectType as stubProjectType } from '../fixtures/stubType.ts';
+import { readTypeManifest } from '../../src/types/manifest.ts';
+import { parseComponentRelease } from '../../src/lib/componentRelease.ts';
+import { projectType as stubProjectType, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 
 afterAll(cleanupTempRoots);
 
@@ -96,6 +98,16 @@ describe('publish generated branch', () => {
 		const branch = `${releaseBranch(fixture, sha)}`;
 		const tip = remoteSha(remote, branch);
 		expect(tip).toMatch(/^[0-9a-f]{40}$/);
+		const receipt = receiptData(first.envelope);
+		if (receipt === null || typeof receipt !== 'object' || !('path' in receipt) || typeof receipt['path'] !== 'string')
+			throw new Error('publish descriptor missing');
+		const descriptor = parseComponentRelease(readFileSync(fixture.patchesPath(receipt['path'])));
+		expect(descriptor.ok).toBe(true);
+		if (!descriptor.ok) throw new Error(descriptor.problem.message);
+		expect(descriptor.value.patchset.commit).toBe(sha);
+		expect(descriptor.value.artifacts).toContainEqual({ kind: 'git-commit', objectId: tip });
+		expect(descriptor.value.distribution.missing).not.toContain('delivery');
+		expect(descriptor.value.distribution.missing).toContain('organization-policy');
 
 		const subjects = remoteOut(remote, ['log', '--reverse', '--format=%s', `${fixture.upstream.t1.sha}..${tip}`]).split('\n');
 		expect(subjects).toHaveLength(4);
@@ -112,6 +124,7 @@ describe('publish generated branch', () => {
 		const repeat = await invoke(fixture, { bot: true });
 		expect(repeat.exitCode).toBe(0);
 		expect(repeat.envelope.data).toMatchObject({ status: 'up-to-date', pushedBranch: false, pushedTag: false });
+		expect(receiptData(repeat.envelope)).toEqual(receiptData(first.envelope));
 		expect(remoteSha(remote, branch)).toBe(tip);
 	}, 300_000);
 
@@ -611,6 +624,7 @@ async function invoke(fixture: CliFixture, options: InvocationOptions = {}): Pro
 		env: {},
 		config,
 		type: stubProjectType,
+		typeDeclaration: readTypeManifest('stub', STUB_TYPE_MODULE),
 		out
 	};
 	let exitCode: number;
@@ -754,4 +768,10 @@ function objectData(envelope: Envelope): { [key: string]: unknown } {
 	return envelope.data !== null && typeof envelope.data === 'object' && !Array.isArray(envelope.data)
 		? (envelope.data as { [key: string]: unknown })
 		: {};
+}
+
+function receiptData(envelope: Envelope) {
+	const data = envelope.data;
+	if (data === null || typeof data !== 'object' || Array.isArray(data)) throw new Error('publish envelope has no object data');
+	return data['release'];
 }
