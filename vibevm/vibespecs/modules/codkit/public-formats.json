@@ -87,9 +87,8 @@
       "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
       "contract": "spec://codkit/modules/codkit/PROP-003#root",
       "tests": [
-        "packages/codkit/test/unit/configFile.test.ts"
-      ],
-      "testGap": "Config override tests exist; dedicated conventions parser/version conformance remains to be added."
+        "packages/codkit/test/unit/conventionsFile.test.ts"
+      ]
     },
     {
       "id": "conventions-extension",
@@ -106,9 +105,8 @@
       "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
       "contract": "spec://codkit/modules/codkit/PROP-003#root",
       "tests": [
-        "packages/codkit/test/unit/configFile.test.ts"
-      ],
-      "testGap": "Config override tests exist; dedicated conventions parser/version conformance remains to be added."
+        "packages/codkit/test/unit/conventionsFile.test.ts"
+      ]
     },
     {
       "id": "cycle-apply",
