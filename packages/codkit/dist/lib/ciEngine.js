@@ -746,7 +746,11 @@ async function compileOnce(options, steps) {
     }
     const ourGroups = new Set();
     for (const known of watch.channels) {
-        const state = statusOf(patchesDir, known.name, { expectedTreeId: treeId(tree), expectedTreePath: tree });
+        const state = statusOf(patchesDir, known.name, {
+            expectedTreeId: treeId(tree),
+            expectedTreePath: tree,
+            ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id })
+        });
         if (state.state === 'living' && state.record !== null) {
             ourGroups.add(state.record.pid);
         }
@@ -768,7 +772,13 @@ async function compileOnce(options, steps) {
     const started = [];
     try {
         for (const channel of channels) {
-            const result = upChannel({ patchesDir, treeDir: tree, treeId: id, onWarn: (text) => out.warn(text) }, channel);
+            const result = upChannel({
+                patchesDir,
+                treeDir: tree,
+                treeId: id,
+                ...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }),
+                onWarn: (text) => out.warn(text)
+            }, channel);
             if (!result.ok) {
                 out.warn(`cannot start the ${channel.name} daemon: ${result.reason}. ` +
                     'The container must carry the tree, its dependencies and npm (PROP-011 sec. 7)');
@@ -782,7 +792,11 @@ async function compileOnce(options, steps) {
         for (const channel of started) {
             const outcome = await readPass(patchesDir, channel, {
                 timeoutMs,
-                probe: { expectedTreeId: id, expectedTreePath: tree }
+                probe: {
+                    expectedTreeId: id,
+                    expectedTreePath: tree,
+                    ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id })
+                }
             });
             if (outcome.state !== 'ok') {
                 const why = outcome.state === 'timeout'
@@ -823,6 +837,7 @@ async function compileOnce(options, steps) {
                 const result = await downChannel(patchesDir, channel.name, {
                     expectedTreeId: id,
                     expectedTreePath: tree,
+                    ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),
                     onWarn: (text) => out.warn(text)
                 });
                 if (result.action !== 'not-running') {

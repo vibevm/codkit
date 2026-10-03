@@ -23,7 +23,7 @@ import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { verifyWorkspaceCheckout } from './workspaceCreate.ts';
 import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema, workspaceRefPrefixes } from './workspaceRegistry.ts';
-import type { WorkspaceRecord } from './workspaceRegistry.ts';
+import type { WorkspaceId, WorkspaceRecord } from './workspaceRegistry.ts';
 
 export function finishWorkspace(options: {
 	readonly registryRoot: string;
@@ -40,7 +40,7 @@ export function finishWorkspace(options: {
 				verifyWorkspaceCheckout(record, role, true);
 				locks.push(acquireLock(record[role].path, `workspace-${record.id}`, 'workspace finish'));
 				verifyReceipt(record, role);
-				refuseWorkspaceDaemons(record[role].path);
+				refuseWorkspaceDaemons(record[role].path, record.id);
 				const cache = role === 'patchset' ? readTreeCache(record.patchset.path, treeId(record.fork.path)) : null;
 				assertWorkspaceClean(
 					record[role].path,
@@ -128,7 +128,7 @@ export function assertWorkspaceClean(root: string, owned: LockHandle | undefined
 	if (entries.some((entry) => !(entry.startsWith('?? ') && allowed.has(entry.slice(3)))))
 		throw ckError('DIRTY-TREE', 'workspace contains uncommitted or untracked work; save it before finish');
 }
-export function refuseWorkspaceDaemons(root: string): void {
+export function refuseWorkspaceDaemons(root: string, workspaceId?: WorkspaceId): void {
 	const dir = resolveContainedPath(root, '.codkit/build', { allowMissing: true });
 	if (!dir.ok) throw ckError('CONFIG', 'workspace daemon directory is not contained');
 	let files: string[];
@@ -140,7 +140,12 @@ export function refuseWorkspaceDaemons(root: string): void {
 	}
 	for (const file of files.filter((file) => file.endsWith('.json'))) {
 		const state = readRecordState(root, file.slice(0, -5));
-		if (state.state !== 'valid' || state.record.pid === 0 || isAlive(state.record.pid))
+		if (
+			state.state !== 'valid' ||
+			(workspaceId !== undefined && state.record.workspaceId !== workspaceId) ||
+			state.record.pid === 0 ||
+			isAlive(state.record.pid)
+		)
 			throw ckError('LOCKED', 'workspace has an active or unresolved build daemon');
 	}
 }

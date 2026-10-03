@@ -3,6 +3,7 @@
 import { closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { workspaceIdSchema } from './workspaceRegistry.js';
 import { decodeUtf8Strict, encodeUtf8 } from './bytes.js';
 import { openContainedFileAppend, readContainedFile, removeContainedFile, renameContainedFile, writeContainedFileAtomic, writeContainedFileExclusive } from './containedFile.js';
 import { ckError } from './messages.js';
@@ -11,6 +12,7 @@ import { assertDaemonChannelLock } from './daemonChannelLock.js';
 export { validateChannelName } from './buildChannel.js';
 export const BUILD_DIR = '.codkit/build';
 export const DAEMON_RECORD_SCHEMA_VERSION = 1;
+export const WORKSPACE_DAEMON_RECORD_SCHEMA_VERSION = 2;
 /**
  * How long the pid transition may wait on Windows for another handle on the
  * record to close: it replaces a reservation published milliseconds before,
@@ -18,7 +20,7 @@ export const DAEMON_RECORD_SCHEMA_VERSION = 1;
  * of seconds under load (PROP-010 ##DAEMON-RECORD-REPLACE-BUDGET).
  */
 const RECORD_REPLACE_BUDGET_MS = 60_000;
-const recordSchema = z
+const legacyRecordSchema = z
     .object({
     codkitBuildDaemon: z.literal(DAEMON_RECORD_SCHEMA_VERSION),
     channel: z.string().min(1),
@@ -31,6 +33,11 @@ const recordSchema = z
     nonce: z.string().uuid()
 })
     .strict();
+const workspaceRecordSchema = legacyRecordSchema.extend({
+    codkitBuildDaemon: z.literal(WORKSPACE_DAEMON_RECORD_SCHEMA_VERSION),
+    workspaceId: workspaceIdSchema
+});
+const recordSchema = z.union([legacyRecordSchema, workspaceRecordSchema]);
 export function buildDir(patchesDir) {
     return join(patchesDir, ...BUILD_DIR.split('/'));
 }
@@ -57,6 +64,7 @@ function recordName(channel) {
     return `${channel}.json`;
 }
 export function daemonRecordBytes(record) {
+    recordSchema.parse(record);
     return encodeUtf8(`${JSON.stringify(record, null, 2)}\n`);
 }
 export function readRecordState(patchesDir, channel, afterOpen) {

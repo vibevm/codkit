@@ -192,3 +192,51 @@ it('loads into UUID refs without rewriting config, protects neighbouring work an
 	expect(workspace(finished.stdout).finished?.deltaFingerprint).toMatch(/^[0-9a-f]{64}$/);
 	expect(run('where').status).toBe(2);
 });
+
+it('binds a real daemon to its workspace and refuses a copied record in another pair before teardown', () => {
+	const f = fixture();
+	const created = f.create();
+	expect(created.status, created.stderr).toBe(0);
+	const first = workspace(created.stdout);
+	const other = f.run([
+		'create',
+		'Other',
+		'--patches-dir',
+		f.source.patchesDir,
+		'--fork-dir',
+		f.source.treeDir,
+		'--dir',
+		f.directory,
+		'--owner',
+		'fixture-owner',
+		'--session',
+		'other-session'
+	]);
+	expect(other.status, other.stderr).toBe(0);
+	const second = workspace(other.stdout);
+	const run = (name: string, ...args: string[]) =>
+		runCli(f.directory, ['--json', '--workspace', name, ...args], { ...f.env, STUB_MODE: 'ok' });
+	try {
+		const started = run('task', 'build', 'up', '--channel', 'transpile');
+		expect(started.status, started.stderr).toBe(0);
+		const source = join(first.patchset.path, '.codkit/build/transpile.json');
+		const bytes = readFileSync(source);
+		expect(JSON.parse(bytes.toString('utf8'))).toMatchObject({ codkitBuildDaemon: 2, workspaceId: first.id, treePath: first.fork.path });
+		const own = run('task', 'build', 'status', '--channel', 'transpile');
+		expect(JSON.parse(own.stdout)).toMatchObject({ data: { channels: [{ state: 'living' }] } });
+		expect(f.run(['finish', 'task']).status).toBe(2);
+		const target = join(second.patchset.path, '.codkit/build/transpile.json');
+		mkdirSync(join(second.patchset.path, '.codkit/build'), { recursive: true });
+		writeFileSync(target, bytes);
+		const foreign = run('other', 'build', 'status', '--channel', 'transpile');
+		expect(JSON.parse(foreign.stdout)).toMatchObject({ data: { channels: [{ state: 'unknown', treeMatches: false }] } });
+		expect(run('other', 'build', 'down', '--channel', 'transpile').status).toBe(2);
+		expect(readFileSync(target)).toEqual(bytes);
+		expect(JSON.parse(run('task', 'build', 'status', '--channel', 'transpile').stdout)).toMatchObject({
+			data: { channels: [{ state: 'living' }] }
+		});
+	} finally {
+		const stopped = run('task', 'build', 'down', '--channel', 'transpile');
+		expect(stopped.status, stopped.stderr).toBe(0);
+	}
+});

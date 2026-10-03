@@ -120,15 +120,24 @@ describe('an acquisition that cannot retire its own generation is not silent', (
 		// protocol pass a sink: build up and down here, the CI start and
 		// teardown and the cycle-stabilization teardown in their own files.
 		const build = readFileSync(join(import.meta.dirname, '../../src/commands/build.ts'), 'utf8');
-		expect(build).toContain(
-			'const result = upChannel({ patchesDir: ctx.patchesDir, treeDir, treeId: id, onWarn: (text) => ctx.out.warn(text) }, channel);'
+		expect(build.replace(/\s/g, '')).toContain(
+			'const result = upChannel({ patchesDir: ctx.patchesDir, treeDir, treeId: id, ...(workspaceId === undefined ? {} : { workspaceId }), onWarn: (text) => ctx.out.warn(text) }, channel);'.replace(
+				/\s/g,
+				''
+			)
 		);
-		expect(build).toContain(
-			'const result = await downChannel(ctx.patchesDir, channel.name, { ...treeProbe(treeDir), onWarn: (text) => ctx.out.warn(text) });'
+		expect(build.replace(/\s/g, '')).toContain(
+			'const result = await downChannel(ctx.patchesDir, channel.name, { ...treeProbe(treeDir, workspaceIdOf(ctx)), onWarn: (text) => ctx.out.warn(text) });'.replace(
+				/\s/g,
+				''
+			)
 		);
 		const ciEngine = readFileSync(join(import.meta.dirname, '../../src/lib/ciEngine.ts'), 'utf8');
-		expect(ciEngine).toContain(
-			'const result = upChannel({ patchesDir, treeDir: tree, treeId: id, onWarn: (text) => out.warn(text) }, channel);'
+		expect(ciEngine.replace(/\s/g, '')).toContain(
+			'const result = upChannel({ patchesDir, treeDir: tree, treeId: id, ...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }), onWarn: (text) => out.warn(text) }, channel);'.replace(
+				/\s/g,
+				''
+			)
 		);
 		expect(ciEngine).toContain('\t\t\t\t\tonWarn: (text) => out.warn(text)\n');
 		const stabilize = readFileSync(join(import.meta.dirname, '../../src/lib/cycleStabilize.ts'), 'utf8');

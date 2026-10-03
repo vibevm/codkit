@@ -23,19 +23,21 @@
     {
       "id": "build-daemon",
       "field": "codkitBuildDaemon",
-      "version": 1,
+      "version": 2,
       "observedVersions": [
-        1
+        1,
+        2
       ],
       "source": "packages/codkit/src/lib/buildRuntime.ts",
       "owner": "Codkit engine",
       "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
-      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "compatibility": "Legacy schema 1 remains strict and byte-compatible without workspace identity. Opt-in schema 2 requires a workspace UUID; workspace fields in schema 1, missing UUID in schema 2 and future versions refuse.",
       "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
       "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
       "contract": "spec://codkit/modules/codkit/PROP-010#root",
       "tests": [
-        "packages/codkit/test/unit/buildRuntime.test.ts"
+        "packages/codkit/test/unit/buildRuntime.test.ts",
+        "packages/codkit/test/unit/workspaceDaemon.test.ts"
       ]
     },
     {

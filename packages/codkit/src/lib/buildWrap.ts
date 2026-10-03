@@ -26,12 +26,14 @@ import { basename, delimiter, dirname, isAbsolute, join, sep, win32 } from 'node
 import type { ProjectType } from '@codkit/type-api';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.ts';
+import type { WorkspaceId } from './workspaceRegistry.ts';
 import { validateChannelSet } from './buildChannel.ts';
 import { readContainedFile } from './containedFile.ts';
 import { errnoOf, sameEffectivePath } from './containedPath.ts';
 import type { ProcessInvocation } from './processInvocation.ts';
 import {
 	DAEMON_RECORD_SCHEMA_VERSION,
+	WORKSPACE_DAEMON_RECORD_SCHEMA_VERSION,
 	closeLog,
 	createReservation,
 	daemonRecordBytes,
@@ -344,6 +346,7 @@ export type TreeBinding = {
 export type BoundProbe = ProcessProbeOptions & TreeBinding;
 
 export type ProcessProbeOptions = {
+	readonly expectedWorkspaceId?: WorkspaceId;
 	readonly platform?: NodeJS.Platform;
 	readonly run?: ProcessRunner;
 	/**
@@ -711,6 +714,16 @@ export function statusOf(patchesDir: string, channel: string, probe: ProcessProb
 		};
 	}
 	const { record, bytes: recordBytes } = observed;
+	if (record.workspaceId !== probe.expectedWorkspaceId) {
+		return {
+			channel,
+			state: 'unknown',
+			record,
+			recordBytes,
+			treeMatches: false,
+			detail: 'daemon record belongs to another or unbound workspace; ownership is not proven'
+		};
+	}
 	// null is "nobody asked", never "it matches": a caller that did not bind a
 	// tree must not be handed a verdict that reads like proof of ownership.
 	const treeMatches =
@@ -961,6 +974,7 @@ export function inotifyWarning(options: { readonly platform?: string; readonly r
 // ---------------------------------------------------------------------------
 
 export type UpContext = {
+	readonly workspaceId?: WorkspaceId;
 	readonly patchesDir: string;
 	readonly treeDir: string;
 	readonly treeId: string;
@@ -1089,7 +1103,11 @@ export function upChannel(ctx: UpContext, channel: ChannelConfig, runtime = ctx.
 
 function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonChannelLock, runtime = ctx.runtime): UpResult {
 	assertDaemonChannelLock(lock, ctx.patchesDir, channel.name);
-	const status = statusOf(ctx.patchesDir, channel.name, { expectedTreeId: ctx.treeId, expectedTreePath: ctx.treeDir });
+	const status = statusOf(ctx.patchesDir, channel.name, {
+		expectedTreeId: ctx.treeId,
+		expectedTreePath: ctx.treeDir,
+		...(ctx.workspaceId === undefined ? {} : { expectedWorkspaceId: ctx.workspaceId })
+	});
 	if (status.state === 'unknown' || status.state === 'starting') {
 		return {
 			ok: false,
@@ -1124,7 +1142,8 @@ function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonCha
 	}
 
 	const reservation: DaemonRecord = {
-		codkitBuildDaemon: DAEMON_RECORD_SCHEMA_VERSION,
+		codkitBuildDaemon: ctx.workspaceId === undefined ? DAEMON_RECORD_SCHEMA_VERSION : WORKSPACE_DAEMON_RECORD_SCHEMA_VERSION,
+		...(ctx.workspaceId === undefined ? {} : { workspaceId: ctx.workspaceId }),
 		channel: channel.name,
 		script: channel.script,
 		pid: 0,
@@ -1993,6 +2012,8 @@ function assertSameRecordSnapshot(patchesDir: string, channel: string, expected:
 }
 
 function assertSnapshotTree(record: DaemonRecord, probe: ProcessProbeOptions): void {
+	if (record.workspaceId !== probe.expectedWorkspaceId)
+		throw ckError('CONFIG', 'daemon record belongs to another or unbound workspace; log ownership is not proven');
 	if (
 		(probe.expectedTreeId !== undefined && record.treeId !== probe.expectedTreeId) ||
 		(probe.expectedTreePath !== undefined && !sameEffectivePath(record.treePath, probe.expectedTreePath, probe.platform))

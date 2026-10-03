@@ -967,7 +967,11 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 
 	const ourGroups = new Set<number>();
 	for (const known of watch.channels) {
-		const state = statusOf(patchesDir, known.name, { expectedTreeId: treeId(tree), expectedTreePath: tree });
+		const state = statusOf(patchesDir, known.name, {
+			expectedTreeId: treeId(tree),
+			expectedTreePath: tree,
+			...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id })
+		});
 		if (state.state === 'living' && state.record !== null) {
 			ourGroups.add(state.record.pid);
 		}
@@ -992,7 +996,16 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 	const started: ChannelConfig[] = [];
 	try {
 		for (const channel of channels) {
-			const result = upChannel({ patchesDir, treeDir: tree, treeId: id, onWarn: (text) => out.warn(text) }, channel);
+			const result = upChannel(
+				{
+					patchesDir,
+					treeDir: tree,
+					treeId: id,
+					...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }),
+					onWarn: (text) => out.warn(text)
+				},
+				channel
+			);
 			if (!result.ok) {
 				out.warn(
 					`cannot start the ${channel.name} daemon: ${result.reason}. ` +
@@ -1009,7 +1022,11 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 		for (const channel of started) {
 			const outcome = await readPass(patchesDir, channel, {
 				timeoutMs,
-				probe: { expectedTreeId: id, expectedTreePath: tree }
+				probe: {
+					expectedTreeId: id,
+					expectedTreePath: tree,
+					...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id })
+				}
 			});
 			if (outcome.state !== 'ok') {
 				const why =
@@ -1051,6 +1068,7 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 				const result = await downChannel(patchesDir, channel.name, {
 					expectedTreeId: id,
 					expectedTreePath: tree,
+					...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),
 					onWarn: (text) => out.warn(text)
 				});
 				if (result.action !== 'not-running') {

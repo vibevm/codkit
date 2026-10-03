@@ -4,6 +4,8 @@
 import { closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { workspaceIdSchema } from './workspaceRegistry.ts';
+import type { WorkspaceId } from './workspaceRegistry.ts';
 import { decodeUtf8Strict, encodeUtf8 } from './bytes.ts';
 import {
 	openContainedFileAppend,
@@ -22,6 +24,7 @@ export { validateChannelName } from './buildChannel.ts';
 
 export const BUILD_DIR = '.codkit/build';
 export const DAEMON_RECORD_SCHEMA_VERSION = 1;
+export const WORKSPACE_DAEMON_RECORD_SCHEMA_VERSION = 2;
 
 /**
  * How long the pid transition may wait on Windows for another handle on the
@@ -35,6 +38,7 @@ const RECORD_REPLACE_BUDGET_MS = 60_000;
 export type RecordReplaceSeams = Pick<AtomicWriteOptions, 'applyRename' | 'renamePlatform' | 'waitForRenameRetry'>;
 
 export type DaemonRecord = {
+	readonly workspaceId?: WorkspaceId;
 	readonly codkitBuildDaemon: number;
 	readonly channel: string;
 	readonly script: string;
@@ -47,7 +51,7 @@ export type DaemonRecord = {
 	readonly nonce: string;
 };
 
-const recordSchema = z
+const legacyRecordSchema = z
 	.object({
 		codkitBuildDaemon: z.literal(DAEMON_RECORD_SCHEMA_VERSION),
 		channel: z.string().min(1),
@@ -60,6 +64,11 @@ const recordSchema = z
 		nonce: z.string().uuid()
 	})
 	.strict();
+const workspaceRecordSchema = legacyRecordSchema.extend({
+	codkitBuildDaemon: z.literal(WORKSPACE_DAEMON_RECORD_SCHEMA_VERSION),
+	workspaceId: workspaceIdSchema
+});
+const recordSchema = z.union([legacyRecordSchema, workspaceRecordSchema]);
 
 export type DaemonRecordState =
 	| { readonly state: 'absent' }
@@ -99,6 +108,7 @@ function recordName(channel: string): string {
 }
 
 export function daemonRecordBytes(record: DaemonRecord): Uint8Array {
+	recordSchema.parse(record);
 	return encodeUtf8(`${JSON.stringify(record, null, 2)}\n`);
 }
 

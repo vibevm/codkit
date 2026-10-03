@@ -182,6 +182,7 @@ export async function runConcreteStabilization(options) {
                 await downChannel(options.patchesDir, channel, {
                     expectedTreeId: treeId(options.resolution.path),
                     expectedTreePath: options.resolution.path,
+                    ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),
                     onWarn: (text) => out.warn(text)
                 });
             }

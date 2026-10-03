@@ -69,7 +69,7 @@ export function removeWorkspace(options) {
 function check(record, role, lock, extra) {
     verifyWorkspaceCheckout(record, role, true);
     verifyReceipt(record, role);
-    refuseWorkspaceDaemons(record[role].path);
+    refuseWorkspaceDaemons(record[role].path, record.id);
     assertWorkspaceClean(record[role].path, lock, extra);
     if (git(record[role].path, ['rev-parse', 'HEAD']).trim() !== finishedHead(record, role))
         throw ckError('DIRTY-TREE', 'workspace HEAD changed after finish; finish again before removal');

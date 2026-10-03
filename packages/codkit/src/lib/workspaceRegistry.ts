@@ -94,6 +94,7 @@ export const workspaceRegistrySchema = z
 		}
 	});
 export type WorkspaceRecord = Readonly<z.infer<typeof workspaceRecordSchema>>;
+export type WorkspaceId = z.infer<typeof workspaceIdSchema>;
 export type WorkspaceRegistry = Readonly<z.infer<typeof workspaceRegistrySchema>>;
 
 export function workspaceRegistryRoot(home: string = homedir()): string {

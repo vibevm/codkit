@@ -32,7 +32,7 @@ export function finishWorkspace(options) {
                 verifyWorkspaceCheckout(record, role, true);
                 locks.push(acquireLock(record[role].path, `workspace-${record.id}`, 'workspace finish'));
                 verifyReceipt(record, role);
-                refuseWorkspaceDaemons(record[role].path);
+                refuseWorkspaceDaemons(record[role].path, record.id);
                 const cache = role === 'patchset' ? readTreeCache(record.patchset.path, treeId(record.fork.path)) : null;
                 assertWorkspaceClean(record[role].path, locks[locks.length - 1], cache === null
                     ? []
@@ -110,7 +110,7 @@ export function assertWorkspaceClean(root, owned, extra) {
     if (entries.some((entry) => !(entry.startsWith('?? ') && allowed.has(entry.slice(3)))))
         throw ckError('DIRTY-TREE', 'workspace contains uncommitted or untracked work; save it before finish');
 }
-export function refuseWorkspaceDaemons(root) {
+export function refuseWorkspaceDaemons(root, workspaceId) {
     const dir = resolveContainedPath(root, '.codkit/build', { allowMissing: true });
     if (!dir.ok)
         throw ckError('CONFIG', 'workspace daemon directory is not contained');
@@ -125,7 +125,10 @@ export function refuseWorkspaceDaemons(root) {
     }
     for (const file of files.filter((file) => file.endsWith('.json'))) {
         const state = readRecordState(root, file.slice(0, -5));
-        if (state.state !== 'valid' || state.record.pid === 0 || isAlive(state.record.pid))
+        if (state.state !== 'valid' ||
+            (workspaceId !== undefined && state.record.workspaceId !== workspaceId) ||
+            state.record.pid === 0 ||
+            isAlive(state.record.pid))
             throw ckError('LOCKED', 'workspace has an active or unresolved build daemon');
     }
 }
