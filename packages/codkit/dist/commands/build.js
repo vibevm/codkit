@@ -93,6 +93,7 @@ function runUp(ctx, watch, requested, treeDir) {
             treeDir,
             treeId: id,
             ...(workspaceId === undefined ? {} : { workspaceId }),
+            ...(ctx.config?.workspace === undefined ? {} : { workspaceRegistryRoot: ctx.config.workspace.registryRoot }),
             onWarn: (text) => ctx.out.warn(text)
         }, channel);
         if (!result.ok) {

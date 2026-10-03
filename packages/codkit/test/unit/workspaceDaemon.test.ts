@@ -5,7 +5,7 @@ import { createReservation, daemonRecordBytes, finalizeReservation, readRecordSt
 import type { DaemonRecord } from '../../src/lib/buildRuntime.ts';
 import { downChannel, readFinishedPass, statusOf, upChannel } from '../../src/lib/buildWrap.ts';
 import { acquireDaemonChannelLock } from '../../src/lib/daemonChannelLock.ts';
-import { workspaceIdSchema } from '../../src/lib/workspaceRegistry.ts';
+import { workspaceIdSchema, workspaceRecordSchema, workspaceTaskBranch, updateWorkspaceRegistry } from '../../src/lib/workspaceRegistry.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
@@ -69,6 +69,32 @@ it('refuses missing/future/foreign-format identity without upgrading persisted r
 it('starts a v2 reservation for an explicit workspace and refuses duplicate start under another identity', () => {
 	const patchesDir = makeTempRoot('workspace-daemon-start');
 	const treeDir = makeTempRoot('workspace-daemon-tree');
+	const registryRoot = makeTempRoot('workspace-daemon-control');
+	const registered = (id: typeof owner, name: string, patches: string, tree: string) =>
+		workspaceRecordSchema.parse({
+			id,
+			name,
+			state: 'active',
+			patchset: {
+				repository: patches,
+				commonDirectory: join(patches, '.git'),
+				path: patches,
+				branch: workspaceTaskBranch(id),
+				baseCommit: 'a'.repeat(40)
+			},
+			fork: { repository: tree, commonDirectory: join(tree, '.git'), path: tree, branch: null, baseCommit: 'a'.repeat(40) },
+			pin: { tag: 'v1', sha: 'a'.repeat(40), date: '2026-10-04' },
+			type: { id: 'stub', contractVersion: 1, manifestSha256: '0'.repeat(64) },
+			owner: { id: 'fixture', session: 'fixture' },
+			createdAt: '2026-10-04T00:00:00.000Z',
+			updatedAt: '2026-10-04T00:00:00.000Z'
+		});
+	updateWorkspaceRegistry(registryRoot, (_, save) =>
+		save([
+			registered(owner, 'Owner', patchesDir, treeDir),
+			registered(foreign, 'Other', makeTempRoot('daemon-other-patches'), makeTempRoot('daemon-other-tree'))
+		])
+	);
 	writeFileSync(join(treeDir, 'package.json'), JSON.stringify({ scripts: { 'watch-transpile': 'fixture' } }));
 	let spawns = 0;
 	const runtime = {
@@ -77,13 +103,17 @@ it('starts a v2 reservation for an explicit workspace and refuses duplicate star
 			return { pid: 4_194_305, terminate: () => undefined };
 		}
 	};
-	expect(upChannel({ patchesDir, treeDir, treeId: 'fixture-tree', workspaceId: owner }, channel, runtime)).toMatchObject({
+	expect(
+		upChannel({ patchesDir, treeDir, treeId: 'fixture-tree', workspaceId: owner, workspaceRegistryRoot: registryRoot }, channel, runtime)
+	).toMatchObject({
 		ok: true,
 		action: 'started'
 	});
 	expect(readRecordState(patchesDir, channel.name)).toMatchObject({ state: 'valid', record: { codkitBuildDaemon: 2, workspaceId: owner } });
 	const before = readFileSync(recordPath(patchesDir, channel.name));
-	expect(upChannel({ patchesDir, treeDir, treeId: 'fixture-tree', workspaceId: foreign }, channel, runtime)).toMatchObject({ ok: false });
+	expect(
+		upChannel({ patchesDir, treeDir, treeId: 'fixture-tree', workspaceId: foreign, workspaceRegistryRoot: registryRoot }, channel, runtime)
+	).toMatchObject({ ok: false });
 	expect(spawns).toBe(1);
 	expect(readFileSync(recordPath(patchesDir, channel.name))).toEqual(before);
 });

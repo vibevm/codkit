@@ -24,6 +24,7 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { basename, delimiter, dirname, isAbsolute, join, sep, win32 } from 'node:path';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.js';
+import { updateWorkspaceRegistry, workspaceRegistryRoot } from './workspaceRegistry.js';
 import { validateChannelSet } from './buildChannel.js';
 import { readContainedFile } from './containedFile.js';
 import { errnoOf, sameEffectivePath } from './containedPath.js';
@@ -790,6 +791,28 @@ async function waitStartSettle(startedAt, probe) {
  * refuses instead of starting a second daemon.
  */
 export function upChannel(ctx, channel, runtime = ctx.runtime) {
+    const workspaceId = ctx.workspaceId;
+    if (workspaceId === undefined) {
+        const receipt = readContainedFile(ctx.patchesDir, '.codkit/workspace.json', { what: 'workspace checkout marker' });
+        if (receipt.state !== 'absent')
+            return { ok: false, channel: channel.name, reason: 'workspace checkout requires explicit workspace context for daemon start' };
+        return upChannelWithChannelLock(ctx, channel, runtime);
+    }
+    try {
+        return updateWorkspaceRegistry(ctx.workspaceRegistryRoot ?? workspaceRegistryRoot(), (registry) => {
+            const workspace = registry.workspaces.find((record) => record.id === workspaceId);
+            if (workspace === undefined || workspace.state !== 'active')
+                throw ckError('CONFIG', 'daemon start requires an active workspace');
+            return upChannelWithChannelLock(ctx, channel, runtime);
+        }, ctx.onWarn);
+    }
+    catch (error) {
+        if (isCkError(error) && (error.code === 'LOCKED' || error.code === 'CONFIG'))
+            return { ok: false, channel: channel.name, reason: error.message };
+        throw error;
+    }
+}
+function upChannelWithChannelLock(ctx, channel, runtime = ctx.runtime) {
     let lock;
     try {
         lock = acquireDaemonChannelLock(ctx.patchesDir, channel.name, `build up ${channel.name}`, {

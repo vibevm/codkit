@@ -27,6 +27,7 @@ import type { ProjectType } from '@codkit/type-api';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.ts';
 import type { WorkspaceId } from './workspaceRegistry.ts';
+import { updateWorkspaceRegistry, workspaceRegistryRoot } from './workspaceRegistry.ts';
 import { validateChannelSet } from './buildChannel.ts';
 import { readContainedFile } from './containedFile.ts';
 import { errnoOf, sameEffectivePath } from './containedPath.ts';
@@ -974,6 +975,8 @@ export function inotifyWarning(options: { readonly platform?: string; readonly r
 // ---------------------------------------------------------------------------
 
 export type UpContext = {
+	/** Privileged composition override; never a patchset or CLI field. */
+	readonly workspaceRegistryRoot?: string;
 	readonly workspaceId?: WorkspaceId;
 	readonly patchesDir: string;
 	readonly treeDir: string;
@@ -1084,6 +1087,31 @@ async function waitStartSettle(startedAt: string, probe: ProcessProbeOptions): P
  * refuses instead of starting a second daemon.
  */
 export function upChannel(ctx: UpContext, channel: ChannelConfig, runtime = ctx.runtime): UpResult {
+	const workspaceId = ctx.workspaceId;
+	if (workspaceId === undefined) {
+		const receipt = readContainedFile(ctx.patchesDir, '.codkit/workspace.json', { what: 'workspace checkout marker' });
+		if (receipt.state !== 'absent')
+			return { ok: false, channel: channel.name, reason: 'workspace checkout requires explicit workspace context for daemon start' };
+		return upChannelWithChannelLock(ctx, channel, runtime);
+	}
+	try {
+		return updateWorkspaceRegistry(
+			ctx.workspaceRegistryRoot ?? workspaceRegistryRoot(),
+			(registry) => {
+				const workspace = registry.workspaces.find((record) => record.id === workspaceId);
+				if (workspace === undefined || workspace.state !== 'active') throw ckError('CONFIG', 'daemon start requires an active workspace');
+				return upChannelWithChannelLock(ctx, channel, runtime);
+			},
+			ctx.onWarn
+		);
+	} catch (error) {
+		if (isCkError(error) && (error.code === 'LOCKED' || error.code === 'CONFIG'))
+			return { ok: false, channel: channel.name, reason: error.message };
+		throw error;
+	}
+}
+
+function upChannelWithChannelLock(ctx: UpContext, channel: ChannelConfig, runtime = ctx.runtime): UpResult {
 	let lock: DaemonChannelLock;
 	try {
 		lock = acquireDaemonChannelLock(ctx.patchesDir, channel.name, `build up ${channel.name}`, {

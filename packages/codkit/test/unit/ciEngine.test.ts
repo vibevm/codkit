@@ -172,7 +172,7 @@ describe('the channel calls of the build pass carry a warning channel', () => {
 		// not silent - the same contract `commands/build.ts` already carries.
 		const source = readFileSync(join(import.meta.dirname, '../../src/lib/ciEngine.ts'), 'utf8');
 		expect(source.replace(/\s/g, '')).toContain(
-			'const result = upChannel({ patchesDir, treeDir: tree, treeId: id, ...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }), onWarn: (text) => out.warn(text) }, channel);'.replace(
+			'const result = upChannel({ patchesDir, treeDir: tree, treeId: id, ...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }), ...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot }), onWarn: (text) => out.warn(text) }, channel);'.replace(
 				/\s/g,
 				''
 			)

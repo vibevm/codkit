@@ -121,7 +121,7 @@ describe('an acquisition that cannot retire its own generation is not silent', (
 		// teardown and the cycle-stabilization teardown in their own files.
 		const build = readFileSync(join(import.meta.dirname, '../../src/commands/build.ts'), 'utf8');
 		expect(build.replace(/\s/g, '')).toContain(
-			'const result = upChannel({ patchesDir: ctx.patchesDir, treeDir, treeId: id, ...(workspaceId === undefined ? {} : { workspaceId }), onWarn: (text) => ctx.out.warn(text) }, channel);'.replace(
+			'const result = upChannel({ patchesDir: ctx.patchesDir, treeDir, treeId: id, ...(workspaceId === undefined ? {} : { workspaceId }), ...(ctx.config?.workspace === undefined ? {} : { workspaceRegistryRoot: ctx.config.workspace.registryRoot }), onWarn: (text) => ctx.out.warn(text) }, channel);'.replace(
 				/\s/g,
 				''
 			)
@@ -134,7 +134,7 @@ describe('an acquisition that cannot retire its own generation is not silent', (
 		);
 		const ciEngine = readFileSync(join(import.meta.dirname, '../../src/lib/ciEngine.ts'), 'utf8');
 		expect(ciEngine.replace(/\s/g, '')).toContain(
-			'const result = upChannel({ patchesDir, treeDir: tree, treeId: id, ...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }), onWarn: (text) => out.warn(text) }, channel);'.replace(
+			'const result = upChannel({ patchesDir, treeDir: tree, treeId: id, ...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }), ...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot }), onWarn: (text) => out.warn(text) }, channel);'.replace(
 				/\s/g,
 				''
 			)

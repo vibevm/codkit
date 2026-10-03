@@ -10,6 +10,7 @@ import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts'
 import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.ts';
 import { ckError } from './messages.ts';
 import { acquirePathLock } from './lock.ts';
+import type { WarnSink } from './lock.ts';
 import { resolveContainedPath } from './pathSafety.ts';
 
 export const WORKSPACE_REGISTRY_FILE = 'workspaces.json';
@@ -127,12 +128,13 @@ export function readWorkspaceRegistry(root: string): WorkspaceRegistry {
 /** Serialize updates under the existing atomic generation lock, never under patchset authority. */
 export function updateWorkspaceRegistry<T>(
 	root: string,
-	body: (current: WorkspaceRegistry, save: (next: readonly WorkspaceRecord[]) => void) => T
+	body: (current: WorkspaceRegistry, save: (next: readonly WorkspaceRecord[]) => void) => T,
+	onWarn?: WarnSink
 ): T {
 	const physical = realpathSync(root);
 	const lockPath = resolveContainedPath(physical, 'workspaces.lock', { allowMissing: true });
 	if (!lockPath.ok) throw ckError('CONFIG', 'workspace registry lock path is not contained');
-	const lock = acquirePathLock(lockPath.absolute, 'workspace registry');
+	const lock = acquirePathLock(lockPath.absolute, 'workspace registry', onWarn);
 	try {
 		let expected = readContainedFile(physical, WORKSPACE_REGISTRY_FILE, { what: 'workspace registry snapshot' });
 		let current = readWorkspaceRegistry(physical);
@@ -160,7 +162,9 @@ export function updateWorkspaceRegistry<T>(
 	}
 }
 export function findWorkspace(registry: WorkspaceRegistry, name: string): WorkspaceRecord {
-	const found = registry.workspaces.find((record) => record.name.toLowerCase() === name.toLowerCase() || record.id === name);
+	const found =
+		registry.workspaces.find((record) => record.id === name) ??
+		registry.workspaces.find((record) => record.name.toLowerCase() === name.toLowerCase());
 	if (found === undefined) throw ckError('CONFIG', `workspace is not registered: ${name}`);
 	return found;
 }

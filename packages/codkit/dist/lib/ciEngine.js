@@ -777,6 +777,7 @@ async function compileOnce(options, steps) {
                 treeDir: tree,
                 treeId: id,
                 ...(options.config.workspace === undefined ? {} : { workspaceId: options.config.workspace.record.id }),
+                ...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot }),
                 onWarn: (text) => out.warn(text)
             }, channel);
             if (!result.ok) {

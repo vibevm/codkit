@@ -137,6 +137,7 @@ function runUp(ctx: CommandContext, watch: BuildWatch, requested: string | null,
 				treeDir,
 				treeId: id,
 				...(workspaceId === undefined ? {} : { workspaceId }),
+				...(ctx.config?.workspace === undefined ? {} : { workspaceRegistryRoot: ctx.config.workspace.registryRoot }),
 				onWarn: (text) => ctx.out.warn(text)
 			},
 			channel

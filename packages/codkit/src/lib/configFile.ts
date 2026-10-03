@@ -83,6 +83,7 @@ export const DEFAULT_SPEC_ROOTS: readonly string[] = ['vibevm/vibespecs'];
 export type CodkitConfig = {
 	/** Composition-only context; never accepted from or written into config JSON. */
 	readonly workspace?: {
+		readonly registryRoot: string;
 		readonly record: WorkspaceRecord;
 		readonly declared: {
 			readonly generatedBranchPrefix: string;
