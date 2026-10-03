@@ -31,11 +31,11 @@
     <phase id="4" depends="1">Trusted external type supply: P0.3/P0.4 with a real partner; offline install, integrity and pre-import handshake proof.</phase>
     <phase id="5" depends="1 2">Measured expansion with real consumers: codec seam P0.6, coordinator contract P0.8, build recipe design P0.12; new implementation follows its polygon.</phase>
   </route>
-  <current-atom id="P0.7" state="executing">
-    <perimeter>Component release descriptor contract, library construction and immutable persistence, package/publish integration, public-format catalog, operational docs and focused release evidence tests.</perimeter>
-    <acceptance>Each successful single-component package/publish yields an immutable descriptor with component identity, revision/provenance, patchset commit, type declaration/contract, discipline, generated tip, artifact hashes, recipe identity, licence-policy digest and distribution evidence references. Unknown or unverified evidence must remain explicit. Finish with the complete native project floor.</acceptance>
-    <negative-proof>Reject altered/foreign descriptors, conflicting immutable writes, escaping artifact paths and false evidence claims. Prove deterministic retries and preserve existing publish leases, tag immutability and package restore behavior.</negative-proof>
-    <safe-stop>P0.9 is committed as 49f41d2 with complete runtime validation. P0.7 schema and immutable storage foundation is implemented; package/publish release integration is implemented with complete native test evidence; Phase 2 distribution enforcement and overall acceptance remain open; legal rulings, signing custody and the real external partner remain outside the delegated technical defaults.</safe-stop>
+  <current-atom id="P0.10" state="planned">
+    <perimeter>Trusted organization policy selection separate from immutable Codkit supply policy; consumer carrier checks, controlled LicenseRef texts/digests, artifact notices/SBOM evidence and package/publish enforcement.</perimeter>
+    <acceptance>Proprietary own code passes only under an appropriate trusted policy; patchset declarations cannot widen allowlists or shadow policy locations. Undeclared/missing-text/mismatched-hash LicenseRef and NOASSERTION refuse. Lost minified carriers without required NOTICE fail; attached notice passes deterministic evidence checks. Existing Codkit supply checks remain unchanged. Run the complete native floor before phase acceptance.</acceptance>
+    <negative-proof>Policy shadow/widening, namespace/text/hash tampering, missing artifact carriers/notices and falsely complete evidence all refuse. Fixtures demonstrate mechanism only, never an actual legal ruling or external supplier approval.</negative-proof>
+    <safe-stop>860a8a4 implements package/publish release receipts with the complete 2750-test native suite green. Commercial notice ruling, signing custody, real external supplier and measured consumer selection remain explicit external inputs. Continue independent implementation without fabricating them.</safe-stop>
   </current-atom>
   <quick-start><![CDATA[
 git status --short
