@@ -609,6 +609,42 @@
       "versionGap": "Marker syntax follows installed conventions and patch schema; no independent version field."
     },
     {
+      "id": "organization-policy",
+      "field": "codkitOrganizationPolicy",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/organizationPolicy.ts",
+      "owner": "User/admin organization enforcement authority",
+      "trustBoundary": "Consumer policy profiles come from a supplied trusted user/admin directory; patchsets select IDs and additional prohibitions only. Codkit supply authority stays separate.",
+      "compatibility": "Strict schema 1; future versions, authority fields in selection, invalid/undeclared LicenseRef and text/hash mismatch refuse.",
+      "migration": "No implicit migration or fallback to patchset/cwd policy. Explicit trusted profile revision and digest identify changed policy.",
+      "fingerprint": "Not a delta/generated-history input. Selected policy/store digests will bind consumer distribution evidence and component release receipts.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-FORMAT",
+      "tests": [
+        "packages/codkit/test/unit/organizationPolicy.test.ts"
+      ]
+    },
+    {
+      "id": "organization-policy-store",
+      "field": "codkitOrganizationPolicyStore",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/organizationPolicyStore.ts",
+      "owner": "User/admin organization enforcement authority",
+      "trustBoundary": "Consumer policy profiles come from a supplied trusted user/admin directory; patchsets select IDs and additional prohibitions only. Codkit supply authority stays separate.",
+      "compatibility": "Strict schema 1; future versions, authority fields in selection, invalid/undeclared LicenseRef and text/hash mismatch refuse.",
+      "migration": "No implicit migration or fallback to patchset/cwd policy. Explicit trusted profile revision and digest identify changed policy.",
+      "fingerprint": "Not a delta/generated-history input. Selected policy/store digests will bind consumer distribution evidence and component release receipts.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-TRUST",
+      "tests": [
+        "packages/codkit/test/unit/organizationPolicy.test.ts"
+      ]
+    },
+    {
       "id": "orphan-claim",
       "field": "codkitOrphanClaim",
       "version": 1,

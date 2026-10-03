@@ -11561,6 +11561,60 @@
     },
     {
       "anchor": "root",
+      "content_hash": "sha256:070be6f2b9188257d5cd7d3fb9d46ec6060b3d87fa94f59a70f8b88a2a2502dc",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "PROP-019: Organization consumer licensing and distribution evidence",
+      "line": 3,
+      "uri": "spec://codkit/modules/codkit/PROP-019#root"
+    },
+    {
+      "anchor": "policy",
+      "content_hash": "sha256:9f174a1b92771311f2e1f6ae67966f6a26ee19516bf26e4769f505247dd49c71",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "Separate authorities and controlled expressions",
+      "line": 5,
+      "uri": "spec://codkit/modules/codkit/PROP-019#policy"
+    },
+    {
+      "anchor": "ORGANIZATION-POLICY-FORMAT",
+      "content_hash": "sha256:4d0052f5f0bfbce062e329998b9796326c372b31cf6c63cac596eeb777749d78",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "codkitOrganizationPolicy:1 declares organization profile ID/revision, own holders and license expression, approved/forbidden third-party expressions, approved exceptions, a LicenseRef namespace, exact canonical custom-license texts with SHA-256, distribution notice/SBOM/carrier requirements and optional legal-review reference. The schema is strict and types derive from it. SPDX identifiers come from the installed list. NOASSERTION, undeclared/foreign-namespace LicenseRef and missing/changed text/hash refuse. Custom texts are LF-only with a final LF and no BOM. This profile applies to consumer scope and never weakens Codkit's separate installed supply policy. @status:impl/done",
+      "line": 6,
+      "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-FORMAT"
+    },
+    {
+      "anchor": "ORGANIZATION-POLICY-TRUST",
+      "content_hash": "sha256:ee96e23e03f904054d02366c0bbc414257040c8ba5ee0fe01f5988256ee1e149",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "A user/admin composition root supplies the policy directory; the default is the user .codkit directory. organization-policies.json carries codkitOrganizationPolicyStore:1 and policy records. Store reads use contained regular-file I/O, validate every profile and refuse conflicting IDs including case aliases. A directory inside the physical patchset or an alias resolving into it refuses. No cwd/patchset fallback or patchset-supplied policy path is accepted. The selected policy and raw store bytes each receive their own digest; a digest is not an invented signature or legal approval. @status:impl/done",
+      "line": 7,
+      "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-TRUST"
+    },
+    {
+      "anchor": "ORGANIZATION-POLICY-SELECTION",
+      "content_hash": "sha256:5988ee6998233f18e89cfef4caac4dc96baadd4ab7c74ba59ce7b61ba10ba539",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "Patchset selection contains only profile ID and optional additionalForbidden expressions. Holders, allowlists, license text, policy locations and other authority fields refuse. Additional prohibitions are monotone and cannot enable a license. Own scope uses the exact declared own expression; third-party scope uses exact approved expression combinations and forbidden identifiers/expressions. AND/OR/WITH and bounded parentheses are syntax, never automatic inference of legal permissions; an OR combination not explicitly approved remains refused. @status:impl/done",
+      "line": 8,
+      "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-SELECTION"
+    },
+    {
+      "anchor": "ORGANIZATION-DISTRIBUTION-EVIDENCE",
+      "content_hash": "sha256:b5f1919b6879a0ce58b3315d196067639d42a12208d14af0b31b2d7f861a6015",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "Consumer source scanning, actual artifact NOTICE/carrier checks and selected SBOM export must bind the selected trusted policy before package/publish enforcement is accepted. A minified artifact without required attached notice is incomplete/red even when source headers were valid. Report evidence complete/incomplete, never a legal-compatibility ruling. Mechanism fixtures are labelled examples, not real commercial approvals or external partner evidence. @status:spec/done",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-DISTRIBUTION-EVIDENCE"
+    },
+    {
+      "anchor": "root",
       "content_hash": "sha256:c3849c7bc21508e9b2ef30cfe3828e3d126838bae359eb5884a084f83a56ca4e",
       "doc_path": "modules/theia/PROP-001",
       "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
