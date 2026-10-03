@@ -495,13 +495,13 @@ describe('cycle apply classification adapter', () => {
 		const current = cycleFixture(tree, oldPin, newPin);
 		writePatch(current.root, oldTarget, 'CK-shell-405', oldPin, 'base', 'codkit');
 		const cycle = acquireLock(current.root, 'cycle-global', 'cycle continue');
-		const wrong = acquireLock(current.root, 'wrong-tree', 'cycle continue');
+		const wrong = acquireLock(current.root, 'wrong-tree', 'cycle continue', undefined, cycle);
 		try {
 			expect(() => applyCycleClassification({ ...options(current), locks: { cycle, tree: wrong } })).toThrow(/tree lock capability/);
 		} finally {
 			wrong.release();
 		}
-		const treeLock = acquireLock(current.root, treeId(current.tree), 'cycle continue');
+		const treeLock = acquireLock(current.root, treeId(current.tree), 'cycle continue', undefined, cycle);
 		try {
 			const clonedCycle = { ...cycle, info: { ...cycle.info } };
 			expect(() => applyCycleClassification({ ...options(current), locks: { cycle: clonedCycle, tree: treeLock } })).toThrow(
@@ -640,7 +640,7 @@ function runFreshApply(current: Fixture): readonly { artifactPath: string; targe
 			"const cycle = acquireLock(options.patchesDir, 'cycle-global', 'fresh resume');",
 			'let tree;',
 			'try {',
-			"  tree = acquireLock(options.patchesDir, treeId(options.treeDir), 'fresh resume');",
+			"  tree = acquireLock(options.patchesDir, treeId(options.treeDir), 'fresh resume', undefined, cycle);",
 			'  const result = applyCycleClassification({ ...options, locks: { cycle, tree } });',
 			'  process.stdout.write(JSON.stringify(result.classifications.map(({ artifactPath, targetPath }) => ({ artifactPath, targetPath }))));',
 			'} finally { tree?.release(); cycle.release(); }'
@@ -658,7 +658,7 @@ function withCycleLocks<T>(
 ): T {
 	const cycle = acquireLock(current.root, 'cycle-global', 'cycle continue');
 	try {
-		const tree = acquireLock(current.root, treeId(current.tree), 'cycle continue');
+		const tree = acquireLock(current.root, treeId(current.tree), 'cycle continue', undefined, cycle);
 		try {
 			return body({ cycle, tree });
 		} finally {

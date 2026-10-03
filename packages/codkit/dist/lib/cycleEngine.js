@@ -28,7 +28,7 @@ export async function continueCycle(options) {
     const commits = [];
     const cycleLock = acquireLock(options.patchesDir, GLOBAL_LOCK_ID, 'cycle continue');
     try {
-        const treeLock = acquireLock(options.patchesDir, treeId(options.resolution.path), 'cycle continue');
+        const treeLock = acquireLock(options.patchesDir, treeId(options.resolution.path), 'cycle continue', undefined, cycleLock);
         try {
             return await continueLocked(options, { cycle: cycleLock, tree: treeLock }, commits);
         }

@@ -17,6 +17,7 @@ import { dirname } from 'node:path';
 import { z } from 'zod';
 import { ckError } from './messages.ts';
 import { resolveContainedPath, safeBasenameProblem } from './pathSafety.ts';
+import { PATCHSET_WRITER_LOCK_ID, reservePatchsetWriter } from './patchsetWriter.ts';
 
 /** Directory of lock files, relative to the patchset root. */
 export const LOCKS_DIR = '.codkit/locks';
@@ -66,7 +67,8 @@ export function lockPath(patchesDir: string, treeId: string): string {
  * Take the lock for one tree. Throws CK-E-LOCKED (exit 2) when another live
  * process holds it.
  */
-export function acquireLock(patchesDir: string, treeId: string, command: string, onWarn?: WarnSink): LockHandle {
+export function acquireLock(patchesDir: string, treeId: string, command: string, onWarn?: WarnSink, parent?: LockHandle): LockHandle {
+	if (treeId === PATCHSET_WRITER_LOCK_ID) throw ckError('CONFIG', 'patchset writer lock id is reserved');
 	let path: string;
 	try {
 		path = lockPath(patchesDir, treeId);
@@ -76,7 +78,15 @@ export function acquireLock(patchesDir: string, treeId: string, command: string,
 		throw lockWriteFailure(error, patchesDir);
 	}
 	try {
-		return acquirePathLock(path, command, onWarn);
+		const writer = reservePatchsetWriter(patchesDir, path, command, onWarn, parent);
+		try {
+			const handle = acquirePathLock(path, command, onWarn);
+			writer.attach(handle);
+			return handle;
+		} catch (error) {
+			writer.cancel();
+			throw error;
+		}
 	} catch (error) {
 		// The per-tree lock lives under the patchset root: a mount failure
 		// there is the public TREE-READONLY condition, not an internal error.

@@ -30,6 +30,8 @@ import { gitLocal, runGit } from '../../src/lib/gitx.ts';
 import type { GitEnv } from '../../src/lib/gitx.ts';
 import { acquireLock, isAlive, lockPath, readLock } from '../../src/lib/lock.ts';
 import type { LockHandle } from '../../src/lib/lock.ts';
+import { planGc } from '../../src/lib/gc.ts';
+import type { GcEntry } from '../../src/lib/gc.ts';
 import { pendingFileName } from '../../src/lib/pendingHeader.ts';
 import { SYNC_TEST_CRASH_ENV, SYNC_TEST_CRASH_EXIT_CODE, SYNC_TRANSACTION_RELATIVE_PATH } from '../../src/lib/syncTransaction.ts';
 import { CONSUMED_REF_PREFIX } from '../../src/lib/treeCommits.ts';
@@ -318,6 +320,7 @@ describe('S28: gc removes spent state and never a transaction', () => {
 	let key: string;
 	let aliveLock: LockHandle;
 	let aliveKey: string;
+	let alivePlanRows: readonly GcEntry[];
 	let transactionHash: string;
 	let pendingHash: string;
 	let dryRun: { run: Run; envelope: Envelope };
@@ -371,6 +374,19 @@ describe('S28: gc removes spent state and never a transaction', () => {
 		transactionHash = hashOf(transactionPath(fixture));
 		pendingHash = hashOf(pendingPath(fixture));
 
+		alivePlanRows = planGc({
+			patchesDir: fixture.patchesDir,
+			treeDir: fixture.treeDir,
+			ownTreeKey: key,
+			keepConsumed: 5,
+			olderThanDays: 30
+		}).entries.filter((entry) => entry.path === `.codkit/locks/${aliveKey}.lock`);
+		const guarded = fixture.json(['gc']);
+		expect(guarded.run.status).toBe(2);
+		expect(existsSync(lockPath(fixture.patchesDir, aliveKey))).toBe(true);
+		expect(hashOf(transactionPath(fixture))).toBe(transactionHash);
+		expect(hashOf(pendingPath(fixture))).toBe(pendingHash);
+		aliveLock.release();
 		dryRun = fixture.json(['gc', '--dry-run']);
 		tmpAfterDryRun = readdirSync(fixture.patchesPath('.codkit/tmp'));
 		// The dry run's lock acquisition spent the stale lock (##LOCK-MECHANISM
@@ -402,7 +418,7 @@ describe('S28: gc removes spent state and never a transaction', () => {
 		expect(removedLocks.map((row) => row.path).join('\n')).toContain(`.codkit/locks/${key}.lock`);
 
 		// The live lock of the other tree: kept, and the plan says why.
-		const aliveRows = rows.filter((row) => row.path === `.codkit/locks/${aliveKey}.lock`);
+		const aliveRows = alivePlanRows;
 		expect(aliveRows).toHaveLength(1);
 		expect(aliveRows[0]?.action).toBe('keep');
 		expect(aliveRows[0]?.reason).toContain('is still running');
@@ -461,9 +477,9 @@ describe('S28: gc removes spent state and never a transaction', () => {
 		expect(consumedRefs(fixture).length).toBe(3);
 	});
 
-	it('keeps the live lock of a live owner and the kept classes byte-identical', () => {
-		expect(existsSync(lockPath(fixture.patchesDir, aliveKey))).toBe(true);
-		expect(readLock(lockPath(fixture.patchesDir, aliveKey))?.command).toBe('test-holder');
+	it('keeps live owners in the read-only plan and preserves kept classes during exclusive gc', () => {
+		expect(alivePlanRows).toHaveLength(1);
+		expect(alivePlanRows[0]?.action).toBe('keep');
 
 		expect(hashOf(transactionPath(fixture)), 'the sync transaction must be byte-identical after gc').toBe(transactionHash);
 		expect(hashOf(pendingPath(fixture)), 'the pending draft must be byte-identical after gc').toBe(pendingHash);

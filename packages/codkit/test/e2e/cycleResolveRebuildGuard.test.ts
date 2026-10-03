@@ -88,7 +88,7 @@ describe('cycle resolve save rebuild guard', () => {
 		mkdirSync(dirname(journalFile), { recursive: true });
 		writeFileSync(journalFile, journal.map(serializeCycleJournalEntry).join(''));
 		const cycle = acquireLock(fixture.patchesDir, 'cycle-global', 'cycle continue');
-		const tree = acquireLock(fixture.patchesDir, treeId(fixture.treeDir), 'cycle continue');
+		const tree = acquireLock(fixture.patchesDir, treeId(fixture.treeDir), 'cycle continue', undefined, cycle);
 		try {
 			const result = runCycleResolve({
 				patchesDir: fixture.patchesDir,

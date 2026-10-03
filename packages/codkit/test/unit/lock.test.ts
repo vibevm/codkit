@@ -6,6 +6,7 @@ import { Worker } from 'node:worker_threads';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
 	acquireLock,
+	acquirePathLock,
 	assertOwnedLockHandle,
 	isOwnedLockHandle,
 	lockPath,
@@ -30,10 +31,10 @@ const CONTENDER_SOURCE = String.raw`
 const { parentPort, workerData } = require('node:worker_threads');
 
 (async () => {
-	const { acquireLock } = await import(workerData.moduleUrl);
+	const { acquirePathLock, lockPath } = await import(workerData.moduleUrl);
 	const gates = new Int32Array(workerData.gates);
 	try {
-		const handle = acquireLock(workerData.patchset, workerData.treeId, 'worker-' + workerData.id, () => {
+		const handle = acquirePathLock(lockPath(workerData.patchset, workerData.treeId), 'worker-' + workerData.id, () => {
 			parentPort.postMessage({ kind: 'ready', id: workerData.id });
 			Atomics.wait(gates, workerData.id, 0);
 		});
@@ -177,7 +178,7 @@ describe('acquireLock', () => {
 	it('serializes contenders that both inspected the same stale generation', async () => {
 		const patchset = makeTempRoot('lock-stale-race');
 		const path = lockPath(patchset, TREE_ID);
-		const stale = acquireLock(patchset, TREE_ID, 'seed');
+		const stale = acquirePathLock(path, 'seed');
 		writeFileSync(path, JSON.stringify({ ...stale.info, pid: DEAD_PID }), 'utf8');
 
 		const gates = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 3);
@@ -216,12 +217,12 @@ describe('acquireLock', () => {
 	it('does not let an old handle release a successor generation', () => {
 		const patchset = makeTempRoot('lock-release-race');
 		const path = lockPath(patchset, TREE_ID);
-		const first = acquireLock(patchset, TREE_ID, 'first');
+		const first = acquirePathLock(path, 'first');
 
 		// Model a completed stale takeover: the old public name is gone, while
 		// its handle still retains the private ownership link.
 		rmSync(path);
-		const successor = acquireLock(patchset, TREE_ID, 'successor');
+		const successor = acquirePathLock(path, 'successor');
 		first.release();
 
 		expect(readLock(path)?.nonce).toBe(successor.info.nonce);

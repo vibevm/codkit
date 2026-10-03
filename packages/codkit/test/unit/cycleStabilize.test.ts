@@ -355,7 +355,7 @@ function fixture(advisoryChanged: boolean, phase: CycleState['phase'] = 'deps-ad
 
 async function locked(current: Fixture, body: (locks: { cycle: LockHandle; tree: LockHandle }) => Promise<void>): Promise<void> {
 	const cycle = acquireLock(current.root, 'cycle-global', 'test stabilize');
-	const tree = acquireLock(current.root, treeId(current.tree), 'test stabilize');
+	const tree = acquireLock(current.root, treeId(current.tree), 'test stabilize', undefined, cycle);
 	try {
 		await body({ cycle, tree });
 	} finally {

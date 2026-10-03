@@ -409,7 +409,7 @@ export function withCycleLocks<T>(
 ): T {
 	const patchsetLock = dependencies.acquireLock(patchesDir, 'cycle-global', command);
 	try {
-		const treeLock = dependencies.acquireLock(patchesDir, treeId(forkDir), command);
+		const treeLock = dependencies.acquireLock(patchesDir, treeId(forkDir), command, undefined, patchsetLock);
 		try {
 			return body(patchsetLock);
 		} finally {

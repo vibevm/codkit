@@ -132,7 +132,7 @@ function harness(
 		conventionsExtensionFile: null
 	};
 	const cycle = acquireLock(patchesDir, 'cycle-global', 'cycle continue');
-	const treeLock = acquireLock(patchesDir, treeId(tree), 'cycle continue');
+	const treeLock = acquireLock(patchesDir, treeId(tree), 'cycle continue', undefined, cycle);
 	const treeDirt = [...(overrides.treeDirt ?? [{ status: ' M', path: TARGET }])];
 	const patchsetDirt = [...(overrides.patchsetDirt ?? [{ status: '??', path: JOURNAL }])];
 	const proof = new Set(overrides.proved ?? []);
@@ -435,7 +435,7 @@ describe('cycle resolve production adapter', () => {
 		mkdirSync(dirname(journalFile), { recursive: true });
 		writeFileSync(journalFile, journal.map(serializeCycleJournalEntry).join(''));
 		const cycle = acquireLock(fixture.patchesDir, 'cycle-global', 'cycle continue');
-		const tree = acquireLock(fixture.patchesDir, treeId(fixture.treeDir), 'cycle continue');
+		const tree = acquireLock(fixture.patchesDir, treeId(fixture.treeDir), 'cycle continue', undefined, cycle);
 		try {
 			const base = {
 				patchesDir: fixture.patchesDir,
@@ -505,7 +505,7 @@ describe('cycle resolve production adapter', () => {
 		mkdirSync(dirname(journalFile), { recursive: true });
 		writeFileSync(journalFile, journal.map(serializeCycleJournalEntry).join(''));
 		const cycle = acquireLock(fixture.patchesDir, 'cycle-global', 'cycle continue');
-		const tree = acquireLock(fixture.patchesDir, treeId(fixture.treeDir), 'cycle continue');
+		const tree = acquireLock(fixture.patchesDir, treeId(fixture.treeDir), 'cycle continue', undefined, cycle);
 		try {
 			const base: CycleResolveOptions = {
 				patchesDir: fixture.patchesDir,

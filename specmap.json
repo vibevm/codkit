@@ -11678,6 +11678,42 @@
     },
     {
       "anchor": "root",
+      "content_hash": "sha256:40016fdfe0083e8687ffb280e4e2f8198c71759683361ae9fb7490e436dced85",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "PROP-020: Named local workspace pairs and checkout writers",
+      "line": 3,
+      "uri": "spec://codkit/modules/codkit/PROP-020#root"
+    },
+    {
+      "anchor": "policy",
+      "content_hash": "sha256:382a30db49f79fc2f1a086ffc5fa49569d3a92ca702734db0135e0baa9d9aae9",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Checkout custody and workspace identity",
+      "line": 5,
+      "uri": "spec://codkit/modules/codkit/PROP-020#policy"
+    },
+    {
+      "anchor": "PATCHSET-WRITER",
+      "content_hash": "sha256:a64844eda5c68407eda05c77fbc2c744973134fcd565fdcb53626e4decab8507",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Every acquireLock writing scope owns a physical patchset checkout guard in addition to its legacy per-tree generation. Different fork tree IDs, aliases and separate command scopes in the same process cannot overlap one checkout. A nested scope borrows only an active issued parent capability for the same physical checkout; copying metadata or a handle, reusing a released handle or supplying a foreign parent refuses. The checkout guard survives until all parent/child references release. Partial acquisitions unwind. Existing live legacy tree owners refuse; unknown foreign owners and non-regular lock files fail closed. The requested tree generation retains its established stale recovery protocol. This is cooperative exclusion for participating writers and detection of already live legacy owners, not a claim to control arbitrary uncooperative programs starting afterward. Per-tree lock bytes and atomic hard-link/generation ownership remain unchanged. @status:impl/done",
+      "line": 6,
+      "uri": "spec://codkit/modules/codkit/PROP-020#PATCHSET-WRITER"
+    },
+    {
+      "anchor": "WORKSPACE-PAIR-LIFECYCLE",
+      "content_hash": "sha256:6bb5b850179ae1708fa69b478eddbd83ad344e69f3c3d18f966f5ebb5ada6503",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "A named workspace is a local patchset task worktree and fork worktree pair with stable UUID, type/pin, ref namespace and owner/session metadata. Create/list/show/finish/remove operate on validated real Git worktrees. Generated refs include workspace UUID. Named launcher resolution supplies where roots and refuses conflicting root flags. Finish proves save/clean and no live writers/daemons before cleanup; removal never destroys dirty, foreign or unowned roots. Without named selection legacy root/ref behavior remains compatible. @status:spec/done",
+      "line": 7,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-PAIR-LIFECYCLE"
+    },
+    {
+      "anchor": "root",
       "content_hash": "sha256:c3849c7bc21508e9b2ef30cfe3828e3d126838bae359eb5884a084f83a56ca4e",
       "doc_path": "modules/theia/PROP-001",
       "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",

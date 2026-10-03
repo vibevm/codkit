@@ -571,9 +571,9 @@ describe('cycle control', () => {
 		// Real handles: the config pin write requires the live cycle-global
 		// capability, and a structurally identical stand-in is not one. Only the
 		// release order is observed here.
-		const acquireLock: NonNullable<CycleControlDependencies['acquireLock']> = (root, id, command) => {
+		const acquireLock: NonNullable<CycleControlDependencies['acquireLock']> = (root, id, command, warn, parent) => {
 			events.push(`acquire:${id}`);
-			const handle = realAcquireLock(root, id, command);
+			const handle = realAcquireLock(root, id, command, warn, parent);
 			const release = handle.release;
 			handle.release = () => {
 				events.push(`release:${id}`);
