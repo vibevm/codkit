@@ -328,7 +328,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 
 	out.info(`package targets: ${targets.length === 0 ? 'legacy' : routed.map((entry) => `${entry.target.id} (${entry.route})`).join(', ')}`);
 	out.info(`package plan: ${packageStepPlan(type, options.flags, packageBuild, checked.length > 0).join(' -> ')}`);
-	const overlays = loadOverlays(patchesDir);
+	const overlays = loadOverlays(patchesDir, type);
 	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir));
 	const stamps = packageStamps(type, config, tree, env);
 	const stampValues = Object.fromEntries(stamps.map((stamp) => [stamp.name, stamp.value]));

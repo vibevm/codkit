@@ -190,7 +190,7 @@ export function runSync(options) {
     // not at packaging time. Every mismatch is reported, not only the first.
     let overlays;
     try {
-        overlays = loadOverlays(patchesDir);
+        overlays = loadOverlays(patchesDir, options.type);
         const drift = overlays.flatMap((overlay) => checkOverlay(overlay, { type: options.type, treeDir: tree, pinSha: config.pin.sha, pinOnly: true }).drift);
         if (drift.length > 0) {
             for (const error of overlayDriftErrors(drift)) {
@@ -956,7 +956,7 @@ export function buildAppliedTip(options) {
         options.out.warn(text);
     };
     const conventions = loadConventions(options.type, options.patchesDir);
-    const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir) : [];
+    const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir, options.type) : [];
     const plan = buildPlan(options.patchesDir, conventions, overlays, warn);
     assertGeneratedTargetOwnership(options.patchesDir, options.type, ownedRootsOf(options.type, options.config.typeConfig, { treeDir: tree, pinSha: options.config.pin.sha }), layerTargets(plan), options.omitLicenceNotice === true);
     const context = overlayVarContext(options.config, pinCommitDate(tree, options.config.pin.sha), options.patchSetCommit ?? patchSetCommitId(options.patchesDir));

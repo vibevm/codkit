@@ -197,7 +197,7 @@ const FIELD_EXPECTATION: Readonly<Record<string, string>> = {
 };
 
 /** Read every overlay in the repository, in path order. */
-export function loadOverlays(patchesDir: string): readonly Overlay[] {
+export function loadOverlays(patchesDir: string, type?: ProjectType): readonly Overlay[] {
 	const dir = join(patchesDir, ...OVERLAYS_DIR.split('/'));
 	let names: string[];
 	try {
@@ -207,7 +207,17 @@ export function loadOverlays(patchesDir: string): readonly Overlay[] {
 	}
 	const files = names.filter((name) => name.endsWith(OVERLAY_FILE_SUFFIX)).sort();
 	const overlays = files.map((name) => parseOverlayFile(join(dir, name), `${OVERLAYS_DIR}/${name}`));
-	validateNpmDependencyPairs(overlays);
+	if (type !== undefined) {
+		const npmTargets = new Set(
+			type.layers.overlayTargets
+				.filter(
+					(target) =>
+						target.npmLockfile === true || (target.allowedRemovals?.length ?? 0) > 0 || (target.allowedDependencyUpdates?.length ?? 0) > 0
+				)
+				.map((target) => target.path)
+		);
+		validateNpmDependencyPairs(overlays.filter((overlay) => npmTargets.has(overlay.target)));
+	}
 	return overlays;
 }
 

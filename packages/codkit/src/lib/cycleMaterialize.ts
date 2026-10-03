@@ -200,7 +200,7 @@ function loadCurrent(options: CycleMaterializeOptions): Loaded {
 		};
 	});
 	const rules = loadRules(options.patchesDir);
-	const overlays = loadOverlays(options.patchesDir);
+	const overlays = loadOverlays(options.patchesDir, options.type);
 	const resources = loadResourceMap(options.patchesDir)?.entries ?? [];
 	const expectedPin = `${options.sourcePin.tag}@${options.sourcePin.sha}`;
 	for (const [artifact, pin] of [

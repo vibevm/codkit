@@ -341,7 +341,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
 	const knownOverlayTargets: string[] = [];
 	const isKnownOverlayMaterialization = overlayMaterializationClassifier(
-		loadOverlays(patchesDir),
+		loadOverlays(patchesDir, options.type),
 		tree,
 		config.pin.sha,
 		overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir)),

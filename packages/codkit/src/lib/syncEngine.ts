@@ -466,7 +466,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// not at packaging time. Every mismatch is reported, not only the first.
 	let overlays: readonly Overlay[];
 	try {
-		overlays = loadOverlays(patchesDir);
+		overlays = loadOverlays(patchesDir, options.type);
 		const drift = overlays.flatMap(
 			(overlay) => checkOverlay(overlay, { type: options.type, treeDir: tree, pinSha: config.pin.sha, pinOnly: true }).drift
 		);
@@ -1345,7 +1345,8 @@ export function buildAppliedTip(options: AppliedTipOptions): string {
 		options.out.warn(text);
 	};
 	const conventions = loadConventions(options.type, options.patchesDir);
-	const overlays = options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir) : [];
+	const overlays =
+		options.generatedBranch === true || options.materializeOverlays === true ? loadOverlays(options.patchesDir, options.type) : [];
 	const plan = buildPlan(options.patchesDir, conventions, overlays, warn);
 	assertGeneratedTargetOwnership(
 		options.patchesDir,

@@ -187,7 +187,7 @@ export function runSave(options) {
     ];
     const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
     const knownOverlayTargets = [];
-    const isKnownOverlayMaterialization = overlayMaterializationClassifier(loadOverlays(patchesDir), tree, config.pin.sha, overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir)), knownOverlayTargets);
+    const isKnownOverlayMaterialization = overlayMaterializationClassifier(loadOverlays(patchesDir, options.type), tree, config.pin.sha, overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir)), knownOverlayTargets);
     const headerOverrides = validateHeaderOverrides(options);
     // Paths on the command line name files of the tree; they are read the same
     // way whether they were typed relative, absolute or with a trailing slash.

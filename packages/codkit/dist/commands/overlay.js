@@ -34,7 +34,7 @@ async function run(ctx, mode) {
     ctx.out.setForkTree(resolution.path, resolution.source);
     ctx.out.info(formatForkTreeLine(resolution));
     const config = requireConfig(ctx.config, mode);
-    const overlays = loadOverlays(ctx.patchesDir);
+    const overlays = loadOverlays(ctx.patchesDir, ctx.type ?? undefined);
     const selected = selectTarget(overlays, ctx.args[0]);
     const identity = checkTree(resolution, config, { mode: mode === 'apply' ? 'write' : 'read', type: requireProjectType(ctx) });
     if (identity.fatal !== null) {
@@ -236,7 +236,7 @@ function scaffoldOverlay(ctx) {
         ctx.out.warn(`the project type ${type.id} does not declare ${target} as an overlay target, so only the keys it restricts an ` +
             'undeclared target to may be written; codkit overlay check names the violation');
     }
-    for (const overlay of loadOverlays(ctx.patchesDir)) {
+    for (const overlay of loadOverlays(ctx.patchesDir, ctx.type ?? undefined)) {
         if (overlay.id === fields.id) {
             throw ckError('MARKER-DUP-ID', `id already used: ${fields.id} is the id of ${overlay.artifactPath}`, 'give this intervention its own id', overlay.artifactPath);
         }

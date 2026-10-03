@@ -65,7 +65,7 @@ async function run(ctx: CommandContext, mode: Mode): Promise<number> {
 	ctx.out.info(formatForkTreeLine(resolution));
 
 	const config = requireConfig(ctx.config, mode);
-	const overlays = loadOverlays(ctx.patchesDir);
+	const overlays = loadOverlays(ctx.patchesDir, ctx.type ?? undefined);
 	const selected = selectTarget(overlays, ctx.args[0]);
 
 	const identity = checkTree(resolution, config, { mode: mode === 'apply' ? 'write' : 'read', type: requireProjectType(ctx) });
@@ -318,7 +318,7 @@ function scaffoldOverlay(ctx: CommandContext): number {
 				'undeclared target to may be written; codkit overlay check names the violation'
 		);
 	}
-	for (const overlay of loadOverlays(ctx.patchesDir)) {
+	for (const overlay of loadOverlays(ctx.patchesDir, ctx.type ?? undefined)) {
 		if (overlay.id === fields.id) {
 			throw ckError(
 				'MARKER-DUP-ID',

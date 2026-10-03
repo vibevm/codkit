@@ -33,7 +33,7 @@ export type OverlayTarget = {
 	readonly allowedRemovals?: readonly string[];
 	/** Dependency sections allowing an exact, pin-guarded version replacement. */
 	readonly allowedDependencyUpdates?: readonly string[];
-	/** This target is an npm v3 lockfile and accepts only npm-prune operations. */
+	/** This target owns guarded npm v3 lockfile operations paired with a manifest. */
 	readonly npmLockfile?: boolean;
 };
 

@@ -87,7 +87,7 @@ export function runVerify(options) {
     // (a) Everything parses. A schema failure is raised, not collected: an
     // artifact that does not describe itself cannot be cross-checked at all.
     const patches = loadPatches(patchesDir, conventions);
-    const overlays = loadOverlays(patchesDir);
+    const overlays = loadOverlays(patchesDir, options.type);
     const rules = loadRules(patchesDir);
     const manifest = loadOwnManifest(patchesDir);
     const removed = loadRemoved(patchesDir);

@@ -350,7 +350,7 @@ function knownMaterializations(ctx, config, treeDir, upstream) {
     }
     const found = [];
     try {
-        const overlays = loadOverlays(ctx.patchesDir);
+        const overlays = loadOverlays(ctx.patchesDir, ctx.type ?? undefined);
         if (overlays.length === 0) {
             return [];
         }
