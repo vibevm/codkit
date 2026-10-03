@@ -268,12 +268,13 @@ function readProcArgs(pid, root) {
         return args;
     }
     catch (error) {
-        // ENOENT is the only errno that means "no such process". EACCES/EPERM -
+        // ENOENT/ESRCH mean the task vanished during the /proc read. EACCES/EPERM -
         // `hidepid`, a different uid - mean the process exists and is not visible
         // to us, which must never be read as gone: that would retire a live
         // daemon's record and let the next `up` start a second watcher over the
         // tree. The `ps` and Windows probes already fail closed here.
-        if (error.code === 'ENOENT')
+        const code = error.code;
+        if (code === 'ENOENT' || code === 'ESRCH')
             return null;
         throw ckError('INTERNAL', `cannot inspect process ${pid}: ${messageOf(error)}`, 'the process exists but its command line is not readable by this user; run as the owner of the daemon or repair /proc visibility. Daemon records were left untouched');
     }
