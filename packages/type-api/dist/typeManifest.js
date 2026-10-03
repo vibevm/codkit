@@ -12,10 +12,16 @@ export const typeManifestSchema = z
     .object({
     typeManifestVersion: z.number().int().positive(),
     contractVersion: z.number().int().positive(),
-    id: z.string().regex(/^[a-z][a-z0-9-]*$/),
-    package: z.string().regex(/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/),
-    version: versionSchema,
-    engineRange: z.object({ min: versionSchema, maxExclusive: versionSchema }).strict(),
+    id: z
+        .string()
+        .regex(/^[a-z][a-z0-9-]*$/)
+        .brand(),
+    package: z
+        .string()
+        .regex(/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/)
+        .brand(),
+    version: versionSchema.brand(),
+    engineRange: z.object({ min: versionSchema.brand(), maxExclusive: versionSchema.brand() }).strict(),
     capabilities: capabilitiesSchema,
     configurableCapabilities: capabilitiesSchema
 })

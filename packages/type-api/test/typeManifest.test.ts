@@ -19,7 +19,11 @@ describe('type manifest compatibility', () => {
 		const result = validateTypeManifest(valid, expected);
 		expect(result.ok).toBe(true);
 		expectTypeOf(result).toEqualTypeOf<TypeManifestResult>();
-		if (result.ok) expectTypeOf(result.manifest).toEqualTypeOf<TypeManifest>();
+		if (result.ok) {
+			expectTypeOf(result.manifest).toEqualTypeOf<TypeManifest>();
+			expectTypeOf(result.manifest.id).not.toMatchTypeOf<typeof result.manifest.package>();
+			expectTypeOf(result.manifest.version).not.toMatchTypeOf<typeof result.manifest.engineRange.min>();
+		}
 	});
 	it.each(['typeManifestVersion', 'contractVersion'] as const)('refuses a newer %s with expected/actual versions and package', (field) => {
 		const result = validateTypeManifest({ ...valid, [field]: 99 }, expected);

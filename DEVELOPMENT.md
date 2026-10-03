@@ -142,3 +142,10 @@ fixtures без импорта адаптеров продукта. Обе пр�
 manifest и contract проверяются до импорта адаптера; capabilities декларации
 сверяются при использовании. После изменения декларации запустите
 `codkit-type-conform packages/type-<id>`. `codkit types` читает только данные.
+
+### Целостность installation registry
+
+`npm run runtime:build` обновляет byte receipts официальных типов в
+`packages/codkit/config/type-registry.json`; `npm run types:check` доказывает,
+что они соответствуют текущей публикации. Отдельное `npm run types:refresh` —
+явное одобрение source-изменений, а не runtime-операция над patch set.

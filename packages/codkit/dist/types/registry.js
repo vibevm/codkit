@@ -22,12 +22,9 @@ import { projectTypeProblems } from '@codkit/type-api';
 import { ckError } from '../lib/messages.js';
 import { testSeamEntry, TYPE_PACKAGE_ENV } from './testSeam.js';
 import { readTypeManifest } from './manifest.js';
+import { InstallationRegistry } from './installation.js';
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
-export const TYPE_REGISTRY = new Map([
-    ['vscode', '@codkit/type-vscode'],
-    ['generic', '@codkit/type-generic'],
-    ['theia', '@codkit/type-theia']
-]);
+export const TYPE_REGISTRY = new InstallationRegistry();
 /**
  * The table this process resolves against: the shipped one, plus the single
  * type a test build was told to add (##TYPE-TEST-SEAM). A production build gets

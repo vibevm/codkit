@@ -959,6 +959,26 @@
         "packages/type-api/test/typeManifest.test.ts",
         "packages/codkit/test/unit/typeManifestLoader.test.ts"
       ]
+    },
+    {
+      "id": "type-registry",
+      "field": "codkitTypeRegistry",
+      "observedVersions": [
+        1
+      ],
+      "version": 1,
+      "versionSymbol": "TYPE_REGISTRY_VERSION",
+      "source": "packages/codkit/src/types/installation.ts",
+      "owner": "Codkit installation publisher",
+      "trustBoundary": "Contained toolRoot/config/type-registry.json only; no patchset, cwd or environment registry source.",
+      "compatibility": "Registry v1 strict entries pin package/version/contract, manifest digest and published file receipts; malformed, foreign and duplicate identities refuse.",
+      "migration": "Publish or refresh the approved installation through types:refresh; installed runtime never auto-approves changed bytes.",
+      "fingerprint": "Package byte receipts protect installation content; they do not change consumer delta/history fingerprints.",
+      "contract": "spec://codkit/modules/codkit/PROP-016#TYPE-REGISTRY",
+      "tests": [
+        "packages/codkit/test/unit/typeIntegrity.test.ts",
+        "packages/codkit/test/unit/typeIntegrityLoader.test.ts"
+      ]
     }
   ]
 }

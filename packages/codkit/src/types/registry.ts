@@ -17,13 +17,10 @@ import { ckError } from '../lib/messages.ts';
 import { testSeamEntry, TYPE_PACKAGE_ENV } from './testSeam.ts';
 import { readTypeManifest } from './manifest.ts';
 import type { RegisteredManifest } from './manifest.ts';
+import { InstallationRegistry } from './installation.ts';
 
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
-export const TYPE_REGISTRY: ReadonlyMap<string, string> = new Map([
-	['vscode', '@codkit/type-vscode'],
-	['generic', '@codkit/type-generic'],
-	['theia', '@codkit/type-theia']
-]);
+export const TYPE_REGISTRY: ReadonlyMap<string, string> = new InstallationRegistry();
 
 /**
  * The table this process resolves against: the shipped one, plus the single

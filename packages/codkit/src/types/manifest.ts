@@ -10,6 +10,8 @@ import { validateTypeManifest } from '@codkit/type-api';
 import type { TypeManifest } from '@codkit/type-api';
 import { readCodkitVersion } from '../lib/jsonOut.ts';
 import { ckError } from '../lib/messages.ts';
+import { approvedPackage } from './installation.ts';
+import { typeIntegrityProblems } from './integrity.ts';
 
 const packageSchema = z.object({ name: z.string(), version: z.string() });
 const codkitRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -40,6 +42,21 @@ export function readTypeManifest(id: string, packageName: string): RegisteredMan
 		});
 		if (!checked.ok) throw new Error(checked.problem.message);
 		if (!seam && identity.name !== packageName) throw new Error(`registered package ${packageName} resolves to ${identity.name}`);
+		if (!seam) {
+			const approval = approvedPackage(id);
+			if (
+				approval === undefined ||
+				approval.package !== packageName ||
+				approval.version !== identity.version ||
+				approval.contractVersion !== checked.manifest.contractVersion
+			)
+				throw new Error(`package identity is outside the installation approval: ${packageName}@${identity.version}`);
+			const manifestSha256 = createHash('sha256').update(bytes).digest('hex');
+			if (manifestSha256 !== approval.manifestSha256) throw new Error(`manifest integrity mismatch for ${packageName}`);
+			const packageRoot = dirname(require.resolve(`${packageName}/package.json`));
+			const problems = typeIntegrityProblems(packageRoot, approval);
+			if (problems.length > 0) throw new Error(problems.join('; '));
+		}
 		return {
 			manifest: checked.manifest,
 			sha256: createHash('sha256').update(bytes).digest('hex'),
