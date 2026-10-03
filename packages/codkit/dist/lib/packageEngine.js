@@ -220,6 +220,7 @@ export function runPackage(options) {
             for (const path of outputs) {
                 out.info(`artifact ${path}`);
             }
+            options.onOutputs?.(result(EXIT_OK));
         }
     }
     finally {

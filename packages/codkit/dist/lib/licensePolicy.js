@@ -10,6 +10,7 @@
 // patch set can never shadow it - the same rule conventions.json lives under
 // (PROP-003 ##CONVENTIONS-SINGLE-DEFINITION). A patch set is untrusted input,
 // and a policy it could override would not be a policy.
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
@@ -55,4 +56,21 @@ export function loadLicensePolicy() {
 /** Test seam: forget the cached policy so a fixture file is read again. */
 export function forgetLicensePolicyCache() {
     cached = null;
+}
+/** Fresh release evidence; it never treats cached policy data as the current file bytes. */
+export function licensePolicySnapshot() {
+    const read = readContainedFile(codkitRoot, LICENSE_POLICY_RELATIVE_PATH, { what: LICENSE_POLICY_RELATIVE_PATH });
+    if (read.state === 'absent')
+        throw ckError('CONFIG', 'installed license policy is missing');
+    let raw;
+    try {
+        raw = JSON.parse(Buffer.from(read.bytes).toString('utf8'));
+    }
+    catch {
+        throw ckError('CONFIG', 'installed license policy is not JSON');
+    }
+    const parsed = licensePolicySchema.safeParse(raw);
+    if (!parsed.success)
+        throw ckError('CONFIG', 'installed license policy has an unsupported or malformed schema');
+    return { policy: parsed.data, version: 1, sha256: createHash('sha256').update(read.bytes).digest('hex') };
 }

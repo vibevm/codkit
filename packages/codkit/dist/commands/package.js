@@ -21,7 +21,7 @@ import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
 import { DEFAULT_CONTAINER_PREFIX, requireContainerPrefix } from '../lib/packageContainer.js';
-import { runPackage } from '../lib/packageEngine.js';
+import { runPackageRelease } from '../lib/packageRelease.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { checkTree } from '../lib/treeIdentity.js';
 const KEEP_OVERLAY = '--keep-overlay';
@@ -29,6 +29,7 @@ const SKIP_TYPE_BUILD = '--skip-type-build';
 const TIMEOUT = '--timeout';
 const INPUTS = '--inputs';
 const CONTAINER_PREFIX = '--container-prefix';
+const COMPONENT_ID = '--component-id';
 async function run(ctx) {
     const resolution = forkResolution(ctx);
     ctx.out.setForkTree(resolution.path, resolution.source);
@@ -37,6 +38,7 @@ async function run(ctx) {
         ctx.out.warn(resolution.warning);
     }
     const config = requireConfig(ctx.config);
+    const componentId = commandFlagValue(ctx.commandFlags, COMPONENT_ID);
     const type = requireProjectType(ctx);
     const timeoutMs = requireTimeout(commandFlagValue(ctx.commandFlags, TIMEOUT));
     const inputsDir = requireInputsDir(commandFlagValue(ctx.commandFlags, INPUTS));
@@ -47,7 +49,7 @@ async function run(ctx) {
         return EXIT_ENVIRONMENT;
     }
     return withLock(ctx.patchesDir, treeId(resolution.path), 'package', () => {
-        const result = runPackage({
+        const result = runPackageRelease({
             patchesDir: ctx.patchesDir,
             resolution,
             config,
@@ -61,7 +63,8 @@ async function run(ctx) {
             targetSelector: ctx.args[0] ?? null,
             inputsDir,
             offline: ctx.flags.ci,
-            containerPrefix
+            containerPrefix,
+            ...(componentId === null ? {} : { componentId })
         });
         ctx.out.setData(dataOf(result));
         return result.exitCode;
@@ -71,6 +74,7 @@ async function run(ctx) {
 }
 function dataOf(result) {
     return {
+        release: result.release === null ? null : { ...result.release, missing: [...result.release.missing] },
         steps: result.steps.map((step) => ({ name: step.name, state: step.state, detail: step.detail })),
         materialized: [...result.materialized],
         restored: [...result.restored],
@@ -116,6 +120,6 @@ export const packageCommand = {
     summary: 'build the distributable from the loaded tree and put the tree back',
     configMode: 'load',
     maxArgs: 1,
-    commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT, INPUTS, CONTAINER_PREFIX],
+    commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT, INPUTS, CONTAINER_PREFIX, COMPONENT_ID],
     run
 };

@@ -73,6 +73,7 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--skip-type-build', 'boolean'],
     ['--inputs', 'value'],
     ['--container-prefix', 'value'],
+    ['--component-id', 'value'],
     // ci (PROP-007 sec. 17, PROP-011)
     ['--profile', 'value'],
     ['--effective-diff', 'value'],

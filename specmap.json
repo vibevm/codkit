@@ -11453,7 +11453,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:76572cbd4b885dff7ab37387d029418f8a13838c55664a891af9d73c5693193b",
+      "content_hash": "sha256:9830221fb79b4ce938a702ae4659c77e27a300c79aa09a793bdcb83797ddad71",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "PROP-018: Immutable component release descriptors",
@@ -11462,7 +11462,7 @@
     },
     {
       "anchor": "format",
-      "content_hash": "sha256:9756be27d443e3dfb034fec804b8ab752c317c725c90a137b1c07a7b1230e3da",
+      "content_hash": "sha256:4baf089a249da569c8812c4815973f556fe7067404914d974427b0a2be08097c",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Descriptor data and integrity",
@@ -11515,12 +11515,30 @@
       "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-ARTIFACT-TREE"
     },
     {
+      "anchor": "COMPONENT-RELEASE-FACTS",
+      "content_hash": "sha256:97e3798e4a4e8b02ac2bc8dbcd636b823e2f7799150b0274ab60fbc97dbf4439",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "Release fact capture proves configured upstream SHA/commit-date against actual Git objects and reads immutable generated commit/tree objects, effective canonical config, the explicitly supplied validated type declaration and a fresh validated installed supply-policy snapshot. Component identity defaults to the digest of sorted patchset history roots; shallow history requires an explicit component identifier. Recipe identity hashes JSON data without executing it. Missing organization policy, distribution notices or SBOM remain missing evidence, never invented approvals. Dirty package checkout and absent physical package artifacts remain explicit missing requirements alongside real Git object receipts. @status:impl/done",
+      "line": 11,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-FACTS"
+    },
+    {
+      "anchor": "COMPONENT-RELEASE-PACKAGE",
+      "content_hash": "sha256:7ec124dbdf65103c7778a316cc412a9b6268c3b64a41b90a5a5ddd1b446f090a",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "The public package release operation verifies selected type/declaration identity before packaging, observes completed outputs before the existing unconditional scratch/overlay restoration, and publishes its descriptor only after restoration succeeds. It refuses a changed generated commit or patchset commit. Failed packaging/restore emits no successful descriptor. Artifact receipts are checked again after restoration; changed delivered bytes refuse instead of recording a stale pre-restoration digest. CLI package exposes the receipt path, digest, evidence status and missing requirements. --component-id supplies a stable explicit identity, including shallow repositories. The lower-level packaging worker remains available for established library callers and fixtures; release recording is a library capability rather than CLI-only logic. @status:impl/done",
+      "line": 12,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-PACKAGE"
+    },
+    {
       "anchor": "COMPONENT-RELEASE-EVIDENCE",
       "content_hash": "sha256:a16da9fdbbe14d31474a5278539934e2c4992fdde37a5710c18b87c819927cf1",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Completeness is relative to the explicit selected policy requirements and their actual evidence receipts. Emitters must obtain hashes from the objects and bytes they observed, name the licence-policy scope, retain unavailable evidence as missing and avoid inventing an external approval. The schema alone cannot attest how facts were obtained. Package/publish integration must bind the descriptor to the exact checked inputs and preserve package restore, publish leases, immutable tags and existing operation refusal behavior. @status:spec/done",
-      "line": 11,
+      "line": 13,
       "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-EVIDENCE"
     },
     {
@@ -11529,7 +11547,7 @@
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Implement the source proposal's single-component release descriptor before a coordinator. Use a content-addressed immutable receipt rather than a mutable latest-release pointer: deterministic retries can compare exact bytes and conflicting data remains inspectable. Do not introduce signatures or organization commercial rulings without the corresponding external inputs. Revisit distribution requirements when P0.10 supplies trusted organization enforcement and real artifact evidence. @status:impl/done",
-      "line": 12,
+      "line": 14,
       "uri": "spec://codkit/modules/codkit/PROP-018#DECISION-COMPONENT-RECEIPT"
     },
     {

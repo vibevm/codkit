@@ -160,6 +160,8 @@ export type PackageCommandResult = {
 export type PackageCommandRunner = (command: PackageCommand) => PackageCommandResult;
 
 export type PackageOptions = {
+	/** Observe completed outputs before the unconditional overlay/scratch restoration. */
+	readonly onOutputs?: (result: PackageResult) => void;
 	readonly patchesDir: string;
 	readonly resolution: ForkDirResolution;
 	readonly config: CodkitConfig;
@@ -359,6 +361,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 			for (const path of outputs) {
 				out.info(`artifact ${path}`);
 			}
+			options.onOutputs?.(result(EXIT_OK));
 		}
 	} finally {
 		// The packager's own leftovers first, the overlay after it: the overlay

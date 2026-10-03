@@ -11,6 +11,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
+import { parseComponentRelease } from '../../src/lib/componentRelease.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 
 type Step = { name: string; state: string; detail: string };
@@ -23,6 +24,7 @@ type PackageData = {
 	stampsFromEnvironment: string[];
 	commands: string[];
 	outputs: string[];
+	release: { path: string; sha256: string; evidenceStatus: 'complete' | 'incomplete'; missing: string[] } | null;
 };
 
 let fixture: CliFixture;
@@ -87,6 +89,14 @@ describe('codkit package', () => {
 		// What it made, where the type said it would be.
 		expect(report.outputs).toEqual(['.build/package/', '.build/app-1.tar']);
 		expect(existsSync(fixture.treePath('.build/app-1.tar'))).toBe(true);
+		if (report.release === null) throw new Error('successful package has no release descriptor');
+		const descriptor = parseComponentRelease(readFileSync(fixture.patchesPath(report.release.path)));
+		expect(descriptor.ok).toBe(true);
+		if (!descriptor.ok) throw new Error(descriptor.problem.message);
+		expect(descriptor.value.generated.tip).toBe(fixture.git(['rev-parse', 'HEAD']).stdout.trim());
+		expect(descriptor.value.artifacts.some((artifact) => artifact.kind === 'file' && artifact.path === '.build/app-1.tar')).toBe(true);
+		expect(descriptor.value.distribution.missing).toContain('organization-policy');
+		expect(report.release.evidenceStatus).toBe('incomplete');
 
 		// And the tree is a dev tree again: the target is the pin's, the dev
 		// channel is back, and `status` is clean.

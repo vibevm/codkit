@@ -25,8 +25,8 @@ import type { JsonValue } from '../lib/jsonOut.ts';
 import { withLock } from '../lib/lock.ts';
 import { ckError } from '../lib/messages.ts';
 import { DEFAULT_CONTAINER_PREFIX, requireContainerPrefix } from '../lib/packageContainer.ts';
-import { runPackage } from '../lib/packageEngine.ts';
-import type { PackageResult } from '../lib/packageEngine.ts';
+import { runPackageRelease } from '../lib/packageRelease.ts';
+import type { PackageReleaseResult } from '../lib/packageRelease.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import { checkTree } from '../lib/treeIdentity.ts';
 
@@ -35,6 +35,7 @@ const SKIP_TYPE_BUILD = '--skip-type-build';
 const TIMEOUT = '--timeout';
 const INPUTS = '--inputs';
 const CONTAINER_PREFIX = '--container-prefix';
+const COMPONENT_ID = '--component-id';
 
 async function run(ctx: CommandContext): Promise<number> {
 	const resolution = forkResolution(ctx);
@@ -45,6 +46,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	const config = requireConfig(ctx.config);
+	const componentId = commandFlagValue(ctx.commandFlags, COMPONENT_ID);
 	const type = requireProjectType(ctx);
 	const timeoutMs = requireTimeout(commandFlagValue(ctx.commandFlags, TIMEOUT));
 	const inputsDir = requireInputsDir(commandFlagValue(ctx.commandFlags, INPUTS));
@@ -61,7 +63,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		treeId(resolution.path),
 		'package',
 		() => {
-			const result = runPackage({
+			const result = runPackageRelease({
 				patchesDir: ctx.patchesDir,
 				resolution,
 				config,
@@ -75,7 +77,8 @@ async function run(ctx: CommandContext): Promise<number> {
 				targetSelector: ctx.args[0] ?? null,
 				inputsDir,
 				offline: ctx.flags.ci,
-				containerPrefix
+				containerPrefix,
+				...(componentId === null ? {} : { componentId })
 			});
 			ctx.out.setData(dataOf(result));
 			return result.exitCode;
@@ -86,8 +89,9 @@ async function run(ctx: CommandContext): Promise<number> {
 	);
 }
 
-function dataOf(result: PackageResult): JsonValue {
+function dataOf(result: PackageReleaseResult): JsonValue {
 	return {
+		release: result.release === null ? null : { ...result.release, missing: [...result.release.missing] },
 		steps: result.steps.map((step) => ({ name: step.name, state: step.state, detail: step.detail })),
 		materialized: [...result.materialized],
 		restored: [...result.restored],
@@ -141,6 +145,6 @@ export const packageCommand: CommandDefinition = {
 	summary: 'build the distributable from the loaded tree and put the tree back',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT, INPUTS, CONTAINER_PREFIX],
+	commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT, INPUTS, CONTAINER_PREFIX, COMPONENT_ID],
 	run
 };
