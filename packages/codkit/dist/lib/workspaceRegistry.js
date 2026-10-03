@@ -112,7 +112,13 @@ export function readWorkspaceRegistry(root) {
         const text = decodeUtf8Strict(read.bytes);
         if (text === null)
             throw new Error('workspace registry is not UTF-8');
-        return workspaceRegistrySchema.parse(JSON.parse(text));
+        const registry = workspaceRegistrySchema.parse(JSON.parse(text));
+        const physical = realpathSync(root);
+        for (const record of registry.workspaces)
+            for (const checkout of [record.patchset, record.fork])
+                if ([checkout.path, checkout.repository, checkout.commonDirectory].some((path) => pathsOverlap(physical, path)))
+                    throw new Error('workspace registry must be disjoint from managed checkouts and repository administration');
+        return registry;
     }
     catch (error) {
         throw ckError('CONFIG', error instanceof Error ? error.message : 'workspace registry is invalid');

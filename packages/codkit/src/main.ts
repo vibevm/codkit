@@ -37,13 +37,14 @@ import { syncCommand } from './commands/sync.ts';
 import { typesCommand } from './commands/types.ts';
 import { verifyCommand } from './commands/verify.ts';
 import { whereCommand } from './commands/where.ts';
+import { workspaceCommands } from './commands/workspace.ts';
 import { parseArgv, GLOBAL_FLAG_HELP } from './lib/argv.ts';
 import type { ArgvProblem } from './lib/argv.ts';
 import type { CommandDefinition, CommandFlagValues, GlobalFlags } from './lib/command.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './lib/command.ts';
 import { loadConfig } from './lib/configFile.ts';
 import { Output, readCodkitVersion } from './lib/jsonOut.ts';
-import { isCkError } from './lib/messages.ts';
+import { ckError, isCkError } from './lib/messages.ts';
 import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocations } from './lib/paths.ts';
 import { loadSettings } from './lib/settingsFile.ts';
 import { configureProjectType } from './types/configure.ts';
@@ -69,6 +70,7 @@ const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT', 'RUNTIME-DRI
 const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 	[
 		whereCommand,
+		...workspaceCommands,
 		typesCommand,
 		configCommand,
 		configMigrateCommand,
@@ -186,10 +188,13 @@ async function main(argv: readonly string[]): Promise<number> {
 	out.setToolRoot(toolRoot);
 
 	try {
-		const settingsFields = rootSettingsNeeded(flags, process.env);
+		const resolveRoots = matched.definition.resolveRoots !== false;
+		if (!resolveRoots && (flags.forkDir !== null || flags.patchesDir !== null))
+			throw ckError('CONFIG', 'workspace management takes roots from the registry; external root flags are not accepted');
+		const settingsFields = resolveRoots ? rootSettingsNeeded(flags, process.env) : { patchesDir: false, forkDir: false };
 		const settings =
 			settingsFields.patchesDir || settingsFields.forkDir ? loadSettings(undefined, settingsFields) : ({ codkitSettings: 1 } as const);
-		const locations = resolveLocations(flags, process.env, settings);
+		const locations = resolveRoots ? resolveLocations(flags, process.env, settings) : { patchesDir: null, forkDir: null };
 		out.setRoots(toolRoot, locations);
 		assertDisjointRoots(toolRoot, locations);
 		const needsPatches = (matched.definition.roots ?? 'patches') === 'patches' && !helpOnly;

@@ -11678,7 +11678,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:22987f21fbc3f196a4571e791d49836f23b1ea473952f6b97df955f29429ff6e",
+      "content_hash": "sha256:09083c62a9b1add2ff46a502d7ba0301267c4361ce27b029412efc38c27a733b",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "PROP-020: Named local workspace pairs and checkout writers",
@@ -11747,6 +11747,33 @@
       "heading": "Removal requires a finished proof and both unchanged recorded heads. While holding checkout writer capabilities it checks actual Git registration, exact role receipts, daemon state, Git cleanliness and a physical inventory including ignored files and empty directories. Only tracked files and validated Codkit receipts, cache and held lock generations are disposable; submodules, special files, foreign or unowned data refuse. Both heads are retained in immutable UUID-scoped repository refs before journaling removing. Git deletes only the verified worktree roots; the registry and retained refs survive. Retry accepts an absent checkout only in removing state with no remaining Git registration and the matching preserved head. A changed preserved ref refuses. Removed is recorded after both removals and repeating removed is inert. Public CLI and full phase acceptance remain pending. @status:impl/wip",
       "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REMOVE"
+    },
+    {
+      "anchor": "surfaces",
+      "content_hash": "sha256:b8fa6718b566591da41a7058673542b87afe6380e7180f296473b240b7004742",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Workspace lifecycle surfaces",
+      "line": 13,
+      "uri": "spec://codkit/modules/codkit/PROP-020#surfaces"
+    },
+    {
+      "anchor": "WORKSPACE-TYPE-CUSTODY",
+      "content_hash": "sha256:86fc242477c8ed6eb0fe6cedb77c240b66f0507cb801d86e1c2f9537b5ce34d3",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Before importing a type for a registry-selected workspace, verify its real patchset worktree and exact role receipt, load the configuration, and match its type ID to the record. The installed trusted declaration must match the saved contract version and manifest digest. Unknown, changed or incompatible declarations refuse before adapter import; only then validate typeConfig and configure the registered adapter. @status:impl/wip",
+      "line": 14,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-TYPE-CUSTODY"
+    },
+    {
+      "anchor": "WORKSPACE-CLI",
+      "content_hash": "sha256:08199bcd3bd364c4f54c92982888de30e724166d36863b2a35fa21401fa8225e",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "The workspace namespace exposes create/list/show/finish/remove as thin surfaces over lifecycle libraries. Registry authority is fixed to ~/.codkit/workspaces.json with no patchset or arbitrary-directory flag. Create requires a name, existing disjoint --dir pair parent, --owner and --session; optional --ref selects the immutable source patchset commit, with normal independently resolved source roots. List/show/finish/remove ignore ambient root settings and environment and reject explicit external root flags; their names or UUIDs select registry records. Inspection does not import an adapter. Finish checks saved type custody before import. Removal does not require an installed adapter and retains finish proof and refs. Every result remains in the existing JSON envelope; list data is the versioned registry, other operations return its strict workspace record. Missing names/required values and misplaced flags refuse without Git mutation. Named launcher selection and full phase acceptance remain pending. @status:impl/wip",
+      "line": 15,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CLI"
     },
     {
       "anchor": "root",

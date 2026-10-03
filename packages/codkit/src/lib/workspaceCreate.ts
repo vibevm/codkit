@@ -37,6 +37,9 @@ export function createWorkspace(options: {
 	const patches = repository(options.patchesRepository);
 	const fork = repository(options.forkRepository);
 	const registry = realpathSync(options.registryRoot);
+	for (const source of [patches.path, fork.path, patches.common, fork.common])
+		if (pathsOverlap(source, registry))
+			throw ckError('CONFIG', 'workspace registry must be disjoint from source repositories and Git administration');
 	for (const source of [patches.path, fork.path, patches.common, fork.common, registry])
 		if (pathsOverlap(source, parent))
 			throw ckError('CONFIG', 'workspace directory must be disjoint from source repositories, Git administration and registry');

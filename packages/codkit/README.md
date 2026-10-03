@@ -97,6 +97,26 @@ and checks evidence before pushing or creating the requested export.
 independently. A build mapping remains declared provenance, not proof of
 compilation, a signature, or a legal-compatibility ruling.
 
+Named local pairs have a user-controlled registry at `~/.codkit/workspaces.json`:
+
+```sh
+codkit workspace create task-a --patches-dir /path/to/patchset --fork-dir /path/to/fork \
+  --dir /path/to/existing/pairs --owner developer --session task-a-session
+codkit workspace list
+codkit workspace show task-a
+codkit workspace finish task-a
+codkit workspace remove task-a
+```
+
+Create journals an isolated patchset task worktree and detached fork worktree.
+Retry a partial creation with the same owner/session and directory; changed work
+or foreign custody refuses. `--ref` selects the source patchset commit. Inspection
+and management use the registry and reject external root flags; ambient root
+settings do not redirect them. Finish checks the saved installed type declaration
+and clean/save evidence. Removal retains both heads in repository refs, refuses
+ignored or unowned data, and can resume a journaled partial deletion. These are
+local worktree operations; the directories are preserved until explicit removal.
+
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths
 must be pairwise disjoint. Tool dependencies live with the Codkit installation;

@@ -36,11 +36,12 @@ import { syncCommand } from './commands/sync.js';
 import { typesCommand } from './commands/types.js';
 import { verifyCommand } from './commands/verify.js';
 import { whereCommand } from './commands/where.js';
+import { workspaceCommands } from './commands/workspace.js';
 import { parseArgv, GLOBAL_FLAG_HELP } from './lib/argv.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './lib/command.js';
 import { loadConfig } from './lib/configFile.js';
 import { Output, readCodkitVersion } from './lib/jsonOut.js';
-import { isCkError } from './lib/messages.js';
+import { ckError, isCkError } from './lib/messages.js';
 import { assertDisjointRoots, formatPatchesLine, requirePatchesDir, resolveLocations } from './lib/paths.js';
 import { loadSettings } from './lib/settingsFile.js';
 import { configureProjectType } from './types/configure.js';
@@ -60,6 +61,7 @@ const GLOBAL_FLAG_HELP_NAME = '--help';
 const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT', 'RUNTIME-DRIFT']);
 const COMMANDS = new Map([
     whereCommand,
+    ...workspaceCommands,
     typesCommand,
     configCommand,
     configMigrateCommand,
@@ -168,9 +170,12 @@ async function main(argv) {
     });
     out.setToolRoot(toolRoot);
     try {
-        const settingsFields = rootSettingsNeeded(flags, process.env);
+        const resolveRoots = matched.definition.resolveRoots !== false;
+        if (!resolveRoots && (flags.forkDir !== null || flags.patchesDir !== null))
+            throw ckError('CONFIG', 'workspace management takes roots from the registry; external root flags are not accepted');
+        const settingsFields = resolveRoots ? rootSettingsNeeded(flags, process.env) : { patchesDir: false, forkDir: false };
         const settings = settingsFields.patchesDir || settingsFields.forkDir ? loadSettings(undefined, settingsFields) : { codkitSettings: 1 };
-        const locations = resolveLocations(flags, process.env, settings);
+        const locations = resolveRoots ? resolveLocations(flags, process.env, settings) : { patchesDir: null, forkDir: null };
         out.setRoots(toolRoot, locations);
         assertDisjointRoots(toolRoot, locations);
         const needsPatches = (matched.definition.roots ?? 'patches') === 'patches' && !helpOnly;

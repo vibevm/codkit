@@ -131,6 +131,8 @@ export type CommandDefinition = {
 	 * arbitrary directory (PROP-014 ##COMP-ROOTS-NONE).
 	 */
 	readonly roots?: 'patches' | 'none';
+	/** Registry-managed operations select no ambient external roots or settings. */
+	readonly resolveRoots?: boolean;
 	/** Positional arguments the command accepts beyond its name. */
 	readonly maxArgs: number;
 	/**

@@ -151,10 +151,36 @@ const valueLabels = {
 	'--source': 'text',
 	'--title': 'text',
 	'--header-style': 'line|block',
-	'--header-file': 'path'
+	'--header-file': 'path',
+	'--session': 'identifier'
 };
 
 const commandGuidance = {
+	workspace: { positional: '', detail: 'Named worktree pair namespace; choose create, list, show, finish or remove.' },
+	'workspace create': {
+		positional: '<name>',
+		detail:
+			'Create an isolated patchset task worktree and detached fork pair in an existing --dir parent. --owner and --session are required for a journaled retry; --ref selects the source patchset commit (default HEAD). Source roots use normal --patches-dir/--fork-dir resolution. Registry authority is fixed to ~/.codkit/workspaces.json and must be disjoint from source repositories. Changed partial work or foreign custody refuse without cleanup.'
+	},
+	'workspace list': {
+		positional: '',
+		detail:
+			'Inspect the fixed user workspace registry without reading ambient root settings or importing adapters. Explicit external root flags refuse. Missing registry returns an empty versioned registry; removed records remain historical evidence.'
+	},
+	'workspace show': {
+		positional: '<name-or-UUID>',
+		detail: 'Inspect one registry record by case-insensitive name or exact UUID. No adapter is imported and no checkout is changed.'
+	},
+	'workspace finish': {
+		positional: '<name-or-UUID>',
+		detail:
+			'Verify actual checkout receipts and the saved installed type contract before adapter import, then seal clean/save evidence while holding both checkout writer guards. Dirty/unextracted history, stale generated evidence and live/unresolved daemons refuse. Both directories remain present.'
+	},
+	'workspace remove': {
+		positional: '<name-or-UUID>',
+		detail:
+			'Remove only an unchanged finished pair. Ignored files, unowned empty directories, dirty work, foreign receipts, live writers and submodules refuse. Both heads survive in UUID-scoped repository refs; interrupted deletion retains a removing journal for retry. This command needs no installed adapter. Explicit external root flags refuse.'
+	},
 	config: { positional: '', detail: 'Configuration namespace; use config migrate for the explicit schema transition.' },
 	'config migrate': {
 		positional: '',
@@ -260,7 +286,8 @@ const commandGuidance = {
 	},
 	cycle: {
 		positional: '<start <tag-or-sha> | continue | status | restart>',
-		detail: 'In config v4, a full SHA target stays unlabelled and operational names use sha- plus the full SHA; a tag target retains its label. Config v2/v3 retain their original tag-selection rules. `restart` alone accepts and requires `--yes`. Exit 3 is a deliberate stop for human input.'
+		detail:
+			'In config v4, a full SHA target stays unlabelled and operational names use sha- plus the full SHA; a tag target retains its label. Config v2/v3 retain their original tag-selection rules. `restart` alone accepts and requires `--yes`. Exit 3 is a deliberate stop for human input.'
 	},
 	forecast: {
 		positional: '',
@@ -323,7 +350,8 @@ const commandGuidance = {
 	},
 	'license consumer-check': {
 		positional: '<dir>',
-		detail: 'Inspect consumer source read-only against --profile <id> from the trusted user ~/.codkit/organization-policies.json. Requires a resolved patchset root for policy containment, but no fork, configuration or adapter. Source, carrier and policy hashes bind the versioned JSON report. Exit 0 means complete source evidence, 1 incomplete evidence, 2 invalid invocation or unavailable policy. This checks evidence under the selected policy; it does not assert a legal ruling.'
+		detail:
+			'Inspect consumer source read-only against --profile <id> from the trusted user ~/.codkit/organization-policies.json. Requires a resolved patchset root for policy containment, but no fork, configuration or adapter. Source, carrier and policy hashes bind the versioned JSON report. Exit 0 means complete source evidence, 1 incomplete evidence, 2 invalid invocation or unavailable policy. This checks evidence under the selected policy; it does not assert a legal ruling.'
 	},
 	'license annotate': {
 		positional: '<path ...>',

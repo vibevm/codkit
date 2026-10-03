@@ -47,6 +47,7 @@ const KNOWN_GLOBAL_FLAGS: readonly string[] = ['--fork-dir', '--patches-dir', '-
  *   'repeatable' - takes one value and may be given several times.
  */
 const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'> = new Map([
+	['--session', 'value'],
 	['--write', 'boolean'],
 	// check-tree (PROP-007 sec. 3)
 	['--require-clean', 'boolean'],
