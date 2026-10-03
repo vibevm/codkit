@@ -21,7 +21,8 @@
 		"docs:check": "node tools/generate-codkit-docs.mjs --check && node tools/sync-codkit-agents.mjs --check && node docs/codkit/protocol/human/check.mjs && node docs/codkit/protocol/agent/check.mjs",
 		"test": "vitest run --maxWorkers=4",
 		"ai-native:structural": "vibe bin exec typescript-ai-native -- floor --keep-going",
-		"floor": "npm run format:check && npm run typecheck && npm run runtime:check && npm run trace:check && npm run docs:check && npm test && npm run ai-native:structural"
+		"floor": "npm run format:check && npm run formats:check && npm run typecheck && npm run runtime:check && npm run trace:check && npm run docs:check && npm test && npm run ai-native:structural",
+		"formats:check": "node tools/check-public-formats.mjs && node --test tools/test/public-formats.test.mjs"
 	},
 	"devDependencies": {
 		"@types/node": "^26.4.0",

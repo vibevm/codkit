@@ -1,0 +1,950 @@
+{
+  "codkitPublicFormats": 1,
+  "formats": [
+    {
+      "id": "build-daemon",
+      "field": "codkitBuildDaemon",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/buildRuntime.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-010#root",
+      "tests": [
+        "packages/codkit/test/unit/buildRuntime.test.ts"
+      ]
+    },
+    {
+      "id": "build-watch",
+      "field": "codkitBuildWatch",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/buildWrap.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-010#root",
+      "tests": [
+        "packages/codkit/test/unit/buildWrap.test.ts"
+      ]
+    },
+    {
+      "id": "bytes-base64",
+      "field": "codkitBytesBase64",
+      "version": null,
+      "observedVersions": [],
+      "source": "packages/codkit/src/lib/cycleEngineRecord.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Embedded in current cycle receipts only; not a standalone public schema.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleEngineRecord.test.ts"
+      ],
+      "versionGap": "Nested byte transport inherits the containing cycle record version; no standalone envelope."
+    },
+    {
+      "id": "config",
+      "field": "codkitConfig",
+      "version": 2,
+      "observedVersions": [
+        2
+      ],
+      "source": "packages/codkit/src/lib/configFile.ts",
+      "owner": "Patchset owner",
+      "trustBoundary": "Untrusted patchset config; local overrides are allowlisted; no adapter path accepted.",
+      "compatibility": "Config v2 only; v1 explicitly refused per CFG-SCHEMA-1-IS-REFUSED.",
+      "migration": "No v1 reader; manual v2 type/typeConfig conversion per PROP-003.",
+      "fingerprint": "pin.sha enters delta fingerprint; type/typeConfig are not currently hashed (P0.5/P0.7 follow-up).",
+      "contract": "spec://codkit/modules/codkit/PROP-003#root",
+      "tests": [
+        "packages/codkit/test/unit/configFile.test.ts"
+      ]
+    },
+    {
+      "id": "conventions",
+      "field": "codkitConventions",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/conventionsFile.ts",
+      "owner": "Codkit installation",
+      "trustBoundary": "Read from the installation only; patchset cannot shadow policy.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-003#root",
+      "tests": [
+        "packages/codkit/test/unit/configFile.test.ts"
+      ],
+      "testGap": "Config override tests exist; dedicated conventions parser/version conformance remains to be added."
+    },
+    {
+      "id": "conventions-extension",
+      "field": "codkitConventionsExtension",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/conventionsFile.ts",
+      "owner": "Patchset owner (additive only)",
+      "trustBoundary": "Patchset can add conventions without weakening installed policy.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-003#root",
+      "tests": [
+        "packages/codkit/test/unit/configFile.test.ts"
+      ],
+      "testGap": "Config override tests exist; dedicated conventions parser/version conformance remains to be added."
+    },
+    {
+      "id": "cycle-apply",
+      "field": "codkitCycleApply",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleEngineRecord.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleEngineRecord.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-classify",
+      "field": "codkitCycleClassify",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleClassifyRecovery.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleClassify.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-control",
+      "field": "codkitCycleControl",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleControlRecord.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleControlRecord.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-dependency-advisory",
+      "field": "codkitCycleDependencyAdvisory",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleStabilize.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleStabilize.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-finalization",
+      "field": "codkitCycleFinalization",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleFinalize.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleFinalize.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-journal",
+      "field": "codkitCycleJournal",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleJournal.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleJournal.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-materialize",
+      "field": "codkitCycleMaterialize",
+      "version": 2,
+      "observedVersions": [
+        1,
+        2
+      ],
+      "source": "packages/codkit/src/lib/cycleMaterializeMoveReceipt.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Current v2 plus the explicit legacy v1 receipt reader; versions above 2 refuse.",
+      "migration": "Owning recovery path normalizes supported legacy receipts; never delete a live receipt to upgrade.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleMaterializePortable.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-metrics",
+      "version": null,
+      "source": "packages/codkit/src/lib/cycleFinalizeCsv.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Current exact CSV header and row semantics; mismatches refuse.",
+      "migration": "No automatic CSV header conversion.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleFinalize.test.ts"
+      ],
+      "versionGap": "CSV is identified by its fixed header, not a numeric format version."
+    },
+    {
+      "id": "cycle-regeneration",
+      "field": "codkitCycleRegeneration",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleRegenerateTransaction.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleRegenerate.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-stabilize",
+      "field": "codkitCycleStabilize",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleStabilizeReport.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleStabilizeEvidence.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-state",
+      "field": "codkitCycleState",
+      "version": 2,
+      "observedVersions": [
+        2
+      ],
+      "source": "packages/codkit/src/lib/cycleState.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleState.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-terminal",
+      "field": "codkitCycleTerminal",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleEngineTerminal.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleEngineTransactions.test.ts"
+      ]
+    },
+    {
+      "id": "cycle-transition",
+      "field": "codkitCycleTransition",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/cycleEngineTransition.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-009#root",
+      "tests": [
+        "packages/codkit/test/unit/cycleEngineTransactions.test.ts"
+      ]
+    },
+    {
+      "id": "daemon-channel-lock",
+      "field": "codkitDaemonChannelLock",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/daemonChannelLock.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-010#root",
+      "tests": [
+        "packages/codkit/test/unit/daemonChannelLock.test.ts"
+      ]
+    },
+    {
+      "id": "delta-fingerprint",
+      "version": 1,
+      "source": "packages/codkit/src/lib/fingerprint.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Version 1 canonical string; existing hash bytes must remain stable.",
+      "migration": "A new fingerprint version invalidates caches; does not rewrite artifacts.",
+      "fingerprint": "Sorted delta paths/content sha256 plus pin SHA and schema terminator; see DELTA-FINGERPRINT.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/fingerprint.test.ts"
+      ],
+      "versionSymbol": "FINGERPRINT_SCHEMA_VERSION"
+    },
+    {
+      "id": "deps-hash",
+      "field": "codkitDepsHash",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/ciEngine.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Valid current records enable fast paths; unsupported or malformed records invalidate the optimization.",
+      "migration": "Rebuild through load or ci; discarded metadata never authorizes data loss.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-011#root",
+      "tests": [
+        "packages/codkit/test/unit/ciEngine.test.ts"
+      ]
+    },
+    {
+      "id": "exit-codes",
+      "version": null,
+      "source": "packages/codkit/src/lib/messages.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Current contract only; unsupported representations refuse before writes.",
+      "migration": "Use matching release; no automatic migration is implemented.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-012#root",
+      "tests": [
+        "packages/codkit/test/unit/messages.test.ts"
+      ],
+      "versionGap": "Exit semantics are part of CLI contract and envelope schema 2, not a separately versioned payload."
+    },
+    {
+      "id": "generated-history-fingerprint",
+      "version": 1,
+      "source": "packages/codkit/src/lib/generatedBranch.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Version 1 canonical hash; local and full/release variants remain distinct.",
+      "migration": "Regenerate through load/ci/publish after a future version change.",
+      "fingerprint": "Delta fingerprint, own file modes and release notice exclusion; see source.",
+      "contract": "spec://codkit/modules/codkit/PROP-008#root",
+      "tests": [
+        "packages/codkit/test/unit/generatedBranch.test.ts"
+      ],
+      "versionSymbol": "GENERATED_HISTORY_FINGERPRINT_VERSION"
+    },
+    {
+      "id": "generated-refs",
+      "version": null,
+      "source": "packages/codkit/src/lib/treeCommits.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Existing prefixes and consumed refs remain recognized; workspace namespaces require P0.11 design.",
+      "migration": "No silent ref renaming; gc owns consumed-ref retirement.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/treeCommits.test.ts"
+      ],
+      "versionGap": "Ref naming uses configured prefixes and consumed UTC/short-SHA suffix; no independent version."
+    },
+    {
+      "id": "generated-trailers",
+      "version": null,
+      "source": "packages/codkit/src/lib/treeCommits.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Codkit-Patchset-Commit and Codkit-Upstream-Pin identify generated history; transaction/input trailers add evidence.",
+      "migration": "No history rewriting; future readers retain existing trailer interpretation.",
+      "fingerprint": "Commit message trailers contribute to generated commit identity.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/treeCommits.test.ts"
+      ],
+      "versionGap": "Generated commit trailers have no separate protocol version; immutable history stays readable."
+    },
+    {
+      "id": "inputs",
+      "field": "codkitInputs",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/inputsStore.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Valid current records enable fast paths; unsupported or malformed records invalidate the optimization.",
+      "migration": "Rebuild through load or ci; discarded metadata never authorizes data loss.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/inputs.test.ts"
+      ]
+    },
+    {
+      "id": "inventory",
+      "field": "codkitInventory",
+      "version": 2,
+      "observedVersions": [
+        2
+      ],
+      "source": "packages/codkit/src/lib/inventory.ts",
+      "owner": "Codkit inventory generator",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Generated inventory v2; regenerate instead of treating old inventory as authority.",
+      "migration": "Run codkit inventory; do not migrate derived evidence by hand.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/inventory.test.ts"
+      ]
+    },
+    {
+      "id": "json-envelope",
+      "version": 2,
+      "source": "packages/codkit/src/lib/jsonOut.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Envelope codkit.schema=2; tool version is separate; per-command data evolves within the cited contract.",
+      "migration": "Use matching release; no automatic migration is implemented.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-012#root",
+      "tests": [
+        "packages/codkit/test/unit/jsonOut.test.ts"
+      ],
+      "versionSymbol": "ENVELOPE_SCHEMA_VERSION"
+    },
+    {
+      "id": "licence-evidence",
+      "version": null,
+      "source": "packages/codkit/src/lib/licenseCheck.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Current contract only; unsupported representations refuse before writes.",
+      "migration": "Re-run licence check; immutable distribution evidence remains future work.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-014#root",
+      "tests": [
+        "packages/codkit/test/unit/licenseCheck.test.ts"
+      ],
+      "versionGap": "Licence check data is CLI envelope data; no standalone distribution-evidence schema yet (P0.10)."
+    },
+    {
+      "id": "license-policy",
+      "field": "codkitLicensePolicy",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/licensePolicy.ts",
+      "owner": "Codkit installation",
+      "trustBoundary": "Read from the installation only; patchset cannot shadow policy.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-014#root",
+      "tests": [
+        "packages/codkit/test/unit/licensePolicy.test.ts"
+      ]
+    },
+    {
+      "id": "local-config",
+      "version": null,
+      "source": "packages/codkit/src/lib/configFile.ts",
+      "owner": "Local operator",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Only the documented local override fields are accepted.",
+      "migration": "Manually update machine-local values; do not change patchset semantics.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-003#root",
+      "tests": [
+        "packages/codkit/test/unit/configFile.test.ts"
+      ],
+      "versionGap": "codkit.local.json has no independent version; inherits codkit.json v2 allowlist."
+    },
+    {
+      "id": "marker-language",
+      "version": null,
+      "source": "packages/codkit/src/lib/markers.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Current language-specific marker forms and IDs; malformed nesting refuses.",
+      "migration": "Change marker syntax only through a conventions/patch migration; do not rewrite consumer markers implicitly.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-004#root",
+      "tests": [
+        "packages/codkit/test/unit/markers.test.ts"
+      ],
+      "versionGap": "Marker syntax follows installed conventions and patch schema; no independent version field."
+    },
+    {
+      "id": "orphan-claim",
+      "field": "codkitOrphanClaim",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/containedClaim.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-002#root",
+      "tests": [
+        "packages/codkit/test/unit/containedFile.test.ts"
+      ]
+    },
+    {
+      "id": "overlay",
+      "field": "codkitOverlay",
+      "version": 2,
+      "observedVersions": [
+        2
+      ],
+      "source": "packages/codkit/src/lib/layers/overlay.ts",
+      "owner": "Patchset owner",
+      "trustBoundary": "Untrusted delta manifests; contained targets and layer-specific validation.",
+      "compatibility": "Only current schema is read; D5 v1-to-v2 hard refusal exception is in PROP-003 where applicable.",
+      "migration": "No legacy rewrite; user repairs or regenerates metadata with the current writer.",
+      "fingerprint": "Exact delta file bytes and paths enter delta fingerprint, then generated-history fingerprint.",
+      "contract": "spec://codkit/modules/codkit/PROP-005#root",
+      "tests": [
+        "packages/codkit/test/unit/overlay.test.ts"
+      ]
+    },
+    {
+      "id": "own-fingerprint",
+      "version": 1,
+      "source": "packages/codkit/src/lib/ownSides.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Version 1 canonical hash; local and full/release variants remain distinct.",
+      "migration": "Regenerate through load/ci/publish after a future version change.",
+      "fingerprint": "Versioned canonical own-file map digest recorded in the tree mark; binds side-edit checks.",
+      "contract": "spec://codkit/modules/codkit/PROP-008#PATCHSET-SIDE-EDIT-RULE",
+      "tests": [
+        "packages/codkit/test/unit/ownClassify.test.ts"
+      ],
+      "versionSymbol": "OWN_FINGERPRINT_SCHEMA_VERSION"
+    },
+    {
+      "id": "own-manifest",
+      "field": "codkitOwnManifest",
+      "version": 2,
+      "observedVersions": [
+        2
+      ],
+      "source": "packages/codkit/src/lib/layers/ownManifest.ts",
+      "owner": "Patchset owner",
+      "trustBoundary": "Untrusted delta manifests; contained targets and layer-specific validation.",
+      "compatibility": "Only current schema is read; D5 v1-to-v2 hard refusal exception is in PROP-003 where applicable.",
+      "migration": "No legacy rewrite; user repairs or regenerates metadata with the current writer.",
+      "fingerprint": "Exact delta file bytes and paths enter delta fingerprint, then generated-history fingerprint.",
+      "contract": "spec://codkit/modules/codkit/PROP-005#root",
+      "tests": [
+        "packages/codkit/test/unit/ownManifest.test.ts"
+      ]
+    },
+    {
+      "id": "patch-path-encoding",
+      "version": null,
+      "source": "packages/codkit/src/lib/patchFormat.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "Existing encoding is frozen; ambiguous double underscores remain a P0.6 migration design concern.",
+      "migration": "No rename migration before explicit codec/path-encoding design.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-004#root",
+      "tests": [
+        "packages/codkit/test/unit/patchFormat.test.ts"
+      ],
+      "versionGap": "Legacy slash-to-double-underscore encoding is tied to patch v2; no separate version."
+    },
+    {
+      "id": "rebase-onto-pin",
+      "field": "codkitRebaseOntoPin",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/rebaseOntoPinPending.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-008#root",
+      "tests": [
+        "packages/codkit/test/unit/rebaseOntoPin.test.ts"
+      ]
+    },
+    {
+      "id": "rebase-onto-pin-move",
+      "field": "codkitRebaseOntoPinMove",
+      "version": 2,
+      "observedVersions": [
+        1,
+        2
+      ],
+      "source": "packages/codkit/src/lib/rebaseOntoPinMoveReceipt.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Current v2 plus the explicit legacy v1 receipt reader; versions above 2 refuse.",
+      "migration": "Owning recovery path normalizes supported legacy receipts; never delete a live receipt to upgrade.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-008#root",
+      "tests": [
+        "packages/codkit/test/unit/rebaseOntoPinMove.test.ts"
+      ]
+    },
+    {
+      "id": "removed",
+      "field": "codkitRemoved",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/layers/removed.ts",
+      "owner": "Patchset owner",
+      "trustBoundary": "Untrusted delta manifests; contained targets and layer-specific validation.",
+      "compatibility": "Only current schema is read; D5 v1-to-v2 hard refusal exception is in PROP-003 where applicable.",
+      "migration": "No legacy rewrite; user repairs or regenerates metadata with the current writer.",
+      "fingerprint": "Exact delta file bytes and paths enter delta fingerprint, then generated-history fingerprint.",
+      "contract": "spec://codkit/modules/codkit/PROP-005#root",
+      "tests": [
+        "packages/codkit/test/unit/removed.test.ts"
+      ]
+    },
+    {
+      "id": "rename-completion",
+      "field": "codkitRenameCompletion",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/renameTransaction.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-008#root",
+      "tests": [
+        "packages/codkit/test/unit/renameApply.test.ts"
+      ]
+    },
+    {
+      "id": "rename-transaction",
+      "field": "codkitRenameTransaction",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/renameTransaction.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-008#root",
+      "tests": [
+        "packages/codkit/test/unit/renameApply.test.ts"
+      ]
+    },
+    {
+      "id": "resource-map",
+      "field": "codkitResourceMap",
+      "version": 2,
+      "observedVersions": [
+        2
+      ],
+      "source": "packages/codkit/src/lib/layers/resource.ts",
+      "owner": "Patchset owner",
+      "trustBoundary": "Untrusted delta manifests; contained targets and layer-specific validation.",
+      "compatibility": "Only current schema is read; D5 v1-to-v2 hard refusal exception is in PROP-003 where applicable.",
+      "migration": "No legacy rewrite; user repairs or regenerates metadata with the current writer.",
+      "fingerprint": "Exact delta file bytes and paths enter delta fingerprint, then generated-history fingerprint.",
+      "contract": "spec://codkit/modules/codkit/PROP-005#root",
+      "tests": [
+        "packages/codkit/test/unit/resourceMap.test.ts"
+      ]
+    },
+    {
+      "id": "reuse-registry",
+      "version": 1,
+      "source": "packages/codkit/src/lib/reuseRegistry.ts",
+      "owner": "Package copyright/licence declarant",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "REUSE.toml version=1; strict supported fields; parse errors become licence problems.",
+      "migration": "Keep format defined by REUSE; annotations append without rewriting prior bytes.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-014#root",
+      "tests": [
+        "packages/codkit/test/unit/reuseRegistry.test.ts"
+      ]
+    },
+    {
+      "id": "rule",
+      "field": "codkitRule",
+      "version": 2,
+      "observedVersions": [
+        2
+      ],
+      "source": "packages/codkit/src/lib/layers/rule.ts",
+      "owner": "Patchset owner",
+      "trustBoundary": "Untrusted delta manifests; contained targets and layer-specific validation.",
+      "compatibility": "Only current schema is read; D5 v1-to-v2 hard refusal exception is in PROP-003 where applicable.",
+      "migration": "No legacy rewrite; user repairs or regenerates metadata with the current writer.",
+      "fingerprint": "Exact delta file bytes and paths enter delta fingerprint, then generated-history fingerprint.",
+      "contract": "spec://codkit/modules/codkit/PROP-005#root",
+      "tests": [
+        "packages/codkit/test/unit/rule.test.ts"
+      ]
+    },
+    {
+      "id": "runtime-lock",
+      "version": null,
+      "source": "packages/codkit/src/lib/lock.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
+      "compatibility": "pid/tree/path metadata and owning-process liveness rules in lock.ts; no version negotiation.",
+      "migration": "Owning lock protocol settles stale locks; never delete a live writer lock.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/lock.test.ts"
+      ],
+      "versionGap": "Lock ownership JSON has no format-version field."
+    },
+    {
+      "id": "settings",
+      "field": "codkitSettings",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/settingsFile.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-003#root",
+      "tests": [
+        "packages/codkit/test/unit/settingsFile.test.ts"
+      ]
+    },
+    {
+      "id": "spdx-license-ids",
+      "field": "codkitSpdxLicenseIds",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/spdxIds.ts",
+      "owner": "Codkit installation",
+      "trustBoundary": "Read from the installation only; patchset cannot shadow policy.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-014#root",
+      "tests": [
+        "packages/codkit/test/unit/licensePolicy.test.ts"
+      ]
+    },
+    {
+      "id": "supply-kit",
+      "field": "codkitSupplyKit",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "tools/build-supply-kit.mjs",
+      "owner": "Codkit supply-kit builder",
+      "trustBoundary": "Offline delivery records package identity and sha256; installation still relies on operator verification.",
+      "compatibility": "Manifest v1 writer; there is no general version-negotiating kit reader.",
+      "migration": "Rebuild kit with matching Codkit release; integrity-pinned registry is P0.3 follow-up.",
+      "fingerprint": "Tarball sha256 covers shipped bytes; no consumer delta fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-011#root",
+      "tests": [
+        "tools/test/public-formats.test.mjs"
+      ],
+      "testGap": "No end-to-end offline install conformance test yet; catalog test checks the manifest writer version only."
+    },
+    {
+      "id": "sync-transaction",
+      "field": "codkitSyncTransaction",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/syncTransaction.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
+      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/syncEngineParts.test.ts"
+      ]
+    },
+    {
+      "id": "text-patch",
+      "version": 2,
+      "source": "packages/codkit/src/lib/patchFormat.ts",
+      "owner": "Patchset owner",
+      "trustBoundary": "Untrusted .ckpatch header/hunks/path encoding; strict parse precedes application.",
+      "compatibility": "Patch v2 only; optional layer field round-trips without insertion; v1 refused by the D5 exception.",
+      "migration": "No v1 reader; regenerate current patches from the validated intervention.",
+      "fingerprint": "Exact artifact bytes and encoded path enter delta fingerprint.",
+      "contract": "spec://codkit/modules/codkit/PROP-004#root",
+      "tests": [
+        "packages/codkit/test/unit/patchFormat.test.ts"
+      ],
+      "versionSymbol": "PATCH_SCHEMA_VERSION"
+    },
+    {
+      "id": "tree-cache",
+      "field": "codkitTreeCache",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/treeCache.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Valid current records enable fast paths; unsupported or malformed records invalidate the optimization.",
+      "migration": "Rebuild through load or ci; discarded metadata never authorizes data loss.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/fastPath.test.ts"
+      ]
+    },
+    {
+      "id": "tree-mark",
+      "field": "codkitTreeMark",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/treeCache.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
+      "compatibility": "Valid current records enable fast paths; unsupported or malformed records invalidate the optimization.",
+      "migration": "Rebuild through load or ci; discarded metadata never authorizes data loss.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#root",
+      "tests": [
+        "packages/codkit/test/unit/fastPath.test.ts"
+      ]
+    },
+    {
+      "id": "type-api",
+      "version": null,
+      "source": "packages/type-api/src/projectType.ts",
+      "owner": "Codkit and installed type packages",
+      "trustBoundary": "Installation allowlist chooses executable code; post-import structural checks are not a pre-import handshake.",
+      "compatibility": "Types ship as coordinated package versions; no supported engine-range negotiation.",
+      "migration": "Update the CLI and official type packages together; external registration is not implemented.",
+      "fingerprint": "Not a delta/generated-history fingerprint input.",
+      "contract": "spec://codkit/modules/codkit/PROP-016#root",
+      "tests": [
+        "packages/codkit/test/unit/typeRegistry.test.ts"
+      ],
+      "versionGap": "No ABI/manifest contractVersion today; P0.2 adds a handshake."
+    }
+  ]
+}

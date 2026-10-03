@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<campaign genre="campaign-plan">
+  <title>Feature-proof Codkit: public-contract hardening</title>
+  <status date="2026-10-03" state="executing" base="a9a11c7" branch="feat/feature-proof">P0.1 implementation is a candidate. Focused gate passes; the full project floor has baseline environment blockers. Phase 1 remains open.</status>
+  <mandate date="2026-10-03">найди наш план по feature proof codkit. начни его разработку в отдельном worktree</mandate>
+  <steering date="2026-10-03">закоммить изменения в основном репозитории и запушь их. Наш worktree feature-proof перебазируй поверх этих изменений</steering>
+  <source>Preserved research/proposal: SOURCE-PLAN-2026-09-20.md, copied with whitespace normalized from research/codkit-universal-fork-review-2026-09-20/03-synthesis-and-plan.md. Product contracts govern implementation; the source's architectural recommendations do not silently resolve its owner decision list.</source>
+  <baseline>
+    <fact>Worktree was created from 03d2cee and rebased to a9a11c7; main, origin/main and github/main agree on a9a11c7. Main is clean.</fact>
+    <fact>Initial machine-readable public-format catalogs: 0. Initial public-format compatibility gates: 0. Candidate: 1 catalog with 55 entries, 1 gate and 10 focused tests. Of 55 entries, 11 have explicit inherited-version or missing-version gaps.</fact>
+    <fact>No production TypeScript, runtime output, consumer serializers or history fingerprints are changed by this atom.</fact>
+  </baseline>
+  <decisions>
+    <decision id="D1">Start with the P0.1 inventory. It exposes compatibility gaps without choosing config v3, trusted registry locations or organization licence semantics. Deferring all development until those decisions would lose the independently useful discovery/gate step.</decision>
+    <decision id="D2">Keep runtime validators and governing contracts authoritative. Catalog metadata records current behavior; assigning invented versions or automatically rewriting consumers is rejected. Revisit when implementing the source plan's migration atoms.</decision>
+    <decision id="D3">Use the installed TypeScript 7 scanner for a bounded static coverage tripwire; do not execute adapters. Its removed legacy compiler API prevents the old parser path. Dynamic/computed format conventions require explicit catalog/discovery fixtures; this gate is not a proof of arbitrary program behavior.</decision>
+  </decisions>
+  <predictions>
+    <prediction id="P1">Existing consumer serialization and generated history remain byte-identical: this atom edits tooling, metadata and the npm development gate only.</prediction>
+    <prediction id="P2">Deleting a format policy, changing a numeric schema or deleting migration/test evidence makes the focused gate red.</prediction>
+    <prediction id="P3">The complete floor is already blocked on the base; catalog changes alone cannot make it green.</prediction>
+  </predictions>
+  <route>
+    <phase id="0">Read the source proposal, inspect schemas and probe baseline gates; no commits. Complete.</phase>
+    <phase id="1">Public-contract hardening: P0.1 is the expanded atom. P0.2-P0.5, P0.7 and Git decision P0.9 follow the owner decision boundary. Exit: exact existing fixture compatibility and complete project floor.</phase>
+    <phase id="2" depends="1">Licensing and release evidence: P0.10 and the evidence portion of P0.7. Expand after organization-policy decisions.</phase>
+    <phase id="3" depends="1">Local workspace lifecycle: P0.11; workspace pairs, unique refs and writer refusal.</phase>
+    <phase id="4" depends="1">Trusted external type supply: P0.3/P0.4 with a real partner; offline install, integrity and pre-import handshake proof.</phase>
+    <phase id="5" depends="1 2">Measured expansion with real consumers: codec seam P0.6, coordinator contract P0.8, build recipe design P0.12; new implementation follows its polygon.</phase>
+  </route>
+  <current-atom id="P0.1">
+    <perimeter>tools/check-public-formats.mjs, tools/test/public-formats.test.mjs, public-formats.json, PROP-017, package.json and campaign record.</perimeter>
+    <acceptance>npm run formats:check; existing typecheck, runtime, docs and trace checks; explicit-glob Prettier. Retain full-floor blockers separately instead of calling the phase green.</acceptance>
+    <negative-proof>The focused suite removes a row and migration evidence, changes schema versions, introduces an unregistered unversioned schema, corrupts references and checks scanner fixtures across package and tool roots without importing code.</negative-proof>
+    <safe-stop>Candidate commit plus this record; no consumer data or upstream tree mutation. Resume with the catalog and original proposal.</safe-stop>
+  </current-atom>
+  <quick-start><![CDATA[
+git status --short
+git log --oneline -3
+npm ci --ignore-scripts --no-audit --no-fund
+npm run formats:check
+npm run typecheck
+npm run runtime:check
+npm run trace:check
+npm run docs:check
+npm run floor
+]]></quick-start>
+  <whole-campaign-acceptance>Each later phase supplies its source-plan polygon and a green complete floor. This first atom does not establish type ABI, trusted external supply, licence evidence, discipline, workspaces or multi-component release acceptance.</whole-campaign-acceptance>
+  <review-points>
+    <open>Owner decisions are the eight numbered items in the source plan's “Решения владельца перед кодированием”: Git boundary, discipline axis, schema migration, component/coordinator split, registry/policy trust, runtime inclusion, commercial notice ruling, signing and type namespace ownership. Inventory work does not ratify them.</open>
+  </review-points>
+  <execution-ledger>
+    <entry date="2026-10-03">Main overlay work committed as a9a11c7 and pushed fast-forward to origin and github. Feature-proof work was stashed including untracked files, rebased without conflicts and restored; dependencies refreshed through npm ci.</entry>
+    <entry date="2026-10-03">Catalog/checker candidate: 55 rows; 10/10 focused tests pass, including negative proofs. Typecheck, 251-file runtime comparison, docs, trace and explicit-glob formatting pass. Product code changes: zero.</entry>
+    <entry date="2026-10-03">Baseline floor: Windows bare Prettier globs match no files. Structural dispatch refuses vibe.lock schema 6 because installed Vibe expects 7. Main overlay symlink fixtures fail EPERM; a Git-backed test exceeded 30 seconds; the complete suite and prolonged E2E save probe were interrupted and are not passes. New npm-prune suite passes 6/6, overlay schema/operation subset 16/16, new JSONC scenario passes.</entry>
+  </execution-ledger>
+  <deferrals>
+    <item owner="maintainer" trigger="before Phase 1 acceptance">Restore a runnable full baseline floor: Windows formatting invocation, compatible Vibe dispatch, symlink privileges and slow Git fixture execution. Preserve existing checks; do not suppress failures.</item>
+    <item owner="maintainer" trigger="P0.1 acceptance">Complete dedicated conventions and offline supply-kit conformance coverage; catalog testGap entries retain these missing proofs.</item>
+    <item owner="owner" trigger="before dependent public-contract changes">Resolve the source proposal's architectural decision list; continue through the named P0.2-P0.12 route afterwards.</item>
+  </deferrals>
+</campaign>
