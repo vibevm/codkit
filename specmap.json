@@ -11570,7 +11570,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c75a26104dfb0ad9ba51428fd67ca31f198f3734f2eac3057bc37eca45889f84",
+      "content_hash": "sha256:cde4e3e63959ea25afb7bd8f3bcf67931f242a68c8caec34974df28c024354d0",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -11579,7 +11579,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:bdab9948cbebb44b6f1afb2b61f46c11dde73c7770e3de1c256644fe01102917",
+      "content_hash": "sha256:c96a8054f0785e776912242c7f61dbe8b9123871189f227cab248dc90f311965",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -11660,10 +11660,10 @@
     },
     {
       "anchor": "RELEASE-LICENSING-SELECTION",
-      "content_hash": "sha256:5e7406ee1b7dd997cf4361cab460725340e92d6d63754c458b36d46dd82db158",
+      "content_hash": "sha256:8ba0ca34ba62a90d0388fb3dd26587b6ef43cb44bc474514cbf27e9a077fe20c",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "The fixed patchset codkit.licensing.json carries codkitReleaseLicensing:1, profile ID/additional prohibitions, component identity, explicit UTC creation time, contained source directory and separate package/publish payload declarations with SBOM attachment path. It contains no policy path, holders, allowlist or trusted-text authority. Absent declaration preserves legacy release behavior with missing organization evidence explicit; a present declaration requires its requested operation and successful gates, not a fallback. Trusted user/admin composition selects the external store. Metadata exclusions are exactly policy-required attached notices and selected SBOM. Canonical documents and actual payload/provenance must agree; required delivered carriers are inspected only within actual outputs, with licensing metadata parsed or canonical-text matched. Package checks precede restoration, then final output and declaration/store receipts are rechecked. Publish reads the immutable selected Git blob, rejects changed snapshot bytes and retains the original patchset store boundary; a temporary checkout of the shaped tip, with hydrated LFS when needed, is inspected before real delivery. Component declaration/flag disagreement refuses. Receipt binds selected organization authority and distribution requirements without claiming a signature, commercial ruling or compiler proof. Integration acceptance remains pending the complete native suite. @status:impl/wip",
+      "heading": "The fixed patchset codkit.licensing.json carries codkitReleaseLicensing:1, profile ID/additional prohibitions, component identity, explicit UTC creation time, contained source directory and separate package/publish payload declarations with SBOM attachment path. It contains no policy path, holders, allowlist or trusted-text authority. Absent declaration preserves legacy release behavior with missing organization evidence explicit; a present declaration requires its requested operation and successful gates, not a fallback. Trusted user/admin composition selects the external store. Metadata exclusions are exactly policy-required attached notices and selected SBOM. Canonical documents and actual payload/provenance must agree; required delivered carriers are inspected only within actual outputs, with licensing metadata parsed or canonical-text matched. Package checks precede restoration, then final output and declaration/store receipts are rechecked. Publish reads the immutable selected Git blob, rejects changed snapshot bytes and retains the original patchset store boundary; a temporary checkout of the shaped tip, with hydrated LFS when needed, is inspected before real delivery. Component declaration/flag disagreement refuses. Receipt binds selected organization authority and distribution requirements without claiming a signature, commercial ruling or compiler proof. Mechanism acceptance is backed by the complete native suite; actual external organization/legal/signing/partner approvals are separate campaign inputs, not fixture claims. @status:impl/done",
       "line": 14,
       "uri": "spec://codkit/modules/codkit/PROP-019#RELEASE-LICENSING-SELECTION"
     },
