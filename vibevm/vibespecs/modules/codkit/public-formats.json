@@ -851,14 +851,13 @@
       "source": "tools/build-supply-kit.mjs",
       "owner": "Codkit supply-kit builder",
       "trustBoundary": "Offline delivery records package identity and sha256; installation still relies on operator verification.",
-      "compatibility": "Manifest v1 writer; there is no general version-negotiating kit reader.",
-      "migration": "Rebuild kit with matching Codkit release; integrity-pinned registry is P0.3 follow-up.",
+      "compatibility": "Manifest v1 writer; builder role/order and tarball hash conformance are checked.",
+      "migration": "Rebuild kit with the matching release; install the complete unit with its approved third-party cache.",
       "fingerprint": "Tarball sha256 covers shipped bytes; no consumer delta fingerprint input.",
       "contract": "spec://codkit/modules/codkit/PROP-011#root",
       "tests": [
-        "tools/test/public-formats.test.mjs"
-      ],
-      "testGap": "No end-to-end offline install conformance test yet; catalog test checks the manifest writer version only."
+        "tools/test/supply-kit.test.mjs"
+      ]
     },
     {
       "id": "sync-transaction",
@@ -931,18 +930,35 @@
     },
     {
       "id": "type-api",
-      "version": null,
-      "source": "packages/type-api/src/projectType.ts",
+      "version": 1,
+      "source": "packages/type-api/src/typeManifest.ts",
       "owner": "Codkit and installed type packages",
       "trustBoundary": "Installation allowlist chooses executable code; post-import structural checks are not a pre-import handshake.",
-      "compatibility": "Types ship as coordinated package versions; no supported engine-range negotiation.",
-      "migration": "Update the CLI and official type packages together; external registration is not implemented.",
+      "compatibility": "Contract v1 is required before executable adapter import; package version is checked separately.",
+      "migration": "Update adapter and its declarative contract metadata together; incompatible contract versions refuse before import.",
       "fingerprint": "Not a delta/generated-history fingerprint input.",
       "contract": "spec://codkit/modules/codkit/PROP-016#root",
       "tests": [
-        "packages/codkit/test/unit/typeRegistry.test.ts"
+        "packages/type-api/test/typeManifest.test.ts",
+        "packages/codkit/test/unit/typeManifestLoader.test.ts"
       ],
-      "versionGap": "No ABI/manifest contractVersion today; P0.2 adds a handshake."
+      "versionSymbol": "TYPE_CONTRACT_VERSION"
+    },
+    {
+      "id": "type-manifest",
+      "version": 1,
+      "versionSymbol": "TYPE_MANIFEST_VERSION",
+      "source": "packages/type-api/src/typeManifest.ts",
+      "owner": "Installed type package publisher",
+      "trustBoundary": "JSON registration data is validated before executable adapter import; patchsets still cannot name code paths.",
+      "compatibility": "Manifest v1, contract v1 and matching npm identity; stable engine interval min inclusive/maxExclusive exclusive.",
+      "migration": "Restore or publish compatible metadata; older/newer manifest versions refuse before adapter import.",
+      "fingerprint": "Raw manifest sha256 identifies the inspected declaration; it does not prove adapter-content integrity or enter consumer fingerprints.",
+      "contract": "spec://codkit/modules/codkit/PROP-016#TYPE-API-STABILITY",
+      "tests": [
+        "packages/type-api/test/typeManifest.test.ts",
+        "packages/codkit/test/unit/typeManifestLoader.test.ts"
+      ]
     }
   ]
 }

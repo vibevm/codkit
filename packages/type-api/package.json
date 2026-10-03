@@ -18,9 +18,13 @@
 		"src",
 		"npm-shrinkwrap.json",
 		"README.md",
-		"LICENSE.md"
+		"LICENSE.md",
+		"bin"
 	],
 	"dependencies": {
 		"zod": "^4.5.4"
+	},
+	"bin": {
+		"codkit-type-conform": "bin/conform.mjs"
 	}
 }

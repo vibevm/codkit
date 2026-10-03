@@ -1915,6 +1915,9 @@
 			"dependencies": {
 				"zod": "^4.5.4"
 			},
+			"bin": {
+				"codkit-type-conform": "bin/conform.mjs"
+			},
 			"engines": {
 				"node": ">=22.6.0"
 			}

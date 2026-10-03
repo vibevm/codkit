@@ -22,7 +22,8 @@
 		"test": "vitest run --maxWorkers=4",
 		"ai-native:structural": "vibe bin exec typescript-ai-native -- floor --keep-going",
 		"floor": "npm run format:check && npm run formats:check && npm run typecheck && npm run runtime:check && npm run trace:check && npm run docs:check && npm test && npm run ai-native:structural",
-		"formats:check": "node tools/check-public-formats.mjs && node --test tools/test/public-formats.test.mjs"
+		"formats:check": "node tools/check-public-formats.mjs && node --test tools/test/public-formats.test.mjs",
+		"supply:check": "node --test tools/test/supply-kit.test.mjs"
 	},
 	"devDependencies": {
 		"@types/node": "^26.4.0",

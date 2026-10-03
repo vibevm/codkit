@@ -1,0 +1,22 @@
+{
+  "typeManifestVersion": 1,
+  "contractVersion": 1,
+  "id": "stub",
+  "package": "@codkit/test-stub",
+  "version": "1.0.0",
+  "engineRange": {
+    "min": "1.0.0",
+    "maxExclusive": "2.0.0"
+  },
+  "capabilities": [
+    "build-channels",
+    "config-overlay",
+    "dev-channel",
+    "entry-module",
+    "gen-brand",
+    "own-extensions",
+    "service-override",
+    "upgrade-advisory"
+  ],
+  "configurableCapabilities": []
+}

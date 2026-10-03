@@ -11,14 +11,16 @@
 			"types": "./src/index.ts",
 			"import": "./dist/index.js"
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./type-manifest.json": "./type-manifest.json"
 	},
 	"files": [
 		"dist",
 		"src",
 		"npm-shrinkwrap.json",
 		"README.md",
-		"LICENSE.md"
+		"LICENSE.md",
+		"type-manifest.json"
 	],
 	"dependencies": {
 		"@codkit/type-api": "1.0.0",

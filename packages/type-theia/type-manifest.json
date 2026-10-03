@@ -1,0 +1,18 @@
+{
+  "typeManifestVersion": 1,
+  "contractVersion": 1,
+  "id": "theia",
+  "package": "@codkit/type-theia",
+  "version": "1.0.0",
+  "engineRange": {
+    "min": "1.0.0",
+    "maxExclusive": "2.0.0"
+  },
+  "capabilities": [
+    "build-channels",
+    "config-overlay",
+    "service-override",
+    "upgrade-advisory"
+  ],
+  "configurableCapabilities": []
+}

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <campaign genre="campaign-plan">
   <title>Feature-proof Codkit: public-contract hardening</title>
-  <status date="2026-10-03" state="executing" base="a9a11c7" branch="feat/feature-proof">P0.1 implementation is a candidate. Focused gate passes; the full project floor has baseline environment blockers. Phase 1 remains open.</status>
+  <status date="2026-10-03" state="executing" base="a9a11c7" branch="feat/feature-proof">P0.1 coverage and P0.2/P0.4 handshake candidates pass focused checks. Native Linux full-floor snapshot is running; Phase 1 remains open.</status>
   <mandate date="2026-10-03">найди наш план по feature proof codkit. начни его разработку в отдельном worktree</mandate>
   <steering date="2026-10-03">закоммить изменения в основном репозитории и запушь их. Наш worktree feature-proof перебазируй поверх этих изменений</steering>
+  <steering date="2026-10-03">продолжай разрабатывать без моего участия. Я ушел спать. Вернусь - напишу</steering>
   <source>Preserved research/proposal: SOURCE-PLAN-2026-09-20.md, copied with whitespace normalized from research/codkit-universal-fork-review-2026-09-20/03-synthesis-and-plan.md. Product contracts govern implementation; the source's architectural recommendations do not silently resolve its owner decision list.</source>
   <baseline>
     <fact>Worktree was created from 03d2cee and rebased to a9a11c7; main, origin/main and github/main agree on a9a11c7. Main is clean.</fact>
@@ -47,9 +48,10 @@ npm run floor
 ]]></quick-start>
   <whole-campaign-acceptance>Each later phase supplies its source-plan polygon and a green complete floor. This first atom does not establish type ABI, trusted external supply, licence evidence, discipline, workspaces or multi-component release acceptance.</whole-campaign-acceptance>
   <review-points>
-    <open>Owner decisions are the eight numbered items in the source plan's “Решения владельца перед кодированием”: Git boundary, discipline axis, schema migration, component/coordinator split, registry/policy trust, runtime inclusion, commercial notice ruling, signing and type namespace ownership. Inventory work does not ratify them.</open>
+    <open>The owner delegated unattended development on 2026-10-03. Reversible technical defaults follow the source proposal and are recorded in product contracts; commercial legal rulings, signing custody and a real external-type partner remain external boundaries. The source decision inventory is the eight numbered items in the source plan's “Решения владельца перед кодированием”: Git boundary, discipline axis, schema migration, component/coordinator split, registry/policy trust, runtime inclusion, commercial notice ruling, signing and type namespace ownership. Inventory work does not ratify them.</open>
   </review-points>
   <execution-ledger>
+    <entry date="2026-10-03">Unattended continuation: portable format gate f627bd4 and focused conventions evidence ac01890. Type handshake adds strict declarative data, pre-import compatibility refusal, metadata-only types inspection and a standalone conformance command; all official types pass it. Focused type tests 30/30, catalog tests 10/10, supply kit tests 2/2 and typecheck/runtime/docs/trace/format gates pass. The five-package kit installs into a fresh offline directory from an isolated prefilled cache and reproduces all three registry rows exactly. Manifest digest is not represented as adapter integrity; P0.3 remains open.</entry>
     <entry date="2026-10-03">Main overlay work committed as a9a11c7 and pushed fast-forward to origin and github. Feature-proof work was stashed including untracked files, rebased without conflicts and restored; dependencies refreshed through npm ci.</entry>
     <entry date="2026-10-03">Catalog/checker candidate: 55 rows; 10/10 focused tests pass, including negative proofs. Typecheck, 251-file runtime comparison, docs, trace and explicit-glob formatting pass. Product code changes: zero.</entry>
     <entry date="2026-10-03">Baseline floor: Windows bare Prettier globs match no files. Structural dispatch refuses vibe.lock schema 6 because installed Vibe expects 7. Main overlay symlink fixtures fail EPERM; a Git-backed test exceeded 30 seconds; the complete suite and prolonged E2E save probe were interrupted and are not passes. New npm-prune suite passes 6/6, overlay schema/operation subset 16/16, new JSONC scenario passes.</entry>

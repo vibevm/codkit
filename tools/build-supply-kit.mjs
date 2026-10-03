@@ -111,6 +111,7 @@ function workspacePackages() {
 }
 
 function roleOf(manifest) {
+	if (manifest.name === '@codkit/type-api') return 'contract';
 	if (manifest.bin !== undefined) return 'cli';
 	if ([...TYPE_REGISTRY.values()].includes(manifest.name)) return 'type';
 	return 'contract';
@@ -139,11 +140,17 @@ function prepareOut() {
 }
 
 function pack(names) {
-	const packed = spawnSync('npm', ['pack', ...names.flatMap((name) => ['-w', name]), '--pack-destination', out], {
-		cwd: root,
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'pipe']
-	});
+	const npmCli = process.env.npm_execpath;
+	if (npmCli === undefined || !existsSync(npmCli)) throw new Error('run the kit builder through npm run kit so its npm CLI is known');
+	const packed = spawnSync(
+		process.execPath,
+		[npmCli, 'pack', '--ignore-scripts', ...names.flatMap((name) => ['-w', name]), '--pack-destination', out],
+		{
+			cwd: root,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'pipe']
+		}
+	);
 	if (packed.status !== 0) {
 		process.stderr.write(packed.stdout ?? '');
 		process.stderr.write(packed.stderr ?? '');

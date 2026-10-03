@@ -1,0 +1,16 @@
+{
+  "typeManifestVersion": 1,
+  "contractVersion": 1,
+  "id": "generic",
+  "package": "@codkit/type-generic",
+  "version": "1.0.0",
+  "engineRange": {
+    "min": "1.0.0",
+    "maxExclusive": "2.0.0"
+  },
+  "capabilities": [],
+  "configurableCapabilities": [
+    "build-channels",
+    "config-overlay"
+  ]
+}

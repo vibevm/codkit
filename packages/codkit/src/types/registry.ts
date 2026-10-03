@@ -9,13 +9,14 @@
 // determinism, the air-gapped circuit and the clean room all want it that way.
 // Adding a type is publishing its package and adding its name here.
 
-import { createRequire } from 'node:module';
 import { isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Capability, ProjectType } from '@codkit/type-api';
 import { projectTypeProblems } from '@codkit/type-api';
 import { ckError } from '../lib/messages.ts';
 import { testSeamEntry, TYPE_PACKAGE_ENV } from './testSeam.ts';
+import { readTypeManifest } from './manifest.ts';
+import type { RegisteredManifest } from './manifest.ts';
 
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
 export const TYPE_REGISTRY: ReadonlyMap<string, string> = new Map([
@@ -49,6 +50,11 @@ export type RegisteredType = {
 	 * for every patch set.
 	 */
 	readonly configurableCapabilities: readonly Capability[];
+	readonly manifestVersion: number | null;
+	readonly contractVersion: number | null;
+	readonly manifestSha256: string | null;
+	readonly source: 'installation' | 'test-seam';
+	readonly problem: string | null;
 };
 
 const loaded = new Map<string, ProjectType>();
@@ -73,8 +79,17 @@ export async function resolveProjectType(id: string): Promise<ProjectType> {
 			'codkit.json'
 		);
 	}
+	const registration = readTypeManifest(id, packageName);
 	const type = await importProjectType(id, packageName);
-	const problems = projectTypeProblems(type);
+	const problems = [...projectTypeProblems(type)];
+	for (const [key, actual] of [
+		['capabilities', type.capabilities],
+		['configurableCapabilities', type.configurableCapabilities ?? new Set<Capability>()]
+	] as const) {
+		const declared = registration.manifest[key];
+		if (declared.length !== actual.size || declared.some((capability) => !actual.has(capability)))
+			problems.push(`${key} differs from the declarative manifest`);
+	}
 	if (problems.length > 0) {
 		throw ckError(
 			'TYPE-UNKNOWN',
@@ -91,21 +106,25 @@ export async function resolveProjectType(id: string): Promise<ProjectType> {
 export async function registeredTypes(): Promise<readonly RegisteredType[]> {
 	const rows: RegisteredType[] = [];
 	for (const [id, packageName] of effectiveRegistry()) {
-		let type: ProjectType | null = null;
+		let registration: RegisteredManifest | null = null;
+		let problem: string | null = null;
 		try {
-			type = await resolveProjectType(id);
-		} catch {
-			// An uninstalled or broken package is a row saying so, not a refusal:
-			// `codkit types` is the command a person runs to find that out.
-			type = null;
+			registration = readTypeManifest(id, packageName);
+		} catch (error) {
+			problem = error instanceof Error ? error.message : String(error);
 		}
 		rows.push({
 			id,
 			package: packageName,
-			version: type === null ? null : packageVersion(packageName),
-			installed: type !== null,
-			capabilities: type === null ? [] : [...type.capabilities].sort(),
-			configurableCapabilities: type === null ? [] : [...(type.configurableCapabilities ?? [])].sort()
+			version: registration?.manifest.version ?? null,
+			installed: registration !== null,
+			capabilities: [...(registration?.manifest.capabilities ?? [])].sort(),
+			configurableCapabilities: [...(registration?.manifest.configurableCapabilities ?? [])].sort(),
+			manifestVersion: registration?.manifest.typeManifestVersion ?? null,
+			contractVersion: registration?.manifest.contractVersion ?? null,
+			manifestSha256: registration?.sha256 ?? null,
+			source: isAbsolute(packageName) ? 'test-seam' : 'installation',
+			problem
 		});
 	}
 	return rows;
@@ -143,20 +162,6 @@ function isProjectType(value: unknown): value is ProjectType {
 	}
 	const candidate = value as { id?: unknown; capabilities?: unknown };
 	return typeof candidate.id === 'string' && candidate.capabilities instanceof Set;
-}
-
-/** The installed version of a type package, read from its own manifest. */
-function packageVersion(packageName: string): string | null {
-	if (isAbsolute(packageName)) {
-		// The test seam names a module, not a package: it has no manifest.
-		return null;
-	}
-	try {
-		const manifest = createRequire(import.meta.url)(`${packageName}/package.json`) as { readonly version?: unknown };
-		return typeof manifest.version === 'string' ? manifest.version : null;
-	} catch {
-		return null;
-	}
 }
 
 function messageOf(error: unknown): string {

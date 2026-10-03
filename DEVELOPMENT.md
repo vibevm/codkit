@@ -135,3 +135,10 @@ floor записываются только в `[[typescript.floor_disable]]`.
 TypeScript: npm передаёт один набор source/test файлов в Windows и POSIX.
 `npm run formats:check` проверяет каталог публичных форматов и негативные
 fixtures без импорта адаптеров продукта. Обе проверки входят в `npm run floor`.
+
+### Манифест типа
+
+Каждый type-пакет поставляет и экспортирует `type-manifest.json`. Версии
+manifest и contract проверяются до импорта адаптера; capabilities декларации
+сверяются при использовании. После изменения декларации запустите
+`codkit-type-conform packages/type-<id>`. `codkit types` читает только данные.

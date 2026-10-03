@@ -16,12 +16,12 @@ var __rewriteRelativeImportExtension = (this && this.__rewriteRelativeImportExte
     }
     return path;
 };
-import { createRequire } from 'node:module';
 import { isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { projectTypeProblems } from '@codkit/type-api';
 import { ckError } from '../lib/messages.js';
 import { testSeamEntry, TYPE_PACKAGE_ENV } from './testSeam.js';
+import { readTypeManifest } from './manifest.js';
 /** Type identifier -> the npm package that implements it (##TYPE-REGISTRY). */
 export const TYPE_REGISTRY = new Map([
     ['vscode', '@codkit/type-vscode'],
@@ -54,8 +54,17 @@ export async function resolveProjectType(id) {
     if (packageName === undefined) {
         throw ckError('TYPE-UNKNOWN', `the project type ${JSON.stringify(id)} is not in the registry of this codkit`, `use one of: ${[...registry.keys()].join(', ')}   (run: codkit types)`, 'codkit.json');
     }
+    const registration = readTypeManifest(id, packageName);
     const type = await importProjectType(id, packageName);
-    const problems = projectTypeProblems(type);
+    const problems = [...projectTypeProblems(type)];
+    for (const [key, actual] of [
+        ['capabilities', type.capabilities],
+        ['configurableCapabilities', type.configurableCapabilities ?? new Set()]
+    ]) {
+        const declared = registration.manifest[key];
+        if (declared.length !== actual.size || declared.some((capability) => !actual.has(capability)))
+            problems.push(`${key} differs from the declarative manifest`);
+    }
     if (problems.length > 0) {
         throw ckError('TYPE-UNKNOWN', `the project type ${id} is installed but does not answer its own contract: ${problems.join('; ')}`, `reinstall ${packageName} at a version built against this codkit`, 'codkit.json');
     }
@@ -66,22 +75,26 @@ export async function resolveProjectType(id) {
 export async function registeredTypes() {
     const rows = [];
     for (const [id, packageName] of effectiveRegistry()) {
-        let type = null;
+        let registration = null;
+        let problem = null;
         try {
-            type = await resolveProjectType(id);
+            registration = readTypeManifest(id, packageName);
         }
-        catch {
-            // An uninstalled or broken package is a row saying so, not a refusal:
-            // `codkit types` is the command a person runs to find that out.
-            type = null;
+        catch (error) {
+            problem = error instanceof Error ? error.message : String(error);
         }
         rows.push({
             id,
             package: packageName,
-            version: type === null ? null : packageVersion(packageName),
-            installed: type !== null,
-            capabilities: type === null ? [] : [...type.capabilities].sort(),
-            configurableCapabilities: type === null ? [] : [...(type.configurableCapabilities ?? [])].sort()
+            version: registration?.manifest.version ?? null,
+            installed: registration !== null,
+            capabilities: [...(registration?.manifest.capabilities ?? [])].sort(),
+            configurableCapabilities: [...(registration?.manifest.configurableCapabilities ?? [])].sort(),
+            manifestVersion: registration?.manifest.typeManifestVersion ?? null,
+            contractVersion: registration?.manifest.contractVersion ?? null,
+            manifestSha256: registration?.sha256 ?? null,
+            source: isAbsolute(packageName) ? 'test-seam' : 'installation',
+            problem
         });
     }
     return rows;
@@ -108,20 +121,6 @@ function isProjectType(value) {
     }
     const candidate = value;
     return typeof candidate.id === 'string' && candidate.capabilities instanceof Set;
-}
-/** The installed version of a type package, read from its own manifest. */
-function packageVersion(packageName) {
-    if (isAbsolute(packageName)) {
-        // The test seam names a module, not a package: it has no manifest.
-        return null;
-    }
-    try {
-        const manifest = createRequire(import.meta.url)(`${packageName}/package.json`);
-        return typeof manifest.version === 'string' ? manifest.version : null;
-    }
-    catch {
-        return null;
-    }
 }
 function messageOf(error) {
     return error instanceof Error ? error.message : String(error);
