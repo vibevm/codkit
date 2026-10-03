@@ -128,3 +128,10 @@ codkit --fork-dir /path/to/vscode-fork --patches-dir /path/to/patch-set where
 ратифицированная brownfield-база — в
 `typescript-ai-native-conform-baseline.json`. Временные отключения structural
 floor записываются только в `[[typescript.floor_disable]]`.
+
+### Переносимая проверка форматов
+
+`npm run format:check` использует заключённые в кавычки рекурсивные globs
+TypeScript: npm передаёт один набор source/test файлов в Windows и POSIX.
+`npm run formats:check` проверяет каталог публичных форматов и негативные
+fixtures без импорта адаптеров продукта. Обе проверки входят в `npm run floor`.

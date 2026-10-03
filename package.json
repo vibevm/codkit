@@ -15,7 +15,7 @@
 		"kit": "node tools/build-supply-kit.mjs",
 		"runtime:build": "tsc -p packages/codkit/tsconfig.runtime.json && tsc -p packages/type-api/tsconfig.runtime.json && tsc -p packages/type-vscode/tsconfig.runtime.json && tsc -p packages/type-generic/tsconfig.runtime.json && tsc -p packages/type-theia/tsconfig.runtime.json",
 		"runtime:check": "node tools/check-codkit-runtime.mjs",
-		"format:check": "prettier --check packages/*/src packages/*/test",
+		"format:check": "prettier --check \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\"",
 		"typecheck": "tsc -p packages/codkit/tsconfig.json && tsc -p packages/type-api/tsconfig.json && tsc -p packages/type-vscode/tsconfig.json && tsc -p packages/type-generic/tsconfig.json && tsc -p packages/type-theia/tsconfig.json",
 		"trace:check": "node tools/check-ts-scopes.mjs",
 		"docs:check": "node tools/generate-codkit-docs.mjs --check && node tools/sync-codkit-agents.mjs --check && node docs/codkit/protocol/human/check.mjs && node docs/codkit/protocol/agent/check.mjs",
