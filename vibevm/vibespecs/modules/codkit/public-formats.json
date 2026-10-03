@@ -57,19 +57,21 @@
     {
       "id": "config",
       "field": "codkitConfig",
-      "version": 2,
+      "version": 3,
       "observedVersions": [
-        2
+        2,
+        3
       ],
       "source": "packages/codkit/src/lib/configFile.ts",
       "owner": "Patchset owner",
       "trustBoundary": "Untrusted patchset config; local overrides are allowlisted; no adapter path accepted.",
-      "compatibility": "Config v2 only; v1 explicitly refused per CFG-SCHEMA-1-IS-REFUSED.",
-      "migration": "No v1 reader; manual v2 type/typeConfig conversion per PROP-003.",
-      "fingerprint": "pin.sha enters delta fingerprint; type/typeConfig are not currently hashed (P0.5/P0.7 follow-up).",
+      "compatibility": "Config v2 remains readable and byte-stable on ordinary writes; v3 requires an explicit supported discipline; v1 refuses.",
+      "migration": "codkit config migrate previews v2-to-v3; --write explicitly applies it under the cycle-global capability with compare-before-replace.",
+      "fingerprint": "Legacy v2 keeps fingerprint schema 1; explicit v3 discipline enters schema 2 and generated-history fingerprint.",
       "contract": "spec://codkit/modules/codkit/PROP-003#root",
       "tests": [
-        "packages/codkit/test/unit/configFile.test.ts"
+        "packages/codkit/test/unit/configFile.test.ts",
+        "packages/codkit/test/unit/configMigration.test.ts"
       ]
     },
     {
@@ -360,12 +362,12 @@
     },
     {
       "id": "delta-fingerprint",
-      "version": 1,
+      "version": 2,
       "source": "packages/codkit/src/lib/fingerprint.ts",
       "owner": "Codkit engine",
       "trustBoundary": "Defined by the cited product contract; caller bytes are validated by the listed source.",
-      "compatibility": "Version 1 canonical string; existing hash bytes must remain stable.",
-      "migration": "A new fingerprint version invalidates caches; does not rewrite artifacts.",
+      "compatibility": "Implicit v2 uses the unchanged schema-1 canonical string; explicitly declared v3 profile uses schema 2.",
+      "migration": "Explicit config migration changes fingerprint domain and causes generated-state rebuild; no silent rewrite of old artifacts.",
       "fingerprint": "Sorted delta paths/content sha256 plus pin SHA and schema terminator; see DELTA-FINGERPRINT.",
       "contract": "spec://codkit/modules/codkit/PROP-006#root",
       "tests": [

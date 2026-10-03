@@ -115,7 +115,7 @@ describe('parseBaseConfig', () => {
 	});
 
 	it('refuses a schema version newer than the tool', () => {
-		const newer = { ...VALID_SAMPLE, codkitConfig: 3 };
+		const newer = { ...VALID_SAMPLE, codkitConfig: 4 };
 		const error = catchCkError(() => parseBaseConfig(newer, CONFIG_FILE_NAME));
 
 		expect(error.code).toBe('CONFIG');

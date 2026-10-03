@@ -1,6 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
 // Exact final fork proof kept separate from resolve orchestration.
 
+import { declaredDiscipline } from './discipline.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { deltaFingerprint, treeId } from './fingerprint.ts';
 import type { ForkDirResolution } from './paths.ts';
@@ -11,7 +12,7 @@ import { fastPathOk, readTreeCache, readTreeMark } from './treeCache.ts';
 import type { ProjectType } from '@codkit/type-api';
 
 export function cycleResolveTreeCurrent(patchesDir: string, resolution: ForkDirResolution, config: CodkitConfig): boolean {
-	const fingerprint = deltaFingerprint(patchesDir, config.pin.sha);
+	const fingerprint = deltaFingerprint(patchesDir, config.pin.sha, declaredDiscipline(config));
 	const mark = readTreeMark(resolution.path);
 	const cache = readTreeCache(patchesDir, treeId(resolution.path));
 	return (

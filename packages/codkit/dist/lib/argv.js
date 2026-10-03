@@ -31,6 +31,7 @@ const KNOWN_GLOBAL_FLAGS = ['--fork-dir', '--patches-dir', '--json', '--ci', '--
  *   'repeatable' - takes one value and may be given several times.
  */
 const COMMAND_FLAG_KINDS = new Map([
+    ['--write', 'boolean'],
     // check-tree (PROP-007 sec. 3)
     ['--require-clean', 'boolean'],
     // clone (PROP-007 sec. 4)

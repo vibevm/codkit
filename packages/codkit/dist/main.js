@@ -10,6 +10,7 @@ import { buildDownCommand, buildErrorsCommand, buildStatusCommand, buildUpComman
 import { checkTreeCommand } from './commands/checkTree.js';
 import { ciCommand } from './commands/ci.js';
 import { cloneCommand } from './commands/clone.js';
+import { configCommand, configMigrateCommand } from './commands/config.js';
 import { cycleCommand } from './commands/cycle.js';
 import { forecastCommand } from './commands/forecast.js';
 import { gcCommand } from './commands/gc.js';
@@ -59,6 +60,8 @@ const CHECK_ERROR_CODES = new Set(['DIRTY-TREE', 'STANDARDS-DRIFT', 'RUNTIME-DRI
 const COMMANDS = new Map([
     whereCommand,
     typesCommand,
+    configCommand,
+    configMigrateCommand,
     checkTreeCommand,
     cloneCommand,
     loadCommand,

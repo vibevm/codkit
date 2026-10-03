@@ -11,6 +11,7 @@ import { buildDownCommand, buildErrorsCommand, buildStatusCommand, buildUpComman
 import { checkTreeCommand } from './commands/checkTree.ts';
 import { ciCommand } from './commands/ci.ts';
 import { cloneCommand } from './commands/clone.ts';
+import { configCommand, configMigrateCommand } from './commands/config.ts';
 import { cycleCommand } from './commands/cycle.ts';
 import { forecastCommand } from './commands/forecast.ts';
 import { gcCommand } from './commands/gc.ts';
@@ -68,6 +69,8 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 	[
 		whereCommand,
 		typesCommand,
+		configCommand,
+		configMigrateCommand,
 		checkTreeCommand,
 		cloneCommand,
 		loadCommand,

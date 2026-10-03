@@ -21,12 +21,13 @@ import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import type { Dirent } from 'node:fs';
 import { join } from 'node:path';
 import { OWN_ROOTS_DIR, OWN_SOURCE_DIR } from './ownedRoots.ts';
+import type { DisciplineId } from './discipline.ts';
 
 /** Directory holding every delta artifact, relative to the patchset root. */
 export const DELTA_DIR_NAME = 'delta';
 
 /** Version of the canonical string; part of the hashed input. */
-export const FINGERPRINT_SCHEMA_VERSION = 1;
+export const FINGERPRINT_SCHEMA_VERSION = 2;
 
 /** Hex characters of a tree id (##TREE-ID). */
 const TREE_ID_LENGTH = 16;
@@ -55,19 +56,20 @@ export type DeltaFiles = {
  * A missing delta/ directory is not an error: it hashes the pin alone, which is
  * exactly the fingerprint of "no delta at all".
  */
-export function deltaFiles(patchesDir: string, pinSha: string): DeltaFiles {
+export function deltaFiles(patchesDir: string, pinSha: string, discipline?: DisciplineId): DeltaFiles {
 	const hash = createHash('sha256');
 	const files: Record<string, string> = {};
 	for (const file of listDeltaFiles(patchesDir)) {
 		hash.update(`${file.path}\n${file.sha256}\n`, 'utf8');
 		files[file.path] = file.sha256;
 	}
-	hash.update(`pin ${pinSha}\nschema ${FINGERPRINT_SCHEMA_VERSION}\n`, 'utf8');
+	if (discipline !== undefined) hash.update(`discipline ${discipline}\n`, 'utf8');
+	hash.update(`pin ${pinSha}\nschema ${discipline === undefined ? 1 : FINGERPRINT_SCHEMA_VERSION}\n`, 'utf8');
 	return { fingerprint: hash.digest('hex'), files };
 }
 
-export function deltaFingerprint(patchesDir: string, pinSha: string): string {
-	return deltaFiles(patchesDir, pinSha).fingerprint;
+export function deltaFingerprint(patchesDir: string, pinSha: string, discipline?: DisciplineId): string {
+	return deltaFiles(patchesDir, pinSha, discipline).fingerprint;
 }
 
 /**

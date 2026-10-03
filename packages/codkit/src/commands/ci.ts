@@ -17,6 +17,7 @@ import { CI_PROFILES, runCi } from '../lib/ciEngine.ts';
 import type { CiProfile, CiResult } from '../lib/ciEngine.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { treeId } from '../lib/fingerprint.ts';
+import { disciplineOf } from '../lib/discipline.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { acquireLock } from '../lib/lock.ts';
 import { ckError } from '../lib/messages.ts';
@@ -36,6 +37,7 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	const config = requireConfig(ctx.config);
+	ctx.out.info(`discipline: ${disciplineOf(config)}`);
 	const profile = requireProfile(commandFlagValue(ctx.commandFlags, PROFILE));
 	const passTimeoutMs = requireTimeout(commandFlagValue(ctx.commandFlags, TIMEOUT));
 
@@ -59,14 +61,14 @@ async function run(ctx: CommandContext): Promise<number> {
 			verbose: ctx.flags.verbose,
 			...(passTimeoutMs === null ? {} : { passTimeoutMs })
 		});
-		ctx.out.setData(dataOf(result));
+		ctx.out.setData({ ...dataOf(result), discipline: disciplineOf(config) });
 		return result.exitCode;
 	} finally {
 		handle.release();
 	}
 }
 
-function dataOf(result: CiResult): JsonValue {
+function dataOf(result: CiResult): { [key: string]: JsonValue } {
 	const data: { [key: string]: JsonValue } = {
 		profile: result.profile,
 		steps: result.steps.map((step) => ({ name: step.name, state: step.state, detail: step.detail })),

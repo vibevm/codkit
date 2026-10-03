@@ -9,6 +9,7 @@
 // Exit code 1 is not a failure of the command; it means "there is unextracted
 // work or an invalid marker", which is what makes `status` usable in a script.
 
+import { declaredDiscipline } from '../lib/discipline.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
@@ -106,7 +107,7 @@ async function run(ctx: CommandContext): Promise<number> {
 		cache: readTreeCache(ctx.patchesDir, treeId(tree)),
 		mark,
 		pinSha: config.pin.sha,
-		deltaFingerprint: deltaFingerprint(ctx.patchesDir, config.pin.sha)
+		deltaFingerprint: deltaFingerprint(ctx.patchesDir, config.pin.sha, declaredDiscipline(config))
 	});
 	const met = conditions.filter((condition) => condition.ok).length;
 	const upToDate = met === conditions.length;

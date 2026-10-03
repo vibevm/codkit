@@ -14,10 +14,12 @@ import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, forkRes
 import { ckError, serializeErrorPayload } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 import { checkTree } from '../lib/treeIdentity.js';
+import { disciplineOf } from '../lib/discipline.js';
 import { runStagedFast, runVerify } from '../lib/verifyEngine.js';
 const STAGED_FAST = '--staged-fast';
 async function run(ctx) {
     const config = requireConfig(ctx.config);
+    ctx.out.info(`discipline: ${disciplineOf(config)}`);
     if (commandFlagGiven(ctx.commandFlags, STAGED_FAST)) {
         const optionalResolution = ctx.locations.forkDir;
         if (optionalResolution !== null) {
@@ -38,7 +40,7 @@ async function run(ctx) {
     }
     const result = runVerify({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
     report(ctx, result);
-    ctx.out.setData(dataOf(result, { staged: null }));
+    ctx.out.setData({ ...dataOf(result, { staged: null }), discipline: disciplineOf(config) });
     if (result.findings.length === 0) {
         ctx.out.info(`verify: ${result.checked} intervention(s) checked, no violations`);
         return EXIT_OK;
@@ -54,7 +56,7 @@ async function run(ctx) {
 function stagedFast(ctx, config, resolution) {
     const result = runStagedFast({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
     report(ctx, result);
-    ctx.out.setData(dataOf(result, { staged: result.staged }));
+    ctx.out.setData({ ...dataOf(result, { staged: result.staged }), discipline: disciplineOf(config) });
     if (result.findings.length === 0) {
         ctx.out.info(`verify --staged-fast: ${result.staged.length} staged delta file(s), no violations`);
         return EXIT_OK;

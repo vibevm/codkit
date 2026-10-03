@@ -16,6 +16,7 @@
 //   * it is deterministic - entries sorted by id, map keys sorted by bytes, two
 //     spaces of indentation - so a diff of two inventories shows what changed in
 //     the delta and never how the two runs were ordered.
+import { declaredDiscipline } from './discipline.js';
 import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { isCallExpression, isIdentifier, isNoSubstitutionTemplateLiteral, isStringLiteral } from 'typescript/unstable/ast';
@@ -104,7 +105,9 @@ export function buildInventory(patchesDir, type, options = {}) {
     const resources = loadResourceMap(patchesDir);
     // The owned directories the units live in; the configuration is read here
     // when the caller did not hand one over, exactly as the pin is.
-    const roots = ownedRootsOf(type, configOf(patchesDir, options.config).typeConfig);
+    const config = configOf(patchesDir, options.config);
+    const roots = ownedRootsOf(type, config.typeConfig);
+    const discipline = declaredDiscipline(config);
     const entries = [
         ...patches.map((entry) => patchEntry(entry)),
         ...overlays.map((overlay) => overlayEntry(overlay)),
@@ -131,6 +134,7 @@ export function buildInventory(patchesDir, type, options = {}) {
     const testIds = ownTestIds(patchesDir);
     return {
         codkitInventory: INVENTORY_SCHEMA_VERSION,
+        ...(discipline === undefined ? {} : { discipline }),
         patchSetCommit: options.patchSetCommit ?? patchSetCommitId(patchesDir),
         pin: pinOf(patchesDir, options.config),
         entries,

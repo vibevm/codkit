@@ -19,6 +19,7 @@ import { ckError, serializeErrorPayload } from '../lib/messages.ts';
 import { formatForkTreeLine } from '../lib/paths.ts';
 import type { ForkDirResolution } from '../lib/paths.ts';
 import { checkTree } from '../lib/treeIdentity.ts';
+import { disciplineOf } from '../lib/discipline.ts';
 import { runStagedFast, runVerify } from '../lib/verifyEngine.ts';
 import type { Finding, VerifyResult } from '../lib/verifyEngine.ts';
 
@@ -26,6 +27,7 @@ const STAGED_FAST = '--staged-fast';
 
 async function run(ctx: CommandContext): Promise<number> {
 	const config = requireConfig(ctx.config);
+	ctx.out.info(`discipline: ${disciplineOf(config)}`);
 	if (commandFlagGiven(ctx.commandFlags, STAGED_FAST)) {
 		const optionalResolution = ctx.locations.forkDir;
 		if (optionalResolution !== null) {
@@ -49,7 +51,7 @@ async function run(ctx: CommandContext): Promise<number> {
 
 	const result = runVerify({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
 	report(ctx, result);
-	ctx.out.setData(dataOf(result, { staged: null }));
+	ctx.out.setData({ ...dataOf(result, { staged: null }), discipline: disciplineOf(config) });
 	if (result.findings.length === 0) {
 		ctx.out.info(`verify: ${result.checked} intervention(s) checked, no violations`);
 		return EXIT_OK;
@@ -66,7 +68,7 @@ async function run(ctx: CommandContext): Promise<number> {
 function stagedFast(ctx: CommandContext, config: CodkitConfig, resolution: ForkDirResolution | null): number {
 	const result = runStagedFast({ patchesDir: ctx.patchesDir, resolution, config, type: requireProjectType(ctx) });
 	report(ctx, result);
-	ctx.out.setData(dataOf(result, { staged: result.staged }));
+	ctx.out.setData({ ...dataOf(result, { staged: result.staged }), discipline: disciplineOf(config) });
 	if (result.findings.length === 0) {
 		ctx.out.info(`verify --staged-fast: ${result.staged.length} staged delta file(s), no violations`);
 		return EXIT_OK;
@@ -83,7 +85,7 @@ function report(ctx: CommandContext, result: VerifyResult): void {
 	}
 }
 
-function dataOf(result: VerifyResult, extra: { readonly staged: readonly string[] | null }): JsonValue {
+function dataOf(result: VerifyResult, extra: { readonly staged: readonly string[] | null }): { [key: string]: JsonValue } {
 	const data: { [key: string]: JsonValue } = {
 		findings: result.findings.map((item) => findingData(item)),
 		counts: { ...result.counts },

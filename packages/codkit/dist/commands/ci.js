@@ -13,6 +13,7 @@
 import { commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { CI_PROFILES, runCi } from '../lib/ciEngine.js';
 import { treeId } from '../lib/fingerprint.js';
+import { disciplineOf } from '../lib/discipline.js';
 import { acquireLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
@@ -28,6 +29,7 @@ async function run(ctx) {
         ctx.out.warn(resolution.warning);
     }
     const config = requireConfig(ctx.config);
+    ctx.out.info(`discipline: ${disciplineOf(config)}`);
     const profile = requireProfile(commandFlagValue(ctx.commandFlags, PROFILE));
     const passTimeoutMs = requireTimeout(commandFlagValue(ctx.commandFlags, TIMEOUT));
     // Not a reminder but the contract: nothing below ever passes netAllowed, so
@@ -49,7 +51,7 @@ async function run(ctx) {
             verbose: ctx.flags.verbose,
             ...(passTimeoutMs === null ? {} : { passTimeoutMs })
         });
-        ctx.out.setData(dataOf(result));
+        ctx.out.setData({ ...dataOf(result), discipline: disciplineOf(config) });
         return result.exitCode;
     }
     finally {

@@ -149,3 +149,10 @@ manifest и contract проверяются до импорта адаптера
 `packages/codkit/config/type-registry.json`; `npm run types:check` доказывает,
 что они соответствуют текущей публикации. Отдельное `npm run types:refresh` —
 явное одобрение source-изменений, а не runtime-операция над patch set.
+
+### Явный discipline profile
+
+Config v2 остаётся читаемым и побайтно стабильным. `codkit config migrate`
+показывает переход к v3 с `minimal-intervention@1`; `--write` применяет его
+под config-lock и отказывает при активной операции или сменившихся bytes.
+Тесты `configMigration.test.ts` удерживают старый fingerprint и новую область.

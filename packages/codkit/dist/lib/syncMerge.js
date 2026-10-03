@@ -31,6 +31,8 @@
 // states - and do not count as movement against the tree; everything else
 // does. A mark without the map (written before it existed) cannot answer the
 // byte question at all and says so instead of guessing (R13).
+import { declaredDiscipline } from './discipline.js';
+import { loadBaseConfig } from './configFile.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { bytesEqual, encodeUtf8 } from './bytes.js';
@@ -117,7 +119,9 @@ export function classifyTargets(input) {
             patchsetOnly: [],
             both: [],
             unknown: true,
-            fingerprintMatches: input.mark !== null && input.mark.deltaFingerprint === deltaFingerprint(input.patchesDir, input.pinSha)
+            fingerprintMatches: input.mark !== null &&
+                input.mark.deltaFingerprint ===
+                    deltaFingerprint(input.patchesDir, input.pinSha, declaredDiscipline(loadBaseConfig(input.patchesDir) ?? { codkitConfig: 2 }))
         };
     }
     const current = artifactMapOf(input.patchesDir);

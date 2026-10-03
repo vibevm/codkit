@@ -16,6 +16,7 @@
 //
 // The tree is the truth about what is applied (##TREE-IS-TRUTH); the cache in
 // patchset and the mark inside .git are hints that let the next run skip the work.
+import { declaredDiscipline } from './discipline.js';
 import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, relative, sep } from 'node:path';
 import { applyUnified } from './applyUnified.js';
@@ -230,7 +231,7 @@ export function runSync(options) {
     // an own-code difference moved. The walk is taken once: the fingerprint and
     // the mark's artifact map below read the same files (##DELTA-FINGERPRINT,
     // ##TREE-MARK).
-    const deltaState = deltaFiles(patchesDir, config.pin.sha);
+    const deltaState = deltaFiles(patchesDir, config.pin.sha, declaredDiscipline(config));
     const delta = deltaState.fingerprint;
     const historyFingerprint = generatedBranch
         ? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice)

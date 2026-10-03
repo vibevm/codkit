@@ -32,6 +32,8 @@
 // does. A mark without the map (written before it existed) cannot answer the
 // byte question at all and says so instead of guessing (R13).
 
+import { declaredDiscipline } from './discipline.ts';
+import { loadBaseConfig } from './configFile.ts';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { bytesEqual, encodeUtf8 } from './bytes.ts';
@@ -191,7 +193,10 @@ export function classifyTargets(input: ClassifyInput): TargetClasses {
 			patchsetOnly: [],
 			both: [],
 			unknown: true,
-			fingerprintMatches: input.mark !== null && input.mark.deltaFingerprint === deltaFingerprint(input.patchesDir, input.pinSha)
+			fingerprintMatches:
+				input.mark !== null &&
+				input.mark.deltaFingerprint ===
+					deltaFingerprint(input.patchesDir, input.pinSha, declaredDiscipline(loadBaseConfig(input.patchesDir) ?? { codkitConfig: 2 }))
 		};
 	}
 	const current = artifactMapOf(input.patchesDir);
