@@ -19,6 +19,7 @@ import { hooksCommand } from './commands/hooks.js';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.js';
 import { inputsCommand, inputsPinCommand } from './commands/inputs.js';
 import { inventoryCommand } from './commands/inventory.js';
+import { consumerLicenseCheckCommand } from './commands/consumerLicense.js';
 import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.js';
 import { loadCommand } from './commands/load.js';
 import { markerNewCommand } from './commands/markerNew.js';
@@ -95,6 +96,7 @@ const COMMANDS = new Map([
     imagesetVerifyCommand,
     licenseCommand,
     licenseCheckCommand,
+    consumerLicenseCheckCommand,
     licenseAnnotateCommand,
     licenseNoticesCommand,
     standardsCommand,
@@ -292,7 +294,7 @@ function printHelp() {
         const suffix = own.length === 0 ? '' : ` (flags: ${own.join(', ')})`;
         // The column has to leave at least two spaces after the longest name, or
         // the reference generator cannot tell the name from the summary.
-        lines.push(`  ${definition.name.padEnd(HELP_NAME_COLUMN)}${definition.summary}${suffix}`);
+        lines.push(`  ${definition.name.padEnd(Math.max(HELP_NAME_COLUMN, definition.name.length + 2))}${definition.summary}${suffix}`);
     }
     lines.push('', 'global flags:');
     for (const flag of GLOBAL_FLAG_HELP) {

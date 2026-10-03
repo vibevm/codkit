@@ -20,6 +20,7 @@ import { hooksCommand } from './commands/hooks.ts';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.ts';
 import { inputsCommand, inputsPinCommand } from './commands/inputs.ts';
 import { inventoryCommand } from './commands/inventory.ts';
+import { consumerLicenseCheckCommand } from './commands/consumerLicense.ts';
 import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.ts';
 import { loadCommand } from './commands/load.ts';
 import { markerNewCommand } from './commands/markerNew.ts';
@@ -104,6 +105,7 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		imagesetVerifyCommand,
 		licenseCommand,
 		licenseCheckCommand,
+		consumerLicenseCheckCommand,
 		licenseAnnotateCommand,
 		licenseNoticesCommand,
 		standardsCommand,
@@ -318,7 +320,7 @@ function printHelp(): void {
 		const suffix = own.length === 0 ? '' : ` (flags: ${own.join(', ')})`;
 		// The column has to leave at least two spaces after the longest name, or
 		// the reference generator cannot tell the name from the summary.
-		lines.push(`  ${definition.name.padEnd(HELP_NAME_COLUMN)}${definition.summary}${suffix}`);
+		lines.push(`  ${definition.name.padEnd(Math.max(HELP_NAME_COLUMN, definition.name.length + 2))}${definition.summary}${suffix}`);
 	}
 	lines.push('', 'global flags:');
 	for (const flag of GLOBAL_FLAG_HELP) {

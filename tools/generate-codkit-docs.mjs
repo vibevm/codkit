@@ -312,7 +312,7 @@ const commandGuidance = {
 			'The acceptance bands as an executable gate, run against the distribution the fork tree already holds. For every raster target the largest layer of a container becomes the master, the other layers of that same container are regenerated from it through the pipeline `gen` uses, and each is compared with the layer the distribution ships: structure exactly, pixels within the band of their size range - at most 10/255 mean absolute RGB difference from 256 px up, at most 25/255 from 64 px, nothing asserted below that. The master is always a layer of the same file, so no flag can make it compare one container with another; a target with a single layer has no round trip and is reported as unverifiable rather than counted as passed. A target of the declaration in the masters directory is verified against it: its file must carry the declared frames - a missing or an extra frame is a structural failure - and its layers are round-tripped one master key at a time, so a layer of one drawing is never measured against another. Read-only: no lock, nothing written to the patchset, nothing written to or seeded into the masters directory. Exit 0 when every asserted comparison is inside its band, 1 when one is outside, 2 when the tree or a container cannot be read. Markdown by default; `--json` carries the same model structurally.'
 	},
 	license: {
-		positional: '<check | annotate | notices>',
+		positional: '<check | consumer-check | annotate | notices>',
 		detail:
 			'A namespace, not a command: bare `codkit license` and any unknown subcommand print the subcommand list and exit 2 before any root is resolved. The subcommands are `check`, `annotate` and `notices`, and none of them needs a patch set or a fork tree.'
 	},
@@ -320,6 +320,10 @@ const commandGuidance = {
 		positional: '[<dir>]',
 		detail:
 			'Check the licence carriers of a package directory the way REUSE reads them: every file resolves to a carrier - an adjacent `<file>.license` sidecar, a `REUSE.toml` annotation, or a header in its first 20 non-empty lines (copyright lines are read up to the `SPDX-License-Identifier` line). An own file (every holder in the policy) must carry a year and exactly `UPL-1.0`; a third-party file must be covered by a `REUSE.toml` annotation that agrees with its carrier, and its licence must be on the policy allowlist. `LICENSE`, one `LICENSES/<ID>.txt` per licence in use, the manifest `license` field and a current `THIRD-PARTY-NOTICES.md` are required. Without `<dir>` it checks the standards package codkit ships. Read-only, needs no root, never calls git. Exit 0 clean, 1 with one line per problem (`CK-E-LICENSE-HEADER` per carrier, `CK-E-LICENSE-THIRD-PARTY` per third-party rule, `CK-E-LICENSE-PACKAGE` for the package), 2 when the directory, the policy or the SPDX list cannot be read.'
+	},
+	'license consumer-check': {
+		positional: '<dir>',
+		detail: 'Inspect consumer source read-only against --profile <id> from the trusted user ~/.codkit/organization-policies.json. Requires a resolved patchset root for policy containment, but no fork, configuration or adapter. Source, carrier and policy hashes bind the versioned JSON report. Exit 0 means complete source evidence, 1 incomplete evidence, 2 invalid invocation or unavailable policy. This checks evidence under the selected policy; it does not assert a legal ruling.'
 	},
 	'license annotate': {
 		positional: '<path ...>',
