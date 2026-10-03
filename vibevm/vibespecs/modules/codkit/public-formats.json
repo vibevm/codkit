@@ -55,6 +55,24 @@
       "versionGap": "Nested byte transport inherits the containing cycle record version; no standalone envelope."
     },
     {
+      "id": "component-release",
+      "field": "codkitComponentRelease",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/componentRelease.ts",
+      "owner": "Codkit component release library",
+      "trustBoundary": "Untrusted descriptor bytes are strict data, never executable type/config instructions or delivery authorization.",
+      "compatibility": "Exact schema 1; future versions, foreign fields, noncanonical bytes and content/key mismatch refuse.",
+      "migration": "No implicit migration or immutable receipt replacement. A new release input produces a new content address.",
+      "fingerprint": "Not an input to delta/generated history. SHA-256 seals the canonical release body; Git object IDs retain their own algorithm.",
+      "contract": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-FORMAT",
+      "tests": [
+        "packages/codkit/test/unit/componentRelease.test.ts"
+      ]
+    },
+    {
       "id": "config",
       "field": "codkitConfig",
       "version": 4,

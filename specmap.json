@@ -11453,6 +11453,69 @@
     },
     {
       "anchor": "root",
+      "content_hash": "sha256:a265b7a50885898493d359e3219a82d6969f356f72b802338c6e10351b2f59c6",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "PROP-018: Immutable component release descriptors",
+      "line": 3,
+      "uri": "spec://codkit/modules/codkit/PROP-018#root"
+    },
+    {
+      "anchor": "format",
+      "content_hash": "sha256:09d8e879c040f4d22ce61cf8118f67320e9a032ecc9a1d64c093b72b2ee95d0d",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "Descriptor data and integrity",
+      "line": 5,
+      "uri": "spec://codkit/modules/codkit/PROP-018#format"
+    },
+    {
+      "anchor": "COMPONENT-RELEASE-FORMAT",
+      "content_hash": "sha256:7d31ce96cf410a6a83d5000721ac38061efbd1a1fea23ef3de1432eae0b71a39",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "A component release is a strict root object carrying descriptorSha256 and codkitComponentRelease:1, componentId, package/publish operation, immutable upstream revision and optional human label/resolution/provenance, patchset commit and config digest, declared type package/version/contract/manifest digest, discipline, generated commit/tree, artifact receipts, build recipe digest, selected licence-policy receipts, and distribution requirements/evidence. Unknown fields and unsupported versions refuse. SHA-256 receipt values and Git commit/tree object IDs are distinct types and algorithms; a Git object ID is never represented as a SHA-256 file digest. @status:impl/done",
+      "line": 6,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-FORMAT"
+    },
+    {
+      "anchor": "COMPONENT-RELEASE-CANONICAL",
+      "content_hash": "sha256:26ef312ac25744a47d3d48ed1d9d5d0f9a5301d101492f0039c015158da2e168",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "Field order follows the single Zod schema. Artifacts and policies are sorted by identity; distribution lists are sorted by requirement using UTF-8 byte order. Duplicate identities, escaping artifact paths, empty distribution requirements and inconsistent completeness/missing lists refuse. descriptorSha256 hashes the canonical compact JSON of every root field except descriptorSha256 itself, including the format version. The stored descriptor is deterministic two-space UTF-8 JSON, LF-only, without BOM and with exactly one final LF. Readers validate the digest and exact canonical bytes; no migration or adapter execution is implied by reading a descriptor. @status:impl/done",
+      "line": 7,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-CANONICAL"
+    },
+    {
+      "anchor": "COMPONENT-RELEASE-IMMUTABLE",
+      "content_hash": "sha256:92c855990b6922113d3a1ced0ff6e5e002322977df5ea1105b80297dfb2290cd",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "Receipts live at the contained patchset runtime path .codkit/releases/<descriptorSha256>.json. A writer validates data before I/O and publishes complete bytes only at an absent path through the existing atomic exclusive-link capability. Retrying identical bytes is idempotent; existing conflicting bytes, symlink parents/leaves and filename/body digest mismatch refuse without replacing the foreign file. This content digest establishes byte integrity, not origin authentication, legal compatibility, signing custody or authorization to deliver a release. @status:impl/done",
+      "line": 8,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-IMMUTABLE"
+    },
+    {
+      "anchor": "COMPONENT-RELEASE-EVIDENCE",
+      "content_hash": "sha256:a16da9fdbbe14d31474a5278539934e2c4992fdde37a5710c18b87c819927cf1",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "Completeness is relative to the explicit selected policy requirements and their actual evidence receipts. Emitters must obtain hashes from the objects and bytes they observed, name the licence-policy scope, retain unavailable evidence as missing and avoid inventing an external approval. The schema alone cannot attest how facts were obtained. Package/publish integration must bind the descriptor to the exact checked inputs and preserve package restore, publish leases, immutable tags and existing operation refusal behavior. @status:spec/done",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-EVIDENCE"
+    },
+    {
+      "anchor": "DECISION-COMPONENT-RECEIPT",
+      "content_hash": "sha256:0bc5c9c8db7f4b028a40093b65bf70f0e9591718607687acb117e34c63e6c4e4",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "Implement the source proposal's single-component release descriptor before a coordinator. Use a content-addressed immutable receipt rather than a mutable latest-release pointer: deterministic retries can compare exact bytes and conflicting data remains inspectable. Do not introduce signatures or organization commercial rulings without the corresponding external inputs. Revisit distribution requirements when P0.10 supplies trusted organization enforcement and real artifact evidence. @status:impl/done",
+      "line": 10,
+      "uri": "spec://codkit/modules/codkit/PROP-018#DECISION-COMPONENT-RECEIPT"
+    },
+    {
+      "anchor": "root",
       "content_hash": "sha256:c3849c7bc21508e9b2ef30cfe3828e3d126838bae359eb5884a084f83a56ca4e",
       "doc_path": "modules/theia/PROP-001",
       "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
