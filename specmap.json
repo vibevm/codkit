@@ -11561,7 +11561,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e081d44967b0880d7fcf818e08dd22dd312678716e08ebb6199e86735586e918",
+      "content_hash": "sha256:65bf0e0af9a596993d34b7e2c69cd082f4d07e48729d564ad8003cf04c854b45",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -11570,7 +11570,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:b00e0867f7be2f50c8777e789e3bcd90d581d3a72baa7daaab51cc35d0dc2265",
+      "content_hash": "sha256:597ab4d8749ee66529a9cb29bd4f9b9cf039766cb763d98479c0ea23915db910",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -11623,12 +11623,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-019#CONSUMER-LICENSE-CLI"
     },
     {
+      "anchor": "DISTRIBUTION-NOTICE-CHECK",
+      "content_hash": "sha256:5686ca4ee99dee78cb30ec1ff38bd5a8f271b8db2de2cca4b586ca9953d279ae",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "Notice attachment inspection captures the actual declared distribution inventory before and after reads. Each directory output carries every policy-required notice at its root; file outputs carry notices as separately declared sibling output files. A notice existing only in source, in another bundle or below the bundle root does not satisfy attachment. Notice-only or empty output sets refuse. Notice bytes must be nonempty UTF-8, contained regular files; exact notice bytes, paths, selected policy and artifact inventory digests bind codkitDistributionNotices:1. Changed output snapshots or notice bytes refuse, and report status follows actual problems. This receipt proves named attachment and observed bytes only; approval of notice content, provenance, source carriers and SBOM remain separate distribution requirements, never inferred legal approval. @status:impl/done",
+      "line": 11,
+      "uri": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-NOTICE-CHECK"
+    },
+    {
       "anchor": "ORGANIZATION-DISTRIBUTION-EVIDENCE",
       "content_hash": "sha256:b5f1919b6879a0ce58b3315d196067639d42a12208d14af0b31b2d7f861a6015",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Consumer source scanning, actual artifact NOTICE/carrier checks and selected SBOM export must bind the selected trusted policy before package/publish enforcement is accepted. A minified artifact without required attached notice is incomplete/red even when source headers were valid. Report evidence complete/incomplete, never a legal-compatibility ruling. Mechanism fixtures are labelled examples, not real commercial approvals or external partner evidence. @status:spec/done",
-      "line": 11,
+      "line": 12,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-DISTRIBUTION-EVIDENCE"
     },
     {

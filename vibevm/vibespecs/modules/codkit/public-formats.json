@@ -454,6 +454,24 @@
       ]
     },
     {
+      "id": "distribution-notices",
+      "field": "codkitDistributionNotices",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/distributionNotices.ts",
+      "owner": "Codkit distribution evidence capability",
+      "trustBoundary": "Contained notice bytes must be included in actual declared outputs; presence receipts never approve legal content.",
+      "compatibility": "Strict version 1 policy/artifact/notice byte receipts; status and duplicate notice identities are validated.",
+      "migration": "Reinspect delivered outputs; future formats refuse, no automatic rewriting.",
+      "fingerprint": "Distribution evidence digests do not change consumer delta/history fingerprints.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-NOTICE-CHECK",
+      "tests": [
+        "packages/codkit/test/unit/distributionNotices.test.ts"
+      ]
+    },
+    {
       "id": "exit-codes",
       "version": null,
       "source": "packages/codkit/src/lib/messages.ts",
