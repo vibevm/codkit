@@ -123,6 +123,11 @@ explicit external root flags. `where` names the selected identity; the selecting
 flag is the source of both roots. Named execution uses UUID-derived applied,
 cycle and release prefixes in memory. Config serialization retains the original
 declaration, and no workspace metadata is written into `codkit.json`.
+Run build commands with the same selection, for example
+`codkit --workspace task-a build down --channel all`. Selected daemon records
+bind the workspace UUID and physical tree; copied or mismatching records cannot
+authorize teardown or log attribution. Legacy daemon records retain their
+previous format and are not silently adopted by a workspace.
 
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths
