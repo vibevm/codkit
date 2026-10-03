@@ -3,7 +3,14 @@
 import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { applyOperations, devChannelIgnoreWarning, parseOverlay, resolveVar, writeDevChannel } from '../../src/lib/layers/overlay.ts';
+import {
+	applyOperations,
+	devChannelIgnoreWarning,
+	parseOverlay,
+	resolveVar,
+	serializeOverlay,
+	writeDevChannel
+} from '../../src/lib/layers/overlay.ts';
 import type { Overlay, OverlayVarContext } from '../../src/lib/layers/overlay.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import { isCkError } from '../../src/lib/messages.ts';
@@ -67,10 +74,18 @@ describe('overlay schema', () => {
 		expect(overlay.artifactPath).toBe(ARTIFACT);
 	});
 
+	it('requires an explicit JSONC format and keeps it in canonical metadata', () => {
+		const overlay = parseOverlay({ ...VALID, format: 'jsonc' }, ARTIFACT);
+		const { artifactPath, ...document } = overlay;
+		expect(artifactPath).toBe(ARTIFACT);
+		expect(serializeOverlay(document)).toContain('"format": "jsonc"');
+		expect(codeOf(() => parseOverlay({ ...VALID, format: 'json5' }, ARTIFACT)).code).toBe('OVERLAY-SCHEMA');
+	});
+
 	it('refuses an unknown operation with the wording of the spec', () => {
 		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'insert', path: ['displayName'], value: 'x' }]), ARTIFACT));
 		expect(failure.code).toBe('OVERLAY-SCHEMA');
-		expect(failure.message).toBe('operations[0].op must be "set" or "remove", got "insert"');
+		expect(failure.message).toBe('operations[0].op must be "set", "remove" or "npm-prune", got "insert"');
 		expect(failure.file).toBe(ARTIFACT);
 	});
 

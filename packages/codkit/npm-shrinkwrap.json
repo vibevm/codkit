@@ -10,6 +10,7 @@
       "license": "UPL-1.0",
       "dependencies": {
         "@resvg/resvg-js": "2.6.2",
+        "jsonc-parser": "3.3.1",
         "smol-toml": "1.8.0",
         "typescript": "^7.0.2",
         "zod": "^4.5.4"
@@ -567,6 +568,12 @@
       "engines": {
         "node": ">=16.20.0"
       }
+    },
+    "node_modules/jsonc-parser": {
+      "version": "3.3.1",
+      "resolved": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.3.1.tgz",
+      "integrity": "sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==",
+      "license": "MIT"
     },
     "node_modules/smol-toml": {
       "version": "1.8.0",

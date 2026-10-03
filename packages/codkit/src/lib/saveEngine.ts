@@ -40,6 +40,7 @@ import {
 } from './layers/ownExtensions.ts';
 import type { Materializer, OwnExtensionSyncReport } from './layers/ownExtensions.ts';
 import { loadResourceMap } from './layers/resource.ts';
+import { loadOverlays } from './layers/overlay.ts';
 import type { ResourceEntry, ResourceMap } from './layers/resource.ts';
 import { mirrorAllOwnBack } from './ownCopy.ts';
 import { classifyAllOwn, ownMarkFilesOf } from './ownSides.ts';
@@ -61,7 +62,16 @@ import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './re
 import { ArtifactStore, planStates, replayCommitMessage, writeStates } from './saveReplay.ts';
 import type { PlannedCommitState, ReplayWrites } from './saveReplay.ts';
 import { checkLineage, classifyTargets, loadedFrom, movedArtifactsOf, patchsetMovedError } from './syncMerge.ts';
-import { PATCHES_DIR, bothSidesError, runSync, toPosix } from './syncEngine.ts';
+import {
+	PATCHES_DIR,
+	bothSidesError,
+	overlayMaterializationClassifier,
+	overlayVarContext,
+	patchSetCommitId,
+	pinCommitDate,
+	runSync,
+	toPosix
+} from './syncEngine.ts';
 import type { SyncEngineOptions } from './syncEngine.ts';
 import { refuseOverLiveSyncTransaction, SYNC_TRANSACTION_TRAILER } from './syncTransaction.ts';
 import { readTreeMark } from './treeCache.ts';
@@ -329,6 +339,14 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		...(materializer === null ? [] : ownExtensionTreePrefixes(materializer, declaredExtensions))
 	];
 	const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
+	const knownOverlayTargets: string[] = [];
+	const isKnownOverlayMaterialization = overlayMaterializationClassifier(
+		loadOverlays(patchesDir),
+		tree,
+		config.pin.sha,
+		overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir)),
+		knownOverlayTargets
+	);
 	const headerOverrides = validateHeaderOverrides(options);
 	// Paths on the command line name files of the tree; they are read the same
 	// way whether they were typed relative, absolute or with a trailing slash.
@@ -413,7 +431,19 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 
 	const store = new ArtifactStore(patchesDir);
 	const planFor = (entry: StateChange, state: TreeState, planning: ArtifactStore): PlannedFile | null =>
-		planFile(entry, state, planning, options, conventions, resources, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
+		planFile(
+			entry,
+			state,
+			planning,
+			options,
+			conventions,
+			resources,
+			allowNewFile,
+			out,
+			headerOverrides.get(entry.path),
+			entryModuleIds,
+			isKnownOverlayMaterialization
+		);
 
 	let own: OwnMirrorReport = NO_OWN;
 	let ownExtensions: OwnExtensionSyncReport = NO_OWN_EXTENSIONS;
@@ -512,6 +542,11 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			out.addError(error.toPayload());
 		}
 		return result('blocked', 1, { branch, files: planned.map(toReport), own });
+	}
+	if (knownOverlayTargets.length > 0) {
+		out.info(
+			`save: ${[...new Set(knownOverlayTargets)].join(', ')} carries exact overlay materialization; rebuilding the development channel`
+		);
 	}
 
 	// 4. Write the artifacts of the worktree remainder (replay already wrote the
@@ -738,7 +773,8 @@ function planFile(
 	allowNewFile: readonly string[],
 	out: Output,
 	headerOverride: SavePatchHeaderOverride | undefined,
-	entryModuleIds: readonly string[]
+	entryModuleIds: readonly string[],
+	isKnownOverlayMaterialization: (target: string) => boolean
 ): PlannedFile | null {
 	const { patchesDir, config } = options;
 	const tree = options.resolution.path;
@@ -757,6 +793,9 @@ function planFile(
 	}
 
 	if (matchesPatternList(target, conventions.forbiddenPatchTargets)) {
+		if (state.kind === 'worktree' && isKnownOverlayMaterialization(target)) {
+			return null;
+		}
 		// ##SAVE-UPDATES-A-CARRIED-RESOURCE: a target the delta already owns
 		// through the resource-file layer is not a target without an owner. The
 		// file is regenerated in the tree - a lockfile the install rewrites is the

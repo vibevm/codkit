@@ -22,7 +22,7 @@ import {
 } from '../../src/lib/layers/overlay.ts';
 import type { Overlay, OverlayVarContext } from '../../src/lib/layers/overlay.ts';
 import { isCkError } from '../../src/lib/messages.ts';
-import { makeUpstream } from '../fixtures/makeUpstream.ts';
+import { fixtureCommit, makeUpstream } from '../fixtures/makeUpstream.ts';
 import type { UpstreamFixture } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { projectType as stubProjectType } from '../fixtures/stubType.ts';
@@ -70,6 +70,24 @@ afterAll(() => {
 });
 
 describe('applyOverlayToTree', () => {
+	it('parses an explicitly declared JSONC target and emits deterministic JSON', () => {
+		const fixture = upstreamAt('overlay-jsonc');
+		writeFileSync(join(fixture.dir, 'tsconfig.json'), '{\n\t// upstream comment\n\t"exclude": ["old",],\n}\n', 'utf8');
+		const pin = fixtureCommit(fixture.dir, 'fixture: add JSONC config', '2026-01-02T00:00:00Z');
+		const sample = overlay([{ op: 'set', path: ['exclude'], value: ['old', 'unused'], expectUpstream: ['old'] }], {
+			target: 'tsconfig.json',
+			format: 'jsonc'
+		});
+
+		const checked = checkOverlay(sample, { type: stubProjectType, treeDir: fixture.dir, pinSha: pin, pinOnly: true });
+		expect(checked.drift).toEqual([]);
+		const first = applyOverlayToTree(sample, fixture.dir, pin, CONTEXT);
+		const second = applyOverlayToTree(sample, fixture.dir, pin, CONTEXT);
+		expect(first.changed).toBe(true);
+		expect(second.changed).toBe(false);
+		expect(readFileSync(join(fixture.dir, 'tsconfig.json'), 'utf8')).toBe('{\n\t"exclude": [\n\t\t"old",\n\t\t"unused"\n\t]\n}\n');
+	});
+
 	it('takes the clean pin file as its base, not the file in the tree', () => {
 		const fixture = upstreamAt('overlay-apply-base');
 		// Whatever the tree carries is irrelevant: this is what makes the second

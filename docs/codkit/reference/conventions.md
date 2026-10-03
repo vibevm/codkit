@@ -42,7 +42,7 @@ Use `codkit marker new <tree-file> ...` to scaffold markers and the pending head
 
 ## Protected targets and service overrides
 
-Forbidden patch-target patterns: `.config/1espt/**`, `product.json`, `package.json`.
+Forbidden patch-target patterns: `.config/1espt/**`, `build/checker/tsconfig.electron-main.json`, `build/checker/tsconfig.electron-utility.json`, `build/checker/tsconfig.node.json`, `product.json`, `package.json`, `package-lock.json`, `remote/package.json`, `remote/package-lock.json`, `src/tsconfig.json`.
 
 Own code must not re-register these bootstrap services (34 current entries):
 

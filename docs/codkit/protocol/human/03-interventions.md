@@ -102,6 +102,30 @@
 3. `codkit load` → exit `0`; затем `codkit verify` → exit `0`.
 
 `overlay apply` предназначен для CI/publish. В dev-дереве он создаёт ожиданный drift; возврат target — `codkit load --fresh` (не прямой `git checkout`).
+Если target пина содержит комментарии или завершающие запятые, добавь в overlay
+`"format": "jsonc"`; без этого поля Codkit требует строгий JSON. Материализованный
+файл становится строгим JSON, исходный blob пина не меняется.
+Полный `codkit save` распознаёт только побайтно точный результат `overlay apply`
+и возвращает его к dev-каналу при перестроении ветки; ручное изменение target
+по-прежнему считается запрещённой правкой и останавливает `save`.
+
+Для удаления npm-зависимости в VS Code нужны две операции с одинаковым
+`expectUpstream`: `remove` в overlay соответствующего `package.json` по пути
+`["dependencies", "<имя>"]` (либо `devDependencies`/`optionalDependencies`)
+и `npm-prune` в overlay соседнего `package-lock.json` по пути
+`["packages", "", "dependencies", "<имя>"]`. Для `remote/` используются
+отдельные overlays тех же двух файлов. Codkit проверяет наличие обеих половин,
+а `npm-prune` удаляет из lockfile только пакеты, потерявшие все пути от корня;
+на lockfile не версии 3 операция отказывает.
+
+Для обновления прямой зависимости **без собственных зависимостей** запиши
+`set` на `["dependencies", "<имя>"]` в overlay манифеста и два `set` в
+overlay lockfile: на `["packages", "", "dependencies", "<имя>"]` с той же
+точной версией и на `["packages", "node_modules/<имя>"]` с новой записью
+`version`/`resolved`/`integrity`/`license`. У каждого `set` есть
+`expectUpstream`; последняя операция ожидает всю старую запись пакета.
+Codkit требует согласованную тройку и отказывает для пакета с транзитивными
+зависимостями: такой случай нельзя исправлять одной записью lockfile.
 
 ## Терминальный лист resource-file
 

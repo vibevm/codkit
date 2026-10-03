@@ -16,11 +16,13 @@
 // what makes `overlay apply` idempotent.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { parse as parseJsonc } from 'jsonc-parser';
 import { z } from 'zod';
 import { bytesEqual, encodeUtf8 } from '../bytes.js';
 import { runGit } from '../gitx.js';
 import { ckError } from '../messages.js';
 import { repoRelativePathProblem, resolveContainedPath } from '../pathSafety.js';
+import { pruneNpmDependency } from './npmPrune.js';
 export const OVERLAY_SCHEMA_VERSION = 2;
 /** Overlays live here, one file per target, relative to the patchset root. */
 export const OVERLAYS_DIR = 'delta/overlays';
@@ -77,8 +79,8 @@ export function allowedOverlayKeys(type, target) {
 export const OVERLAY_VARS = ['pin.tag', 'pin.sha', 'pin.date', 'patchset.commit', 'build.date'];
 const jsonSchema = z.lazy(() => z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonSchema), z.record(z.string(), jsonSchema)]));
 const operationSchema = z.object({
-    op: z.enum(['set', 'remove']),
-    path: z.array(z.string().min(1)).min(1),
+    op: z.enum(['set', 'remove', 'npm-prune']),
+    path: z.array(z.string()).min(1),
     value: jsonSchema.optional(),
     expectUpstream: jsonSchema.optional()
 });
@@ -86,6 +88,7 @@ const overlaySchema = z.object({
     codkitOverlay: z.literal(OVERLAY_SCHEMA_VERSION),
     id: z.string().min(1),
     target: z.string().min(1),
+    format: z.literal('jsonc').optional(),
     type: z.string().min(1),
     category: z.string().min(1),
     owner: z.string().min(1),
@@ -105,6 +108,7 @@ const FIELD_EXPECTATION = {
     codkitOverlay: `must be exactly ${OVERLAY_SCHEMA_VERSION}`,
     id: 'must be a non-empty artifact id',
     target: 'must be the path of the target file from the tree root',
+    format: 'must be "jsonc" when the pin target uses JSON with comments or trailing commas',
     type: 'must be a non-empty intervention type',
     category: 'must be a non-empty category',
     owner: 'must be a non-empty owner name',
@@ -114,7 +118,7 @@ const FIELD_EXPECTATION = {
     pin: 'must be "<tag>@<sha>" of the pin the overlay was written against',
     contractTests: 'must be a non-empty list of contract test names (a guard test is mandatory for this layer)',
     operations: 'must be a list of operations',
-    op: 'must be "set" or "remove"',
+    op: 'must be "set", "remove" or "npm-prune"',
     path: 'must be a non-empty list of object keys (array indices are not supported)',
     value: 'must be a JSON value or {"$var": "<name>"}',
     expectUpstream: 'must be a JSON value or {"$absent": true}',
@@ -131,7 +135,119 @@ export function loadOverlays(patchesDir) {
         return [];
     }
     const files = names.filter((name) => name.endsWith(OVERLAY_FILE_SUFFIX)).sort();
-    return files.map((name) => parseOverlayFile(join(dir, name), `${OVERLAYS_DIR}/${name}`));
+    const overlays = files.map((name) => parseOverlayFile(join(dir, name), `${OVERLAYS_DIR}/${name}`));
+    validateNpmDependencyPairs(overlays);
+    return overlays;
+}
+/** A manifest edge and its lockfile edge are one semantic dependency change. */
+export function validateNpmDependencyPairs(overlays) {
+    for (const overlay of overlays) {
+        if (!overlay.target.endsWith('package.json'))
+            continue;
+        const lockTarget = `${overlay.target.slice(0, -'package.json'.length)}package-lock.json`;
+        for (const operation of overlay.operations) {
+            if (operation.op !== 'remove' ||
+                operation.path.length !== 2 ||
+                !['dependencies', 'devDependencies', 'optionalDependencies'].includes(operation.path[0] ?? ''))
+                continue;
+            const lockPath = ['packages', '', ...operation.path];
+            const paired = overlays.some((candidate) => candidate.target === lockTarget &&
+                candidate.operations.some((other) => other.op === 'npm-prune' && pathsEqual(other.path, lockPath) && deepEqual(other.expectUpstream, operation.expectUpstream)));
+            if (!paired) {
+                throw ckError('OVERLAY-SCHEMA', `${overlay.target}:${renderPath(operation.path)} has no matching npm-prune in ${lockTarget}`, 'add a lockfile overlay operation with the same section, name and expectUpstream', overlay.artifactPath);
+            }
+        }
+    }
+    for (const overlay of overlays) {
+        if (!overlay.target.endsWith('package-lock.json'))
+            continue;
+        const manifestTarget = `${overlay.target.slice(0, -'package-lock.json'.length)}package.json`;
+        for (const operation of overlay.operations) {
+            if (operation.op !== 'npm-prune')
+                continue;
+            const manifestPath = operation.path.slice(2);
+            const paired = overlays.some((candidate) => candidate.target === manifestTarget &&
+                candidate.operations.some((other) => other.op === 'remove' && pathsEqual(other.path, manifestPath) && deepEqual(other.expectUpstream, operation.expectUpstream)));
+            if (!paired) {
+                throw ckError('OVERLAY-SCHEMA', `${overlay.target}:${renderPath(operation.path)} has no matching remove in ${manifestTarget}`, 'add a manifest overlay operation with the same section, name and expectUpstream', overlay.artifactPath);
+            }
+        }
+    }
+    validateNpmDependencyUpdates(overlays);
+}
+function isJsonObject(value) {
+    return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
+}
+/** A dependency-free direct package can be upgraded without resolving a new graph. */
+function validateNpmDependencyUpdates(overlays) {
+    const sections = ['dependencies', 'devDependencies', 'optionalDependencies'];
+    for (const manifest of overlays) {
+        if (!manifest.target.endsWith('package.json'))
+            continue;
+        const lockTarget = `${manifest.target.slice(0, -'package.json'.length)}package-lock.json`;
+        const lockOperations = overlays.filter((entry) => entry.target === lockTarget).flatMap((entry) => entry.operations);
+        for (const operation of manifest.operations) {
+            const [section, name] = operation.path;
+            if (operation.op !== 'set' ||
+                operation.path.length !== 2 ||
+                section === undefined ||
+                name === undefined ||
+                !sections.includes(section))
+                continue;
+            const rootPath = ['packages', '', section, name];
+            const packagePath = ['packages', `node_modules/${name}`];
+            const rootUpdates = lockOperations.filter((entry) => entry.op === 'set' && pathsEqual(entry.path, rootPath));
+            const packageUpdates = lockOperations.filter((entry) => entry.op === 'set' && pathsEqual(entry.path, packagePath));
+            const root = rootUpdates[0];
+            const metadata = packageUpdates[0];
+            const updated = metadata?.value;
+            const upstream = metadata?.expectUpstream;
+            const metadataValid = isJsonObject(updated) &&
+                isJsonObject(upstream) &&
+                updated['version'] === operation.value &&
+                upstream['version'] === operation.expectUpstream &&
+                typeof updated['resolved'] === 'string' &&
+                typeof updated['integrity'] === 'string' &&
+                typeof updated['license'] === 'string' &&
+                !['dependencies', 'optionalDependencies', 'peerDependencies'].some((key) => updated[key] !== undefined || upstream[key] !== undefined);
+            if (typeof operation.value !== 'string' ||
+                typeof operation.expectUpstream !== 'string' ||
+                rootUpdates.length !== 1 ||
+                packageUpdates.length !== 1 ||
+                root === undefined ||
+                root.value !== operation.value ||
+                root.expectUpstream !== operation.expectUpstream ||
+                !metadataValid) {
+                throw ckError('OVERLAY-SCHEMA', `${manifest.target}:${renderPath(operation.path)} needs a matching dependency-free lockfile update`, `set the same exact version in ${lockTarget} and replace its node_modules package metadata with pin expectations`, manifest.artifactPath);
+            }
+        }
+    }
+    for (const lock of overlays) {
+        if (!lock.target.endsWith('package-lock.json'))
+            continue;
+        const manifestTarget = `${lock.target.slice(0, -'package-lock.json'.length)}package.json`;
+        for (const operation of lock.operations) {
+            if (operation.op !== 'set' || operation.path[0] !== 'packages')
+                continue;
+            const section = operation.path.length === 4 && operation.path[1] === '' ? operation.path[2] : undefined;
+            const name = section !== undefined
+                ? operation.path[3]
+                : operation.path.length === 2 && operation.path[1]?.startsWith('node_modules/')
+                    ? operation.path[1].slice('node_modules/'.length)
+                    : undefined;
+            const paired = overlays.some((manifest) => manifest.target === manifestTarget &&
+                manifest.operations.some((entry) => entry.op === 'set' &&
+                    entry.path[1] === name &&
+                    (section === undefined || entry.path[0] === section) &&
+                    (section === undefined || (entry.value === operation.value && entry.expectUpstream === operation.expectUpstream))));
+            if (name === undefined || name === '' || !paired) {
+                throw ckError('OVERLAY-SCHEMA', `${lock.target}:${renderPath(operation.path)} has no matching manifest version update`, 'update the direct dependency and its package metadata together', lock.artifactPath);
+            }
+        }
+    }
+}
+function pathsEqual(left, right) {
+    return left.length === right.length && left.every((part, index) => part === right[index]);
 }
 export function parseOverlayFile(absolutePath, artifactPath) {
     let raw;
@@ -155,7 +271,9 @@ export function parseOverlay(raw, artifactPath) {
     }
     assertVariableNames(parsed.data.operations, artifactPath);
     assertSetHasValue(parsed.data.operations, artifactPath);
-    return { ...parsed.data, artifactPath };
+    assertOperationPaths(parsed.data.operations, artifactPath);
+    const { format, ...fields } = parsed.data;
+    return { ...fields, ...(format === undefined ? {} : { format }), artifactPath };
 }
 /** Canonical artifact bytes: schema key order, two spaces, exactly one final LF. */
 export function serializeOverlay(overlay) {
@@ -171,6 +289,7 @@ export function serializeOverlay(overlay) {
         codkitOverlay: overlay.codkitOverlay,
         id: overlay.id,
         target: overlay.target,
+        ...(overlay.format === undefined ? {} : { format: overlay.format }),
         type: overlay.type,
         category: overlay.category,
         owner: overlay.owner,
@@ -231,8 +350,11 @@ export function applyOperations(base, operations, context) {
         if (operation.op === 'set') {
             setAtPath(result, operation.path, materializeValue(operation.value, context));
         }
-        else {
+        else if (operation.op === 'remove') {
             removeAtPath(result, operation.path);
+        }
+        else {
+            pruneNpmDependency(result, operation.path);
         }
     }
     return result;
@@ -371,14 +493,23 @@ export function serializeOverlayTarget(document) {
  * not the branch tip, which may carry one too. Reading git objects also means a
  * dirty tree is no obstacle (##PIN-FILE-READ-RULE).
  */
-export function overlayBaseAtPin(treeDir, pinSha, target) {
+export function overlayBaseAtPin(treeDir, pinSha, target, format = 'json') {
     const shown = runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir });
     if (shown.status !== 0) {
         throw ckError('ARTIFACT-BROKEN', `the overlay target ${target} does not exist at the pin, and an overlay changes an existing file`, 'add the file with an add-file patch, or keep it in own code; an overlay only edits what upstream ships', `${OVERLAYS_DIR}/${target}${OVERLAY_FILE_SUFFIX}`);
     }
     let parsed;
     try {
-        parsed = JSON.parse(shown.stdout);
+        if (format === 'jsonc') {
+            const errors = [];
+            parsed = parseJsonc(shown.stdout, errors, { allowTrailingComma: true });
+            if (errors.length > 0) {
+                throw new Error(`JSONC parse error at offset ${errors[0]?.offset ?? 0}`);
+            }
+        }
+        else {
+            parsed = JSON.parse(shown.stdout);
+        }
     }
     catch (error) {
         throw ckError('ARTIFACT-BROKEN', `the overlay target ${target} is not readable JSON at the pin: ${error instanceof Error ? error.message : String(error)}`, 'the config-overlay layer parses and serializes its target; a file that is not JSON belongs to another layer', `${OVERLAYS_DIR}/${target}${OVERLAY_FILE_SUFFIX}`);
@@ -401,11 +532,17 @@ export function renderOverlayTarget(overlays, treeDir, pinSha, context) {
     if (target === undefined) {
         throw ckError('INTERNAL', 'cannot materialize an overlay target without an overlay');
     }
-    let document = { ...overlayBaseAtPin(treeDir, pinSha, target) };
+    const format = overlays[0]?.format ?? 'json';
+    if (overlays.some((overlay) => (overlay.format ?? 'json') !== format)) {
+        throw ckError('OVERLAY-SCHEMA', `overlays of ${target} disagree on the target format`);
+    }
+    let document = { ...overlayBaseAtPin(treeDir, pinSha, target, format) };
     for (const overlay of overlays) {
         document = applyOperations(document, overlay.operations, context);
     }
-    const text = serializeOverlayTarget(document);
+    const text = overlays.some((overlay) => overlay.operations.some((operation) => operation.op === 'npm-prune'))
+        ? `${JSON.stringify(document, null, 2)}\n`
+        : serializeOverlayTarget(document);
     return { target, document, text, bytes: encodeUtf8(text), overlayIds: overlays.map((overlay) => overlay.id) };
 }
 /**
@@ -472,7 +609,7 @@ export function isExactOverlayMaterialization(overlays, treeDir, pinSha, context
  * run tells the whole story instead of the first line of it.
  */
 export function checkOverlay(overlay, options) {
-    const base = overlayBaseAtPin(options.treeDir, options.pinSha, overlay.target);
+    const base = overlayBaseAtPin(options.treeDir, options.pinSha, overlay.target, overlay.format);
     const drift = [];
     const warnings = [];
     for (let index = 0; index < overlay.operations.length; index += 1) {
@@ -530,8 +667,7 @@ export function checkOverlayTarget(overlays, options) {
 /**
  * ##OVERLAY-NON-PRODUCT-TARGETS: a target the type keeps closed has no dev
  * channel, so an overlay on it rewrites an upstream file for real. The only
- * change allowed there is *adding* under one of the keys the type opened - a
- * `set` on a path of exactly two keys whose first is one of them.
+ * type opens only the narrow operations it can materialize and guard.
  *
  * The finding is a check, not a parse failure: the document is well formed, and
  * what it asks for is out of bounds. `verify` reports it like any other
@@ -539,9 +675,7 @@ export function checkOverlayTarget(overlays, options) {
  */
 export function restrictedTargetViolations(type, overlay) {
     const allowedKeys = allowedOverlayKeys(type, overlay.target);
-    if (allowedKeys === null) {
-        return [];
-    }
+    const target = overlayTargetOf(type, overlay.target);
     const errors = [];
     for (let index = 0; index < overlay.operations.length; index += 1) {
         const operation = overlay.operations[index];
@@ -549,12 +683,51 @@ export function restrictedTargetViolations(type, overlay) {
             continue;
         }
         const top = operation.path[0] ?? '';
-        const allowed = operation.op === 'set' && operation.path.length === 2 && allowedKeys.includes(top);
+        const allowed = operation.op === 'npm-prune'
+            ? target?.npmLockfile === true &&
+                operation.path.length === 4 &&
+                operation.path[0] === 'packages' &&
+                operation.path[1] === '' &&
+                (target.allowedRemovals ?? []).includes(operation.path[2] ?? '') &&
+                operation.path[3] !== '' &&
+                operation.value === undefined &&
+                operation.expectUpstream !== undefined
+            : operation.op === 'remove'
+                ? allowedKeys === null ||
+                    (target !== null &&
+                        (target?.allowedRemovals ?? []).includes(top) &&
+                        operation.path.length === 2 &&
+                        operation.path[1] !== '' &&
+                        operation.expectUpstream !== undefined)
+                : target?.npmLockfile === true
+                    ? operation.expectUpstream !== undefined &&
+                        ((operation.path.length === 4 &&
+                            operation.path[0] === 'packages' &&
+                            operation.path[1] === '' &&
+                            (target.allowedDependencyUpdates ?? []).includes(operation.path[2] ?? '') &&
+                            operation.path[3] !== '' &&
+                            typeof operation.value === 'string' &&
+                            typeof operation.expectUpstream === 'string') ||
+                            (operation.path.length === 2 &&
+                                operation.path[0] === 'packages' &&
+                                operation.path[1]?.startsWith('node_modules/') &&
+                                isJsonObject(operation.value) &&
+                                isJsonObject(operation.expectUpstream)))
+                    : allowedKeys === null ||
+                        (operation.path.length === 2 &&
+                            (allowedKeys.includes(top) ||
+                                ((target?.allowedDependencyUpdates ?? []).includes(top) &&
+                                    typeof operation.value === 'string' &&
+                                    typeof operation.expectUpstream === 'string')));
         if (allowed) {
             continue;
         }
         errors.push(ckError('OVERLAY-SCHEMA', `operations[${index}] is ${operation.op} ${renderPath(operation.path)} on ${overlay.target}: ` +
-            `only additions under ${allowedKeys.join(', ')} are allowed for this target`, `write the operation as {"op": "set", "path": ["${allowedKeys[0] ?? 'scripts'}", "<name>"], …}, or move the change to a layer above`, overlay.artifactPath));
+            (target?.npmLockfile === true
+                ? 'only paired npm-prune or guarded direct-version updates are allowed for this target'
+                : (target?.allowedRemovals?.length ?? 0) > 0
+                    ? 'only declared script additions, dependency removals and version updates are allowed for this target'
+                    : `only additions under ${(allowedKeys ?? []).join(', ')} are allowed for this target`), `use a declared key addition, dependency removal, or paired npm lockfile update for this target`, overlay.artifactPath));
     }
     return errors;
 }
@@ -731,6 +904,23 @@ function assertSetHasValue(operations, artifactPath) {
         const operation = operations[index];
         if (operation !== undefined && operation.op === 'set' && operation.value === undefined) {
             throw overlayError(`operations[${index}].value`, 'is required for op "set"', undefined, artifactPath);
+        }
+    }
+}
+function assertOperationPaths(operations, artifactPath) {
+    for (let index = 0; index < operations.length; index += 1) {
+        const operation = operations[index];
+        if (operation === undefined || operation.op === 'npm-prune')
+            continue;
+        if (operation.op === 'set' &&
+            operation.path.length === 4 &&
+            operation.path[0] === 'packages' &&
+            operation.path[1] === '' &&
+            operation.path[2] !== '' &&
+            operation.path[3] !== '')
+            continue;
+        if (operation.path.some((segment) => segment === '')) {
+            throw overlayError(`operations[${index}].path`, FIELD_EXPECTATION['path'] ?? '', operation.path, artifactPath);
         }
     }
 }

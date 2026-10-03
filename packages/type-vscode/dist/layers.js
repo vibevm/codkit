@@ -18,10 +18,28 @@ export const PRODUCT_OVERRIDES_FILE = 'product.overrides.json';
 export const STAMPED_PRODUCT_KEYS = ['commit', 'date', 'checksums', 'version'];
 /**
  * ##VSCODE-OVERLAY-TARGETS: `product.json` is the manifest and the only target
- * with a dev channel; the tree's `package.json` is a target without one and
- * admits additions under `scripts` alone.
+ * with a dev channel; root and remote npm manifests admit guarded dependency
+ * removals, with matching npm-prune operations on their lockfiles.
  */
 export const overlayTargets = [
+    {
+        path: 'build/checker/tsconfig.electron-main.json',
+        devChannel: null,
+        stampedKeys: [],
+        allowedKeys: null
+    },
+    {
+        path: 'build/checker/tsconfig.electron-utility.json',
+        devChannel: null,
+        stampedKeys: [],
+        allowedKeys: null
+    },
+    {
+        path: 'build/checker/tsconfig.node.json',
+        devChannel: null,
+        stampedKeys: [],
+        allowedKeys: null
+    },
     {
         path: PRODUCT_JSON_TARGET,
         devChannel: PRODUCT_OVERRIDES_FILE,
@@ -32,7 +50,41 @@ export const overlayTargets = [
         path: 'package.json',
         devChannel: null,
         stampedKeys: [],
-        allowedKeys: ['scripts']
+        allowedKeys: ['scripts'],
+        allowedRemovals: ['dependencies', 'devDependencies', 'optionalDependencies'],
+        allowedDependencyUpdates: ['dependencies', 'devDependencies', 'optionalDependencies']
+    },
+    {
+        path: 'package-lock.json',
+        devChannel: null,
+        stampedKeys: [],
+        allowedKeys: [],
+        allowedRemovals: ['dependencies', 'devDependencies', 'optionalDependencies'],
+        allowedDependencyUpdates: ['dependencies', 'devDependencies', 'optionalDependencies'],
+        npmLockfile: true
+    },
+    {
+        path: 'remote/package.json',
+        devChannel: null,
+        stampedKeys: [],
+        allowedKeys: [],
+        allowedRemovals: ['dependencies', 'devDependencies', 'optionalDependencies'],
+        allowedDependencyUpdates: ['dependencies', 'devDependencies', 'optionalDependencies']
+    },
+    {
+        path: 'remote/package-lock.json',
+        devChannel: null,
+        stampedKeys: [],
+        allowedKeys: [],
+        allowedRemovals: ['dependencies', 'devDependencies', 'optionalDependencies'],
+        allowedDependencyUpdates: ['dependencies', 'devDependencies', 'optionalDependencies'],
+        npmLockfile: true
+    },
+    {
+        path: 'src/tsconfig.json',
+        devChannel: null,
+        stampedKeys: [],
+        allowedKeys: null
     }
 ];
 /** ##OWN-EXTENSION-UNIT: the delta directory and its materialization. */

@@ -29,6 +29,12 @@ export type OverlayTarget = {
 	 * the whole document is open to it.
 	 */
 	readonly allowedKeys: readonly string[] | null;
+	/** Dependency sections from which an overlay may remove one named package. */
+	readonly allowedRemovals?: readonly string[];
+	/** Dependency sections allowing an exact, pin-guarded version replacement. */
+	readonly allowedDependencyUpdates?: readonly string[];
+	/** This target is an npm v3 lockfile and accepts only npm-prune operations. */
+	readonly npmLockfile?: boolean;
 };
 
 /** How an own extension of the patch set reaches the tree. */

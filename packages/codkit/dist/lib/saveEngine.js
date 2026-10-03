@@ -28,6 +28,7 @@ import { parseMarkers } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { NO_OWN_EXTENSIONS, materializerOf, mirrorOwnExtensionsBack, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { loadResourceMap } from './layers/resource.js';
+import { loadOverlays } from './layers/overlay.js';
 import { mirrorAllOwnBack } from './ownCopy.js';
 import { classifyAllOwn, ownMarkFilesOf } from './ownSides.js';
 import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.js';
@@ -41,7 +42,7 @@ import { sha256 } from './renameFileState.js';
 import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './rebaseOntoPinMove.js';
 import { ArtifactStore, planStates, replayCommitMessage, writeStates } from './saveReplay.js';
 import { checkLineage, classifyTargets, loadedFrom, movedArtifactsOf, patchsetMovedError } from './syncMerge.js';
-import { PATCHES_DIR, bothSidesError, runSync, toPosix } from './syncEngine.js';
+import { PATCHES_DIR, bothSidesError, overlayMaterializationClassifier, overlayVarContext, patchSetCommitId, pinCommitDate, runSync, toPosix } from './syncEngine.js';
 import { refuseOverLiveSyncTransaction, SYNC_TRANSACTION_TRAILER } from './syncTransaction.js';
 import { readTreeMark } from './treeCache.js';
 import { CONSUMED_REF_PREFIX, foreignCommits, recordConsumedRef, treeHeadError } from './treeCommits.js';
@@ -185,6 +186,8 @@ export function runSave(options) {
         ...(materializer === null ? [] : ownExtensionTreePrefixes(materializer, declaredExtensions))
     ];
     const entryModuleIds = loadEntryModuleIds(patchesDir, conventions);
+    const knownOverlayTargets = [];
+    const isKnownOverlayMaterialization = overlayMaterializationClassifier(loadOverlays(patchesDir), tree, config.pin.sha, overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir)), knownOverlayTargets);
     const headerOverrides = validateHeaderOverrides(options);
     // Paths on the command line name files of the tree; they are read the same
     // way whether they were typed relative, absolute or with a trailing slash.
@@ -254,7 +257,7 @@ export function runSave(options) {
     // directory, so naming one file inside it names the extension.
     const extensionsInScope = filterOwnExtensions(materializer, declaredExtensions, filters);
     const store = new ArtifactStore(patchesDir);
-    const planFor = (entry, state, planning) => planFile(entry, state, planning, options, conventions, resources, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds);
+    const planFor = (entry, state, planning) => planFile(entry, state, planning, options, conventions, resources, allowNewFile, out, headerOverrides.get(entry.path), entryModuleIds, isKnownOverlayMaterialization);
     let own = NO_OWN;
     let ownExtensions = NO_OWN_EXTENSIONS;
     let planned = [];
@@ -350,6 +353,9 @@ export function runSave(options) {
             out.addError(error.toPayload());
         }
         return result('blocked', 1, { branch, files: planned.map(toReport), own });
+    }
+    if (knownOverlayTargets.length > 0) {
+        out.info(`save: ${[...new Set(knownOverlayTargets)].join(', ')} carries exact overlay materialization; rebuilding the development channel`);
     }
     // 4. Write the artifacts of the worktree remainder (replay already wrote the
     // states' artifacts in pass 2; --squash writes only this final state).
@@ -545,7 +551,7 @@ function filterOwn(classes, filters) {
  * Throws the first diagnosed condition of that file; returns null when the file
  * has nothing to contribute (its patch stays exactly as it is on disk).
  */
-function planFile(entry, state, store, options, conventions, resources, allowNewFile, out, headerOverride, entryModuleIds) {
+function planFile(entry, state, store, options, conventions, resources, allowNewFile, out, headerOverride, entryModuleIds, isKnownOverlayMaterialization) {
     const { patchesDir, config } = options;
     const tree = options.resolution.path;
     const target = entry.path;
@@ -556,6 +562,9 @@ function planFile(entry, state, store, options, conventions, resources, allowNew
         throw ckError('DELETES-UPSTREAM-FILE', 'was deleted from the fork tree; a patch never removes an upstream file', 'restore the file and hide it from the product instead (PROP-005 sec. 8), then record the removal in delta/removed.json', target);
     }
     if (matchesPatternList(target, conventions.forbiddenPatchTargets)) {
+        if (state.kind === 'worktree' && isKnownOverlayMaterialization(target)) {
+            return null;
+        }
         // ##SAVE-UPDATES-A-CARRIED-RESOURCE: a target the delta already owns
         // through the resource-file layer is not a target without an owner. The
         // file is regenerated in the tree - a lockfile the install rewrites is the

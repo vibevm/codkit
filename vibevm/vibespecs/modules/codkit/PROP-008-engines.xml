@@ -104,6 +104,7 @@ assertDisjoint(toolRoot, patchesDir, forkDir):
     </facts>
   </sync>
   <save title="4. save/extract and the drift guard">
+    <p><SAVE-KNOWN-OVERLAY-MATERIALIZATION fact="true" status="impl/done">An ordinary full `save` may encounter an overlay target left by `overlay apply` while it extracts a different marked file. If the working file is byte-for-byte the current patchset's deterministic overlay composition over the pin, `save` treats that target as known tool materialization, never as a patch or resource edit; it completes extraction and the generated-branch rebuild returns the target to the development channel without `--fresh` cleanup. A byte mismatch remains `CK-E-FORBIDDEN-TARGET` before any artifact is written. A foreign commit that changes an overlay target is never waived by this worktree-only classification; an addressed `save &lt;paths&gt;` still leaves the branch in place when other work is outside its scope.</SAVE-KNOWN-OVERLAY-MATERIALIZATION></p>
     <fence>save(tree, cfg, paths?, opts):
   lock(tree); checkTree(tree)
   # 0. the range of the work (##TREE-COMMITS-ARE-WORK)

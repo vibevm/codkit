@@ -13,7 +13,7 @@
 // exactly the strict composition of the configured overlays (##OVERLAY-KNOWN-
 // MATERIALIZATION); any manual byte still stops the run.
 
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
 import { OVERLAY_ID } from '../fixtures/makePatchSet.ts';
@@ -508,6 +508,54 @@ describe('load with materializeOverlays: channel 2 on the generated branch', () 
 
 		expect(JSON.parse(gitOut(fixture.treeDir, ['show', 'HEAD:manifest.json']))['displayName']).toBe('Fixture Upstream');
 		expect(JSON.parse(readFileSync(`${fixture.treeDir}/manifest.overrides.json`, 'utf8'))['displayName']).toBe('Fixture PatchSet');
+	});
+});
+
+describe('save over a materialized overlay target', () => {
+	function markedFixture(label: string): CliFixture {
+		const fixture = makeCliFixture(label);
+		expect(fixture.run(['load']).status).toBe(0);
+		expect(fixture.run(['overlay', 'apply', 'manifest.json']).status).toBe(0);
+		expect(
+			fixture.run([
+				'marker',
+				'new',
+				'source/base/common/util.ts',
+				'--id',
+				'CK-base-990',
+				'--type',
+				'modify',
+				'--owner',
+				'shell-core',
+				'--reason',
+				'fixture: save a marked file after overlay apply'
+			]).status
+		).toBe(0);
+		const path = fixture.treePath('source/base/common/util.ts');
+		const marked = readFileSync(path, 'utf8');
+		writeFileSync(path, marked.replace('// codkit:begin CK-base-990\n', '// codkit:begin CK-base-990\n// fixture change\n'), 'utf8');
+		return fixture;
+	}
+
+	it('extracts the marker and restores the exact overlay without --fresh cleanup', () => {
+		const fixture = markedFixture('overlay-save-known');
+		const saved = fixture.json(['save']);
+		expect(saved.run.status).toBe(0);
+		expect(saved.envelope.errors).toEqual([]);
+		expect(existsSync(fixture.patchesPath('delta/patches/source__base__common__util.ts.ckpatch'))).toBe(true);
+		expect(JSON.parse(readFileSync(fixture.treePath('manifest.json'), 'utf8'))['displayName']).toBe('Fixture Upstream');
+		expect(fixture.run(['load', '--fresh']).status).toBe(0);
+	});
+
+	it('still refuses a hand-edited byte of an overlay target before extraction', () => {
+		const fixture = markedFixture('overlay-save-foreign');
+		const target = fixture.treePath('manifest.json');
+		writeFileSync(target, readFileSync(target, 'utf8').replace('Fixture PatchSet', 'Foreign value'), 'utf8');
+		const saved = fixture.json(['save']);
+		expect(saved.run.status).toBe(1);
+		expect(saved.envelope.errors.map((error) => error.code)).toContain('CK-E-FORBIDDEN-TARGET');
+		expect(readFileSync(target, 'utf8')).toContain('Foreign value');
+		expect(existsSync(fixture.patchesPath('delta/patches/source__base__common__util.ts.ckpatch'))).toBe(false);
 	});
 });
 
