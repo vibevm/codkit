@@ -954,6 +954,25 @@ describe('probing a command line', () => {
 			{ pid: 333, commandLine: 'node build/watch.mjs transpile --watch' }
 		]);
 	});
+	it('recognizes nested Windows npm descendants while retaining foreign and broken ancestry guards', () => {
+		const watcher = 'node build/watch.mjs transpile --watch';
+		const rows = [
+			windowsProcess(101, 50, 'npm run watch-transpile'),
+			windowsProcess(102, 101, 'cmd.exe /c npm run gulp watch-client'),
+			windowsProcess(103, 102, watcher),
+			windowsProcess(104, 103, watcher),
+			windowsProcess(201, 50, watcher),
+			windowsProcess(301, 999, watcher),
+			windowsProcess(401, 402, watcher),
+			windowsProcess(402, 401, 'node helper')
+		];
+		const run: ProcessRunner = () => ({ status: 0, stdout: JSON.stringify(rows), stderr: '' });
+		expect(foreignWatchers(stubProjectType, 'C:\\fork tree', new Set([101]), { platform: 'win32', run })).toEqual([
+			{ pid: 201, commandLine: watcher },
+			{ pid: 301, commandLine: watcher },
+			{ pid: 401, commandLine: watcher }
+		]);
+	});
 
 	it('raises an unavailable Windows probe and leaves a living daemon record untouched', async () => {
 		const root = makeTempRoot('windows-probe-unavailable');

@@ -866,8 +866,26 @@ export function foreignWatchers(
 	const markers = foreignWatcherMarkers(type);
 	const found: ForeignWatcher[] = [];
 	const platform = probe.platform ?? process.platform;
-	for (const info of processTable(probe)) {
-		if (info.pid === process.pid || ourGroups.has(info.pgid) || ourGroups.has(info.pid)) {
+	const table = processTable(probe);
+	const parents = new Map(table.map((info) => [info.pid, info.pgid]));
+	const belongsToUs = (info: ProcessInfo): boolean => {
+		if (ourGroups.has(info.pid) || ourGroups.has(info.pgid)) return true;
+		if (platform !== 'win32') return false;
+		// Windows has parent pids rather than POSIX process groups. Follow only
+		// this native snapshot; a missing ancestor or cycle remains foreign.
+		const visited = new Set<number>();
+		let ancestor = info.pgid;
+		while (ancestor > 0 && !visited.has(ancestor)) {
+			if (ourGroups.has(ancestor)) return true;
+			visited.add(ancestor);
+			const parent = parents.get(ancestor);
+			if (parent === undefined) return false;
+			ancestor = parent;
+		}
+		return false;
+	};
+	for (const info of table) {
+		if (info.pid === process.pid || belongsToUs(info)) {
 			continue;
 		}
 		const commandLine = info.args.join(' ');
