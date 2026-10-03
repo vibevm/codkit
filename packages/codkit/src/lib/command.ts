@@ -6,6 +6,7 @@
 // code, so a command can be exercised without a process.
 
 import type { RegisteredManifest } from '../types/manifest.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
 import type { ProjectType } from '@codkit/type-api';
 import type { CodkitConfig } from './configFile.ts';
 import type { Output } from './jsonOut.ts';
@@ -15,6 +16,7 @@ import type { DirectoryResolution, ResolvedLocations, ResolverEnv } from './path
 
 /** Global flags, valid before and after the command name (PROP-007 ##CLI-GLOBAL-FLAGS). */
 export type GlobalFlags = {
+	readonly workspace?: string;
 	/** --fork-dir <path>; null when not given. */
 	readonly forkDir: string | null;
 	/** --patches-dir <path>; null when not given. */
@@ -55,6 +57,7 @@ export function commandFlagGiven(flags: CommandFlagValues, name: string): boolea
 }
 
 export type CommandContext = {
+	readonly workspace?: WorkspaceRecord;
 	/** Immutable Codkit installation/source root, derived from the module location. */
 	readonly toolRoot: string;
 	/** Independently resolved patch-set and managed-fork locations. */

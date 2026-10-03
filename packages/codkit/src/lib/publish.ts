@@ -8,6 +8,7 @@ import { runCi } from './ciEngine.ts';
 import type { CiProfile, CiResult } from './ciEngine.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import { CONFIG_FILE_NAME, loadLocalConfig, mergeLocal, parseBaseConfig } from './configFile.ts';
+import { inheritWorkspaceConfig } from './workspaceConfig.ts';
 import type { CodkitConfig, PublishConfig } from './configFile.ts';
 import { treeId } from './fingerprint.ts';
 import { runGit } from './gitx.ts';
@@ -134,7 +135,10 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 		throw ckError('CONFIG', '--scrub needs --squash', 'a history that carries the markers is not a clean release; add --squash');
 	}
 	const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
-	const snapshotConfig = locatedInputs(options.patchesDir, configAtCommit(options.patchesDir, patchSetSha));
+	const snapshotConfig = locatedInputs(
+		options.patchesDir,
+		inheritWorkspaceConfig(configAtCommit(options.patchesDir, patchSetSha), options.config)
+	);
 	if (snapshotConfig.type !== options.type.id)
 		throw ckError(
 			'TYPE-UNKNOWN',

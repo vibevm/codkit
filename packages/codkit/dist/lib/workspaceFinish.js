@@ -1,11 +1,11 @@
 /** @scope spec://codkit/modules/codkit/PROP-020#WORKSPACE-FINISH */
 // Finish seals clean/save evidence while checkout writer capabilities are held.
+import { verifyReceipt } from './workspaceReceipt.js';
+export { verifyReceipt } from './workspaceReceipt.js';
 import { readdirSync } from 'node:fs';
 import { relative } from 'node:path';
 import { acquireLock, isAlive, lockPath, readLock } from './lock.js';
 import { PATCHSET_WRITER_LOCK_ID } from './patchsetWriter.js';
-import { readContainedFile } from './containedFile.js';
-import { bytesEqual, encodeUtf8 } from './bytes.js';
 import { loadConfig } from './configFile.js';
 import { pinKey } from './pinIdentity.js';
 import { deltaFingerprint, treeId } from './fingerprint.js';
@@ -20,7 +20,7 @@ import { resolveContainedPath } from './pathSafety.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { verifyWorkspaceCheckout } from './workspaceCreate.js';
-import { findWorkspace, updateWorkspaceRegistry, workspaceCheckoutSchema, workspaceRecordSchema, workspaceRefPrefixes } from './workspaceRegistry.js';
+import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema, workspaceRefPrefixes } from './workspaceRegistry.js';
 export function finishWorkspace(options) {
     return updateWorkspaceRegistry(options.registryRoot, (registry, save) => {
         const record = findWorkspace(registry, options.name);
@@ -61,7 +61,11 @@ export function finishWorkspace(options) {
                 const commits = foreignCommits(record.fork.path, config.pin.sha, `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}`);
                 if (commits.commits.length > 0 || commits.anomaly !== null)
                     throw ckError('CONFIG', 'workspace contains unextracted fork history');
-                const drift = driftDirty(materializerOf(options.type), record.fork.path, ownedRootsOf(options.type, config.typeConfig, { treeDir: record.fork.path, pinSha: config.pin.sha }), record.patchset.path, { generated: { pinSha: config.pin.sha, branch: `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}` } });
+                const drift = driftDirty(materializerOf(options.type), record.fork.path, ownedRootsOf(options.type, config.typeConfig, { treeDir: record.fork.path, pinSha: config.pin.sha }), record.patchset.path, {
+                    workspace: record,
+                    ownedUntrackedFiles: [...workspaceOwnedPaths(record.fork.path, locks[1], [])],
+                    generated: { pinSha: config.pin.sha, branch: `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}` }
+                });
                 if (drift.dirty)
                     throw ckError('DIRTY-TREE', 'workspace own/upstream work is not saved to its patchset');
             }
@@ -85,13 +89,6 @@ export function finishWorkspace(options) {
                 lock.release();
         }
     });
-}
-export function verifyReceipt(record, role) {
-    const checkout = record[role];
-    const expected = encodeUtf8(`${JSON.stringify(workspaceCheckoutSchema.parse({ codkitWorkspaceCheckout: 1, id: record.id, role, commonDirectory: checkout.commonDirectory, baseCommit: checkout.baseCommit }), null, 2)}\n`);
-    const read = readContainedFile(checkout.path, '.codkit/workspace.json', { what: 'workspace checkout custody receipt' });
-    if (read.state === 'absent' || !bytesEqual(read.bytes, expected))
-        throw ckError('CONFIG', 'workspace custody receipt is missing or foreign');
 }
 export function workspaceOwnedPaths(root, owned, extra) {
     if (owned === undefined)

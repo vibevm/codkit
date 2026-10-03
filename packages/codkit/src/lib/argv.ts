@@ -31,6 +31,7 @@ export type ArgvProblem = { readonly error: string; readonly hint: string };
 export type ArgvParseResult = { readonly ok: true; readonly value: ParsedArgv } | { readonly ok: false; readonly problem: ArgvProblem };
 
 export const GLOBAL_FLAG_HELP: readonly string[] = [
+	'--workspace <name>  select an active registered worktree pair by name or UUID',
 	'--fork-dir <path>  path of the fork tree (source: flag)',
 	'--patches-dir <path>  path of the Codkit patch-set repository (source: flag)',
 	'--json             machine-readable output on stdout',
@@ -38,7 +39,7 @@ export const GLOBAL_FLAG_HELP: readonly string[] = [
 	'--verbose          diagnostics on stderr'
 ];
 
-const KNOWN_GLOBAL_FLAGS: readonly string[] = ['--fork-dir', '--patches-dir', '--json', '--ci', '--verbose'];
+const KNOWN_GLOBAL_FLAGS: readonly string[] = ['--workspace', '--fork-dir', '--patches-dir', '--json', '--ci', '--verbose'];
 
 /**
  * Every command-specific flag codkit knows, and how it consumes argv:
@@ -149,6 +150,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 ]);
 
 export function parseArgv(argv: readonly string[]): ArgvParseResult {
+	let workspace: string | undefined;
 	let forkDir: string | null = null;
 	let patchesDir: string | null = null;
 	let json = false;
@@ -179,6 +181,14 @@ export function parseArgv(argv: readonly string[]): ArgvParseResult {
 		const equals = token.indexOf('=');
 		const name = equals === -1 ? token : token.slice(0, equals);
 		const inlineValue = equals === -1 ? null : token.slice(equals + 1);
+		if (name === '--workspace') {
+			const value = inlineValue ?? argv[index + 1];
+			if (value === undefined || value === '' || value.startsWith('--'))
+				return { ok: false, problem: { error: 'flag --workspace needs a name or UUID', hint: 'usage: --workspace <name>' } };
+			workspace = value;
+			if (inlineValue === null) index += 1;
+			continue;
+		}
 
 		if (name === '--fork-dir' || name === '--patches-dir') {
 			if (inlineValue !== null) {
@@ -254,5 +264,12 @@ export function parseArgv(argv: readonly string[]): ArgvParseResult {
 		};
 	}
 
-	return { ok: true, value: { flags: { forkDir, patchesDir, json, ci, verbose }, commandFlags, positional } };
+	return {
+		ok: true,
+		value: {
+			flags: { forkDir, patchesDir, json, ci, verbose, ...(workspace === undefined ? {} : { workspace }) },
+			commandFlags,
+			positional
+		}
+	};
 }

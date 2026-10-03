@@ -51,6 +51,8 @@
 // the upstream zone.
 
 import { runGit } from './gitx.ts';
+import { workspaceForkReceipt } from './workspaceReceipt.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
 import { compareOwnExtensions, extensionsTreeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
 import type { Materializer } from './layers/ownExtensions.ts';
 import type { OwnExtensionDivergence } from './layers/ownExtensions.ts';
@@ -91,6 +93,9 @@ export type DriftResult = {
 export const OWN_DIVERGENCE_NOTE = 'own code differs from';
 
 export type DriftBaseOptions = {
+	/** Exact untracked paths certified by the composition root's held capabilities. */
+	readonly ownedUntrackedFiles?: readonly string[];
+	readonly workspace?: WorkspaceRecord | undefined;
 	/**
 	 * The directory the own-extension materializations of this type sit in, from
 	 * the tree root; empty when the type has no such layer. It is needed only to
@@ -235,7 +240,9 @@ function declaredExtensions(patchesDir: string): readonly OwnExtension[] {
  * away.
  */
 export function upstreamDirt(treeDir: string, roots: readonly OwnedRoot[], options: DriftBaseOptions = {}): readonly string[] {
-	const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
+	const receipts = workspaceForkReceipt(treeDir, options.workspace);
+	const ownedFiles = [...receipts, ...(options.ownedUntrackedFiles ?? [])];
+	const status = runGit({ args: ['status', '--porcelain', ...(ownedFiles.length === 0 ? [] : ['--untracked-files=all'])], cwd: treeDir });
 	if (status.status !== 0) {
 		throw ckError(
 			'NOT-A-REPO',
@@ -256,6 +263,7 @@ export function upstreamDirt(treeDir: string, roots: readonly OwnedRoot[], optio
 	const opened = [...(options.ownedPrefixes ?? []), ...(stranded === undefined || root === '' ? [] : [`${root}/`])];
 	return (
 		expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), opened)
+			.filter((entry) => entry.status !== '??' || !ownedFiles.includes(entry.path))
 			.filter((entry) => untrackedIsDirt || entry.status !== '??')
 			// The known-state question is about tracked bytes only: an untracked
 			// path carries no HEAD to differ from (and with `--fresh` it is the

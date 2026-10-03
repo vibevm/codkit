@@ -104,6 +104,8 @@ codkit workspace create task-a --patches-dir /path/to/patchset --fork-dir /path/
   --dir /path/to/existing/pairs --owner developer --session task-a-session
 codkit workspace list
 codkit workspace show task-a
+codkit --workspace task-a where
+codkit --workspace task-a load
 codkit workspace finish task-a
 codkit workspace remove task-a
 ```
@@ -116,6 +118,11 @@ settings do not redirect them. Finish checks the saved installed type declaratio
 and clean/save evidence. Removal retains both heads in repository refs, refuses
 ignored or unowned data, and can resume a journaled partial deletion. These are
 local worktree operations; the directories are preserved until explicit removal.
+`--workspace <name-or-UUID>` selects both roots of an active pair and rejects
+explicit external root flags. `where` names the selected identity; the selecting
+flag is the source of both roots. Named execution uses UUID-derived applied,
+cycle and release prefixes in memory. Config serialization retains the original
+declaration, and no workspace metadata is written into `codkit.json`.
 
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths

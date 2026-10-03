@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { runCi } from './ciEngine.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
 import { CONFIG_FILE_NAME, loadLocalConfig, mergeLocal, parseBaseConfig } from './configFile.js';
+import { inheritWorkspaceConfig } from './workspaceConfig.js';
 import { treeId } from './fingerprint.js';
 import { runGit } from './gitx.js';
 import { releasedInputs } from './inputsTree.js';
@@ -38,7 +39,7 @@ export async function runPublish(options) {
         throw ckError('CONFIG', '--scrub needs --squash', 'a history that carries the markers is not a clean release; add --squash');
     }
     const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
-    const snapshotConfig = locatedInputs(options.patchesDir, configAtCommit(options.patchesDir, patchSetSha));
+    const snapshotConfig = locatedInputs(options.patchesDir, inheritWorkspaceConfig(configAtCommit(options.patchesDir, patchSetSha), options.config));
     if (snapshotConfig.type !== options.type.id)
         throw ckError('TYPE-UNKNOWN', 'selected immutable patchset type differs from the supplied project type', 'resolve the selected snapshot type before publishing');
     const branchName = options.branch === undefined || options.branch === null

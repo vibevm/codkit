@@ -1,5 +1,5 @@
 // PROP-020 WORKSPACE-CLI: real launcher and isolated disposable Git pairs.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import { makeSyncFixture } from '../support/syncFixture.ts';
 import { runCli, withStubType } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { readWorkspaceRegistry, workspaceRecordSchema } from '../../src/lib/workspaceRegistry.ts';
+import { runGit } from '../../src/lib/gitx.ts';
 
 afterAll(cleanupTempRoots);
 function fixture() {
@@ -142,4 +143,52 @@ it('rejects incomplete create arguments before registry or Git changes and a reg
 	expect(inside.status).toBe(2);
 	expect(inside.stderr).toContain('registry must be disjoint');
 	expect(readWorkspaceRegistry(join(f.source.patchesDir, '.codkit')).workspaces).toEqual([]);
+});
+
+it('selects named roots through where without consulting ambient settings and refuses root conflicts', () => {
+	const f = fixture();
+	const created = f.create();
+	expect(created.status, created.stderr).toBe(0);
+	const record = workspace(created.stdout);
+	writeFileSync(join(f.home, '.codkit/settings.json'), '{ invalid ambient settings');
+	const env = { ...f.env, CODKIT_PATCHES_DIR: 'wrong-root', CODKIT_FORK_DIR: 'wrong-root' };
+	const selected = runCli(f.directory, ['--json', '--workspace=task', 'where'], env);
+	expect(selected.status, selected.stderr).toBe(0);
+	expect(JSON.parse(selected.stdout)).toMatchObject({
+		codkit: { schema: 2, type: 'stub' },
+		roots: { patches: { path: record.patchset.path, source: 'flag' }, fork: { path: record.fork.path, source: 'flag' } },
+		data: { workspace: { id: record.id, name: 'Task' } }
+	});
+	expect(runCli(f.directory, ['--workspace', 'task', 'where', '--fork-dir', record.fork.path], env).status).toBe(2);
+	expect(runCli(f.directory, ['--workspace', 'task', 'workspace', 'list'], env).status).toBe(2);
+	expect(runCli(f.directory, ['where', '--workspace'], env).status).toBe(2);
+});
+
+it('loads into UUID refs without rewriting config, protects neighbouring work and preserves its receipt on fresh load', () => {
+	const f = fixture();
+	const created = f.create();
+	expect(created.status, created.stderr).toBe(0);
+	const record = workspace(created.stdout);
+	const config = readFileSync(join(record.patchset.path, 'codkit.json'));
+	const receipt = readFileSync(join(record.fork.path, '.codkit/workspace.json'));
+	const run = (...args: string[]) => runCli(f.directory, ['--workspace', 'task', ...args], f.env);
+	const loaded = run('load');
+	expect(loaded.status, loaded.stderr + loaded.stdout).toBe(0);
+	const branch = runGit({ cwd: record.fork.path, args: ['symbolic-ref', '--short', 'HEAD'] });
+	expect(branch.stdout.trim()).toBe(`codkit/workspace/${record.id}/applied/${record.pin.tag}`);
+	expect(run('load').status).toBe(0);
+	const work = join(record.fork.path, '.codkit/human-work.txt');
+	writeFileSync(work, 'preserve human work');
+	expect(run('load').status).toBe(1);
+	expect(readFileSync(work, 'utf8')).toBe('preserve human work');
+	unlinkSync(work);
+	const fresh = run('load', '--fresh');
+	expect(fresh.status, fresh.stderr + fresh.stdout).toBe(0);
+	expect(readFileSync(join(record.fork.path, '.codkit/workspace.json'))).toEqual(receipt);
+	expect(readFileSync(join(record.patchset.path, 'codkit.json'))).toEqual(config);
+	expect(readFileSync(join(f.source.patchesDir, 'codkit.json'))).toEqual(config);
+	const finished = f.run(['finish', 'task']);
+	expect(finished.status, finished.stderr).toBe(0);
+	expect(workspace(finished.stdout).finished?.deltaFingerprint).toMatch(/^[0-9a-f]{64}$/);
+	expect(run('where').status).toBe(2);
 });

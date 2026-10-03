@@ -17,6 +17,7 @@ import { inputsSchema, localInputContentField, localInputsSchema, locateInputs }
 import { ckError } from './messages.js';
 import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.js';
 import { MINIMAL_DISCIPLINE } from './discipline.js';
+import { declaredWorkspaceConfig } from './workspaceConfig.js';
 export const CONFIG_FILE_NAME = 'codkit.json';
 export const LOCAL_CONFIG_FILE_NAME = 'codkit.local.json';
 /** Schema version this tool reads and writes (##CFG-TYPE-AND-TYPECONFIG). */
@@ -299,7 +300,7 @@ export function serializeBaseConfig(config) {
             ...(config.pin.provenance === undefined ? {} : { provenance: config.pin.provenance })
         }
         : config.pin;
-    const parsed = parseBaseConfig({ ...config, pin: wirePin }, CONFIG_FILE_NAME);
+    const parsed = parseBaseConfig({ ...declaredWorkspaceConfig(config), pin: wirePin }, CONFIG_FILE_NAME);
     const canonical = {
         codkitConfig: parsed.codkitConfig,
         pin: {

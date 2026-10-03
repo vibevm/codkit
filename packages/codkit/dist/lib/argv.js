@@ -17,13 +17,14 @@
 // know whether a flag swallows the next token. Which command may use which flag
 // is enforced afterwards, in main.ts, against CommandDefinition.commandFlags.
 export const GLOBAL_FLAG_HELP = [
+    '--workspace <name>  select an active registered worktree pair by name or UUID',
     '--fork-dir <path>  path of the fork tree (source: flag)',
     '--patches-dir <path>  path of the Codkit patch-set repository (source: flag)',
     '--json             machine-readable output on stdout',
     '--ci               non-interactive mode, no network',
     '--verbose          diagnostics on stderr'
 ];
-const KNOWN_GLOBAL_FLAGS = ['--fork-dir', '--patches-dir', '--json', '--ci', '--verbose'];
+const KNOWN_GLOBAL_FLAGS = ['--workspace', '--fork-dir', '--patches-dir', '--json', '--ci', '--verbose'];
 /**
  * Every command-specific flag codkit knows, and how it consumes argv:
  *   'boolean'    - stands alone;
@@ -132,6 +133,7 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--header-file', 'value']
 ]);
 export function parseArgv(argv) {
+    let workspace;
     let forkDir = null;
     let patchesDir = null;
     let json = false;
@@ -160,6 +162,15 @@ export function parseArgv(argv) {
         const equals = token.indexOf('=');
         const name = equals === -1 ? token : token.slice(0, equals);
         const inlineValue = equals === -1 ? null : token.slice(equals + 1);
+        if (name === '--workspace') {
+            const value = inlineValue ?? argv[index + 1];
+            if (value === undefined || value === '' || value.startsWith('--'))
+                return { ok: false, problem: { error: 'flag --workspace needs a name or UUID', hint: 'usage: --workspace <name>' } };
+            workspace = value;
+            if (inlineValue === null)
+                index += 1;
+            continue;
+        }
         if (name === '--fork-dir' || name === '--patches-dir') {
             if (inlineValue !== null) {
                 if (name === '--fork-dir')
@@ -237,5 +248,12 @@ export function parseArgv(argv) {
             }
         };
     }
-    return { ok: true, value: { flags: { forkDir, patchesDir, json, ci, verbose }, commandFlags, positional } };
+    return {
+        ok: true,
+        value: {
+            flags: { forkDir, patchesDir, json, ci, verbose, ...(workspace === undefined ? {} : { workspace }) },
+            commandFlags,
+            positional
+        }
+    };
 }

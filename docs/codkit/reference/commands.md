@@ -12,6 +12,7 @@ Global flags are accepted before or after the command name (before a bare `--`).
 
 | Flag | Meaning |
 | --- | --- |
+| `--workspace <name>` | select an active registered worktree pair by name or UUID |
 | `--fork-dir <path>` | path of the fork tree (source: flag) |
 | `--patches-dir <path>` | path of the Codkit patch-set repository (source: flag) |
 | `--json` | machine-readable output on stdout |

@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
+import { inheritWorkspaceConfig } from '../lib/workspaceConfig.ts';
 import { pinKey, pinData } from '../lib/pinIdentity.ts';
 // codkit cycle - the resumable upgrade-cycle command surface.
 // Contract: PROP-007 sec. 14; state machine: PROP-009 sec. 4.
@@ -83,7 +84,7 @@ async function runUnsafe(ctx: CommandContext): Promise<number> {
 			ctx.out.info(`${started.resumed ? 'resumed' : 'started'} cycle ${pinKey(started.sourcePin)} -> ${pinKey(started.targetPin)}`);
 			// startCycle atomically bumps codkit.json. The phase engine must receive
 			// those new bytes, not the pre-init config object loaded by main.
-			const bumpedConfig = requireConfig(loadConfig(ctx.patchesDir));
+			const bumpedConfig = inheritWorkspaceConfig(requireConfig(loadConfig(ctx.patchesDir)), config);
 			return runContinuation(ctx, resolution, bumpedConfig, [started.bumpCommit], crashCheckpoint);
 		}
 		case 'continue': {
@@ -282,7 +283,7 @@ function resumeInterruptedInit(
 		...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
 	});
 	ctx.out.info(`resumed cycle init ${pinKey(started.sourcePin)} -> ${pinKey(started.targetPin)}`);
-	return { config: requireConfig(loadConfig(ctx.patchesDir)), commits: [started.bumpCommit] };
+	return { config: inheritWorkspaceConfig(requireConfig(loadConfig(ctx.patchesDir)), config), commits: [started.bumpCommit] };
 }
 
 function requireAction(args: readonly string[]): CycleAction {

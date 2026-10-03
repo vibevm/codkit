@@ -20,6 +20,8 @@ import { ckError } from './messages.ts';
 import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.ts';
 import { MINIMAL_DISCIPLINE } from './discipline.ts';
 import type { DisciplineId } from './discipline.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
+import { declaredWorkspaceConfig } from './workspaceConfig.ts';
 export const CONFIG_FILE_NAME = 'codkit.json';
 export const LOCAL_CONFIG_FILE_NAME = 'codkit.local.json';
 
@@ -79,6 +81,15 @@ export type { InputConfig } from './inputsDeclaration.ts';
 export const DEFAULT_SPEC_ROOTS: readonly string[] = ['vibevm/vibespecs'];
 
 export type CodkitConfig = {
+	/** Composition-only context; never accepted from or written into config JSON. */
+	readonly workspace?: {
+		readonly record: WorkspaceRecord;
+		readonly declared: {
+			readonly generatedBranchPrefix: string;
+			readonly cycleBranchPrefix: string;
+			readonly releaseRefPrefix: string;
+		};
+	};
 	readonly codkitConfig: number;
 	readonly pin: PinConfig;
 	readonly upstreamAnchorCommit: string;
@@ -423,7 +434,7 @@ export function serializeBaseConfig(config: CodkitConfig): string {
 					...(config.pin.provenance === undefined ? {} : { provenance: config.pin.provenance })
 				}
 			: config.pin;
-	const parsed = parseBaseConfig({ ...config, pin: wirePin }, CONFIG_FILE_NAME);
+	const parsed = parseBaseConfig({ ...declaredWorkspaceConfig(config), pin: wirePin }, CONFIG_FILE_NAME);
 	const canonical = {
 		codkitConfig: parsed.codkitConfig,
 		pin: {

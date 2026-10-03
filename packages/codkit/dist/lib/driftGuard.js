@@ -50,6 +50,7 @@
 // one caller: every other guarded command keeps the rule about a new file in
 // the upstream zone.
 import { runGit } from './gitx.js';
+import { workspaceForkReceipt } from './workspaceReceipt.js';
 import { compareOwnExtensions, extensionsTreeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { ckError } from './messages.js';
@@ -116,7 +117,9 @@ function declaredExtensions(patchesDir) {
  * away.
  */
 export function upstreamDirt(treeDir, roots, options = {}) {
-    const status = runGit({ args: ['status', '--porcelain'], cwd: treeDir });
+    const receipts = workspaceForkReceipt(treeDir, options.workspace);
+    const ownedFiles = [...receipts, ...(options.ownedUntrackedFiles ?? [])];
+    const status = runGit({ args: ['status', '--porcelain', ...(ownedFiles.length === 0 ? [] : ['--untracked-files=all'])], cwd: treeDir });
     if (status.status !== 0) {
         throw ckError('NOT-A-REPO', `git status failed in ${treeDir}: ${firstLine(status.stderr)}`, 'check that the fork tree is a healthy git work tree');
     }
@@ -132,6 +135,7 @@ export function upstreamDirt(treeDir, roots, options = {}) {
     const root = options.materializationRoot ?? '';
     const opened = [...(options.ownedPrefixes ?? []), ...(stranded === undefined || root === '' ? [] : [`${root}/`])];
     return (expandCollapsedUntracked(treeDir, porcelainEntries(status.stdout), opened)
+        .filter((entry) => entry.status !== '??' || !ownedFiles.includes(entry.path))
         .filter((entry) => untrackedIsDirt || entry.status !== '??')
         // The known-state question is about tracked bytes only: an untracked
         // path carries no HEAD to differ from (and with `--fresh` it is the

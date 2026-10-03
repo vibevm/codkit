@@ -11678,7 +11678,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:09083c62a9b1add2ff46a502d7ba0301267c4361ce27b029412efc38c27a733b",
+      "content_hash": "sha256:d5615ce9cd5674b0e60405a68518094dacb669d1607d06623e7ec758913c878a",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "PROP-020: Named local workspace pairs and checkout writers",
@@ -11750,7 +11750,7 @@
     },
     {
       "anchor": "surfaces",
-      "content_hash": "sha256:b8fa6718b566591da41a7058673542b87afe6380e7180f296473b240b7004742",
+      "content_hash": "sha256:e96132bb9001d8727e398b12ab0b260960835d706618b763badc822bc8c02a8d",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Workspace lifecycle surfaces",
@@ -11758,12 +11758,30 @@
       "uri": "spec://codkit/modules/codkit/PROP-020#surfaces"
     },
     {
+      "anchor": "WORKSPACE-NAMESPACE",
+      "content_hash": "sha256:4b23263c30fa476b161e4900dde21208ecc4287750e07905485090bf96e41fb7",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "A selected pair supplies runtime-only workspace context to its resolved configuration. UUID-derived applied/cycle/release prefixes replace operational prefixes, while the original declaration prefixes remain separately bound. Configuration serialization strips runtime context and restores declaration prefixes; no workspace field or derived prefix is written into codkit.json. Publisher immutable snapshots, CI comparison snapshots and cycle config reloads inherit the execution context explicitly. Drift checks exempt only the exact validated fork role receipt in the matching recorded fork checkout, never the containing directory or neighbouring files. Fresh cleanup preserves that same validated receipt. Disposable fork trees receive no original-checkout exemption. Legacy executions without context keep existing prefixes and serialized bytes. Namespace integration remains a candidate pending workflow and full regression proof. @status:impl/wip",
+      "line": 14,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-NAMESPACE"
+    },
+    {
+      "anchor": "WORKSPACE-SELECTION",
+      "content_hash": "sha256:746239cf1a0530cb8e04e1f15bbbf370b60a64d05741aabebb7e1d4309d0e353",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Named selection resolves an active pair by case-insensitive name or UUID from fixed user registry authority. Explicit external root flags refuse; ambient root environment/settings are not consulted. Both actual registered Git worktrees, exact role receipts and canonical paths are verified before returning roots. Creating, finished, removing and removed records refuse ordinary command selection; lifecycle inspection remains available. The selecting CLI flag is the source of both roots. Launcher integration, operational namespaces and full acceptance are pending. @status:impl/wip",
+      "line": 15,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-SELECTION"
+    },
+    {
       "anchor": "WORKSPACE-TYPE-CUSTODY",
       "content_hash": "sha256:86fc242477c8ed6eb0fe6cedb77c240b66f0507cb801d86e1c2f9537b5ce34d3",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Before importing a type for a registry-selected workspace, verify its real patchset worktree and exact role receipt, load the configuration, and match its type ID to the record. The installed trusted declaration must match the saved contract version and manifest digest. Unknown, changed or incompatible declarations refuse before adapter import; only then validate typeConfig and configure the registered adapter. @status:impl/wip",
-      "line": 14,
+      "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-TYPE-CUSTODY"
     },
     {
@@ -11772,7 +11790,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "The workspace namespace exposes create/list/show/finish/remove as thin surfaces over lifecycle libraries. Registry authority is fixed to ~/.codkit/workspaces.json with no patchset or arbitrary-directory flag. Create requires a name, existing disjoint --dir pair parent, --owner and --session; optional --ref selects the immutable source patchset commit, with normal independently resolved source roots. List/show/finish/remove ignore ambient root settings and environment and reject explicit external root flags; their names or UUIDs select registry records. Inspection does not import an adapter. Finish checks saved type custody before import. Removal does not require an installed adapter and retains finish proof and refs. Every result remains in the existing JSON envelope; list data is the versioned registry, other operations return its strict workspace record. Missing names/required values and misplaced flags refuse without Git mutation. Named launcher selection and full phase acceptance remain pending. @status:impl/wip",
-      "line": 15,
+      "line": 17,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CLI"
     },
     {

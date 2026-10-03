@@ -265,6 +265,7 @@ function guardStep(options, overlays, context) {
     const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
     const known = [];
     const drift = driftDirty(materializerOf(type), tree, ownedRootsOf(type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), patchesDir, {
+        workspace: config.workspace?.record,
         generated: { pinSha: config.pin.sha, branch },
         isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, known)
     });

@@ -26,7 +26,8 @@ async function run(ctx) {
     ctx.out.setData({
         patches: patches === null ? null : { path: patches.path, source: patches.source, exists: patches.exists },
         fork: fork === null ? null : { path: fork.path, source: fork.source, exists: fork.exists },
-        type: ctx.type?.id ?? null
+        type: ctx.type?.id ?? null,
+        ...(ctx.workspace === undefined ? {} : { workspace: { id: ctx.workspace.id, name: ctx.workspace.name } })
     });
     // Always 0: an absent tree is a legitimate answer here. The only non-zero
     // path is a broken codkit.json, which fails before the command runs.

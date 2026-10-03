@@ -1,4 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
+import { workspaceForkReceipt } from './workspaceReceipt.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
 import { pinKey } from './pinIdentity.ts';
 // The sync engine: bring the fork tree to the pin and put the delta on it.
 // The pseudocode of PROP-008 sec. 3 is normative and this file follows its order.
@@ -421,6 +423,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	}
 	if (options.forceApply === true) {
 		const drift = driftDirty(materializerOf(options.type), tree, roots, patchesDir, {
+			workspace: config.workspace?.record,
 			generated: { pinSha: config.pin.sha, branch }
 		});
 		const head = treeHeadError(drift.treeCommits, branch);
@@ -566,6 +569,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		const driftMaterializer = materializerOf(options.type);
 		const drift = driftDirty(materializerOf(options.type), tree, roots, patchesDir, {
 			untrackedIsDirt: !options.fresh,
+			workspace: config.workspace?.record,
 			generated: { pinSha: config.pin.sha, branch },
 			...(options.fresh
 				? { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, materialized) }
@@ -686,6 +690,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	if (dryRun && discardWorktreeEdits) {
 		driftDirty(materializerOf(options.type), tree, roots, patchesDir, {
 			untrackedIsDirt: false,
+			workspace: config.workspace?.record,
 			generated: { pinSha: config.pin.sha, branch },
 			isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, []),
 			isDiscardable: worktreeDiscardClassifier(tree, prebuiltConventions, worktreePlan)
@@ -857,7 +862,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// --fresh cleanup used to delete user untracked files and only then learn
 		// that a sibling held the generated branch.
 		if (options.fresh) {
-			cleaned = cleanUntracked(tree, roots, conventions);
+			cleaned = cleanUntracked(tree, roots, conventions, config.workspace?.record);
 			out.info(`fresh: removed ${cleaned} untracked path(s), kept everything the cleanup whitelist protects`);
 		}
 		updateRef(tree, branch, built.top);
@@ -1630,7 +1635,12 @@ function* batches(paths: readonly string[]): Generator<readonly string[]> {
  * minus the whitelist is what gets removed. Discipline: what is not on the list
  * goes away.
  */
-export function cleanUntracked(treeDir: string, roots: readonly OwnedRoot[], conventions: Conventions): number {
+export function cleanUntracked(
+	treeDir: string,
+	roots: readonly OwnedRoot[],
+	conventions: Conventions,
+	workspace?: WorkspaceRecord
+): number {
 	// File by file, never `--directory`: a collapsed directory entry would hide
 	// whitelisted content nested inside an untracked one (a build output under an
 	// untracked materialization root, for instance) and take it down with it.
@@ -1638,11 +1648,12 @@ export function cleanUntracked(treeDir: string, roots: readonly OwnedRoot[], con
 		...listUntracked(treeDir, ['--others', '--exclude-standard', '-z']),
 		...listUntracked(treeDir, ['--others', '--ignored', '--exclude-standard', '-z'])
 	]);
+	const receipts = workspaceForkReceipt(treeDir, workspace);
 	const emptied = new Set<string>();
 	let removed = 0;
 
 	for (const path of [...listed].sort()) {
-		if (path === '' || path.startsWith('.git/')) {
+		if (path === '' || path.startsWith('.git/') || receipts.includes(path)) {
 			continue;
 		}
 		// Own code is not litter: it is the materialization of the delta. What a

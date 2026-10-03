@@ -38,6 +38,9 @@ import { typesCommand } from './commands/types.ts';
 import { verifyCommand } from './commands/verify.ts';
 import { whereCommand } from './commands/where.ts';
 import { workspaceCommands } from './commands/workspace.ts';
+import { selectWorkspace } from './lib/workspaceSelection.ts';
+import { workspaceConfig } from './lib/workspaceConfig.ts';
+import { resolveWorkspaceType } from './lib/workspaceType.ts';
 import { parseArgv, GLOBAL_FLAG_HELP } from './lib/argv.ts';
 import type { ArgvProblem } from './lib/argv.ts';
 import type { CommandDefinition, CommandFlagValues, GlobalFlags } from './lib/command.ts';
@@ -189,25 +192,32 @@ async function main(argv: readonly string[]): Promise<number> {
 
 	try {
 		const resolveRoots = matched.definition.resolveRoots !== false;
+		if (matched.definition.name.startsWith('workspace') && flags.workspace !== undefined)
+			throw ckError('CONFIG', 'workspace lifecycle management takes its explicit name argument, not --workspace');
+		const selection = flags.workspace === undefined ? null : selectWorkspace(flags.workspace, flags);
 		if (!resolveRoots && (flags.forkDir !== null || flags.patchesDir !== null))
 			throw ckError('CONFIG', 'workspace management takes roots from the registry; external root flags are not accepted');
-		const settingsFields = resolveRoots ? rootSettingsNeeded(flags, process.env) : { patchesDir: false, forkDir: false };
+		const settingsFields =
+			resolveRoots && selection === null ? rootSettingsNeeded(flags, process.env) : { patchesDir: false, forkDir: false };
 		const settings =
 			settingsFields.patchesDir || settingsFields.forkDir ? loadSettings(undefined, settingsFields) : ({ codkitSettings: 1 } as const);
-		const locations = resolveRoots ? resolveLocations(flags, process.env, settings) : { patchesDir: null, forkDir: null };
+		const locations =
+			selection?.locations ?? (resolveRoots ? resolveLocations(flags, process.env, settings) : { patchesDir: null, forkDir: null });
 		out.setRoots(toolRoot, locations);
 		assertDisjointRoots(toolRoot, locations);
 		const needsPatches = (matched.definition.roots ?? 'patches') === 'patches' && !helpOnly;
 		const patches = needsPatches ? requirePatchesDir(locations) : locations.patchesDir;
 		const patchRoot = patches?.path ?? '';
 		if (needsPatches && patches !== null) out.info(formatPatchesLine(patches));
-		const config = matched.definition.configMode === 'none' || helpOnly ? null : loadConfig(patchRoot);
+		const declared = matched.definition.configMode === 'none' || helpOnly ? null : loadConfig(patchRoot);
+		const config = declared === null || selection === null ? declared : workspaceConfig(declared, selection.record);
 		// PROP-016 ##TYPE-REGISTRY: the type is resolved once, here, and handed to
 		// the command with everything else it needs. A configuration always names
 		// one - schema 2 requires it - so a resolved config means a resolved type,
 		// and every engine below asks the type instead of stating its facts.
-		const registered = config === null ? null : await resolveProjectType(config.type);
+		const registered = config === null || selection !== null ? null : await resolveProjectType(config.type);
 		let type = registered;
+		if (config !== null && selection !== null) type = await resolveWorkspaceType(selection.record);
 		if (config !== null && registered !== null) {
 			assertTypeConfig(registered, config);
 			// ##TYPE-CONFIGURED: a type whose answers live in `typeConfig` is
@@ -225,7 +235,8 @@ async function main(argv: readonly string[]): Promise<number> {
 			env: process.env,
 			config,
 			type,
-			out
+			out,
+			...(selection === null ? {} : { workspace: selection.record })
 		});
 		return out.finish(exitCode);
 	} catch (error) {

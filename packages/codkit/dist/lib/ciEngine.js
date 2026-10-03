@@ -1,5 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-011#root */
 import { pinKey } from './pinIdentity.js';
+import { inheritWorkspaceConfig } from './workspaceConfig.js';
 // The ci engine: one container run of the whole threshold, from scratch.
 // Contract: PROP-011 (the job, the air gap, the profiles, the rights, the
 // effective diff) and PROP-007 sec. 17 (the ci command).
@@ -172,6 +173,7 @@ export async function runCi(options) {
     }
     const drift = driftDirty(materializerOf(options.type), tree, ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), patchesDir, {
         untrackedIsDirt: false,
+        workspace: config.workspace?.record,
         generated: { pinSha: config.pin.sha, branch }
     });
     const head = treeHeadError(drift.treeCommits, branch);
@@ -542,7 +544,8 @@ function effectiveDiffStep(options, tip) {
         const inventoryPath = writeOut(patchesDir, INVENTORY_DIFF_PATH, renderInventoryDiffMarkdown(base, inventoryDiff));
         out.info(`inventory diff against ${base}: +${inventoryDiff.added.length} -${inventoryDiff.removed.length} ` +
             `~${inventoryDiff.changed.length} -> ${INVENTORY_DIFF_PATH}`);
-        const baseConfig = loadConfig(checkout.dir);
+        const declaredBase = loadConfig(checkout.dir);
+        const baseConfig = declaredBase === null ? null : inheritWorkspaceConfig(declaredBase, options.config);
         if (baseConfig === null) {
             return {
                 state: 'warned',

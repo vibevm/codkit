@@ -1,13 +1,13 @@
 /** @scope spec://codkit/modules/codkit/PROP-020#WORKSPACE-FINISH */
 // Finish seals clean/save evidence while checkout writer capabilities are held.
+import { verifyReceipt } from './workspaceReceipt.ts';
+export { verifyReceipt } from './workspaceReceipt.ts';
 import { readdirSync } from 'node:fs';
 import { relative } from 'node:path';
 import type { ProjectType } from '@codkit/type-api';
 import { acquireLock, isAlive, lockPath, readLock } from './lock.ts';
 import type { LockHandle } from './lock.ts';
 import { PATCHSET_WRITER_LOCK_ID } from './patchsetWriter.ts';
-import { readContainedFile } from './containedFile.ts';
-import { bytesEqual, encodeUtf8 } from './bytes.ts';
 import { loadConfig } from './configFile.ts';
 import { pinKey } from './pinIdentity.ts';
 import { deltaFingerprint, treeId } from './fingerprint.ts';
@@ -22,13 +22,7 @@ import { resolveContainedPath } from './pathSafety.ts';
 import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { verifyWorkspaceCheckout } from './workspaceCreate.ts';
-import {
-	findWorkspace,
-	updateWorkspaceRegistry,
-	workspaceCheckoutSchema,
-	workspaceRecordSchema,
-	workspaceRefPrefixes
-} from './workspaceRegistry.ts';
+import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema, workspaceRefPrefixes } from './workspaceRegistry.ts';
 import type { WorkspaceRecord } from './workspaceRegistry.ts';
 
 export function finishWorkspace(options: {
@@ -88,7 +82,11 @@ export function finishWorkspace(options: {
 					record.fork.path,
 					ownedRootsOf(options.type, config.typeConfig, { treeDir: record.fork.path, pinSha: config.pin.sha }),
 					record.patchset.path,
-					{ generated: { pinSha: config.pin.sha, branch: `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}` } }
+					{
+						workspace: record,
+						ownedUntrackedFiles: [...workspaceOwnedPaths(record.fork.path, locks[1], [])],
+						generated: { pinSha: config.pin.sha, branch: `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}` }
+					}
 				);
 				if (drift.dirty) throw ckError('DIRTY-TREE', 'workspace own/upstream work is not saved to its patchset');
 			}
@@ -112,15 +110,6 @@ export function finishWorkspace(options: {
 	});
 }
 
-export function verifyReceipt(record: WorkspaceRecord, role: 'patchset' | 'fork'): void {
-	const checkout = record[role];
-	const expected = encodeUtf8(
-		`${JSON.stringify(workspaceCheckoutSchema.parse({ codkitWorkspaceCheckout: 1, id: record.id, role, commonDirectory: checkout.commonDirectory, baseCommit: checkout.baseCommit }), null, 2)}\n`
-	);
-	const read = readContainedFile(checkout.path, '.codkit/workspace.json', { what: 'workspace checkout custody receipt' });
-	if (read.state === 'absent' || !bytesEqual(read.bytes, expected))
-		throw ckError('CONFIG', 'workspace custody receipt is missing or foreign');
-}
 export function workspaceOwnedPaths(root: string, owned: LockHandle | undefined, extra: readonly string[]): ReadonlySet<string> {
 	if (owned === undefined) throw ckError('LOCKED', 'workspace clean proof requires checkout writer custody');
 	const allowed = new Set(['.codkit/workspace.json', ...extra]);
