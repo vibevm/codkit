@@ -872,6 +872,25 @@
       ]
     },
     {
+      "id": "release-licensing",
+      "field": "codkitReleaseLicensing",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/releaseLicensing.ts",
+      "owner": "Patchset release operator; organization authority remains external",
+      "trustBoundary": "Fixed patchset data selects IDs and restrictions only; immutable publish snapshot and contained source/output paths cross validators before delivery.",
+      "compatibility": "Strict version 1 opt-in; absent file retains explicit incomplete legacy evidence, present invalid/incomplete configuration refuses.",
+      "migration": "Create explicit licensing declarations and attach canonical evidence; no silent policy choice or config rewrite.",
+      "fingerprint": "Declaration/authority/source/output digests bind release evidence; legacy delta/history formats are unchanged.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#RELEASE-LICENSING-SELECTION",
+      "tests": [
+        "packages/codkit/test/unit/releaseLicensing.test.ts",
+        "packages/codkit/test/unit/packageRelease.test.ts"
+      ]
+    },
+    {
       "id": "removed",
       "field": "codkitRemoved",
       "version": 1,

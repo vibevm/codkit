@@ -25,7 +25,7 @@ export const distributionNoticesSchema = z
         ctx.addIssue({ code: 'custom', path: ['notices'], message: 'notice paths must not repeat' });
 });
 /** Directory outputs carry notices at their root; file outputs carry declared sibling notices. */
-export function checkDistributionNotices(root, outputs, selected) {
+export function checkDistributionNotices(root, outputs, selected, wholeBundle = false) {
     const problems = [];
     const notices = [];
     const policy = { id: selected.policy.id, version: selected.policy.version, sha256: selected.sha256 };
@@ -47,13 +47,13 @@ export function checkDistributionNotices(root, outputs, selected) {
                 continue;
             if (artifact.kind === 'git-commit' || artifact.kind === 'git-tree')
                 continue;
-            const base = artifact.kind === 'directory' ? artifact.path : posix.dirname(artifact.path);
+            const base = wholeBundle ? '.' : artifact.kind === 'directory' ? artifact.path : posix.dirname(artifact.path);
             for (const id of required) {
                 const relative = base === '.' ? id : `${base}/${id}`;
                 if (checked.has(relative))
                     continue;
                 checked.add(relative);
-                const delivered = artifact.kind === 'directory' || inventory.some((entry) => entry.kind === 'file' && entry.path === relative);
+                const delivered = (!wholeBundle && artifact.kind === 'directory') || inventory.some((entry) => entry.kind === 'file' && entry.path === relative);
                 if (!delivered) {
                     problems.push({ file: relative, message: 'required notice is not included in declared distribution outputs' });
                     continue;

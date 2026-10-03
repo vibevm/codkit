@@ -99,7 +99,7 @@ describe('aligned command roster', () => {
 
 		expect(bare.status).toBe(2);
 		expect(bare.stderr).toContain("'license' is a namespace and does nothing by itself");
-		expect(bare.stderr).toContain('available: license check, license annotate, license notices');
+		expect(bare.stderr).toContain('available: license check, license consumer-check, license annotate, license notices');
 		// PROP-007 ##LICENSE-NAMESPACE: this family has no --help of its own, so
 		// the hint must not send a person into a usage error.
 		expect(bare.stderr).not.toContain('codkit license --help');

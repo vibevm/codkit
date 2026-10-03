@@ -49,6 +49,8 @@ export type PublishCheckpoint =
 
 export type PreparedPublishRelease = {
 	readonly forkDir: string;
+	readonly snapshotDir: string;
+	readonly workspaceRoot: string;
 	readonly config: CodkitConfig;
 	readonly patchsetCommit: string;
 	readonly generatedTip: string;
@@ -233,6 +235,8 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 		options.checkpoint?.('checks-passed');
 		options.onPreparedRelease?.({
 			forkDir: workspace.resolution.path,
+			snapshotDir: workspace.patchesDir,
+			workspaceRoot: workspace.root,
 			config: snapshotConfig,
 			patchsetCommit: patchSetSha,
 			generatedTip: checks.branchTip,

@@ -32,7 +32,8 @@ export type DistributionNotices = Readonly<z.infer<typeof distributionNoticesSch
 export function checkDistributionNotices(
 	root: string,
 	outputs: readonly string[],
-	selected: SelectedOrganizationPolicy
+	selected: SelectedOrganizationPolicy,
+	wholeBundle = false
 ): DistributionNotices {
 	const problems: DistributionNotices['problems'] = [];
 	const notices: DistributionNotices['notices'] = [];
@@ -51,12 +52,13 @@ export function checkDistributionNotices(
 			// A separately delivered notice is metadata, not another payload needing a notice.
 			if (artifact.kind === 'file' && required.includes(posix.basename(artifact.path))) continue;
 			if (artifact.kind === 'git-commit' || artifact.kind === 'git-tree') continue;
-			const base = artifact.kind === 'directory' ? artifact.path : posix.dirname(artifact.path);
+			const base = wholeBundle ? '.' : artifact.kind === 'directory' ? artifact.path : posix.dirname(artifact.path);
 			for (const id of required) {
 				const relative = base === '.' ? id : `${base}/${id}`;
 				if (checked.has(relative)) continue;
 				checked.add(relative);
-				const delivered = artifact.kind === 'directory' || inventory.some((entry) => entry.kind === 'file' && entry.path === relative);
+				const delivered =
+					(!wholeBundle && artifact.kind === 'directory') || inventory.some((entry) => entry.kind === 'file' && entry.path === relative);
 				if (!delivered) {
 					problems.push({ file: relative, message: 'required notice is not included in declared distribution outputs' });
 					continue;

@@ -7,7 +7,7 @@ import { readContainedFile } from './containedFile.js';
 import { decodeUtf8Strict } from './bytes.js';
 import { COPYRIGHT_LINE, MODIFICATIONS_LINE, holderOf, licenseGlobMatches, selectLicenseCarrier } from './licenseCarrier.js';
 import { readReuseRegistries } from './reuseRegistry.js';
-import { resolveContainedPath } from './pathSafety.js';
+import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
 import { checkOrganizationExpression } from './organizationPolicy.js';
 export const consumerLicenseReportSchema = z.strictObject({
     codkitConsumerLicenseCheck: z.literal(1),
@@ -33,7 +33,7 @@ export const consumerLicenseReportSchema = z.strictObject({
     problems: z.array(z.strictObject({ file: z.string(), message: z.string() })),
     status: z.enum(['complete', 'incomplete'])
 });
-export function checkConsumerLicenses(root, selected) {
+export function checkConsumerLicenses(root, selected, deliveredPaths) {
     const problems = [];
     const checked = [];
     const problem = (_code, file, message) => {
@@ -41,7 +41,11 @@ export function checkConsumerLicenses(root, selected) {
     };
     try {
         const physicalRoot = realpathSync(root);
-        const paths = sourcePaths(physicalRoot, '', problems);
+        if (deliveredPaths?.some((path) => repoRelativePathProblem(path) !== null))
+            throw new Error('consumer inspection path is not contained');
+        const paths = deliveredPaths === undefined
+            ? sourcePaths(physicalRoot, '', problems)
+            : [...new Set(deliveredPaths)].sort((left, right) => Buffer.from(left).compare(Buffer.from(right)));
         const present = new Set(paths);
         const cache = new Map();
         const bytes = (path) => {
@@ -63,7 +67,7 @@ export function checkConsumerLicenses(root, selected) {
         const registry = readReuseRegistries(physicalRoot, paths, text);
         problems.push(...registry.problems.map((entry) => ({ file: entry.file, message: entry.message })));
         for (const path of paths) {
-            if (carrierMetadata(path))
+            if (isConsumerLicenseMetadata(path))
                 continue;
             try {
                 const annotations = registry.annotations
@@ -185,7 +189,7 @@ function sourcePaths(root, directory, problems) {
     }
     return result.sort((left, right) => Buffer.from(left).compare(Buffer.from(right)));
 }
-function carrierMetadata(path) {
+export function isConsumerLicenseMetadata(path) {
     const name = path.slice(path.lastIndexOf('/') + 1);
     return (name === 'LICENSE' || name.startsWith('COPYING') || name === 'REUSE.toml' || name.endsWith('.license') || path.startsWith('LICENSES/'));
 }

@@ -11570,7 +11570,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:06e72f49c4edc4dd435617f3480d3570a3d40708d2983a071b20c4744443c98e",
+      "content_hash": "sha256:c75a26104dfb0ad9ba51428fd67ca31f198f3734f2eac3057bc37eca45889f84",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -11579,7 +11579,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:46069239881247f6e8cd10c2ae5c79f4c2a5e6f9f5831fd4a8eb880863603389",
+      "content_hash": "sha256:bdab9948cbebb44b6f1afb2b61f46c11dde73c7770e3de1c256644fe01102917",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -11633,10 +11633,10 @@
     },
     {
       "anchor": "DISTRIBUTION-NOTICE-CHECK",
-      "content_hash": "sha256:5686ca4ee99dee78cb30ec1ff38bd5a8f271b8db2de2cca4b586ca9953d279ae",
+      "content_hash": "sha256:2b7067d339ae541b208b7e896846b0bc7c90b160542156f9627cb8cb36aaf011",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "Notice attachment inspection captures the actual declared distribution inventory before and after reads. Each directory output carries every policy-required notice at its root; file outputs carry notices as separately declared sibling output files. A notice existing only in source, in another bundle or below the bundle root does not satisfy attachment. Notice-only or empty output sets refuse. Notice bytes must be nonempty UTF-8, contained regular files; exact notice bytes, paths, selected policy and artifact inventory digests bind codkitDistributionNotices:1. Changed output snapshots or notice bytes refuse, and report status follows actual problems. This receipt proves named attachment and observed bytes only; approval of notice content, provenance, source carriers and SBOM remain separate distribution requirements, never inferred legal approval. @status:impl/done",
+      "heading": "Notice attachment inspection captures the actual declared distribution inventory before and after reads. Each directory output carries every policy-required notice at its root; file outputs carry notices as separately declared sibling output files. A complete Git publish delivery is one bundle: its required notice is at the delivery root and still must be among actual tracked outputs; publication does not require redundant notices in every source subdirectory. This grouping comes from trusted operation composition, never an untrusted exemption. A notice existing only in source, in another bundle or below the bundle root does not satisfy attachment. Notice-only or empty output sets refuse. Notice bytes must be nonempty UTF-8, contained regular files; exact notice bytes, paths, selected policy and artifact inventory digests bind codkitDistributionNotices:1. Changed output snapshots or notice bytes refuse, and report status follows actual problems. This receipt proves named attachment and observed bytes only; approval of notice content, provenance, source carriers and SBOM remain separate distribution requirements, never inferred legal approval. @status:impl/done",
       "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-NOTICE-CHECK"
     },
@@ -11659,12 +11659,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-DOCUMENTS"
     },
     {
+      "anchor": "RELEASE-LICENSING-SELECTION",
+      "content_hash": "sha256:5e7406ee1b7dd997cf4361cab460725340e92d6d63754c458b36d46dd82db158",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "The fixed patchset codkit.licensing.json carries codkitReleaseLicensing:1, profile ID/additional prohibitions, component identity, explicit UTC creation time, contained source directory and separate package/publish payload declarations with SBOM attachment path. It contains no policy path, holders, allowlist or trusted-text authority. Absent declaration preserves legacy release behavior with missing organization evidence explicit; a present declaration requires its requested operation and successful gates, not a fallback. Trusted user/admin composition selects the external store. Metadata exclusions are exactly policy-required attached notices and selected SBOM. Canonical documents and actual payload/provenance must agree; required delivered carriers are inspected only within actual outputs, with licensing metadata parsed or canonical-text matched. Package checks precede restoration, then final output and declaration/store receipts are rechecked. Publish reads the immutable selected Git blob, rejects changed snapshot bytes and retains the original patchset store boundary; a temporary checkout of the shaped tip, with hydrated LFS when needed, is inspected before real delivery. Component declaration/flag disagreement refuses. Receipt binds selected organization authority and distribution requirements without claiming a signature, commercial ruling or compiler proof. Integration acceptance remains pending the complete native suite. @status:impl/wip",
+      "line": 14,
+      "uri": "spec://codkit/modules/codkit/PROP-019#RELEASE-LICENSING-SELECTION"
+    },
+    {
       "anchor": "ORGANIZATION-DISTRIBUTION-EVIDENCE",
       "content_hash": "sha256:b5f1919b6879a0ce58b3315d196067639d42a12208d14af0b31b2d7f861a6015",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Consumer source scanning, actual artifact NOTICE/carrier checks and selected SBOM export must bind the selected trusted policy before package/publish enforcement is accepted. A minified artifact without required attached notice is incomplete/red even when source headers were valid. Report evidence complete/incomplete, never a legal-compatibility ruling. Mechanism fixtures are labelled examples, not real commercial approvals or external partner evidence. @status:spec/done",
-      "line": 14,
+      "line": 15,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-DISTRIBUTION-EVIDENCE"
     },
     {

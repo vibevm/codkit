@@ -11,6 +11,7 @@ import { ckError } from './messages.ts';
 import { readTypeManifest } from '../types/manifest.ts';
 import type { RegisteredManifest } from '../types/manifest.ts';
 import { effectiveRegistry } from '../types/registry.ts';
+import { assertReleaseLicensingUnchanged, checkReleaseLicensing, readReleaseLicensing } from './releaseLicensing.ts';
 
 export type PackageReleaseResult = PackageResult & {
 	readonly release: {
@@ -20,15 +21,23 @@ export type PackageReleaseResult = PackageResult & {
 		readonly missing: readonly string[];
 	} | null;
 };
-export type PackageReleaseOptions = PackageOptions & { readonly registration?: RegisteredManifest; readonly componentId?: string };
+export type PackageReleaseOptions = PackageOptions & {
+	readonly registration?: RegisteredManifest;
+	readonly componentId?: string;
+	readonly organizationPolicyDirectory?: string;
+};
 
 export function runPackageRelease(options: PackageReleaseOptions): PackageReleaseResult {
+	const licensing = readReleaseLicensing(options.patchesDir, 'package', options.organizationPolicyDirectory);
+	const componentId = options.componentId ?? licensing?.declaration.componentId;
+	if (licensing !== null && componentId !== licensing.declaration.componentId)
+		throw ckError('CONFIG', 'component identifier differs from release licensing declaration');
 	const registration = options.registration ?? releaseTypeRegistration(options.config.type);
 	if (registration.manifest.id !== options.type.id || options.type.id !== options.config.type)
 		throw ckError('TYPE-UNKNOWN', 'package type, configuration and release declaration must agree');
 	if (options.componentId !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(options.componentId))
 		throw ckError('CONFIG', 'component identifier must be one non-empty portable release identifier');
-	if (options.componentId === undefined) {
+	if (componentId === undefined) {
 		const shallow = runGit({ cwd: options.patchesDir, args: ['rev-parse', '--is-shallow-repository'] });
 		if (shallow.status !== 0 || shallow.stdout.trim() === 'true')
 			throw ckError('CONFIG', 'a shallow patchset requires --component-id for stable release identity');
@@ -42,6 +51,17 @@ export function runPackageRelease(options: PackageReleaseOptions): PackageReleas
 			options.onOutputs?.(outputs);
 			if (head(options.resolution.path) !== tip)
 				throw ckError('CONFIG', 'package changed the checked generated commit; release evidence refuses');
+			assertReleaseLicensingUnchanged(options.patchesDir, 'package', licensing, options.organizationPolicyDirectory);
+			const licenseEvidence =
+				licensing === null
+					? undefined
+					: checkReleaseLicensing({
+							licensing,
+							sourceTree: options.resolution.path,
+							artifactRoot: options.resolution.path,
+							outputs: outputs.outputs,
+							operation: 'package'
+						});
 			const release = captureComponentRelease({
 				patchesDir: options.patchesDir,
 				forkDir: options.resolution.path,
@@ -51,7 +71,8 @@ export function runPackageRelease(options: PackageReleaseOptions): PackageReleas
 				tip,
 				outputs: outputs.outputs,
 				expectedPatchsetCommit: patchsetCommit,
-				...(options.componentId === undefined ? {} : { componentId: options.componentId }),
+				...(componentId === undefined ? {} : { componentId }),
+				...(licenseEvidence === undefined ? {} : { licensing: licenseEvidence }),
 				recipe: {
 					operation: 'package',
 					commands: outputs.commands,
@@ -75,6 +96,7 @@ export function runPackageRelease(options: PackageReleaseOptions): PackageReleas
 	const observedArtifacts = captured.artifacts.filter((artifact) => artifact.kind !== 'git-commit' && artifact.kind !== 'git-tree');
 	if (JSON.stringify(finalArtifacts.value) !== JSON.stringify(observedArtifacts))
 		throw ckError('CONFIG', 'restoration changed declared package artifacts; no release descriptor was recorded');
+	assertReleaseLicensingUnchanged(options.patchesDir, 'package', licensing, options.organizationPolicyDirectory);
 	// Receipt publication follows successful restoration; no receipt claims a failed restore.
 	const stored = writeComponentRelease(options.patchesDir, captured);
 	if (!stored.ok) throw ckError('CONFIG', stored.problem.message);

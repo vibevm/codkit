@@ -1,0 +1,173 @@
+/** @scope spec://codkit/modules/codkit/PROP-019#RELEASE-LICENSING-SELECTION */
+// Fixed patchset data selects a profile; only trusted composition selects the store.
+import { createHash } from 'node:crypto';
+import { z } from 'zod';
+import { readContainedFile } from './containedFile.js';
+import { decodeUtf8Strict } from './bytes.js';
+import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
+import { distributionDeclarationSchema, captureDistributionProvenance } from './distributionProvenance.js';
+import { organizationPolicySelectionSchema, parsePolicyExpression } from './organizationPolicy.js';
+import { organizationPolicyRoot, readOrganizationPolicy } from './organizationPolicyStore.js';
+import { checkDistributionNotices } from './distributionNotices.js';
+import { checkDistributionDocument, renderDistributionDocuments } from './distributionDocuments.js';
+import { captureReleaseEntries } from './releaseArtifacts.js';
+import { checkConsumerLicenses, isConsumerLicenseMetadata } from './consumerLicenseCheck.js';
+import { ckError } from './messages.js';
+import { runGit } from './gitx.js';
+export const RELEASE_LICENSING_FILE = 'codkit.licensing.json';
+const path = z.string().refine((value) => repoRelativePathProblem(value) === null);
+const operation = z.strictObject({ declaration: distributionDeclarationSchema, sbomFile: path.nullable() });
+export const releaseLicensingSchema = z.strictObject({
+    codkitReleaseLicensing: z.literal(1),
+    profile: organizationPolicySelectionSchema.shape.profile,
+    additionalForbidden: organizationPolicySelectionSchema.shape.additionalForbidden,
+    componentId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/),
+    created: z.iso.datetime().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+    sourceDirectory: z.union([z.literal('.'), path]),
+    package: operation.optional(),
+    publish: operation.optional()
+});
+export function readReleaseLicensing(patchesDir, requested, trustedRoot = organizationPolicyRoot(), trustBoundaryPatchset = patchesDir) {
+    const read = readContainedFile(patchesDir, RELEASE_LICENSING_FILE, { what: 'release licensing declaration' });
+    if (read.state === 'absent')
+        return null;
+    try {
+        const text = decodeUtf8Strict(read.bytes);
+        if (text === null)
+            throw new Error('release licensing declaration is not UTF-8');
+        const declaration = releaseLicensingSchema.parse(JSON.parse(text));
+        if (declaration[requested] === undefined)
+            throw new Error(`release licensing declaration does not configure ${requested}`);
+        const selected = readOrganizationPolicy(trustedRoot, trustBoundaryPatchset, {
+            profile: declaration.profile,
+            ...(declaration.additionalForbidden === undefined ? {} : { additionalForbidden: declaration.additionalForbidden })
+        });
+        if (!selected.ok)
+            throw new Error(selected.problems.join('; '));
+        return { declaration, sha256: hash(read.bytes), selected: selected.value };
+    }
+    catch (error) {
+        throw ckError('CONFIG', error instanceof Error ? error.message : 'release licensing declaration is invalid');
+    }
+}
+export function readSnapshotReleaseLicensing(repository, snapshot, commit, trustedRoot) {
+    const tree = runGit({ cwd: repository, args: ['ls-tree', '-z', commit, '--', RELEASE_LICENSING_FILE] });
+    if (tree.status !== 0)
+        throw ckError('CONFIG', 'cannot inspect selected licensing declaration');
+    const current = readReleaseLicensing(snapshot, 'publish', trustedRoot, repository);
+    if (tree.stdout === '') {
+        if (current !== null)
+            throw ckError('CONFIG', 'licensing declaration was added to immutable publish snapshot');
+        return null;
+    }
+    if (!/^100(?:644|755) blob [0-9a-f]{40}\tcodkit\.licensing\.json\0$/u.test(tree.stdout))
+        throw ckError('CONFIG', 'selected licensing declaration must be a regular Git blob');
+    const blob = runGit({ cwd: repository, args: ['show', `${commit}:${RELEASE_LICENSING_FILE}`] });
+    if (blob.status !== 0 || current === null || hash(blob.stdout) !== current.sha256)
+        throw ckError('CONFIG', 'licensing declaration differs from selected immutable publish commit');
+    return current;
+}
+export function assertReleaseLicensingUnchanged(patchesDir, requested, captured, trustedRoot) {
+    const current = readReleaseLicensing(patchesDir, requested, trustedRoot);
+    if (current?.sha256 !== captured?.sha256 ||
+        current?.selected.sha256 !== captured?.selected.sha256 ||
+        current?.selected.storeSha256 !== captured?.selected.storeSha256)
+        throw ckError('CONFIG', 'release licensing declaration or trusted organization store changed during the operation');
+}
+/** No document is created or repaired by this gate; packaging must attach the expected documents. */
+export function checkReleaseLicensing(options) {
+    const { licensing } = options;
+    const declaration = licensing.declaration[options.operation];
+    if (declaration === undefined)
+        throw ckError('CONFIG', 'release operation has no licensing declaration');
+    const source = licensing.declaration.sourceDirectory === '.'
+        ? { ok: true, absolute: options.sourceTree }
+        : resolveContainedPath(options.sourceTree, licensing.declaration.sourceDirectory);
+    if (!source.ok)
+        throw ckError('CONFIG', 'licensing source directory is not a contained real directory');
+    const selected = licensing.selected;
+    const notices = checkDistributionNotices(options.artifactRoot, options.outputs, selected, options.operation === 'publish');
+    if (notices.status !== 'complete')
+        throw ckError('CONFIG', notices.problems.map((problem) => `${problem.file}: ${problem.message}`).join('; '));
+    const noticePaths = notices.notices.map((notice) => notice.path);
+    const expectsSbom = selected.policy.distribution.sbom === 'spdx-json';
+    if (expectsSbom !== (declaration.sbomFile !== null))
+        throw ckError('CONFIG', 'SBOM attachment must agree with selected organization policy');
+    const approvedMetadata = [...noticePaths, ...(declaration.sbomFile === null ? [] : [declaration.sbomFile])];
+    if (JSON.stringify([...approvedMetadata].sort()) !== JSON.stringify([...declaration.declaration.metadata].sort()))
+        throw ckError('CONFIG', 'metadata exclusions must be exactly the required notices and selected SBOM');
+    const proof = captureDistributionProvenance({
+        sourceRoot: source.absolute,
+        artifactRoot: options.artifactRoot,
+        outputs: options.outputs,
+        selected,
+        declaration: declaration.declaration,
+        approvedMetadata
+    });
+    if (!proof.ok)
+        throw ckError('CONFIG', proof.problems.join('; '));
+    const rendered = renderDistributionDocuments({
+        provenance: proof.value,
+        selected,
+        componentId: licensing.declaration.componentId,
+        created: licensing.declaration.created
+    });
+    if (!rendered.ok)
+        throw ckError('CONFIG', rendered.problems.join('; '));
+    const documents = [];
+    for (const path of noticePaths) {
+        const checked = checkDistributionDocument(options.artifactRoot, path, rendered.value.notice, proof.value);
+        if (!checked.ok)
+            throw ckError('CONFIG', checked.problems.join('; '));
+        documents.push(checked.value);
+    }
+    const evidence = [
+        {
+            requirement: 'organization-policy',
+            reference: `profile:${selected.policy.id}@${selected.policy.version}`,
+            sha256: hash(JSON.stringify({ declaration: licensing.sha256, policy: proof.value.policy }))
+        },
+        { requirement: 'distribution-notices', reference: 'attached:canonical-notices', sha256: hash(JSON.stringify(documents)) },
+        { requirement: 'distribution-provenance', reference: 'inspected:source-and-payload', sha256: hash(JSON.stringify(proof.value)) }
+    ];
+    if (declaration.sbomFile !== null && rendered.value.sbom !== null) {
+        const checked = checkDistributionDocument(options.artifactRoot, declaration.sbomFile, rendered.value.sbom, proof.value);
+        if (!checked.ok)
+            throw ckError('CONFIG', checked.problems.join('; '));
+        evidence.push({ requirement: 'sbom', reference: `attached:${declaration.sbomFile}`, sha256: checked.value.sha256 });
+    }
+    else
+        evidence.push({ requirement: 'sbom', reference: 'policy:sbom-none', sha256: hash(JSON.stringify(selected.policy.distribution)) });
+    if (selected.policy.distribution.requireSourceCarriers) {
+        const entries = captureReleaseEntries(options.artifactRoot, options.outputs);
+        if (!entries.ok)
+            throw ckError('CONFIG', entries.problem.message);
+        const report = checkConsumerLicenses(options.artifactRoot, selected, entries.value.filter((entry) => entry.kind !== 'directory' && !approvedMetadata.includes(entry.path)).map((entry) => entry.path));
+        if (report.status !== 'complete' ||
+            report.checked.length !== proof.value.files.filter((file) => !isConsumerLicenseMetadata(file.path)).length)
+            throw ckError('CONFIG', 'delivered source carriers are incomplete');
+        for (const file of report.checked) {
+            const mapped = proof.value.files.find((entry) => entry.path === file.path);
+            const license = parsePolicyExpression(file.license);
+            if (mapped === undefined || mapped.scope !== file.kind || !license.ok || license.value.canonical !== mapped.license)
+                throw ckError('CONFIG', 'delivered source carrier disagrees with the inspected build declaration');
+        }
+        for (const file of proof.value.files.filter((file) => isConsumerLicenseMetadata(file.path))) {
+            if (file.path.endsWith('/REUSE.toml') || file.path === 'REUSE.toml' || file.path.endsWith('.license'))
+                continue;
+            const text = readContainedFile(options.artifactRoot, file.path, { what: 'delivered canonical license text' });
+            const approved = [...selected.policy.customLicenses, ...(selected.policy.standardLicenseTexts ?? [])];
+            if (text.state === 'absent' || !approved.some((record) => hash(text.bytes) === record.sha256))
+                throw ckError('CONFIG', 'delivered license-text metadata differs from trusted canonical texts');
+        }
+        evidence.push({
+            requirement: 'distribution-source-carriers',
+            reference: 'inspected:delivered-carriers',
+            sha256: hash(JSON.stringify(report))
+        });
+    }
+    return { policy: selected, evidence };
+}
+function hash(value) {
+    return createHash('sha256').update(value).digest('hex');
+}

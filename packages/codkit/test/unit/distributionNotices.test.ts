@@ -8,6 +8,12 @@ import type { SelectedOrganizationPolicy } from '../../src/lib/organizationPolic
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
+it('allows one declared root notice for a complete Git publication bundle, without borrowing an undelivered notice', () => {
+	const f = fixture();
+	writeFileSync(join(f.root, 'NOTICE'), 'Fixture publication notice\n');
+	expect(checkDistributionNotices(f.root, ['dist/app.min.js', 'NOTICE'], f.selected, true).status).toBe('complete');
+	expect(checkDistributionNotices(f.root, ['dist/app.min.js'], f.selected, true).status).toBe('incomplete');
+});
 function fixture() {
 	const root = makeTempRoot('distribution-notice');
 	mkdirSync(join(root, 'dist'));

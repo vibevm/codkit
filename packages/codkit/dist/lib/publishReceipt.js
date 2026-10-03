@@ -6,6 +6,12 @@ import { captureComponentRelease } from './releaseFacts.js';
 import { releaseTypeRegistration } from './packageRelease.js';
 import { runPublish } from './publish.js';
 import { ckError } from './messages.js';
+import { mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { runGit } from './gitx.js';
+import { checkReleaseLicensing, readSnapshotReleaseLicensing } from './releaseLicensing.js';
+import { writeExport } from './publishExport.js';
+import { Output } from './jsonOut.js';
 export async function runPublishReceipt(options) {
     if (options.componentId !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(options.componentId))
         throw ckError('CONFIG', 'component identifier must be one non-empty portable release identifier');
@@ -17,6 +23,47 @@ export async function runPublishReceipt(options) {
             const registration = options.registration ?? releaseTypeRegistration(facts.config.type);
             if (registration.manifest.id !== options.type.id)
                 throw ckError('TYPE-UNKNOWN', 'publish type and selected snapshot declaration must agree');
+            const licensing = readSnapshotReleaseLicensing(options.patchesDir, facts.snapshotDir, facts.patchsetCommit, options.organizationPolicyDirectory);
+            const componentId = options.componentId ?? licensing?.declaration.componentId;
+            if (licensing !== null && componentId !== licensing.declaration.componentId)
+                throw ckError('CONFIG', 'component identifier differs from selected licensing declaration');
+            let licenseEvidence;
+            if (licensing !== null) {
+                const inspection = mkdtempSync(join(facts.workspaceRoot, 'licensing-'));
+                const delivered = join(inspection, 'delivered');
+                const inspectionExport = writeExport({
+                    request: { kind: 'repository', path: delivered },
+                    forkDir: facts.forkDir,
+                    scratchDir: inspection,
+                    branchRef: `refs/heads/${facts.branch}`,
+                    tagRef: facts.tag === null ? null : `refs/tags/${facts.tag}`,
+                    tip: facts.tip,
+                    keepLfs: options.noLfs !== true,
+                    forkTree: options.resolution.path,
+                    pinSha: facts.config.pin.sha,
+                    out: new Output({
+                        command: 'publish',
+                        version: 'internal-inspection',
+                        jsonMode: true,
+                        streams: { writeOut: () => { }, writeErr: () => { } }
+                    })
+                });
+                if (inspectionExport.lfsObjects > 0 && runGit({ cwd: delivered, args: ['lfs', 'version'] }).status !== 0)
+                    throw ckError('CONFIG', 'git-lfs is required to inspect hydrated publish licensing artifacts');
+                const paths = runGit({ cwd: delivered, args: ['ls-files', '-z'] });
+                if (paths.status !== 0)
+                    throw ckError('CONFIG', 'cannot inspect delivered publish file inventory');
+                licenseEvidence = checkReleaseLicensing({
+                    licensing,
+                    sourceTree: facts.forkDir,
+                    artifactRoot: delivered,
+                    outputs: paths.stdout.split('\0').filter((path) => path !== ''),
+                    operation: 'publish'
+                });
+                const confirmed = readSnapshotReleaseLicensing(options.patchesDir, facts.snapshotDir, facts.patchsetCommit, options.organizationPolicyDirectory);
+                if (confirmed?.selected.storeSha256 !== licensing.selected.storeSha256)
+                    throw ckError('CONFIG', 'trusted organization store changed during publish inspection');
+            }
             const release = captureComponentRelease({
                 patchesDir: options.patchesDir,
                 forkDir: facts.forkDir,
@@ -27,7 +74,8 @@ export async function runPublishReceipt(options) {
                 generatedTip: facts.generatedTip,
                 patchsetCommit: facts.patchsetCommit,
                 outputs: [],
-                ...(options.componentId === undefined ? {} : { componentId: options.componentId }),
+                ...(componentId === undefined ? {} : { componentId }),
+                ...(licenseEvidence === undefined ? {} : { licensing: licenseEvidence }),
                 recipe: {
                     operation: 'publish',
                     profile: options.profile,

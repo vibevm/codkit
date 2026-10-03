@@ -44,6 +44,59 @@ Configure paths with `--fork-dir` and `--patches-dir`, with
 in `~/.codkit/settings.json`. The precedence is CLI, environment, settings.
 There is no implicit sibling-directory fallback.
 
+Release licensing is opt-in through the patch set's fixed `codkit.licensing.json`:
+
+```json
+{
+  "codkitReleaseLicensing": 1,
+  "profile": "organization-reviewed",
+  "componentId": "example-component",
+  "created": "2026-10-03T00:00:00Z",
+  "sourceDirectory": "src/owned",
+  "package": {
+    "declaration": {
+      "codkitDistributionDeclaration": 1,
+      "files": [
+        {
+          "path": "out/product/app.min.js",
+          "sources": ["main.ts"],
+          "license": "LicenseRef-EXAMPLE-Private"
+        }
+      ],
+      "metadata": ["out/product/NOTICE", "out/product/SBOM.spdx.json"]
+    },
+    "sbomFile": "out/product/SBOM.spdx.json"
+  }
+}
+```
+
+These example identifiers require a real approved profile; the example supplies
+no legal approval. Profiles live in the user/admin-controlled
+`~/.codkit/organization-policies.json`, separate from the patch set. A declaration
+selects only a profile ID and optional `additionalForbidden` expressions. Every
+payload path must map to inspected sources, with source paths relative to
+`sourceDirectory`; metadata paths are exactly the required attached notices and
+selected SBOM. The policy must carry the exact notice texts and their SHA-256
+for every used standard/custom license and exception. A present declaration
+with missing or invalid evidence refuses release; absence leaves organization
+evidence explicitly incomplete in the component descriptor.
+
+Packaging recipes can use `captureDistributionProvenance` from
+`codkit/dist/lib/distributionProvenance.js` and `renderDistributionDocuments` from
+`codkit/dist/lib/distributionDocuments.js` to produce canonical attachments. First
+inspect payload-only outputs and render the documents, then include them in the
+declared output bundle. Metadata hashes are omitted from document content to
+avoid self-reference; final receipts bind all delivered bytes. Package verifies
+these documents and required carriers before restoration, and verifies final
+output receipts afterward. A separate `publish` declaration has the same shape;
+its paths cover the actual shaped Git delivery, including hydrated LFS content
+when present. Publish reads the declaration from the selected immutable commit
+and checks evidence before pushing or creating the requested export.
+
+`codkit license consumer-check <dir> --profile <id>` checks source evidence
+independently. A build mapping remains declared provenance, not proof of
+compilation, a signature, or a legal-compatibility ruling.
+
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths
 must be pairwise disjoint. Tool dependencies live with the Codkit installation;

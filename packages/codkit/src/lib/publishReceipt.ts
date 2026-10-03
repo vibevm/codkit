@@ -9,8 +9,18 @@ import { runPublish } from './publish.ts';
 import type { PublishOptions, PublishResult } from './publish.ts';
 import { ckError } from './messages.ts';
 import type { RegisteredManifest } from '../types/manifest.ts';
+import { mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { runGit } from './gitx.ts';
+import { checkReleaseLicensing, readSnapshotReleaseLicensing } from './releaseLicensing.ts';
+import { writeExport } from './publishExport.ts';
+import { Output } from './jsonOut.ts';
 
-export type PublishReceiptOptions = PublishOptions & { readonly registration?: RegisteredManifest; readonly componentId?: string };
+export type PublishReceiptOptions = PublishOptions & {
+	readonly registration?: RegisteredManifest;
+	readonly componentId?: string;
+	readonly organizationPolicyDirectory?: string;
+};
 export type PublishReceiptResult = PublishResult & {
 	readonly release: {
 		readonly path: string;
@@ -31,6 +41,56 @@ export async function runPublishReceipt(options: PublishReceiptOptions): Promise
 			const registration = options.registration ?? releaseTypeRegistration(facts.config.type);
 			if (registration.manifest.id !== options.type.id)
 				throw ckError('TYPE-UNKNOWN', 'publish type and selected snapshot declaration must agree');
+			const licensing = readSnapshotReleaseLicensing(
+				options.patchesDir,
+				facts.snapshotDir,
+				facts.patchsetCommit,
+				options.organizationPolicyDirectory
+			);
+			const componentId = options.componentId ?? licensing?.declaration.componentId;
+			if (licensing !== null && componentId !== licensing.declaration.componentId)
+				throw ckError('CONFIG', 'component identifier differs from selected licensing declaration');
+			let licenseEvidence;
+			if (licensing !== null) {
+				const inspection = mkdtempSync(join(facts.workspaceRoot, 'licensing-'));
+				const delivered = join(inspection, 'delivered');
+				const inspectionExport = writeExport({
+					request: { kind: 'repository', path: delivered },
+					forkDir: facts.forkDir,
+					scratchDir: inspection,
+					branchRef: `refs/heads/${facts.branch}`,
+					tagRef: facts.tag === null ? null : `refs/tags/${facts.tag}`,
+					tip: facts.tip,
+					keepLfs: options.noLfs !== true,
+					forkTree: options.resolution.path,
+					pinSha: facts.config.pin.sha,
+					out: new Output({
+						command: 'publish',
+						version: 'internal-inspection',
+						jsonMode: true,
+						streams: { writeOut: () => {}, writeErr: () => {} }
+					})
+				});
+				if (inspectionExport.lfsObjects > 0 && runGit({ cwd: delivered, args: ['lfs', 'version'] }).status !== 0)
+					throw ckError('CONFIG', 'git-lfs is required to inspect hydrated publish licensing artifacts');
+				const paths = runGit({ cwd: delivered, args: ['ls-files', '-z'] });
+				if (paths.status !== 0) throw ckError('CONFIG', 'cannot inspect delivered publish file inventory');
+				licenseEvidence = checkReleaseLicensing({
+					licensing,
+					sourceTree: facts.forkDir,
+					artifactRoot: delivered,
+					outputs: paths.stdout.split('\0').filter((path) => path !== ''),
+					operation: 'publish'
+				});
+				const confirmed = readSnapshotReleaseLicensing(
+					options.patchesDir,
+					facts.snapshotDir,
+					facts.patchsetCommit,
+					options.organizationPolicyDirectory
+				);
+				if (confirmed?.selected.storeSha256 !== licensing.selected.storeSha256)
+					throw ckError('CONFIG', 'trusted organization store changed during publish inspection');
+			}
 			const release = captureComponentRelease({
 				patchesDir: options.patchesDir,
 				forkDir: facts.forkDir,
@@ -41,7 +101,8 @@ export async function runPublishReceipt(options: PublishReceiptOptions): Promise
 				generatedTip: facts.generatedTip,
 				patchsetCommit: facts.patchsetCommit,
 				outputs: [],
-				...(options.componentId === undefined ? {} : { componentId: options.componentId }),
+				...(componentId === undefined ? {} : { componentId }),
+				...(licenseEvidence === undefined ? {} : { licensing: licenseEvidence }),
 				recipe: {
 					operation: 'publish',
 					profile: options.profile,

@@ -122,6 +122,8 @@ export async function runPublish(options) {
         options.checkpoint?.('checks-passed');
         options.onPreparedRelease?.({
             forkDir: workspace.resolution.path,
+            snapshotDir: workspace.patchesDir,
+            workspaceRoot: workspace.root,
             config: snapshotConfig,
             patchsetCommit: patchSetSha,
             generatedTip: checks.branchTip,

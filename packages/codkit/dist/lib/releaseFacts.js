@@ -54,11 +54,15 @@ export function captureComponentRelease(options) {
             requirements.push('package-artifacts');
         else
             requirements.push('delivery');
+        for (const entry of options.licensing?.evidence ?? [])
+            if (!requirements.includes(entry.requirement))
+                requirements.push(entry.requirement);
         const evidence = [{ requirement: 'artifact-inventory', reference: 'descriptor:artifacts', sha256: hash(JSON.stringify(artifacts)) }];
         if (dirty === '')
             evidence.push({ requirement: 'patchset-clean', reference: `git:${patchsetCommit}`, sha256: hash(patchsetCommit) });
         if (options.operation === 'package' && captured.value.length > 0)
             evidence.push({ requirement: 'package-artifacts', reference: 'descriptor:artifacts', sha256: hash(JSON.stringify(captured.value)) });
+        evidence.push(...(options.licensing?.evidence ?? []));
         const supplied = new Set(evidence.map((entry) => entry.requirement));
         const missing = requirements.filter((requirement) => !supplied.has(requirement));
         const manifest = options.registration.manifest;
@@ -85,7 +89,19 @@ export function captureComponentRelease(options) {
             generated: { tip: generatedTip, tree: generatedTree },
             artifacts,
             buildRecipeSha256: hash(JSON.stringify(recipe.data)),
-            licensePolicies: [{ scope: 'codkit-supply', id: 'codkit-supply', version: policy.version, sha256: policy.sha256 }],
+            licensePolicies: [
+                { scope: 'codkit-supply', id: 'codkit-supply', version: policy.version, sha256: policy.sha256 },
+                ...(options.licensing === undefined
+                    ? []
+                    : [
+                        {
+                            scope: 'organization',
+                            id: options.licensing.policy.policy.id,
+                            version: options.licensing.policy.policy.version,
+                            sha256: options.licensing.policy.sha256
+                        }
+                    ])
+            ],
             distribution: { requirements, evidence, missing, status: missing.length === 0 ? 'complete' : 'incomplete' }
         });
     }
