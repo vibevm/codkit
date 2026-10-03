@@ -1183,6 +1183,42 @@
         "packages/codkit/test/unit/typeIntegrity.test.ts",
         "packages/codkit/test/unit/typeIntegrityLoader.test.ts"
       ]
+    },
+    {
+      "id": "workspace-checkout",
+      "field": "codkitWorkspaceCheckout",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/workspaceRegistry.ts",
+      "owner": "Local user/orchestrator workspace custody",
+      "trustBoundary": "Strict user-controlled pair registry and contained checkout receipts; metadata does not authorize foreign deletion.",
+      "compatibility": "Version 1 identity/name/path/branch/pin and generation validation; future records refuse.",
+      "migration": "Explicit creation/recovery only; no implicit config or existing checkout rewrite.",
+      "fingerprint": "Workspace UUID selects operational ref namespace; legacy unselected delta/history behavior remains unchanged.",
+      "contract": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REGISTRY",
+      "tests": [
+        "packages/codkit/test/unit/workspaceCreate.test.ts"
+      ]
+    },
+    {
+      "id": "workspace-registry",
+      "field": "codkitWorkspaceRegistry",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/workspaceRegistry.ts",
+      "owner": "Local user/orchestrator workspace custody",
+      "trustBoundary": "Strict user-controlled pair registry and contained checkout receipts; metadata does not authorize foreign deletion.",
+      "compatibility": "Version 1 identity/name/path/branch/pin and generation validation; future records refuse.",
+      "migration": "Explicit creation/recovery only; no implicit config or existing checkout rewrite.",
+      "fingerprint": "Workspace UUID selects operational ref namespace; legacy unselected delta/history behavior remains unchanged.",
+      "contract": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REGISTRY",
+      "tests": [
+        "packages/codkit/test/unit/workspaceCreate.test.ts"
+      ]
     }
   ]
 }
