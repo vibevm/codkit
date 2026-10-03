@@ -12,7 +12,7 @@
 import { spawnSync } from 'node:child_process';
 import { lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { extname, isAbsolute, join, resolve } from 'node:path';
+import { join, win32 } from 'node:path';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { copySource, firstLine, inspectSource } from './inputsSource.js';
@@ -90,15 +90,15 @@ export function resolveProgram(argv, lookup) {
 function findOnWindows(program, lookup) {
     const extensions = (environmentValue(lookup.env, 'PATHEXT', 'win32') ?? DEFAULT_PATHEXT).split(';').filter((ext) => ext !== '');
     const withExtensions = (base) => {
-        const known = extensions.some((ext) => ext.toLowerCase() === extname(base).toLowerCase());
+        const known = extensions.some((ext) => ext.toLowerCase() === win32.extname(base).toLowerCase());
         return [...(known ? [base] : []), ...extensions.map((ext) => `${base}${ext.toLowerCase()}`)];
     };
-    if (/[\\/]/.test(program) || isAbsolute(program)) {
-        return withExtensions(resolve(lookup.cwd, program)).find((path) => lookup.isFile(path)) ?? null;
+    if (/[\\/]/.test(program) || win32.isAbsolute(program)) {
+        return withExtensions(win32.resolve(lookup.cwd, program)).find((path) => lookup.isFile(path)) ?? null;
     }
     const directories = (environmentValue(lookup.env, 'PATH', 'win32') ?? '').split(';').filter((dir) => dir !== '');
     for (const directory of directories) {
-        const hit = withExtensions(join(directory, program)).find((path) => lookup.isFile(path));
+        const hit = withExtensions(win32.join(directory, program)).find((path) => lookup.isFile(path));
         if (hit !== undefined)
             return hit;
     }
