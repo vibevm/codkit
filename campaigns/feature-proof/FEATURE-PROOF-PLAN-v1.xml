@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <campaign genre="campaign-plan">
   <title>Feature-proof Codkit: public-contract hardening</title>
-  <status date="2026-10-03" state="executing" base="a9a11c7" branch="feat/feature-proof">P0.1-P0.5 candidates pass the native Linux suite and the installed structural engine. Phase 1 remains open for revision-only pins and component release descriptors.</status>
+  <status date="2026-10-03" state="executing" base="a9a11c7" branch="feat/feature-proof">P0.1-P0.5 and P0.9 candidates pass the native Linux suite and installed structural engine. Phase 1 remains open for component release descriptors (P0.7).</status>
   <mandate date="2026-10-03">найди наш план по feature proof codkit. начни его разработку в отдельном worktree</mandate>
   <steering date="2026-10-03">закоммить изменения в основном репозитории и запушь их. Наш worktree feature-proof перебазируй поверх этих изменений</steering>
   <steering date="2026-10-03">продолжай разрабатывать без моего участия. Я ушел спать. Вернусь - напишу</steering>
@@ -9,7 +9,7 @@
   <baseline>
     <fact>Worktree was created from 03d2cee and rebased to a9a11c7; main, origin/main and github/main agree on a9a11c7. Main is clean.</fact>
     <fact>Initial machine-readable public-format catalogs: 0. Initial public-format compatibility gates: 0. Candidate: 1 catalog with 55 entries, 1 gate and 10 focused tests. Of 55 entries, 11 have explicit inherited-version or missing-version gaps.</fact>
-    <fact>No production TypeScript, runtime output, consumer serializers or history fingerprints are changed by this atom.</fact>
+    <fact>The initial P0.1 inventory atom changed no production TypeScript, runtime output, consumer serializers or history fingerprints. Later contract atoms below intentionally add opt-in format transitions.</fact>
   </baseline>
   <decisions>
     <decision id="D1">Start with the P0.1 inventory. It exposes compatibility gaps without choosing config v3, trusted registry locations or organization licence semantics. Deferring all development until those decisions would lose the independently useful discovery/gate step.</decision>
@@ -23,17 +23,17 @@
   </predictions>
   <route>
     <phase id="0">Read the source proposal, inspect schemas and probe baseline gates; no commits. Complete.</phase>
-    <phase id="1">Public-contract hardening: P0.1 is the expanded atom. P0.2-P0.5, P0.7 and Git decision P0.9 follow the owner decision boundary. Exit: exact existing fixture compatibility and complete project floor.</phase>
+    <phase id="1">Public-contract hardening: P0.1-P0.5 and P0.9 are implemented candidates. P0.7 is next; the delegated technical decisions and remaining owner boundaries are recorded below. Exit: exact existing fixture compatibility and complete project floor.</phase>
     <phase id="2" depends="1">Licensing and release evidence: P0.10 and the evidence portion of P0.7. Expand after organization-policy decisions.</phase>
     <phase id="3" depends="1">Local workspace lifecycle: P0.11; workspace pairs, unique refs and writer refusal.</phase>
     <phase id="4" depends="1">Trusted external type supply: P0.3/P0.4 with a real partner; offline install, integrity and pre-import handshake proof.</phase>
     <phase id="5" depends="1 2">Measured expansion with real consumers: codec seam P0.6, coordinator contract P0.8, build recipe design P0.12; new implementation follows its polygon.</phase>
   </route>
-  <current-atom id="P0.1">
-    <perimeter>tools/check-public-formats.mjs, tools/test/public-formats.test.mjs, public-formats.json, PROP-017, package.json and campaign record.</perimeter>
-    <acceptance>npm run formats:check; existing typecheck, runtime, docs and trace checks; explicit-glob Prettier. Retain full-floor blockers separately instead of calling the phase green.</acceptance>
-    <negative-proof>The focused suite removes a row and migration evidence, changes schema versions, introduces an unregistered unversioned schema, corrupts references and checks scanner fixtures across package and tool roots without importing code.</negative-proof>
-    <safe-stop>Candidate commit plus this record; no consumer data or upstream tree mutation. Resume with the catalog and original proposal.</safe-stop>
+  <current-atom id="P0.7" state="planned">
+    <perimeter>Component release descriptor contract, library construction and immutable persistence, package/publish integration, public-format catalog, operational docs and focused release evidence tests.</perimeter>
+    <acceptance>Each successful single-component package/publish yields an immutable descriptor with component identity, revision/provenance, patchset commit, type declaration/contract, discipline, generated tip, artifact hashes, recipe identity, licence-policy digest and distribution evidence references. Unknown or unverified evidence must remain explicit. Finish with the complete native project floor.</acceptance>
+    <negative-proof>Reject altered/foreign descriptors, conflicting immutable writes, escaping artifact paths and false evidence claims. Prove deterministic retries and preserve existing publish leases, tag immutability and package restore behavior.</negative-proof>
+    <safe-stop>P0.9 is committed as 49f41d2 with complete runtime validation. P0.7 has not been implemented; legal rulings, signing custody and the real external partner remain outside the delegated technical defaults.</safe-stop>
   </current-atom>
   <quick-start><![CDATA[
 git status --short
@@ -51,6 +51,7 @@ npm run floor
     <open>The owner delegated unattended development on 2026-10-03. Reversible technical defaults follow the source proposal and are recorded in product contracts; commercial legal rulings, signing custody and a real external-type partner remain external boundaries. The source decision inventory is the eight numbered items in the source plan's “Решения владельца перед кодированием”: Git boundary, discipline axis, schema migration, component/coordinator split, registry/policy trust, runtime inclusion, commercial notice ruling, signing and type namespace ownership. Inventory work does not ratify them.</open>
   </review-points>
   <execution-ledger>
+    <entry date="2026-10-03">P0.9 implemented in 49f41d2: explicit config v4 accepts a missing human tag; operational keys use the full SHA and literal tag stamps stay empty. v2/v3 ordinary config bytes and tagged names remain unchanged. New resolutions record resolvedAt; optional provenance is declaration data, not authenticated evidence. Cycle state 3 and stabilization report 2 carry new evidence without widening old formats. CLI hard-crash recovery proves both tag and SHA paths through completion even after deleting the original Git tag. The final offline non-root Linux snapshot passes 208 test files, 2727 tests (one file/four existing conditional cases skipped), all format/receipt/typecheck/runtime/trace/docs/supply checks and the installed native structural floor with eight frozen findings and zero new. A final type-only restoration of PinConfig readonly fields passes current typecheck and the 262-file runtime comparison. Negative journal tests reject new pin evidence in old state/report versions. Supporting fixture correction: product tests distinguish a literal human tag from a derived SHA branch key.</entry>
     <entry date="2026-10-03">Process disappearance race fixed in d9b1041: ENOENT/ESRCH mean gone, while EACCES/EPERM remain fail closed. All four focused cases and the 18-case crash/resume matrix pass in the final offline non-root Linux snapshot. Formatting, public formats, installed receipts, typecheck, runtime, trace, docs, supply checks, the complete Vitest suite and native structural floor pass. Structural conform retains eight frozen findings with zero new; specmap is clean with its existing zero-code extraction warning. The npm Vibe launcher compatibility issue is bypassed through the installed in-place native engine, not by disabling additional checks.</entry>
     <entry date="2026-10-03">P0.5 candidate adds config v3 with explicit minimal-intervention@1, read-only-by-default config migrate and a lock/cross-operation/CAS guarded --write. Legacy v2 retains ordinary config/inventory/fingerprint bytes; explicit v3 binds the profile into delta/history fingerprint and verification evidence. Focused compatibility and CLI checks pass. The complete Linux suite passes all 206 test files (four platform/optional cases remain skipped by their existing conditions).</entry>
     <entry date="2026-10-03">Structural cleanup: package routing/process seams moved in 0a5844d; declaration fixture formatting 0dd7d63. Config diagnostics moved behind their own seam. A native in-place conform check now has 8 frozen findings and zero new findings without changing the baseline. Native specmap regenerated 31 added units; code trace remains the non-vacuous scope gate (specmap still reports its existing zero-code extraction limitation).</entry>
@@ -63,7 +64,7 @@ npm run floor
   </execution-ledger>
   <deferrals>
     <item owner="maintainer" trigger="before Phase 1 acceptance">Restore a runnable full baseline floor: Windows formatting invocation, compatible Vibe dispatch, symlink privileges and slow Git fixture execution. Preserve existing checks; do not suppress failures.</item>
-    <item owner="maintainer" trigger="P0.1 acceptance">Complete dedicated conventions and offline supply-kit conformance coverage; catalog testGap entries retain these missing proofs.</item>
-    <item owner="owner" trigger="before dependent public-contract changes">Resolve the source proposal's architectural decision list; continue through the named P0.2-P0.12 route afterwards.</item>
+    <item owner="maintainer" trigger="P0.1 acceptance">Dedicated conventions, supply-kit and fresh offline installation proofs have been completed and their former catalog test gaps closed; retain the execution-ledger evidence.</item>
+    <item owner="owner" trigger="before dependent public-contract changes">Delegated reversible technical defaults are recorded in product contracts. Obtain the real external partner and resolve commercial legal rulings, signing custody and type namespace ownership before their dependent external-supply/licensing acceptance.</item>
   </deferrals>
 </campaign>
