@@ -7,6 +7,31 @@ import { decodeUtf8Strict } from './bytes.js';
 import { hashContainedFile } from './containedFile.js';
 import { componentReleaseBodySchema } from './componentRelease.js';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
+/** The same contained tree walk used for artifact receipts, with paths relative to root. */
+export function captureReleaseEntries(root, outputs) {
+    try {
+        const physical = realpathSync(root);
+        const shape = lstatSync(physical);
+        const entries = new Map();
+        for (const output of [...new Set(outputs)].sort(compare)) {
+            const path = output.endsWith('/') ? output.slice(0, -1) : output;
+            const rows = [];
+            walk(physical, path, path, rows);
+            for (const row of rows) {
+                const existing = entries.get(row.path);
+                if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(row))
+                    throw new Error('overlapping artifact entries changed during capture');
+                entries.set(row.path, row);
+            }
+        }
+        if (!same(shape, lstatSync(physical)))
+            throw new Error('artifact root identity changed during entry capture');
+        return { ok: true, value: [...entries.values()].sort((left, right) => compare(left.path, right.path)) };
+    }
+    catch (error) {
+        return { ok: false, problem: { kind: 'storage', message: error instanceof Error ? error.message : 'artifact entry capture failed' } };
+    }
+}
 /**
  * Paths come from declared outputs after the packager finished, under its tree lock.
  * Links are hashed as link text, never followed; an escaping target refuses.

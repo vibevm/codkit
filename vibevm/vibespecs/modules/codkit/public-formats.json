@@ -454,6 +454,25 @@
       ]
     },
     {
+      "id": "distribution-declaration",
+      "field": "codkitDistributionDeclaration",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/distributionProvenance.ts",
+      "owner": "Codkit consumer distribution capability",
+      "trustBoundary": "Untrusted build mapping is checked against fresh contained source/actual artifact bytes and separately trusted organization authority.",
+      "compatibility": "Strict version 1; unknown identities, hidden payloads and rewritten source expressions refuse.",
+      "migration": "Reinspect source and artifacts; no automatic rewriting or inference of build/license permissions.",
+      "fingerprint": "Declaration/source/artifact receipts bind distribution evidence; existing delta/history fingerprints are unchanged.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-PROVENANCE",
+      "tests": [
+        "packages/codkit/test/unit/distributionProvenance.test.ts",
+        "packages/codkit/test/unit/consumerLicenseCheck.test.ts"
+      ]
+    },
+    {
       "id": "distribution-notices",
       "field": "codkitDistributionNotices",
       "version": 1,
@@ -469,6 +488,25 @@
       "contract": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-NOTICE-CHECK",
       "tests": [
         "packages/codkit/test/unit/distributionNotices.test.ts"
+      ]
+    },
+    {
+      "id": "distribution-provenance",
+      "field": "codkitDistributionProvenance",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/distributionProvenance.ts",
+      "owner": "Codkit consumer distribution capability",
+      "trustBoundary": "Untrusted build mapping is checked against fresh contained source/actual artifact bytes and separately trusted organization authority.",
+      "compatibility": "Strict version 1; unknown identities, hidden payloads and rewritten source expressions refuse.",
+      "migration": "Reinspect source and artifacts; no automatic rewriting or inference of build/license permissions.",
+      "fingerprint": "Declaration/source/artifact receipts bind distribution evidence; existing delta/history fingerprints are unchanged.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-PROVENANCE",
+      "tests": [
+        "packages/codkit/test/unit/distributionProvenance.test.ts",
+        "packages/codkit/test/unit/consumerLicenseCheck.test.ts"
       ]
     },
     {

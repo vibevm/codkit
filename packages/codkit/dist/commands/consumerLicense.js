@@ -1,6 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-019#CONSUMER-LICENSE-CLI */
 // Explicit profile selection; the patchset cannot select a policy directory.
 import { resolve } from 'node:path';
+import { z } from 'zod';
 import { commandFlagValue, EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, patchesRoot } from '../lib/command.js';
 import { checkConsumerLicenses } from '../lib/consumerLicenseCheck.js';
 import { organizationPolicyRoot, readOrganizationPolicy } from '../lib/organizationPolicyStore.js';
@@ -36,7 +37,7 @@ export const consumerLicenseCheckCommand = {
                 hint: 'fix consumer declarations under the selected profile'
             });
         ctx.out.info(`${report.checked.length} consumer files checked, ${report.problems.length} problems`);
-        ctx.out.setData(report);
+        ctx.out.setData(z.json().parse(report));
         return report.status === 'complete' ? EXIT_OK : EXIT_CHECK_FAILED;
     }
 };

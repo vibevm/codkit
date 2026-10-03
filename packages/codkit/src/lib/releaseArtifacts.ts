@@ -18,7 +18,32 @@ type Row = {
 	readonly sha256?: string;
 	readonly bytes?: number;
 };
+export type ReleaseArtifactEntry = Row;
 type Probe = { readonly absolute: string; readonly parent: string; readonly parentShape: Stats; readonly shape: Stats };
+
+/** The same contained tree walk used for artifact receipts, with paths relative to root. */
+export function captureReleaseEntries(root: string, outputs: readonly string[]): ComponentReleaseResult<readonly ReleaseArtifactEntry[]> {
+	try {
+		const physical = realpathSync(root);
+		const shape = lstatSync(physical);
+		const entries = new Map<string, Row>();
+		for (const output of [...new Set(outputs)].sort(compare)) {
+			const path = output.endsWith('/') ? output.slice(0, -1) : output;
+			const rows: Row[] = [];
+			walk(physical, path, path, rows);
+			for (const row of rows) {
+				const existing = entries.get(row.path);
+				if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(row))
+					throw new Error('overlapping artifact entries changed during capture');
+				entries.set(row.path, row);
+			}
+		}
+		if (!same(shape, lstatSync(physical))) throw new Error('artifact root identity changed during entry capture');
+		return { ok: true, value: [...entries.values()].sort((left, right) => compare(left.path, right.path)) };
+	} catch (error) {
+		return { ok: false, problem: { kind: 'storage', message: error instanceof Error ? error.message : 'artifact entry capture failed' } };
+	}
+}
 
 /**
  * Paths come from declared outputs after the packager finished, under its tree lock.

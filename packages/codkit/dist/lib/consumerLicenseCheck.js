@@ -20,7 +20,15 @@ export const consumerLicenseReportSchema = z.strictObject({
         license: z.string(),
         sha256: z.string().regex(/^[0-9a-f]{64}$/),
         carrierPath: z.string().min(1),
-        carrierSha256: z.string().regex(/^[0-9a-f]{64}$/)
+        carrierSha256: z.string().regex(/^[0-9a-f]{64}$/),
+        provenance: z
+            .strictObject({
+            registry: z.string().min(1),
+            sha256: z.string().regex(/^[0-9a-f]{64}$/),
+            copyright: z.string().min(1),
+            comment: z.string()
+        })
+            .optional()
     })),
     problems: z.array(z.strictObject({ file: z.string(), message: z.string() })),
     status: z.enum(['complete', 'incomplete'])
@@ -100,6 +108,17 @@ export function checkConsumerLicenses(root, selected) {
                 const declaration = annotations.find((entry) => entry.license !== null && entry.copyright !== null);
                 if (!own && declaration === undefined)
                     problems.push({ file: path, message: 'third-party consumer file requires provenance annotation' });
+                if (!own && declaration !== undefined && !/^third-party;\s*\S/u.test(declaration.comment))
+                    problems.push({ file: path, message: 'third-party provenance annotation requires a nonempty origin comment' });
+                if (!own && declaration !== undefined) {
+                    const declaredHolders = declaration.copyright
+                        ?.split('\n')
+                        .map((line) => copyrightMatch(`SPDX-FileCopyrightText: ${line}`))
+                        .filter((match) => match !== null)
+                        .map(holderOf) ?? [];
+                    if (holders.filter((holder) => !selected.policy.holders.includes(holder)).some((holder) => !declaredHolders.includes(holder)))
+                        problems.push({ file: path, message: 'consumer carrier disagrees with provenance copyright holders' });
+                }
                 if (declaration !== undefined && declaration.license !== expression)
                     problems.push({ file: path, message: 'consumer carrier disagrees with provenance annotation' });
                 checked.push({
@@ -110,7 +129,19 @@ export function checkConsumerLicenses(root, selected) {
                     license: expression,
                     sha256: createHash('sha256').update(bytes(path)).digest('hex'),
                     carrierPath,
-                    carrierSha256: createHash('sha256').update(bytes(carrierPath)).digest('hex')
+                    carrierSha256: createHash('sha256').update(bytes(carrierPath)).digest('hex'),
+                    ...(!own && declaration !== undefined
+                        ? {
+                            provenance: {
+                                registry: declaration.registry ?? 'REUSE.toml',
+                                sha256: createHash('sha256')
+                                    .update(bytes(declaration.registry ?? 'REUSE.toml'))
+                                    .digest('hex'),
+                                copyright: declaration.copyright ?? '',
+                                comment: declaration.comment
+                            }
+                        }
+                        : {})
                 });
             }
             catch (error) {

@@ -78,6 +78,21 @@ it('keeps foreign holders in third-party scope and requires provenance before ac
 		'version = 1\n[[annotations]]\npath = "vendor.ts"\nprecedence = "closest"\nSPDX-FileCopyrightText = "2026 External Vendor"\nSPDX-License-Identifier = "MIT"\nSPDX-FileComment = "third-party; fixture provenance"\n'
 	);
 	expect(checkConsumerLicenses(dir, selected())).toMatchObject({ status: 'complete', checked: [{ kind: 'third-party', license: 'MIT' }] });
+	const before = checkConsumerLicenses(dir, selected());
+	writeFileSync(
+		join(dir, 'REUSE.toml'),
+		'version = 1\n[[annotations]]\npath = "vendor.ts"\nSPDX-FileCopyrightText = "2026 External Vendor"\nSPDX-License-Identifier = "MIT"\nSPDX-FileComment = "third-party; another fixture origin"\n'
+	);
+	expect(checkConsumerLicenses(dir, selected()).checked[0]?.provenance?.sha256).not.toBe(before.checked[0]?.provenance?.sha256);
+	writeFileSync(
+		join(dir, 'REUSE.toml'),
+		'version = 1\n[[annotations]]\npath = "vendor.ts"\nSPDX-FileCopyrightText = "2026 Different Vendor"\nSPDX-License-Identifier = "MIT"\nSPDX-FileComment = "third-party;"\n'
+	);
+	const invalid = checkConsumerLicenses(dir, selected());
+	expect(invalid.status).toBe('incomplete');
+	expect(invalid.problems.map((entry) => entry.message)).toEqual(
+		expect.arrayContaining([expect.stringContaining('nonempty origin'), expect.stringContaining('copyright holders')])
+	);
 });
 it('uses sidecars for binary bytes but refuses orphan and disagreeing carriers', () => {
 	const dir = root();
