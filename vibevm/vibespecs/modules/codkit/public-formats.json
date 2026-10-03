@@ -2,6 +2,25 @@
   "codkitPublicFormats": 1,
   "formats": [
     {
+      "id": "artifact-tree",
+      "field": "codkitArtifactTree",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/releaseArtifacts.ts",
+      "owner": "Codkit release artifact capture",
+      "trustBoundary": "Observed physical output entries enter a canonical release hash stream; links are never followed and escaping paths refuse.",
+      "compatibility": "Exact canonical stream 1; descriptor schema 1 directory receipts imply this algorithm. Changing the stream requires coordinated version review.",
+      "migration": "No automatic rewriting of artifact receipts. New bytes/layout yield a new digest and descriptor.",
+      "fingerprint": "Not a delta/generated-history input. Canonical tree bytes produce the directory artifact SHA-256 in component descriptors.",
+      "contract": "spec://codkit/modules/codkit/PROP-018#COMPONENT-ARTIFACT-TREE",
+      "tests": [
+        "packages/codkit/test/unit/releaseArtifacts.test.ts",
+        "packages/codkit/test/unit/containedHash.test.ts"
+      ]
+    },
+    {
       "id": "build-daemon",
       "field": "codkitBuildDaemon",
       "version": 1,

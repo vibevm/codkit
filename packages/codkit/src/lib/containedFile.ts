@@ -28,7 +28,7 @@
 // a separate responsibility and lives in `containedGeneration.ts`: it needs an
 // injected liveness oracle, which nothing else here does.
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
 	chmodSync,
 	closeSync,
@@ -124,6 +124,39 @@ function replaceTemporaryFile(temporary: string, absolutePath: string, options: 
  * and the bytes that were read are never used.
  */
 export function readContainedFile(root: string, repositoryPath: string, options: ContainedFileOptions): ContainedFileRead {
+	const read = readContainedValue(root, repositoryPath, options, readAllFrom);
+	return read.state === 'absent' ? read : { state: 'ok', bytes: read.value };
+}
+
+export type ContainedFileHash = { readonly state: 'absent' } | { readonly state: 'ok'; readonly sha256: string; readonly bytes: number };
+
+/** The same contained descriptor proof, with bounded memory for large release artifacts. */
+export function hashContainedFile(root: string, repositoryPath: string, options: ContainedFileOptions): ContainedFileHash {
+	const read = readContainedValue(root, repositoryPath, options, (handle) => {
+		const before = fstatSync(handle);
+		const hash = createHash('sha256');
+		const buffer = Buffer.alloc(64 * 1024);
+		let bytes = 0;
+		for (;;) {
+			const count = readSync(handle, buffer, 0, buffer.length, null);
+			if (count === 0) break;
+			hash.update(buffer.subarray(0, count));
+			bytes += count;
+		}
+		const after = fstatSync(handle);
+		if (before.size !== bytes || after.size !== bytes || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs)
+			refuse(options, 'changed while its release digest was being read', 'retry from a stable package artifact');
+		return { sha256: hash.digest('hex'), bytes };
+	});
+	return read.state === 'absent' ? read : { state: 'ok', ...read.value };
+}
+
+function readContainedValue<T>(
+	root: string,
+	repositoryPath: string,
+	options: ContainedFileOptions,
+	consume: (handle: number) => T
+): { readonly state: 'absent' } | { readonly state: 'ok'; readonly value: T } {
 	const segments = repositoryPath.split('/');
 	const leaf = segments[segments.length - 1] ?? '';
 	if (leaf === '' || segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
@@ -207,7 +240,7 @@ export function readContainedFile(root: string, repositoryPath: string, options:
 			// The path moved between the open and the proof; conservative refusal.
 			refuse(options, 'changed while it was being read', 're-run the command');
 		}
-		return { state: 'ok', bytes: readAllFrom(handle) };
+		return { state: 'ok', value: consume(handle) };
 	} catch (error) {
 		if (isCkError(error)) {
 			throw error;

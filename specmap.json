@@ -11453,7 +11453,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:a265b7a50885898493d359e3219a82d6969f356f72b802338c6e10351b2f59c6",
+      "content_hash": "sha256:76572cbd4b885dff7ab37387d029418f8a13838c55664a891af9d73c5693193b",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "PROP-018: Immutable component release descriptors",
@@ -11462,7 +11462,7 @@
     },
     {
       "anchor": "format",
-      "content_hash": "sha256:09d8e879c040f4d22ce61cf8118f67320e9a032ecc9a1d64c093b72b2ee95d0d",
+      "content_hash": "sha256:9756be27d443e3dfb034fec804b8ab752c317c725c90a137b1c07a7b1230e3da",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Descriptor data and integrity",
@@ -11497,12 +11497,30 @@
       "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-IMMUTABLE"
     },
     {
+      "anchor": "COMPONENT-RELEASE-ARTIFACTS",
+      "content_hash": "sha256:4b8c912867278c6ffa52e22c0a0be5e4e7c47b84d4cae50ea1e1821700939454",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "Artifact capture reads real selected outputs under a single physical root. Regular-file SHA-256 uses the existing contained descriptor proof and 64 KiB streaming buffer, with size/mtime/ctime stability checks. It returns absence for missing files, never an invented digest. Artifact paths and parents are contained; inode/mode/metadata checks refuse substitutions. Symlinks are represented by their exact UTF-8 link text bytes, never by following their target; a target escaping the physical root refuses. @status:impl/done",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-ARTIFACTS"
+    },
+    {
+      "anchor": "COMPONENT-ARTIFACT-TREE",
+      "content_hash": "sha256:da3e60dfde02827e2197b7d242f57e8f8bc34aaa26835fd3c8b03746dcb49832",
+      "doc_path": "modules/codkit/PROP-018",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
+      "heading": "A directory digest is SHA-256 of compact UTF-8 JSON {codkitArtifactTree:1, entries:[...]}. Entries sort by UTF-8 path bytes; the root has path empty, and each entry names kind and permission mode masked by 07777. Empty directories are included. File/link entries additionally carry SHA-256 and payload byte count. Directory bytes is the sum of those payload counts, not a fictional archive size. This canonical tree stream is distinct from hashing a physical archive file; changing its rules requires coordinated descriptor/tree-format compatibility review. @status:impl/done",
+      "line": 10,
+      "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-ARTIFACT-TREE"
+    },
+    {
       "anchor": "COMPONENT-RELEASE-EVIDENCE",
       "content_hash": "sha256:a16da9fdbbe14d31474a5278539934e2c4992fdde37a5710c18b87c819927cf1",
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Completeness is relative to the explicit selected policy requirements and their actual evidence receipts. Emitters must obtain hashes from the objects and bytes they observed, name the licence-policy scope, retain unavailable evidence as missing and avoid inventing an external approval. The schema alone cannot attest how facts were obtained. Package/publish integration must bind the descriptor to the exact checked inputs and preserve package restore, publish leases, immutable tags and existing operation refusal behavior. @status:spec/done",
-      "line": 9,
+      "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-018#COMPONENT-RELEASE-EVIDENCE"
     },
     {
@@ -11511,7 +11529,7 @@
       "doc_path": "modules/codkit/PROP-018",
       "file": "vibevm/vibespecs/modules/codkit/PROP-018-component-releases.xml",
       "heading": "Implement the source proposal's single-component release descriptor before a coordinator. Use a content-addressed immutable receipt rather than a mutable latest-release pointer: deterministic retries can compare exact bytes and conflicting data remains inspectable. Do not introduce signatures or organization commercial rulings without the corresponding external inputs. Revisit distribution requirements when P0.10 supplies trusted organization enforcement and real artifact evidence. @status:impl/done",
-      "line": 10,
+      "line": 12,
       "uri": "spec://codkit/modules/codkit/PROP-018#DECISION-COMPONENT-RECEIPT"
     },
     {
