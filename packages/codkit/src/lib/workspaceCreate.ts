@@ -17,7 +17,8 @@ import {
 	updateWorkspaceRegistry,
 	workspaceCheckoutSchema,
 	workspaceRecordSchema,
-	workspaceTaskBranch
+	workspaceTaskBranch,
+	workspaceRefPrefixes
 } from './workspaceRegistry.ts';
 import type { WorkspaceRecord } from './workspaceRegistry.ts';
 
@@ -104,7 +105,7 @@ export function createWorkspace(options: {
 	});
 }
 
-export function verifyWorkspaceCheckout(record: WorkspaceRecord, role: 'patchset' | 'fork'): void {
+export function verifyWorkspaceCheckout(record: WorkspaceRecord, role: 'patchset' | 'fork', allowGenerated = false): void {
 	const expected = record[role];
 	const actual = repository(expected.path);
 	if (actual.path !== realpathSync(expected.path) || actual.common !== expected.commonDirectory)
@@ -116,7 +117,13 @@ export function verifyWorkspaceCheckout(record: WorkspaceRecord, role: 'patchset
 	)
 		throw ckError('CONFIG', 'workspace path is not an actual registered Git worktree');
 	const branch = runGit({ cwd: expected.path, args: ['symbolic-ref', '--quiet', '--short', 'HEAD'] });
-	if (expected.branch === null ? branch.status === 0 : branch.status !== 0 || branch.stdout.trim() !== expected.branch)
+	const prefixes = workspaceRefPrefixes(record.id);
+	const generated =
+		allowGenerated &&
+		role === 'fork' &&
+		branch.status === 0 &&
+		[prefixes.generatedBranchPrefix, prefixes.cycleBranchPrefix].some((prefix) => branch.stdout.trim().startsWith(prefix));
+	if (expected.branch === null ? branch.status === 0 && !generated : branch.status !== 0 || branch.stdout.trim() !== expected.branch)
 		throw ckError('CONFIG', 'workspace checkout branch/detached state differs from recorded custody');
 }
 

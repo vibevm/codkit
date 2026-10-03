@@ -11678,7 +11678,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:f18a2a5f64dc7012ecda25a0afdac78ea32bf2a3f6a3bc8a17ffcb037987d521",
+      "content_hash": "sha256:22987f21fbc3f196a4571e791d49836f23b1ea473952f6b97df955f29429ff6e",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "PROP-020: Named local workspace pairs and checkout writers",
@@ -11687,7 +11687,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:482e1ce738274d1f6280b115eaa9e8aaf50d6a54309ceae13c84fe1770fb7c08",
+      "content_hash": "sha256:62f382b5dadd0d0fb16be726ffb9ba600214efde0e891ee5566db3680a54ae31",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Checkout custody and workspace identity",
@@ -11722,13 +11722,31 @@
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CREATE"
     },
     {
+      "anchor": "WORKSPACE-FINISH",
+      "content_hash": "sha256:fe2e331c09df3813ca538d69f1bc64c029a0866b10798b0e7aadbef90875dcba",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Finish verifies both actual registered checkout identities and immutable role receipts while holding checkout writer capabilities. It refuses dirty/untracked task work, moved or missing custody, unextracted detached history, stale generated cache/mark/fingerprint, own/upstream drift and active/unresolved daemons. An untouched detached baseline can finish without fabricated apply evidence. A finished record preserves patchset/fork immutable heads and optional delta fingerprint with timestamp; finished/removing/removed states require that proof. Marked generated fork branches must belong to the workspace UUID namespace. Finish preserves both checkout directories; deletion/cleanup remains a separate action and integration is still pending. @status:impl/wip",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-FINISH"
+    },
+    {
       "anchor": "WORKSPACE-PAIR-LIFECYCLE",
       "content_hash": "sha256:6bb5b850179ae1708fa69b478eddbd83ad344e69f3c3d18f966f5ebb5ada6503",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "A named workspace is a local patchset task worktree and fork worktree pair with stable UUID, type/pin, ref namespace and owner/session metadata. Create/list/show/finish/remove operate on validated real Git worktrees. Generated refs include workspace UUID. Named launcher resolution supplies where roots and refuses conflicting root flags. Finish proves save/clean and no live writers/daemons before cleanup; removal never destroys dirty, foreign or unowned roots. Without named selection legacy root/ref behavior remains compatible. @status:spec/done",
-      "line": 9,
+      "line": 10,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-PAIR-LIFECYCLE"
+    },
+    {
+      "anchor": "WORKSPACE-REMOVE",
+      "content_hash": "sha256:b58d9c17cb47613363ede900c1b94058fd0ca893c1c6d303d401af2e04f86eb9",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Removal requires a finished proof and both unchanged recorded heads. While holding checkout writer capabilities it checks actual Git registration, exact role receipts, daemon state, Git cleanliness and a physical inventory including ignored files and empty directories. Only tracked files and validated Codkit receipts, cache and held lock generations are disposable; submodules, special files, foreign or unowned data refuse. Both heads are retained in immutable UUID-scoped repository refs before journaling removing. Git deletes only the verified worktree roots; the registry and retained refs survive. Retry accepts an absent checkout only in removing state with no remaining Git registration and the matching preserved head. A changed preserved ref refuses. Removed is recorded after both removals and repeating removed is inert. Public CLI and full phase acceptance remain pending. @status:impl/wip",
+      "line": 11,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REMOVE"
     },
     {
       "anchor": "root",

@@ -11,7 +11,7 @@ import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { readTypeManifest } from '../types/manifest.js';
 import { effectiveRegistry } from '../types/registry.js';
-import { pathsOverlap, updateWorkspaceRegistry, workspaceCheckoutSchema, workspaceRecordSchema, workspaceTaskBranch } from './workspaceRegistry.js';
+import { pathsOverlap, updateWorkspaceRegistry, workspaceCheckoutSchema, workspaceRecordSchema, workspaceTaskBranch, workspaceRefPrefixes } from './workspaceRegistry.js';
 export function createWorkspace(options) {
     const parent = realpathSync(options.directory);
     const patches = repository(options.patchesRepository);
@@ -83,7 +83,7 @@ export function createWorkspace(options) {
         return active;
     });
 }
-export function verifyWorkspaceCheckout(record, role) {
+export function verifyWorkspaceCheckout(record, role, allowGenerated = false) {
     const expected = record[role];
     const actual = repository(expected.path);
     if (actual.path !== realpathSync(expected.path) || actual.common !== expected.commonDirectory)
@@ -93,7 +93,12 @@ export function verifyWorkspaceCheckout(record, role) {
     if (!entries.some((entry) => entry.includes(`worktree ${actual.path.replaceAll('\\', '/')}`) || entry.includes(`worktree ${actual.path}`)))
         throw ckError('CONFIG', 'workspace path is not an actual registered Git worktree');
     const branch = runGit({ cwd: expected.path, args: ['symbolic-ref', '--quiet', '--short', 'HEAD'] });
-    if (expected.branch === null ? branch.status === 0 : branch.status !== 0 || branch.stdout.trim() !== expected.branch)
+    const prefixes = workspaceRefPrefixes(record.id);
+    const generated = allowGenerated &&
+        role === 'fork' &&
+        branch.status === 0 &&
+        [prefixes.generatedBranchPrefix, prefixes.cycleBranchPrefix].some((prefix) => branch.stdout.trim().startsWith(prefix));
+    if (expected.branch === null ? branch.status === 0 && !generated : branch.status !== 0 || branch.stdout.trim() !== expected.branch)
         throw ckError('CONFIG', 'workspace checkout branch/detached state differs from recorded custody');
 }
 function ensureCheckout(record, role) {

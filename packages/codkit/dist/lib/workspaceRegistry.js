@@ -47,9 +47,22 @@ export const workspaceRecordSchema = z
     pin: revisionPinSchema,
     owner: z.strictObject({ id: z.string().min(1), session: z.string().min(1) }),
     createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime()
+    updatedAt: z.iso.datetime(),
+    finished: z
+        .strictObject({
+        patchsetCommit: commit,
+        forkCommit: commit,
+        deltaFingerprint: z
+            .string()
+            .regex(/^[0-9a-f]{64}$/)
+            .nullable(),
+        at: z.iso.datetime()
+    })
+        .optional()
 })
     .superRefine((record, ctx) => {
+    if (['finished', 'removing', 'removed'].includes(record.state) && record.finished === undefined)
+        ctx.addIssue({ code: 'custom', message: 'finished/removal states require preserved finish proof' });
     if (record.patchset.branch !== workspaceTaskBranch(record.id) || record.fork.branch !== null)
         ctx.addIssue({ code: 'custom', message: 'workspace task branch/detached fork must match stable identity' });
     if (record.fork.baseCommit !== record.pin.sha)
