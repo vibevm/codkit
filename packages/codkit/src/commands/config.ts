@@ -20,12 +20,12 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 	ctx.out.info(
 		current.plan.changed
-			? `config migration: ${current.plan.from} -> 3, ${write ? 'written' : 'preview; use --write to apply'}`
-			: 'config migration: already schema 3'
+			? `config migration: ${current.plan.from} -> 4, ${write ? 'written' : 'preview; use --write to apply'}`
+			: 'config migration: already schema 4'
 	);
 	ctx.out.setData({
 		from: current.plan.from,
-		to: 3,
+		to: 4,
 		discipline: current.plan.config.discipline ?? null,
 		changed: current.plan.changed,
 		written: write && current.plan.changed
@@ -43,7 +43,7 @@ export const configCommand: CommandDefinition = {
 };
 export const configMigrateCommand: CommandDefinition = {
 	name: 'config migrate',
-	summary: 'preview or explicitly migrate config v2 to v3',
+	summary: 'preview or explicitly migrate config v2/v3 to v4',
 	configMode: 'none',
 	maxArgs: 0,
 	commandFlags: [WRITE],

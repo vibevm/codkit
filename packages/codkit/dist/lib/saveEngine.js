@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
+import { pinKey } from './pinIdentity.js';
 // The save engine: take the work out of the fork tree and put it into patchset.
 // The pseudocode of PROP-008 sec. 4 is normative and this file follows its order.
 //
@@ -63,7 +64,7 @@ export function runSave(options) {
     // not judge, what the mirror extracts from, and what a positional path may
     // name as own code.
     const roots = ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
-    const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+    const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
     // 0. A live two-way sync leaves the tree and the patch set half-mutated;
     // extracting into that state is what this refusal prevents (PROP-008
     // ##SYNC-TWO-PASS, decision D20). Only the sync that owns the record passes
@@ -706,7 +707,7 @@ function headerFor(patchesDir, treeDir, state, store, target, artifact, existing
                 reason: existing.header.reason,
                 link: existing.header.link,
                 cause: selectedOverride.cause,
-                pin: `${selectedOverride.pin.tag}@${selectedOverride.pin.sha}`,
+                pin: `${pinKey(selectedOverride.pin)}@${selectedOverride.pin.sha}`,
                 contractTests: existing.header.contractTests
             }),
             fromPending: localOverride !== null
@@ -729,7 +730,7 @@ function headerFor(patchesDir, treeDir, state, store, target, artifact, existing
             reason: pending.reason,
             link: pending.link,
             cause: 'none',
-            pin: `${config.pin.tag}@${config.pin.sha}`,
+            pin: `${pinKey(config.pin)}@${config.pin.sha}`,
             contractTests: []
         }),
         fromPending: true
@@ -756,7 +757,7 @@ function validateHeaderOverrides(options) {
 function assertAdvancedPendingArtifact(treeDir, state, target, patch, pending, config) {
     if (rebaseHeaderMetadataSha256(patch.header) !== pending.headerMetadataSha256 ||
         patch.header.cause !== pending.cause ||
-        patch.header.pin !== `${pending.pin.tag}@${pending.pin.sha}`) {
+        patch.header.pin !== `${pinKey(pending.pin)}@${pending.pin.sha}`) {
         throw ckError('ARTIFACT-BROKEN', `${pending.artifactPath}: transitioned conflict artifact header is not exact`);
     }
     const pinBytes = bytesAtPin(treeDir, config.pin.sha, target);
@@ -776,7 +777,7 @@ function validateHeaderOverride(override, config) {
     if (override.cause !== 'none' && !/^[0-9a-f]{40}$/.test(override.cause)) {
         throw ckError('CONFIG', `invalid cycle patch cause ${JSON.stringify(override.cause)}`);
     }
-    if (override.pin.tag !== config.pin.tag || override.pin.sha !== config.pin.sha) {
+    if (pinKey(override.pin) !== pinKey(config.pin) || override.pin.sha !== config.pin.sha) {
         throw ckError('CONFIG', `${override.artifactPath}: cycle patch header override does not match the configured pin`);
     }
 }

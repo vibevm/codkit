@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey, requiresRevisionPin } from './pinIdentity.js';
 // Durable init/status/restart transaction orchestration. Every externally
 // visible mutation is preceded by canonical state, and every retry reconciles
 // exact Git/config facts before advancing one idempotent step.
@@ -6,15 +7,13 @@ import { randomUUID } from 'node:crypto';
 import { CONFIG_FILE_NAME } from './configFile.js';
 import { writeConfigPin } from './configPin.js';
 import { readCycleControlRecord, removeCycleControlRecord, writeCycleControlRecord } from './cycleControlRecord.js';
-import { assertOnlyCycleStatus, assertSourceToTargetAncestry, assertValidBranch, assertPatchSetRepositoryClean, branchTip, bumpSubject, bumpTrailer, configAt, currentBranchName, findCycleBump, headCommit, mustGit, readPatchSetStatus, recognizeBump, resolveTargetPin, samePin } from './cycleControlGit.js';
+import { withCycleLocks, assertOnlyCycleStatus, assertSourceToTargetAncestry, assertValidBranch, assertPatchSetRepositoryClean, branchTip, bumpSubject, bumpTrailer, configAt, currentBranchName, findCycleBump, headCommit, mustGit, readPatchSetStatus, recognizeBump, resolveTargetPin, samePin } from './cycleControlGit.js';
 import { assertCurrentCycleBranch, completedRestartResult, restartAction, resumeRestart } from './cycleRestart.js';
 import { CYCLE_ARTIFACT_OUTCOMES, CYCLE_STATE_SCHEMA_VERSION, nodeCycleStateFileSystem } from './cycleState.js';
 import { readCycleState, writeCycleState } from './cycleState.js';
-import { treeId } from './fingerprint.js';
 import { gitLocal, runGit } from './gitx.js';
 import { acquireLock } from './lock.js';
 import { ckError } from './messages.js';
-const PATCHSET_CYCLE_LOCK_ID = 'cycle-global';
 export { resolveTargetPin } from './cycleControlGit.js';
 export function startCycle(options) {
     const dependencies = resolvedDependencies(options.dependencies);
@@ -26,8 +25,17 @@ export function startCycle(options) {
             }
             completedRestartResult(options.patchesDir, control, options.config.pin, dependencies.git);
         }
-        const targetPin = resolveTargetPin(options.forkDir, options.config.upstreamAnchorCommit, options.target, dependencies.git);
+        let targetPin = resolveTargetPin(options.forkDir, options.config.upstreamAnchorCommit, options.target, dependencies.git, options.config.codkitConfig, dependencies.now().toISOString());
         const existing = readCycleState(options.patchesDir, dependencies.stateFileSystem);
+        if (options.resumeInit === true && options.config.codkitConfig >= 4) {
+            if (existing?.phase !== 'init' ||
+                existing.transaction?.kind !== 'init' ||
+                options.target !== existing.targetPin.sha ||
+                targetPin.sha !== existing.targetPin.sha ||
+                targetPin.date !== existing.targetPin.date)
+                throw ckError('CONFIG', 'init recovery does not match the recorded immutable target', 'inspect cycle status before recovery');
+            targetPin = existing.targetPin;
+        }
         if (existing !== null) {
             if (existing.phase === 'init' && existing.transaction?.kind === 'init') {
                 assertInitIdentity(existing, options, targetPin, dependencies.git);
@@ -43,7 +51,7 @@ export function startCycle(options) {
         }
         assertPatchSetRepositoryClean(options.patchesDir, dependencies.git);
         assertSourceToTargetAncestry(options.forkDir, options.config.pin, targetPin, dependencies.git);
-        const branch = `${options.config.cycleBranchPrefix}${targetPin.tag}`;
+        const branch = `${options.config.cycleBranchPrefix}${pinKey(targetPin)}`;
         assertValidBranch(options.patchesDir, branch, dependencies.git);
         const baseBranch = currentBranchName(options.patchesDir, dependencies.git);
         const baseCommit = headCommit(options.patchesDir, dependencies.git);
@@ -72,7 +80,7 @@ export function startCycle(options) {
 function recognizeCompletedInit(state, options, targetPin, git) {
     assertBranchMatchesConfig(state, options.config);
     if (!samePin(state.targetPin, targetPin) || !samePin(options.config.pin, state.targetPin)) {
-        throw ckError('CONFIG', 'completed init does not match the requested target/config pin', `inspect cycle status for ${state.targetPin.tag}`);
+        throw ckError('CONFIG', 'completed init does not match the requested target/config pin', `inspect cycle status for ${pinKey(state.targetPin)}`);
     }
     assertCurrentCycleBranch(options.patchesDir, state, git);
     const bump = requiredHeadBump(options.patchesDir, state, git);
@@ -202,9 +210,9 @@ function resumeInit(state, options, dependencies, initialWorkingPin, resumed, cy
                     args: [
                         'commit',
                         '--message',
-                        bumpSubject(state.targetPin.tag),
+                        bumpSubject(pinKey(state.targetPin)),
                         '--message',
-                        bumpTrailer(state.targetPin.tag),
+                        bumpTrailer(pinKey(state.targetPin)),
                         '--',
                         CONFIG_FILE_NAME
                     ],
@@ -281,17 +289,17 @@ function inspectInitStep(patchesDir, state, workingPin, git) {
             return 'complete';
         }
     }
-    throw initMismatch(state, `HEAD=${head}, config pin=${workingPin.tag}@${workingPin.sha}`);
+    throw initMismatch(state, `HEAD=${head}, config pin=${pinKey(workingPin)}@${workingPin.sha}`);
 }
 function assertInitIdentity(state, options, targetPin, git) {
     assertBranchMatchesConfig(state, options.config);
     if (!samePin(state.targetPin, targetPin)) {
-        throw ckError('CONFIG', 'cycle start target does not match the durable init transaction', `retry with ${state.targetPin.tag}`);
+        throw ckError('CONFIG', 'cycle start target does not match the durable init transaction', `retry with ${pinKey(state.targetPin)}`);
     }
     assertSourceToTargetAncestry(options.forkDir, state.sourcePin, state.targetPin, git);
 }
 function assertBranchMatchesConfig(state, config) {
-    const expected = `${config.cycleBranchPrefix}${state.targetPin.tag}`;
+    const expected = `${config.cycleBranchPrefix}${pinKey(state.targetPin)}`;
     if (state.branch !== expected) {
         throw ckError('CONFIG', `cycle state branch ${state.branch} does not match configured branch ${expected}`, 'restore the matching cycleBranchPrefix');
     }
@@ -306,7 +314,7 @@ function requiredHeadBump(patchesDir, state, git) {
 function makeState(sourcePin, targetPin, branch, now, step) {
     const timestamp = now.toISOString();
     return {
-        codkitCycleState: CYCLE_STATE_SCHEMA_VERSION,
+        codkitCycleState: requiresRevisionPin(sourcePin) || requiresRevisionPin(targetPin) ? CYCLE_STATE_SCHEMA_VERSION : 2,
         sourcePin,
         targetPin,
         branch,
@@ -343,7 +351,7 @@ function activeStatus(state, nextAction) {
 function initAction(step, state) {
     return {
         'create-branch': `create ${state.branch}`,
-        'write-config': `write target pin ${state.targetPin.tag}`,
+        'write-config': `write target pin ${pinKey(state.targetPin)}`,
         'stage-config': `stage ${CONFIG_FILE_NAME}`,
         'commit-bump': 'retry canonical bump commit',
         complete: 'finish init state and continue apply'
@@ -368,21 +376,6 @@ function resolvedDependencies(input) {
         acquireLock: input?.acquireLock ?? acquireLock,
         checkpoint: input?.checkpoint ?? (() => undefined)
     };
-}
-function withCycleLocks(patchesDir, forkDir, command, dependencies, body) {
-    const patchsetLock = dependencies.acquireLock(patchesDir, PATCHSET_CYCLE_LOCK_ID, command);
-    try {
-        const treeLock = dependencies.acquireLock(patchesDir, treeId(forkDir), command);
-        try {
-            return body(patchsetLock);
-        }
-        finally {
-            treeLock.release();
-        }
-    }
-    finally {
-        patchsetLock.release();
-    }
 }
 function configWriteOptions(dependencies, lock) {
     return {

@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.ts';
 import { createHash } from 'node:crypto';
 import { downChannel, loadBuildWatch } from './buildWrap.ts';
 import type { CiResult } from './ciEngine.ts';
@@ -104,7 +105,7 @@ export type StabilizeBasis = {
 	readonly red: readonly StabilizeRedItem[];
 };
 export type StabilizeDocument = {
-	readonly codkitCycleStabilize: 1;
+	readonly codkitCycleStabilize: 1 | 2;
 	readonly basis: StabilizeBasis;
 	readonly nextState: CycleState;
 	readonly digest: string;
@@ -190,7 +191,7 @@ async function planStabilize(options: ContinueCycleStabilizationOptions): Promis
 		execution = failedExecution(error);
 	}
 	const after = captureCycleLiveSnapshot(options.patchesDir, options.resolution.path, options.state.targetPin.sha);
-	const expectedForkRef = `refs/heads/${options.config.generatedBranchPrefix}${options.state.targetPin.tag}`;
+	const expectedForkRef = `refs/heads/${options.config.generatedBranchPrefix}${pinKey(options.state.targetPin)}`;
 	const stable =
 		options.runner === undefined
 			? concreteStabilizationWorldMatches(live, after, expectedForkRef, execution.build?.branchTip ?? null)
@@ -215,7 +216,7 @@ async function planStabilize(options: ContinueCycleStabilizationOptions): Promis
 		red
 	};
 	const base = {
-		codkitCycleStabilize: 1 as const,
+		codkitCycleStabilize: options.config.codkitConfig >= 3 || options.state.codkitCycleState === 3 ? (2 as const) : (1 as const),
 		basis,
 		nextState
 	};

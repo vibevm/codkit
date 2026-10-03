@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.ts';
 // Cryptographically bound finalization planning and retry-safe application.
 
 import { createHash, randomUUID } from 'node:crypto';
@@ -78,10 +79,10 @@ export function renderCycleHumanLog(state: CycleState, entries: readonly CycleJo
 	const latest = new Map<string, number>();
 	validEntries.forEach((entry, index) => latest.set(entry.artifact, index));
 	const lines = [
-		`# codkit cycle ${validState.targetPin.tag}`,
+		`# codkit cycle ${pinKey(validState.targetPin)}`,
 		'',
-		`- Source: \`${validState.sourcePin.tag}@${validState.sourcePin.sha}\``,
-		`- Target: \`${validState.targetPin.tag}@${validState.targetPin.sha}\``,
+		`- Source: \`${pinKey(validState.sourcePin)}@${validState.sourcePin.sha}\``,
+		`- Target: \`${pinKey(validState.targetPin)}@${validState.targetPin.sha}\``,
 		`- Started: \`${validState.startedAt}\``,
 		`- Completed: \`${validState.updatedAt}\``,
 		`- Duration: \`${cycleDurationSeconds(validState)}\` seconds`,
@@ -112,7 +113,7 @@ export function renderCycleHumanLog(state: CycleState, entries: readonly CycleJo
 
 export function planCycleFinalization(options: PlanCycleFinalizationOptions): CycleFinalizationPlan {
 	const fs = options.fileSystem ?? nodeCycleStateFileSystem;
-	const tag = validatedState(options.state).targetPin.tag;
+	const tag = pinKey(validatedState(options.state).targetPin);
 	const journalPath = journalRelativePath(tag);
 	const journal = readRequiredJournal(options.patchesDir, journalPath, fs);
 	const authority = canonicalAuthority(options.state, parseCycleJournal(journal, journalPath), options.inventory);
@@ -202,7 +203,7 @@ function canonicalAuthority(
 
 function deriveBoundPlan(authorityInput: CycleFinalizationAuthority, basisInput: CycleFinalizationBasis): CycleFinalizationPlan {
 	const authority = canonicalAuthority(authorityInput.state, authorityInput.entries, authorityInput.inventory);
-	const tag = authority.state.targetPin.tag;
+	const tag = pinKey(authority.state.targetPin);
 	const humanPath = humanLogRelativePath(tag);
 	const human = renderCycleHumanLog(authority.state, authority.entries);
 	const stateDocument = serializeCycleState(authority.state);

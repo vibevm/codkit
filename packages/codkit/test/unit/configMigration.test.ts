@@ -50,7 +50,7 @@ describe('explicit discipline versioning', () => {
 	});
 	it('plans an idempotent explicit migration and a distinct fingerprint domain', () => {
 		const plan = planConfigMigration(legacy);
-		expect(plan).toMatchObject({ from: 2, to: 3, changed: true });
+		expect(plan).toMatchObject({ from: 2, to: 4, changed: true });
 		expect(plan.config.discipline).toBe(MINIMAL_DISCIPLINE);
 		expect(planConfigMigration(JSON.parse(plan.contents)).changed).toBe(false);
 		const root = fixture();
@@ -67,7 +67,7 @@ describe('explicit discipline versioning', () => {
 		} finally {
 			lock.release();
 		}
-		expect(JSON.parse(readFileSync(join(root, 'codkit.json'), 'utf8'))).toMatchObject({ codkitConfig: 3, discipline: MINIMAL_DISCIPLINE });
+		expect(JSON.parse(readFileSync(join(root, 'codkit.json'), 'utf8'))).toMatchObject({ codkitConfig: 4, discipline: MINIMAL_DISCIPLINE });
 		expect(() => applyConfigMigration(root, current.bytes, lock)).toThrow(/lock|capability/i);
 	});
 	it('preserves an edit that lands after the migration comparison', () => {

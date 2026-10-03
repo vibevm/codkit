@@ -302,7 +302,8 @@ if (step === 'product-tests') {
 		process.exit(1);
 	}
 	const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim();
-	const expectedPin = branch.slice(branch.lastIndexOf('/') + 1);
+	const pinKey = branch.slice(branch.lastIndexOf('/') + 1);
+	const expectedPin = /^sha-[0-9a-f]{40}$/.test(pinKey) ? '' : pinKey;
 	if (product.displayName !== 'Fixture PatchSet' || product.patchsetUpstreamPin !== expectedPin) {
 		console.error('product-tests: overlay target was not materialized before the tests');
 		process.exit(1);

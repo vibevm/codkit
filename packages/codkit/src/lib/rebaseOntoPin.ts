@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-REBASE-ONTO-PIN */
+import { pinKey } from './pinIdentity.ts';
 // Replay feature-only patches from HEAD^1 over an object-only HEAD^2 baseline.
 
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -63,8 +64,8 @@ export type RebaseOntoPinOptions = {
 
 export type RebaseOntoPinResult = {
 	readonly exitCode: 0 | 1 | 2;
-	readonly sourcePin: { readonly tag: string; readonly sha: string };
-	readonly targetPin: { readonly tag: string; readonly sha: string };
+	readonly sourcePin: { readonly tag: string | null; readonly sha: string };
+	readonly targetPin: { readonly tag: string | null; readonly sha: string };
 	readonly mergeBase: string;
 	readonly patches: readonly RebaseOntoPinPatch[];
 	readonly blockers: readonly RebaseOntoPinPatch[];
@@ -122,7 +123,7 @@ export function rebaseOntoPin(options: RebaseOntoPinOptions): RebaseOntoPinResul
 			preparePatch(
 				options,
 				graph.sourceConfig.pin.sha,
-				graph.targetConfig.pin,
+				{ tag: pinKey(graph.targetConfig.pin), sha: graph.targetConfig.pin.sha },
 				scratch.dir,
 				baseline,
 				feature,
@@ -249,7 +250,7 @@ function sameRebasedHeader(entry: PreparedPatch, patch: ParsedPatch): boolean {
 		after.reason === before.reason &&
 		after.link === before.link &&
 		after.cause === entry.override.cause &&
-		after.pin === `${entry.override.pin.tag}@${entry.override.pin.sha}` &&
+		after.pin === `${pinKey(entry.override.pin)}@${entry.override.pin.sha}` &&
 		JSON.stringify(after.contractTests) === JSON.stringify(before.contractTests)
 	);
 }
@@ -351,7 +352,7 @@ function preparePatch(
 		artifactPath: expectedArtifact,
 		artifactId: feature.patch.header.id,
 		cause: headerCause,
-		pin: { tag: targetPin.tag, sha: targetPin.sha }
+		pin: { tag: pinKey(targetPin), sha: targetPin.sha }
 	};
 	return {
 		artifactPath: expectedArtifact,

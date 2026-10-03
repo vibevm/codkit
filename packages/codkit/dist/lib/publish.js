@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-011#root */
+import { pinKey } from './pinIdentity.js';
 // Immutable publish transaction: observe remote, build/check one patchset commit,
 // reject tag collisions, create the tag without force, then lease the branch.
 import { join } from 'node:path';
@@ -39,10 +40,10 @@ export async function runPublish(options) {
     const patchSetSha = resolvePatchSetRef(options.patchesDir, options.patchSetRef);
     const snapshotConfig = locatedInputs(options.patchesDir, configAtCommit(options.patchesDir, patchSetSha));
     const branchName = options.branch === undefined || options.branch === null
-        ? `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${snapshotConfig.pin.tag}`
+        ? `${snapshotConfig.releaseRefPrefix}${patchSetSha.slice(0, 12)}+${pinKey(snapshotConfig.pin)}`
         : checkedBranch(options.patchesDir, options.branch, [snapshotConfig, options.config]);
     const branchRef = `refs/heads/${branchName}`;
-    const tagName = release === null ? null : `patchset-v${release}+${snapshotConfig.pin.tag}`;
+    const tagName = release === null ? null : `patchset-v${release}+${pinKey(snapshotConfig.pin)}`;
     const tagRef = tagName === null ? null : `refs/tags/${tagName}`;
     assertRef(options.patchesDir, branchRef);
     if (tagRef !== null)
@@ -55,11 +56,11 @@ export async function runPublish(options) {
     const observed = remote === null ? UNOBSERVED : observeRemote(options.patchesDir, remote, branchRef, tagRef);
     if (remote !== null) {
         options.checkpoint?.('remote-observed');
-        options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: remote branch ${observed.branch?.slice(0, 12) ?? 'absent'}, ` +
+        options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${pinKey(snapshotConfig.pin)}: remote branch ${observed.branch?.slice(0, 12) ?? 'absent'}, ` +
             `tag ${observed.tag?.slice(0, 12) ?? 'absent'}`);
     }
     else if (destination !== null) {
-        options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${snapshotConfig.pin.tag}: into ${exportName(destination)}`);
+        options.out.info(`publish ${patchSetSha.slice(0, 12)} at ${pinKey(snapshotConfig.pin)}: into ${exportName(destination)}`);
     }
     const handle = acquireLock(options.patchesDir, treeId(options.resolution.path), 'publish', (text) => options.out.warn(text));
     let workspace = null;
@@ -87,7 +88,7 @@ export async function runPublish(options) {
             if (checks.exitCode === EXIT_OK) {
                 options.out.addError({ code: 'INTERNAL', message: 'publish checks returned no generated branch tip' });
             }
-            return publishResult(checks.exitCode === EXIT_OK ? EXIT_ENVIRONMENT : checks.exitCode, checks.exitCode === EXIT_CHECK_FAILED ? 'check-failed' : 'environment-failed', baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks));
+            return publishResult(checks.exitCode === EXIT_OK ? EXIT_ENVIRONMENT : checks.exitCode, checks.exitCode === EXIT_CHECK_FAILED ? 'check-failed' : 'environment-failed', baseResult(patchSetSha, pinKey(snapshotConfig.pin), branchName, tagName, observed, checks));
         }
         const shaped = shapeTip({
             workspaceRoot: workspace.root,
@@ -108,7 +109,7 @@ export async function runPublish(options) {
         });
         if (!shaped.ok) {
             return publishResult(EXIT_CHECK_FAILED, shaped.status, {
-                ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, observed, checks),
+                ...baseResult(patchSetSha, pinKey(snapshotConfig.pin), branchName, tagName, observed, checks),
                 tip: null,
                 scrub: shaped.scrub,
                 lfs: shaped.lfs
@@ -136,7 +137,7 @@ export async function runPublish(options) {
             const inputs = reportInputs(options.out, releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []));
             options.out.info(`published: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}; into ${exportName(destination)}`);
             return publishResult(EXIT_OK, 'published', {
-                ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, UNOBSERVED, checks),
+                ...baseResult(patchSetSha, pinKey(snapshotConfig.pin), branchName, tagName, UNOBSERVED, checks),
                 tip,
                 ...shapes,
                 inputs,
@@ -153,7 +154,7 @@ export async function runPublish(options) {
                 hint: 'choose another --release value; published release tags are never moved'
             });
             return publishResult(EXIT_CHECK_FAILED, 'tag-collision', {
-                ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
+                ...baseResult(patchSetSha, pinKey(snapshotConfig.pin), branchName, tagName, refreshed, checks),
                 tip,
                 ...shapes
             });
@@ -179,7 +180,7 @@ export async function runPublish(options) {
         const inputs = reportInputs(options.out, releasedInputs(workspace.resolution.path, tip, snapshotConfig.inputs ?? []));
         options.out.info(`${status}: ${branchRef} -> ${tip}${tagRef === null ? '' : `; ${tagRef}`}`);
         return publishResult(EXIT_OK, status, {
-            ...baseResult(patchSetSha, snapshotConfig.pin.tag, branchName, tagName, refreshed, checks),
+            ...baseResult(patchSetSha, pinKey(snapshotConfig.pin), branchName, tagName, refreshed, checks),
             tip,
             pushedBranch,
             pushedTag,

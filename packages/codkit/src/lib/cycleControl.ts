@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey, requiresRevisionPin } from './pinIdentity.ts';
 // Durable init/status/restart transaction orchestration. Every externally
 // visible mutation is preceded by canonical state, and every retry reconciles
 // exact Git/config facts before advancing one idempotent step.
@@ -11,6 +12,7 @@ import type { ConfigFileSystem } from './configPin.ts';
 import { readCycleControlRecord, removeCycleControlRecord, writeCycleControlRecord } from './cycleControlRecord.ts';
 import type { CycleControlRecord } from './cycleControlRecord.ts';
 import {
+	withCycleLocks,
 	assertOnlyCycleStatus,
 	assertSourceToTargetAncestry,
 	assertValidBranch,
@@ -34,14 +36,11 @@ import type { RestartResult } from './cycleRestart.ts';
 import { CYCLE_ARTIFACT_OUTCOMES, CYCLE_STATE_SCHEMA_VERSION, nodeCycleStateFileSystem } from './cycleState.ts';
 import type { CycleArtifactOutcome, CycleState, CycleStateFileSystem } from './cycleState.ts';
 import { readCycleState, writeCycleState } from './cycleState.ts';
-import { treeId } from './fingerprint.ts';
 import { gitLocal, runGit } from './gitx.ts';
 import { acquireLock } from './lock.ts';
 import type { LockHandle } from './lock.ts';
 import { ckError } from './messages.ts';
 import type { ProjectType } from '@codkit/type-api';
-
-const PATCHSET_CYCLE_LOCK_ID = 'cycle-global';
 
 export { resolveTargetPin } from './cycleControlGit.ts';
 export type { CycleGitRunner } from './cycleControlGit.ts';
@@ -76,6 +75,8 @@ export type StartCycleOptions = {
 	/** The project type of the patch set; the engines below are handed it. */
 	readonly type: ProjectType;
 	readonly target: string;
+	/** Continue the recorded init by immutable SHA, retaining its original label/evidence. */
+	readonly resumeInit?: boolean;
 	readonly dependencies?: CycleControlDependencies;
 };
 
@@ -138,8 +139,26 @@ export function startCycle(options: StartCycleOptions): StartCycleResult {
 			}
 			completedRestartResult(options.patchesDir, control, options.config.pin, dependencies.git);
 		}
-		const targetPin = resolveTargetPin(options.forkDir, options.config.upstreamAnchorCommit, options.target, dependencies.git);
+		let targetPin = resolveTargetPin(
+			options.forkDir,
+			options.config.upstreamAnchorCommit,
+			options.target,
+			dependencies.git,
+			options.config.codkitConfig,
+			dependencies.now().toISOString()
+		);
 		const existing = readCycleState(options.patchesDir, dependencies.stateFileSystem);
+		if (options.resumeInit === true && options.config.codkitConfig >= 4) {
+			if (
+				existing?.phase !== 'init' ||
+				existing.transaction?.kind !== 'init' ||
+				options.target !== existing.targetPin.sha ||
+				targetPin.sha !== existing.targetPin.sha ||
+				targetPin.date !== existing.targetPin.date
+			)
+				throw ckError('CONFIG', 'init recovery does not match the recorded immutable target', 'inspect cycle status before recovery');
+			targetPin = existing.targetPin;
+		}
 		if (existing !== null) {
 			if (existing.phase === 'init' && existing.transaction?.kind === 'init') {
 				assertInitIdentity(existing, options, targetPin, dependencies.git);
@@ -156,7 +175,7 @@ export function startCycle(options: StartCycleOptions): StartCycleResult {
 
 		assertPatchSetRepositoryClean(options.patchesDir, dependencies.git);
 		assertSourceToTargetAncestry(options.forkDir, options.config.pin, targetPin, dependencies.git);
-		const branch = `${options.config.cycleBranchPrefix}${targetPin.tag}`;
+		const branch = `${options.config.cycleBranchPrefix}${pinKey(targetPin)}`;
 		assertValidBranch(options.patchesDir, branch, dependencies.git);
 		const baseBranch = currentBranchName(options.patchesDir, dependencies.git);
 		const baseCommit = headCommit(options.patchesDir, dependencies.git);
@@ -199,7 +218,7 @@ function recognizeCompletedInit(
 		throw ckError(
 			'CONFIG',
 			'completed init does not match the requested target/config pin',
-			`inspect cycle status for ${state.targetPin.tag}`
+			`inspect cycle status for ${pinKey(state.targetPin)}`
 		);
 	}
 	assertCurrentCycleBranch(options.patchesDir, state, git);
@@ -362,9 +381,9 @@ function resumeInit(
 						args: [
 							'commit',
 							'--message',
-							bumpSubject(state.targetPin.tag),
+							bumpSubject(pinKey(state.targetPin)),
 							'--message',
-							bumpTrailer(state.targetPin.tag),
+							bumpTrailer(pinKey(state.targetPin)),
 							'--',
 							CONFIG_FILE_NAME
 						],
@@ -448,19 +467,19 @@ function inspectInitStep(patchesDir: string, state: CycleState, workingPin: PinC
 			return 'complete';
 		}
 	}
-	throw initMismatch(state, `HEAD=${head}, config pin=${workingPin.tag}@${workingPin.sha}`);
+	throw initMismatch(state, `HEAD=${head}, config pin=${pinKey(workingPin)}@${workingPin.sha}`);
 }
 
 function assertInitIdentity(state: CycleState, options: StartCycleOptions, targetPin: PinConfig, git: CycleGitRunner): void {
 	assertBranchMatchesConfig(state, options.config);
 	if (!samePin(state.targetPin, targetPin)) {
-		throw ckError('CONFIG', 'cycle start target does not match the durable init transaction', `retry with ${state.targetPin.tag}`);
+		throw ckError('CONFIG', 'cycle start target does not match the durable init transaction', `retry with ${pinKey(state.targetPin)}`);
 	}
 	assertSourceToTargetAncestry(options.forkDir, state.sourcePin, state.targetPin, git);
 }
 
 function assertBranchMatchesConfig(state: CycleState, config: CodkitConfig): void {
-	const expected = `${config.cycleBranchPrefix}${state.targetPin.tag}`;
+	const expected = `${config.cycleBranchPrefix}${pinKey(state.targetPin)}`;
 	if (state.branch !== expected) {
 		throw ckError(
 			'CONFIG',
@@ -487,7 +506,7 @@ function makeState(
 ): CycleState {
 	const timestamp = now.toISOString();
 	return {
-		codkitCycleState: CYCLE_STATE_SCHEMA_VERSION,
+		codkitCycleState: requiresRevisionPin(sourcePin) || requiresRevisionPin(targetPin) ? CYCLE_STATE_SCHEMA_VERSION : 2,
 		sourcePin,
 		targetPin,
 		branch,
@@ -529,7 +548,7 @@ function activeStatus(state: CycleState, nextAction: string): Extract<CycleStatu
 function initAction(step: InitStep, state: CycleState): string {
 	return {
 		'create-branch': `create ${state.branch}`,
-		'write-config': `write target pin ${state.targetPin.tag}`,
+		'write-config': `write target pin ${pinKey(state.targetPin)}`,
 		'stage-config': `stage ${CONFIG_FILE_NAME}`,
 		'commit-bump': 'retry canonical bump commit',
 		complete: 'finish init state and continue apply'
@@ -557,26 +576,6 @@ function resolvedDependencies(input: CycleControlDependencies | undefined): Reso
 		acquireLock: input?.acquireLock ?? acquireLock,
 		checkpoint: input?.checkpoint ?? (() => undefined)
 	};
-}
-
-function withCycleLocks<T>(
-	patchesDir: string,
-	forkDir: string,
-	command: string,
-	dependencies: ResolvedDependencies,
-	body: (cycleLock: LockHandle) => T
-): T {
-	const patchsetLock = dependencies.acquireLock(patchesDir, PATCHSET_CYCLE_LOCK_ID, command);
-	try {
-		const treeLock = dependencies.acquireLock(patchesDir, treeId(forkDir), command);
-		try {
-			return body(patchsetLock);
-		} finally {
-			treeLock.release();
-		}
-	} finally {
-		patchsetLock.release();
-	}
 }
 
 function configWriteOptions(dependencies: ResolvedDependencies, lock: LockHandle) {

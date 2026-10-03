@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-006#root */
+import { pinKey } from './pinIdentity.js';
 // The inventory: every intervention of the delta, as one generated document.
 // Contract: PROP-006 sec. 3-4.
 //
@@ -733,7 +734,7 @@ function causeOf(value) {
  */
 function pinOf(patchesDir, given) {
     const config = configOf(patchesDir, given);
-    return `${config.pin.tag}@${config.pin.sha}`;
+    return `${pinKey(config.pin)}@${config.pin.sha}`;
 }
 /** The configuration of the checkout: the caller's, or the file's. */
 function configOf(patchesDir, given) {

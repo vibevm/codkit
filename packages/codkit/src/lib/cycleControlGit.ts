@@ -1,4 +1,8 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.ts';
+import { treeId } from './fingerprint.ts';
+import { acquireLock } from './lock.ts';
+import type { LockHandle } from './lock.ts';
 // Git/ref/object-database side of cycle control. Keeping this seam separate
 // makes the transaction orchestrator small and lets tests inject every Git
 // result without weakening the production wrapper's isolation rules.
@@ -29,15 +33,22 @@ export type PatchSetStatusEntry = {
 };
 
 /** Resolve a tag or raw SHA to the portable pin identity recorded on disk. */
-export function resolveTargetPin(forkDir: string, upstreamAnchorCommit: string, target: string, git: CycleGitRunner = runGit): PinConfig {
+export function resolveTargetPin(
+	forkDir: string,
+	upstreamAnchorCommit: string,
+	target: string,
+	git: CycleGitRunner = runGit,
+	configVersion = 2,
+	resolvedAt = new Date().toISOString()
+): PinConfig {
 	if (target === '') {
 		throw ckError('CONFIG', 'cycle target must not be empty', 'name an upstream tag or full 40-hex commit sha');
 	}
 	let sha: string;
-	let tag: string;
+	let tag: string | null;
 	if (FULL_SHA.test(target)) {
 		sha = resolveCommit(forkDir, target, git);
-		tag = exactPortableTags(forkDir, sha, git)[0] ?? `sha-${sha.slice(0, 12)}`;
+		tag = configVersion >= 4 ? null : (exactPortableTags(forkDir, sha, git)[0] ?? `sha-${sha.slice(0, 12)}`);
 	} else {
 		if (safeBasenameProblem(target) !== null) {
 			throw ckError(
@@ -61,7 +72,7 @@ export function resolveTargetPin(forkDir: string, upstreamAnchorCommit: string, 
 	if (!PIN_DATE.test(date)) {
 		throw ckError('INTERNAL', `git returned a non-portable commit date for ${sha}: ${JSON.stringify(date)}`, 'upgrade git and retry');
 	}
-	return { tag, sha, date };
+	return { tag, sha, date, ...(configVersion >= 4 ? { resolvedAt } : {}) };
 }
 
 /** Both source and target must be local commits, and the upgrade must move forward in that history. */
@@ -77,7 +88,7 @@ export function assertSourceToTargetAncestry(forkDir: string, sourcePin: PinConf
 	if (sourcePin.sha === targetPin.sha) {
 		throw ckError('CONFIG', 'cycle source and target pins are the same commit', 'choose a later upstream target');
 	}
-	assertAncestor(forkDir, sourcePin.sha, targetPin.sha, `target pin ${targetPin.tag}`, git);
+	assertAncestor(forkDir, sourcePin.sha, targetPin.sha, `target pin ${pinKey(targetPin)}`, git);
 }
 
 export function assertPatchSetRepositoryClean(patchesDir: string, git: CycleGitRunner): void {
@@ -225,7 +236,10 @@ export function recognizeBump(patchesDir: string, ref: string, targetPin: PinCon
 		return null;
 	}
 	const object = git({ args: ['cat-file', 'commit', commit], cwd: patchesDir });
-	if (object.status !== 0 || commitMessageBody(object.stdout) !== `${bumpSubject(targetPin.tag)}\n\n${bumpTrailer(targetPin.tag)}\n`) {
+	if (
+		object.status !== 0 ||
+		commitMessageBody(object.stdout) !== `${bumpSubject(pinKey(targetPin))}\n\n${bumpTrailer(pinKey(targetPin))}\n`
+	) {
 		return null;
 	}
 	const parentResult = git({ args: ['rev-parse', '--verify', `${commit}^`], cwd: patchesDir });
@@ -273,7 +287,7 @@ export function findCycleBumpTo(patchesDir: string, state: CycleState, toInclusi
 	if (matches.length !== 1) {
 		throw ckError(
 			'CONFIG',
-			`expected exactly one canonical pin-bump commit for ${state.targetPin.tag}, found ${matches.length}`,
+			`expected exactly one canonical pin-bump commit for ${pinKey(state.targetPin)}, found ${matches.length}`,
 			'inspect the cycle branch history; restart refuses an ambiguous reset target'
 		);
 	}
@@ -384,4 +398,33 @@ function firstLine(text: string): string | null {
 
 function messageOf(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+export function withCycleLocks<T>(
+	patchesDir: string,
+	forkDir: string,
+	command: string,
+	dependencies: { readonly acquireLock: typeof acquireLock },
+	body: (cycleLock: LockHandle) => T
+): T {
+	const patchsetLock = dependencies.acquireLock(patchesDir, 'cycle-global', command);
+	try {
+		const treeLock = dependencies.acquireLock(patchesDir, treeId(forkDir), command);
+		try {
+			return body(patchsetLock);
+		} finally {
+			treeLock.release();
+		}
+	} finally {
+		patchsetLock.release();
+	}
+}
+
+export function provisionalBranch(config: CodkitConfig, tree: string): string {
+	const branch = `${config.cycleBranchPrefix}${pinKey(config.pin)}-provisional`;
+	const checked = runGit({ args: ['check-ref-format', '--branch', branch], cwd: tree });
+	if (branch === `${config.generatedBranchPrefix}${pinKey(config.pin)}` || checked.status !== 0 || checked.stdout.trim() !== branch) {
+		throw ckError('CONFIG', `cannot use ${branch} as the provisional cycle branch`, 'choose non-overlapping branch prefixes');
+	}
+	return branch;
 }

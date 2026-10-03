@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
+import { pinKey, pinData as serializePinData } from '../lib/pinIdentity.js';
 // codkit status - what is in the tree, what is in patchset, and what is not in
 // both. Contract: PROP-007 sec. 6 (##CMD-STATUS).
 //
@@ -45,7 +46,7 @@ async function run(ctx) {
         ctx.out.warn(resolution.warning);
     }
     const config = requireConfig(ctx.config);
-    ctx.out.info(`pin: ${config.pin.tag}@${config.pin.sha.slice(0, 8)} (${config.pin.date})`);
+    ctx.out.info(`pin: ${pinKey(config.pin)}@${config.pin.sha.slice(0, 8)} (${config.pin.date})`);
     // Read-only: the write probe of ##ID-CHECK-WRITE is not part of this command.
     const identity = checkTree(resolution, config, { mode: 'read', type: requireProjectType(ctx) });
     if (identity.fatal !== null) {
@@ -55,7 +56,7 @@ async function run(ctx) {
     }
     const tree = resolution.path;
     const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
-    const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+    const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
     // 0. A live two-way sync outranks every question below: while its
     // transaction record exists, the tree may be half one state and half
     // another, and `status` - the command a developer runs *because* something
@@ -373,7 +374,7 @@ function requireConfig(config) {
     return config;
 }
 function pinData(config) {
-    return { tag: config.pin.tag, sha: config.pin.sha, date: config.pin.date };
+    return serializePinData(config.pin);
 }
 function conditionsData(conditions) {
     return conditions.map((condition) => ({ id: condition.id, ok: condition.ok, reason: condition.reason }));

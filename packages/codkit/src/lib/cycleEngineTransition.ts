@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#state */
+import { pinKey } from './pinIdentity.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, constants, fstatSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -96,7 +97,7 @@ function assertRecord(record: CycleTransitionRecord): void {
 	const edge = `${record.inputState.phase}->${record.nextState.phase}`;
 	if (!['deps-advisory->deps-advisory', 'deps-advisory->stabilize', 'stabilize->resolve', 'stabilize->done'].includes(edge))
 		throw broken(`unsupported transition ${edge}`);
-	if (record.subject.includes(record.nextState.targetPin.tag) === false) throw broken('subject does not name target tag');
+	if (record.subject.includes(pinKey(record.nextState.targetPin)) === false) throw broken('subject does not name target tag');
 	if (!orderedUnique(record.writes.map((write) => write.path))) throw broken('writes are not sorted and unique');
 	assertNestedAuthority(record);
 }

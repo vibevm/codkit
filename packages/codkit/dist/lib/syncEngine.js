@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
+import { pinKey } from './pinIdentity.js';
 // The sync engine: bring the fork tree to the pin and put the delta on it.
 // The pseudocode of PROP-008 sec. 3 is normative and this file follows its order.
 //
@@ -99,7 +100,7 @@ export function runSync(options) {
     // ##TYPE-AREA-LAYOUT). Mirroring, the drift guard, the exclusion, the
     // generated snapshot and the mark all work over this list.
     const roots = ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
-    const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+    const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
     let generatedBranch = options.generatedBranch === true;
     // Only a release snapshot leaves the licence notice out; every other
     // generated branch carries it (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
@@ -846,7 +847,7 @@ function buildBranch(options, plan, context, id, inputs = []) {
     try {
         gitOk({ args: ['read-tree', config.pin.sha], cwd: tree, env: indexEnv }, {
             code: 'ARTIFACT-BROKEN',
-            message: `cannot read the tree of pin ${config.pin.tag} into a temporary index`,
+            message: `cannot read the tree of pin ${pinKey(config.pin)} into a temporary index`,
             hint: 'the pin is reachable but its tree is not readable; check the tree with git fsck'
         });
         let parent = config.pin.sha;
@@ -859,7 +860,7 @@ function buildBranch(options, plan, context, id, inputs = []) {
                 indexFile,
                 parent,
                 roots: ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
-                pinTag: config.pin.tag,
+                pinTag: config.pin.tag ?? '',
                 pinSha: config.pin.sha,
                 pinDateIso,
                 patchSetCommit,
@@ -912,7 +913,7 @@ function buildBranch(options, plan, context, id, inputs = []) {
                 parent,
                 produced: inputs,
                 patchSetCommit,
-                pinTag: config.pin.tag,
+                pinTag: config.pin.tag ?? '',
                 pinSha: config.pin.sha
             });
         }
@@ -996,7 +997,7 @@ function applyPatchAtPin(artifact, options) {
     if (!artifact.patch.isAddFile) {
         const shown = runGit({ args: ['show', `${pinSha}:${toPosix(artifact.target)}`], cwd: tree });
         if (shown.status !== 0) {
-            throw ckError('ARTIFACT-BROKEN', `${artifact.artifactPath}: ${artifact.target} does not exist at pin ${options.config.pin.tag}`, 'regenerate the patch against the current pin with codkit save, or resolve it in an upgrade cycle', artifact.artifactPath);
+            throw ckError('ARTIFACT-BROKEN', `${artifact.artifactPath}: ${artifact.target} does not exist at pin ${pinKey(options.config.pin)}`, 'regenerate the patch against the current pin with codkit save, or resolve it in an upgrade cycle', artifact.artifactPath);
         }
         base = encodeUtf8(shown.stdout);
     }
@@ -1042,7 +1043,7 @@ function commitMessage(artifact, config, patchSetCommit) {
         '',
         ...ids.map((id) => `Codkit-Artifact: ${id}`),
         `Codkit-Patchset-Commit: ${patchSetCommit}`,
-        `Codkit-Upstream-Pin: ${config.pin.tag}@${config.pin.sha}`
+        `Codkit-Upstream-Pin: ${pinKey(config.pin)}@${config.pin.sha}`
     ].join('\n');
 }
 /** Commit date of the pin, ISO-8601; the date every generated commit carries. */
@@ -1948,7 +1949,7 @@ function strandedExtensionHook(materializer, patchesDir, treeDir, pinSha) {
  */
 export function overlayVarContext(config, pinDateIso, patchSetCommit) {
     return {
-        pinTag: config.pin.tag,
+        pinTag: config.pin.tag ?? '',
         pinSha: config.pin.sha,
         pinDate: config.pin.date,
         patchSetCommit,
@@ -1987,5 +1988,5 @@ export function toPosix(path) {
 }
 /** The generated branch of a pin; the command names it in its output. */
 export function generatedBranchName(config) {
-    return `${config.generatedBranchPrefix}${config.pin.tag}`;
+    return `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
 }

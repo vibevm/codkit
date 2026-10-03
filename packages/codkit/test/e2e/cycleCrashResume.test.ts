@@ -6,6 +6,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CYCLE_TEST_CRASH_ENV, CYCLE_TEST_CRASH_EXIT_CODE, type CycleTestCrashCheckpoint } from '../../src/lib/cycleTestCrash.ts';
 import { CYCLE_STATE_PATH } from '../../src/lib/cycleState.ts';
+import { stabilizeDocumentSchema } from '../../src/lib/cycleStabilizeReport.ts';
 import {
 	CODKIT_E2E_TEST_BUILD,
 	CODKIT_E2E_TIMEOUT_MS,
@@ -58,6 +59,38 @@ afterAll(() => {
 });
 
 describe('cycle hard-crash resume matrix', () => {
+	it.each(['tag', 'revision'] as const)(
+		'continues a schema-4 %s target after a real init crash',
+		(kind) => {
+			const fixture = trackedFixture(`cycle-v4-${kind}`);
+			prepare(fixture);
+			const migration = fixture.json(['config', 'migrate', '--write'], testEnv(fixture));
+			expect(migration.run.status, migration.run.stderr).toBe(0);
+			expect(fixture.patchGit(['add', 'codkit.json']).status).toBe(0);
+			expect(fixture.patchGit(['commit', '-m', 'fixture: migrate config']).status).toBe(0);
+			const target = kind === 'tag' ? fixture.upstream.t2.tag : fixture.upstream.t2.sha;
+			const crashed = fixture.run(['cycle', 'start', target, '--ci'], testEnv(fixture, { [CYCLE_TEST_CRASH_ENV]: 'init-state-written' }));
+			expect(crashed.status, crashed.stderr).toBe(CYCLE_TEST_CRASH_EXIT_CODE);
+			// Recovery uses the recorded SHA even if the original human tag vanished.
+			expect(fixture.git(['tag', '-d', fixture.upstream.t2.tag]).status).toBe(0);
+			const resumed = fixture.json(['cycle', 'continue', '--ci'], testEnv(fixture));
+			expect(resumed.run.status, resumed.run.stderr + resumed.run.stdout).toBe(0);
+			expect(resumed.envelope.data).toMatchObject({ status: 'completed', phase: 'done' });
+			const raw = JSON.parse(readFileSync(fixture.patchesPath('codkit.json'), 'utf8'));
+			expect(raw.pin.sha).toBe(fixture.upstream.t2.sha);
+			if (kind === 'tag') expect(raw.pin.tag).toBe(target);
+			else expect(raw.pin).not.toHaveProperty('tag');
+			expect(existsSync(fixture.patchesPath(CYCLE_STATE_PATH))).toBe(false);
+			const report = stabilizeDocumentSchema.parse(JSON.parse(readFileSync(fixture.patchesPath('cycle/report/stabilize.json'), 'utf8')));
+			expect(report.codkitCycleStabilize).toBe(2);
+			expect(stabilizeDocumentSchema.safeParse({ ...report, codkitCycleStabilize: 1 }).success).toBe(false);
+			expect(stabilizeDocumentSchema.safeParse({ ...report, codkitCycleStabilize: 3 }).success).toBe(false);
+			expect(fixture.patchGit(['status', '--short']).stdout).toBe('');
+			assertNoDaemons(fixture);
+		},
+		35_000
+	);
+
 	it.each(MATRIX)(
 		'resumes byte-identically after %s in a new process',
 		(checkpoint) => {

@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.ts';
 import { applyCycleFinalizationPlan, planCycleFinalization } from './cycleFinalize.ts';
 import { commitCycleAtom, validateCycleCommitHistory, validateCycleCommitReceipt } from './cycleCommit.ts';
 import { findCycleBump, findCycleBumpTo } from './cycleControlGit.ts';
@@ -92,8 +93,8 @@ export async function planStabilizationTransition(
 	);
 	const subject =
 		state.phase === 'deps-advisory'
-			? `chore(cycle): record dependency advisory for ${state.targetPin.tag}`
-			: `test(cycle): record stabilization for ${state.targetPin.tag}`;
+			? `chore(cycle): record dependency advisory for ${pinKey(state.targetPin)}`
+			: `test(cycle): record stabilization for ${pinKey(state.targetPin)}`;
 	const record = makeCycleTransitionRecord({
 		inputState: state,
 		nextState: planned.nextState,
@@ -138,7 +139,7 @@ export function resumeCycleTransition(
 			patchesDir: options.patchesDir,
 			expectedBranch: current.nextState.branch,
 			expectedParent: current.parent,
-			targetTag: current.nextState.targetPin.tag,
+			targetTag: pinKey(current.nextState.targetPin),
 			subject: current.subject,
 			paths: transitionCommitPaths(current),
 			timestamp: current.timestamp
@@ -173,14 +174,14 @@ export function planTerminalTransaction(options: ContinueCycleOptions, state: Cy
 			patchesDir: options.patchesDir,
 			fromExclusive: bump.parent,
 			toInclusive: finalParent,
-			targetTag: state.targetPin.tag
+			targetTag: pinKey(state.targetPin)
 		});
 		const record = makeCycleTerminalRecord({
 			state,
 			plan,
 			bumpParent: bump.parent,
 			finalParent,
-			subject: `docs(cycle): finalize ${state.targetPin.tag}`,
+			subject: `docs(cycle): finalize ${pinKey(state.targetPin)}`,
 			timestamp: commitTimestamp(nextTimestamp(options, state.updatedAt)),
 			checkpoint: 'planned',
 			commitSha: null
@@ -205,7 +206,7 @@ export function resumeCycleTerminal(options: ContinueCycleOptions, record: Cycle
 			patchesDir: options.patchesDir,
 			fromExclusive: current.bumpParent,
 			toInclusive: current.finalParent,
-			targetTag: current.state.targetPin.tag
+			targetTag: pinKey(current.state.targetPin)
 		});
 		applyCycleFinalizationPlan(options.patchesDir, current.plan);
 		checkpoint(options, 'terminal-state-deleted');
@@ -220,7 +221,7 @@ export function resumeCycleTerminal(options: ContinueCycleOptions, record: Cycle
 			patchesDir: options.patchesDir,
 			expectedBranch: current.state.branch,
 			expectedParent: current.finalParent,
-			targetTag: current.state.targetPin.tag,
+			targetTag: pinKey(current.state.targetPin),
 			subject: current.subject,
 			paths: terminalCommitPaths(current),
 			timestamp: current.timestamp
@@ -262,7 +263,7 @@ function assertCommittedTransition(root: string, record: CycleTransitionRecord):
 		patchesDir: root,
 		expectedBranch: record.nextState.branch,
 		expectedParent: record.parent,
-		targetTag: record.nextState.targetPin.tag,
+		targetTag: pinKey(record.nextState.targetPin),
 		subject: record.subject,
 		paths: transitionCommitPaths(record),
 		timestamp: record.timestamp,
@@ -285,7 +286,7 @@ function assertTransitionCheckoutBytes(root: string, record: CycleTransitionReco
 function assertCommittedTerminal(root: string, config: CodkitConfig, record: CycleTerminalRecord): void {
 	if (record.checkpoint !== 'committed' || record.commitSha === null) throw ckError('ARTIFACT-BROKEN', 'terminal receipt is not committed');
 	if (readCycleState(root) !== null) throw ckError('ARTIFACT-BROKEN', 'committed terminal receipt coexists with cycle state');
-	if (record.state.targetPin.sha !== config.pin.sha || record.state.branch !== `${config.cycleBranchPrefix}${config.pin.tag}`)
+	if (record.state.targetPin.sha !== config.pin.sha || record.state.branch !== `${config.cycleBranchPrefix}${pinKey(config.pin)}`)
 		throw ckError('ARTIFACT-BROKEN', 'terminal receipt differs from current config identity');
 	const currentHead = head(root);
 	const exactCycleCheckout = branch(root) === record.state.branch && currentHead === record.commitSha;
@@ -297,7 +298,7 @@ function assertCommittedTerminal(root: string, config: CodkitConfig, record: Cyc
 		patchesDir: root,
 		expectedBranch: record.state.branch,
 		expectedParent: record.finalParent,
-		targetTag: record.state.targetPin.tag,
+		targetTag: pinKey(record.state.targetPin),
 		subject: record.subject,
 		paths: terminalCommitPaths(record),
 		timestamp: record.timestamp,
@@ -317,7 +318,7 @@ function assertCommittedTerminal(root: string, config: CodkitConfig, record: Cyc
 		patchesDir: root,
 		fromExclusive: record.bumpParent,
 		toInclusive: record.commitSha,
-		targetTag: record.state.targetPin.tag
+		targetTag: pinKey(record.state.targetPin)
 	});
 }
 function normalizeWrites(

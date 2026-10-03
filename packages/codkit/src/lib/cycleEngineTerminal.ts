@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#state */
+import { pinKey } from './pinIdentity.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, constants, fstatSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -89,11 +90,11 @@ function assertRecord(record: CycleTerminalRecord): void {
 	if (claimed !== digest(body)) throw broken('record digest does not match its authority');
 	if ((record.checkpoint === 'committed') !== (record.commitSha !== null)) throw broken('checkpoint and commit sha disagree');
 	if (record.state.phase !== 'done' || record.state.transaction !== null) throw broken('terminal state is not done');
-	if (record.plan.targetTag !== record.state.targetPin.tag) throw broken('plan target tag differs from state');
+	if (record.plan.targetTag !== pinKey(record.state.targetPin)) throw broken('plan target tag differs from state');
 	if (JSON.stringify(record.plan.authority.state) !== JSON.stringify(record.state))
 		throw broken('plan authority state differs from receipt');
 	if (!record.plan.deletions.some((item) => item.path === CYCLE_STATE_PATH)) throw broken('plan does not delete cycle state');
-	if (record.subject.includes(record.state.targetPin.tag) === false) throw broken('subject does not name target tag');
+	if (record.subject.includes(pinKey(record.state.targetPin)) === false) throw broken('subject does not name target tag');
 	if (JSON.stringify(record.plan.checklist) !== JSON.stringify(CYCLE_FINALIZATION_CHECKLIST)) throw broken('terminal checklist differs');
 }
 

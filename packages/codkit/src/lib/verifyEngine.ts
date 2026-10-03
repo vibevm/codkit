@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-006#root */
+import { pinKey } from './pinIdentity.ts';
 // The verify engine: every integrity check of the delta, without a build.
 // Contract: PROP-007 sec. 11 (##CMD-VERIFY); the cross-checks themselves are
 // PROP-006 sec. 5-6 and the layer rules of PROP-005.
@@ -611,7 +612,7 @@ function checkOnePatchMarkers(
 			findings.push(
 				finding(
 					'STALE-ARTIFACT',
-					`${patch.header.id}: the target ${patch.targetPath} does not exist at pin ${config.pin.tag}`,
+					`${patch.header.id}: the target ${patch.targetPath} does not exist at pin ${pinKey(config.pin)}`,
 					'regenerate the patch against the current pin (codkit load, then codkit save), or move the change to the own layer',
 					artifact
 				)
@@ -716,7 +717,7 @@ function checkRules(treeDir: string, config: CodkitConfig, rules: readonly Rule[
 			findings.push(
 				finding(
 					'STALE-ARTIFACT',
-					`${rule.id}: the target ${rule.target} does not exist at pin ${config.pin.tag}`,
+					`${rule.id}: the target ${rule.target} does not exist at pin ${pinKey(config.pin)}`,
 					'point the rule at a file the pin carries, or retire the rule',
 					rule.artifactPath
 				)
@@ -731,7 +732,7 @@ function checkRules(treeDir: string, config: CodkitConfig, rules: readonly Rule[
 		findings.push(
 			finding(
 				'RULE-DRIFT',
-				`${rule.id}: ${rule.target} at pin ${config.pin.tag} matches ${count.total} line(s), the rule expects ${rule.expectedMatches} (${perOp})`,
+				`${rule.id}: ${rule.target} at pin ${pinKey(config.pin)} matches ${count.total} line(s), the rule expects ${rule.expectedMatches} (${perOp})`,
 				'upstream moved the lines this rule is written against: review the operations and update expectedMatches',
 				rule.artifactPath
 			)
@@ -1379,7 +1380,7 @@ function checkCompleteness(
 
 	const changed = changedPaths(treeDir, config.pin.sha, tip);
 	if (changed === null) {
-		warnings.push(`cannot diff ${config.pin.tag} against ${branch}, so completeness was not checked`);
+		warnings.push(`cannot diff ${pinKey(config.pin)} against ${branch}, so completeness was not checked`);
 		return;
 	}
 
@@ -1431,7 +1432,7 @@ function checkCompleteness(
 		findings.push(
 			finding(
 				'UNTRACKED-INTERVENTION',
-				`${path} differs from pin ${config.pin.tag} on ${branch}, and no artifact of the delta explains it`,
+				`${path} differs from pin ${pinKey(config.pin)} on ${branch}, and no artifact of the delta explains it`,
 				'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit load --fresh',
 				path
 			)
@@ -1448,7 +1449,7 @@ function checkCompleteness(
 		findings.push(
 			finding(
 				'STALE-ARTIFACT',
-				`${entry.patch.header.id}: ${target} is identical to pin ${config.pin.tag} on ${branch}, so this patch changes nothing`,
+				`${entry.patch.header.id}: ${target} is identical to pin ${pinKey(config.pin)} on ${branch}, so this patch changes nothing`,
 				'remove the artifact, or regenerate it from a real change (codkit save)',
 				entry.artifact
 			)

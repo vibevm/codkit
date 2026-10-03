@@ -188,6 +188,26 @@ describe('cycle control', () => {
 		});
 	});
 
+	it('starts and resumes a schema-4 revision-only cycle without synthesizing an upstream tag', () => {
+		const current = fixture('cycle-revision-only');
+		const sha = fixtureGit(current.upstream.dir, ['rev-parse', 't2']).stdout.trim();
+		fixtureGit(current.upstream.dir, ['tag', '-d', 't2']);
+		writeCommittedConfig(current, (value) => ({ ...value, codkitConfig: 4, discipline: 'minimal-intervention@1' }));
+		expect(() => startWith(current, interruptAt('init-state-written'), sha)).toThrow(/injected process loss/);
+		const pending = readCycleState(current.patchesDir);
+		expect(pending).toMatchObject({
+			codkitCycleState: 3,
+			targetPin: { tag: null, sha, resolvedAt: NOW.toISOString() },
+			branch: `codkit/cycle/sha-${sha}`
+		});
+		const result = startWith(current, { now: () => new Date('2026-09-01T00:00:00Z') }, sha);
+		expect(result.targetPin.tag).toBeNull();
+		expect(config(current.patchesDir).pin).toEqual(pending?.targetPin);
+		const raw = JSON.parse(readFileSync(join(current.patchesDir, 'codkit.json'), 'utf8'));
+		expect(raw.pin).not.toHaveProperty('tag');
+		expect(cycleStatus(current.patchesDir, config(current.patchesDir)).status).toBe('active');
+	});
+
 	it('uses the bytewise-first exact portable tag for a raw SHA and falls back deterministically when none exists', () => {
 		const tagged = fixture('cycle-start-sha-tagged');
 		fixtureGit(tagged.upstream.dir, ['tag', 'z-last', tagged.upstream.t2.sha]);

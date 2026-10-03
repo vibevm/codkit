@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#state */
+import { pinKey } from './pinIdentity.js';
 // Complete deterministic classification for cycle phase apply. Preview is
 // read-only. The separate apply entry point requires both live orchestrator
 // locks and recovers a durable rename transaction before parsing inventory.
@@ -53,7 +54,7 @@ export function classifyUpgradeInventory(options) {
     };
 }
 function classifyPrepared(options, apply) {
-    const expectedPin = `${options.state.sourcePin.tag}@${options.state.sourcePin.sha}`;
+    const expectedPin = `${pinKey(options.state.sourcePin)}@${options.state.sourcePin.sha}`;
     const before = loadCycleClassificationInventory(options.patchesDir, options.type, expectedPin, options.layerRuntime);
     const detected = detectRenames({
         cwd: options.treeDir,
@@ -249,7 +250,7 @@ function assertCycleInput(options) {
         throw broken('cycle phase apply requires transaction null');
     if (!samePin(options.config.pin, options.state.targetPin))
         throw broken('codkit.json pin does not exactly match cycle targetPin');
-    const expectedBranch = `${options.config.cycleBranchPrefix}${options.state.targetPin.tag}`;
+    const expectedBranch = `${options.config.cycleBranchPrefix}${pinKey(options.state.targetPin)}`;
     if (options.state.branch !== expectedBranch)
         throw broken(`cycle branch must be exactly ${expectedBranch}`);
     const branch = runGit({ args: ['symbolic-ref', '--quiet', '--short', 'HEAD'], cwd: options.patchesDir });
@@ -316,7 +317,7 @@ function recoverRenameBeforeInventory(options) {
     clearCycleClassifyRecovery(options.patchesDir, recovery);
 }
 function rebuildRecoveryBatch(options, recovery) {
-    const expectedPin = `${options.state.sourcePin.tag}@${options.state.sourcePin.sha}`;
+    const expectedPin = `${pinKey(options.state.sourcePin)}@${options.state.sourcePin.sha}`;
     const pristine = loadCycleClassificationInventory(options.patchesDir, options.type, expectedPin, options.layerRuntime);
     const patchRenames = relevantPatchRenames(pristine, recovery.detectedRenames);
     const pending = patchRenames.filter((rename) => pristine.patches.some((artifact) => artifact.patch.targetPath === rename.from));

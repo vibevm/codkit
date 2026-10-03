@@ -1,18 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-IMAGESET */
-// codkit imageset - the namespace of the product icon set, with `gen`, `index`
-// and `verify` under it. Contract: PROP-007 (##CMD-IMAGESET, ##IMAGESET-INDEX,
-// ##IMAGESET-VERIFY and the other IMAGESET-* anchors of its section). The
-// operator runs these, looks at the result, and commits the patchset
-// themselves; no other command invokes them and they invoke none.
-//
-// Delivery is the resource layer: `gen` writes generated files under
-// delta/resources/files/ with map entries in delta/resources/map.json, and
-// `codkit load` materialises them into the fork tree. That is what keeps the
-// product repository free of implementation detail - it gains resource
-// artifacts indistinguishable from hand-made ones.
-//
-// The root is a namespace and never generates: a bare `codkit imageset` that
-// quietly did work is exactly the dumping ground splitting the verbs avoids.
+import { pinKey } from '../lib/pinIdentity.js';
 import { requireCapability } from '../types/capability.js';
 import { EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { runImageset } from '../lib/imagesetEngine.js';
@@ -132,7 +119,7 @@ async function runGen(ctx) {
             type: requireProjectType(ctx),
             treeDir: resolution.path,
             brandingDir,
-            pin: { tag: config.pin.tag, sha: config.pin.sha },
+            pin: { tag: pinKey(config.pin), sha: config.pin.sha },
             dryRun,
             onInfo: (text) => ctx.out.info(text),
             onWarn: (text) => ctx.out.warn(text)

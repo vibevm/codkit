@@ -76,6 +76,17 @@ describe('cycle state', () => {
 		expect(parseCycleState(document)).toEqual(value);
 	});
 
+	it.each([{ tag: null }, { resolvedAt: '2026-10-03T12:00:00Z' }, { provenance: { source: 'fixture', sha256: 'c'.repeat(64) } }])(
+		'refuses a new pin form under schema 2: %j',
+		(change) => {
+			const legacy = state();
+			const targetPin = { ...legacy.targetPin, ...change };
+			expect(() => serializeCycleState({ ...legacy, targetPin })).toThrow(/schema 3/);
+			const document = serializeCycleState({ ...legacy, codkitCycleState: 3, targetPin });
+			expect(parseCycleState(document).targetPin).toEqual(targetPin);
+		}
+	);
+
 	it('accepts exactly every normative phase and artifact outcome key', () => {
 		for (const phase of CYCLE_PHASES) {
 			expect(parseCycleState(serializeCycleState(state(phase))).phase).toBe(phase);
@@ -241,7 +252,7 @@ describe('cycle state', () => {
 	});
 
 	it('refuses a newer state schema with an update hint', () => {
-		const newer = serializeCycleState(state()).replace('"codkitCycleState": 2', '"codkitCycleState": 3');
+		const newer = serializeCycleState(state()).replace('"codkitCycleState": 2', '"codkitCycleState": 4');
 		try {
 			parseCycleState(newer);
 			throw new Error('expected newer state schema refusal');

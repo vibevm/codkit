@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#classify */
+import { pinKey } from './pinIdentity.js';
 // Generic, read-only upgrade analysis. The caller supplies one immutable target
 // commit; no cycle state, branch, journal, recovery record, or work-tree target
 // participates in the result.
@@ -12,7 +13,7 @@ export function analyzeUpgrade(options) {
     assertPinDate(options.treeDir, options.config.pin);
     assertCommit(options.treeDir, options.newRef, 'newRef');
     assertAncestor(options.treeDir, options.config.pin.sha, options.newRef);
-    const expectedPin = `${options.config.pin.tag}@${options.config.pin.sha}`;
+    const expectedPin = `${pinKey(options.config.pin)}@${options.config.pin.sha}`;
     const classified = classifyUpgradeInventory({
         patchesDir: options.patchesDir,
         treeDir: options.treeDir,

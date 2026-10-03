@@ -11,8 +11,8 @@ import { MINIMAL_DISCIPLINE } from './discipline.js';
 export function configFieldDocs(version) {
     const FIELD_DOCS = {
         codkitConfig: {
-            required: `codkitConfig is required (schema version, must be 2 or ${version})`,
-            invalid: `codkitConfig must be 2 or ${version}`,
+            required: `codkitConfig is required (schema version, must be 2, 3 or ${version})`,
+            invalid: `codkitConfig must be 2, 3 or ${version}`,
             hint: `set "codkitConfig": ${version}`
         },
         discipline: {

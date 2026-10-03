@@ -1,5 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-003#SCHEMA-MIGRATION-RULE */
-// Explicit, pure v2-to-v3 planning. Reading/writing a legacy config does not migrate it.
+// Explicit, pure v2/v3-to-v4 planning. Reading/writing a legacy config does not migrate it.
 import { parseBaseConfig, serializeBaseConfig, CONFIG_FILE_NAME } from './configFile.js';
 import { MINIMAL_DISCIPLINE } from './discipline.js';
 import { bytesEqual, encodeUtf8 } from './bytes.js';
@@ -12,8 +12,8 @@ import { readCycleState } from './cycleState.js';
 import { listRebasePendingRecords } from './rebaseOntoPinPending.js';
 export function planConfigMigration(raw) {
     const previous = parseBaseConfig(raw, CONFIG_FILE_NAME);
-    const config = { ...previous, codkitConfig: 3, discipline: MINIMAL_DISCIPLINE };
-    return { from: previous.codkitConfig, to: 3, changed: previous.codkitConfig !== 3, config, contents: serializeBaseConfig(config) };
+    const config = { ...previous, codkitConfig: 4, discipline: MINIMAL_DISCIPLINE };
+    return { from: previous.codkitConfig, to: 4, changed: previous.codkitConfig !== 4, config, contents: serializeBaseConfig(config) };
 }
 export function readConfigMigration(patchesDir) {
     const read = readContainedFile(patchesDir, CONFIG_FILE_NAME, { what: CONFIG_FILE_NAME });

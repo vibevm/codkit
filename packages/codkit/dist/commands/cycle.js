@@ -1,6 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
-// codkit cycle - the resumable upgrade-cycle command surface.
-// Contract: PROP-007 sec. 14; state machine: PROP-009 sec. 4.
+import { pinKey, pinData } from '../lib/pinIdentity.js';
 import { EXIT_CHECK_FAILED, EXIT_OK, commandFlagGiven, forkResolution, requireProjectType } from '../lib/command.js';
 import { loadConfig } from '../lib/configFile.js';
 import { startCycle, cycleStatus, restartCycle } from '../lib/cycleControl.js';
@@ -66,7 +65,7 @@ async function runUnsafe(ctx) {
                 ...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
             });
             clearCycleRuntimeRecords(ctx.patchesDir);
-            ctx.out.info(`${started.resumed ? 'resumed' : 'started'} cycle ${started.sourcePin.tag} -> ${started.targetPin.tag}`);
+            ctx.out.info(`${started.resumed ? 'resumed' : 'started'} cycle ${pinKey(started.sourcePin)} -> ${pinKey(started.targetPin)}`);
             // startCycle atomically bumps codkit.json. The phase engine must receive
             // those new bytes, not the pre-init config object loaded by main.
             const bumpedConfig = requireConfig(loadConfig(ctx.patchesDir));
@@ -248,9 +247,10 @@ function resumeInterruptedInit(ctx, forkDir, config, crashCheckpoint) {
         config,
         type: requireProjectType(ctx),
         target: state.targetPin.sha,
+        resumeInit: true,
         ...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
     });
-    ctx.out.info(`resumed cycle init ${started.sourcePin.tag} -> ${started.targetPin.tag}`);
+    ctx.out.info(`resumed cycle init ${pinKey(started.sourcePin)} -> ${pinKey(started.targetPin)}`);
     return { config: requireConfig(loadConfig(ctx.patchesDir)), commits: [started.bumpCommit] };
 }
 function requireAction(args) {
@@ -304,7 +304,7 @@ function reportStatus(ctx, status) {
         commits: [],
         red: [],
         branch: status.branch,
-        targetPin: status.targetPin,
+        targetPin: pinData(status.targetPin),
         transaction: status.transaction,
         resolved: status.resolved
     });

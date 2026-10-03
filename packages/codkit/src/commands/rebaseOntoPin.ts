@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-REBASE-ONTO-PIN */
+import { pinKey } from '../lib/pinIdentity.ts';
 // Thin command surface for the library transaction.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
@@ -68,7 +69,7 @@ async function run(ctx: CommandContext): Promise<number> {
 				ctx.out.info(`${patch.outcome}: ${patch.artifactId} ${patch.sourceTarget} -> ${patch.targetPath} cause ${cause}`);
 			}
 			if (result.blockers.length > 0) ctx.out.info(`rebase blocked by ${result.blockers.length} conflict/deleted target(s)`);
-			else ctx.out.info(`rebase saved ${result.patches.length} feature patch(es) onto ${result.targetPin.tag}`);
+			else ctx.out.info(`rebase saved ${result.patches.length} feature patch(es) onto ${pinKey(result.targetPin)}`);
 			ctx.out.setData(dataOf(result));
 			return result.exitCode;
 		},

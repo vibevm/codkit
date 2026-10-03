@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-IMAGESET */
+import { pinKey } from './pinIdentity.ts';
 // The imageset engine (CMD-IMAGESET): regenerate the product's icon set from
 // the branding masters and deliver it as ordinary resource-layer artifacts -
 // files under delta/resources/files/ plus map entries. The fork tree is only
@@ -147,7 +148,7 @@ export function runImageset(options: ImagesetOptions): { exitCode: number; repor
 		if (existing !== undefined) {
 			updated.push(render.target.target);
 			const at = entries.indexOf(existing);
-			entries[at] = { ...existing, pin: `${options.pin.tag}@${options.pin.sha}` };
+			entries[at] = { ...existing, pin: `${pinKey(options.pin)}@${options.pin.sha}` };
 		} else {
 			created.push(render.target.target);
 			entries.push({
@@ -160,7 +161,7 @@ export function runImageset(options: ImagesetOptions): { exitCode: number; repor
 				reason: `product brand asset at ${render.target.target}`,
 				link: 'none',
 				cause: 'none',
-				pin: `${options.pin.tag}@${options.pin.sha}`,
+				pin: `${pinKey(options.pin)}@${options.pin.sha}`,
 				contractTests: [guardTestId(render.target.family)]
 			});
 		}

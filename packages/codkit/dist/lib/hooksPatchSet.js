@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
+import { pinKey } from './pinIdentity.js';
 // The git hooks codkit installs in the patchset repository (PROP-007 sec. 19).
 //
 // Two hooks, and each has one job:
@@ -218,7 +219,8 @@ export function runCommitMsg(patchesDir, message) {
 /** The target tag of the running cycle, or null when no cycle is running. */
 export function cycleTag(patchesDir) {
     try {
-        return readCycleState(patchesDir)?.targetPin.tag ?? null;
+        const state = readCycleState(patchesDir);
+        return state === null ? null : pinKey(state.targetPin);
     }
     catch {
         return null;

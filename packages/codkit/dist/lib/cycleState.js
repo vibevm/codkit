@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#state */
+import { revisionPinSchema, requiresRevisionPin } from './pinIdentity.js';
 // Durable state for the resumable upgrade-cycle state machine.
 //
 // The Zod schema is the on-disk SSOT. The library owns strict byte validation,
@@ -10,8 +11,8 @@ import { dirname } from 'node:path';
 import { z } from 'zod';
 import { bytesEqual, CR_BYTE, decodeUtf8Strict, encodeUtf8, LF_BYTE } from './bytes.js';
 import { ckError, isCkError } from './messages.js';
-import { repoRelativePathProblem, resolveContainedPath, safeBasenameProblem } from './pathSafety.js';
-export const CYCLE_STATE_SCHEMA_VERSION = 2;
+import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
+export const CYCLE_STATE_SCHEMA_VERSION = 3;
 export const CYCLE_STATE_PATH = 'cycle/state.json';
 export const CYCLE_PHASES = ['init', 'apply', 'resolve', 'renames', 'regen', 'deps-advisory', 'stabilize', 'done'];
 export const CYCLE_ARTIFACT_OUTCOMES = [
@@ -26,7 +27,6 @@ export const CYCLE_ARTIFACT_OUTCOMES = [
 ];
 export const CYCLE_BLOCKER_OUTCOMES = ['conflict', 'target-deleted', 'target-renamed', 'rule-broken', 'contract-failed'];
 const shaSchema = z.string().regex(/^[0-9a-f]{40}$/);
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const timestampSchema = z.iso.datetime({ offset: true });
 const branchSchema = z
     .string()
@@ -41,16 +41,7 @@ const portablePathSchema = z
         context.addIssue({ code: 'custom', message: problem });
     }
 });
-export const cyclePinSchema = z
-    .object({
-    tag: z
-        .string()
-        .min(1)
-        .refine((value) => safeBasenameProblem(value) === null, 'must be one portable tag basename'),
-    sha: shaSchema,
-    date: dateSchema
-})
-    .strict();
+export const cyclePinSchema = revisionPinSchema;
 export const cycleRenameSchema = z
     .object({
     from: portablePathSchema,
@@ -91,7 +82,7 @@ export const cycleArtifactsSchema = z
     .strict();
 export const cycleStateSchema = z
     .object({
-    codkitCycleState: z.literal(CYCLE_STATE_SCHEMA_VERSION),
+    codkitCycleState: z.union([z.literal(2), z.literal(CYCLE_STATE_SCHEMA_VERSION)]),
     sourcePin: cyclePinSchema,
     targetPin: cyclePinSchema,
     branch: branchSchema,
@@ -106,6 +97,8 @@ export const cycleStateSchema = z
 })
     .strict()
     .superRefine((state, context) => {
+    if (state.codkitCycleState === 2 && [state.sourcePin, state.targetPin].some(requiresRevisionPin))
+        addIssue(context, ['codkitCycleState'], 'revision-only pins and provenance require cycle state schema 3');
     if (state.phase === 'init' && state.transaction?.kind !== 'init') {
         addIssue(context, ['transaction'], 'phase init requires an init transaction');
     }
@@ -293,7 +286,7 @@ function canonicalState(state) {
     };
     const renames = [...state.renames].sort((left, right) => compareUtf8(left.from, right.from) || compareUtf8(left.to, right.to) || left.similarity - right.similarity);
     return {
-        codkitCycleState: CYCLE_STATE_SCHEMA_VERSION,
+        codkitCycleState: state.codkitCycleState,
         sourcePin: state.sourcePin,
         targetPin: state.targetPin,
         branch: state.branch,

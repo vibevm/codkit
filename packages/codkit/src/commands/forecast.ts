@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
+import { pinKey, pinData } from '../lib/pinIdentity.ts';
 // Thin forecast command adapter.
 
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
@@ -51,7 +52,7 @@ async function run(ctx: CommandContext): Promise<number> {
 
 function render(ctx: CommandContext, report: ForecastReport): void {
 	ctx.out.info(
-		`forecast: ${report.sourcePin.tag}@${report.sourcePin.sha.slice(0, 8)} -> ${report.ref.input} (${report.ref.sha.slice(0, 8)})`
+		`forecast: ${pinKey(report.sourcePin)}@${report.sourcePin.sha.slice(0, 8)} -> ${report.ref.input} (${report.ref.sha.slice(0, 8)})`
 	);
 	ctx.out.info(`outcomes: ${outcomeCounts(report)}`);
 	if (report.owners.length === 0) {
@@ -77,7 +78,7 @@ function renderArtifact(artifact: ForecastArtifact): string {
 
 function reportData(report: ForecastReport): JsonValue {
 	return {
-		sourcePin: { ...report.sourcePin },
+		sourcePin: pinData(report.sourcePin),
 		ref: { ...report.ref },
 		counts: { total: report.counts.total, nonClean: report.counts.nonClean, byOutcome: { ...report.counts.byOutcome } },
 		owners: report.owners.map((group) => ({

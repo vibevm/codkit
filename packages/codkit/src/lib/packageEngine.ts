@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE */
+import { pinKey } from './pinIdentity.ts';
 // The package engine: build the product's distributable out of the managed
 // tree, and put the tree back the way it was found.
 // Contract: PROP-007 sec. 27 (##CMD-PACKAGE); the answers it runs: PROP-016
@@ -404,7 +405,7 @@ function guardStep(
 ): { readonly detail: string; readonly error: CkErrorPayload; readonly exitCode: number } | null {
 	const { config, out, patchesDir, type } = options;
 	const tree = options.resolution.path;
-	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+	const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
 	const known: string[] = [];
 	const drift = driftDirty(
 		materializerOf(type),
@@ -549,7 +550,7 @@ function valueOfStamp(stamp: BuildStamp, config: CodkitConfig, treeDir: string):
 		case 'tree-head':
 			return revParse(treeDir, 'HEAD') ?? '';
 		case 'pin-tag':
-			return config.pin.tag;
+			return config.pin.tag ?? '';
 		case 'pin-date':
 			return config.pin.date;
 		default:

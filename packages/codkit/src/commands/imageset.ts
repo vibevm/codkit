@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-IMAGESET */
+import { pinKey } from '../lib/pinIdentity.ts';
 // codkit imageset - the namespace of the product icon set, with `gen`, `index`
 // and `verify` under it. Contract: PROP-007 (##CMD-IMAGESET, ##IMAGESET-INDEX,
 // ##IMAGESET-VERIFY and the other IMAGESET-* anchors of its section). The
@@ -146,7 +147,7 @@ async function runGen(ctx: CommandContext): Promise<number> {
 
 				treeDir: resolution.path,
 				brandingDir,
-				pin: { tag: config.pin.tag, sha: config.pin.sha },
+				pin: { tag: pinKey(config.pin), sha: config.pin.sha },
 				dryRun,
 				onInfo: (text) => ctx.out.info(text),
 				onWarn: (text) => ctx.out.warn(text)

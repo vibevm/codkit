@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-006#root */
+import { pinKey } from './pinIdentity.js';
 // The verify engine: every integrity check of the delta, without a build.
 // Contract: PROP-007 sec. 11 (##CMD-VERIFY); the cross-checks themselves are
 // PROP-006 sec. 5-6 and the layer rules of PROP-005.
@@ -402,7 +403,7 @@ function checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, fin
         }
         const pinBytes = bytesAtPin(treeDir, config.pin.sha, patch.targetPath);
         if (pinBytes === null) {
-            findings.push(finding('STALE-ARTIFACT', `${patch.header.id}: the target ${patch.targetPath} does not exist at pin ${config.pin.tag}`, 'regenerate the patch against the current pin (codkit load, then codkit save), or move the change to the own layer', artifact));
+            findings.push(finding('STALE-ARTIFACT', `${patch.header.id}: the target ${patch.targetPath} does not exist at pin ${pinKey(config.pin)}`, 'regenerate the patch against the current pin (codkit load, then codkit save), or move the change to the own layer', artifact));
             return;
         }
         const outcome = checkHunksInsideMarkers(patch, pinBytes, ext, conventions, { patchFile: artifact, allowIds });
@@ -461,7 +462,7 @@ function checkRules(treeDir, config, rules, findings) {
     for (const rule of rules) {
         const pinBytes = bytesAtPin(treeDir, config.pin.sha, rule.target);
         if (pinBytes === null) {
-            findings.push(finding('STALE-ARTIFACT', `${rule.id}: the target ${rule.target} does not exist at pin ${config.pin.tag}`, 'point the rule at a file the pin carries, or retire the rule', rule.artifactPath));
+            findings.push(finding('STALE-ARTIFACT', `${rule.id}: the target ${rule.target} does not exist at pin ${pinKey(config.pin)}`, 'point the rule at a file the pin carries, or retire the rule', rule.artifactPath));
             continue;
         }
         const count = countRuleMatches(rule, pinBytes);
@@ -469,7 +470,7 @@ function checkRules(treeDir, config, rules, findings) {
             continue;
         }
         const perOp = rule.ops.map((operation, index) => `ops[${index}] "${operation.match}" -> ${count.perOp[index] ?? 0}`).join('; ');
-        findings.push(finding('RULE-DRIFT', `${rule.id}: ${rule.target} at pin ${config.pin.tag} matches ${count.total} line(s), the rule expects ${rule.expectedMatches} (${perOp})`, 'upstream moved the lines this rule is written against: review the operations and update expectedMatches', rule.artifactPath));
+        findings.push(finding('RULE-DRIFT', `${rule.id}: ${rule.target} at pin ${pinKey(config.pin)} matches ${count.total} line(s), the rule expects ${rule.expectedMatches} (${perOp})`, 'upstream moved the lines this rule is written against: review the operations and update expectedMatches', rule.artifactPath));
     }
 }
 // ---------------------------------------------------------------------------
@@ -904,7 +905,7 @@ function checkCompleteness(type, patchesDir, treeDir, config, patches, overlays,
     }
     const changed = changedPaths(treeDir, config.pin.sha, tip);
     if (changed === null) {
-        warnings.push(`cannot diff ${config.pin.tag} against ${branch}, so completeness was not checked`);
+        warnings.push(`cannot diff ${pinKey(config.pin)} against ${branch}, so completeness was not checked`);
         return;
     }
     const patchTargets = new Set(patches.map((entry) => toPosix(entry.patch.targetPath)));
@@ -944,7 +945,7 @@ function checkCompleteness(type, patchesDir, treeDir, config, patches, overlays,
         if ((config.inputs ?? []).some((input) => path.startsWith(`${input.to}/`))) {
             continue;
         }
-        findings.push(finding('UNTRACKED-INTERVENTION', `${path} differs from pin ${config.pin.tag} on ${branch}, and no artifact of the delta explains it`, 'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit load --fresh', path));
+        findings.push(finding('UNTRACKED-INTERVENTION', `${path} differs from pin ${pinKey(config.pin)} on ${branch}, and no artifact of the delta explains it`, 'every change of the tree comes from an artifact: extract it with codkit save, or rebuild the branch with codkit load --fresh', path));
     }
     // The other direction: an artifact whose target the branch does not carry is
     // an artifact that no longer does anything.
@@ -953,7 +954,7 @@ function checkCompleteness(type, patchesDir, treeDir, config, patches, overlays,
         if (changed.has(target)) {
             continue;
         }
-        findings.push(finding('STALE-ARTIFACT', `${entry.patch.header.id}: ${target} is identical to pin ${config.pin.tag} on ${branch}, so this patch changes nothing`, 'remove the artifact, or regenerate it from a real change (codkit save)', entry.artifact));
+        findings.push(finding('STALE-ARTIFACT', `${entry.patch.header.id}: ${target} is identical to pin ${pinKey(config.pin)} on ${branch}, so this patch changes nothing`, 'remove the artifact, or regenerate it from a real change (codkit save)', entry.artifact));
     }
     for (const entry of resources) {
         checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, findings);

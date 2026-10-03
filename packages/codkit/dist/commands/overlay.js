@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
+import { pinKey } from '../lib/pinIdentity.js';
 // codkit overlay new|apply|check - the config-overlay layer's own commands.
 // Contract: PROP-007 sec. 12 (##CMD-OVERLAY, ##CMD-OVERLAY-NEW); format and
 // channels: PROP-005 sec. 5.
@@ -256,7 +257,7 @@ function scaffoldOverlay(ctx) {
         reason: fields.reason,
         link: 'none',
         cause: 'none',
-        pin: `${config.pin.tag}@${config.pin.sha}`,
+        pin: `${pinKey(config.pin)}@${config.pin.sha}`,
         contractTests: fields.contractTests,
         operations: []
     };
@@ -266,7 +267,7 @@ function scaffoldOverlay(ctx) {
     parseOverlay(JSON.parse(text), artifactPath);
     mkdirSync(join(ctx.patchesDir, ...OVERLAYS_DIR.split('/')), { recursive: true });
     writeFileSync(absolute, text, { encoding: 'utf8', flag: 'wx' });
-    ctx.out.info(`${artifactPath}: created for ${target} at ${config.pin.tag}`);
+    ctx.out.info(`${artifactPath}: created for ${target} at ${pinKey(config.pin)}`);
     ctx.out.info(`now add the operations, then: codkit overlay check ${target}`);
     ctx.out.setData({
         artifact: artifactPath,

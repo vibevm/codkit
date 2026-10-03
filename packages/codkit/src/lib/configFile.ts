@@ -24,7 +24,7 @@ export const CONFIG_FILE_NAME = 'codkit.json';
 export const LOCAL_CONFIG_FILE_NAME = 'codkit.local.json';
 
 /** Schema version this tool reads and writes (##CFG-TYPE-AND-TYPECONFIG). */
-export const CONFIG_SCHEMA_VERSION = 3;
+export const CONFIG_SCHEMA_VERSION = 4;
 export const LEGACY_CONFIG_SCHEMA_VERSION = 2;
 const { base: FIELD_DOCS, local: LOCAL_FIELD_DOCS } = configFieldDocs(CONFIG_SCHEMA_VERSION);
 
@@ -35,11 +35,9 @@ const { base: FIELD_DOCS, local: LOCAL_FIELD_DOCS } = configFieldDocs(CONFIG_SCH
  */
 export const SCHEMA_2_FIELDS = 'type, typeConfig.ownRoot';
 
-export type PinConfig = {
-	readonly tag: string;
-	readonly sha: string;
-	readonly date: string;
-};
+export type { PinConfig } from './pinIdentity.ts';
+import type { PinConfig } from './pinIdentity.ts';
+import { legacyPinSchema as pinSchema, revisionPinSchema } from './pinIdentity.ts';
 
 /**
  * The section the project type validates with its own schema. `ownRoot` is the
@@ -101,20 +99,10 @@ export type CodkitConfig = {
 };
 
 const SHA40 = /^[0-9a-f]{40}$/;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const repositoryFilePath = z
 	.string()
 	.min(1)
 	.refine((value) => repoRelativePathProblem(value) === null);
-
-const pinSchema = z.object({
-	tag: z
-		.string()
-		.min(1)
-		.refine((value) => safeBasenameProblem(value) === null),
-	sha: z.string().regex(SHA40),
-	date: z.string().regex(ISO_DATE)
-});
 
 const typeConfigSchema = z
 	.object({
@@ -164,9 +152,16 @@ const configFields = {
 	inputs: inputsSchema.optional(),
 	publish: publishSchema.optional()
 };
+
 const configSchema = z.discriminatedUnion('codkitConfig', [
 	z.object({ codkitConfig: z.literal(LEGACY_CONFIG_SCHEMA_VERSION), ...configFields }),
-	z.object({ codkitConfig: z.literal(CONFIG_SCHEMA_VERSION), discipline: z.literal(MINIMAL_DISCIPLINE), ...configFields })
+	z.object({ codkitConfig: z.literal(3), discipline: z.literal(MINIMAL_DISCIPLINE), ...configFields }),
+	z.object({
+		codkitConfig: z.literal(CONFIG_SCHEMA_VERSION),
+		discipline: z.literal(MINIMAL_DISCIPLINE),
+		...configFields,
+		pin: revisionPinSchema
+	})
 ]);
 
 /** codkit.local.json: same field vocabulary, everything optional; an input carries only its location. */
@@ -200,6 +195,7 @@ const CONFIG_KEYS: readonly string[] = [
 ];
 
 const PIN_KEYS: readonly string[] = ['tag', 'sha', 'date'];
+const REVISION_PIN_KEYS: readonly string[] = [...PIN_KEYS, 'resolvedAt', 'provenance'];
 
 /** Fields codkit.local.json may carry; the rest are pin-bearing and refused. */
 const LOCAL_ALLOWED_KEYS: readonly string[] = [
@@ -308,8 +304,15 @@ export function parseBaseConfig(raw: unknown, fileLabel: string): CodkitConfig {
 		);
 	assertKnownKeys(object, CONFIG_KEYS, fileLabel, '');
 	const pin = object['pin'];
+	if (object['codkitConfig'] === 4 && isPlainObject(pin) && typeof pin['tag'] === 'string' && /^sha-[0-9a-f]{40}$/.test(pin['tag']))
+		throw ckError(
+			'CONFIG',
+			'pin.tag uses the reserved revision-key namespace',
+			'omit the label or choose a different portable label',
+			fileLabel
+		);
 	if (isPlainObject(pin)) {
-		assertKnownKeys(pin, PIN_KEYS, fileLabel, 'pin.');
+		assertKnownKeys(pin, object['codkitConfig'] === 4 ? REVISION_PIN_KEYS : PIN_KEYS, fileLabel, 'pin.');
 	}
 
 	const parsed = configSchema.safeParse(object);
@@ -410,10 +413,26 @@ function union(base: readonly string[], local: readonly string[]): readonly stri
 
 /** Canonical base config bytes; local overrides are never serialized here. */
 export function serializeBaseConfig(config: CodkitConfig): string {
-	const parsed = parseBaseConfig(config, CONFIG_FILE_NAME);
-	const canonical: CodkitConfig = {
+	const wirePin =
+		config.codkitConfig === 4
+			? {
+					...(config.pin.tag === null ? {} : { tag: config.pin.tag }),
+					sha: config.pin.sha,
+					date: config.pin.date,
+					...(config.pin.resolvedAt === undefined ? {} : { resolvedAt: config.pin.resolvedAt }),
+					...(config.pin.provenance === undefined ? {} : { provenance: config.pin.provenance })
+				}
+			: config.pin;
+	const parsed = parseBaseConfig({ ...config, pin: wirePin }, CONFIG_FILE_NAME);
+	const canonical = {
 		codkitConfig: parsed.codkitConfig,
-		pin: { tag: parsed.pin.tag, sha: parsed.pin.sha, date: parsed.pin.date },
+		pin: {
+			...(parsed.pin.tag === null ? {} : { tag: parsed.pin.tag }),
+			sha: parsed.pin.sha,
+			date: parsed.pin.date,
+			...(parsed.pin.resolvedAt === undefined ? {} : { resolvedAt: parsed.pin.resolvedAt }),
+			...(parsed.pin.provenance === undefined ? {} : { provenance: parsed.pin.provenance })
+		},
 		upstreamAnchorCommit: parsed.upstreamAnchorCommit,
 		type: parsed.type,
 		typeConfig: parsed.typeConfig,

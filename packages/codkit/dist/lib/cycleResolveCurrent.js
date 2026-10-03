@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.js';
 // Exact final fork proof kept separate from resolve orchestration.
 import { declaredDiscipline } from './discipline.js';
 import { deltaFingerprint, treeId } from './fingerprint.js';
@@ -13,7 +14,7 @@ export function cycleResolveTreeCurrent(patchesDir, resolution, config) {
         cache !== null &&
         fastPathOk({
             treeDir: resolution.path,
-            branch: `${config.generatedBranchPrefix}${config.pin.tag}`,
+            branch: `${config.generatedBranchPrefix}${pinKey(config.pin)}`,
             cache,
             mark,
             pinSha: config.pin.sha,

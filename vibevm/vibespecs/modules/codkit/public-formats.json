@@ -57,21 +57,23 @@
     {
       "id": "config",
       "field": "codkitConfig",
-      "version": 3,
+      "version": 4,
       "observedVersions": [
         2,
-        3
+        3,
+        4
       ],
       "source": "packages/codkit/src/lib/configFile.ts",
       "owner": "Patchset owner",
       "trustBoundary": "Untrusted patchset config; local overrides are allowlisted; no adapter path accepted.",
-      "compatibility": "Config v2 remains readable and byte-stable on ordinary writes; v3 requires an explicit supported discipline; v1 refuses.",
-      "migration": "codkit config migrate previews v2-to-v3; --write explicitly applies it under the cycle-global capability with compare-before-replace.",
+      "compatibility": "Schema 2 and 3 preserve tagged-pin serialization. Schema 4 permits a missing tag, immutable SHA identity, resolution timestamp and declarative provenance.",
+      "migration": "Explicit config migrate previews v2/v3 to v4; --write applies under cycle-global lock with compare-before-replace. Ordinary writes preserve the declared supported schema.",
       "fingerprint": "Legacy v2 keeps fingerprint schema 1; explicit v3 discipline enters schema 2 and generated-history fingerprint.",
       "contract": "spec://codkit/modules/codkit/PROP-003#root",
       "tests": [
         "packages/codkit/test/unit/configFile.test.ts",
-        "packages/codkit/test/unit/configMigration.test.ts"
+        "packages/codkit/test/unit/configMigration.test.ts",
+        "packages/codkit/test/unit/revisionPin.test.ts"
       ]
     },
     {
@@ -273,15 +275,16 @@
     {
       "id": "cycle-stabilize",
       "field": "codkitCycleStabilize",
-      "version": 1,
+      "version": 2,
       "observedVersions": [
-        1
+        1,
+        2
       ],
       "source": "packages/codkit/src/lib/cycleStabilizeReport.ts",
       "owner": "Codkit engine",
       "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
-      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
-      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "compatibility": "Report 1 retains legacy schema-2 cycle/inventory evidence. Report 2 carries discipline and revision-only cycle pins; strict readers reject foreign fields and unsupported future versions.",
+      "migration": "No implicit active-report rewrite. New schema-3/4 configuration runs emit report 2; existing legacy reports retain their canonical bytes.",
       "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
       "contract": "spec://codkit/modules/codkit/PROP-009#root",
       "tests": [
@@ -291,15 +294,16 @@
     {
       "id": "cycle-state",
       "field": "codkitCycleState",
-      "version": 2,
+      "version": 3,
       "observedVersions": [
-        2
+        2,
+        3
       ],
       "source": "packages/codkit/src/lib/cycleState.ts",
       "owner": "Codkit engine",
       "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
-      "compatibility": "Exact supported schemas only; malformed or future records are refused or treated as cache misses by the cited reader.",
-      "migration": "No implicit migration; restore with the matching tool or recreate disposable state through its owning command.",
+      "compatibility": "Schema 2 requires legacy tagged pins; schema 3 carries revision-only pins and optional resolution/provenance evidence. Readers refuse future versions.",
+      "migration": "Existing schema-2 state bytes are preserved; new cycles choose schema 3 when a pin needs it. No automatic active-state migration.",
       "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
       "contract": "spec://codkit/modules/codkit/PROP-009#root",
       "tests": [

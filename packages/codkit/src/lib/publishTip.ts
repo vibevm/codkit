@@ -124,7 +124,7 @@ function generatedTip(request: TipRequest): ShapedTip {
 		parent: request.checkedTip,
 		tree: outcome.tree,
 		patchSetCommit: request.patchSetSha,
-		pinTag: request.config.pin.tag,
+		pinTag: request.config.pin.tag ?? '',
 		pinSha: request.config.pin.sha,
 		date: pinCommitDate(request.treeDir, request.config.pin.sha)
 	});

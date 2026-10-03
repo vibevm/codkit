@@ -1,5 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-REBASE-ONTO-PIN */
-// Thin command surface for the library transaction.
+import { pinKey } from '../lib/pinIdentity.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, forkResolution, requireProjectType } from '../lib/command.js';
 import { ckError, isCkError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
@@ -62,7 +62,7 @@ async function run(ctx) {
         if (result.blockers.length > 0)
             ctx.out.info(`rebase blocked by ${result.blockers.length} conflict/deleted target(s)`);
         else
-            ctx.out.info(`rebase saved ${result.patches.length} feature patch(es) onto ${result.targetPin.tag}`);
+            ctx.out.info(`rebase saved ${result.patches.length} feature patch(es) onto ${pinKey(result.targetPin)}`);
         ctx.out.setData(dataOf(result));
         return result.exitCode;
     }, (text) => ctx.out.warn(text));

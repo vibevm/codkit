@@ -1,5 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
-// Thin forecast command adapter.
+import { pinKey, pinData } from '../lib/pinIdentity.js';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { forecastUpgrade } from '../lib/forecast.js';
 import { ckError } from '../lib/messages.js';
@@ -38,7 +38,7 @@ async function run(ctx) {
     return result.exitCode === 0 ? EXIT_OK : EXIT_CHECK_FAILED;
 }
 function render(ctx, report) {
-    ctx.out.info(`forecast: ${report.sourcePin.tag}@${report.sourcePin.sha.slice(0, 8)} -> ${report.ref.input} (${report.ref.sha.slice(0, 8)})`);
+    ctx.out.info(`forecast: ${pinKey(report.sourcePin)}@${report.sourcePin.sha.slice(0, 8)} -> ${report.ref.input} (${report.ref.sha.slice(0, 8)})`);
     ctx.out.info(`outcomes: ${outcomeCounts(report)}`);
     if (report.owners.length === 0) {
         ctx.out.info('forecast: no non-clean artifacts');
@@ -61,7 +61,7 @@ function renderArtifact(artifact) {
 }
 function reportData(report) {
     return {
-        sourcePin: { ...report.sourcePin },
+        sourcePin: pinData(report.sourcePin),
         ref: { ...report.ref },
         counts: { total: report.counts.total, nonClean: report.counts.nonClean, byOutcome: { ...report.counts.byOutcome } },
         owners: report.owners.map((group) => ({

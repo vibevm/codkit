@@ -2,6 +2,7 @@
 import { cycleLiveSnapshotSchema } from './cycleStabilizeEvidence.js';
 import { cycleStateSchema } from './cycleState.js';
 import { z } from 'zod';
+import { MINIMAL_DISCIPLINE } from './discipline.js';
 const optionalDiagnosticFields = {
     hint: z.string().optional(),
     file: z.string().optional(),
@@ -28,6 +29,7 @@ const inventoryEntrySchema = z
 const inventorySchema = z
     .object({
     codkitInventory: z.number().int(),
+    discipline: z.literal(MINIMAL_DISCIPLINE).optional(),
     patchSetCommit: z.string(),
     pin: z.string(),
     entries: z.array(inventoryEntrySchema),
@@ -97,7 +99,7 @@ const redSchema = z
     .strict();
 export const stabilizeDocumentSchema = z
     .object({
-    codkitCycleStabilize: z.literal(1),
+    codkitCycleStabilize: z.union([z.literal(1), z.literal(2)]),
     basis: z
         .object({
         state: cycleStateSchema,
@@ -111,4 +113,16 @@ export const stabilizeDocumentSchema = z
     nextState: cycleStateSchema,
     digest: z.string().regex(/^[0-9a-f]{64}$/)
 })
-    .strict();
+    .strict()
+    .superRefine((report, context) => {
+    if (report.codkitCycleStabilize === 1 &&
+        (report.basis.execution.verify?.inventory?.discipline !== undefined ||
+            report.basis.state.codkitCycleState === 3 ||
+            report.nextState.codkitCycleState === 3)) {
+        context.addIssue({
+            code: 'custom',
+            path: ['codkitCycleStabilize'],
+            message: 'discipline and revision pins require stabilize report schema 2'
+        });
+    }
+});

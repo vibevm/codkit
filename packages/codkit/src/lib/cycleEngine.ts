@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.ts';
 import { createHash } from 'node:crypto';
 import { applyCycleClassification, previewCycleApply } from './cycleClassify.ts';
 import type { CycleApplyClassification, CycleClassifyResult } from './cycleClassify.ts';
@@ -196,8 +197,8 @@ function renamesPhase(options: ContinueCycleOptions, state: CycleState, record: 
 			patchesDir: options.patchesDir,
 			expectedBranch: state.branch,
 			expectedParent: current.renameParent,
-			targetTag: state.targetPin.tag,
-			subject: `refactor(cycle): follow upstream renames for ${state.targetPin.tag}`,
+			targetTag: pinKey(state.targetPin),
+			subject: `refactor(cycle): follow upstream renames for ${pinKey(state.targetPin)}`,
 			paths: [...current.renamePaths, CYCLE_STATE_PATH],
 			timestamp: current.createdAt
 		});
@@ -287,7 +288,7 @@ function finishRegenerationCommit(
 ): ContinueCycleResult {
 	const parent = record.regenerationParent;
 	if (parent === null) throw ckError('ARTIFACT-BROKEN', 'regeneration record has no exact parent');
-	const journal = journalRelativePath(state.targetPin.tag);
+	const journal = journalRelativePath(pinKey(state.targetPin));
 	const paths = byteSorted([
 		...regenerationPaths(record),
 		CYCLE_STATE_PATH,
@@ -297,8 +298,8 @@ function finishRegenerationCommit(
 		patchesDir: options.patchesDir,
 		expectedBranch: state.branch,
 		expectedParent: parent,
-		targetTag: state.targetPin.tag,
-		subject: `chore(cycle): regenerate delta for ${state.targetPin.tag}`,
+		targetTag: pinKey(state.targetPin),
+		subject: `chore(cycle): regenerate delta for ${pinKey(state.targetPin)}`,
 		paths,
 		timestamp: record.createdAt,
 		allowNoop: true
@@ -319,7 +320,7 @@ function resolvePhase(
 	locks: { readonly cycle: ReturnType<typeof acquireLock>; readonly tree: ReturnType<typeof acquireLock> },
 	commits: string[]
 ): ContinueCycleResult {
-	const journal = readCycleJournal(options.patchesDir, state.targetPin.tag);
+	const journal = readCycleJournal(options.patchesDir, pinKey(state.targetPin));
 	const resolved = runCycleResolve({
 		patchesDir: options.patchesDir,
 		resolution: options.resolution,
@@ -424,7 +425,7 @@ function artifactClassifications(items: readonly CycleApplyClassification[]) {
 }
 
 function appendAutomaticJournal(root: string, state: CycleState, record: CycleApplyRecord): void {
-	const latest = new Map(readCycleJournal(root, state.targetPin.tag).map((entry) => [entry.artifact, entry]));
+	const latest = new Map(readCycleJournal(root, pinKey(state.targetPin)).map((entry) => [entry.artifact, entry]));
 	for (const outcome of ['shifted', 'merged', 'target-renamed'] as const) {
 		for (const artifact of state.artifacts[outcome]) {
 			const cause = record.causes.find((item) => item.artifactPath === artifact)?.cause;
@@ -435,7 +436,7 @@ function appendAutomaticJournal(root: string, state: CycleState, record: CycleAp
 					throw ckError('LOG-INCOMPLETE', `${artifact}: existing journal proof conflicts with automatic classification`);
 				continue;
 			}
-			appendCycleJournalEntry(root, state.targetPin.tag, {
+			appendCycleJournalEntry(root, pinKey(state.targetPin), {
 				codkitCycleJournal: 1,
 				ts: record.createdAt,
 				artifact,

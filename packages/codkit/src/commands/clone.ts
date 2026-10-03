@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#root */
+import { pinKey } from '../lib/pinIdentity.ts';
 // codkit clone - bring the fork tree into an empty directory and set it to the pin.
 // Contract: PROP-007 sec. 4 (##CMD-CLONE).
 //
@@ -155,7 +156,7 @@ export function cloneForkTree(options: {
 	if (runGit({ args: ['cat-file', '-e', config.pin.sha], cwd: path }).status !== 0) {
 		return {
 			code: 'PIN-UNREACHABLE',
-			message: `the clone does not contain pin ${config.pin.tag}@${config.pin.sha}`,
+			message: `the clone does not contain pin ${pinKey(config.pin)}@${config.pin.sha}`,
 			hint: `check that ${source} carries the upstream history this patchset tracks`
 		};
 	}
@@ -164,11 +165,11 @@ export function cloneForkTree(options: {
 		{ args: ['checkout', '--detach', config.pin.sha], cwd: path },
 		{
 			code: 'PIN-UNREACHABLE',
-			message: `cannot check out pin ${config.pin.tag}@${config.pin.sha}`,
+			message: `cannot check out pin ${pinKey(config.pin)}@${config.pin.sha}`,
 			hint: `run: git -C ${path} checkout --detach ${config.pin.sha}`
 		}
 	);
-	out.info(`checked out ${config.pin.tag}@${config.pin.sha.slice(0, 8)} (detached)`);
+	out.info(`checked out ${pinKey(config.pin)}@${config.pin.sha.slice(0, 8)} (detached)`);
 
 	pullLfs(path, config, out);
 	return null;

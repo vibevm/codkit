@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-011#root */
+import { pinKey } from './pinIdentity.js';
 // The ci engine: one container run of the whole threshold, from scratch.
 // Contract: PROP-011 (the job, the air gap, the profiles, the rights, the
 // effective diff) and PROP-007 sec. 17 (the ci command).
@@ -157,7 +158,7 @@ export async function runCi(options) {
     // by a job, which is exactly what this guard exists to name loudly - and its
     // way out is codkit's own (`load --fresh` on that tree) or the disposable-tree
     // contract itself (mount a fresh tree), not a direct git restore.
-    const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+    const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
     try {
         assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
     }
@@ -352,7 +353,7 @@ export async function runCi(options) {
 /** CI has just built this exact branch in full mode; these own paths are expected. */
 function isGeneratedOwnFinding(finding, generatedOwnPaths, config) {
     const path = finding.file;
-    const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+    const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
     return (finding.code === 'UNTRACKED-INTERVENTION' &&
         path !== undefined &&
         generatedOwnPaths.has(path) &&
@@ -467,17 +468,17 @@ function pinGuard(patchesDir, config, base) {
     if (basePin.sha === config.pin.sha) {
         return {
             state: 'ok',
-            detail: `same pin as ${base} (${config.pin.tag}@${config.pin.sha.slice(0, 8)})`,
+            detail: `same pin as ${base} (${pinKey(config.pin)}@${config.pin.sha.slice(0, 8)})`,
             error: null,
             exitCode: EXIT_OK
         };
     }
     return {
         state: 'failed',
-        detail: `pin ${config.pin.tag}@${config.pin.sha.slice(0, 8)} against ${basePin.tag}@${basePin.sha.slice(0, 8)} at ${base}`,
+        detail: `pin ${pinKey(config.pin)}@${config.pin.sha.slice(0, 8)} against ${basePin.tag}@${basePin.sha.slice(0, 8)} at ${base}`,
         error: {
             code: 'CONFIG',
-            message: `branch pin ${config.pin.tag} != target branch pin ${basePin.tag}: this branch carries ${config.pin.tag}@${config.pin.sha} while ${base} carries ` +
+            message: `branch pin ${pinKey(config.pin)} != target branch pin ${basePin.tag}: this branch carries ${pinKey(config.pin)}@${config.pin.sha} while ${base} carries ` +
                 `${basePin.tag}@${basePin.sha}: the delta of this change is written against an upstream state the target ` +
                 'branch has moved away from',
             hint: 'merge the base branch, then re-pin the delta: codkit rebase-onto-pin',
@@ -486,7 +487,7 @@ function pinGuard(patchesDir, config, base) {
         exitCode: EXIT_CHECK_FAILED
     };
 }
-/** pin.tag and pin.sha out of a codkit.json text, or null when it has none. */
+/** pinKey(pin) and pin.sha out of a codkit.json text, or null when it has none. */
 function pinOfConfigText(text) {
     let raw;
     try {
@@ -495,8 +496,12 @@ function pinOfConfigText(text) {
     catch {
         return null;
     }
-    const parsed = z.object({ pin: z.object({ tag: z.string().min(1), sha: z.string().min(1) }) }).safeParse(raw);
-    return parsed.success ? parsed.data.pin : null;
+    const envelope = z.object({ codkitConfig: z.number().optional(), pin: z.unknown() }).safeParse(raw);
+    if (!envelope.success)
+        return null;
+    const tagged = z.object({ tag: z.string().min(1), sha: z.string().min(1) });
+    const pin = (envelope.data.codkitConfig === 4 ? tagged.extend({ tag: z.string().min(1).nullable().optional().default(null) }) : tagged).safeParse(envelope.data.pin);
+    return pin.success ? { tag: pinKey(pin.data), sha: pin.data.sha } : null;
 }
 /**
  * The diff of applied states: the generated tip of the base state of patchset

@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-REBASE-ONTO-PIN */
+import { pinKey } from './pinIdentity.ts';
 // Read-only validation and extraction of the two-parent patchset merge contract.
 
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
@@ -305,7 +306,7 @@ function objectExists(patchesDir: string, commit: string, path: string): boolean
 }
 
 function samePin(left: CodkitConfig, right: CodkitConfig): boolean {
-	return left.pin.tag === right.pin.tag && left.pin.sha === right.pin.sha && left.pin.date === right.pin.date;
+	return pinKey(left.pin) === pinKey(right.pin) && left.pin.sha === right.pin.sha && left.pin.date === right.pin.date;
 }
 
 function must(cwd: string, args: readonly string[], action: string): string {

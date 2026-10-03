@@ -105,6 +105,21 @@ export function discoverFormats(root = ROOT) {
 						: (values.get(expression?.text) ?? (shared?.size === 1 ? [...shared][0] : null));
 				const row = found.get(name) ?? { field: name, versions: new Set(), sources: new Set() };
 				if (version !== null) row.versions.add(version);
+				// Bounded supported form: z.union([z.literal(N), z.literal(M)]).
+				// Do not look past this array or execute a validator expression.
+				if (code[i + 2]?.text === 'z' && code[i + 4]?.text === 'union' && code[i + 6]?.text === '[') {
+					for (let j = i + 7; j < code.length && code[j].text !== ']'; j++) {
+						if (code[j].text !== 'z' || code[j + 1]?.text !== '.' || code[j + 2]?.text !== 'literal' || code[j + 3]?.text !== '(') continue;
+						const argument = code[j + 4];
+						if (code[j + 5]?.text !== ')') continue;
+						const sharedValue = global.get(argument?.text);
+						const value =
+							argument?.kind === SyntaxKind.NumericLiteral
+								? Number(argument.text)
+								: (values.get(argument?.text) ?? (sharedValue?.size === 1 ? [...sharedValue][0] : null));
+						if (value !== null) row.versions.add(value);
+					}
+				}
 				row.sources.add(relative(root, path).replaceAll('\\', '/'));
 				found.set(name, row);
 			}

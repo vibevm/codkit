@@ -98,7 +98,8 @@ test('discovery scans declarations and writers across packages without running t
 				'const text = "codkitString: 901";',
 				'const regex = /^# codkitRegex: 902/;',
 				'const template = `# codkitTemplate: 903 ${`nested ${1}`} tail`;',
-				'const following = { codkitAfterTemplate: 8 };'
+				'const following = { codkitAfterTemplate: 8 };',
+				'const admitted = { codkitUnion: z.union([z.literal(2), z.literal(PROBE_VERSION)]) };'
 			].join('\n')
 		);
 		writeFileSync(join(root, 'tools', 'writer.mjs'), 'const manifest = { codkitKitProbe: 4 };');
@@ -108,7 +109,8 @@ test('discovery scans declarations and writers across packages without running t
 				{ field: 'codkitAfterTemplate', versions: [8] },
 				{ field: 'codkitKitProbe', versions: [4] },
 				{ field: 'codkitNoVersion', versions: [] },
-				{ field: 'codkitProbe', versions: [6, 7] }
+				{ field: 'codkitProbe', versions: [6, 7] },
+				{ field: 'codkitUnion', versions: [2, 7] }
 			]
 		);
 	} finally {

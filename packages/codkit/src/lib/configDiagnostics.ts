@@ -13,8 +13,8 @@ type FieldDoc = { readonly required: string; readonly invalid: string; readonly 
 export function configFieldDocs(version: number) {
 	const FIELD_DOCS: Readonly<Record<string, FieldDoc>> = {
 		codkitConfig: {
-			required: `codkitConfig is required (schema version, must be 2 or ${version})`,
-			invalid: `codkitConfig must be 2 or ${version}`,
+			required: `codkitConfig is required (schema version, must be 2, 3 or ${version})`,
+			invalid: `codkitConfig must be 2, 3 or ${version}`,
 			hint: `set "codkitConfig": ${version}`
 		},
 		discipline: {

@@ -1,5 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-003#SCHEMA-MIGRATION-RULE */
-// Explicit, pure v2-to-v3 planning. Reading/writing a legacy config does not migrate it.
+// Explicit, pure v2/v3-to-v4 planning. Reading/writing a legacy config does not migrate it.
 import { parseBaseConfig, serializeBaseConfig, CONFIG_FILE_NAME } from './configFile.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { MINIMAL_DISCIPLINE } from './discipline.ts';
@@ -15,7 +15,7 @@ import { listRebasePendingRecords } from './rebaseOntoPinPending.ts';
 
 export type ConfigMigrationPlan = {
 	readonly from: number;
-	readonly to: 3;
+	readonly to: 4;
 	readonly changed: boolean;
 	readonly config: CodkitConfig;
 	readonly contents: string;
@@ -23,8 +23,8 @@ export type ConfigMigrationPlan = {
 
 export function planConfigMigration(raw: unknown): ConfigMigrationPlan {
 	const previous = parseBaseConfig(raw, CONFIG_FILE_NAME);
-	const config: CodkitConfig = { ...previous, codkitConfig: 3, discipline: MINIMAL_DISCIPLINE };
-	return { from: previous.codkitConfig, to: 3, changed: previous.codkitConfig !== 3, config, contents: serializeBaseConfig(config) };
+	const config: CodkitConfig = { ...previous, codkitConfig: 4, discipline: MINIMAL_DISCIPLINE };
+	return { from: previous.codkitConfig, to: 4, changed: previous.codkitConfig !== 4, config, contents: serializeBaseConfig(config) };
 }
 
 export function readConfigMigration(patchesDir: string): { readonly bytes: Uint8Array; readonly plan: ConfigMigrationPlan } {

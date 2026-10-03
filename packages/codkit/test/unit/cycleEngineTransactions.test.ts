@@ -1,3 +1,4 @@
+import { pinKey } from '../../src/lib/pinIdentity.ts';
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -276,7 +277,7 @@ describe('cycle engine crash transactions', () => {
 			patchesDir: fixture.patchesDir,
 			expectedBranch: record.nextState.branch,
 			expectedParent: record.parent,
-			targetTag: record.nextState.targetPin.tag,
+			targetTag: pinKey(record.nextState.targetPin),
 			subject: record.subject,
 			paths: [...record.writes.filter((item) => item.previous !== item.contents).map((item) => item.path), CYCLE_STATE_PATH],
 			timestamp: record.timestamp

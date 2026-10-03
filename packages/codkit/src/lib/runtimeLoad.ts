@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-015#RT-LOAD-STEPS */
+import { pinKey } from './pinIdentity.ts';
 // Delivering the codkit runtime library into a product repository (PROP-015
 // sec. 4) and reporting on the copy that is there (##RT-CHECK).
 //
@@ -159,7 +160,8 @@ function classifyTarget(comparison: TreeComparison, shippedCount: number): TreeC
  */
 function productPinTag(patchesDir: string): string | null {
 	try {
-		return loadBaseConfig(patchesDir)?.pin.tag ?? null;
+		const config = loadBaseConfig(patchesDir);
+		return config === null ? null : pinKey(config.pin);
 	} catch {
 		return null;
 	}

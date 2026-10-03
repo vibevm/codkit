@@ -3758,7 +3758,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:0bcde2206a6d859e825f4cd38a51c86f4d325c485a327e523b85602b791c9dd5",
+      "content_hash": "sha256:b01e5d20366a1dc30af98705927fc7f82264c3b8f93badda26132e6ad183a2b6",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "codkit PROP-003: Configuration, data conventions, the owners map, common format rules",
@@ -3821,7 +3821,7 @@
     },
     {
       "anchor": "discipline",
-      "content_hash": "sha256:7f9005299eadbc433db1d8e65c1657955145fc13c8d94b89306d83d97a2d926f",
+      "content_hash": "sha256:d4b1777bea88185389eb16d5aeb9772b2abc8405cb150f80a96b5f85c9bffef4",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "Explicit discipline profiles and schema 3",
@@ -3839,19 +3839,19 @@
     },
     {
       "anchor": "CFG-EXPLICIT-MIGRATION",
-      "content_hash": "sha256:d3fe002effdc0b14497b23322966f1c381f01555c4cd773b01042514202afde4",
+      "content_hash": "sha256:b1c2f13f635d008281cd3ff98639fae3493ebfdb8fc2531845eab1f078dfe5ae",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
-      "heading": "codkit config migrate previews a canonical v2-to-v3 conversion; --write explicitly applies it. The writer requires the owned cycle-global lock, refuses active sync/cycle/rebase records, compares the planned bytes again before contained atomic replacement, and preserves newer external edits. Repeating an already-v3 migration writes nothing. This explicit transition is the compatibility exception to the general next-write migration rule for v2: ordinary pin/input updates keep its format until migration is requested. @status:impl/done",
+      "heading": "codkit config migrate previews a canonical v2/v3-to-v4 conversion; --write explicitly applies it. The writer requires the owned cycle-global lock, refuses active sync/cycle/rebase records, compares the planned bytes again before contained atomic replacement, and preserves newer external edits. Repeating an already-v4 migration writes nothing. This explicit transition is the compatibility exception to the general next-write migration rule for v2: ordinary pin/input updates keep its format until migration is requested. @status:impl/done",
       "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-EXPLICIT-MIGRATION"
     },
     {
       "anchor": "CFG-DISCIPLINE-EVIDENCE",
-      "content_hash": "sha256:27089955287520c595b3a873ee7bea6b445cb9f351c3432cf021693f4967adce",
+      "content_hash": "sha256:74c4c13bda5b7d97fd7398713ea83caffcbe3bff4e96647e3659b605cb693068",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
-      "heading": "An explicit v3 profile enters the delta fingerprint (canonical schema 2), and therefore generated history; v3 inventories name discipline and verify/CI report the resolved profile. Implicit v2 keeps the original canonical fingerprint stream and inventory bytes. Revision-only pin evolution, alternate codecs and organization policies remain separately gated work; schema 3 does not silently alter their semantics. @status:impl/done",
+      "heading": "An explicit v3 profile enters the delta fingerprint (canonical schema 2), and therefore generated history; v3 inventories name discipline and verify/CI report the resolved profile. Implicit v2 keeps the original canonical fingerprint stream and inventory bytes. Schema 3 retains tagged-pin semantics; schema 4 adds the revision-pin contract below. Alternate codecs and organization policies remain separately gated work. @status:impl/done",
       "line": 17,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-DISCIPLINE-EVIDENCE"
     },
@@ -3919,12 +3919,57 @@
       "uri": "spec://codkit/modules/codkit/PROP-003#DISJOINT-ROOT-GUARD"
     },
     {
+      "anchor": "revision-pin",
+      "content_hash": "sha256:c24a8b7b8e45c656fb10e19f6f7079cd44f2e47ca53d54e5d6c2bc40d5e1002a",
+      "doc_path": "modules/codkit/PROP-003",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
+      "heading": "Git substrate and revision-only schema 4",
+      "line": 29,
+      "uri": "spec://codkit/modules/codkit/PROP-003#revision-pin"
+    },
+    {
+      "anchor": "CFG-REVISION-PIN",
+      "content_hash": "sha256:1fb2edbe07418dc3eb1a5c54e121c2fa3045e256deac0d83f7a6dea589455b87",
+      "doc_path": "modules/codkit/PROP-003",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
+      "heading": "Git remains the substrate; no VCS abstraction is introduced. Config v4 keeps pin.sha as the immutable full lower-case commit SHA and pin.date as its resolved commit date. pin.tag is an optional portable human label; omitted or null means no label and canonical serialization omits it. New v4 cycle resolutions record pin.resolvedAt as an ISO timestamp. Historical migrations do not invent a past resolution timestamp. Optional pin.provenance contains a source identifier and a SHA-256 evidence digest; these are declarations, never execution instructions or proof of trust. @status:impl/done",
+      "line": 30,
+      "uri": "spec://codkit/modules/codkit/PROP-003#CFG-REVISION-PIN"
+    },
+    {
+      "anchor": "CFG-REVISION-NAMES",
+      "content_hash": "sha256:871f226146b9c02dc9f8da4d19f8fa7c2dc8383aa0a5fe7ae42d9910f79dd75f",
+      "doc_path": "modules/codkit/PROP-003",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
+      "heading": "Operational names and artifact pin identities use the existing label when present, otherwise sha- followed by the full 40-hex SHA. This derived key is not written as pin.tag; schema 4 reserves the sha- plus 40-hex label namespace to prevent a human label from colliding with it. The literal overlay variable pin.tag and upstream tag build stamp are empty for an unlabelled pin. Tagged schema-2/3 configuration and operational names remain unchanged. Config migrate explicitly previews v2/v3 to v4 and --write applies the same lock, active-operation and byte-comparison guards; no unrelated operation migrates the configuration. @status:impl/done",
+      "line": 31,
+      "uri": "spec://codkit/modules/codkit/PROP-003#CFG-REVISION-NAMES"
+    },
+    {
+      "anchor": "CFG-REVISION-CYCLE",
+      "content_hash": "sha256:6660c8aa8f3374df82e08037170a61e3c5e9877b06a62686b67cfde3c1e1a568",
+      "doc_path": "modules/codkit/PROP-003",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
+      "heading": "A full SHA target in a v4 cycle remains unlabelled even if Git has an exact tag. A tag target retains that tag as its human label; reachability and commit-date checks use the SHA. Cycle state schema 3 carries nullable labels, resolution time and provenance. Readers preserve schema 2 but refuse those new pin forms under schema 2. New legacy cycles retain schema-2 bytes; retry uses the durable target resolution rather than replacing its timestamp. Continuing a recorded v4 init resolves its immutable SHA and commit date without requiring its original human tag to remain in Git. Stabilization report schema 2 carries explicit discipline inventory and schema-3 cycle evidence; legacy report 1 rejects these new forms and retains legacy canonical bytes. @status:impl/done",
+      "line": 32,
+      "uri": "spec://codkit/modules/codkit/PROP-003#CFG-REVISION-CYCLE"
+    },
+    {
+      "anchor": "DECISION-REVISION-PIN",
+      "content_hash": "sha256:5bd84c8c298521a70dc3f4aac072505003547f566da599e41b3a28d77a8fbb39",
+      "doc_path": "modules/codkit/PROP-003",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
+      "heading": "The unattended feature-proof mandate delegates the source proposal's Git and revision-only default. Use a new config version rather than weakening tagged schema 2/3 or fabricating an upstream tag. Preserve the existing date semantics and add resolvedAt for new resolutions, so historical migrations do not falsely claim when a pin was resolved. Revisit provenance validation when a real topology adapter supplies verifiable evidence. @status:impl/done",
+      "line": 33,
+      "uri": "spec://codkit/modules/codkit/PROP-003#DECISION-REVISION-PIN"
+    },
+    {
       "anchor": "config",
       "content_hash": "sha256:6db3124d145fb2a434a2277adc52cfae35acb971cd6504ed32e4fa49de6bfb98",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "3. The patch-set configuration - codkit.json (+ codkit.local.json)",
-      "line": 29,
+      "line": 35,
       "uri": "spec://codkit/modules/codkit/PROP-003#config"
     },
     {
@@ -3933,7 +3978,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "`upstreamAnchorCommit` is the SHA by whose reachability the tree is recognized as «the microsoft/vscode history» (the origin is checked by the reachability of a known commit, not by the name of a remote). The value is computed once when the configuration is created: `git rev-list --max-parents=0 <pin.sha>` (the root commit of the history; if there are several roots, the lexicographically smallest SHA is taken). It is committed in `codkit.json` and does not change when the pin is raised. @status:spec/done",
-      "line": 60,
+      "line": 66,
       "uri": "spec://codkit/modules/codkit/PROP-003#ANCHOR-COMMIT-RULE"
     },
     {
@@ -3942,7 +3987,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "**Schema 2 (PROP-016).** `codkit.json` carries `\"codkitConfig\": 2`, the required `\"type\": \"<identifier>\"` and the required `\"typeConfig\": { ... }`, whose first field is `ownRoot` - a full path from the tree root. The engine validates the universal fields of the table above and hands `typeConfig` to the type, which validates it with its own schema and refuses with `CK-E-CONFIG` naming the field (`spec://codkit/modules/codkit/PROP-016#TYPE-CONFIG-FIELD`, `spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`). One patch set, one type. The row `ownDirName` of the table above is the schema-1 field it replaces. @status:spec/done",
-      "line": 61,
+      "line": 67,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-TYPE-AND-TYPECONFIG"
     },
     {
@@ -3951,7 +3996,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "**There is no compatibility layer.** A `codkit.json` without `type` is schema 1 and is refused with `CK-E-CONFIG` that names the two fields to add - `type` and `typeConfig.ownRoot` - and nothing else; no command reads schema 1 and no code path infers a type from `ownDirName` (`spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED`, `spec://codkit/modules/codkit/PROP-016#DECISION-NO-COMPATIBILITY-LAYER`). The single existing consumer is migrated inside the campaign, with its own gates as the proof. @status:spec/done",
-      "line": 62,
+      "line": 68,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-SCHEMA-1-IS-REFUSED"
     },
     {
@@ -3960,7 +4005,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "`codkit.local.json` contains only optional non-pin operational overrides (`typeConfig`, the branch/ref prefixes, `publishRemoteUrl`, `publish.exclude`, `publish.scrub.specRoots`, `publish.scrub.vocabulary` and the location of an input; in schema 1 the first of them was `ownDirName`). The three `publish` lists are joined with the base instead of replacing it - a local `specRoots` joins the default when the base names none: a local file can leave more out of a release and scrub more of it, never less. For the same reason a local `publish.scrub.allow` is refused with `CK-E-CONFIG`. An entry of the local `inputs` list is `{\"name\": \"<an input of codkit.json>\", \"repository\": \"<absolute path>\"}` and nothing else: the location replaces the shared one on this machine, while every field that says what the input takes stays reviewed in `codkit.json` - any other field is refused with `CK-E-CONFIG` naming it (`inputs.ref cannot be set locally`), a name twice is refused, and an entry for a name `codkit.json` does not declare changes nothing and is named by `status`. The `type` itself is not overridable locally: one patch set declares one type and it is a shared invariant of the repository. It does not accept `pin`, `upstreamAnchorCommit`, the schema field, the location roots or references to a safety/build policy. The root paths belong to the CLI, the environment and the user settings alone. @status:spec/done",
-      "line": 63,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/PROP-003#LOCAL-CONFIG-RULE"
     },
     {
@@ -3969,7 +4014,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "After the initial bootstrap of a patch set the pin changes only by the canonical commit of an upgrade cycle. @status:spec/done",
-      "line": 64,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/PROP-003#PIN-CHANGES-ONLY-BY-CYCLE"
     },
     {
@@ -3978,7 +4023,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "A valid sample (the `upstreamAnchorCommit` value is a placeholder of the example; in a real file it is the computed SHA): @status:spec/done",
-      "line": 65,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-003#config-valid-sample"
     },
     {
@@ -3987,7 +4032,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "An invalid sample and the expected diagnostics: a file with `\"pin\": {\"tag\": \"1.135.0\"}` (no `sha`) → exit 2, the message `CK-E-CONFIG: codkit.json: pin.sha is required (full 40-hex commit sha of the pin tag)`. @status:spec/done",
-      "line": 79,
+      "line": 85,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONFIG-INVALID-SAMPLE"
     },
     {
@@ -3996,7 +4041,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "4. Data conventions and safe extension",
-      "line": 81,
+      "line": 87,
       "uri": "spec://codkit/modules/codkit/PROP-003#conventions-data"
     },
     {
@@ -4005,7 +4050,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The mandatory base policy lives only in `toolRoot/config/conventions.json`; the CLI, the checks, the CI and the agent protocols read it. A file with the same path under patchesDir never shadows the installed policy. @status:spec/done",
-      "line": 82,
+      "line": 88,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONVENTIONS-SINGLE-DEFINITION"
     },
     {
@@ -4014,7 +4059,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-009#FORBIDDEN-SERVICES-SEED; the address stays for citations. @status:spec/done",
-      "line": 96,
+      "line": 102,
       "uri": "spec://codkit/modules/codkit/PROP-003#FORBIDDEN-SERVICES-SEED"
     },
     {
@@ -4023,7 +4068,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "If `conventionsExtensionFile` is given, the path must stay inside patchesDir after symlinks are resolved. The strict schema `codkitConventionsExtension:1` may add `subsystems` (the effective idPattern is derived from the union), additional `forbiddenPatchTargets`, `forbiddenServiceIds` and `markerComment` for new file extensions only. It cannot delete, replace or weaken the base prohibitions, change the layer order, an existing marker form, the intervention types/categories or the cleanup policy. @status:spec/done",
-      "line": 97,
+      "line": 103,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONVENTIONS-EXTENSION"
     },
     {
@@ -4032,7 +4077,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "A patch-set file `codkit/config/conventions.json` without an explicit `conventionsExtensionFile` is ignored. Even with an explicit reference the content is treated as an additive extension, not as a replacement of the shipped policy. @status:spec/done",
-      "line": 98,
+      "line": 104,
       "uri": "spec://codkit/modules/codkit/PROP-003#NO-HIDDEN-POLICY-OVERRIDE"
     },
     {
@@ -4041,7 +4086,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "By default the build wrapper reads `toolRoot/config/build-watch.json`. Only an explicit `buildWatchFile` selects the strict versioned profile of a particular fork; the patch set is the project policy chosen by the user, but a hidden copy under the same name is not taken into account. The path must be relative and contained inside patchesDir. Every channel must have at least one `errorLine` or `errorCountLine`; unknown fields are forbidden. The author of a custom profile keeps green/red log fixtures and confirms that an error does not become exit 0. @status:spec/done",
-      "line": 99,
+      "line": 105,
       "uri": "spec://codkit/modules/codkit/PROP-003#BUILD-WATCH-SELECTION"
     },
     {
@@ -4050,7 +4095,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "5. The owners map - delta/owners.json",
-      "line": 101,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-003#owners"
     },
     {
@@ -4059,7 +4104,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The format: `{\"codkitOwners\":1,\"owners\":{\"workbench-core\":{\"contact\":\"<team-or-login>\",\"paths\":[\"src/vs/workbench/**\"]}, …}}`. @status:spec/done",
-      "line": 102,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-003#OWNERS-FORMAT"
     },
     {
@@ -4068,7 +4113,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The `owner` value of any artifact must be a key of `owners`; otherwise `verify` gives exit 1, `CK-E-OWNER-UNKNOWN`. @status:spec/done",
-      "line": 104,
+      "line": 110,
       "uri": "spec://codkit/modules/codkit/PROP-003#OWNER-MUST-EXIST"
     },
     {
@@ -4077,7 +4122,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The CODEOWNERS file of the hosting is generated from this map (the command is not in the MVP; the map itself is already in the MVP: the inventory needs the «subsystem → owner» routing). @status:spec/done",
-      "line": 105,
+      "line": 111,
       "uri": "spec://codkit/modules/codkit/PROP-003#CODEOWNERS-GENERATED-LATER"
     },
     {
@@ -4086,7 +4131,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "6. Artifact metadata - the common dictionary",
-      "line": 108,
+      "line": 114,
       "uri": "spec://codkit/modules/codkit/PROP-003#artifact-metadata"
     },
     {
@@ -4095,7 +4140,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "Every layer gives the inventory the same set of fields: `id`, `layer`, `type`, `category`, `owner`, `reason`, `link`, `cause`, `pin`, `contract-tests`, plus the computed `subsystem` (from the id) and `files` (the targets of the intervention). The carrier for a patch is the `.ckpatch` header (PROP-004 §3); for an overlay/resource/rule it is the fields of their JSON (PROP-005); for own and entry-module it is the records in `delta/own/patchset.delta.json` (PROP-005 §3). @status:spec/done",
-      "line": 109,
+      "line": 115,
       "uri": "spec://codkit/modules/codkit/PROP-003#ARTIFACT-METADATA-DICTIONARY"
     },
     {

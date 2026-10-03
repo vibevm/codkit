@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
+import { pinKey } from './pinIdentity.ts';
 // The sync engine: bring the fork tree to the pin and put the delta on it.
 // The pseudocode of PROP-008 sec. 3 is normative and this file follows its order.
 //
@@ -373,7 +374,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// ##TYPE-AREA-LAYOUT). Mirroring, the drift guard, the exclusion, the
 	// generated snapshot and the mark all work over this list.
 	const roots = ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
-	const branch = `${config.generatedBranchPrefix}${config.pin.tag}`;
+	const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
 	let generatedBranch = options.generatedBranch === true;
 	// Only a release snapshot leaves the licence notice out; every other
 	// generated branch carries it (PROP-014 ##STD-NOTICE-RELEASE-EXCLUSION).
@@ -1203,7 +1204,7 @@ function buildBranch(
 			{ args: ['read-tree', config.pin.sha], cwd: tree, env: indexEnv },
 			{
 				code: 'ARTIFACT-BROKEN',
-				message: `cannot read the tree of pin ${config.pin.tag} into a temporary index`,
+				message: `cannot read the tree of pin ${pinKey(config.pin)} into a temporary index`,
 				hint: 'the pin is reachable but its tree is not readable; check the tree with git fsck'
 			}
 		);
@@ -1218,7 +1219,7 @@ function buildBranch(
 				indexFile,
 				parent,
 				roots: ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
-				pinTag: config.pin.tag,
+				pinTag: config.pin.tag ?? '',
 				pinSha: config.pin.sha,
 				pinDateIso,
 				patchSetCommit,
@@ -1276,7 +1277,7 @@ function buildBranch(
 				parent,
 				produced: inputs,
 				patchSetCommit,
-				pinTag: config.pin.tag,
+				pinTag: config.pin.tag ?? '',
 				pinSha: config.pin.sha
 			});
 		}
@@ -1407,7 +1408,7 @@ function applyPatchAtPin(artifact: PatchArtifact, options: SyncEngineOptions): U
 		if (shown.status !== 0) {
 			throw ckError(
 				'ARTIFACT-BROKEN',
-				`${artifact.artifactPath}: ${artifact.target} does not exist at pin ${options.config.pin.tag}`,
+				`${artifact.artifactPath}: ${artifact.target} does not exist at pin ${pinKey(options.config.pin)}`,
 				'regenerate the patch against the current pin with codkit save, or resolve it in an upgrade cycle',
 				artifact.artifactPath
 			);
@@ -1461,7 +1462,7 @@ function commitMessage(artifact: Artifact, config: CodkitConfig, patchSetCommit:
 		'',
 		...ids.map((id) => `Codkit-Artifact: ${id}`),
 		`Codkit-Patchset-Commit: ${patchSetCommit}`,
-		`Codkit-Upstream-Pin: ${config.pin.tag}@${config.pin.sha}`
+		`Codkit-Upstream-Pin: ${pinKey(config.pin)}@${config.pin.sha}`
 	].join('\n');
 }
 
@@ -2592,7 +2593,7 @@ function strandedExtensionHook(
  */
 export function overlayVarContext(config: CodkitConfig, pinDateIso: string, patchSetCommit: string): OverlayVarContext {
 	return {
-		pinTag: config.pin.tag,
+		pinTag: config.pin.tag ?? '',
 		pinSha: config.pin.sha,
 		pinDate: config.pin.date,
 		patchSetCommit,
@@ -2653,5 +2654,5 @@ export function toPosix(path: string): string {
 
 /** The generated branch of a pin; the command names it in its output. */
 export function generatedBranchName(config: CodkitConfig): string {
-	return `${config.generatedBranchPrefix}${config.pin.tag}`;
+	return `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
 }

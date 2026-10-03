@@ -1,4 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#state */
+import { pinKey } from './pinIdentity.ts';
+import { provisionalBranch } from './cycleControlGit.ts';
 // Provisional cycle apply: reload, reclassify and preflight the complete delta,
 // build deterministic objects, then hand the move to the durable transaction.
 
@@ -202,7 +204,7 @@ function loadCurrent(options: CycleMaterializeOptions): Loaded {
 	const rules = loadRules(options.patchesDir);
 	const overlays = loadOverlays(options.patchesDir, options.type);
 	const resources = loadResourceMap(options.patchesDir)?.entries ?? [];
-	const expectedPin = `${options.sourcePin.tag}@${options.sourcePin.sha}`;
+	const expectedPin = `${pinKey(options.sourcePin)}@${options.sourcePin.sha}`;
 	for (const [artifact, pin] of [
 		...patches.map((entry) => [entry.artifactPath, entry.patch.header.pin] as const),
 		...rules.map((rule) => [rule.artifactPath, rule.pin] as const),
@@ -528,17 +530,8 @@ function stageMessage(stage: Stage, options: CycleMaterializeOptions, patchSetCo
 		...stage.artifactIds.map((id) => `Codkit-Artifact: ${id}`),
 		`Codkit-Cycle-Outcome: ${stage.outcome}`,
 		`Codkit-Patchset-Commit: ${patchSetCommit}`,
-		`Codkit-Upstream-Pin: ${options.config.pin.tag}@${options.config.pin.sha}`
+		`Codkit-Upstream-Pin: ${pinKey(options.config.pin)}@${options.config.pin.sha}`
 	].join('\n');
-}
-
-function provisionalBranch(config: CodkitConfig, tree: string): string {
-	const branch = `${config.cycleBranchPrefix}${config.pin.tag}-provisional`;
-	const checked = runGit({ args: ['check-ref-format', '--branch', branch], cwd: tree });
-	if (branch === `${config.generatedBranchPrefix}${config.pin.tag}` || checked.status !== 0 || checked.stdout.trim() !== branch) {
-		throw ckError('CONFIG', `cannot use ${branch} as the provisional cycle branch`, 'choose non-overlapping branch prefixes');
-	}
-	return branch;
 }
 
 function patchNames(patchesDir: string): readonly string[] {

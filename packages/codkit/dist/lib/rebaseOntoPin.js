@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-REBASE-ONTO-PIN */
+import { pinKey } from './pinIdentity.js';
 // Replay feature-only patches from HEAD^1 over an object-only HEAD^2 baseline.
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -55,7 +56,7 @@ export function rebaseOntoPin(options) {
             ...(options.similarity === undefined ? {} : { threshold: options.similarity })
         });
         const renameByOld = new Map(renames.map((rename) => [rename.from, rename]));
-        const prepared = graph.featurePatches.map((feature) => preparePatch(options, graph.sourceConfig.pin.sha, graph.targetConfig.pin, scratch.dir, baseline, feature, renameByOld.get(feature.patch.targetPath)));
+        const prepared = graph.featurePatches.map((feature) => preparePatch(options, graph.sourceConfig.pin.sha, { tag: pinKey(graph.targetConfig.pin), sha: graph.targetConfig.pin.sha }, scratch.dir, baseline, feature, renameByOld.get(feature.patch.targetPath)));
         assertPatchSetArtifactStates(options, prepared, graph.targetConfig.pin.sha);
         const desiredTree = buildDesiredTree(scratch.dir, baseline, prepared);
         // The dev-channel sidecar of this family is written by `load` and ignored
@@ -170,7 +171,7 @@ function sameRebasedHeader(entry, patch) {
         after.reason === before.reason &&
         after.link === before.link &&
         after.cause === entry.override.cause &&
-        after.pin === `${entry.override.pin.tag}@${entry.override.pin.sha}` &&
+        after.pin === `${pinKey(entry.override.pin)}@${entry.override.pin.sha}` &&
         JSON.stringify(after.contractTests) === JSON.stringify(before.contractTests));
 }
 function reconcilePatchSetArtifactRenames(options, prepared) {
@@ -269,7 +270,7 @@ function preparePatch(options, oldPin, targetPin, scratchTree, baseline, feature
         artifactPath: expectedArtifact,
         artifactId: feature.patch.header.id,
         cause: headerCause,
-        pin: { tag: targetPin.tag, sha: targetPin.sha }
+        pin: { tag: pinKey(targetPin), sha: targetPin.sha }
     };
     return {
         artifactPath: expectedArtifact,

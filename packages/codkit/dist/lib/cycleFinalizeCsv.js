@@ -1,5 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
-// Fixed-schema, strict and deterministic cycle metrics history.
+import { pinKey } from './pinIdentity.js';
 import { CYCLE_ARTIFACT_OUTCOMES } from './cycleState.js';
 import { ckError } from './messages.js';
 import { safeBasenameProblem } from './pathSafety.js';
@@ -95,9 +95,9 @@ function metricsRow(state, entries, inventory) {
     const coverage = inventory.metrics.contractCoverage;
     return [
         state.updatedAt,
-        state.sourcePin.tag,
+        pinKey(state.sourcePin),
         state.sourcePin.sha,
-        state.targetPin.tag,
+        pinKey(state.targetPin),
         state.targetPin.sha,
         cycleDurationSeconds(state),
         String(total),

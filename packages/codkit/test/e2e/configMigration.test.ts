@@ -48,10 +48,10 @@ it('previews without an adapter or fork, writes explicitly and then becomes a no
 		expect(result.status, result.stderr).toBe(0);
 		return JSON.parse(result.stdout);
 	};
-	expect(run([]).data).toMatchObject({ from: 2, to: 3, changed: true, written: false });
+	expect(run([]).data).toMatchObject({ from: 2, to: 4, changed: true, written: false });
 	expect(readFileSync(path)).toEqual(before);
 	expect(run(['--write']).data).toMatchObject({ changed: true, written: true });
-	expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({ codkitConfig: 3, discipline: 'minimal-intervention@1' });
+	expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({ codkitConfig: 4, discipline: 'minimal-intervention@1' });
 	const migrated = readFileSync(path);
 	expect(run(['--write']).data).toMatchObject({ changed: false, written: false });
 	expect(readFileSync(path)).toEqual(migrated);

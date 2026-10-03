@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.js';
 // Deterministic regeneration of cycle artifacts. Planning is read-only; apply
 // is a byte-CAS transaction with a durable recovery record owned by the caller's
 // cycle lock.
@@ -418,7 +419,7 @@ function requiredDesired(values, path) {
     return value;
 }
 function pinValue(pin) {
-    return `${pin.tag}@${pin.sha}`;
+    return `${pinKey(pin)}@${pin.sha}`;
 }
 function causeKey(path, id) {
     return `${path}\0${id}`;

@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { pinKey } from './pinIdentity.ts';
 import { readFileSync } from 'node:fs';
 import { applyUnified } from './applyUnified.ts';
 import { bytesEqual, decodeUtf8Strict } from './bytes.ts';
@@ -181,7 +182,7 @@ export function runCycleResolve(options: CycleResolveOptions): CycleResolveResul
 		patchesDir: options.patchesDir,
 		expectedBranch: next.branch,
 		expectedParent: readHead(options),
-		targetTag: next.targetPin.tag,
+		targetTag: pinKey(next.targetPin),
 		subject: `fix(cycle): resolve ${artifact.artifactId}`,
 		paths,
 		timestamp: commitTimestamp(proof.ts),
@@ -329,7 +330,7 @@ function validateInput(options: CycleResolveOptions): CycleState {
 	const state = cycleStateSchema.parse(options.state);
 	if (state.phase !== 'resolve' || state.transaction !== null) throw broken(`cycle phase must be resolve with transaction null`);
 	if (!samePin(options.config.pin, state.targetPin)) throw broken('codkit.json pin does not exactly match cycle targetPin');
-	if (state.branch !== `${options.config.cycleBranchPrefix}${state.targetPin.tag}`) throw broken('cycle branch does not match config');
+	if (state.branch !== `${options.config.cycleBranchPrefix}${pinKey(state.targetPin)}`) throw broken('cycle branch does not match config');
 	if (readBranch(options) !== state.branch) throw broken(`patchset checkout must be on cycle branch ${state.branch}`);
 	assertLiveLocks(options);
 	return state;
@@ -369,7 +370,7 @@ function blockerPairs(state: CycleState): readonly { artifactPath: string; outco
 }
 
 function assertNoUnknownDirt(options: CycleResolveOptions, facts: Facts, artifact: CycleResolveArtifact): void {
-	const allowedPatchSet = new Set([...artifact.patchesPaths, CYCLE_STATE_PATH, journalPath(facts.state.targetPin.tag)]);
+	const allowedPatchSet = new Set([...artifact.patchesPaths, CYCLE_STATE_PATH, journalPath(pinKey(facts.state.targetPin))]);
 	const unknownPatchSet = facts.patchsetDirt
 		.filter((entry) => !allowedPatchSet.has(entry.path) || (entry.status[0] !== ' ' && entry.status !== '??'))
 		.map((entry) => entry.path);
@@ -385,7 +386,7 @@ function assertNoUnknownDirt(options: CycleResolveOptions, facts: Facts, artifac
 }
 
 function exactCommitPaths(facts: Facts, artifact: CycleResolveArtifact): readonly string[] {
-	const allowed = new Set([...artifact.patchesPaths, CYCLE_STATE_PATH, journalPath(facts.state.targetPin.tag)]);
+	const allowed = new Set([...artifact.patchesPaths, CYCLE_STATE_PATH, journalPath(pinKey(facts.state.targetPin))]);
 	const staged = facts.patchsetDirt.filter((entry) => entry.status[0] !== ' ' && entry.status !== '??');
 	const unknown = facts.patchsetDirt.filter((entry) => !allowed.has(entry.path));
 	if (staged.length > 0 || unknown.length > 0)
@@ -405,7 +406,7 @@ function unknownTreePaths(facts: Facts): readonly string[] {
 }
 
 function unknownPatchesPaths(facts: Facts, artifact: CycleResolveArtifact): readonly string[] {
-	const allowed = new Set([...artifact.patchesPaths, CYCLE_STATE_PATH, journalPath(facts.state.targetPin.tag)]);
+	const allowed = new Set([...artifact.patchesPaths, CYCLE_STATE_PATH, journalPath(pinKey(facts.state.targetPin))]);
 	return byteSorted(
 		facts.patchsetDirt
 			.filter((entry) => !allowed.has(entry.path) || (entry.status[0] !== ' ' && entry.status !== '??'))
@@ -471,7 +472,7 @@ function headerOverride(artifact: CycleResolveArtifact, config: CodkitConfig): S
 		artifactPath: artifact.artifactPath,
 		artifactId: artifact.artifactId,
 		cause: artifact.cause.sha,
-		pin: { tag: config.pin.tag, sha: config.pin.sha }
+		pin: { tag: pinKey(config.pin), sha: config.pin.sha }
 	};
 }
 
@@ -491,7 +492,7 @@ export const nodeCycleResolvePatchAdapter: CycleResolvePatchAdapter = {
 			patch.targetPath !== target ||
 			patch.header.id !== artifact.artifactId ||
 			patch.header.cause !== proof.cause.sha ||
-			patch.header.pin !== `${options.state.targetPin.tag}@${options.state.targetPin.sha}`
+			patch.header.pin !== `${pinKey(options.state.targetPin)}@${options.state.targetPin.sha}`
 		)
 			return false;
 		const tree = readTreeBytes(options, target);
