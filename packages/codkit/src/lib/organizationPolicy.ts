@@ -26,6 +26,18 @@ export const organizationPolicySchema = z.strictObject({
 			sha256: z.string().regex(/^[0-9a-f]{64}$/)
 		})
 	),
+	standardLicenseTexts: z
+		.array(
+			z.strictObject({
+				id: z.string().min(1),
+				text: z
+					.string()
+					.min(1)
+					.max(1024 * 1024),
+				sha256: z.string().regex(/^[0-9a-f]{64}$/)
+			})
+		)
+		.optional(),
 	distribution: z.strictObject({ requiredNotices: z.array(id), sbom: z.enum(['spdx-json', 'none']), requireSourceCarriers: z.boolean() }),
 	legalReviewReference: z.string().min(1).optional()
 });
@@ -123,6 +135,16 @@ export function validateOrganizationPolicy(raw: unknown, standard: SpdxLicenseId
 	}
 	for (const group of [policy.holders, policy.allowedExceptions, policy.distribution.requiredNotices])
 		if (new Set(group).size !== group.length) problems.push('organization policy declarations repeat');
+	const standardTexts = new Set<string>();
+	for (const record of policy.standardLicenseTexts ?? []) {
+		if (!standard.ids.has(record.id) && !policy.allowedExceptions.includes(record.id))
+			problems.push('standard text identifier is neither installed SPDX license nor approved exception');
+		if (standardTexts.has(record.id)) problems.push('standard license text identifiers repeat');
+		standardTexts.add(record.id);
+		if (record.text.trim() === '' || record.text.startsWith('\ufeff') || record.text.includes('\r') || !record.text.endsWith('\n'))
+			problems.push('standard license text must be nonempty canonical LF text with a final LF');
+		if (createHash('sha256').update(record.text).digest('hex') !== record.sha256) problems.push('standard license text digest differs');
+	}
 	for (const value of [policy.ownLicense, ...policy.allowedThirdParty, ...policy.forbiddenThirdParty]) {
 		const checked = parsePolicyExpression(value);
 		if (!checked.ok) {

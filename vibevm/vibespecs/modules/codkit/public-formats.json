@@ -473,6 +473,21 @@
       ]
     },
     {
+      "source": "packages/codkit/src/lib/distributionDocuments.ts",
+      "owner": "Codkit distribution evidence capability",
+      "trustBoundary": "Rendered data derives from inspected payload/organization policy; conclusions remain explicit build declarations, not legal approval.",
+      "compatibility": "Exact deterministic own document export; stale attached bytes and moved payloads refuse.",
+      "migration": "Regenerate under the selected checked authority; unsupported SPDX versions refuse.",
+      "fingerprint": "Payload/source/authority bind evidence; metadata files are excluded from content to prevent self-reference.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-DOCUMENTS",
+      "tests": [
+        "packages/codkit/test/unit/distributionDocuments.test.ts"
+      ],
+      "id": "distribution-notice-content",
+      "version": 1,
+      "versionSymbol": "DISTRIBUTION_NOTICE_VERSION"
+    },
+    {
       "id": "distribution-notices",
       "field": "codkitDistributionNotices",
       "version": 1,
@@ -508,6 +523,22 @@
         "packages/codkit/test/unit/distributionProvenance.test.ts",
         "packages/codkit/test/unit/consumerLicenseCheck.test.ts"
       ]
+    },
+    {
+      "source": "packages/codkit/src/lib/distributionDocuments.ts",
+      "owner": "Codkit distribution evidence capability",
+      "trustBoundary": "Rendered data derives from inspected payload/organization policy; conclusions remain explicit build declarations, not legal approval.",
+      "compatibility": "Exact deterministic own document export; stale attached bytes and moved payloads refuse.",
+      "migration": "Regenerate under the selected checked authority; unsupported SPDX versions refuse.",
+      "fingerprint": "Payload/source/authority bind evidence; metadata files are excluded from content to prevent self-reference.",
+      "contract": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-DOCUMENTS",
+      "tests": [
+        "packages/codkit/test/unit/distributionDocuments.test.ts"
+      ],
+      "id": "distribution-spdx",
+      "version": null,
+      "externalVersion": "SPDX-2.3",
+      "externalVersionSymbol": "SPDX_EXPORT_VERSION"
     },
     {
       "id": "exit-codes",

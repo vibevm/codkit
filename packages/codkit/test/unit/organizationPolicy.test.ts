@@ -45,6 +45,19 @@ afterEach(() => {
 });
 
 describe('organization policy authority', () => {
+	it('validates trusted standard notice texts without changing profiles that omit them', () => {
+		const record = { id: 'MIT', text: 'Fixture MIT text; not actual license text or approval.\n', sha256: '' };
+		record.sha256 = createHash('sha256').update(record.text).digest('hex');
+		expect(validateOrganizationPolicy({ ...raw(), standardLicenseTexts: [record] }, standard).ok).toBe(true);
+		for (const records of [
+			[{ ...record, id: 'Unknown' }],
+			[{ ...record, sha256: 'b'.repeat(64) }],
+			[record, record],
+			[{ ...record, text: ' \n' }]
+		])
+			expect(validateOrganizationPolicy({ ...raw(), standardLicenseTexts: records }, standard).ok).toBe(false);
+		expect(validated().standardLicenseTexts).toBeUndefined();
+	});
 	it('allows proprietary own code only under its validated text-bound policy, and keeps third-party scope distinct', () => {
 		const policy = validated();
 		expect(checkOrganizationExpression(policy, 'LicenseRef-FIXTURE-Private', true).ok).toBe(true);

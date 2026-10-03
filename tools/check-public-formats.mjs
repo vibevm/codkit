@@ -61,9 +61,9 @@ function constants(code) {
 		if (
 			code[i].kind === SyntaxKind.ConstKeyword &&
 			code[i + 2].kind === SyntaxKind.EqualsToken &&
-			code[i + 3].kind === SyntaxKind.NumericLiteral
+			[SyntaxKind.NumericLiteral, SyntaxKind.StringLiteral].includes(code[i + 3].kind)
 		)
-			result.set(code[i + 1].text, Number(code[i + 3].text));
+			result.set(code[i + 1].text, code[i + 3].kind === SyntaxKind.NumericLiteral ? Number(code[i + 3].text) : code[i + 3].text);
 	return result;
 }
 
@@ -104,7 +104,7 @@ export function discoverFormats(root = ROOT) {
 						? Number(expression.text)
 						: (values.get(expression?.text) ?? (shared?.size === 1 ? [...shared][0] : null));
 				const row = found.get(name) ?? { field: name, versions: new Set(), sources: new Set() };
-				if (version !== null) row.versions.add(version);
+				if (typeof version === 'number') row.versions.add(version);
 				// Bounded supported form: z.union([z.literal(N), z.literal(M)]).
 				// Do not look past this array or execute a validator expression.
 				if (code[i + 2]?.text === 'z' && code[i + 4]?.text === 'union' && code[i + 6]?.text === '[') {
@@ -117,7 +117,7 @@ export function discoverFormats(root = ROOT) {
 							argument?.kind === SyntaxKind.NumericLiteral
 								? Number(argument.text)
 								: (values.get(argument?.text) ?? (sharedValue?.size === 1 ? [...sharedValue][0] : null));
-						if (value !== null) row.versions.add(value);
+						if (typeof value === 'number') row.versions.add(value);
 					}
 				}
 				row.sources.add(relative(root, path).replaceAll('\\', '/'));
@@ -150,7 +150,14 @@ export function checkCatalog(catalog, discovered, root = ROOT) {
 		if (!Array.isArray(row.tests) || row.tests.length === 0) problems.push(`${row.id}: missing conformance tests`);
 		else for (const path of row.tests) if (!safeFile(root, path)) problems.push(`${row.id}: missing or unsafe conformance test ${path}`);
 		if (!safeFile(root, row.source)) problems.push(`${row.id}: missing or unsafe source ${row.source}`);
-		if (row.version === null) {
+		if (row.externalVersion !== undefined) {
+			if (row.version !== null || typeof row.externalVersion !== 'string' || !row.externalVersion.trim() || typeof row.externalVersionSymbol !== 'string' || !row.externalVersionSymbol)
+				problems.push(`${row.id}: external version needs a nonempty string and source symbol, with no numeric Codkit version`);
+			if (safeFile(root, row.source)) {
+				const value = constants(tokens(readFileSync(join(root, row.source), 'utf8'))).get(row.externalVersionSymbol);
+				if (value !== row.externalVersion) problems.push(`${row.id}: external version drift: ${String(value)} differs from ${row.externalVersion}`);
+			}
+		} else if (row.version === null) {
 			if (typeof row.versionGap !== 'string' || !row.versionGap.trim())
 				problems.push(`${row.id}: unversioned format needs an explicit versionGap`);
 		} else if (!Number.isInteger(row.version) || row.version < 1) problems.push(`${row.id}: missing schema version`);
@@ -221,9 +228,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 			process.exitCode = 1;
 		} else {
 			for (const row of catalog.formats)
-				process.stdout.write(`${row.id}\t${row.version === null ? 'unversioned (tracked gap)' : `v${row.version}`}\t${row.source}\n`);
+				process.stdout.write(`${row.id}\t${row.externalVersion ?? (row.version === null ? 'unversioned (tracked gap)' : `v${row.version}`)}\t${row.source}\n`);
 			process.stdout.write(
-				`public formats: ${catalog.formats.length} covered; ${catalog.formats.filter((row) => row.version === null).length} explicit version gaps\n`
+				`public formats: ${catalog.formats.length} covered; ${catalog.formats.filter((row) => row.version === null && row.externalVersion === undefined).length} explicit version gaps\n`
 			);
 		}
 	} catch (error) {

@@ -11390,7 +11390,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:344cc9a14f6d72e4d6e80cfe73ef41297cb09c2f5bbfac91f035804464b531e4",
+      "content_hash": "sha256:abde0430faeab92aff033a31bb5b64bd1aeea048d55eddcb5a8ec1121b32e04a",
       "doc_path": "modules/codkit/PROP-017",
       "file": "vibevm/vibespecs/modules/codkit/PROP-017-public-formats.xml",
       "heading": "PROP-017: Public format coverage and compatibility inventory",
@@ -11399,7 +11399,7 @@
     },
     {
       "anchor": "catalog",
-      "content_hash": "sha256:3ab179c7a2ac4679fa4b3e58f14a6b7cc89d27410543572fd4f0f742fc09504a",
+      "content_hash": "sha256:75a4e584a2057820b31d9a22b02c6da7c76a4adfce626c7139bccea9f9d74566",
       "doc_path": "modules/codkit/PROP-017",
       "file": "vibevm/vibespecs/modules/codkit/PROP-017-public-formats.xml",
       "heading": "Public format catalog",
@@ -11434,12 +11434,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-017#PUBLIC-FORMAT-GATE"
     },
     {
+      "anchor": "PUBLIC-FORMAT-EXTERNAL-VERSION",
+      "content_hash": "sha256:7586cd9892f05e08cbedbc2545381e5b1852100b0106967c804c0b985df1e9da",
+      "doc_path": "modules/codkit/PROP-017",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-017-public-formats.xml",
+      "heading": "An externally versioned seam can declare externalVersion and externalVersionSymbol with version:null instead of inventing a numeric Codkit version or calling the foreign version a gap. Both strings are nonempty, the named literal source constant must match, and a simultaneous numeric version refuses. Listing displays the external version and excludes it from the unversioned-gap count. Numeric Codkit seams retain their existing coverage/drift checks. @status:impl/done",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-017#PUBLIC-FORMAT-EXTERNAL-VERSION"
+    },
+    {
       "anchor": "PUBLIC-FORMAT-GATE-LIMIT",
       "content_hash": "sha256:33e7e5e6a7518b45a71f70164d43f40d079c026ece00ec78d304accbfe6b2589",
       "doc_path": "modules/codkit/PROP-017",
       "file": "vibevm/vibespecs/modules/codkit/PROP-017-public-formats.xml",
       "heading": "Discovery is a coverage tripwire for the established property and constant conventions, not an arbitrary program analyzer. A new format using computed keys, aliased validators, another version-field convention or dynamic version expressions requires an explicit catalog entry and discovery extension with a failing fixture. A compatibility checker does not replace runtime parser conformance tests. @status:impl/done",
-      "line": 9,
+      "line": 10,
       "uri": "spec://codkit/modules/codkit/PROP-017#PUBLIC-FORMAT-GATE-LIMIT"
     },
     {
@@ -11448,7 +11457,7 @@
       "doc_path": "modules/codkit/PROP-017",
       "file": "vibevm/vibespecs/modules/codkit/PROP-017-public-formats.xml",
       "heading": "Changing a catalog row's version or migration policy requires reading its governing contract and reviewing the reader/writer change together. Catalog maintenance does not change serialized patchsets, delta fingerprints, generated history, executable type trust or licence policy. @status:impl/done",
-      "line": 10,
+      "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-017#PUBLIC-FORMAT-FREEZE"
     },
     {
@@ -11561,7 +11570,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:065b75f9dc74be31346105b7828d1c37770a3722b1c375547c433454fae45553",
+      "content_hash": "sha256:06e72f49c4edc4dd435617f3480d3570a3d40708d2983a071b20c4744443c98e",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -11570,7 +11579,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:06cfde847c6c071ec6f4a6d0b69688ae8ea6b8ce793037ce46c4bc8eb52b65ac",
+      "content_hash": "sha256:46069239881247f6e8cd10c2ae5c79f4c2a5e6f9f5831fd4a8eb880863603389",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -11579,10 +11588,10 @@
     },
     {
       "anchor": "ORGANIZATION-POLICY-FORMAT",
-      "content_hash": "sha256:4d0052f5f0bfbce062e329998b9796326c372b31cf6c63cac596eeb777749d78",
+      "content_hash": "sha256:bbf8fcb5f68ea39de02e7ed09d7f7a9fd1228a95860e8580ed9f0147108217a3",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "codkitOrganizationPolicy:1 declares organization profile ID/revision, own holders and license expression, approved/forbidden third-party expressions, approved exceptions, a LicenseRef namespace, exact canonical custom-license texts with SHA-256, distribution notice/SBOM/carrier requirements and optional legal-review reference. The schema is strict and types derive from it. SPDX identifiers come from the installed list. NOASSERTION, undeclared/foreign-namespace LicenseRef and missing/changed text/hash refuse. Custom texts are LF-only with a final LF and no BOM. This profile applies to consumer scope and never weakens Codkit's separate installed supply policy. @status:impl/done",
+      "heading": "codkitOrganizationPolicy:1 declares organization profile ID/revision, own holders and license expression, approved/forbidden third-party expressions, approved exceptions, a LicenseRef namespace, exact canonical custom-license texts with SHA-256, distribution notice/SBOM/carrier requirements and optional legal-review reference and optional trusted standardLicenseTexts for standard license/approved-exception notice text. Standard text records require installed SPDX IDs or approved exception IDs, unique identities, nonempty LF-only text with final LF and exact SHA-256; profiles omitting this field retain their previous parsed bytes. The schema is strict and types derive from it. SPDX identifiers come from the installed list. NOASSERTION, undeclared/foreign-namespace LicenseRef and missing/changed text/hash refuse. Custom texts are LF-only with a final LF and no BOM. This profile applies to consumer scope and never weakens Codkit's separate installed supply policy. @status:impl/done",
       "line": 6,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-FORMAT"
     },
@@ -11641,12 +11650,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-PROVENANCE"
     },
     {
+      "anchor": "DISTRIBUTION-DOCUMENTS",
+      "content_hash": "sha256:2a1a0acb9ac5da557a9ed04f44eddd9ce3393fd34656d6557bfa4f8593c4d0c8",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "The deterministic version-1 NOTICE content and selected SPDX-2.3 JSON export derive from policy-checked payload provenance, not from absent minified headers. Notice includes component, selected authority, inspected sources/carriers/origin and exact trusted texts for every used standard/custom license and exception. A standard SPDX identifier alone never substitutes for its required notice text; missing or mismatched trusted text refuses. SPDX binds every declared payload path and SHA-256, explicit license conclusion, source mapping and exact extracted LicenseRef text; file-level copyright and in-file license information are not invented from source. Metadata files are excluded from document-content digests to avoid self-reference; adding finalized NOTICE/SBOM leaves expected documents unchanged while final inventory receipts still bind their bytes. SPDX creation time is an explicit whole-second UTC timestamp; namespace changes with document content. Moved authority, invalid identities/time and tampered custom text refuse. Attached documents must match expected UTF-8 bytes exactly and actual payload receipts still match. No general SPDX importer or eternal SBOM choice is promised; the strict owned export subset is versioned by external SPDX-2.3 and validated against that version. @status:impl/done",
+      "line": 13,
+      "uri": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-DOCUMENTS"
+    },
+    {
       "anchor": "ORGANIZATION-DISTRIBUTION-EVIDENCE",
       "content_hash": "sha256:b5f1919b6879a0ce58b3315d196067639d42a12208d14af0b31b2d7f861a6015",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Consumer source scanning, actual artifact NOTICE/carrier checks and selected SBOM export must bind the selected trusted policy before package/publish enforcement is accepted. A minified artifact without required attached notice is incomplete/red even when source headers were valid. Report evidence complete/incomplete, never a legal-compatibility ruling. Mechanism fixtures are labelled examples, not real commercial approvals or external partner evidence. @status:spec/done",
-      "line": 13,
+      "line": 14,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-DISTRIBUTION-EVIDENCE"
     },
     {

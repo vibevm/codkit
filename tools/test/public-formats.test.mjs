@@ -8,6 +8,18 @@ import { CATALOG, ROOT, checkCatalog, discoverFormats } from '../check-public-fo
 const catalog = JSON.parse(readFileSync(join(ROOT, CATALOG), 'utf8'));
 const discovered = discoverFormats();
 
+test('external string versions are pinned to their literal source symbol without a fake numeric version', () => {
+	const candidate = structuredClone(catalog);
+	const row = candidate.formats.find((entry) => entry.id === 'distribution-spdx');
+	row.externalVersion = 'SPDX-3.0';
+	match(checkCatalog(candidate, discovered).join('\n'), /external version drift/);
+	row.externalVersion = '';
+	match(checkCatalog(candidate, discovered).join('\n'), /external version needs a nonempty string/);
+	row.externalVersion = 'SPDX-2.3';
+	row.version = 2;
+	match(checkCatalog(candidate, discovered).join('\n'), /no numeric Codkit version/);
+});
+
 test('current public schemas have policies and source/test evidence', () => {
 	deepStrictEqual(checkCatalog(catalog, discovered), []);
 	equal(
