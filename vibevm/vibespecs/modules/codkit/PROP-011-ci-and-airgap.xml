@@ -2,6 +2,7 @@
 <spec xmlns="https://vibevm.org/spec/1">
   <title id="root">codkit PROP-011: CI and the air-gapped circuit</title>
   <status stage="spec" state="done" comment="standalone CI and air-gapped contract with separate tool, patch-set and fork roots"/>
+  <p><CI-CHANNEL-FIRST-PASS-ORDER fact="true" status="impl/wip">The build profile starts selected compile channels in the order supplied by the type. Each preceding channel must finish a proven zero-error first pass before the next daemon starts: a later daemon may execute compiler/tool code produced by that pass on a cold tree. An incomplete or failed pass stops further startup and retains the original environment/check verdict and full diagnostics. Cleanup still sweeps every declared channel using tree/workspace-bound ownership, including channels this run did not start. No product name, new channel field, stored profile version or type ABI change is involved.</CI-CHANNEL-FIRST-PASS-ORDER></p>
   <contract title="1. The job contract (the same for any CI)">
     <facts ordered="true">
       <JOB-CHECKOUT-PATCHSET fact="true" status="spec/done">checkout of the patch set by the regular CI step;</JOB-CHECKOUT-PATCHSET>

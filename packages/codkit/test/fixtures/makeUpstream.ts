@@ -403,7 +403,8 @@ const STUB_WATCH = `#!/usr/bin/env node
 //   live-ext-red   timestamped watch-addons pass: two diagnostics and
 //                  per-project summaries, the last of which reports zero
 
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 
 const CHANNELS = {
 	transpile: {
@@ -476,6 +477,11 @@ const LIVE_EXT_RED = {
 
 const channel = CHANNELS[process.argv[2]] ?? CHANNELS.transpile;
 const mode = process.env.STUB_MODE || 'ok';
+if (mode === 'ci-order' && process.argv[2] === 'typecheck') {
+	// The consumer really imports executable output of the producer.
+	const provided = createRequire(import.meta.url)(process.cwd() + '/node_modules/ci-provided.cjs');
+	if (!provided.ready) process.exit(1);
+}
 const pidLog = process.env.CODKIT_TEST_DAEMON_PID_LOG;
 if (pidLog) {
 	appendFileSync(pidLog, String(process.pid) + '\\n', 'utf8');
@@ -501,7 +507,13 @@ say(
 				: channel.start
 );
 
-if (mode === 'never-end') {
+if (mode === 'ci-order') {
+	setTimeout(() => {
+		if (process.argv[2] === 'transpile') writeFileSync('node_modules/ci-provided.cjs', 'module.exports = { ready: true };');
+		say(channel.end);
+		stayAlive();
+	}, 1200);
+} else if (mode === 'never-end') {
 	stayAlive();
 } else if (mode === 'live-green') {
 	setTimeout(() => {

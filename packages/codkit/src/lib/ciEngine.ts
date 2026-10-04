@@ -996,6 +996,9 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 	const id = treeId(tree);
 	const started: ChannelConfig[] = [];
 	try {
+		let errors = 0;
+		// The type's ordered channel selection is also the cold-start order:
+		// a later daemon may execute code produced by the preceding pass.
 		for (const channel of channels) {
 			const result = upChannel(
 				{
@@ -1018,10 +1021,6 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 			}
 			started.push(channel);
 			out.info(`${channel.name}: ${result.action} (pid ${result.pid}), log ${result.log}`);
-		}
-
-		let errors = 0;
-		for (const channel of started) {
 			const outcome = await readPass(patchesDir, channel, {
 				timeoutMs,
 				probe: {
@@ -1051,11 +1050,10 @@ async function compileOnce(options: CiOptions, steps: StepReporter): Promise<num
 			}
 			out.info(`--- ${channel.name}: ${outcome.report.errorCount} error(s)`);
 			errors += outcome.report.errorCount;
-		}
-
-		if (errors > 0) {
-			steps.record('compile', 'failed', `${errors} compilation error(s) over ${started.length} channel(s)`);
-			return EXIT_CHECK_FAILED;
+			if (errors > 0) {
+				steps.record('compile', 'failed', `${errors} compilation error(s) over ${started.length} channel(s)`);
+				return EXIT_CHECK_FAILED;
+			}
 		}
 		steps.record('compile', 'ok', `${started.length} channel(s), one pass each, no errors`);
 		return EXIT_OK;

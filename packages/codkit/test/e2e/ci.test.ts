@@ -355,6 +355,18 @@ describe('codkit ci --profile build', () => {
 		}
 	});
 
+	it('waits for the producer pass before launching a channel that imports its cold output', () => {
+		const cold = makeCliFixture('ci-cold-provider');
+		provideTreeDependencies(cold);
+		const { run, envelope } = cold.json(['ci', '--profile', 'build', ...TIMEOUT], { STUB_MODE: 'ci-order' });
+		expect(run.status, run.stderr).toBe(0);
+		expect(stateOf(envelope, 'compile')).toBe('ok');
+		expect(run.stderr.indexOf('--- transpile: pass')).toBeLessThan(run.stderr.indexOf('typecheck: started'));
+		expect(readFileSync(cold.treePath('node_modules/ci-provided.cjs'), 'utf8')).toContain('ready: true');
+		const status = cold.json(['build', 'status']);
+		expect((status.envelope.data as { channels: { state: string }[] }).channels.every((row) => row.state === 'dead')).toBe(true);
+	}, 60000);
+
 	it('fails before overlay materialization when upstream hygiene is red', () => {
 		const { run, envelope } = fixture.json(['ci', '--profile', 'build', ...TIMEOUT], {
 			STUB_MODE: 'ok',

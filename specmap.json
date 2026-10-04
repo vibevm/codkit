@@ -8150,7 +8150,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:f4f7c1b4413a046831dc3819e8aef264b5dc84a05cdbdd9a5e35db17d7fa224e",
+      "content_hash": "sha256:8bc32460ea82f2404f67d2d0e952d28a60312c9130029fb4b263f66ceea3a88a",
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "codkit PROP-011: CI and the air-gapped circuit",
@@ -8158,12 +8158,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-011#root"
     },
     {
+      "anchor": "CI-CHANNEL-FIRST-PASS-ORDER",
+      "content_hash": "sha256:bd6c7e4734440c2e77ba8f97eeb8c9d16bde5a0249753255ea5ed18e0c892086",
+      "doc_path": "modules/codkit/PROP-011",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
+      "heading": "The build profile starts selected compile channels in the order supplied by the type. Each preceding channel must finish a proven zero-error first pass before the next daemon starts: a later daemon may execute compiler/tool code produced by that pass on a cold tree. An incomplete or failed pass stops further startup and retains the original environment/check verdict and full diagnostics. Cleanup still sweeps every declared channel using tree/workspace-bound ownership, including channels this run did not start. No product name, new channel field, stored profile version or type ABI change is involved. @status:impl/wip",
+      "line": 5,
+      "uri": "spec://codkit/modules/codkit/PROP-011#CI-CHANNEL-FIRST-PASS-ORDER"
+    },
+    {
       "anchor": "contract",
       "content_hash": "sha256:47b525c8ba5f6fb73ad57692bd0f301b9bbc71f8a3c1a45bbeba20c3825a99d4",
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "1. The job contract (the same for any CI)",
-      "line": 5,
+      "line": 6,
       "uri": "spec://codkit/modules/codkit/PROP-011#contract"
     },
     {
@@ -8172,7 +8181,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "checkout of the patch set by the regular CI step; @status:spec/done",
-      "line": 7,
+      "line": 8,
       "uri": "spec://codkit/modules/codkit/PROP-011#JOB-CHECKOUT-PATCHSET"
     },
     {
@@ -8181,7 +8190,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "the fork tree is provided in any way: a bind mount of a persistent directory, a CI volume or cache, an image layer, a checkout as a second repository; @status:spec/done",
-      "line": 8,
+      "line": 9,
       "uri": "spec://codkit/modules/codkit/PROP-011#JOB-PROVIDE-TREE"
     },
     {
@@ -8190,7 +8199,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "the container is started with three independent paths: the installed toolRoot, the patch set through `--patches-dir`/`CODKIT_PATCHES_DIR`, the fork through `--fork-dir`/`CODKIT_FORK_DIR`; @status:spec/done",
-      "line": 9,
+      "line": 10,
       "uri": "spec://codkit/modules/codkit/PROP-011#JOB-RUN-CONTAINER"
     },
     {
@@ -8199,7 +8208,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "one command, `codkit ci`. The image contains the Codkit runtime and the Node/git/git-lfs environment, but contains no consumer patch set and no fork checkout. @status:spec/done",
-      "line": 10,
+      "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-011#JOB-ONE-COMMAND"
     },
     {
@@ -8208,7 +8217,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "**The air-gapped circuit is the primary mode, not a degradation**: there is no external internet in the target environment; everything needed is brought in by the supply kit (§7); the customer's CI is any of them (Jenkins/GitHub/GitLab/their own). Every new codkit mechanism is designed for offline first. @status:spec/done",
-      "line": 12,
+      "line": 13,
       "uri": "spec://codkit/modules/codkit/PROP-011#AIRGAP-IS-PRIMARY"
     },
     {
@@ -8217,7 +8226,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "2. Network",
-      "line": 14,
+      "line": 15,
       "uri": "spec://codkit/modules/codkit/PROP-011#network"
     },
     {
@@ -8226,7 +8235,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The global `--ci` is a hard zero-network mode: codkit performs no network call at all. The `gitx` module takes `netAllowed`; with `netAllowed=false`, `fetch|clone|pull|lfs pull|push|ls-remote` are not started at all (exit 2 `CK-E-NET-FORBIDDEN` with a text saying which external action the CI has to perform). `publish` is not `--ci`: it refuses the combination with `--ci`, requires `--yes-i-am-publish-bot` and only then turns the network on. Before any materialization or change of refs the publish bot must pass the read-only gate `git ls-remote <publishRemoteUrl>`; a failure ends the command with code 2 and no mutations. An export into a new local repository (PROP-007 `PUBLISH-EXPORT`) has no remote: it runs no gate, pushes nothing and reaches no network, and it keeps both refusals - of `--ci` and of a run without the bot flag. Push stays with `publish` alone, on the supplier side. Automated tests: `ci` on the polygon with the network physically off; separately, publish against a local bare remote with the gate checked. @status:spec/done",
-      "line": 15,
+      "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-011#ZERO-NET-IN-CI"
     },
     {
@@ -8235,7 +8244,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "3. Profiles",
-      "line": 17,
+      "line": 18,
       "uri": "spec://codkit/modules/codkit/PROP-011#profiles"
     },
     {
@@ -8244,7 +8253,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "`verify` (the threshold of every PR; seconds to minutes): `check-tree` → the fresh pass → apply → `verify` (PROP-007 §11) → the race guards: the pin guard (the pin of the PR branch equals the pin of the target branch; in CI the `codkit.json` of the PR is compared against base) - a mismatch → 1 with the hint `codkit rebase-onto-pin`. @status:spec/done",
-      "line": 19,
+      "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-011#PROFILE-VERIFY"
     },
     {
@@ -8253,7 +8262,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "`build`: `verify` + the dependencies (the upstream fast path by the hash of the manifests; on a lock change, a full install from the internal registry) + `build up` + `build errors` (one pass, full output) + own tests + contract tests; the upstream hygiene/eslint run BEFORE the materialization of the overlay targets upstream is strict about (the order: hygiene → overlay apply → our checks). The skeleton and the order are universal; the scripts each step runs are the project type's answer (VS Code type: `spec://codkit/modules/vscode/PROP-004#VSCODE-BUILD-STEPS`). @status:spec/done",
-      "line": 20,
+      "line": 21,
       "uri": "spec://codkit/modules/codkit/PROP-011#PROFILE-BUILD"
     },
     {
@@ -8262,7 +8271,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The CI itself names the base for the pin guard: the flag `--pin-guard-base <ref>` (a ref in the patch-set repository; the `codkit.json` of the patch-set work tree and the one at the ref are compared). Without the flag the step is skipped with an info line - the run does not pretend that the guard passed. On a mismatch the hint points at the implemented `rebase-onto-pin` command. @status:impl/done",
-      "line": 21,
+      "line": 22,
       "uri": "spec://codkit/modules/codkit/PROP-011#CI-PIN-GUARD-BASE-FLAG"
     },
     {
@@ -8271,7 +8280,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The M1 decision on «on a lock change, a full install from the internal registry»: **`ci` installs nothing itself** - installing the dependencies from the internal registry is a job step OUTSIDE the codkit container (or a pre-filled cache/mount). The behaviour of `ci --profile build`: the npm receipt `<root>/.package-lock.json` of any dependency root the project type names (`spec://codkit/modules/codkit/PROP-016#TYPE-DEPENDENCY-ROOTS`; the first family names two roots, the second one) is absent (including the case of an empty bind-mount directory left behind) → exit 2 `CK-E-DEPS-MISSING` with the text «provide <the missing receipts> via cache/mount (air-gapped supply kit)» - the message and the step detail name **the receipts that are missing**, so a tree that restored one root of two is not told to provide what it already has; a stale `.codkit/build/deps-hash.json` does not cancel this presence probe; the lock or `.nvmrc` changed against the record → the warning «refresh node_modules out of band», the run continues and the record is updated (the warning fires once per lock change, not forever); the record is one per tree, keyed by `treeId` (like the daemon records). @status:impl/done",
-      "line": 22,
+      "line": 23,
       "uri": "spec://codkit/modules/codkit/PROP-011#CI-DEPS-POLICY-M1"
     },
     {
@@ -8280,7 +8289,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The cache: the key is `pin.sha` plus the hash of the lock files; the only writer is the job of the main branch, the rest read. A toolchain change (the cycle advisory) changes the key, that is, a controlled full rebuild. The cold build (~an hour) is paid once per agent/cache. @status:spec/done",
-      "line": 23,
+      "line": 24,
       "uri": "spec://codkit/modules/codkit/PROP-011#CACHE-KEY-RULE"
     },
     {
@@ -8289,7 +8298,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "4. The «from scratch» pass and the cleanup whitelist",
-      "line": 26,
+      "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-011#fresh"
     },
     {
@@ -8298,7 +8307,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "«From scratch» refers to the content of the tree: the tracked files are brought to the pin by a git checkout (only the changed files are rewritten - together with the mtime discipline this keeps incremental compilation warm), then the delta is applied. Untracked content is cleaned **by a whitelist** that deliberately keeps the build caches. @status:spec/done",
-      "line": 27,
+      "line": 28,
       "uri": "spec://codkit/modules/codkit/PROP-011#FRESH-SEMANTICS"
     },
     {
@@ -8307,7 +8316,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "`cleanupWhitelist` (the conventions of PROP-003 §3), the pattern semantics are gitignore-style; refined by the M0 implementation: `node_modules/` (at any level), `.build/`, `/out*/` (anchored: the top level only - an unanchored `out*/` would protect `outer/` and `output/` anywhere as well), `extensions/*/out/`, `extensions/*/dist/`, `.eslintcache`, `*.tsbuildinfo`; the `.git/codkit/` entry of the early edition is removed - git does not report the content of `.git` in the untracked list, and the mark is untouchable anyway. In addition, the own directory `src/vs/<ownDirName>/` and `.git/**` are always kept. The algorithm: `git clean -fdx` is NOT used; the untracked list is the union of `git ls-files --others --exclude-standard` and `… --others --ignored --exclude-standard` (a lone `--others` does NOT show ignored files), by files (without `--directory` - otherwise a collapsed directory would delete the whitelisted content inside it); the entries covered by the whitelist are subtracted from it, and the rest is deleted. The discipline: what is not in the list is deleted. The pattern semantics, the algorithm and the discipline are the engine's; **which** paths a build leaves behind is the project type's answer (VS Code type: `spec://codkit/modules/vscode/PROP-002#VSCODE-CLEANUP-WHITELIST`), and the list above is that type's value carried here until the extraction of phase P2. @status:impl/done",
-      "line": 28,
+      "line": 29,
       "uri": "spec://codkit/modules/codkit/PROP-011#CLEANUP-WHITELIST-CONTENT"
     },
     {
@@ -8316,7 +8325,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "Installing the tree dependencies after a restore relies on the upstream fast path «the dependencies are up to date» (the hash of the manifests, the lock and `.nvmrc`) - seconds when the lock files are unchanged. @status:spec/done",
-      "line": 29,
+      "line": 30,
       "uri": "spec://codkit/modules/codkit/PROP-011#DEPS-FAST-PATH"
     },
     {
@@ -8325,7 +8334,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "5. Permissions and safe.directory",
-      "line": 31,
+      "line": 32,
       "uri": "spec://codkit/modules/codkit/PROP-011#rights"
     },
     {
@@ -8334,7 +8343,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "A mounted tree usually belongs to another uid: before the first git call, `ci` checks for the «dubious ownership» sign (a trial `git status`; the characteristic error) and adds both paths to the configuration of the **container**: for this `ci` uses not `/dev/null` but the file `.codkit/gitconfig-ci` (pointed at through `GIT_CONFIG_GLOBAL` inside the container) with the entries `safe.directory=<tree>` and `<patchset>` - without touching the machine. The right to write into the tree and into the cache directories is checked before the work starts. Agreeing the uid/gid is the contract of starting the container (the documentation of PROP-012 §4). @status:spec/done",
-      "line": 32,
+      "line": 33,
       "uri": "spec://codkit/modules/codkit/PROP-011#SAFE-DIRECTORY-RULE"
     },
     {
@@ -8343,7 +8352,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The M1 implementation: `gitx` gained the option `gitConfigGlobal` (it replaces `/dev/null`; the system configuration stays off) and a run-wide setting - ONLY a `ci` run uses it, and only after the probe has fired; `.codkit/gitconfig-ci` is created or extended with the union of the safe.directory entries (the tree + the patch set). The write probes: the tree is checked (check-tree in write mode); the patch-set runtime is checked by actually creating the lock before any work with the tree, and `EACCES`/`EPERM`/`EROFS` are turned into exit 2 `CK-E-TREE-READONLY` with a hint about a separate writable `.codkit` mount. The dubious-ownership branch is confirmed by a live Docker matrix with owner 1000 and process UID 10001; the unit tests cover the writer/gitx and the classification of the lock I/O. @status:impl/done",
-      "line": 33,
+      "line": 34,
       "uri": "spec://codkit/modules/codkit/PROP-011#SAFE-DIRECTORY-IMPL"
     },
     {
@@ -8352,7 +8361,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "6. The effective diff",
-      "line": 35,
+      "line": 36,
       "uri": "spec://codkit/modules/codkit/PROP-011#effective-diff"
     },
     {
@@ -8361,7 +8370,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "For a PR the CI builds the diff of the **applied states**: the tip of the generated branch for base and for the PR (`git diff base-top pr-top` in the tree) - this is an ordinary code diff, which the reviewer reads instead of a diff of patch files; plus the inventory diff (`inventory --diff`). It is implemented inside `ci --profile verify` by the flag `--effective-diff <base-ref>`; the output is a CI file artifact. @status:spec/done",
-      "line": 36,
+      "line": 37,
       "uri": "spec://codkit/modules/codkit/PROP-011#EFFECTIVE-DIFF-RULE"
     },
     {
@@ -8370,7 +8379,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The M1 implementation: the base tip is built by `syncEngine.buildAppliedTip()` - the generated commits of the base state are written into the object database of the TREE without touching the working copy, the refs, the mark or the cache (for a disposable ci tree this is normal; for a live tree it would be a surprise - hence only in `ci`). The requirements: the base pin is reachable in the tree AND the base delta applies on its own pin; otherwise only the inventory diff is built, with a warning (the exit code does not change). The artifacts: `.codkit/out/effective-diff.patch` (the full diff; `--stat` is printed to the output) and `.codkit/out/inventory-diff.md`. The REPAIR-006 refinement (the obsolete M1 text is removed): the base tip is built by `buildGeneratedTip()` - the full generated history, INCLUDING the aggregate own commit of its own (`commitOwn`, PROP-005 LT-OWN; the same layer order as the PR tip), so own files enter the diff of the tips as ordinary code; the literal review of `delta/own/**` in a patch-set PR stays available, but is no longer the only window into own code. @status:impl/done",
-      "line": 37,
+      "line": 38,
       "uri": "spec://codkit/modules/codkit/PROP-011#EFFECTIVE-DIFF-IMPL"
     },
     {
@@ -8379,7 +8388,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "7. The air-gapped supply kit",
-      "line": 39,
+      "line": 40,
       "uri": "spec://codkit/modules/codkit/PROP-011#supply-kit"
     },
     {
@@ -8388,7 +8397,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "Since the workspace split (PROP-016 §3) the row `SK-CODKIT-NPM` has two halves. The tool's OWN packages travel as tarballs built by `npm run kit` - the CLI package and every official type package - with a `kit-manifest.json` naming each one with its version and sha256, and are installed as one unit by a single offline `npm install` of every tarball the manifest lists (`spec://codkit/modules/codkit/PROP-016#TYPE-SUPPLY-KIT-IMPL`). Their third-party closure is the half this row already described: an internal registry or a pre-filled npm cache, pinned by the `npm-shrinkwrap.json` each tarball carries. The customer-side check is `codkit types` from the installed kit: it names the types this installation can serve. @status:impl/done",
-      "line": 49,
+      "line": 50,
       "uri": "spec://codkit/modules/codkit/PROP-011#SUPPLY-KIT-TOOL-PACKAGES"
     },
     {
@@ -8397,7 +8406,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "Keeping the table current is an item of the cycle advisory; the external network exists on the supplier side only: the mirror bot (fetch from upstream → push to the mirror) and the publish bot, each with its own service account. @status:spec/done",
-      "line": 50,
+      "line": 51,
       "uri": "spec://codkit/modules/codkit/PROP-011#SUPPLY-KIT-MAINTENANCE"
     },
     {
@@ -8406,7 +8415,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "8. Wrapper examples (ours, illustrative)",
-      "line": 52,
+      "line": 53,
       "uri": "spec://codkit/modules/codkit/PROP-011#wrapper-examples"
     },
     {
@@ -8415,7 +8424,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "Dockerfile: @status:spec/done",
-      "line": 53,
+      "line": 54,
       "uri": "spec://codkit/modules/codkit/PROP-011#wrapper-dockerfile"
     },
     {
@@ -8424,7 +8433,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The run: `docker run --rm --network none -v \"$PATCHES\":/work/patches -v \"$FORK\":/work/fork -e CODKIT_PATCHES_DIR=/work/patches -e CODKIT_FORK_DIR=/work/fork codkit-ci ci --profile verify`. Real wrappers must preserve the disjoint-root invariant. @status:spec/done",
-      "line": 60,
+      "line": 61,
       "uri": "spec://codkit/modules/codkit/PROP-011#wrapper-run"
     },
     {
@@ -8433,7 +8442,7 @@
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "The shapes of the harnesses: a Jenkinsfile - a stage that checks out the patch set → a stage that checks out or mounts the tree (a reference object cache on the agent) → a stage `docker run … codkit ci`; GitHub Actions - two `actions/checkout` steps (the second one the fork repository, `fetch-depth: 0`) → a `docker run …` step. The full example files are placed into `docs/codkit/ci-examples/` at implementation time (without secrets; credentials are the territory of the CI). @status:spec/done",
-      "line": 61,
+      "line": 62,
       "uri": "spec://codkit/modules/codkit/PROP-011#WRAPPER-FULL-EXAMPLES"
     },
     {
