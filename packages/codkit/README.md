@@ -136,6 +136,10 @@ Version-2 material receipts additionally bind hydrated LFS copies to committed
 attributes/pointers and retained backing bytes, and authorize exact saved empty
 directories only while they remain empty. Existing version-1 receipts remain
 strict and are not rewritten automatically.
+Workspace input deliveries have immutable external witnesses and retained Git
+blob refs. Cleanup uses material receipt v3 for those copies, verifies their
+declared destinations and unchanged bytes, and retains backing blobs after
+checkout removal. A mutable input cache alone grants no cleanup authority.
 
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths
