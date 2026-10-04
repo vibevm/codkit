@@ -133,6 +133,7 @@ const valueLabels = {
 	'--layer': 'patch|entry-module',
 	'--line': 'n',
 	'--body-file': 'path',
+	'--move-block-from': 'n',
 	'--replace-lines': 'count',
 	'--patch': 'contained-old-patch',
 	'--ref': 'ref',
@@ -204,7 +205,7 @@ const commandGuidance = {
 		positional: '<tree-file>',
 		requiredFlags: ['--id', '--type', '--owner', '--reason'],
 		detail:
-			'Create a marker block and pending patch header; `--body-file` supplies bounded UTF-8 code atomically, and `--replace-lines` with explicit `--line` preserves the addressed originals as comments. Without body flags the scaffold stays empty. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. With `--add-block`, only `--id` (and `--line`) are given: it opens another block of an intervention the file already carries, for a graft that is an import line and a call site.'
+			'Create a marker block and pending patch header; `--body-file` supplies bounded UTF-8 code atomically, and `--replace-lines` with explicit `--line` preserves addressed originals as comments. Without body flags the scaffold stays empty. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. With `--add-block`, only `--id` (and `--line`) are given for another owned block. `--add-block --move-block-from <begin-line> --line <destination>` instead relocates that exact owned block intact, without body flags or metadata changes.'
 	},
 	reresolve: {
 		positional: '<tree-file>',

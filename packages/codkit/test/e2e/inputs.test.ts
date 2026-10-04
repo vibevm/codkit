@@ -5,7 +5,7 @@
 // nothing here leans on one type; `publish` runs in process over a local bare
 // remote. The input is a tiny repository with a Node build.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { publishCommand } from '../../src/commands/publish.ts';
@@ -26,6 +26,43 @@ import { makeInputRepository } from '../support/inputRepository.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
+
+it('inputs-only restores a missing projection without overwriting unextracted marker work or generated history', () => {
+	const polygon = makeCliFixture('inputs-only-preserve-marker');
+	const repo = makeInputRepository('inputs-only-preserve-marker');
+	declare(polygon, [repo.declaration()]);
+	const loaded = polygon.json(['load']);
+	expect(loaded.run.status, text(loaded.run)).toBe(0);
+	const target = 'source/base/common/util.ts';
+	writeFileSync(polygon.patchesPath('input-marker-body.txt'), 'export const unextracted = 1;\n');
+	const authored = polygon.json([
+		'marker',
+		'new',
+		target,
+		'--id',
+		'CK-base-996',
+		'--type',
+		'extend',
+		'--owner',
+		'shell-core',
+		'--reason',
+		'input recovery guard',
+		'--line',
+		'1',
+		'--body-file',
+		'input-marker-body.txt'
+	]);
+	expect(authored.run.status, text(authored.run)).toBe(0);
+	const before = readFileSync(polygon.treePath(target), 'utf8');
+	const head = polygon.git(['rev-parse', 'HEAD']).stdout;
+	unlinkSync(polygon.treePath('handbook/guide.md'));
+	const restored = polygon.json(['load', '--inputs-only']);
+	expect(restored.run.status, text(restored.run)).toBe(0);
+	expect(restored.envelope.data['status']).toBe('inputs-refreshed');
+	expect(readFileSync(polygon.treePath('handbook/guide.md'), 'utf8')).toContain('# Guide');
+	expect(readFileSync(polygon.treePath(target), 'utf8')).toBe(before);
+	expect(polygon.git(['rev-parse', 'HEAD']).stdout).toBe(head);
+}, 600000);
 
 /** What the scenarios need of a fixture; both polygons answer it. */
 type Polygon = {

@@ -27,12 +27,14 @@ import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine, refreshResolution } from '../lib/paths.js';
 import { runSync } from '../lib/syncEngine.js';
 import { cloneForkTree } from './clone.js';
+import { deliverInputs, produceInputs, warnInputEdits } from '../lib/inputsTree.js';
 const FRESH = '--fresh';
 const DRY_RUN = '--dry-run';
 const CLONE_IF_MISSING = '--clone-if-missing';
 const DISCARD = '--discard';
 const INPUTS = '--inputs';
 const NO_INPUTS = '--no-inputs';
+const INPUTS_ONLY = '--inputs-only';
 async function run(ctx) {
     // Before anything is resolved or read: a non-interactive run must never
     // decide on its own to drop somebody's work (D11). The flag names a loss, and
@@ -51,6 +53,9 @@ async function run(ctx) {
     const fresh = commandFlagGiven(ctx.commandFlags, FRESH);
     const dryRun = commandFlagGiven(ctx.commandFlags, DRY_RUN);
     const inputs = inputModeOf(ctx);
+    const inputsOnly = commandFlagGiven(ctx.commandFlags, INPUTS_ONLY);
+    if (inputsOnly && (inputs === null || fresh || discard || commandFlagGiven(ctx.commandFlags, CLONE_IF_MISSING)))
+        throw ckError('CONFIG', '--inputs-only requires an existing tree and an input mode, without --fresh, --discard or --clone-if-missing');
     if (!resolution.exists && commandFlagGiven(ctx.commandFlags, CLONE_IF_MISSING)) {
         const cloned = cloneMissingTree(ctx, resolution, config);
         if (cloned !== null) {
@@ -63,6 +68,38 @@ async function run(ctx) {
     // The lock is keyed by the tree, so two patchset checkouts driving the same
     // tree exclude each other, and one patchset driving two trees does not.
     return withLock(ctx.patchesDir, treeId(resolution.path), 'load', () => {
+        if (inputsOnly) {
+            const preflight = runSync({
+                patchesDir: ctx.patchesDir,
+                resolution,
+                config,
+                type: requireProjectType(ctx),
+                out: ctx.out,
+                fresh: false,
+                dryRun: true,
+                verbose: ctx.flags.verbose
+            });
+            if (preflight.exitCode !== 0) {
+                report(ctx, preflight, { fresh: false, dryRun: true, discard: false });
+                return preflight.exitCode;
+            }
+            const declared = config.inputs ?? [];
+            let delivered = [];
+            if (!dryRun) {
+                warnInputEdits(resolution.path, declared, ctx.out);
+                const produced = produceInputs({
+                    treeDir: resolution.path,
+                    inputs: declared,
+                    mode: inputs,
+                    rebuild: false,
+                    out: ctx.out,
+                    verbose: ctx.flags.verbose
+                });
+                delivered = deliverInputs({ treeDir: resolution.path, produced, out: ctx.out });
+            }
+            ctx.out.setData({ status: dryRun ? 'dry-run' : 'inputs-refreshed', inputs: delivered.map((input) => ({ ...input })) });
+            return 0;
+        }
         const result = runSync({
             patchesDir: ctx.patchesDir,
             resolution,
@@ -184,6 +221,6 @@ export const loadCommand = {
     summary: 'bring the fork tree to the pin and apply the delta',
     configMode: 'load',
     maxArgs: 0,
-    commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING, DISCARD, INPUTS, NO_INPUTS],
+    commandFlags: [FRESH, DRY_RUN, CLONE_IF_MISSING, DISCARD, INPUTS, NO_INPUTS, INPUTS_ONLY],
     run
 };

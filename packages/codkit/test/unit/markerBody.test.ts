@@ -1,7 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#cmd-marker-new */
 import { afterAll, describe, expect, it } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { insertBlock } from '../../src/commands/markerNew.ts';
+import { insertBlock, moveMarkerBlock } from '../../src/commands/markerNew.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots } from '../support/tmp.ts';
 afterAll(() => cleanupTempRoots());
@@ -16,6 +16,15 @@ const fields = {
 };
 const form = { open: '// codkit:', close: '' };
 describe('tool-owned bounded marker body authoring', () => {
+	it('relocates one exact owned import block intact and refuses another block destination', () => {
+		const content = 'class Item {\n// codkit:begin CK-workbench-997\nimport { Item } from "own";\n// codkit:end CK-workbench-997\n}\n';
+		const blocks = [{ id: fields.id, beginLine: 2, endLine: 4 }];
+		expect(moveMarkerBlock(content, blocks, fields.id, 2, 1, 'item.ts').text).toBe(
+			'// codkit:begin CK-workbench-997\nimport { Item } from "own";\n// codkit:end CK-workbench-997\nclass Item {\n}\n'
+		);
+		expect(() => moveMarkerBlock(content, blocks, fields.id, 2, 3, 'item.ts')).toThrow(/ownership/);
+		expect(() => moveMarkerBlock(content, blocks, fields.id, 1, 1, 'item.ts')).toThrow(/begin line/);
+	});
 	it('neutralizes only the addressed header and retains surrounding method body and final newline', () => {
 		const source = 'class Item {\n\toverride updateChecked(): void {\n\t\tsuper.updateChecked();\n\t}\n}\n';
 		const result = insertBlock(
@@ -44,6 +53,49 @@ describe('tool-owned bounded marker body authoring', () => {
 });
 
 describe('real marker body authoring transaction', () => {
+	it('moves an owned block with the locked CLI and saves its canonical artifact', () => {
+		const f = makeCliFixture('marker-move-cli');
+		const target = 'source/base/common/util.ts';
+		const original = readFileSync(f.treePath(target), 'utf8');
+		writeFileSync(f.patchesPath('move-body.txt'), 'export const relocated = 1;\n');
+		const at = original.replace(/\r\n/g, '\n').trimEnd().split('\n').length + 1;
+		const created = f.json([
+			'marker',
+			'new',
+			target,
+			'--id',
+			'CK-base-997',
+			'--type',
+			'extend',
+			'--owner',
+			'shell-core',
+			'--reason',
+			'bounded authoring move',
+			'--line',
+			String(at),
+			'--body-file',
+			'move-body.txt'
+		]);
+		expect(created.run.status, created.run.stderr).toBe(0);
+		const bytes = readFileSync(f.treePath(target), 'utf8');
+		const begin = bytes.split('\n').findIndex((line) => line.includes('codkit:begin CK-base-997')) + 1;
+		const moved = f.json([
+			'marker',
+			'new',
+			target,
+			'--add-block',
+			'--id',
+			'CK-base-997',
+			'--move-block-from',
+			String(begin),
+			'--line',
+			'1'
+		]);
+		expect(moved.run.status, moved.run.stderr).toBe(0);
+		expect(readFileSync(f.treePath(target), 'utf8')).toMatch(/^\/\/ codkit:begin CK-base-997/);
+		const saved = f.json(['save', target]);
+		expect(saved.run.status, saved.run.stderr).toBe(0);
+	}, 600000);
 	it('authors and canonically saves a bounded original-header replacement through the CLI', () => {
 		const f = makeCliFixture('marker-body-cli');
 		const target = 'source/base/common/util.ts';
