@@ -144,6 +144,9 @@ Workspace daemon teardown retains closed log generations outside the checkout
 before retiring their records. Finish requires retirement, and cleanup verifies
 matching current/rotated log bytes against those archives. Unknown or edited
 logs remain protected; retained logs survive pair removal.
+Material receipt v4 retains declared build-output bytes, leaf-link text and modes
+outside the pair before cleanup. Current output snapshots must still match;
+links are never followed, and unknown neighbouring paths remain protected.
 
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths
