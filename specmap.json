@@ -11939,6 +11939,60 @@
     },
     {
       "anchor": "root",
+      "content_hash": "sha256:5347fc9f99f7e4cb12864a8c03086190170151b2636c1714ff15fe53aac57029",
+      "doc_path": "modules/codkit/PROP-022",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
+      "heading": "PROP-022: External release coordinator contract",
+      "line": 3,
+      "uri": "spec://codkit/modules/codkit/PROP-022#root"
+    },
+    {
+      "anchor": "RELEASE-SET",
+      "content_hash": "sha256:b4fab0757f6ac47cf15c19180297b89a9d29ed44e9c7168b76b6752b4bde40e8",
+      "doc_path": "modules/codkit/PROP-022",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
+      "heading": "A future external codkitReleaseSet:1 document has a releaseSetId and sorted unique component records containing componentId, operationId, operation (package or publish), descriptor reference and descriptor SHA-256. References resolve immutable codkitComponentRelease:1 bytes through its existing canonical digest verifier; componentId and operation must match the descriptor. A reference is location, not trust or execution authority. Local paths resolve relative to the release-set location with contained-file checks; remote retrieval requires an explicit supply policy and verified bytes. No components field is admitted into existing codkit.json versions. Digest the canonical release-set bytes to bind an attempt; changing any descriptor or operation requires a new release-set digest and attempt, never adopting a foreign journal. The descriptor records an already delivered result: prepare validates and stages that immutable evidence; apply performs only the separately authorized release-set publication/activation for that result, never repeats a component's package/publish merely because it is referenced. Actual multi-component routes await a real consumer. @status:spec/wip",
+      "line": 5,
+      "uri": "spec://codkit/modules/codkit/PROP-022#RELEASE-SET"
+    },
+    {
+      "anchor": "JOURNAL",
+      "content_hash": "sha256:c4ba29b3572bca03f3d2d3aeaf18ccc2c28eb17471878d0a047f066b23b3cc69",
+      "doc_path": "modules/codkit/PROP-022",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
+      "heading": "The proposed external codkitCoordinatorJournal:1 binds releaseSetId, releaseSetSha256, attemptId, owner identity, monotonically increasing revision and one entry for every component operation. Each entry binds componentId, operationId, descriptorSha256, public state, lastProvenAtom, proof references and any failure. Public states are pending, prepared, applied, recorded and failed. Allowed forward transitions are pending to prepared, prepared to applied, applied to recorded, and prepared or applied to failed. Preparation proves descriptor bytes, artifact/evidence identity, authority and delivery preconditions. Applied requires a durable delivery witness from the release-set effect, not just command exit success. Recorded requires durable receipt publication and byte comparison. A failure retains the last proven prepared/applied atom and delivery facts; recording failure cannot erase an already applied result. Broken versions, duplicate/missing components, changed digest, foreign ownership, nonmonotonic revisions and unproven transitions refuse before an effect. @status:spec/wip",
+      "line": 6,
+      "uri": "spec://codkit/modules/codkit/PROP-022#JOURNAL"
+    },
+    {
+      "anchor": "DURABILITY-RESUME",
+      "content_hash": "sha256:ae22ce35e33b2a3348ee8e66ce9166efd478f96bdbb7b8811c9c68fb665e272f",
+      "doc_path": "modules/codkit/PROP-022",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
+      "heading": "Persist intent and expected preconditions under exclusive coordinator custody before each effect, flush the journal and publish by atomic replacement with revision/byte compare barriers. Persist immutable proof before advancing lastProvenAtom. Component operation identity is releaseSetSha256/componentId/operationId; exact retry with matching authority and evidence is idempotent, conflicting bytes refuse. After interruption, inspect the durable effect witness before repeating an action. Missing or ambiguous witness means an explicit unresolved failure, not presumed success or safe retry. Resume validates every bound descriptor and proof and continues from the last proven atom; a failed attempt starts an explicit new attempt preserving the old failure history. No claim of atomic multi-repository delivery or rollback is made. Effect adapters must document their own idempotency/witness protocol before implementation. @status:spec/wip",
+      "line": 7,
+      "uri": "spec://codkit/modules/codkit/PROP-022#DURABILITY-RESUME"
+    },
+    {
+      "anchor": "PARTIAL-COMPENSATION",
+      "content_hash": "sha256:3e8dffb7974ab611d74c06a2ecdc3223b1359bbd9014cb6ee5904f730a1e7eac",
+      "doc_path": "modules/codkit/PROP-022",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
+      "heading": "A partial result lists every component and its state, last proven atom, immutable descriptor digest, observed delivery witness, recorded receipt and error where present. Recorded is terminal and is never automatically reverted when another component fails. Compensation is a separate explicitly authorized operation with its own ID, preconditions, intent, witness and journal, linked to the original result; it does not rewrite history or guarantee reversal of external delivery. Any state lacking proof remains visibly unresolved. Human/legal/signing references are evidence inputs, never synthesized approvals. @status:spec/wip",
+      "line": 8,
+      "uri": "spec://codkit/modules/codkit/PROP-022#PARTIAL-COMPENSATION"
+    },
+    {
+      "anchor": "example",
+      "content_hash": "sha256:29ecf1e3df24654582cb7334f5a491604ac1c8ac817d7ce24adc9cabf8062cc4",
+      "doc_path": "modules/codkit/PROP-022",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
+      "heading": "Executable abstract transition cases, not a production journal",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-022#example"
+    },
+    {
+      "anchor": "root",
       "content_hash": "sha256:36ec8fde7099bf326551d7f01e6700dfbf838e0be92042fba58b0aa0ef33eaca",
       "doc_path": "modules/codkit/PROP-023",
       "file": "vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml",
@@ -13685,12 +13739,6 @@
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "line": 242,
       "message": "section `8. Decisions` spans 172 lines (threshold 120) — long sections read poorly and churn often; split into smaller leaves"
-    },
-    {
-      "code": "xml-dialect",
-      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
-      "line": 11,
-      "message": "the dialect has no <code> element (inside <section>) — the vocabulary is closed"
     }
   ]
 }

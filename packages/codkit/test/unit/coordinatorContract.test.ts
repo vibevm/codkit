@@ -8,7 +8,7 @@ const document = readFileSync(
 	new URL('../../../../vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml', import.meta.url),
 	'utf8'
 );
-const json = document.match(/<code language="json"><!\[CDATA\[([\s\S]*?)\]\]><\/code>/)?.[1];
+const json = document.match(/<fence lang="json"><!\[CDATA\[([\s\S]*?)\]\]><\/fence>/)?.[1];
 if (json === undefined) throw new Error('coordinator contract examples missing');
 const examples = JSON.parse(json) as { transitions: Record<State, readonly State[]>; cases: readonly Vector[] };
 

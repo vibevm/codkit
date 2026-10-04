@@ -8,7 +8,7 @@
   <p><PARTIAL-COMPENSATION fact="true" status="spec/wip">A partial result lists every component and its state, last proven atom, immutable descriptor digest, observed delivery witness, recorded receipt and error where present. Recorded is terminal and is never automatically reverted when another component fails. Compensation is a separate explicitly authorized operation with its own ID, preconditions, intent, witness and journal, linked to the original result; it does not rewrite history or guarantee reversal of external delivery. Any state lacking proof remains visibly unresolved. Human/legal/signing references are evidence inputs, never synthesized approvals.</PARTIAL-COMPENSATION></p>
   <example title="Executable abstract transition cases, not a production journal">
     <p>These test-only vectors exercise the public transition vocabulary and last-proven boundary. They are not persisted public data and do not implement execution, storage, recovery or authorization.</p>
-    <code language="json"><![CDATA[
+    <fence lang="json"><![CDATA[
 {
   "transitions": {"pending":["prepared"],"prepared":["applied","failed"],"applied":["recorded","failed"],"recorded":[],"failed":[]},
   "cases": [
@@ -22,6 +22,6 @@
     {"name":"failed-needs-new-attempt","steps":[["prepared","prepare"],["failed","error"],["applied","delivery"]],"refuse":true}
   ]
 }
-    ]]></code>
+    ]]></fence>
   </example>
 </spec>
