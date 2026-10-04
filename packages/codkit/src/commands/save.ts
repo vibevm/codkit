@@ -19,11 +19,15 @@ import { formatForkTreeLine } from '../lib/paths.ts';
 import { runSave } from '../lib/saveEngine.ts';
 import type { SaveResult } from '../lib/saveEngine.ts';
 import { SAVE_REPLAY_CRASH_ENV, saveReplayCrashCheckpoint } from '../lib/saveReplay.ts';
+import { lstatSync } from 'node:fs';
+import { repoRelativePathProblem, resolveContainedPath } from '../lib/pathSafety.ts';
+import { encodePatchName } from '../lib/patchFormat.ts';
 
 const COMMIT = '--commit';
 const MESSAGE = '--message';
 const ALLOW_NEW_FILE = '--allow-new-file';
 const SQUASH = '--squash';
+const REGENERATE = '--regenerate';
 
 /** Positional paths; a real change set is never longer than a few hundred. */
 const MAX_PATHS = 1000;
@@ -37,6 +41,9 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	const config = requireConfig(ctx.config);
+	const forcedPaths = commandFlagGiven(ctx.commandFlags, REGENERATE)
+		? explicitRegenerationPaths(ctx.args, resolution.path, ctx.patchesDir)
+		: [];
 	// The replay crash checkpoint is test-only and validated at this boundary,
 	// exactly like the cycle one: an unknown stage or a non-test runtime is a
 	// configuration error before any lock is taken.
@@ -58,6 +65,7 @@ async function run(ctx: CommandContext): Promise<number> {
 				commit: commandFlagGiven(ctx.commandFlags, COMMIT),
 				message: commandFlagValue(ctx.commandFlags, MESSAGE),
 				squash: commandFlagGiven(ctx.commandFlags, SQUASH),
+				forcedPaths,
 				verbose: ctx.flags.verbose,
 				...(replayCheckpoint === undefined ? {} : { replayCheckpoint })
 			});
@@ -68,6 +76,21 @@ async function run(ctx: CommandContext): Promise<number> {
 			ctx.out.warn(text);
 		}
 	);
+}
+
+/** CMD-SAVE-REGENERATE: an explicit clean marker target can be regenerated without a synthetic tree edit. */
+export function explicitRegenerationPaths(paths: readonly string[], tree: string, patches: string): readonly string[] {
+	if (paths.length === 0) throw ckError('CONFIG', 'save --regenerate requires explicit existing patch target files');
+	for (const target of paths) {
+		if (repoRelativePathProblem(target) !== null) throw ckError('CONFIG', `invalid regeneration target ${JSON.stringify(target)}`);
+		const contained = resolveContainedPath(tree, target);
+		if (!contained.ok || !lstatSync(contained.absolute).isFile())
+			throw ckError('CONFIG', `regeneration target is not a contained regular file: ${target}`);
+		const artifact = resolveContainedPath(patches, `delta/patches/${encodePatchName(target)}`);
+		if (!artifact.ok || !lstatSync(artifact.absolute).isFile())
+			throw ckError('CONFIG', `regeneration requires an existing patch artifact: ${target}`);
+	}
+	return [...new Set(paths)];
 }
 
 function requireConfig(config: CodkitConfig | null): CodkitConfig {
@@ -98,6 +121,6 @@ export const saveCommand: CommandDefinition = {
 	summary: 'extract the changes of the fork tree back into the patchset delta',
 	configMode: 'load',
 	maxArgs: MAX_PATHS,
-	commandFlags: [COMMIT, MESSAGE, ALLOW_NEW_FILE, SQUASH],
+	commandFlags: [COMMIT, MESSAGE, ALLOW_NEW_FILE, SQUASH, REGENERATE],
 	run
 };

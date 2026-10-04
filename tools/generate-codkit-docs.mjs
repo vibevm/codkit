@@ -186,7 +186,7 @@ const commandGuidance = {
 	save: {
 		positional: '[path ...]',
 		detail:
-			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`). An edit in the directory of an input is refused before anything is written: that content belongs to the repository of the input.'
+			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`). `--regenerate` requires explicit existing patch target files and invokes canonical regeneration even when they are clean, retaining all lineage and marker guards. An edit in the directory of an input is refused before anything is written: that content belongs to the repository of the input.'
 	},
 	sync: {
 		positional: '',
