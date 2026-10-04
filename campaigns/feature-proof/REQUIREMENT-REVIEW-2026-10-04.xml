@@ -22,7 +22,7 @@
     <item id="4" status="mechanism-proof-owner-open">Controlled proprietary LicenseRef enforcement fixtures prove mechanics, not the owner's actual legal policy approval.</item>
     <item id="5" status="mechanism-proof">Header-losing artifact provenance/notice/SPDX attachment and package/publish evidence gates are covered in the licensing execution ledger.</item>
     <item id="6" status="local-git-proof">Two real linked workspace pairs, independent roots, aliases and UUID lifecycle/ref isolation are covered in the workspace ledger.</item>
-    <item id="7" status="local-git-proof-portability-open">Writer refusal and registry/start/lifecycle custody covered; native Windows/macOS concurrency is not closed by Linux fixtures.</item>
+    <item id="7" status="local-git-proof-portability-open">Writer refusal and registry/start/lifecycle custody covered. 35866c7 adds two actual OS-process contenders, alias exclusion and simultaneous separate-checkout ownership; Windows final lock/writer/process 29/29 and Linux pre-Windows-fixture-refinement 29/29. This does not close full Windows/macOS lifecycle, multiple machines or NFS/SMB concurrency.</item>
     <item id="8" status="conditional-not-implemented">Crash at each coordinator atom is required after implementation. Abstract transition examples do not establish runtime recovery.</item>
     <item id="9" status="conditional-not-implemented">Patch-heavy delete/move/replace requires a real profile; current codec only advertises add/modify.</item>
     <item id="10" status="compatibility-proof">Legacy patchset serialization/generated history/fingerprint and old-version strictness remain covered by complete suite and dedicated negative fixtures.</item>
