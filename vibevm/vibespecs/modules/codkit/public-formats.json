@@ -1205,6 +1205,25 @@
       ]
     },
     {
+      "id": "workspace-closed-runtime",
+      "field": "codkitWorkspaceClosedRuntime",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/workspaceRuntime.ts",
+      "owner": "Codkit workspace finish",
+      "trustBoundary": "Known closed runtime documents pass existing readers before exact byte archival; arbitrary scratch files gain no ownership.",
+      "compatibility": "Strict v1 binds both sealed heads and exact permitted paths; malformed/future/foreign receipts refuse.",
+      "migration": "No rewriting of existing cycle/dependency/release/config formats; finish explicitly records archived snapshots.",
+      "fingerprint": "Does not enter delta/history fingerprints; binds immutable head and per-document byte digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CLOSED-RUNTIME",
+      "tests": [
+        "packages/codkit/test/unit/workspaceRuntime.test.ts",
+        "packages/codkit/test/e2e/workspace.test.ts"
+      ]
+    },
+    {
       "id": "workspace-daemon-log",
       "field": "codkitWorkspaceDaemonLog",
       "version": 1,

@@ -861,7 +861,7 @@ export type DepsVerdict = {
 	readonly missing: readonly string[];
 };
 
-const depsRecordSchema = z.object({
+export const depsRecordSchema = z.object({
 	codkitDepsHash: z.literal(DEPS_HASH_SCHEMA_VERSION),
 	treeId: z.string().min(1),
 	treePath: z.string().min(1),

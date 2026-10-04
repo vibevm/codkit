@@ -7,6 +7,9 @@ import { readTypeManifest } from '../../src/types/manifest.ts';
 import { STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+import { finishWorkspace } from '../../src/lib/workspaceFinish.ts';
+import { removeWorkspace } from '../../src/lib/workspaceRemove.ts';
+import { projectType } from '../fixtures/stubType.ts';
 
 afterAll(cleanupTempRoots);
 function options(name = 'task-one') {
@@ -35,6 +38,25 @@ it('creates two real worktrees with stable task identity and separate namespace 
 	expect(first.id).not.toBe(second.id);
 	expect(workspaceRefPrefixes(first.id).generatedBranchPrefix).not.toBe(workspaceRefPrefixes(second.id).generatedBranchPrefix);
 	expect(() => createWorkspace({ ...input, name: 'TASK-ONE' })).toThrow(/already reserved/);
+});
+
+it('keeps a pair usable after the linked source pair is finished and removed', () => {
+	const input = options('source-task');
+	const parent = createWorkspace(input);
+	const child = createWorkspace({
+		...input,
+		name: 'child-task',
+		directory: makeTempRoot('workspace-linked-child-pairs'),
+		patchesRepository: parent.patchset.path,
+		forkRepository: parent.fork.path
+	});
+	finishWorkspace({ registryRoot: input.registryRoot, name: parent.id, type: projectType });
+	expect(removeWorkspace({ registryRoot: input.registryRoot, name: parent.id }).state).toBe('removed');
+	expect(existsSync(parent.patchset.path)).toBe(false);
+	verifyWorkspaceCheckout(child, 'patchset');
+	verifyWorkspaceCheckout(child, 'fork');
+	finishWorkspace({ registryRoot: input.registryRoot, name: child.id, type: projectType });
+	expect(removeWorkspace({ registryRoot: input.registryRoot, name: child.id }).state).toBe('removed');
 });
 it('resumes an interrupted pair after the first worktree without replacing its receipt', () => {
 	const input = options();

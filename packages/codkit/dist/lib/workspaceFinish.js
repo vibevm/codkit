@@ -3,6 +3,7 @@
 import { verifyReceipt } from './workspaceReceipt.js';
 import { captureWorkspaceMaterials, writeWorkspaceMaterials } from './workspaceMaterials.js';
 import { workspaceLogPaths } from './workspaceLogs.js';
+import { captureWorkspaceRuntime } from './workspaceRuntime.js';
 export { verifyReceipt } from './workspaceReceipt.js';
 import { readdirSync } from 'node:fs';
 import { relative } from 'node:path';
@@ -40,8 +41,9 @@ export function finishWorkspace(options) {
             if (config === null || config.type !== record.type.id || options.type.id !== record.type.id)
                 throw ckError('CONFIG', 'workspace configuration/type custody differs from registry');
             const patchsetHead = git(record.patchset.path, ['rev-parse', 'HEAD']);
+            const runtime = captureWorkspaceRuntime(options.registryRoot, record, config);
             const materials = captureWorkspaceMaterials(record, config, options.type, patchsetHead, options.registryRoot);
-            const logs = workspaceLogPaths(options.registryRoot, record);
+            const logs = [...workspaceLogPaths(options.registryRoot, record), ...runtime];
             for (const [index, role] of ['patchset', 'fork'].entries()) {
                 const cache = role === 'patchset' ? readTreeCache(record.patchset.path, treeId(record.fork.path)) : null;
                 assertWorkspaceClean(record[role].path, locks[index], cache === null
@@ -136,6 +138,8 @@ export function refuseWorkspaceDaemons(root, workspaceId) {
         throw error;
     }
     for (const file of files.filter((file) => file.endsWith('.json'))) {
+        if (file === 'deps-hash.json')
+            continue; // Validated/archived separately as dependency runtime, never as a daemon.
         const state = readRecordState(root, file.slice(0, -5));
         if (workspaceId !== undefined || state.state !== 'valid' || state.record.pid === 0 || isAlive(state.record.pid))
             throw ckError('LOCKED', 'workspace has an active or unresolved build daemon');

@@ -273,6 +273,10 @@ it('publishes a named workspace snapshot into its UUID release namespace without
 	});
 	expect([head(record.patchset.path), head(record.fork.path), head(f.source.patchesDir), head(f.source.treeDir)]).toEqual(before);
 	expect(runGit({ cwd: target, args: ['branch', '--show-current'] }).stdout).toContain(`codkit/workspace/${record.id}/release/`);
+	const finished = f.run(['finish', 'task']);
+	expect(finished.status, finished.stderr + finished.stdout).toBe(0);
+	const removed = f.run(['remove', 'task']);
+	expect(removed.status, removed.stderr + removed.stdout).toBe(0);
 });
 
 it('starts, inspects and restarts a named cycle using only workspace UUID refs', () => {
@@ -320,4 +324,13 @@ it('continues a stopped named cycle through completion with workspace-bound buil
 	expect(JSON.parse(resumed.stdout)).toMatchObject({ data: { status: 'completed', phase: 'done' } });
 	expect(run(['cycle', 'status']).status).toBe(0);
 	expect(readFileSync(join(f.source.patchesDir, 'codkit.json'), 'utf8')).not.toContain(`codkit/workspace/${record.id}/`);
+	const stale = f.run(['finish', 'task']);
+	expect(stale.status).toBe(2);
+	expect(stale.stderr).toContain('save/apply evidence is stale');
+	const reloaded = run(['load', '--fresh']);
+	expect(reloaded.status, reloaded.stderr + reloaded.stdout).toBe(0);
+	const finished = f.run(['finish', 'task']);
+	expect(finished.status, finished.stderr + finished.stdout).toBe(0);
+	const removed = f.run(['remove', 'task']);
+	expect(removed.status, removed.stderr + removed.stdout).toBe(0);
 }, 60_000);

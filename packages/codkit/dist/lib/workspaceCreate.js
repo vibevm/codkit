@@ -91,7 +91,7 @@ export function verifyWorkspaceCheckout(record, role, allowGenerated = false) {
     const actual = repository(expected.path);
     if (actual.path !== realpathSync(expected.path) || actual.common !== expected.commonDirectory)
         throw ckError('CONFIG', 'workspace checkout is not registered in its recorded repository');
-    const admin = git(expected.repository, ['worktree', 'list', '--porcelain', '-z']);
+    const admin = git(expected.commonDirectory, ['--git-dir', expected.commonDirectory, 'worktree', 'list', '--porcelain', '-z']);
     const entries = admin.split('\0\0').map((entry) => entry.split('\0'));
     if (!entries.some((entry) => entry.includes(`worktree ${actual.path.replaceAll('\\', '/')}`) || entry.includes(`worktree ${actual.path}`)))
         throw ckError('CONFIG', 'workspace path is not an actual registered Git worktree');
@@ -110,7 +110,9 @@ export function verifyWorkspaceCheckout(record, role, allowGenerated = false) {
 function ensureCheckout(record, role) {
     const expected = record[role];
     if (!existsSync(expected.path)) {
-        git(expected.repository, [
+        git(expected.commonDirectory, [
+            '--git-dir',
+            expected.commonDirectory,
             '-c',
             'core.longpaths=true',
             'worktree',

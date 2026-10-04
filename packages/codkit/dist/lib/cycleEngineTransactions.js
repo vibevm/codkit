@@ -251,7 +251,7 @@ function assertTransitionCheckoutBytes(root, record) {
             throw ckError('ARTIFACT-BROKEN', `${write.path}: transition checkout bytes differ from authority`);
     }
 }
-function assertCommittedTerminal(root, config, record) {
+export function assertCommittedTerminal(root, config, record) {
     if (record.checkpoint !== 'committed' || record.commitSha === null)
         throw ckError('ARTIFACT-BROKEN', 'terminal receipt is not committed');
     if (readCycleState(root) !== null)

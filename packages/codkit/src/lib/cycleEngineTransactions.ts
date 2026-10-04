@@ -286,7 +286,7 @@ function assertTransitionCheckoutBytes(root: string, record: CycleTransitionReco
 			throw ckError('ARTIFACT-BROKEN', `${write.path}: transition checkout bytes differ from authority`);
 	}
 }
-function assertCommittedTerminal(root: string, config: CodkitConfig, record: CycleTerminalRecord): void {
+export function assertCommittedTerminal(root: string, config: CodkitConfig, record: CycleTerminalRecord): void {
 	if (record.checkpoint !== 'committed' || record.commitSha === null) throw ckError('ARTIFACT-BROKEN', 'terminal receipt is not committed');
 	if (readCycleState(root) !== null) throw ckError('ARTIFACT-BROKEN', 'committed terminal receipt coexists with cycle state');
 	if (record.state.targetPin.sha !== config.pin.sha || record.state.branch !== `${config.cycleBranchPrefix}${pinKey(config.pin)}`)

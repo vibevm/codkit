@@ -9,6 +9,7 @@ import { treeId } from './fingerprint.js';
 import { readTreeCache, treeCachePath } from './treeCache.js';
 import { readWorkspaceMaterials, verifyWorkspaceMaterials } from './workspaceMaterials.js';
 import { workspaceLogPaths } from './workspaceLogs.js';
+import { workspaceRuntimePaths } from './workspaceRuntime.js';
 import { verifyWorkspaceCheckout } from './workspaceCreate.js';
 import { assertWorkspaceClean, refuseWorkspaceDaemons, verifyReceipt, workspaceOwnedPaths } from './workspaceFinish.js';
 import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema } from './workspaceRegistry.js';
@@ -44,7 +45,11 @@ export function removeWorkspace(options) {
                     ? []
                     : [relative(record.patchset.path, treeCachePath(record.patchset.path, treeId(record.fork.path))).replaceAll('\\', '/')]);
                 if (role === 'patchset')
-                    extra.set(role, [...(extra.get(role) ?? []), ...workspaceLogPaths(options.registryRoot, record)]);
+                    extra.set(role, [
+                        ...(extra.get(role) ?? []),
+                        ...workspaceLogPaths(options.registryRoot, record),
+                        ...workspaceRuntimePaths(options.registryRoot, record)
+                    ]);
                 check(record, role, locks.get(role), extra.get(role) ?? [], materials, options.registryRoot);
             }
             for (const role of roles)
@@ -58,7 +63,15 @@ export function removeWorkspace(options) {
                 check(record, role, lock, extra.get(role) ?? [], materials, options.registryRoot);
                 // Force is necessary only for our verified receipt/cache and held lock files.
                 // The physical inventory below refuses all other data, including ignored/empty paths.
-                git(record[role].repository, ['worktree', 'remove', '--force', '--', record[role].path]);
+                git(record[role].commonDirectory, [
+                    '--git-dir',
+                    record[role].commonDirectory,
+                    'worktree',
+                    'remove',
+                    '--force',
+                    '--',
+                    record[role].path
+                ]);
                 verifyAbsent(record, role);
                 options.checkpoint?.(role === 'patchset' ? 'patchset-removed' : 'fork-removed');
             }
@@ -72,8 +85,10 @@ export function removeWorkspace(options) {
     });
 }
 function check(record, role, lock, extra, materials, authority) {
-    if (role === 'patchset')
+    if (role === 'patchset') {
         workspaceLogPaths(authority, record);
+        workspaceRuntimePaths(authority, record);
+    }
     const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials, authority)] : extra;
     verifyWorkspaceCheckout(record, role, true);
     verifyReceipt(record, role);
@@ -124,22 +139,38 @@ function preservedRef(record, role) {
 }
 function preserveHead(record, role) {
     const ref = preservedRef(record, role);
-    const result = runGit({ cwd: record[role].repository, args: ['rev-parse', '--verify', ref] });
+    const result = runGit({
+        cwd: record[role].commonDirectory,
+        args: ['--git-dir', record[role].commonDirectory, 'rev-parse', '--verify', ref]
+    });
     const head = finishedHead(record, role);
     if (result.status === 0) {
         if (result.stdout.trim() !== head)
             throw ckError('CONFIG', 'workspace preserved finish ref is foreign');
     }
     else
-        git(record[role].repository, ['update-ref', ref, head, '0'.repeat(40)]);
+        git(record[role].commonDirectory, ['--git-dir', record[role].commonDirectory, 'update-ref', ref, head, '0'.repeat(40)]);
 }
 function verifyAbsent(record, role) {
     if (present(record[role].path))
         throw ckError('CONFIG', 'workspace deletion did not remove its recorded path');
-    const entries = git(record[role].repository, ['worktree', 'list', '--porcelain', '-z']).split('\0');
+    const entries = git(record[role].commonDirectory, [
+        '--git-dir',
+        record[role].commonDirectory,
+        'worktree',
+        'list',
+        '--porcelain',
+        '-z'
+    ]).split('\0');
     if (entries.some((entry) => entry === `worktree ${record[role].path}` || entry === `worktree ${record[role].path.replaceAll('\\', '/')}`))
         throw ckError('CONFIG', 'missing workspace is still registered; refusing ambiguous removal recovery');
-    if (git(record[role].repository, ['rev-parse', '--verify', preservedRef(record, role)]).trim() !== finishedHead(record, role))
+    if (git(record[role].commonDirectory, [
+        '--git-dir',
+        record[role].commonDirectory,
+        'rev-parse',
+        '--verify',
+        preservedRef(record, role)
+    ]).trim() !== finishedHead(record, role))
         throw ckError('CONFIG', 'removed workspace finish ref is missing or foreign');
 }
 function present(path) {
