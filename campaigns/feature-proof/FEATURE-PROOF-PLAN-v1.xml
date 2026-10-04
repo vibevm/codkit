@@ -34,7 +34,7 @@
     <phase id="5" depends="1 2">Measured expansion with real consumers: codec seam P0.6, coordinator contract P0.8, build recipe design P0.12; new implementation follows its polygon.</phase>
   </route>
   <current-atom id="P0.11-WINDOWS-LIFECYCLE" state="executing">
-    <perimeter>Native Windows eight-file workspace unit selection against real isolated Git pairs. Explicit test budget is 600 seconds due measured host execution cost; product test-budget defaults remain unchanged; platform diagnostics have led to the native dead-generation fixture correction and actual LFS/junction removal fixes.</perimeter>
+    <perimeter>Native Windows nine-file workspace unit selection, 53 collected scenarios, against real isolated Git pairs. Explicit test budget is 600 seconds due measured host execution cost; product test-budget defaults remain unchanged; platform diagnostics have led to the native dead-generation fixture correction and actual LFS/junction removal fixes. The following shipped-launcher CLI selection contains ten separately collected scenarios.</perimeter>
     <acceptance>Complete selected unit scenarios, diagnose actual failures, preserve Linux behavior and record exact scope. CLI and whole Windows protocol, macOS, multi-machine/filesystem and independent audit remain separate evidence requirements.</acceptance>
     <negative-proof>No partial Windows run becomes full-platform acceptance. No POSIX probe is forced on Windows; absent PID never invents descendant-tree teardown proof.</negative-proof>
     <safe-stop>Current junction source 55155b4 has complete Linux2899/five truthful skips and targeted Windows7 plus final guard1 proofs. Broad native Windows lifecycle remains pending; the prior22-pass run stopped on the junction defect and is not a whole-suite pass. Independent-supplier integration is outside campaign scope by owner instruction; owner distribution/signing boundaries remain open.</safe-stop>
@@ -50,6 +50,15 @@ npm run trace:check
 npm run docs:check
 npm run floor
 ]]></quick-start>
+  <windows-workspace-replay><![CDATA[
+# Run from the feature worktree with installed dependencies. Run sequentially;
+# proceed to CLI only after the unit command exits zero. These commands create
+# disposable fixtures; they are scoped checks, not the complete platform floor.
+npx vitest run packages/codkit/test/unit/workspaceCreate.test.ts packages/codkit/test/unit/workspaceSelection.test.ts packages/codkit/test/unit/workspaceStart.test.ts packages/codkit/test/unit/workspaceDaemon.test.ts packages/codkit/test/unit/workspaceRuntime.test.ts packages/codkit/test/unit/workspaceMaterials.test.ts packages/codkit/test/unit/workspaceLogs.test.ts packages/codkit/test/unit/workspaceFinish.test.ts packages/codkit/test/unit/workspaceLinkProjection.test.ts --maxWorkers=1 --hookTimeout=60000 --testTimeout=600000 --reporter=verbose --bail=1
+npx vitest run packages/codkit/test/e2e/workspace.test.ts --maxWorkers=1 --hookTimeout=60000 --testTimeout=600000 --reporter=verbose --bail=1
+# The last CLI scenario has an explicit 60000ms case timeout. The runner flag
+# does not override it; diagnose an actual timeout separately from assertions.
+]]></windows-workspace-replay>
   <whole-campaign-acceptance>Each later phase supplies its source-plan polygon and a green complete floor. This first atom does not establish type ABI, trusted external supply, licence evidence, discipline, workspaces or multi-component release acceptance.</whole-campaign-acceptance>
   <review-points>
     <open>The owner delegated unattended development on 2026-10-03. Reversible technical defaults follow the source proposal and are recorded in product contracts; commercial legal rulings and signing custody remain owner boundaries; an independent external-type integration is deferred outside this campaign by the 2026-10-05 owner instruction. The source decision inventory is the eight numbered items in the source plan's “Решения владельца перед кодированием”: Git boundary, discipline axis, schema migration, component/coordinator split, registry/policy trust, runtime inclusion, commercial notice ruling, signing and type namespace ownership. Inventory work does not ratify them.</open>
