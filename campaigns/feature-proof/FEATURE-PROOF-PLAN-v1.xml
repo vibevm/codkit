@@ -31,11 +31,11 @@
     <phase id="4" depends="1">Trusted external type supply: P0.3/P0.4 with a real partner; offline install, integrity and pre-import handshake proof.</phase>
     <phase id="5" depends="1 2">Measured expansion with real consumers: codec seam P0.6, coordinator contract P0.8, build recipe design P0.12; new implementation follows its polygon.</phase>
   </route>
-  <current-atom id="P0.10-MIXED-OWN-SCOPES" state="technical-candidate">
-    <perimeter>Explicit policy/store v2 enforces trusted mixed own source scopes and exact assembled artifact conjunction; strict v1 and existing report/SPDX formats are preserved. Actual Orion licensing intent is UPL for own upstream contributions and proprietary for independent own code, holder Oleg Chirukhin.</perimeter>
-    <acceptance>Generic mechanism full native Linux gate passes; real trusted Orion profile/source metadata and distribution evidence remain dependent on authoritative proprietary text and third-party expressions/exceptions.</acceptance>
-    <negative-proof>Ambiguous paths, patchset authority, v2 in store v1, source relabelling, OR/narrowed artifact licence and changed provenance refuse. No fixture approval becomes actual owner or supplier evidence.</negative-proof>
-    <safe-stop>Source commit d668f6e; complete Linux 2892 passed/four existing skips, 237 passed test files, eight frozen/zero new structural findings. Original orion-tree and main repository are unchanged. Whole goal remains open.</safe-stop>
+  <current-atom id="P0.11-WINDOWS-LIFECYCLE" state="executing">
+    <perimeter>Native Windows eight-file workspace unit selection against real isolated Git pairs. Explicit test budget is 600 seconds due measured host execution cost; product defaults and assertions are unchanged except the corrected native dead-generation custody test.</perimeter>
+    <acceptance>Complete selected unit scenarios, diagnose actual failures, preserve Linux behavior and record exact scope. CLI and whole Windows protocol, macOS, multi-machine/filesystem and independent audit remain separate evidence requirements.</acceptance>
+    <negative-proof>No partial Windows run becomes full-platform acceptance. No POSIX probe is forced on Windows; absent PID never invents descendant-tree teardown proof.</negative-proof>
+    <safe-stop>30b064a native fixture fix: changed Windows case passes, final Linux workspaceStart eight cases and all available gates pass. Remaining seven-file Windows run is live; results are not yet final. Full Linux source mechanism proof remains 2892 passed/four existing skips.</safe-stop>
   </current-atom>
   <quick-start><![CDATA[
 git status --short
