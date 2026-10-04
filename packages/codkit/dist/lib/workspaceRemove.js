@@ -1,6 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-020#WORKSPACE-REMOVE */
 // Removal keeps checkout guards through Git deletion and journals partial progress.
-import { lstatSync, readdirSync, realpathSync } from 'node:fs';
+import { lstatSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { acquireLock } from './lock.js';
 import { runGit } from './gitx.js';
@@ -12,7 +12,7 @@ import { workspaceLogPaths } from './workspaceLogs.js';
 import { workspaceRuntimePaths } from './workspaceRuntime.js';
 import { verifyWorkspaceCheckout } from './workspaceCreate.js';
 import { assertWorkspaceClean, refuseWorkspaceDaemons, verifyReceipt, workspaceOwnedPaths } from './workspaceFinish.js';
-import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema } from './workspaceRegistry.js';
+import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema, workspaceRefPrefixes } from './workspaceRegistry.js';
 const roles = ['patchset', 'fork'];
 export function removeWorkspace(options) {
     return updateWorkspaceRegistry(options.registryRoot, (registry, save) => {
@@ -33,7 +33,7 @@ export function removeWorkspace(options) {
                 if (!present(record[role].path)) {
                     if (record.state !== 'removing')
                         throw ckError('CONFIG', 'finished workspace checkout is missing');
-                    verifyAbsent(record, role);
+                    reconcileAbsentCheckout(record, role);
                     continue;
                 }
                 verifyWorkspaceCheckout(record, role, true);
@@ -61,6 +61,19 @@ export function removeWorkspace(options) {
                 if (lock === undefined)
                     continue;
                 check(record, role, lock, extra.get(role) ?? [], materials, options.registryRoot);
+                if (process.platform === 'win32') {
+                    if (removalRegistration(record, role) === undefined)
+                        throw ckError('CONFIG', 'workspace Git registration disappeared before filesystem removal');
+                    const path = record[role].path;
+                    const shape = lstatSync(path);
+                    if (!shape.isDirectory() || shape.isSymbolicLink() || realpathSync(path) !== path)
+                        throw ckError('CONFIG', 'workspace filesystem removal target is not its recorded physical directory');
+                    // Git for Windows recursively follows junctions here; Node removes their leaf entries.
+                    rmSync(path, { recursive: true, force: false });
+                    options.checkpoint?.(role === 'patchset' ? 'patchset-files-removed' : 'fork-files-removed');
+                    if (present(path))
+                        throw ckError('DIRTY-TREE', 'workspace checkout path was recreated before Git administration removal');
+                }
                 // Force is necessary only for our verified receipt/cache and held lock files.
                 // The physical inventory below refuses all other data, including ignored/empty paths.
                 git(record[role].commonDirectory, [
@@ -119,7 +132,7 @@ function check(record, role, lock, extra, materials, authority) {
     const walk = (prefix) => {
         for (const entry of readdirSync(join(record[role].path, prefix), { withFileTypes: true })) {
             const path = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
-            if (entry.isDirectory() && directories.has(path))
+            if (entry.isDirectory() && !entry.isSymbolicLink() && directories.has(path))
                 walk(path);
             else if (!entry.isDirectory() && (entry.isFile() || entry.isSymbolicLink()) && paths.has(path))
                 continue;
@@ -172,6 +185,47 @@ function verifyAbsent(record, role) {
         preservedRef(record, role)
     ]).trim() !== finishedHead(record, role))
         throw ckError('CONFIG', 'removed workspace finish ref is missing or foreign');
+}
+function reconcileAbsentCheckout(record, role) {
+    const expected = record[role];
+    const retained = git(expected.commonDirectory, [
+        '--git-dir',
+        expected.commonDirectory,
+        'rev-parse',
+        '--verify',
+        preservedRef(record, role)
+    ]);
+    if (retained.trim() !== finishedHead(record, role))
+        throw ckError('CONFIG', 'workspace preserved finish ref is missing or foreign');
+    const entry = removalRegistration(record, role);
+    if (entry !== undefined) {
+        if (present(expected.path))
+            throw ckError('DIRTY-TREE', 'workspace checkout path was recreated before Git administration removal');
+        git(expected.commonDirectory, ['--git-dir', expected.commonDirectory, 'worktree', 'remove', '--force', '--', expected.path]);
+    }
+    verifyAbsent(record, role);
+}
+function removalRegistration(record, role) {
+    const expected = record[role];
+    const admin = git(expected.commonDirectory, ['--git-dir', expected.commonDirectory, 'worktree', 'list', '--porcelain', '-z']);
+    const entry = admin
+        .split('\0\0')
+        .map((section) => section.split('\0'))
+        .find((fields) => fields.includes(`worktree ${expected.path}`) || fields.includes(`worktree ${expected.path.replaceAll('\\', '/')}`));
+    if (entry === undefined)
+        return undefined;
+    if (entry.some((field) => field === 'locked' || field.startsWith('locked ')))
+        throw ckError('CONFIG', 'workspace Git registration is locked; refusing removal');
+    const branch = entry.find((field) => field.startsWith('branch refs/heads/'))?.slice('branch refs/heads/'.length);
+    const prefixes = workspaceRefPrefixes(record.id);
+    const admitted = branch === undefined
+        ? expected.branch === null && entry.includes('detached')
+        : branch === expected.branch ||
+            branch.startsWith(prefixes.cycleBranchPrefix) ||
+            (role === 'fork' && branch.startsWith(prefixes.generatedBranchPrefix));
+    if (!entry.includes(`HEAD ${finishedHead(record, role)}`) || !admitted)
+        throw ckError('CONFIG', 'missing workspace Git registration differs from its finished custody');
+    return entry;
 }
 function present(path) {
     try {

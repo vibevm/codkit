@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, readlinkSync, unlinkSync, writeFileSync, symlinkSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { afterAll, expect, it } from 'vitest';
 import { createWorkspace } from '../../src/lib/workspaceCreate.ts';
@@ -18,6 +19,7 @@ import { LFS_EXTRA, lfsObjectPath, provideLfsContent } from '../fixtures/lfsUpst
 import { makeInputRepository } from '../support/inputRepository.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import { inputBlobRef } from '../../src/lib/workspaceInput.ts';
+import { captureWorkspaceBuildOutputs } from '../../src/lib/workspaceBuildOutputs.ts';
 import { readInputStore, writeInputStore } from '../../src/lib/inputsStore.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
@@ -228,10 +230,39 @@ it('archives only leaf link text and never follows a declared output link outsid
 	writeFileSync(join(outside, 'keep.txt'), 'external content');
 	symlinkSync(outside, join(f.record.fork.path, 'out-fixture/link'), process.platform === 'win32' ? 'junction' : 'dir');
 	const finished = f.finish();
-	const link = readWorkspaceMaterials(f.registryRoot, finished).find((file) => file.kind === 'build-output' && file.entry === 'link');
-	expect(link).toBeDefined();
+	const materials = readWorkspaceMaterials(f.registryRoot, finished);
+	const link = materials.find((file) => file.kind === 'build-output' && file.entry === 'link');
+	const linkText = readlinkSync(join(f.record.fork.path, 'out-fixture/link'));
+	expect(link).toMatchObject({
+		path: 'out-fixture/link',
+		entry: 'link',
+		linkText,
+		sha256: createHash('sha256').update(linkText).digest('hex'),
+		bytes: Buffer.byteLength(linkText)
+	});
+	expect(materials.some((file) => file.path.startsWith('out-fixture/link/'))).toBe(false);
 	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
 	expect(readFileSync(join(outside, 'keep.txt'), 'utf8')).toBe('external content');
+});
+it('does not reclassify indexed leaf links or their Git-projected descendants as build outputs', () => {
+	const f = fixture('build');
+	const outside = makeTempRoot('workspace-indexed-link-external');
+	writeFileSync(join(outside, 'keep.txt'), 'external indexed-link content');
+	const path = 'out-fixture/indexed-link';
+	symlinkSync(outside, join(f.record.fork.path, path), process.platform === 'win32' ? 'junction' : 'dir');
+	const blob = runGit({
+		cwd: f.record.fork.path,
+		args: ['hash-object', '-w', '--stdin'],
+		input: readlinkSync(join(f.record.fork.path, path))
+	});
+	expect(blob.status).toBe(0);
+	expect(
+		runGit({ cwd: f.record.fork.path, args: ['update-index', '--add', '--cacheinfo', '120000', blob.stdout.trim(), path] }).status
+	).toBe(0);
+	const outputs = captureWorkspaceBuildOutputs(f.record, f.config, projectType, 'a'.repeat(64), f.registryRoot, new Set());
+	expect(outputs.some((output) => output.path === 'out-fixture/artifact.bin')).toBe(true);
+	expect(outputs.some((output) => output.path === path || output.path.startsWith(`${path}/`))).toBe(false);
+	expect(readFileSync(join(outside, 'keep.txt'), 'utf8')).toBe('external indexed-link content');
 });
 it('refuses edited saved material and unowned ignored content without deleting either checkout', () => {
 	const f = fixture();

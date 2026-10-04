@@ -49,20 +49,30 @@ export function captureWorkspaceBuildOutputs(
 		...(type.build.packageTargets ?? []).flatMap((target) => target.outputs ?? [])
 	];
 	const entries = new Set([...untracked(record.fork.path, false), ...untracked(record.fork.path, true)]);
+	const index = runGit({ cwd: record.fork.path, args: ['ls-files', '--cached', '-z'] });
+	if (index.status !== 0) throw ckError('CONFIG', 'cannot list indexed workspace output paths');
+	const tracked = new Set(index.stdout.split('\0').filter(Boolean));
+	const links = new Set<string>();
 	const empty = (prefix: string): void => {
 		const directory = prefix === '' ? { ok: true, absolute: record.fork.path } : resolveContainedPath(record.fork.path, prefix);
 		if (!directory.ok) throw ckError('CONFIG', 'workspace output directory moved');
 		const children = readdirSync(directory.absolute, { withFileTypes: true });
 		if (prefix !== '' && children.length === 0) entries.add(`${prefix}/`);
-		for (const child of children)
-			if (child.isDirectory() && child.name !== '.git' && child.name !== '.codkit')
-				empty(prefix === '' ? child.name : `${prefix}/${child.name}`);
+		for (const child of children) {
+			const path = prefix === '' ? child.name : `${prefix}/${child.name}`;
+			if (child.isSymbolicLink()) {
+				links.add(path);
+				if (!tracked.has(path)) entries.add(path);
+			} else if (child.isDirectory() && child.name !== '.git' && child.name !== '.codkit') empty(path);
+		}
 	};
 	empty('');
 	const outputs: WorkspaceBuildOutput[] = [];
 	for (const listed of [...entries].sort()) {
+		// Git for Windows can enumerate junction target children; archive only the physical leaf link.
+		if ([...links].some((link) => listed.startsWith(`${link}/`))) continue;
 		const path = listed.endsWith('/') ? listed.slice(0, -1) : listed;
-		if (alreadyOwned.has(path) || path.startsWith('.codkit/')) continue;
+		if (tracked.has(path) || alreadyOwned.has(path) || path.startsWith('.codkit/')) continue;
 		const owned = ownedRootOf(roots, path);
 		const withinOwn = owned !== null && isBuildOutput(owned, listed.slice(owned.path.length + 1));
 		if (!withinOwn && !matchesPatternList(listed, declared)) continue;

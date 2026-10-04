@@ -5,8 +5,8 @@ import { captureWorkspaceMaterials, writeWorkspaceMaterials } from './workspaceM
 import { workspaceLogPaths } from './workspaceLogs.js';
 import { captureWorkspaceRuntime } from './workspaceRuntime.js';
 export { verifyReceipt } from './workspaceReceipt.js';
-import { readdirSync } from 'node:fs';
-import { relative } from 'node:path';
+import { lstatSync, readdirSync, realpathSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { acquireLock, isAlive, lockPath, readLock } from './lock.js';
 import { PATCHSET_WRITER_LOCK_ID } from './patchsetWriter.js';
 import { loadConfig } from './configFile.js';
@@ -19,7 +19,7 @@ import { ownedRootsOf } from './ownedRoots.js';
 import { materializerOf } from './layers/ownExtensions.js';
 import { foreignCommits } from './treeCommits.js';
 import { readRecordState } from './buildRuntime.js';
-import { resolveContainedPath } from './pathSafety.js';
+import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { verifyWorkspaceCheckout } from './workspaceCreate.js';
@@ -75,7 +75,7 @@ export function finishWorkspace(options) {
                 const drift = driftDirty(materializerOf(options.type), record.fork.path, ownedRootsOf(options.type, config.typeConfig, { treeDir: record.fork.path, pinSha: config.pin.sha }), record.patchset.path, {
                     workspace: record,
                     ownedUntrackedFiles: [
-                        ...workspaceOwnedPaths(record.fork.path, locks[1], materials.map((file) => file.path))
+                        ...workspaceGitOwnedPaths(record.fork.path, locks[1], materials.map((file) => file.path))
                     ],
                     generated: { pinSha: config.pin.sha, branch: `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}` }
                 });
@@ -121,8 +121,39 @@ export function assertWorkspaceClean(root, owned, extra) {
     const allowed = workspaceOwnedPaths(root, owned, extra);
     const status = git(root, ['status', '--porcelain', '-z', '--untracked-files=all']);
     const entries = status.split('\0').filter((entry) => entry !== '');
-    if (entries.some((entry) => !(entry.startsWith('?? ') && allowed.has(entry.slice(3)))))
+    if (entries.some((entry) => !(entry.startsWith('?? ') && (allowed.has(entry.slice(3)) || ownedLeafProjection(root, entry.slice(3), allowed)))))
         throw ckError('DIRTY-TREE', 'workspace contains uncommitted or untracked work; save it before finish');
+}
+/** Git can project a Windows junction target as child paths; these aliases are never physical deletion authority. */
+export function workspaceGitOwnedPaths(root, owned, extra) {
+    const allowed = workspaceOwnedPaths(root, owned, extra);
+    const projected = new Set(allowed);
+    for (const entry of git(root, ['status', '--porcelain', '-z', '--untracked-files=all']).split('\0')) {
+        if (entry.startsWith('?? ') && ownedLeafProjection(root, entry.slice(3), allowed))
+            projected.add(entry.slice(3));
+    }
+    return projected;
+}
+function ownedLeafProjection(root, path, allowed) {
+    const clean = path.endsWith('/') ? path.slice(0, -1) : path;
+    if (repoRelativePathProblem(clean) !== null)
+        return false;
+    let parent = '';
+    for (const segment of clean.split('/')) {
+        const directory = parent === '' ? { ok: true, absolute: realpathSync(root) } : resolveContainedPath(root, parent);
+        if (!directory.ok)
+            return false;
+        const prefix = parent === '' ? segment : `${parent}/${segment}`;
+        try {
+            if (lstatSync(join(directory.absolute, segment)).isSymbolicLink())
+                return allowed.has(prefix);
+        }
+        catch {
+            return false;
+        }
+        parent = prefix;
+    }
+    return false;
 }
 export function refuseWorkspaceDaemons(root, workspaceId) {
     const dir = resolveContainedPath(root, '.codkit/build', { allowMissing: true });

@@ -11705,7 +11705,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:789599bcead5f8e35c48e9decbbade7f6775c71c830285506235a76ed6bd0d40",
+      "content_hash": "sha256:6793aa8006cc81bef886aae857b54fbd7e53a2e8c50948b9a4b1d23559541906",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "PROP-020: Named local workspace pairs and checkout writers",
@@ -11714,7 +11714,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:94d1f09bdc74700a45d9903ea4931ac6d5214350b977bf74cf6dae829cb91b97",
+      "content_hash": "sha256:1428bb23d51006303631978a8088897bd42edbfaabce99bb661634a14a38dede",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Checkout custody and workspace identity",
@@ -11750,10 +11750,10 @@
     },
     {
       "anchor": "WORKSPACE-FINISH",
-      "content_hash": "sha256:0228f7269e30a72e01d3c226aecacdf860dce50c94e14c9259d91141ff883231",
+      "content_hash": "sha256:59236e8452d04ce348a47227bc3d1ef1fa6833c8e800cdf24fa07680c4da54f0",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
-      "heading": "Finish verifies both actual registered checkout identities and immutable role receipts while holding checkout writer capabilities. It refuses dirty/untracked task work, moved or missing custody, unextracted detached history, stale generated cache/mark/fingerprint, own/upstream drift and active/unresolved daemons. An untouched detached baseline can finish without fabricated apply evidence. A finished record preserves patchset/fork immutable heads and optional delta fingerprint with timestamp; finished/removing/removed states require that proof. Marked generated fork branches must belong to the workspace UUID namespace. Finish preserves both checkout directories; deletion/cleanup is a separate verified action with retained source/material/runtime evidence. @status:impl/wip",
+      "heading": "Finish verifies both actual registered checkout identities and immutable role receipts while holding checkout writer capabilities. It refuses dirty/untracked task work, moved or missing custody, unextracted detached history, stale generated cache/mark/fingerprint, own/upstream drift and active/unresolved daemons. An untouched detached baseline can finish without fabricated apply evidence. A finished record preserves patchset/fork immutable heads and optional delta fingerprint with timestamp; finished/removing/removed states require that proof. Marked generated fork branches must belong to the workspace UUID namespace. Finish preserves both checkout directories; deletion/cleanup is a separate verified action with retained source/material/runtime evidence. Git-for-Windows junction descendant strings can match only the first physical leaf link already present in the verified owned-path set. This comparison applies only to untracked Git status/drift rows; staged changes and ordinary directory prefixes receive no exemption. Stored material paths and physical removal custody remain canonical leaf paths, never these Git projections. @status:impl/wip",
       "line": 9,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-FINISH"
     },
@@ -11768,16 +11768,16 @@
     },
     {
       "anchor": "WORKSPACE-REMOVE",
-      "content_hash": "sha256:b58d9c17cb47613363ede900c1b94058fd0ca893c1c6d303d401af2e04f86eb9",
+      "content_hash": "sha256:d2a5536d75582b37f72d8d87f9a01f8f5667a674728040061f10ea2fb1c34ea0",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
-      "heading": "Removal requires a finished proof and both unchanged recorded heads. While holding checkout writer capabilities it checks actual Git registration, exact role receipts, daemon state, Git cleanliness and a physical inventory including ignored files and empty directories. Only tracked files and validated Codkit receipts, cache and held lock generations are disposable; submodules, special files, foreign or unowned data refuse. Both heads are retained in immutable UUID-scoped repository refs before journaling removing. Git deletes only the verified worktree roots; the registry and retained refs survive. Retry accepts an absent checkout only in removing state with no remaining Git registration and the matching preserved head. A changed preserved ref refuses. Removed is recorded after both removals and repeating removed is inert. Public CLI and full phase acceptance remain pending. @status:impl/wip",
+      "heading": "Removal requires a finished proof and both unchanged recorded heads. While holding checkout writer capabilities it checks actual Git registration, exact role receipts, daemon state, Git cleanliness and a physical inventory including ignored files and empty directories. Only tracked files and validated Codkit receipts, cache and held lock generations are disposable; submodules, special files, foreign or unowned data refuse. Both heads are retained in immutable UUID-scoped repository refs before journaling removing. Git deletes only the verified worktree roots; the registry and retained refs survive. Retry accepts an absent checkout only in removing state with no remaining Git registration and the matching preserved head. A changed preserved ref refuses. Removed is recorded after both removals and repeating removed is inert. Public CLI and full phase acceptance remain pending. On native Windows, after the journal, retained refs and complete physical inventory checks, Node removes only the recorded canonical physical checkout directory without recursively following junction targets; Git subsequently removes its registration only while that checkout remains absent. Git-locked registration refuses before Windows filesystem deletion and during absent-root recovery. A recreated root refuses before Git administration removal. Retry of an absent checkout in removing state requires its existing preserved finish ref plus matching registration HEAD and UUID-scoped branch/detached custody; foreign or missing proof refuses. Missing checkouts in finished state remain invalid. File-removal checkpoints are fault-injection events, not new stored fields or silently widened schemas. This is participating-writer custody with the existing independent-audit and filesystem race limits, not a universal guarantee against arbitrary uncooperative programs. @status:impl/wip",
       "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REMOVE"
     },
     {
       "anchor": "surfaces",
-      "content_hash": "sha256:03260076ae810086d5ad853b8fc2a32351806c66c14719346ac43cae91e221e4",
+      "content_hash": "sha256:334a954c440241b5298e57d2e347a7d53f4d5485d9adfa15934a79de0eaa5494",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Workspace lifecycle surfaces",
@@ -11804,10 +11804,10 @@
     },
     {
       "anchor": "WORKSPACE-BUILD-OUTPUTS",
-      "content_hash": "sha256:e67bf9dbea51eb63da90246deabae92debb0b764c0de38903e7b54606d290416",
+      "content_hash": "sha256:98ff55b513b7cef31af8985327216c278cf14579489a58bacbe1655828eaaca2",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
-      "heading": "Material receipt v4 explicitly admits untracked/ignored output entries selected by the approved type layout cleanup patterns, package output patterns or per-owned-root build-output patterns. Existing saved material paths, Git-tracked files and runtime .codkit state are not reclassified. Regular bytes or literal leaf-link text are archived immutably in external user authority with SHA-256/size/mode and saved config/type declaration digests; current data is rechecked after archival. Exact empty output directories are captured without granting their contents ownership. Removal verifies retained bytes, source/type custody and current kind/content/mode before deleting only listed paths. Links are read as link text, never followed, and parents must be contained real directories. Unknown neighbours, changed output, missing archives, special files, traversal or new kinds in strict v1/v2/v3 refuse. Captures using output kinds emit v4 without rewriting old receipts. Full phase acceptance remains pending. @status:impl/wip",
+      "heading": "Material receipt v4 explicitly admits untracked/ignored output entries selected by the approved type layout cleanup patterns, package output patterns or per-owned-root build-output patterns. Existing saved material paths, Git-tracked files and runtime .codkit state are not reclassified. Regular bytes or literal leaf-link text are archived immutably in external user authority with SHA-256/size/mode and saved config/type declaration digests; current data is rechecked after archival. Exact empty output directories are captured without granting their contents ownership. Removal verifies retained bytes, source/type custody and current kind/content/mode before deleting only listed paths. Links are read as link text, never followed, and parents must be contained real directories. Unknown neighbours, changed output, missing archives, special files, traversal or new kinds in strict v1/v2/v3 refuse. Captures using output kinds emit v4 without rewriting old receipts. Full phase acceptance remains pending. Physical leaf links are enumerated without visiting their targets; Git junction-descendant candidates are reduced to that leaf. Git-indexed paths remain excluded even when they match output patterns. Target children never become retained output entries. @status:impl/wip",
       "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-BUILD-OUTPUTS"
     },

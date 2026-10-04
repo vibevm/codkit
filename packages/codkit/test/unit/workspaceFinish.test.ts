@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { afterAll, expect, it } from 'vitest';
 import { createWorkspace } from '../../src/lib/workspaceCreate.ts';
 import { finishWorkspace } from '../../src/lib/workspaceFinish.ts';
@@ -28,6 +28,80 @@ function fixture() {
 	});
 	return { record, registryRoot, finish: () => finishWorkspace({ registryRoot, name: 'task', type: projectType }) };
 }
+function deleteFixturePatchset(f: ReturnType<typeof fixture>): void {
+	const target = realpathSync(f.record.patchset.path);
+	if (target !== f.record.patchset.path || relative(dirname(f.record.fork.path), target) !== 'patchset')
+		throw new Error('unexpected disposable checkout deletion scope');
+	rmSync(target, { recursive: true, force: false });
+}
+it('resumes journaled physical deletion before Git unregistering using preserved finish custody', () => {
+	const f = fixture();
+	f.finish();
+	expect(() =>
+		removeWorkspace({
+			registryRoot: f.registryRoot,
+			name: 'task',
+			checkpoint: (stage) => {
+				if (stage === 'journaled') {
+					deleteFixturePatchset(f);
+					throw new Error('fixture files interrupted');
+				}
+			}
+		})
+	).toThrow('fixture files interrupted');
+	expect(existsSync(f.record.patchset.path)).toBe(false);
+	expect(readWorkspaceRegistry(f.registryRoot).workspaces[0]?.state).toBe('removing');
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+});
+it('refuses changed Git administration after journaled checkout files disappear', () => {
+	const f = fixture();
+	f.finish();
+	const admin = runGit({ cwd: f.record.patchset.path, args: ['rev-parse', '--absolute-git-dir'] });
+	expect(admin.status).toBe(0);
+	expect(() =>
+		removeWorkspace({
+			registryRoot: f.registryRoot,
+			name: 'task',
+			checkpoint: (stage) => {
+				if (stage === 'journaled') {
+					deleteFixturePatchset(f);
+					throw new Error('fixture files interrupted');
+				}
+			}
+		})
+	).toThrow('fixture files interrupted');
+	const foreign = '0'.repeat(40) + '\n';
+	writeFileSync(join(admin.stdout.trim(), 'HEAD'), foreign);
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(
+		/Git registration differs|Git operation|removal refused/
+	);
+	expect(readFileSync(join(admin.stdout.trim(), 'HEAD'), 'utf8')).toBe(foreign);
+	expect(existsSync(f.record.fork.path)).toBe(true);
+});
+it.runIf(process.platform === 'win32')('preserves a foreign root recreated between physical and Git administration removal', () => {
+	const f = fixture();
+	f.finish();
+	const adminGit = (args: readonly string[]) =>
+		runGit({ cwd: f.record.patchset.commonDirectory, args: ['--git-dir', f.record.patchset.commonDirectory, 'worktree', ...args] });
+	expect(adminGit(['lock', '--', f.record.patchset.path]).status).toBe(0);
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(/Git registration is locked/);
+	expect(existsSync(join(f.record.patchset.path, 'codkit.json'))).toBe(true);
+	expect(adminGit(['unlock', '--', f.record.patchset.path]).status).toBe(0);
+	expect(() =>
+		removeWorkspace({
+			registryRoot: f.registryRoot,
+			name: 'task',
+			checkpoint: (stage) => {
+				if (stage === 'patchset-files-removed') {
+					mkdirSync(f.record.patchset.path);
+					writeFileSync(join(f.record.patchset.path, 'foreign.txt'), 'preserve recreated work');
+				}
+			}
+		})
+	).toThrow(/recreated before Git administration removal/);
+	expect(readFileSync(join(f.record.patchset.path, 'foreign.txt'), 'utf8')).toBe('preserve recreated work');
+	expect(readWorkspaceRegistry(f.registryRoot).workspaces[0]?.state).toBe('removing');
+});
 it('finishes an untouched pair with preserved immutable heads and leaves both checkouts present', () => {
 	const f = fixture();
 	const result = f.finish();
