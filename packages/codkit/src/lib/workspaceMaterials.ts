@@ -18,10 +18,14 @@ import { runGit, runGitBytes } from './gitx.ts';
 import { workspaceIdSchema, workspaceRecordSchema } from './workspaceRegistry.ts';
 import type { WorkspaceRecord } from './workspaceRegistry.ts';
 import type { CodkitConfig } from './configFile.ts';
+import { parseBaseConfig } from './configFile.ts';
 import { ckError } from './messages.ts';
 import { savedMaterialLfs } from './workspaceMaterialLfs.ts';
 import { pointerObject } from './publishLfs.ts';
 import type { LfsPointer } from './publishLfs.ts';
+import { inspectInputCopies } from './inputsTree.ts';
+import { inputBlobRef, workspaceInputMatches } from './workspaceInput.ts';
+import { workspaceConfig } from './workspaceConfig.ts';
 
 const pathSchema = z.string().refine((value) => repoRelativePathProblem(value) === null && value !== '.git' && !value.startsWith('.git/'));
 const digest = z.string().regex(/^[0-9a-f]{64}$/);
@@ -55,7 +59,18 @@ const legacyReceipt = z.strictObject({
 	files: z.array(legacyMaterial)
 });
 const currentReceipt = legacyReceipt.extend({ codkitWorkspaceMaterials: z.literal(2), files: z.array(material) });
-export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt]).superRefine((value, ctx) => {
+const inputMaterial = z.strictObject({
+	kind: z.literal('input'),
+	path: pathSchema,
+	sha256: digest,
+	blob: z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/),
+	inputName: z.string().min(1),
+	deliveryStamp: digest,
+	configSha256: digest
+});
+const allMaterial = z.union([material, inputMaterial]);
+const inputReceipt = legacyReceipt.extend({ codkitWorkspaceMaterials: z.literal(3), files: z.array(allMaterial) });
+export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt, inputReceipt]).superRefine((value, ctx) => {
 	const seen = new Set<string>();
 	for (const file of value.files) {
 		if (seen.has(file.path.toLowerCase())) ctx.addIssue({ code: 'custom', message: 'materialized paths must not repeat or case-alias' });
@@ -63,13 +78,14 @@ export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt])
 	}
 });
 export type WorkspaceMaterials = z.infer<typeof workspaceMaterialsSchema>;
-export type WorkspaceMaterial = z.infer<typeof material>;
+export type WorkspaceMaterial = z.infer<typeof allMaterial>;
 
 export function captureWorkspaceMaterials(
 	record: WorkspaceRecord,
 	config: CodkitConfig,
 	type: ProjectType,
-	commit: string
+	commit: string,
+	registryRoot: string
 ): WorkspaceMaterial[] {
 	const pairs: { path: string; source: string }[] = [];
 	const directories: { path: string; source: string }[] = [];
@@ -140,10 +156,53 @@ export function captureWorkspaceMaterials(
 		});
 		files.push({ kind: 'dev-channel', path, sha256, text: rendered.text, sources });
 	}
+	const context = workspaceConfig(config, record, registryRoot).workspace;
+	if (context === undefined) throw ckError('CONFIG', 'workspace input capture lacks authority context');
+	for (const copy of inspectInputCopies(record.fork.path, config.inputs ?? [], (text) => {
+		throw ckError('CONFIG', text);
+	})) {
+		if (copy.recorded === null) {
+			const dir = resolveContainedPath(record.fork.path, copy.input.to, { allowMissing: true });
+			if (!dir.ok) throw ckError('CONFIG', 'workspace input directory is not contained');
+			try {
+				readdirSync(dir.absolute);
+				throw ckError('CONFIG', 'workspace input directory has no delivery witness');
+			} catch (error) {
+				if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
+			}
+			continue;
+		}
+		if (copy.edits.length > 0) throw ckError('DIRTY-TREE', 'workspace input copy contains unsaved edits; restore or reload the input');
+		if (!workspaceInputMatches(record.fork.path, copy.recorded, context))
+			throw ckError('CONFIG', 'workspace input cache is not backed by its delivery witness');
+		if (copy.recorded.mode === 'pinned' && copy.recorded.commit !== copy.input.ref)
+			throw ckError('CONFIG', 'workspace input pin differs from its delivery');
+		const configSha256 = sourceHash(record.patchset.commonDirectory, commit, 'codkit.json');
+		for (const [path, blob] of Object.entries(copy.recorded.files)) {
+			const target = `${copy.input.to}/${path}`;
+			const sha256 = inputBlobHash(record, blob);
+			const actual = hashContainedFile(record.fork.path, target, { what: 'workspace delivered input' });
+			if (actual.state !== 'ok' || actual.sha256 !== sha256)
+				throw ckError('DIRTY-TREE', 'workspace input bytes differ from their delivered blob');
+			files.push({
+				kind: 'input',
+				path: target,
+				sha256,
+				blob,
+				inputName: copy.input.name,
+				deliveryStamp: copy.recorded.stamp,
+				configSha256
+			});
+		}
+	}
 	return files.sort((left, right) => left.path.localeCompare(right.path, 'en'));
 }
 export function writeWorkspaceMaterials(root: string, record: WorkspaceRecord, files: WorkspaceMaterial[]): void {
-	const version = files.some((file) => file.kind === 'lfs-source' || file.kind === 'empty-directory') ? 2 : 1;
+	const version = files.some((file) => file.kind === 'input')
+		? 3
+		: files.some((file) => file.kind === 'lfs-source' || file.kind === 'empty-directory')
+			? 2
+			: 1;
 	const data = workspaceMaterialsSchema.parse({ codkitWorkspaceMaterials: version, id: record.id, finished: record.finished, files });
 	const bytes = encodeUtf8(`${JSON.stringify(data, null, 2)}\n`);
 	const path = receiptPath(record);
@@ -173,6 +232,22 @@ export function verifyWorkspaceMaterials(record: WorkspaceRecord, files: Workspa
 	if (record.finished === undefined) throw ckError('CONFIG', 'workspace finish proof is missing');
 	let lfs: ReadonlyMap<string, LfsPointer> | undefined;
 	for (const file of files) {
+		if (file.kind === 'input') {
+			const declared = decodeUtf8Strict(sourceBytes(record.patchset.commonDirectory, record.finished.patchsetCommit, 'codkit.json'));
+			if (declared === null) throw ckError('CONFIG', 'saved input configuration is not UTF-8');
+			const config = parseBaseConfig(JSON.parse(declared), 'saved workspace input config');
+			if (!(config.inputs ?? []).some((input) => input.name === file.inputName && file.path.startsWith(`${input.to}/`)))
+				throw ckError('CONFIG', 'workspace input receipt path is outside its saved declaration');
+			if (
+				sourceHash(record.patchset.commonDirectory, record.finished.patchsetCommit, 'codkit.json') !== file.configSha256 ||
+				inputBlobHash(record, file.blob) !== file.sha256
+			)
+				throw ckError('CONFIG', 'workspace input receipt backing differs from its sealed evidence');
+			const actual = hashContainedFile(record.fork.path, file.path, { what: 'workspace input removal barrier' });
+			if (actual.state !== 'ok' || actual.sha256 !== file.sha256)
+				throw ckError('DIRTY-TREE', 'workspace input material changed after finish');
+			continue;
+		}
 		const sources =
 			file.kind === 'dev-channel'
 				? file.sources
@@ -214,6 +289,15 @@ function sourceHash(common: string, commit: string, path: string): string {
 	return createHash('sha256')
 		.update(sourceBytes(common, commit, path))
 		.digest('hex');
+}
+function inputBlobHash(record: WorkspaceRecord, blob: string): string {
+	const common = record.fork.commonDirectory;
+	const ref = runGit({ cwd: common, args: ['--git-dir', common, 'rev-parse', '--verify', inputBlobRef(record.id, blob)] });
+	if (ref.status !== 0 || ref.stdout.trim() !== blob || git(common, ['cat-file', '-t', blob]) !== 'blob')
+		throw ckError('CONFIG', 'workspace input retained blob ref is missing or foreign');
+	const result = runGitBytes({ cwd: common, args: ['--git-dir', common, 'cat-file', 'blob', blob] });
+	if (result.status !== 0) throw ckError('CONFIG', 'workspace input retained bytes are unavailable');
+	return createHash('sha256').update(result.stdout).digest('hex');
 }
 function sourceBytes(common: string, commit: string, path: string): Uint8Array {
 	const mode = git(common, ['--literal-pathspecs', 'ls-tree', '--format=%(objectmode)', commit, '--', path]);

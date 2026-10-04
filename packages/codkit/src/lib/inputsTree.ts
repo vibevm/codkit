@@ -24,6 +24,8 @@ import type { ProducedInput } from './inputsBuild.ts';
 import type { InputMode } from './inputsSource.ts';
 import { readInputStore, writeInputStore } from './inputsStore.ts';
 import type { StoredInput } from './inputsStore.ts';
+import { workspaceInputMatches, recordWorkspaceInput } from './workspaceInput.ts';
+import type { WorkspaceInputContext } from './workspaceInput.ts';
 
 export type InputDelivery = {
 	readonly name: string;
@@ -67,6 +69,7 @@ export function inputTreePaths(treeDir: string, inputs: readonly InputConfig[], 
  * a failing build stops a run before its first write.
  */
 export function produceInputs(options: {
+	readonly workspace?: WorkspaceInputContext | undefined;
 	readonly treeDir: string;
 	readonly inputs: readonly InputConfig[];
 	readonly mode: InputMode;
@@ -75,16 +78,19 @@ export function produceInputs(options: {
 	readonly verbose: boolean;
 }): readonly ProducedInput[] {
 	const recorded = readInputStore(options.treeDir, (text) => options.out.warn(text));
-	return options.inputs.map((input) =>
-		produceInput({
+	return options.inputs.map((input) => {
+		const candidate = options.rebuild ? null : (recorded.find((entry) => entry.name === input.name) ?? null);
+		const trusted =
+			candidate === null || options.workspace === undefined || workspaceInputMatches(options.treeDir, candidate, options.workspace);
+		return produceInput({
 			input,
 			mode: options.mode,
 			treeDir: options.treeDir,
-			recorded: options.rebuild ? null : (recorded.find((entry) => entry.name === input.name) ?? null),
+			recorded: trusted ? candidate : null,
 			out: options.out,
 			verbose: options.verbose
-		})
-	);
+		});
+	});
 }
 
 /**
@@ -119,6 +125,7 @@ export function warnInputEdits(treeDir: string, inputs: readonly InputConfig[], 
  * elsewhere - taken away.
  */
 export function deliverInputs(options: {
+	readonly workspace?: WorkspaceInputContext | undefined;
 	readonly treeDir: string;
 	readonly produced: readonly ProducedInput[];
 	readonly out: Output;
@@ -146,7 +153,9 @@ export function deliverInputs(options: {
 			removed: mirrored.removed,
 			built: produced.built
 		});
-		stored.push(storedOf(produced));
+		const snapshot = storedOf(produced);
+		if (options.workspace !== undefined) recordWorkspaceInput(treeDir, snapshot, options.workspace);
+		stored.push(snapshot);
 		const source = produced.commit === null ? 'the working tree' : produced.commit.slice(0, 12);
 		out.info(
 			`input ${input.name}: ${source} -> ${input.to}: ${produced.files.length} file(s), ${mirrored.written} written, ` +

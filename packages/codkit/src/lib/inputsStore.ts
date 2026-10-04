@@ -19,7 +19,7 @@ import { gitDirOf } from './treeCache.ts';
 export const INPUTS_STAMP_RELATIVE_PATH = 'codkit/inputs.json';
 const STAMP_SCHEMA_VERSION = 1;
 
-const storedInputSchema = z.strictObject({
+export const storedInputSchema = z.strictObject({
 	name: z.string().min(1),
 	to: z.string().min(1),
 	mode: z.enum(['working', 'pinned']),

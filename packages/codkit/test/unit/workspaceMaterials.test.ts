@@ -15,12 +15,21 @@ import { projectType, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import { fixtureCommit } from '../fixtures/makeUpstream.ts';
 import { LFS_EXTRA, lfsObjectPath, provideLfsContent } from '../fixtures/lfsUpstream.ts';
+import { makeInputRepository } from '../support/inputRepository.ts';
+import { runGit } from '../../src/lib/gitx.ts';
+import { inputBlobRef } from '../../src/lib/workspaceInput.ts';
+import { readInputStore, writeInputStore } from '../../src/lib/inputsStore.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
-function fixture(kind?: 'lfs' | 'fake-lfs' | 'empty') {
+function fixture(kind?: 'lfs' | 'fake-lfs' | 'empty' | 'input') {
 	const source = makeSyncFixture('workspace-material-source');
-	if (kind === 'lfs' || kind === 'fake-lfs') {
+	if (kind === 'input') {
+		const input = makeInputRepository('workspace-material-input');
+		const path = join(source.patchesDir, 'codkit.json');
+		writeFileSync(path, JSON.stringify({ ...JSON.parse(readFileSync(path, 'utf8')), inputs: [input.declaration()] }, null, 2) + '\n');
+		fixtureCommit(source.patchesDir, 'declare workspace input fixture', '2026-10-04T00:00:00Z');
+	} else if (kind === 'lfs' || kind === 'fake-lfs') {
 		provideLfsContent(source.patchesDir, [LFS_EXTRA]);
 		writeFileSync(
 			join(source.patchesDir, kind === 'lfs' ? '.gitattributes' : '.git/info/attributes'),
@@ -47,6 +56,7 @@ function fixture(kind?: 'lfs' | 'fake-lfs' | 'empty') {
 	if (declared === null) throw new Error('missing fixture config');
 	const config = workspaceConfig(declared, record, registryRoot);
 	const result = runSync({
+		...(kind === 'input' ? { inputs: 'working' as const } : {}),
 		fresh: false,
 		dryRun: false,
 		verbose: false,
@@ -131,6 +141,51 @@ it('does not let local info/attributes declare cleanup authority for a saved poi
 	expect(readWorkspaceRegistry(f.registryRoot).workspaces[0]?.state).toBe('active');
 	expect(readFileSync(join(f.record.fork.path, f.config.typeConfig.ownRoot, 'asset.bin'))).toEqual(Buffer.from(LFS_EXTRA.content));
 });
+
+it('retains delivered input blobs after both checkouts disappear and rejects their kinds in old formats', () => {
+	const f = fixture('input');
+	const finished = f.finish();
+	const files = readWorkspaceMaterials(f.registryRoot, finished);
+	const input = files.find((file) => file.kind === 'input');
+	if (input === undefined || input.kind !== 'input') throw new Error('no input receipt');
+	for (const version of [1, 2])
+		expect(
+			workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: version, id: f.record.id, finished: finished.finished, files }).success
+		).toBe(false);
+	const bytes = readFileSync(join(f.record.fork.path, input.path));
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+	const result = runGit({ cwd: f.record.fork.commonDirectory, args: ['cat-file', 'blob', inputBlobRef(f.record.id, input.blob)] });
+	expect(result.status).toBe(0);
+	expect(Buffer.from(result.stdout)).toEqual(bytes);
+});
+it('refuses changed input delivery and loss of a retained blob ref without discarding work', () => {
+	const f = fixture('input');
+	const finished = f.finish();
+	const input = readWorkspaceMaterials(f.registryRoot, finished).find((file) => file.kind === 'input');
+	if (input === undefined || input.kind !== 'input') throw new Error('no input receipt');
+	const path = join(f.record.fork.path, input.path);
+	const bytes = readFileSync(path);
+	writeFileSync(path, 'new input work');
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(/input material changed/);
+	expect(existsSync(f.record.patchset.path)).toBe(true);
+	writeFileSync(path, bytes);
+	expect(runGit({ cwd: f.record.fork.path, args: ['update-ref', '-d', inputBlobRef(f.record.id, input.blob)] }).status).toBe(0);
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(/retained blob ref/);
+	expect(existsSync(f.record.fork.path)).toBe(true);
+});
+it('does not promote a forged Git-admin input cache into cleanup authority', () => {
+	const f = fixture('input');
+	const stored = readInputStore(f.record.fork.path, (text) => {
+		throw new Error(text);
+	});
+	const original = stored[0];
+	if (original === undefined) throw new Error('no input cache');
+	writeInputStore(f.record.fork.path, [{ ...original, stamp: '0'.repeat(64) }]);
+	expect(f.finish).toThrow(/delivery witness/);
+	expect(readWorkspaceRegistry(f.registryRoot).workspaces[0]?.state).toBe('active');
+	writeInputStore(f.record.fork.path, stored);
+	expect(f.finish().state).toBe('finished');
+});
 it('refuses edited saved material and unowned ignored content without deleting either checkout', () => {
 	const f = fixture();
 	const finished = f.finish();
@@ -161,7 +216,7 @@ it('does not accept source-map forgery, future formats or overwrite an immutable
 	const finished = f.finish();
 	const files = readWorkspaceMaterials(f.registryRoot, finished);
 	expect(
-		workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: 3, id: f.record.id, finished: finished.finished, files }).success
+		workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: 4, id: f.record.id, finished: finished.finished, files }).success
 	).toBe(false);
 	expect(() => writeWorkspaceMaterials(f.registryRoot, finished, [])).toThrow(/foreign/);
 	const first = files.find((file) => file.kind === 'source');

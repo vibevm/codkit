@@ -47,7 +47,7 @@ export function finishWorkspace(options: {
 			if (config === null || config.type !== record.type.id || options.type.id !== record.type.id)
 				throw ckError('CONFIG', 'workspace configuration/type custody differs from registry');
 			const patchsetHead = git(record.patchset.path, ['rev-parse', 'HEAD']);
-			const materials = captureWorkspaceMaterials(record, config, options.type, patchsetHead);
+			const materials = captureWorkspaceMaterials(record, config, options.type, patchsetHead, options.registryRoot);
 			for (const [index, role] of (['patchset', 'fork'] as const).entries()) {
 				const cache = role === 'patchset' ? readTreeCache(record.patchset.path, treeId(record.fork.path)) : null;
 				assertWorkspaceClean(

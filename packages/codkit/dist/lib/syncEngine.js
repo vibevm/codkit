@@ -427,6 +427,7 @@ export function runSync(options) {
     if (deliveringInputs) {
         warnInputEdits(tree, declaredInputs, out);
         producedInputs = produceInputs({
+            workspace: config.workspace,
             treeDir: tree,
             inputs: declaredInputs,
             mode: inputMode,
@@ -470,7 +471,7 @@ export function runSync(options) {
         writeExcludePlan(excludePlan);
         // The inputs are delivered on every run, like own code: the branch
         // cannot vouch for files it does not carry.
-        const inputs = deliveringInputs ? deliverInputs({ treeDir: tree, produced: producedInputs, out }) : [];
+        const inputs = deliveringInputs ? deliverInputs({ workspace: config.workspace, treeDir: tree, produced: producedInputs, out }) : [];
         writeTreeHook(tree, branch, out);
         reportOwn(out, own);
         reportOwnExtensions(out, ownExtensions);
@@ -508,7 +509,15 @@ export function runSync(options) {
     // built from its pinned commit (##INPUTS-GENERATED); the tree keeps no
     // record of them, so the only reuse is of a build of the same content.
     const committedInputs = committingInputs
-        ? produceInputs({ treeDir: tree, inputs: declaredInputs, mode: 'pinned', rebuild: false, out, verbose: options.verbose })
+        ? produceInputs({
+            workspace: config.workspace,
+            treeDir: tree,
+            inputs: declaredInputs,
+            mode: 'pinned',
+            rebuild: false,
+            out,
+            verbose: options.verbose
+        })
         : [];
     let built;
     try {
@@ -615,7 +624,7 @@ export function runSync(options) {
         writeDevChannel(options.type, tree, overlays, context, config.pin.sha, warn);
     }
     writeExcludePlan(excludePlan);
-    const inputs = deliveringInputs ? deliverInputs({ treeDir: tree, produced: producedInputs, out }) : [];
+    const inputs = deliveringInputs ? deliverInputs({ workspace: config.workspace, treeDir: tree, produced: producedInputs, out }) : [];
     writeTreeHook(tree, branch, out);
     // The own state is recorded after the copy, when both sides are identical by
     // construction: that is what makes the map usable as "who moved" evidence.

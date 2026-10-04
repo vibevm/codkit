@@ -16,6 +16,7 @@ import { ckError } from './messages.js';
 import { resolveContainedPath } from './pathSafety.js';
 import { produceInput } from './inputsBuild.js';
 import { readInputStore, writeInputStore } from './inputsStore.js';
+import { workspaceInputMatches, recordWorkspaceInput } from './workspaceInput.js';
 const BLOBS_PER_CALL = 500;
 const BLOB_BUFFER = 1024 * 1024 * 1024;
 /**
@@ -38,14 +39,18 @@ export function inputTreePaths(treeDir, inputs, onWarn) {
  */
 export function produceInputs(options) {
     const recorded = readInputStore(options.treeDir, (text) => options.out.warn(text));
-    return options.inputs.map((input) => produceInput({
-        input,
-        mode: options.mode,
-        treeDir: options.treeDir,
-        recorded: options.rebuild ? null : (recorded.find((entry) => entry.name === input.name) ?? null),
-        out: options.out,
-        verbose: options.verbose
-    }));
+    return options.inputs.map((input) => {
+        const candidate = options.rebuild ? null : (recorded.find((entry) => entry.name === input.name) ?? null);
+        const trusted = candidate === null || options.workspace === undefined || workspaceInputMatches(options.treeDir, candidate, options.workspace);
+        return produceInput({
+            input,
+            mode: options.mode,
+            treeDir: options.treeDir,
+            recorded: trusted ? candidate : null,
+            out: options.out,
+            verbose: options.verbose
+        });
+    });
 }
 /**
  * ##INPUTS-EDITS: before a load writes anything, every path of an input's
@@ -103,7 +108,10 @@ export function deliverInputs(options) {
             removed: mirrored.removed,
             built: produced.built
         });
-        stored.push(storedOf(produced));
+        const snapshot = storedOf(produced);
+        if (options.workspace !== undefined)
+            recordWorkspaceInput(treeDir, snapshot, options.workspace);
+        stored.push(snapshot);
         const source = produced.commit === null ? 'the working tree' : produced.commit.slice(0, 12);
         out.info(`input ${input.name}: ${source} -> ${input.to}: ${produced.files.length} file(s), ${mirrored.written} written, ` +
             `${mirrored.removed} removed (${produced.built ? 'built' : 'unchanged since the last build'})`);
