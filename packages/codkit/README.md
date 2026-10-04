@@ -128,6 +128,10 @@ Run build commands with the same selection, for example
 bind the workspace UUID and physical tree; copied or mismatching records cannot
 authorize teardown or log attribution. Legacy daemon records retain their
 previous format and are not silently adopted by a workspace.
+Finish records verified saved-source and dev-channel copies in an immutable
+receipt outside the checkouts. Removal rechecks their bytes and saved source
+blobs, including after an interrupted patchset-first removal. Edited or unowned
+material remains protected; the receipt survives checkout deletion.
 
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths
