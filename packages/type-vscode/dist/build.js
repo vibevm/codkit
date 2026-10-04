@@ -288,7 +288,40 @@ export const PACKAGE_TARGETS = [
     target('linux-armhf', 'linux', 'armhf', 'vscode-linux-armhf', ['linux']),
     target('macos-x64', 'macos', 'x64', 'vscode-darwin-x64', ['darwin']),
     target('macos-arm64', 'macos', 'arm64', 'vscode-darwin-arm64', ['darwin']),
-    ...LINUX_INSTALLER_TARGETS
+    ...LINUX_INSTALLER_TARGETS,
+    {
+        id: 'server-linux-x64-tar',
+        platform: 'linux',
+        arch: 'x64',
+        supportedHosts: ['linux'],
+        container: LINUX_CONTAINER,
+        outputs: ['.build/linux/server/vscode-server-*-x64-*.tar.gz'],
+        build: [
+            gulp('build remote extension host server', 'vscode-reh-linux-x64'),
+            pipelineLines('archive remote extension host server', [
+                'mkdir -p .build/linux/server',
+                'ARCHIVE_PATH=".build/linux/server/vscode-server-${VSCODE_QUALITY}-x64-$(date +%s).tar.gz"',
+                'tar -czf "$ARCHIVE_PATH" -C .. vscode-reh-linux-x64'
+            ])
+        ],
+        inputs: (treeDir) => {
+            const version = /^target="(.*)"$/mu.exec(readTreeFile(treeDir, 'remote/.npmrc'))?.[1] ?? 'unknown';
+            return [
+                {
+                    name: `remote server Node.js ${version} for linux-x64`,
+                    from: `https://nodejs.org/dist/v${version}/ (checksum from build/checksums/nodejs.txt)`,
+                    path: 'server-node',
+                    use: { kind: 'tree', target: '.build/node' }
+                },
+                {
+                    name: 'server built-in extensions of product.json',
+                    from: 'the release of each builtInExtensions entry',
+                    path: 'builtInExtensions',
+                    use: { kind: 'tree', target: '.build/builtInExtensions' }
+                }
+            ];
+        }
+    }
 ];
 /**
  * ##VSCODE-PACKAGE-OUTPUTS: a raw bundle is written **beside** the managed tree,
