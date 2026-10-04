@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { checkConsumerLicenses, consumerLicenseReportSchema } from './consumerLicenseCheck.ts';
 import { captureReleaseEntries } from './releaseArtifacts.ts';
-import { checkOrganizationExpression, parsePolicyExpression } from './organizationPolicy.ts';
+import { checkOrganizationArtifactExpression, parsePolicyExpression } from './organizationPolicy.ts';
 import { repoRelativePathProblem } from './pathSafety.ts';
 import type { SelectedOrganizationPolicy } from './organizationPolicyStore.ts';
 import type { OrganizationPolicyResult } from './organizationPolicy.ts';
@@ -102,7 +102,13 @@ export function captureDistributionProvenance(options: {
 				return found;
 			});
 			const own = sources.every((file) => file.kind === 'own');
-			const license = checkOrganizationExpression(options.selected.policy, declared.license, own, options.selected.additionalForbidden);
+			const license = checkOrganizationArtifactExpression(
+				options.selected.policy,
+				declared.license,
+				own,
+				options.selected.additionalForbidden,
+				sources
+			);
 			if (!license.ok) throw new Error(license.problems.join('; '));
 			const sourceExpressions = sources.map((file) => parsePolicyExpression(file.license));
 			if (sourceExpressions.some((expression) => !expression.ok)) throw new Error('source expression cannot be parsed');

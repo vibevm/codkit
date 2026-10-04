@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { checkConsumerLicenses, consumerLicenseReportSchema } from './consumerLicenseCheck.js';
 import { captureReleaseEntries } from './releaseArtifacts.js';
-import { checkOrganizationExpression, parsePolicyExpression } from './organizationPolicy.js';
+import { checkOrganizationArtifactExpression, parsePolicyExpression } from './organizationPolicy.js';
 import { repoRelativePathProblem } from './pathSafety.js';
 const path = z.string().refine((value) => repoRelativePathProblem(value) === null);
 const digest = z.string().regex(/^[0-9a-f]{64}$/);
@@ -89,7 +89,7 @@ export function captureDistributionProvenance(options) {
                 return found;
             });
             const own = sources.every((file) => file.kind === 'own');
-            const license = checkOrganizationExpression(options.selected.policy, declared.license, own, options.selected.additionalForbidden);
+            const license = checkOrganizationArtifactExpression(options.selected.policy, declared.license, own, options.selected.additionalForbidden, sources);
             if (!license.ok)
                 throw new Error(license.problems.join('; '));
             const sourceExpressions = sources.map((file) => parsePolicyExpression(file.license));

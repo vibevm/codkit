@@ -75,7 +75,7 @@ describe('organization policy authority', () => {
 		expect(checkOrganizationExpression(result.value, 'MIT', true, ['MIT']).ok).toBe(false);
 	});
 	it('refuses future formats before silently treating them as current policy', () => {
-		expect(validateOrganizationPolicy({ ...raw(), codkitOrganizationPolicy: 2 }, standard)).toMatchObject({
+		expect(validateOrganizationPolicy({ ...raw(), codkitOrganizationPolicy: 3 }, standard)).toMatchObject({
 			ok: false,
 			problems: [expect.stringContaining('newer')]
 		});

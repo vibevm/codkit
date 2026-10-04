@@ -719,37 +719,43 @@
     {
       "id": "organization-policy",
       "field": "codkitOrganizationPolicy",
-      "version": 1,
+      "version": 2,
       "observedVersions": [
-        1
+        1,
+        2
       ],
       "source": "packages/codkit/src/lib/organizationPolicy.ts",
       "owner": "User/admin organization enforcement authority",
       "trustBoundary": "Consumer policy profiles come from a supplied trusted user/admin directory; patchsets select IDs and additional prohibitions only. Codkit supply authority stays separate.",
-      "compatibility": "Strict schema 1; future versions, authority fields in selection, invalid/undeclared LicenseRef and text/hash mismatch refuse.",
-      "migration": "No implicit migration or fallback to patchset/cwd policy. Explicit trusted profile revision and digest identify changed policy.",
+      "compatibility": "Strict v1 is preserved and rejects scope fields/v2 policies. Explicit policy v2 adds trusted own path scopes; store v2 can contain v1/v2 policies. Versions above 2 refuse. Ambiguous scope matches and source-path absence refuse; scope changes cannot reclassify foreign ownership or weaken patchset prohibitions.",
+      "migration": "No implicit rewrite of v1 policy/store bytes. Administrator explicitly supplies a v2 profile in a v2 store; policy/store digests bind the selection and source-to-artifact evidence.",
       "fingerprint": "Not a delta/generated-history input. Selected policy/store digests will bind consumer distribution evidence and component release receipts.",
       "contract": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-FORMAT",
       "tests": [
-        "packages/codkit/test/unit/organizationPolicy.test.ts"
+        "packages/codkit/test/unit/organizationPolicy.test.ts",
+        "packages/codkit/test/unit/organizationPolicyScopes.test.ts",
+        "packages/codkit/test/unit/mixedLicenseDistribution.test.ts"
       ]
     },
     {
       "id": "organization-policy-store",
       "field": "codkitOrganizationPolicyStore",
-      "version": 1,
+      "version": 2,
       "observedVersions": [
-        1
+        1,
+        2
       ],
       "source": "packages/codkit/src/lib/organizationPolicyStore.ts",
       "owner": "User/admin organization enforcement authority",
       "trustBoundary": "Consumer policy profiles come from a supplied trusted user/admin directory; patchsets select IDs and additional prohibitions only. Codkit supply authority stays separate.",
-      "compatibility": "Strict schema 1; future versions, authority fields in selection, invalid/undeclared LicenseRef and text/hash mismatch refuse.",
-      "migration": "No implicit migration or fallback to patchset/cwd policy. Explicit trusted profile revision and digest identify changed policy.",
+      "compatibility": "Strict v1 is preserved and rejects scope fields/v2 policies. Explicit policy v2 adds trusted own path scopes; store v2 can contain v1/v2 policies. Versions above 2 refuse. Ambiguous scope matches and source-path absence refuse; scope changes cannot reclassify foreign ownership or weaken patchset prohibitions.",
+      "migration": "No implicit rewrite of v1 policy/store bytes. Administrator explicitly supplies a v2 profile in a v2 store; policy/store digests bind the selection and source-to-artifact evidence.",
       "fingerprint": "Not a delta/generated-history input. Selected policy/store digests will bind consumer distribution evidence and component release receipts.",
       "contract": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-TRUST",
       "tests": [
-        "packages/codkit/test/unit/organizationPolicy.test.ts"
+        "packages/codkit/test/unit/organizationPolicy.test.ts",
+        "packages/codkit/test/unit/organizationPolicyScopes.test.ts",
+        "packages/codkit/test/unit/mixedLicenseDistribution.test.ts"
       ]
     },
     {

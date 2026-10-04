@@ -8,12 +8,20 @@ import { z } from 'zod';
 import { readContainedFile } from './containedFile.js';
 import { decodeUtf8Strict } from './bytes.js';
 import { loadSpdxLicenseIds } from './spdxIds.js';
-import { organizationPolicySchema, organizationPolicySelectionSchema, selectOrganizationPolicy, validateOrganizationPolicy } from './organizationPolicy.js';
+import { organizationPolicySchema, organizationPolicyV1Schema, organizationPolicySelectionSchema, selectOrganizationPolicy, validateOrganizationPolicy } from './organizationPolicy.js';
 export const ORGANIZATION_POLICY_STORE_FILE = 'organization-policies.json';
-export const organizationPolicyStoreSchema = z.strictObject({
+export const organizationPolicyStoreV1Schema = z.strictObject({
     codkitOrganizationPolicyStore: z.literal(1),
+    policies: z.array(organizationPolicyV1Schema).min(1)
+});
+export const organizationPolicyStoreV2Schema = z.strictObject({
+    codkitOrganizationPolicyStore: z.literal(2),
     policies: z.array(organizationPolicySchema).min(1)
 });
+export const organizationPolicyStoreSchema = z.discriminatedUnion('codkitOrganizationPolicyStore', [
+    organizationPolicyStoreV1Schema,
+    organizationPolicyStoreV2Schema
+]);
 export function organizationPolicyRoot(home = homedir()) {
     return join(home, '.codkit');
 }
@@ -42,7 +50,7 @@ export function readOrganizationPolicy(root, patchesDir, rawSelection, standard)
             return refuse('organization policy store is not JSON');
         }
         const version = z.object({ codkitOrganizationPolicyStore: z.number().int() }).safeParse(raw);
-        if (version.success && version.data.codkitOrganizationPolicyStore > 1)
+        if (version.success && version.data.codkitOrganizationPolicyStore > 2)
             return refuse('organization policy store is newer than this tool; update codkit');
         const store = organizationPolicyStoreSchema.safeParse(raw);
         if (!store.success)

@@ -3,10 +3,12 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { SpdxLicenseIds } from './spdxIds.ts';
+import { licenseGlobMatches } from './licenseCarrier.ts';
+import { repoRelativePathProblem } from './pathSafety.ts';
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/);
 const expression = z.string().min(1).max(4096);
-export const organizationPolicySchema = z.strictObject({
+export const organizationPolicyV1Schema = z.strictObject({
 	codkitOrganizationPolicy: z.literal(1),
 	id: id.brand<'OrganizationPolicyId'>(),
 	version: z.number().int().positive(),
@@ -41,6 +43,28 @@ export const organizationPolicySchema = z.strictObject({
 	distribution: z.strictObject({ requiredNotices: z.array(id), sbom: z.enum(['spdx-json', 'none']), requireSourceCarriers: z.boolean() }),
 	legalReviewReference: z.string().min(1).optional()
 });
+export const organizationPolicyV2Schema = organizationPolicyV1Schema.extend({
+	codkitOrganizationPolicy: z.literal(2),
+	ownLicenseScopes: z
+		.array(
+			z.strictObject({
+				paths: z
+					.array(
+						z
+							.string()
+							.min(1)
+							.refine((value) => repoRelativePathProblem(value.replace(/[?*]/g, 'x')) === null)
+					)
+					.min(1),
+				license: expression
+			})
+		)
+		.min(1)
+});
+export const organizationPolicySchema = z.discriminatedUnion('codkitOrganizationPolicy', [
+	organizationPolicyV1Schema,
+	organizationPolicyV2Schema
+]);
 export const organizationPolicySelectionSchema = z.strictObject({
 	profile: id,
 	additionalForbidden: z.array(expression).optional()
@@ -112,7 +136,7 @@ export function parsePolicyExpression(input: string): OrganizationPolicyResult<L
 
 export function validateOrganizationPolicy(raw: unknown, standard: SpdxLicenseIds): OrganizationPolicyResult<OrganizationPolicy> {
 	const version = z.object({ codkitOrganizationPolicy: z.number().int() }).safeParse(raw);
-	if (version.success && version.data.codkitOrganizationPolicy > 1)
+	if (version.success && version.data.codkitOrganizationPolicy > 2)
 		return refuse('organization policy format is newer than this tool; update codkit');
 	const parsed = organizationPolicySchema.safeParse(raw);
 	if (!parsed.success) return refuse(`organization policy shape is invalid: ${parsed.error.issues[0]?.path.join('.') || 'document'}`);
@@ -145,7 +169,15 @@ export function validateOrganizationPolicy(raw: unknown, standard: SpdxLicenseId
 			problems.push('standard license text must be nonempty canonical LF text with a final LF');
 		if (createHash('sha256').update(record.text).digest('hex') !== record.sha256) problems.push('standard license text digest differs');
 	}
-	for (const value of [policy.ownLicense, ...policy.allowedThirdParty, ...policy.forbiddenThirdParty]) {
+	const scopes = policy.codkitOrganizationPolicy === 2 ? policy.ownLicenseScopes : [];
+	const scopePaths = scopes.flatMap((scope) => scope.paths);
+	if (new Set(scopePaths).size !== scopePaths.length) problems.push('own licence scope paths repeat');
+	for (const value of [
+		policy.ownLicense,
+		...scopes.map((scope) => scope.license),
+		...policy.allowedThirdParty,
+		...policy.forbiddenThirdParty
+	]) {
 		const checked = parsePolicyExpression(value);
 		if (!checked.ok) {
 			problems.push(...checked.problems);
@@ -181,7 +213,8 @@ export function checkOrganizationExpression(
 	policy: OrganizationPolicy,
 	input: string,
 	own: boolean,
-	additionalForbidden: readonly string[] = []
+	additionalForbidden: readonly string[] = [],
+	sourcePath?: string
 ): OrganizationPolicyResult<LicenseExpression> {
 	const checked = parsePolicyExpression(input);
 	if (!checked.ok) return checked;
@@ -193,7 +226,9 @@ export function checkOrganizationExpression(
 			return refuse('license expression contains a policy prohibition');
 	if (value.exceptions.some((exception) => !policy.allowedExceptions.includes(exception)))
 		return refuse('license exception is not approved');
-	const allowed = own ? [policy.ownLicense] : policy.allowedThirdParty;
+	const scoped = own ? organizationOwnLicense(policy, sourcePath) : { ok: true as const, value: '' };
+	if (!scoped.ok) return scoped;
+	const allowed = own ? [scoped.value] : policy.allowedThirdParty;
 	if (
 		!allowed.some((entry) => {
 			const parsed = parsePolicyExpression(entry);
@@ -202,6 +237,39 @@ export function checkOrganizationExpression(
 	)
 		return refuse(own ? 'own license differs from the trusted organization policy' : 'third-party expression is not approved');
 	return checked;
+}
+
+/** Scope resolution is trusted policy data; ownership is established separately. */
+export function organizationOwnLicense(policy: OrganizationPolicy, sourcePath?: string): OrganizationPolicyResult<string> {
+	if (policy.codkitOrganizationPolicy === 1) return { ok: true, value: policy.ownLicense };
+	if (sourcePath === undefined || repoRelativePathProblem(sourcePath) !== null)
+		return refuse('scoped own licence requires a contained source path');
+	const matched = policy.ownLicenseScopes.filter((scope) => scope.paths.some((pattern) => licenseGlobMatches(pattern, sourcePath)));
+	if (matched.length > 1) return refuse('own licence scopes overlap for source path');
+	return { ok: true, value: matched[0]?.license ?? policy.ownLicense };
+}
+
+/** All-own assembled artifacts keep the exact AND of their inspected source licences. */
+export function checkOrganizationArtifactExpression(
+	policy: OrganizationPolicy,
+	input: string,
+	own: boolean,
+	additionalForbidden: readonly string[],
+	sources: readonly { readonly path: string; readonly license: string }[]
+): OrganizationPolicyResult<LicenseExpression> {
+	if (policy.codkitOrganizationPolicy === 1 || !own) return checkOrganizationExpression(policy, input, own, additionalForbidden);
+	if (sources.length === 0) return refuse('scoped own artifact requires inspected source licences');
+	const expressions: string[] = [];
+	for (const source of sources) {
+		const checked = checkOrganizationExpression(policy, source.license, true, additionalForbidden, source.path);
+		if (!checked.ok) return checked;
+		expressions.push(checked.value.canonical);
+	}
+	const unique = [...new Set(expressions)].sort();
+	const combined = unique.length === 1 ? unique[0] : unique.map((value) => `( ${value} )`).join(' AND ');
+	const parsed = parsePolicyExpression(input);
+	if (!parsed.ok) return parsed;
+	return parsed.value.canonical === combined ? parsed : refuse('own artifact must retain exact source-scope licence conjunction');
 }
 function refuse(message: string): { readonly ok: false; readonly problems: readonly string[] } {
 	return { ok: false, problems: [message] };

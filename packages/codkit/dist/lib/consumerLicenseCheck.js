@@ -106,7 +106,7 @@ export function checkConsumerLicenses(root, selected, deliveredPaths) {
                 const carrierPath = carrier.kind === 'sidecar' ? `${path}.license` : carrier.kind === 'annotation' ? (carrier.registry ?? 'REUSE.toml') : path;
                 if (own && copyrights.some((entry) => entry.groups?.['years'] === undefined))
                     problems.push({ file: path, message: 'own copyright requires a year' });
-                const verdict = checkOrganizationExpression(selected.policy, expression, own, selected.additionalForbidden);
+                const verdict = checkOrganizationExpression(selected.policy, expression, own, selected.additionalForbidden, path);
                 if (!verdict.ok)
                     problems.push(...verdict.problems.map((message) => ({ file: path, message })));
                 const declaration = annotations.find((entry) => entry.license !== null && entry.copyright !== null);

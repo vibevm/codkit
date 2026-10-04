@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { distributionProvenanceSchema } from './distributionProvenance.js';
 import { readContainedFile } from './containedFile.js';
 import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.js';
-import { checkOrganizationExpression, parsePolicyExpression } from './organizationPolicy.js';
+import { checkOrganizationArtifactExpression, parsePolicyExpression } from './organizationPolicy.js';
 import { captureReleaseEntries } from './releaseArtifacts.js';
 export const SPDX_EXPORT_VERSION = 'SPDX-2.3';
 export const DISTRIBUTION_NOTICE_VERSION = 1;
@@ -51,7 +51,7 @@ export function renderDistributionDocuments(options) {
             throw new Error('distribution payload paths repeat');
         const used = new Set();
         for (const file of files) {
-            const verdict = checkOrganizationExpression(options.selected.policy, file.license, file.scope === 'own', options.selected.additionalForbidden);
+            const verdict = checkOrganizationArtifactExpression(options.selected.policy, file.license, file.scope === 'own', options.selected.additionalForbidden, file.sources);
             if (!verdict.ok)
                 throw new Error(verdict.problems.join('; '));
             for (const id of [...verdict.value.licenses, ...verdict.value.exceptions])

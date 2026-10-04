@@ -11579,7 +11579,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:cde4e3e63959ea25afb7bd8f3bcf67931f242a68c8caec34974df28c024354d0",
+      "content_hash": "sha256:e23e516d14fd64c9b582660d2dd2f3399ba53d61527ab94cc1442d194986e1e1",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -11588,7 +11588,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:c96a8054f0785e776912242c7f61dbe8b9123871189f227cab248dc90f311965",
+      "content_hash": "sha256:6800af842a002d38a1a392caec4ed0ca6eed4b8c9ced80397986f08fa7ded2c9",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -11606,19 +11606,19 @@
     },
     {
       "anchor": "ORGANIZATION-POLICY-TRUST",
-      "content_hash": "sha256:ee96e23e03f904054d02366c0bbc414257040c8ba5ee0fe01f5988256ee1e149",
+      "content_hash": "sha256:a89a86f8c31aa9a3e46581593094d7f0bc615d7e1c95a45b5a07ae736d162d00",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "A user/admin composition root supplies the policy directory; the default is the user .codkit directory. organization-policies.json carries codkitOrganizationPolicyStore:1 and policy records. Store reads use contained regular-file I/O, validate every profile and refuse conflicting IDs including case aliases. A directory inside the physical patchset or an alias resolving into it refuses. No cwd/patchset fallback or patchset-supplied policy path is accepted. The selected policy and raw store bytes each receive their own digest; a digest is not an invented signature or legal approval. @status:impl/done",
+      "heading": "A user/admin composition root supplies the policy directory; the default is the user .codkit directory. organization-policies.json carries strict codkitOrganizationPolicyStore:1 with v1 records or explicit store v2 with validated v1/v2 records. Store reads use contained regular-file I/O, validate every profile and refuse conflicting IDs including case aliases. A directory inside the physical patchset or an alias resolving into it refuses. No cwd/patchset fallback or patchset-supplied policy path is accepted. The selected policy and raw store bytes each receive their own digest; a digest is not an invented signature or legal approval. @status:impl/done",
       "line": 7,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-TRUST"
     },
     {
       "anchor": "ORGANIZATION-POLICY-SELECTION",
-      "content_hash": "sha256:5988ee6998233f18e89cfef4caac4dc96baadd4ab7c74ba59ce7b61ba10ba539",
+      "content_hash": "sha256:704d0cddbc2ffba005ce0c8d3f0bd7d51cf89dd5436875240243bce35a7cd9e2",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "Patchset selection contains only profile ID and optional additionalForbidden expressions. Holders, allowlists, license text, policy locations and other authority fields refuse. Additional prohibitions are monotone and cannot enable a license. Own scope uses the exact declared own expression; third-party scope uses exact approved expression combinations and forbidden identifiers/expressions. AND/OR/WITH and bounded parentheses are syntax, never automatic inference of legal permissions; an OR combination not explicitly approved remains refused. @status:impl/done",
+      "heading": "Patchset selection contains only profile ID and optional additionalForbidden expressions. Holders, allowlists, license text, policy locations and other authority fields refuse. Additional prohibitions are monotone and cannot enable a license. Own scope uses the exact declared own expression in v1, or the path-selected trusted expression in v2; third-party scope uses exact approved expression combinations and forbidden identifiers/expressions. AND/OR/WITH and bounded parentheses are syntax, never automatic inference of legal permissions; an OR combination not explicitly approved remains refused. @status:impl/done",
       "line": 8,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-SELECTION"
     },
@@ -11651,10 +11651,10 @@
     },
     {
       "anchor": "DISTRIBUTION-PROVENANCE",
-      "content_hash": "sha256:7447eba13caabac83101b154624d142292e2497a7e1d21a7e6eb7ebb10e02646",
+      "content_hash": "sha256:cd9aee311a52f95403489ca56a5998469a75462409e9192ca011a60735421f70",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "codkitDistributionDeclaration:1 maps each delivered payload file/link to inspected source paths and an explicit license expression. Every actual payload is covered exactly once; missing, duplicate, extra or uninspected paths refuse. Only trusted composition can approve regular-file metadata exclusions after their notice/SBOM checks; declaration alone cannot hide a payload. Fresh consumer inspection must be complete and nonempty. Foreign holders and origin-registry evidence stay in third-party scope. Complete source expressions, including AND/OR/WITH, are preserved; multiple distinct expressions require their deterministic parenthesized AND combination to be explicitly approved by policy, never an inferred permission or rewritten upstream obligation. Actual source/carrier/registry bytes, authority/store/additional prohibitions, declaration and payload hashes bind codkitDistributionProvenance:1. Before/after source and artifact inspections refuse moved snapshots. The build mapping remains a declaration, not a cryptographic proof of compilation or an external legal approval. @status:impl/done",
+      "heading": "codkitDistributionDeclaration:1 maps each delivered payload file/link to inspected source paths and an explicit license expression. Every actual payload is covered exactly once; missing, duplicate, extra or uninspected paths refuse. Only trusted composition can approve regular-file metadata exclusions after their notice/SBOM checks; declaration alone cannot hide a payload. Fresh consumer inspection must be complete and nonempty. Foreign holders and origin-registry evidence stay in third-party scope. Complete source expressions, including AND/OR/WITH, are preserved; multiple distinct expressions require their deterministic parenthesized AND combination to be explicitly approved by v1 or third-party policy; v2 all-own artifacts retain the exact AND of individually scope-approved source expressions, never an inferred permission or rewritten upstream obligation. Actual source/carrier/registry bytes, authority/store/additional prohibitions, declaration and payload hashes bind codkitDistributionProvenance:1. Before/after source and artifact inspections refuse moved snapshots. The build mapping remains a declaration, not a cryptographic proof of compilation or an external legal approval. @status:impl/done",
       "line": 12,
       "uri": "spec://codkit/modules/codkit/PROP-019#DISTRIBUTION-PROVENANCE"
     },
@@ -11684,6 +11684,15 @@
       "heading": "Consumer source scanning, actual artifact NOTICE/carrier checks and selected SBOM export must bind the selected trusted policy before package/publish enforcement is accepted. A minified artifact without required attached notice is incomplete/red even when source headers were valid. Report evidence complete/incomplete, never a legal-compatibility ruling. Mechanism fixtures are labelled examples, not real commercial approvals or external partner evidence. @status:spec/done",
       "line": 15,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-DISTRIBUTION-EVIDENCE"
+    },
+    {
+      "anchor": "ORGANIZATION-OWN-SCOPES",
+      "content_hash": "sha256:f0448f8976ba8f1c9eb2560a741bb253ceb830ac09ff39c706a1d50eb97edbe2",
+      "doc_path": "modules/codkit/PROP-019",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
+      "heading": "Policy/store v1 retain their strict shape and original bytes; v1 never admits own scope fields or v2 profiles. Explicit organization policy v2 keeps a default ownLicense and adds ownLicenseScopes with contained repository-relative glob paths and exact licence expressions; store v2 holds validated v1/v2 profiles. All scopes come from user/admin authority, not patchset selection. A source must provide its contained path; one matching scope overrides the default, zero matches uses the default, and multiple matching scopes refuse even when their expressions coincide. Unsafe/repeated patterns and unapproved standard/custom licence identifiers refuse. Scope resolution cannot change ownership, erase foreign provenance, rewrite upstream licensing or weaken additional prohibitions. An all-own assembled artifact keeps the exact AND of inspected, independently policy-checked source expressions; OR/partial substitution refuses. Source-to-artifact/carrier/policy hashes and original report/SPDX formats remain intact. Custom licence text and third-party approvals must come from actual authority, never invented to turn a fixture or consumer green. Versioned scopes do not assert legal compatibility of derivative distribution. @status:impl/wip",
+      "line": 16,
+      "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-OWN-SCOPES"
     },
     {
       "anchor": "root",

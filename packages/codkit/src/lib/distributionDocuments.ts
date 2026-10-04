@@ -6,7 +6,7 @@ import { distributionProvenanceSchema } from './distributionProvenance.ts';
 import type { DistributionProvenance } from './distributionProvenance.ts';
 import { readContainedFile } from './containedFile.ts';
 import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.ts';
-import { checkOrganizationExpression, parsePolicyExpression } from './organizationPolicy.ts';
+import { checkOrganizationArtifactExpression, parsePolicyExpression } from './organizationPolicy.ts';
 import type { OrganizationPolicyResult } from './organizationPolicy.ts';
 import type { SelectedOrganizationPolicy } from './organizationPolicyStore.ts';
 import { captureReleaseEntries } from './releaseArtifacts.ts';
@@ -65,11 +65,12 @@ export function renderDistributionDocuments(options: {
 		if (new Set(files.map((file) => file.path)).size !== files.length) throw new Error('distribution payload paths repeat');
 		const used = new Set<string>();
 		for (const file of files) {
-			const verdict = checkOrganizationExpression(
+			const verdict = checkOrganizationArtifactExpression(
 				options.selected.policy,
 				file.license,
 				file.scope === 'own',
-				options.selected.additionalForbidden
+				options.selected.additionalForbidden,
+				file.sources
 			);
 			if (!verdict.ok) throw new Error(verdict.problems.join('; '));
 			for (const id of [...verdict.value.licenses, ...verdict.value.exceptions]) used.add(id);
