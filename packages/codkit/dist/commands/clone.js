@@ -154,7 +154,7 @@ function pullLfs(path, config, out) {
         out.info('git-lfs: nothing tracked in this tree, skipping');
         return;
     }
-    gitOk({ args: ['lfs', 'install', '--local'], cwd: path }, {
+    gitOk({ args: ['lfs', 'install', '--local', '--skip-repo'], cwd: path }, {
         code: 'LFS',
         message: `cannot configure git-lfs in ${path}`,
         hint: 'install git-lfs (https://git-lfs.com) and re-run codkit clone'

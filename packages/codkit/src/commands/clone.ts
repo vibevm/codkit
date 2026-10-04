@@ -203,7 +203,7 @@ function pullLfs(path: string, config: CodkitConfig, out: Output): void {
 		return;
 	}
 	gitOk(
-		{ args: ['lfs', 'install', '--local'], cwd: path },
+		{ args: ['lfs', 'install', '--local', '--skip-repo'], cwd: path },
 		{
 			code: 'LFS',
 			message: `cannot configure git-lfs in ${path}`,

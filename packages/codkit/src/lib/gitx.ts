@@ -103,7 +103,13 @@ const ISOLATION_ENV: GitEnv = {
 const BASE_CONFIG: readonly string[] = ['-c', 'core.autocrlf=false', '-c', 'core.eol=lf', '-c', 'core.quotepath=false'];
 
 /** Extra isolation that must not suppress hooks on gitLocal human commits. */
-const ISOLATED_CONFIG: readonly string[] = [...BASE_CONFIG, '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false'];
+const ISOLATED_CONFIG: readonly string[] = [
+	...BASE_CONFIG,
+	'-c',
+	`core.hooksPath=${process.platform === 'win32' ? 'NUL' : '/dev/null'}`,
+	'-c',
+	'core.fsmonitor=false'
+];
 
 /**
  * Parent variables that can make `cwd` cease to identify the repository Git

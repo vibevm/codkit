@@ -227,7 +227,9 @@ describe('runGit environment isolation', () => {
 		const missingCommand = join(makeTempRoot('missing-command'), 'not-there');
 		expect(runGit({ args: ['config', '--local', 'core.hooksPath', missingCommand], cwd: repo }).status).toBe(0);
 		expect(runGit({ args: ['config', '--local', 'core.fsmonitor', missingCommand], cwd: repo }).status).toBe(0);
-		expect(runGit({ args: ['config', '--get', 'core.hooksPath'], cwd: repo }).stdout.trim()).toBe('/dev/null');
+		expect(runGit({ args: ['config', '--get', 'core.hooksPath'], cwd: repo }).stdout.trim()).toBe(
+			process.platform === 'win32' ? 'NUL' : '/dev/null'
+		);
 		expect(runGit({ args: ['config', '--get', 'core.fsmonitor'], cwd: repo }).stdout.trim()).toBe('false');
 
 		writeFileSync(join(repo, '.gitattributes'), '*.txt diff=poison\n*.lfs filter=lfs\n', 'utf8');
