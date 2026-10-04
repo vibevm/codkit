@@ -275,3 +275,5 @@ _Run by: the current coding session under the owner's all-stages mandate. Scope:
 - Depth: strict runtime/format boundaries, UUID-specific authority, exact physical writer capabilities and retained content evidence are implemented in libraries with thin CLI surfaces. The Node/TypeScript native floor ran all four available structural steps; the full suite and separate surrounding gates passed. Global portability and independent base-lock assurance remain the carried findings above.
 
 **Close-out limit.** PROP-020/P0.11 is a technical implementation candidate under the reproduced Linux/standard local-Git conditions. The global carried P1 findings remain shipping/audit risks. No full-goal completion, legal approval, real external supplier or actual consumer-expansion acceptance is claimed here.
+
+**Audit follow-up:** 2026-10-04-03 fixed in fd6dde0: PROP-020 descriptions, campaign current atom/safe-stop and steward phase state now reflect the audited P0.11 technical candidate and independent Phase 5 work. The original finding row is retained as history.
