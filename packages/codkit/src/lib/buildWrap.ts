@@ -27,7 +27,7 @@ import type { ProjectType } from '@codkit/type-api';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.ts';
 import type { WorkspaceId } from './workspaceRegistry.ts';
-import { archiveWorkspaceLog } from './workspaceLogs.ts';
+import { archiveWorkspaceLog, pruneWorkspaceBuildDir } from './workspaceLogs.ts';
 import { updateWorkspaceRegistry, workspaceRegistryRoot } from './workspaceRegistry.ts';
 import { validateChannelSet } from './buildChannel.ts';
 import { readContainedFile } from './containedFile.ts';
@@ -1128,6 +1128,7 @@ function upChannelWithChannelLock(ctx: UpContext, channel: ChannelConfig, runtim
 		return upChannelLocked(ctx, channel, lock, runtime);
 	} finally {
 		lock.release();
+		if (ctx.workspaceId !== undefined) pruneWorkspaceBuildDir(ctx.patchesDir, ctx.onWarn);
 	}
 }
 
@@ -1199,11 +1200,13 @@ function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonCha
 		return { ok: false, channel: channel.name, reason: 'the exclusive daemon reservation could not be verified' };
 	}
 	let spawned: SpawnedDaemon | null = null;
+	let logOwned = false;
 	try {
 		runtime?.afterReservation?.();
 		// Rotation happens only after the exclusive reservation, and a failure
 		// removes that exact reservation instead of leaving a phantom start.
 		rotateLog(ctx.patchesDir, channel.name, lock);
+		logOwned = true;
 		spawned = (runtime?.spawn ?? ((tree, selected) => spawnDaemon(ctx.patchesDir, tree, selected, lock)))(ctx.treeDir, channel);
 		runtime?.beforeFinalize?.();
 		if (!finalizeReservation(ctx.patchesDir, reservation, spawned.pid, lock, runtime?.afterFinalizeCompare)) {
@@ -1228,6 +1231,7 @@ function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonCha
 			try {
 				spawned.terminate();
 			} catch (terminationError) {
+				if (ctx.workspaceId !== undefined) finalizeReservation(ctx.patchesDir, reservation, spawned.pid, lock);
 				throw ckError(
 					'INTERNAL',
 					`the ${channel.name} daemon was started but could not be stopped after ${messageOf(error)}: ${messageOf(terminationError)}`,
@@ -1235,8 +1239,17 @@ function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonCha
 				);
 			}
 		}
+		if (ctx.workspaceId !== undefined && spawned !== null && (process.platform === 'win32' || processGroupAlive(spawned.pid))) {
+			finalizeReservation(ctx.patchesDir, reservation, spawned.pid, lock);
+			throw ckError(
+				'INTERNAL',
+				'failed workspace daemon teardown is unproven; PID record was preserved',
+				'stop the recorded daemon with build down, or obtain native descendant teardown proof'
+			);
+		}
 		const current = readRecordState(ctx.patchesDir, channel.name);
 		if (current.state === 'valid' && Buffer.from(current.bytes).equals(Buffer.from(daemonRecordBytes(reservation)))) {
+			if (logOwned) archiveWorkspaceLog(ctx.patchesDir, reservation, ctx.workspaceRegistryRoot);
 			removeRecord(ctx.patchesDir, channel.name, lock, current.bytes);
 		}
 		throw error;
@@ -1428,6 +1441,7 @@ export async function downChannel(patchesDir: string, channel: string, probe: Bo
 		return await downChannelLocked(patchesDir, channel, lock, probe);
 	} finally {
 		lock.release();
+		if (probe.expectedWorkspaceId !== undefined) pruneWorkspaceBuildDir(patchesDir, probe.onWarn);
 	}
 }
 

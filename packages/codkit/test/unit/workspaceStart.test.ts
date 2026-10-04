@@ -1,12 +1,12 @@
 // Deterministic lifecycle/start interleavings against actual registered Git pairs.
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, expect, it } from 'vitest';
 import { createWorkspace } from '../../src/lib/workspaceCreate.ts';
 import { finishWorkspace } from '../../src/lib/workspaceFinish.ts';
 import { removeWorkspace } from '../../src/lib/workspaceRemove.ts';
 import { updateWorkspaceRegistry, readWorkspaceRegistry, findWorkspace, workspaceIdSchema } from '../../src/lib/workspaceRegistry.ts';
-import { upChannel } from '../../src/lib/buildWrap.ts';
+import { upChannel, downChannel } from '../../src/lib/buildWrap.ts';
 import { recordPath, readRecordState } from '../../src/lib/buildRuntime.ts';
 import { treeId } from '../../src/lib/fingerprint.ts';
 import { readTypeManifest } from '../../src/types/manifest.ts';
@@ -129,4 +129,75 @@ it('does not let UUID-shaped names replace the identity or active state used by 
 		expect(upChannel({ ...f.ctx, workspaceId }, channel, runtime)).toMatchObject({ ok: false });
 	expect(spawns).toBe(0);
 	expect(existsSync(join(f.record.patchset.path, '.codkit/build'))).toBe(false);
+});
+
+it('retires a no-child failed reservation and prunes only its empty build directory', () => {
+	const f = fixture();
+	expect(() =>
+		upChannel(f.ctx, channel, {
+			afterReservation: () => {
+				throw new Error('fixture before spawn');
+			}
+		})
+	).toThrow(/fixture before spawn/);
+	expect(readRecordState(f.record.patchset.path, channel.name).state).toBe('absent');
+	expect(existsSync(join(f.record.patchset.path, '.codkit/build'))).toBe(false);
+	f.finish();
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+});
+it('archives a failed no-child generation log while retaining unrelated build data', () => {
+	const f = fixture();
+	const log = join(f.record.patchset.path, '.codkit/build/transpile.log');
+	const human = join(f.record.patchset.path, '.codkit/build/human.txt');
+	expect(() =>
+		upChannel(f.ctx, channel, {
+			spawn: () => {
+				writeFileSync(log, 'owned starter failure\n');
+				writeFileSync(human, 'preserve unrelated build work');
+				throw new Error('fixture start failed');
+			}
+		})
+	).toThrow(/fixture start failed/);
+	expect(readRecordState(f.record.patchset.path, channel.name).state).toBe('absent');
+	expect(readFileSync(human, 'utf8')).toBe('preserve unrelated build work');
+	expect(f.finish).toThrow(/uncommitted or untracked/);
+	unlinkSync(human);
+	f.finish();
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+});
+it('preserves the actual spawned PID if failure termination throws', () => {
+	const f = fixture();
+	expect(() =>
+		upChannel(f.ctx, channel, {
+			spawn: () => ({
+				pid: 4_194_305,
+				terminate: () => {
+					throw new Error('fixture teardown failed');
+				}
+			}),
+			beforeFinalize: () => {
+				throw new Error('fixture finalization failed');
+			}
+		})
+	).toThrow(/could not be stopped/);
+	expect(readRecordState(f.record.patchset.path, channel.name)).toMatchObject({
+		state: 'valid',
+		record: { pid: 4_194_305, workspaceId: f.record.id }
+	});
+	expect(f.finish).toThrow(/unresolved build daemon/);
+});
+it('retires a proven dead POSIX generation with no log and removes its empty runtime directory', async () => {
+	const f = fixture();
+	upChannel(f.ctx, channel, { spawn: () => ({ pid: 4_194_305, terminate: () => undefined }) });
+	const stopped = await downChannel(f.record.patchset.path, channel.name, {
+		platform: 'linux',
+		expectedWorkspaceId: f.record.id,
+		workspaceRegistryRoot: f.registryRoot,
+		expectedTreeId: f.ctx.treeId,
+		expectedTreePath: f.record.fork.path
+	});
+	expect(stopped.action).toBe('not-running');
+	expect(existsSync(join(f.record.patchset.path, '.codkit/build'))).toBe(false);
+	f.finish();
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
 });

@@ -24,7 +24,7 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { basename, delimiter, dirname, isAbsolute, join, sep, win32 } from 'node:path';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.js';
-import { archiveWorkspaceLog } from './workspaceLogs.js';
+import { archiveWorkspaceLog, pruneWorkspaceBuildDir } from './workspaceLogs.js';
 import { updateWorkspaceRegistry, workspaceRegistryRoot } from './workspaceRegistry.js';
 import { validateChannelSet } from './buildChannel.js';
 import { readContainedFile } from './containedFile.js';
@@ -831,6 +831,8 @@ function upChannelWithChannelLock(ctx, channel, runtime = ctx.runtime) {
     }
     finally {
         lock.release();
+        if (ctx.workspaceId !== undefined)
+            pruneWorkspaceBuildDir(ctx.patchesDir, ctx.onWarn);
     }
 }
 function upChannelLocked(ctx, channel, lock, runtime = ctx.runtime) {
@@ -898,11 +900,13 @@ function upChannelLocked(ctx, channel, lock, runtime = ctx.runtime) {
         return { ok: false, channel: channel.name, reason: 'the exclusive daemon reservation could not be verified' };
     }
     let spawned = null;
+    let logOwned = false;
     try {
         runtime?.afterReservation?.();
         // Rotation happens only after the exclusive reservation, and a failure
         // removes that exact reservation instead of leaving a phantom start.
         rotateLog(ctx.patchesDir, channel.name, lock);
+        logOwned = true;
         spawned = (runtime?.spawn ?? ((tree, selected) => spawnDaemon(ctx.patchesDir, tree, selected, lock)))(ctx.treeDir, channel);
         runtime?.beforeFinalize?.();
         if (!finalizeReservation(ctx.patchesDir, reservation, spawned.pid, lock, runtime?.afterFinalizeCompare)) {
@@ -925,11 +929,19 @@ function upChannelLocked(ctx, channel, lock, runtime = ctx.runtime) {
                 spawned.terminate();
             }
             catch (terminationError) {
+                if (ctx.workspaceId !== undefined)
+                    finalizeReservation(ctx.patchesDir, reservation, spawned.pid, lock);
                 throw ckError('INTERNAL', `the ${channel.name} daemon was started but could not be stopped after ${messageOf(error)}: ${messageOf(terminationError)}`, `find and stop the process group of pid ${spawned.pid} manually; its reservation was preserved`);
             }
         }
+        if (ctx.workspaceId !== undefined && spawned !== null && (process.platform === 'win32' || processGroupAlive(spawned.pid))) {
+            finalizeReservation(ctx.patchesDir, reservation, spawned.pid, lock);
+            throw ckError('INTERNAL', 'failed workspace daemon teardown is unproven; PID record was preserved', 'stop the recorded daemon with build down, or obtain native descendant teardown proof');
+        }
         const current = readRecordState(ctx.patchesDir, channel.name);
         if (current.state === 'valid' && Buffer.from(current.bytes).equals(Buffer.from(daemonRecordBytes(reservation)))) {
+            if (logOwned)
+                archiveWorkspaceLog(ctx.patchesDir, reservation, ctx.workspaceRegistryRoot);
             removeRecord(ctx.patchesDir, channel.name, lock, current.bytes);
         }
         throw error;
@@ -1093,6 +1105,8 @@ export async function downChannel(patchesDir, channel, probe) {
     }
     finally {
         lock.release();
+        if (probe.expectedWorkspaceId !== undefined)
+            pruneWorkspaceBuildDir(patchesDir, probe.onWarn);
     }
 }
 async function downChannelLocked(patchesDir, channel, lock, probe) {

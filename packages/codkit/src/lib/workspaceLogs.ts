@@ -1,7 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-020#WORKSPACE-DAEMON-LOGS */
 // Closed daemon generations retain log bytes outside removable checkouts.
 import { createHash } from 'node:crypto';
-import { readdirSync, realpathSync } from 'node:fs';
+import { readdirSync, realpathSync, rmdirSync } from 'node:fs';
 import { z } from 'zod';
 import { workspaceIdSchema, workspaceRegistryRoot, readWorkspaceRegistry } from './workspaceRegistry.ts';
 import type { WorkspaceRecord } from './workspaceRegistry.ts';
@@ -25,6 +25,20 @@ export const workspaceDaemonLogSchema = z.strictObject({
 });
 function blobPath(sha: string): string {
 	return `workspace-log-bytes/${sha}.log`;
+}
+export function pruneWorkspaceBuildDir(patchesDir: string, onWarn?: (text: string) => void): void {
+	const path = resolveContainedPath(patchesDir, '.codkit/build', { allowMissing: true });
+	if (!path.ok) {
+		onWarn?.('workspace build directory custody moved; it was retained');
+		return;
+	}
+	try {
+		rmdirSync(path.absolute);
+	} catch (error) {
+		if (error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTEMPTY' || error.code === 'EEXIST'))
+			return;
+		onWarn?.('workspace build directory could not be pruned; it was retained');
+	}
 }
 export function archiveWorkspaceLog(patchesDir: string, record: DaemonRecord, authority: string = workspaceRegistryRoot()): void {
 	if (record.workspaceId === undefined) return;
