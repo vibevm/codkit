@@ -7,7 +7,7 @@ import { configureProjectType } from '../types/configure.js';
 import { verifyWorkspaceCheckout } from './workspaceCreate.js';
 import { verifyReceipt } from './workspaceFinish.js';
 export async function resolveWorkspaceType(record) {
-    verifyWorkspaceCheckout(record, 'patchset');
+    verifyWorkspaceCheckout(record, 'patchset', true);
     verifyReceipt(record, 'patchset');
     const config = loadConfig(record.patchset.path);
     if (config === null || config.type !== record.type.id)

@@ -15,6 +15,8 @@ import type { GitResult, RunGitOptions } from './gitx.ts';
 import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { safeBasenameProblem } from './pathSafety.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
+import { verifyReceipt } from './workspaceReceipt.ts';
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const PIN_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -91,7 +93,7 @@ export function assertSourceToTargetAncestry(forkDir: string, sourcePin: PinConf
 	assertAncestor(forkDir, sourcePin.sha, targetPin.sha, `target pin ${pinKey(targetPin)}`, git);
 }
 
-export function assertPatchSetRepositoryClean(patchesDir: string, git: CycleGitRunner): void {
+export function assertPatchSetRepositoryClean(patchesDir: string, git: CycleGitRunner, workspace?: WorkspaceRecord): void {
 	let expectedRoot: string;
 	try {
 		expectedRoot = realpathSync(patchesDir);
@@ -114,7 +116,7 @@ export function assertPatchSetRepositoryClean(patchesDir: string, git: CycleGitR
 	if (actualRoot !== expectedRoot) {
 		throw ckError('NOT-A-REPO', `${patchesDir} is not the root of its Git work tree`, `use the repository root ${actualRoot}`);
 	}
-	if (readPatchSetStatus(patchesDir, git).length !== 0) {
+	if (readPatchSetStatus(patchesDir, git, workspace).length !== 0) {
 		throw ckError(
 			'DIRTY-TREE',
 			'the patchset work tree is dirty; cycle start will not build on uncommitted work',
@@ -123,7 +125,11 @@ export function assertPatchSetRepositoryClean(patchesDir: string, git: CycleGitR
 	}
 }
 
-export function readPatchSetStatus(patchesDir: string, git: CycleGitRunner): readonly PatchSetStatusEntry[] {
+export function readPatchSetStatus(patchesDir: string, git: CycleGitRunner, workspace?: WorkspaceRecord): readonly PatchSetStatusEntry[] {
+	if (workspace !== undefined) {
+		if (realpathSync(patchesDir) !== workspace.patchset.path) throw ckError('CONFIG', 'workspace cycle patchset custody differs');
+		verifyReceipt(workspace, 'patchset');
+	}
 	const output = mustGit(
 		git,
 		{ args: ['status', '--porcelain=v1', '-z', '--untracked-files=all'], cwd: patchesDir },
@@ -155,7 +161,7 @@ export function readPatchSetStatus(patchesDir: string, git: CycleGitRunner): rea
 			}
 		}
 	}
-	return entries;
+	return workspace === undefined ? entries : entries.filter((entry) => entry.code !== '??' || !entry.path.startsWith('.codkit/'));
 }
 
 export function assertOnlyCycleStatus(entries: readonly PatchSetStatusEntry[], configCode: 'none' | 'unstaged' | 'staged'): void {

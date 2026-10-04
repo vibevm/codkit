@@ -10,6 +10,9 @@ import { gitLocal, runGit } from './gitx.ts';
 import { CAUSE_TRAILER, CYCLE_TRAILER } from './hooksPatchSet.ts';
 import { ckError, isCkError } from './messages.ts';
 import { repoRelativePathProblem, resolveContainedPath, safeBasenameProblem } from './pathSafety.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
+import { readDirt, gitPaths } from './cycleCommitStatus.ts';
+import type { Dirt } from './cycleCommitStatus.ts';
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const FALLBACK_NAME = 'codkit cycle';
@@ -17,6 +20,7 @@ const FALLBACK_EMAIL = 'codkit-cycle@localhost.invalid';
 
 export type CycleCommitGitRunner = (options: RunGitOptions) => GitResult;
 export type CycleCommitOptions = {
+	readonly workspace?: WorkspaceRecord | undefined;
 	readonly patchesDir: string;
 	readonly expectedBranch: string;
 	readonly expectedParent: string;
@@ -43,7 +47,6 @@ export type CycleHistoryValidation = { readonly commits: readonly string[]; read
 
 type Identity = { readonly name: string; readonly email: string };
 type Snapshot = { readonly path: string; readonly oid: string | null; readonly mode: string | null };
-type Dirt = { readonly staged: readonly string[]; readonly unstaged: readonly string[]; readonly untracked: readonly string[] };
 type IndexTransaction = {
 	readonly indexPath: string;
 	readonly lockPath: string;
@@ -62,7 +65,7 @@ export function commitCycleAtom(options: CycleCommitOptions): CycleCommitResult 
 	assertBranch(options.patchesDir, options.expectedBranch, git);
 	const transaction = acquireIndexTransaction(options.patchesDir, git);
 	try {
-		const dirt = readDirt(options.patchesDir, git);
+		const dirt = readDirt(options.patchesDir, git, options.workspace);
 		const head = readSha(options.patchesDir, 'HEAD', 'commit', git);
 		if (head !== options.expectedParent) {
 			assertAbsolutelyClean(dirt, 'while resuming an installed cycle commit');
@@ -124,7 +127,7 @@ export function commitCycleAtom(options: CycleCommitOptions): CycleCommitResult 
 		if (readSha(options.patchesDir, 'HEAD', 'commit', git) !== sha) {
 			throw ckError('INTERNAL', 'cycle branch changed immediately after installation');
 		}
-		assertAbsolutelyClean(readDirt(options.patchesDir, git), 'after installing the cycle commit');
+		assertAbsolutelyClean(readDirt(options.patchesDir, git, options.workspace), 'after installing the cycle commit');
 		return { status: 'committed', sha };
 	} finally {
 		cleanupIndexTransaction(transaction);
@@ -503,14 +506,6 @@ function assertBranch(patchesDir: string, expected: string, git: CycleCommitGitR
 	}
 }
 
-function readDirt(patchesDir: string, git: CycleCommitGitRunner): Dirt {
-	return {
-		staged: gitPaths(patchesDir, ['diff', '--cached', '--name-only', '-z'], git, 'cannot inspect staged paths'),
-		unstaged: gitPaths(patchesDir, ['diff', '--name-only', '-z'], git, 'cannot inspect unstaged paths'),
-		untracked: gitPaths(patchesDir, ['ls-files', '--others', '--exclude-standard', '-z'], git, 'cannot inspect untracked paths')
-	};
-}
-
 function assertRealIndexClean(dirt: Dirt): void {
 	if (dirt.staged.length !== 0) {
 		throw ckError('DIRTY-TREE', `cycle commit requires a clean real index; staged: ${showPaths(dirt.staged)}`);
@@ -530,14 +525,6 @@ function assertAbsolutelyClean(dirt: Dirt, context: string): void {
 	if (paths.length !== 0) {
 		throw ckError('DIRTY-TREE', `patchset must be absolutely clean ${context}: ${showPaths(paths)}`);
 	}
-}
-
-function gitPaths(patchesDir: string, args: readonly string[], git: CycleCommitGitRunner, failure: string): readonly string[] {
-	const result = mustGit(git, { args, cwd: patchesDir }, failure);
-	if (result.stdout !== '' && !result.stdout.endsWith('\0')) {
-		throw ckError('INTERNAL', `${failure}: output is not NUL-terminated`);
-	}
-	return byteSort(result.stdout === '' ? [] : result.stdout.slice(0, -1).split('\0'));
 }
 
 function commitParents(patchesDir: string, sha: string, git: CycleCommitGitRunner): readonly string[] {

@@ -12,7 +12,7 @@ import { verifyWorkspaceCheckout } from './workspaceCreate.ts';
 import { verifyReceipt } from './workspaceFinish.ts';
 
 export async function resolveWorkspaceType(record: WorkspaceRecord): Promise<ProjectType> {
-	verifyWorkspaceCheckout(record, 'patchset');
+	verifyWorkspaceCheckout(record, 'patchset', true);
 	verifyReceipt(record, 'patchset');
 	const config = loadConfig(record.patchset.path);
 	if (config === null || config.type !== record.type.id)

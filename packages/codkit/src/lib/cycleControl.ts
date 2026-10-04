@@ -7,13 +7,13 @@ import { pinKey, requiresRevisionPin } from './pinIdentity.ts';
 import { randomUUID } from 'node:crypto';
 import type { CodkitConfig, PinConfig } from './configFile.ts';
 import { CONFIG_FILE_NAME } from './configFile.ts';
+import { inspectInitStep, initAction, initMismatch } from './cycleInitInspection.ts';
 import { writeConfigPin } from './configPin.ts';
 import type { ConfigFileSystem } from './configPin.ts';
 import { readCycleControlRecord, removeCycleControlRecord, writeCycleControlRecord } from './cycleControlRecord.ts';
 import type { CycleControlRecord } from './cycleControlRecord.ts';
 import {
 	withCycleLocks,
-	assertOnlyCycleStatus,
 	assertSourceToTargetAncestry,
 	assertValidBranch,
 	assertPatchSetRepositoryClean,
@@ -25,7 +25,6 @@ import {
 	findCycleBump,
 	headCommit,
 	mustGit,
-	readPatchSetStatus,
 	recognizeBump,
 	resolveTargetPin,
 	samePin
@@ -127,8 +126,6 @@ type ResolvedDependencies = {
 	readonly checkpoint: (checkpoint: CycleControlCheckpoint) => void;
 };
 
-type InitStep = 'create-branch' | 'write-config' | 'stage-config' | 'commit-bump' | 'complete';
-
 export function startCycle(options: StartCycleOptions): StartCycleResult {
 	const dependencies = resolvedDependencies(options.dependencies);
 	return withCycleLocks(options.patchesDir, options.forkDir, 'cycle start', dependencies, (cycleLock) => {
@@ -173,7 +170,7 @@ export function startCycle(options: StartCycleOptions): StartCycleResult {
 			throw ckError('CONFIG', 'an upgrade cycle is already active', 'run codkit cycle status or continue/restart the current cycle');
 		}
 
-		assertPatchSetRepositoryClean(options.patchesDir, dependencies.git);
+		assertPatchSetRepositoryClean(options.patchesDir, dependencies.git, options.config.workspace?.record);
 		assertSourceToTargetAncestry(options.forkDir, options.config.pin, targetPin, dependencies.git);
 		const branch = `${options.config.cycleBranchPrefix}${pinKey(targetPin)}`;
 		assertValidBranch(options.patchesDir, branch, dependencies.git);
@@ -261,7 +258,7 @@ export function cycleStatus(patchesDir: string, config: CodkitConfig, dependenci
 	assertBranchMatchesConfig(state, config);
 	let nextAction = state.nextAction;
 	if (state.transaction?.kind === 'init') {
-		nextAction = initAction(inspectInitStep(patchesDir, state, config.pin, resolved.git), state);
+		nextAction = initAction(inspectInitStep(patchesDir, state, config.pin, resolved.git, config.workspace?.record), state);
 	} else if (state.transaction?.kind === 'restart') {
 		nextAction = restartAction(patchesDir, state, config.pin, resolved.git);
 	} else {
@@ -347,7 +344,7 @@ function resumeInit(
 ): StartCycleResult {
 	let workingPin = initialWorkingPin;
 	for (;;) {
-		const step = inspectInitStep(options.patchesDir, state, workingPin, dependencies.git);
+		const step = inspectInitStep(options.patchesDir, state, workingPin, dependencies.git, options.config.workspace?.record);
 		switch (step) {
 			case 'create-branch':
 				mustGit(
@@ -417,57 +414,6 @@ function resumeInit(
 			}
 		}
 	}
-}
-
-function inspectInitStep(patchesDir: string, state: CycleState, workingPin: PinConfig, git: CycleGitRunner): InitStep {
-	const transaction = state.transaction;
-	if (state.phase !== 'init' || transaction?.kind !== 'init') {
-		throw ckError('CONFIG', 'cycle state is not an init transaction', 'inspect cycle status before retrying start');
-	}
-	const current = currentBranchName(patchesDir, git);
-	const head = headCommit(patchesDir, git);
-	const tip = branchTip(patchesDir, state.branch, git);
-	const status = readPatchSetStatus(patchesDir, git);
-	if (current === transaction.baseBranch && head === transaction.baseCommit && tip === null && samePin(workingPin, state.sourcePin)) {
-		assertOnlyCycleStatus(status, 'none');
-		return 'create-branch';
-	}
-	if (
-		current === transaction.baseBranch &&
-		current === state.branch &&
-		head === transaction.baseCommit &&
-		tip === transaction.baseCommit &&
-		samePin(workingPin, state.sourcePin)
-	) {
-		assertOnlyCycleStatus(status, 'none');
-		return 'write-config';
-	}
-	if (current !== state.branch || tip !== head) {
-		throw initMismatch(state, `current=${current}, HEAD=${head}, branchTip=${tip ?? 'absent'}`);
-	}
-	if (head === transaction.baseCommit && samePin(workingPin, state.sourcePin)) {
-		assertOnlyCycleStatus(status, 'none');
-		return 'write-config';
-	}
-	if (head === transaction.baseCommit && samePin(workingPin, state.targetPin)) {
-		const configCode = status.find((entry) => entry.path === CONFIG_FILE_NAME)?.code;
-		if (configCode === ' M') {
-			assertOnlyCycleStatus(status, 'unstaged');
-			return 'stage-config';
-		}
-		if (configCode === 'M ') {
-			assertOnlyCycleStatus(status, 'staged');
-			return 'commit-bump';
-		}
-	}
-	if (samePin(workingPin, state.targetPin)) {
-		const bump = recognizeBump(patchesDir, 'HEAD', state.targetPin, git);
-		if (bump !== null && bump.parent === transaction.baseCommit && samePin(bump.sourcePin, state.sourcePin)) {
-			assertOnlyCycleStatus(status, 'none');
-			return 'complete';
-		}
-	}
-	throw initMismatch(state, `HEAD=${head}, config pin=${pinKey(workingPin)}@${workingPin.sha}`);
 }
 
 function assertInitIdentity(state: CycleState, options: StartCycleOptions, targetPin: PinConfig, git: CycleGitRunner): void {
@@ -543,21 +489,6 @@ function activeStatus(state: CycleState, nextAction: string): Extract<CycleStatu
 		resolved: state.resolved.length,
 		nextAction
 	};
-}
-
-function initAction(step: InitStep, state: CycleState): string {
-	return {
-		'create-branch': `create ${state.branch}`,
-		'write-config': `write target pin ${pinKey(state.targetPin)}`,
-		'stage-config': `stage ${CONFIG_FILE_NAME}`,
-		'commit-bump': 'retry canonical bump commit',
-		complete: 'finish init state and continue apply'
-	}[step];
-}
-
-function initMismatch(state: CycleState, detail: string) {
-	const base = state.transaction?.kind === 'init' ? state.transaction.baseCommit : 'recorded base';
-	return ckError('CONFIG', `init transaction does not match its exact checkpoint: ${detail}`, `restore ${base} or the canonical bump`);
 }
 
 function nextTimestamp(state: CycleState, now: Date): string {

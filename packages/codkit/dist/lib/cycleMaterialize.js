@@ -21,6 +21,7 @@ import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
 import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, PATCHES_DIR, overlayVarContext, pinCommitDate, toPosix, patchSetCommitId } from './syncEngine.js';
 import { checkTree } from './treeIdentity.js';
 import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource } from './cycleMaterializeMove.js';
+import { workspaceForkReceipt } from './workspaceReceipt.js';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.js';
 /** Materialize the complete target-pin classification onto a private cycle ref. */
 export function materializeCycleApply(options) {
@@ -43,7 +44,7 @@ export function materializeCycleApply(options) {
             changedPaths: prospective.changedPaths,
             prospectiveGitDir: prospective.gitDir,
             conflicts: prepared.conflicts,
-            allowedOwnPaths: prepared.allowedOwnPaths,
+            allowedOwnPaths: [...prepared.allowedOwnPaths, ...workspaceForkReceipt(tree, options.config.workspace?.record)],
             ...(options.checkpoint === undefined ? {} : { checkpoint: options.checkpoint })
         };
         const preflight = prepareProvisionalMove(moveOptions);

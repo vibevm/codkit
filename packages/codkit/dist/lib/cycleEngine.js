@@ -139,6 +139,7 @@ function renamesPhase(options, state, record, commits) {
     let current = record;
     if (current.renamePaths.length > 0 && current.renameCommit === null) {
         const committed = commitCycleAtom({
+            workspace: options.config.workspace?.record,
             patchesDir: options.patchesDir,
             expectedBranch: state.branch,
             expectedParent: current.renameParent,
@@ -225,6 +226,7 @@ function finishRegenerationCommit(options, state, record, commits) {
         ...(readText(options.patchesDir, journal) === null ? [] : [journal])
     ]);
     const committed = commitCycleAtom({
+        workspace: options.config.workspace?.record,
         patchesDir: options.patchesDir,
         expectedBranch: state.branch,
         expectedParent: parent,
@@ -258,7 +260,7 @@ function resolvePhase(options, state, record, locks, commits) {
         out: options.out
     });
     if (resolved.commit !== null) {
-        const committed = commitCycleAtom(resolved.commit);
+        const committed = commitCycleAtom({ ...resolved.commit, workspace: options.config.workspace?.record });
         if (committed.sha !== null)
             commits.push(committed.sha);
         checkpoint(options, 'resolve-commit-installed');

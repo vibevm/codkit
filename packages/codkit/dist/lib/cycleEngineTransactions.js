@@ -11,6 +11,7 @@ import { DEPENDENCY_ADVISORY_REPORT_PATH, STABILIZE_REPORT_PATH, continueCycleSt
 import { validateCycleAdvisoryTransition, validateCycleStabilizeTransition } from './cycleStabilizeValidate.js';
 import { CYCLE_STATE_PATH, readCycleState, writeCycleState } from './cycleState.js';
 import { runGit } from './gitx.js';
+import { readPatchSetStatus } from './cycleControlGit.js';
 import { buildInventory } from './inventory.js';
 import { ckError, isCkError } from './messages.js';
 export async function planStabilizationTransition(options, state, locks, commits) {
@@ -98,6 +99,7 @@ export function resumeCycleTransition(options, record, commits) {
     if (current.checkpoint === 'written') {
         assertTransitionCheckoutBytes(options.patchesDir, current);
         const committed = commitCycleAtom({
+            workspace: options.config.workspace?.record,
             patchesDir: options.patchesDir,
             expectedBranch: current.nextState.branch,
             expectedParent: current.parent,
@@ -182,6 +184,7 @@ export function resumeCycleTerminal(options, record, commits) {
             throw ckError('ARTIFACT-BROKEN', 'terminal apply retained cycle state');
         applyCycleFinalizationPlan(options.patchesDir, current.plan);
         const committed = commitCycleAtom({
+            workspace: options.config.workspace?.record,
             patchesDir: options.patchesDir,
             expectedBranch: current.state.branch,
             expectedParent: current.finalParent,
@@ -275,8 +278,8 @@ function assertCommittedTerminal(root, config, record) {
     const bump = findCycleBumpTo(root, record.state, record.commitSha, runGit);
     if (bump.parent !== record.bumpParent)
         throw ckError('ARTIFACT-BROKEN', 'terminal receipt bump parent differs from canonical bump');
-    const status = runGit({ args: ['status', '--porcelain=v1', '--untracked-files=all'], cwd: root });
-    if (status.status !== 0 || status.stdout !== '')
+    const status = readPatchSetStatus(root, runGit, config.workspace?.record);
+    if (status.length !== 0)
         throw ckError('ARTIFACT-BROKEN', 'terminal receipt requires a clean exact checkout');
     try {
         applyCycleFinalizationPlan(root, record.plan);

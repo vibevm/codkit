@@ -10,6 +10,7 @@ import { CONFIG_FILE_NAME, parseBaseConfig, serializeBaseConfig } from './config
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { safeBasenameProblem } from './pathSafety.js';
+import { verifyReceipt } from './workspaceReceipt.js';
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const PIN_DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** Resolve a tag or raw SHA to the portable pin identity recorded on disk. */
@@ -49,7 +50,7 @@ export function assertSourceToTargetAncestry(forkDir, sourcePin, targetPin, git)
     }
     assertAncestor(forkDir, sourcePin.sha, targetPin.sha, `target pin ${pinKey(targetPin)}`, git);
 }
-export function assertPatchSetRepositoryClean(patchesDir, git) {
+export function assertPatchSetRepositoryClean(patchesDir, git, workspace) {
     let expectedRoot;
     try {
         expectedRoot = realpathSync(patchesDir);
@@ -68,11 +69,16 @@ export function assertPatchSetRepositoryClean(patchesDir, git) {
     if (actualRoot !== expectedRoot) {
         throw ckError('NOT-A-REPO', `${patchesDir} is not the root of its Git work tree`, `use the repository root ${actualRoot}`);
     }
-    if (readPatchSetStatus(patchesDir, git).length !== 0) {
+    if (readPatchSetStatus(patchesDir, git, workspace).length !== 0) {
         throw ckError('DIRTY-TREE', 'the patchset work tree is dirty; cycle start will not build on uncommitted work', 'commit or stash the patchset changes, then retry cycle start');
     }
 }
-export function readPatchSetStatus(patchesDir, git) {
+export function readPatchSetStatus(patchesDir, git, workspace) {
+    if (workspace !== undefined) {
+        if (realpathSync(patchesDir) !== workspace.patchset.path)
+            throw ckError('CONFIG', 'workspace cycle patchset custody differs');
+        verifyReceipt(workspace, 'patchset');
+    }
     const output = mustGit(git, { args: ['status', '--porcelain=v1', '-z', '--untracked-files=all'], cwd: patchesDir }, 'NOT-A-REPO', 'cannot inspect the patchset work tree', 'repair the repository and retry').stdout;
     if (output === '') {
         return [];
@@ -98,7 +104,7 @@ export function readPatchSetStatus(patchesDir, git) {
             }
         }
     }
-    return entries;
+    return workspace === undefined ? entries : entries.filter((entry) => entry.code !== '??' || !entry.path.startsWith('.codkit/'));
 }
 export function assertOnlyCycleStatus(entries, configCode) {
     let seenConfig = false;

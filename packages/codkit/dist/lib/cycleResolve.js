@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
+import { cycleRepositoryStatus, workspaceCycleStatus, readCycleResolveHead, readCycleResolveBranch } from './workspaceCycleStatus.js';
 import { pinKey } from './pinIdentity.js';
 import { readFileSync } from 'node:fs';
 import { applyUnified } from './applyUnified.js';
@@ -9,9 +10,8 @@ import { CYCLE_STATE_PATH, cycleStateSchema, writeCycleState } from './cycleStat
 import { CYCLE_BLOCKER_OUTCOMES } from './cycleState.js';
 import { cycleResolveTreeCurrent, recoverCycleResolveTree } from './cycleResolveCurrent.js';
 import { cycleResolveSnapshotMismatch, validateCycleResolveSnapshots } from './cycleResolveSnapshots.js';
-import { porcelainZEntries } from './driftGuard.js';
 import { treeId } from './fingerprint.js';
-import { runGit, runGitBytes } from './gitx.js';
+import { runGitBytes } from './gitx.js';
 import { assertOwnedLockHandle, lockPath, readLock } from './lock.js';
 import { ckError } from './messages.js';
 import { resolveContainedPath } from './pathSafety.js';
@@ -83,7 +83,7 @@ export function runCycleResolve(options) {
     const request = {
         patchesDir: options.patchesDir,
         expectedBranch: next.branch,
-        expectedParent: readHead(options),
+        expectedParent: readCycleResolveHead(options),
         targetTag: pinKey(next.targetPin),
         subject: `fix(cycle): resolve ${artifact.artifactId}`,
         paths,
@@ -168,8 +168,15 @@ function collectFacts(options) {
     const state = validateInput(options);
     const entries = latestEntries(options.journal);
     const descriptors = descriptorMap(state, options.artifacts);
-    const status = options.runtime?.status ?? repositoryStatus;
-    return { state, entries, descriptors, treeDirt: status(options.resolution.path), patchsetDirt: status(options.patchesDir) };
+    const status = options.runtime?.status ?? cycleRepositoryStatus;
+    const workspace = options.config.workspace?.record;
+    return {
+        state,
+        entries,
+        descriptors,
+        treeDirt: workspaceCycleStatus(options.resolution.path, status(options.resolution.path), workspace),
+        patchsetDirt: workspaceCycleStatus(options.patchesDir, status(options.patchesDir), workspace)
+    };
 }
 function makePlans(options, facts) {
     const unknownTree = unknownTreePaths(facts);
@@ -243,7 +250,7 @@ function validateInput(options) {
         throw broken('codkit.json pin does not exactly match cycle targetPin');
     if (state.branch !== `${options.config.cycleBranchPrefix}${pinKey(state.targetPin)}`)
         throw broken('cycle branch does not match config');
-    if (readBranch(options) !== state.branch)
+    if (readCycleResolveBranch(options) !== state.branch)
         throw broken(`patchset checkout must be on cycle branch ${state.branch}`);
     assertLiveLocks(options);
     return state;
@@ -334,30 +341,11 @@ function assertLiveLock(handle, expectedPath, label) {
 function sameLock(left, right) {
     return left.pid === right.pid && left.startedAt === right.startedAt && left.command === right.command && left.nonce === right.nonce;
 }
-function repositoryStatus(root) {
-    const result = runGit({ args: ['status', '--porcelain=v1', '-z', '--untracked-files=all'], cwd: root });
-    if (result.status !== 0)
-        throw ckError('NOT-A-REPO', `cannot inspect resolve dirt in ${root}`);
-    return porcelainZEntries(result.stdout);
-}
 function readTreeBytes(options, path) {
     if (options.runtime?.treeBytes !== undefined)
         return options.runtime.treeBytes(options.resolution.path, path);
     const resolved = resolveContainedPath(options.resolution.path, path);
     return resolved.ok ? readFileSync(resolved.absolute) : null;
-}
-function readHead(options) {
-    if (options.runtime?.head !== undefined)
-        return options.runtime.head(options.patchesDir);
-    const result = runGit({ args: ['rev-parse', '--verify', 'HEAD^{commit}'], cwd: options.patchesDir });
-    if (result.status !== 0 || !/^[0-9a-f]{40}$/.test(result.stdout.trim()))
-        throw broken('cannot resolve patchset HEAD');
-    return result.stdout.trim();
-}
-function readBranch(options) {
-    if (options.runtime?.branch !== undefined)
-        return options.runtime.branch(options.patchesDir);
-    return runGit({ args: ['symbolic-ref', '--quiet', '--short', 'HEAD'], cwd: options.patchesDir }).stdout.trim();
 }
 function patchAdapter(options) {
     return options.runtime?.patch ?? nodeCycleResolvePatchAdapter;

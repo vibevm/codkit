@@ -41,6 +41,7 @@ import {
 import { checkTree } from './treeIdentity.ts';
 import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource } from './cycleMaterializeMove.ts';
 import type { ConflictWrite, CycleMaterializeMoveCheckpoint, ProvisionalMoveOptions } from './cycleMaterializeMove.ts';
+import { workspaceForkReceipt } from './workspaceReceipt.ts';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.ts';
 import type { CycleOwnRenameAuthority } from './cycleMaterializeOwn.ts';
 import type { ProjectType } from '@codkit/type-api';
@@ -125,7 +126,7 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 			changedPaths: prospective.changedPaths,
 			prospectiveGitDir: prospective.gitDir,
 			conflicts: prepared.conflicts,
-			allowedOwnPaths: prepared.allowedOwnPaths,
+			allowedOwnPaths: [...prepared.allowedOwnPaths, ...workspaceForkReceipt(tree, options.config.workspace?.record)],
 			...(options.checkpoint === undefined ? {} : { checkpoint: options.checkpoint })
 		};
 		const preflight = prepareProvisionalMove(moveOptions);

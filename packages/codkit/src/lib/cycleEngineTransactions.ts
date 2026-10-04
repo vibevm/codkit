@@ -36,6 +36,7 @@ import { CYCLE_STATE_PATH, readCycleState, writeCycleState } from './cycleState.
 import type { CycleState } from './cycleState.ts';
 import type { ContinueCycleOptions, ContinueCycleResult, ContinueCycleStatus } from './cycleEngine.ts';
 import { runGit } from './gitx.ts';
+import { readPatchSetStatus } from './cycleControlGit.ts';
 import { buildInventory } from './inventory.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CodkitConfig } from './configFile.ts';
@@ -136,6 +137,7 @@ export function resumeCycleTransition(
 	if (current.checkpoint === 'written') {
 		assertTransitionCheckoutBytes(options.patchesDir, current);
 		const committed = commitCycleAtom({
+			workspace: options.config.workspace?.record,
 			patchesDir: options.patchesDir,
 			expectedBranch: current.nextState.branch,
 			expectedParent: current.parent,
@@ -218,6 +220,7 @@ export function resumeCycleTerminal(options: ContinueCycleOptions, record: Cycle
 		if (readCycleState(options.patchesDir) !== null) throw ckError('ARTIFACT-BROKEN', 'terminal apply retained cycle state');
 		applyCycleFinalizationPlan(options.patchesDir, current.plan);
 		const committed = commitCycleAtom({
+			workspace: options.config.workspace?.record,
 			patchesDir: options.patchesDir,
 			expectedBranch: current.state.branch,
 			expectedParent: current.finalParent,
@@ -306,8 +309,8 @@ function assertCommittedTerminal(root: string, config: CodkitConfig, record: Cyc
 	});
 	const bump = findCycleBumpTo(root, record.state, record.commitSha, runGit);
 	if (bump.parent !== record.bumpParent) throw ckError('ARTIFACT-BROKEN', 'terminal receipt bump parent differs from canonical bump');
-	const status = runGit({ args: ['status', '--porcelain=v1', '--untracked-files=all'], cwd: root });
-	if (status.status !== 0 || status.stdout !== '') throw ckError('ARTIFACT-BROKEN', 'terminal receipt requires a clean exact checkout');
+	const status = readPatchSetStatus(root, runGit, config.workspace?.record);
+	if (status.length !== 0) throw ckError('ARTIFACT-BROKEN', 'terminal receipt requires a clean exact checkout');
 	try {
 		applyCycleFinalizationPlan(root, record.plan);
 	} catch (error) {

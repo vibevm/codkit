@@ -8,6 +8,10 @@ import { runCli, withStubType } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 import { readWorkspaceRegistry, workspaceRecordSchema } from '../../src/lib/workspaceRegistry.ts';
 import { runGit } from '../../src/lib/gitx.ts';
+import { fixtureCommit } from '../fixtures/makeUpstream.ts';
+import { DEPENDENCY_ROOTS } from '../fixtures/stubType.ts';
+import { depsReceiptsOf } from '../../src/lib/ciEngine.ts';
+import { dirname } from 'node:path';
 
 afterAll(cleanupTempRoots);
 function fixture() {
@@ -247,3 +251,73 @@ it('binds a real daemon to its workspace and refuses a copied record in another 
 		expect(removed.status, removed.stderr).toBe(0);
 	}
 });
+
+it('publishes a named workspace snapshot into its UUID release namespace without moving caller or source checkouts', () => {
+	const f = fixture();
+	writeFileSync(join(f.source.patchesDir, 'NAMED-PUBLISH.txt'), 'isolated named publish fixture');
+	fixtureCommit(f.source.patchesDir, 'named publish polygon', '2026-10-04T00:00:00Z');
+	const created = f.create();
+	expect(created.status, created.stderr).toBe(0);
+	const record = workspace(created.stdout);
+	const head = (root: string) => runGit({ cwd: root, args: ['rev-parse', 'HEAD'] }).stdout.trim();
+	const before = [head(record.patchset.path), head(record.fork.path), head(f.source.patchesDir), head(f.source.treeDir)];
+	const target = join(makeTempRoot('named-workspace-export'), 'release');
+	const published = runCli(
+		f.directory,
+		['--json', '--workspace', 'task', 'publish', 'HEAD', '--yes-i-am-publish-bot', '--export-repo', target],
+		f.env
+	);
+	expect(published.status, published.stderr + published.stdout).toBe(0);
+	expect(JSON.parse(published.stdout)).toMatchObject({
+		data: { branch: expect.stringContaining(`codkit/workspace/${record.id}/release/`) }
+	});
+	expect([head(record.patchset.path), head(record.fork.path), head(f.source.patchesDir), head(f.source.treeDir)]).toEqual(before);
+	expect(runGit({ cwd: target, args: ['branch', '--show-current'] }).stdout).toContain(`codkit/workspace/${record.id}/release/`);
+});
+
+it('starts, inspects and restarts a named cycle using only workspace UUID refs', () => {
+	const f = fixture();
+	const created = f.create();
+	expect(created.status, created.stderr).toBe(0);
+	const record = workspace(created.stdout);
+	for (const path of depsReceiptsOf(DEPENDENCY_ROOTS)) {
+		const full = join(record.fork.path, path);
+		mkdirSync(dirname(full), { recursive: true });
+		writeFileSync(full, '{"lockfileVersion":3}\n');
+	}
+	const run = (...args: string[]) =>
+		runCli(f.directory, ['--json', '--workspace', 'task', ...args], { ...f.env, STUB_MODE: 'ok', STUB_HYGIENE_MODE: 'fail' });
+	const started = run('cycle', 'start', f.source.upstream.t2.tag, '--ci');
+	expect(started.status, started.stderr + started.stdout).toBe(3);
+	expect(runGit({ cwd: record.patchset.path, args: ['branch', '--show-current'] }).stdout).toContain(
+		`codkit/workspace/${record.id}/cycle/`
+	);
+	const status = run('cycle', 'status');
+	expect(status.status, status.stderr).toBe(0);
+	const restarted = run('cycle', 'restart', '--yes');
+	expect(restarted.status, restarted.stderr + restarted.stdout).toBe(0);
+	expect(run('cycle', 'status').status).toBe(0);
+	const original = readFileSync(join(f.source.patchesDir, 'codkit.json'), 'utf8');
+	expect(original).not.toContain(`codkit/workspace/${record.id}/`);
+});
+
+it('continues a stopped named cycle through completion with workspace-bound build cleanup', () => {
+	const f = fixture();
+	const created = f.create();
+	expect(created.status, created.stderr).toBe(0);
+	const record = workspace(created.stdout);
+	for (const path of depsReceiptsOf(DEPENDENCY_ROOTS)) {
+		const full = join(record.fork.path, path);
+		mkdirSync(dirname(full), { recursive: true });
+		writeFileSync(full, '{"lockfileVersion":3}\n');
+	}
+	const run = (args: readonly string[], extra: Readonly<Record<string, string>> = {}) =>
+		runCli(f.directory, ['--json', '--workspace', 'task', ...args], { ...f.env, STUB_MODE: 'ok', ...extra });
+	const started = run(['cycle', 'start', f.source.upstream.t2.tag, '--ci'], { STUB_HYGIENE_MODE: 'fail' });
+	expect(started.status, started.stderr + started.stdout).toBe(3);
+	const resumed = run(['cycle', 'continue', '--ci']);
+	expect(resumed.status, resumed.stderr + resumed.stdout).toBe(0);
+	expect(JSON.parse(resumed.stdout)).toMatchObject({ data: { status: 'completed', phase: 'done' } });
+	expect(run(['cycle', 'status']).status).toBe(0);
+	expect(readFileSync(join(f.source.patchesDir, 'codkit.json'), 'utf8')).not.toContain(`codkit/workspace/${record.id}/`);
+}, 60_000);

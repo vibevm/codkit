@@ -126,7 +126,13 @@ export function verifyWorkspaceCheckout(record: WorkspaceRecord, role: 'patchset
 		role === 'fork' &&
 		branch.status === 0 &&
 		[prefixes.generatedBranchPrefix, prefixes.cycleBranchPrefix].some((prefix) => branch.stdout.trim().startsWith(prefix));
-	if (expected.branch === null ? branch.status === 0 && !generated : branch.status !== 0 || branch.stdout.trim() !== expected.branch)
+	const cycleTask =
+		allowGenerated && role === 'patchset' && branch.status === 0 && branch.stdout.trim().startsWith(prefixes.cycleBranchPrefix);
+	if (
+		expected.branch === null
+			? branch.status === 0 && !generated
+			: branch.status !== 0 || (branch.stdout.trim() !== expected.branch && !cycleTask)
+	)
 		throw ckError('CONFIG', 'workspace checkout branch/detached state differs from recorded custody');
 }
 

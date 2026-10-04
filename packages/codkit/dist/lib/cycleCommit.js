@@ -8,6 +8,7 @@ import { gitLocal, runGit } from './gitx.js';
 import { CAUSE_TRAILER, CYCLE_TRAILER } from './hooksPatchSet.js';
 import { ckError, isCkError } from './messages.js';
 import { repoRelativePathProblem, resolveContainedPath, safeBasenameProblem } from './pathSafety.js';
+import { readDirt, gitPaths } from './cycleCommitStatus.js';
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const FALLBACK_NAME = 'codkit cycle';
 const FALLBACK_EMAIL = 'codkit-cycle@localhost.invalid';
@@ -22,7 +23,7 @@ export function commitCycleAtom(options) {
     assertBranch(options.patchesDir, options.expectedBranch, git);
     const transaction = acquireIndexTransaction(options.patchesDir, git);
     try {
-        const dirt = readDirt(options.patchesDir, git);
+        const dirt = readDirt(options.patchesDir, git, options.workspace);
         const head = readSha(options.patchesDir, 'HEAD', 'commit', git);
         if (head !== options.expectedParent) {
             assertAbsolutelyClean(dirt, 'while resuming an installed cycle commit');
@@ -76,7 +77,7 @@ export function commitCycleAtom(options) {
         if (readSha(options.patchesDir, 'HEAD', 'commit', git) !== sha) {
             throw ckError('INTERNAL', 'cycle branch changed immediately after installation');
         }
-        assertAbsolutelyClean(readDirt(options.patchesDir, git), 'after installing the cycle commit');
+        assertAbsolutelyClean(readDirt(options.patchesDir, git, options.workspace), 'after installing the cycle commit');
         return { status: 'committed', sha };
     }
     finally {
@@ -389,13 +390,6 @@ function assertBranch(patchesDir, expected, git) {
         throw ckError('CONFIG', `cycle commit requires branch ${expected}; current branch is ${actual || '(detached)'}`);
     }
 }
-function readDirt(patchesDir, git) {
-    return {
-        staged: gitPaths(patchesDir, ['diff', '--cached', '--name-only', '-z'], git, 'cannot inspect staged paths'),
-        unstaged: gitPaths(patchesDir, ['diff', '--name-only', '-z'], git, 'cannot inspect unstaged paths'),
-        untracked: gitPaths(patchesDir, ['ls-files', '--others', '--exclude-standard', '-z'], git, 'cannot inspect untracked paths')
-    };
-}
 function assertRealIndexClean(dirt) {
     if (dirt.staged.length !== 0) {
         throw ckError('DIRTY-TREE', `cycle commit requires a clean real index; staged: ${showPaths(dirt.staged)}`);
@@ -413,13 +407,6 @@ function assertAbsolutelyClean(dirt, context) {
     if (paths.length !== 0) {
         throw ckError('DIRTY-TREE', `patchset must be absolutely clean ${context}: ${showPaths(paths)}`);
     }
-}
-function gitPaths(patchesDir, args, git, failure) {
-    const result = mustGit(git, { args, cwd: patchesDir }, failure);
-    if (result.stdout !== '' && !result.stdout.endsWith('\0')) {
-        throw ckError('INTERNAL', `${failure}: output is not NUL-terminated`);
-    }
-    return byteSort(result.stdout === '' ? [] : result.stdout.slice(0, -1).split('\0'));
 }
 function commitParents(patchesDir, sha, git) {
     const line = mustGit(git, { args: ['rev-list', '--parents', '-n', '1', sha], cwd: patchesDir }, `cannot inspect parents of ${sha}`).stdout.trim();
