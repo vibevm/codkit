@@ -88,6 +88,8 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--layer', 'value'],
     ['--line', 'value'],
     ['--add-block', 'boolean'],
+    ['--body-file', 'value'],
+    ['--replace-lines', 'value'],
     // overlay new (PROP-007 sec. 12); --id, --type, --owner, --reason and
     // --category above are shared with marker new.
     ['--contract-test', 'repeatable'],

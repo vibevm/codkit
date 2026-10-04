@@ -132,6 +132,8 @@ const valueLabels = {
 	'--contract-test': 'guard-test-id',
 	'--layer': 'patch|entry-module',
 	'--line': 'n',
+	'--body-file': 'path',
+	'--replace-lines': 'count',
 	'--patch': 'contained-old-patch',
 	'--ref': 'ref',
 	'--release': 'semver',
@@ -202,7 +204,7 @@ const commandGuidance = {
 		positional: '<tree-file>',
 		requiredFlags: ['--id', '--type', '--owner', '--reason'],
 		detail:
-			'Create an empty marker block and pending patch header. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. With `--add-block`, only `--id` (and `--line`) are given: it opens another block of an intervention the file already carries, for a graft that is an import line and a call site.'
+			'Create a marker block and pending patch header; `--body-file` supplies bounded UTF-8 code atomically, and `--replace-lines` with explicit `--line` preserves the addressed originals as comments. Without body flags the scaffold stays empty. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. With `--add-block`, only `--id` (and `--line`) are given: it opens another block of an intervention the file already carries, for a graft that is an import line and a call site.'
 	},
 	reresolve: {
 		positional: '<tree-file>',
