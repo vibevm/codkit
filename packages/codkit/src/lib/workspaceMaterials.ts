@@ -26,6 +26,7 @@ import type { LfsPointer } from './publishLfs.ts';
 import { inspectInputCopies } from './inputsTree.ts';
 import { inputBlobRef, workspaceInputMatches } from './workspaceInput.ts';
 import { workspaceConfig } from './workspaceConfig.ts';
+import { captureWorkspaceBuildOutputs, verifyWorkspaceBuildOutput, workspaceBuildOutputSchema } from './workspaceBuildOutputs.ts';
 
 const pathSchema = z.string().refine((value) => repoRelativePathProblem(value) === null && value !== '.git' && !value.startsWith('.git/'));
 const digest = z.string().regex(/^[0-9a-f]{64}$/);
@@ -70,7 +71,9 @@ const inputMaterial = z.strictObject({
 });
 const allMaterial = z.union([material, inputMaterial]);
 const inputReceipt = legacyReceipt.extend({ codkitWorkspaceMaterials: z.literal(3), files: z.array(allMaterial) });
-export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt, inputReceipt]).superRefine((value, ctx) => {
+const completeMaterial = z.union([allMaterial, workspaceBuildOutputSchema]);
+const outputReceipt = legacyReceipt.extend({ codkitWorkspaceMaterials: z.literal(4), files: z.array(completeMaterial) });
+export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt, inputReceipt, outputReceipt]).superRefine((value, ctx) => {
 	const seen = new Set<string>();
 	for (const file of value.files) {
 		if (seen.has(file.path.toLowerCase())) ctx.addIssue({ code: 'custom', message: 'materialized paths must not repeat or case-alias' });
@@ -78,7 +81,7 @@ export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt, 
 	}
 });
 export type WorkspaceMaterials = z.infer<typeof workspaceMaterialsSchema>;
-export type WorkspaceMaterial = z.infer<typeof allMaterial>;
+export type WorkspaceMaterial = z.infer<typeof completeMaterial>;
 
 export function captureWorkspaceMaterials(
 	record: WorkspaceRecord,
@@ -195,14 +198,26 @@ export function captureWorkspaceMaterials(
 			});
 		}
 	}
+	files.push(
+		...captureWorkspaceBuildOutputs(
+			record,
+			config,
+			type,
+			sourceHash(record.patchset.commonDirectory, commit, 'codkit.json'),
+			registryRoot,
+			new Set(files.map((file) => file.path))
+		)
+	);
 	return files.sort((left, right) => left.path.localeCompare(right.path, 'en'));
 }
 export function writeWorkspaceMaterials(root: string, record: WorkspaceRecord, files: WorkspaceMaterial[]): void {
-	const version = files.some((file) => file.kind === 'input')
-		? 3
-		: files.some((file) => file.kind === 'lfs-source' || file.kind === 'empty-directory')
-			? 2
-			: 1;
+	const version = files.some((file) => file.kind === 'build-output')
+		? 4
+		: files.some((file) => file.kind === 'input')
+			? 3
+			: files.some((file) => file.kind === 'lfs-source' || file.kind === 'empty-directory')
+				? 2
+				: 1;
 	const data = workspaceMaterialsSchema.parse({ codkitWorkspaceMaterials: version, id: record.id, finished: record.finished, files });
 	const bytes = encodeUtf8(`${JSON.stringify(data, null, 2)}\n`);
 	const path = receiptPath(record);
@@ -228,10 +243,16 @@ export function readWorkspaceMaterials(root: string, record: WorkspaceRecord): W
 		throw ckError('CONFIG', 'workspace material receipt differs from its finish proof');
 	return parsed.data.files;
 }
-export function verifyWorkspaceMaterials(record: WorkspaceRecord, files: WorkspaceMaterial[]): readonly string[] {
+export function verifyWorkspaceMaterials(record: WorkspaceRecord, files: WorkspaceMaterial[], authority: string): readonly string[] {
 	if (record.finished === undefined) throw ckError('CONFIG', 'workspace finish proof is missing');
 	let lfs: ReadonlyMap<string, LfsPointer> | undefined;
 	for (const file of files) {
+		if (file.kind === 'build-output') {
+			if (sourceHash(record.patchset.commonDirectory, record.finished.patchsetCommit, 'codkit.json') !== file.configSha256)
+				throw ckError('CONFIG', 'workspace output declaration differs from saved config');
+			verifyWorkspaceBuildOutput(record, file, authority);
+			continue;
+		}
 		if (file.kind === 'input') {
 			const declared = decodeUtf8Strict(sourceBytes(record.patchset.commonDirectory, record.finished.patchsetCommit, 'codkit.json'));
 			if (declared === null) throw ckError('CONFIG', 'saved input configuration is not UTF-8');

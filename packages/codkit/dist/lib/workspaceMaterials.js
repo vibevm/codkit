@@ -22,6 +22,7 @@ import { pointerObject } from './publishLfs.js';
 import { inspectInputCopies } from './inputsTree.js';
 import { inputBlobRef, workspaceInputMatches } from './workspaceInput.js';
 import { workspaceConfig } from './workspaceConfig.js';
+import { captureWorkspaceBuildOutputs, verifyWorkspaceBuildOutput, workspaceBuildOutputSchema } from './workspaceBuildOutputs.js';
 const pathSchema = z.string().refine((value) => repoRelativePathProblem(value) === null && value !== '.git' && !value.startsWith('.git/'));
 const digest = z.string().regex(/^[0-9a-f]{64}$/);
 const savedSource = z.strictObject({ source: pathSchema, sha256: digest });
@@ -65,7 +66,9 @@ const inputMaterial = z.strictObject({
 });
 const allMaterial = z.union([material, inputMaterial]);
 const inputReceipt = legacyReceipt.extend({ codkitWorkspaceMaterials: z.literal(3), files: z.array(allMaterial) });
-export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt, inputReceipt]).superRefine((value, ctx) => {
+const completeMaterial = z.union([allMaterial, workspaceBuildOutputSchema]);
+const outputReceipt = legacyReceipt.extend({ codkitWorkspaceMaterials: z.literal(4), files: z.array(completeMaterial) });
+export const workspaceMaterialsSchema = z.union([legacyReceipt, currentReceipt, inputReceipt, outputReceipt]).superRefine((value, ctx) => {
     const seen = new Set();
     for (const file of value.files) {
         if (seen.has(file.path.toLowerCase()))
@@ -180,14 +183,17 @@ export function captureWorkspaceMaterials(record, config, type, commit, registry
             });
         }
     }
+    files.push(...captureWorkspaceBuildOutputs(record, config, type, sourceHash(record.patchset.commonDirectory, commit, 'codkit.json'), registryRoot, new Set(files.map((file) => file.path))));
     return files.sort((left, right) => left.path.localeCompare(right.path, 'en'));
 }
 export function writeWorkspaceMaterials(root, record, files) {
-    const version = files.some((file) => file.kind === 'input')
-        ? 3
-        : files.some((file) => file.kind === 'lfs-source' || file.kind === 'empty-directory')
-            ? 2
-            : 1;
+    const version = files.some((file) => file.kind === 'build-output')
+        ? 4
+        : files.some((file) => file.kind === 'input')
+            ? 3
+            : files.some((file) => file.kind === 'lfs-source' || file.kind === 'empty-directory')
+                ? 2
+                : 1;
     const data = workspaceMaterialsSchema.parse({ codkitWorkspaceMaterials: version, id: record.id, finished: record.finished, files });
     const bytes = encodeUtf8(`${JSON.stringify(data, null, 2)}\n`);
     const path = receiptPath(record);
@@ -217,11 +223,17 @@ export function readWorkspaceMaterials(root, record) {
         throw ckError('CONFIG', 'workspace material receipt differs from its finish proof');
     return parsed.data.files;
 }
-export function verifyWorkspaceMaterials(record, files) {
+export function verifyWorkspaceMaterials(record, files, authority) {
     if (record.finished === undefined)
         throw ckError('CONFIG', 'workspace finish proof is missing');
     let lfs;
     for (const file of files) {
+        if (file.kind === 'build-output') {
+            if (sourceHash(record.patchset.commonDirectory, record.finished.patchsetCommit, 'codkit.json') !== file.configSha256)
+                throw ckError('CONFIG', 'workspace output declaration differs from saved config');
+            verifyWorkspaceBuildOutput(record, file, authority);
+            continue;
+        }
         if (file.kind === 'input') {
             const declared = decodeUtf8Strict(sourceBytes(record.patchset.commonDirectory, record.finished.patchsetCommit, 'codkit.json'));
             if (declared === null)

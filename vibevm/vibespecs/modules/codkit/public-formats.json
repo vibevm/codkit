@@ -1245,16 +1245,17 @@
     {
       "id": "workspace-materials",
       "field": "codkitWorkspaceMaterials",
-      "version": 3,
+      "version": 4,
       "observedVersions": [
         1,
         2,
-        3
+        3,
+        4
       ],
       "source": "packages/codkit/src/lib/workspaceMaterials.ts",
       "owner": "Codkit workspace lifecycle",
       "trustBoundary": "User authority outside both checkouts binds exact finish proof and current copies to saved regular Git source blobs.",
-      "compatibility": "Strict v1/v2 receipts remain unchanged; explicit v3 adds delivered-input blob/ref evidence. Input kinds in v1/v2 and future versions refuse.",
+      "compatibility": "Strict v1/v2/v3 remain unchanged; explicit v4 admits archived declared build outputs. New kinds in old versions and future versions refuse.",
       "migration": "No implicit migration or existing registry/checkout/config widening; finish explicitly captures a new immutable receipt.",
       "fingerprint": "Does not enter delta/history fingerprints; binds the existing sealed finish proof and SHA-256 source/target digests.",
       "contract": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-MATERIALS",

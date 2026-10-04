@@ -72,7 +72,9 @@ export function finishWorkspace(options) {
                     throw ckError('CONFIG', 'workspace contains unextracted fork history');
                 const drift = driftDirty(materializerOf(options.type), record.fork.path, ownedRootsOf(options.type, config.typeConfig, { treeDir: record.fork.path, pinSha: config.pin.sha }), record.patchset.path, {
                     workspace: record,
-                    ownedUntrackedFiles: [...workspaceOwnedPaths(record.fork.path, locks[1], [])],
+                    ownedUntrackedFiles: [
+                        ...workspaceOwnedPaths(record.fork.path, locks[1], materials.map((file) => file.path))
+                    ],
                     generated: { pinSha: config.pin.sha, branch: `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}` }
                 });
                 if (drift.dirty)

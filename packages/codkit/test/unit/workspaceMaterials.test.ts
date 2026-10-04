@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, expect, it } from 'vitest';
 import { createWorkspace } from '../../src/lib/workspaceCreate.ts';
@@ -22,7 +22,7 @@ import { readInputStore, writeInputStore } from '../../src/lib/inputsStore.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
-function fixture(kind?: 'lfs' | 'fake-lfs' | 'empty' | 'input') {
+function fixture(kind?: 'lfs' | 'fake-lfs' | 'empty' | 'input' | 'build') {
 	const source = makeSyncFixture('workspace-material-source');
 	if (kind === 'input') {
 		const input = makeInputRepository('workspace-material-input');
@@ -73,6 +73,10 @@ function fixture(kind?: 'lfs' | 'fake-lfs' | 'empty' | 'input') {
 	});
 	expect(result.exitCode).toBe(0);
 	if (kind === 'empty') mkdirSync(join(record.fork.path, config.typeConfig.ownRoot, 'empty'), { recursive: true });
+	if (kind === 'build') {
+		mkdirSync(join(record.fork.path, 'out-fixture/empty'), { recursive: true });
+		writeFileSync(join(record.fork.path, 'out-fixture/artifact.bin'), 'retain compiled fixture output');
+	}
 	return { record, config, registryRoot, finish: () => finishWorkspace({ registryRoot, name: 'task', type: projectType }) };
 }
 it('removes verified materialized sources after the patchset checkout is gone and retains the external receipt', () => {
@@ -186,6 +190,49 @@ it('does not promote a forged Git-admin input cache into cleanup authority', () 
 	writeInputStore(f.record.fork.path, stored);
 	expect(f.finish().state).toBe('finished');
 });
+
+it('archives declared build files and exact empty directories in v4 before deletion', () => {
+	const f = fixture('build');
+	const finished = f.finish();
+	const files = readWorkspaceMaterials(f.registryRoot, finished);
+	const build = files.find((file) => file.kind === 'build-output' && file.entry === 'file');
+	if (build === undefined || build.kind !== 'build-output') throw new Error('no build output receipt');
+	expect(files.some((file) => file.kind === 'build-output' && file.entry === 'directory')).toBe(true);
+	for (const version of [1, 2, 3])
+		expect(
+			workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: version, id: f.record.id, finished: finished.finished, files }).success
+		).toBe(false);
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+	expect(readFileSync(join(f.registryRoot, 'workspace-output-bytes', `${build.sha256}.bin`), 'utf8')).toBe(
+		'retain compiled fixture output'
+	);
+});
+it('refuses changed build copies and missing archive data without deleting either root', () => {
+	const f = fixture('build');
+	const finished = f.finish();
+	const build = readWorkspaceMaterials(f.registryRoot, finished).find((file) => file.kind === 'build-output' && file.entry === 'file');
+	if (build === undefined || build.kind !== 'build-output') throw new Error('no build output receipt');
+	const path = join(f.record.fork.path, build.path);
+	const bytes = readFileSync(path);
+	writeFileSync(path, 'new work');
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(/build output changed/);
+	expect(existsSync(f.record.patchset.path)).toBe(true);
+	writeFileSync(path, bytes);
+	unlinkSync(join(f.registryRoot, 'workspace-output-bytes', `${build.sha256}.bin`));
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(/output is missing/);
+	expect(existsSync(f.record.fork.path)).toBe(true);
+});
+it('archives only leaf link text and never follows a declared output link outside the tree', () => {
+	const f = fixture('build');
+	const outside = makeTempRoot('workspace-output-external');
+	writeFileSync(join(outside, 'keep.txt'), 'external content');
+	symlinkSync(outside, join(f.record.fork.path, 'out-fixture/link'), process.platform === 'win32' ? 'junction' : 'dir');
+	const finished = f.finish();
+	const link = readWorkspaceMaterials(f.registryRoot, finished).find((file) => file.kind === 'build-output' && file.entry === 'link');
+	expect(link).toBeDefined();
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+	expect(readFileSync(join(outside, 'keep.txt'), 'utf8')).toBe('external content');
+});
 it('refuses edited saved material and unowned ignored content without deleting either checkout', () => {
 	const f = fixture();
 	const finished = f.finish();
@@ -216,7 +263,7 @@ it('does not accept source-map forgery, future formats or overwrite an immutable
 	const finished = f.finish();
 	const files = readWorkspaceMaterials(f.registryRoot, finished);
 	expect(
-		workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: 4, id: f.record.id, finished: finished.finished, files }).success
+		workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: 5, id: f.record.id, finished: finished.finished, files }).success
 	).toBe(false);
 	expect(() => writeWorkspaceMaterials(f.registryRoot, finished, [])).toThrow(/foreign/);
 	const first = files.find((file) => file.kind === 'source');

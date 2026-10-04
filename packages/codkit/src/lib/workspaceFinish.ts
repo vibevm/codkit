@@ -93,7 +93,13 @@ export function finishWorkspace(options: {
 					record.patchset.path,
 					{
 						workspace: record,
-						ownedUntrackedFiles: [...workspaceOwnedPaths(record.fork.path, locks[1], [])],
+						ownedUntrackedFiles: [
+							...workspaceOwnedPaths(
+								record.fork.path,
+								locks[1],
+								materials.map((file) => file.path)
+							)
+						],
 						generated: { pinSha: config.pin.sha, branch: `${workspaceRefPrefixes(record.id).generatedBranchPrefix}${pinKey(config.pin)}` }
 					}
 				);

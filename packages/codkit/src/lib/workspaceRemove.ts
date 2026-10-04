@@ -85,7 +85,7 @@ function check(
 	authority: string
 ): void {
 	if (role === 'patchset') workspaceLogPaths(authority, record);
-	const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials)] : extra;
+	const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials, authority)] : extra;
 	verifyWorkspaceCheckout(record, role, true);
 	verifyReceipt(record, role);
 	refuseWorkspaceDaemons(record[role].path, record.id);
@@ -101,7 +101,10 @@ function check(
 		paths.add(entry.slice(tab + 1));
 	}
 	const directories = new Set<string>();
-	if (role === 'fork') for (const material of materials) if (material.kind === 'empty-directory') directories.add(material.path);
+	if (role === 'fork')
+		for (const material of materials)
+			if (material.kind === 'empty-directory' || (material.kind === 'build-output' && material.entry === 'directory'))
+				directories.add(material.path);
 	for (const path of paths) {
 		const parts = path.split('/');
 		for (let count = 1; count < parts.length; count++) directories.add(parts.slice(0, count).join('/'));

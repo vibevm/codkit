@@ -74,7 +74,7 @@ export function removeWorkspace(options) {
 function check(record, role, lock, extra, materials, authority) {
     if (role === 'patchset')
         workspaceLogPaths(authority, record);
-    const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials)] : extra;
+    const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials, authority)] : extra;
     verifyWorkspaceCheckout(record, role, true);
     verifyReceipt(record, role);
     refuseWorkspaceDaemons(record[role].path, record.id);
@@ -94,7 +94,7 @@ function check(record, role, lock, extra, materials, authority) {
     const directories = new Set();
     if (role === 'fork')
         for (const material of materials)
-            if (material.kind === 'empty-directory')
+            if (material.kind === 'empty-directory' || (material.kind === 'build-output' && material.entry === 'directory'))
                 directories.add(material.path);
     for (const path of paths) {
         const parts = path.split('/');
