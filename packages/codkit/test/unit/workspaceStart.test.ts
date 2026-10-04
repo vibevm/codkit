@@ -186,16 +186,27 @@ it('preserves the actual spawned PID if failure termination throws', () => {
 	});
 	expect(f.finish).toThrow(/unresolved build daemon/);
 });
-it('retires a proven dead POSIX generation with no log and removes its empty runtime directory', async () => {
+it('uses native dead-generation evidence without discarding unproven descendant custody', async () => {
 	const f = fixture();
 	upChannel(f.ctx, channel, { spawn: () => ({ pid: 4_194_305, terminate: () => undefined }) });
-	const stopped = await downChannel(f.record.patchset.path, channel.name, {
-		platform: 'linux',
+	const stopping = downChannel(f.record.patchset.path, channel.name, {
+		platform: process.platform,
 		expectedWorkspaceId: f.record.id,
 		workspaceRegistryRoot: f.registryRoot,
 		expectedTreeId: f.ctx.treeId,
 		expectedTreePath: f.record.fork.path
 	});
+	if (process.platform === 'win32') {
+		await expect(stopping).rejects.toThrow(/Windows cannot prove that its descendant process tree is gone/);
+		expect(readRecordState(f.record.patchset.path, channel.name)).toMatchObject({
+			state: 'valid',
+			record: { pid: 4_194_305, workspaceId: f.record.id }
+		});
+		expect(existsSync(join(f.record.patchset.path, '.codkit/build'))).toBe(true);
+		expect(f.finish).toThrow(/unresolved build daemon/);
+		return;
+	}
+	const stopped = await stopping;
 	expect(stopped.action).toBe('not-running');
 	expect(existsSync(join(f.record.patchset.path, '.codkit/build'))).toBe(false);
 	f.finish();
