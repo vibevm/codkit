@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8'?>
+<phase-review genre="research" date="2026-10-05" phase="5" assessment="current-deliverables-proven-with-limits" wholeCampaign="not-proven">
+  <scope>Reconcile the six Phase5 actions explained to the owner against actual implementation, contracts, executable examples and measured consumers. Future runtime extensions remain conditional on demonstrated need; this report does not invent their implementation or redefine the campaign as complete.</scope>
+  <deliverables>
+    <item id="1" state="implemented" title="Artifact handling seam">
+      <finding>Existing text-patch-v2 read/serialize/plan/apply/extract/fingerprint capabilities are behind the engine seam. Only add/modify are advertised; no binary/delete/move capability is claimed.</finding>
+      <evidence path="packages/codkit/src/lib/artifactCodec.ts" sha256="91771500b95ac1f8988be2954580d4405796148d9310dd2c28232d2dfc71ceef" bytes="5927" />
+      <evidence path="packages/codkit/test/unit/artifactCodec.test.ts" sha256="2bd1d4ea00f4d0bb56bf5c4597e7ea26a4ea3aa67f28ffa04a964a5b36069bcc" bytes="5758" />
+      <evidence path="vibevm/vibespecs/modules/codkit/PROP-021-artifact-codec.xml" sha256="5ff97f29e37a5b8f440a6be9eec36178a8cf2513b93c5a38ca58ec3803521e2e" bytes="2148" />
+    </item>
+    <item id="2" state="measured-read-only" title="Legacy compatibility">
+      <finding>Actual dirty nimbus consumer was not edited:43 artifacts/89 hunks serialized byte-exact and planned/applied in memory against pinned Git blobs. This is not its full application build.</finding>
+      <evidence path="campaigns/feature-proof/PHASE5-CONSUMER-MEASUREMENT-2026-10-04.xml" sha256="68547d6487304be7ab78cdb83fce748e389f9343a66143cea14a004f7ad40a07" bytes="16362" />
+    </item>
+    <item id="3" state="design-and-compatibility-examples" title="Build command rules">
+      <finding>Type-neutral argv/cwd/env/network/input/output/restore vocabulary and current Node one-shot/watch compatibility examples. No new recipe reader, non-npm receipt implementation or non-Node successful build is claimed.</finding>
+      <evidence path="vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml" sha256="bd8e6035c5631b37ce4d5ec1bf9cb15f1a4dcc1b4e9d3defa065b3e0d33d5091" bytes="4756" />
+      <evidence path="packages/codkit/test/unit/buildRecipeDesign.test.ts" sha256="15781e79748904cb178d677ec76c7551019fdb41d65f27616b1ade3cd0f81ba4" bytes="1762" />
+    </item>
+    <item id="4" state="contract-and-nine-examples" title="Coordinated component release rules">
+      <finding>Public state/proof/idempotency/resume/partial-result/compensation contract with nine existing executable examples. Supported XML fences restore six indexed contract units. No production coordinator or durable runtime journal implementation is claimed.</finding>
+      <evidence path="vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml" sha256="ffc376da8bc087f71210b9f7b965349ad8a96c76511a9a05591e71f66fe2b2cb" bytes="5881" />
+      <evidence path="packages/codkit/test/unit/coordinatorContract.test.ts" sha256="f80bedd8328be9732d529ca15f3dcee6e46dc27fa4e5038213cf90abd0969589" bytes="2050" />
+    </item>
+    <item id="5" state="real-consumer-technical-polygon" title="Orion integration">
+      <finding>Recovered genuine Theia consumer snapshot79a383a4e33c1d6c4b065445c4d092059b4606ec passes materialization, unchanged save, local delivery, cold CI, offline package and packaged-workbench launch. Descriptor956a287c binds actual output bytes. Licence/carrier edits after that snapshot require fresh distribution evidence; policy/NOTICE/SBOM and legal/signing are separate Phase2 inputs.</finding>
+      <evidence path="campaigns/feature-proof/PHASE5-THEIA-CONSUMER-2026-10-04.xml" sha256="e6b69b58f62d2b9ae6959d24c4e969a55a064d438485b025b9f351fb698cfe44" bytes="5682" />
+    </item>
+    <item id="6" state="reconciled" title="Evidence and deferred extension boundary">
+      <finding>This review records exact proof scope and content hashes, rather than promoting example vectors or historical build outputs to unimplemented runtime capabilities or actual legal approvals.</finding>
+      <evidence path="campaigns/feature-proof/REQUIREMENT-REVIEW-2026-10-04.xml" sha256="99210711efe40e5d8afc707d955eb718c1c105b98b941a6a9240a3069ff51f8a" bytes="8455" />
+    </item>
+  </deliverables>
+  <verification implementationFullFloorCommit="55155b4" linuxPassed="2899" linuxSkipped="5" structuralFrozen="8" structuralNew="0">Latest complete available implementation floor is recorded in the campaign ledger. Coordinator9/9 and recipe compatibility examples are existing cases within that floor; no additional runtime is inferred from their abstract nature.</verification>
+  <conditional-extensions>
+    <item>Another codec and explicit path migration: only after a real consumer needs unsupported operations or target paths.</item>
+    <item>Recipe v2 runtime/non-npm receipts: only after a real non-Node execution requirement.</item>
+    <item>Production coordinator and its crash-recovery storage: only after a real coordinated multi-component release requirement.</item>
+    <item>Composite checkout graph: only after a measured consumer needs several linked component checkouts.</item>
+  </conditional-extensions>
+  <interpretation>Inference from the two recorded consumer measurements: neither currently demonstrates those additional runtime requirements. Their future implementation conditions remain intact, not waived through fixtures or arbitrary simplification.</interpretation>
+  <remaining-campaign-work>Continue Phase3 native Windows lifecycle/CLI proof and Phase2 actual owner-backed distribution evidence. Independent third-party adapter integration is outside campaign scope by the owner decision. This Phase5 review alone does not complete the campaign.</remaining-campaign-work>
+</phase-review>

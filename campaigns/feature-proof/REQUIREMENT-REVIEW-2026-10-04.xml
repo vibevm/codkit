@@ -28,5 +28,6 @@
     <item id="9" status="conditional-not-implemented">Patch-heavy delete/move/replace requires a real profile; current codec only advertises add/modify.</item>
     <item id="10" status="compatibility-proof">Legacy patchset serialization/generated history/fingerprint and old-version strictness remain covered by complete suite and dedicated negative fixtures.</item>
   </polygons>
+  <phase5-current-review path="PHASE5-CLOSURE-2026-10-05.xml">Six owner-facing actions reconciled with implementation, contract/design examples and two real consumer measurements. Additional runtime codecs/build recipes/coordinator/composite graph remain conditional on demonstrated need; no historical package snapshot or fixture becomes current legal/runtime acceptance.</phase5-current-review>
   <remaining>Obtain actual owner commercial/legal/signing inputs before dependent consumer-distribution acceptance. Independent supplier integration is explicitly outside this campaign and is not a blocker for its completion. Implement non-Node/coordinator/patch-heavy/composite routes only when their measured real consumer polygon exists. Preserve the portability and independent-audit limits. No full-goal completion follows from this reconciliation.</remaining>
 </review>
