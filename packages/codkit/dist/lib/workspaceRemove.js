@@ -7,6 +7,7 @@ import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { treeId } from './fingerprint.js';
 import { readTreeCache, treeCachePath } from './treeCache.js';
+import { readWorkspaceMaterials, verifyWorkspaceMaterials } from './workspaceMaterials.js';
 import { verifyWorkspaceCheckout } from './workspaceCreate.js';
 import { assertWorkspaceClean, refuseWorkspaceDaemons, verifyReceipt, workspaceOwnedPaths } from './workspaceFinish.js';
 import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema } from './workspaceRegistry.js';
@@ -19,6 +20,7 @@ export function removeWorkspace(options) {
         if (record.state !== 'finished' && record.state !== 'removing')
             throw ckError('CONFIG', 'workspace must finish before removal');
         const locks = new Map();
+        const materials = readWorkspaceMaterials(options.registryRoot, record);
         const extra = new Map();
         const publish = (state) => {
             record = workspaceRecordSchema.parse({ ...record, state, updatedAt: new Date().toISOString() });
@@ -40,7 +42,7 @@ export function removeWorkspace(options) {
                 extra.set(role, cache === null
                     ? []
                     : [relative(record.patchset.path, treeCachePath(record.patchset.path, treeId(record.fork.path))).replaceAll('\\', '/')]);
-                check(record, role, locks.get(role), extra.get(role) ?? []);
+                check(record, role, locks.get(role), extra.get(role) ?? [], materials);
             }
             for (const role of roles)
                 preserveHead(record, role);
@@ -50,7 +52,7 @@ export function removeWorkspace(options) {
                 const lock = locks.get(role);
                 if (lock === undefined)
                     continue;
-                check(record, role, lock, extra.get(role) ?? []);
+                check(record, role, lock, extra.get(role) ?? [], materials);
                 // Force is necessary only for our verified receipt/cache and held lock files.
                 // The physical inventory below refuses all other data, including ignored/empty paths.
                 git(record[role].repository, ['worktree', 'remove', '--force', '--', record[role].path]);
@@ -66,14 +68,15 @@ export function removeWorkspace(options) {
         }
     });
 }
-function check(record, role, lock, extra) {
+function check(record, role, lock, extra, materials) {
+    const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials)] : extra;
     verifyWorkspaceCheckout(record, role, true);
     verifyReceipt(record, role);
     refuseWorkspaceDaemons(record[role].path, record.id);
-    assertWorkspaceClean(record[role].path, lock, extra);
+    assertWorkspaceClean(record[role].path, lock, allowed);
     if (git(record[role].path, ['rev-parse', 'HEAD']).trim() !== finishedHead(record, role))
         throw ckError('DIRTY-TREE', 'workspace HEAD changed after finish; finish again before removal');
-    const paths = new Set([...workspaceOwnedPaths(record[role].path, lock, extra), '.git']);
+    const paths = new Set([...workspaceOwnedPaths(record[role].path, lock, allowed), '.git']);
     const index = git(record[role].path, ['ls-files', '--stage', '-z']);
     for (const entry of index.split('\0').filter(Boolean)) {
         if (entry.startsWith('160000 '))

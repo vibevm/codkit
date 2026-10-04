@@ -1,6 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-020#WORKSPACE-FINISH */
 // Finish seals clean/save evidence while checkout writer capabilities are held.
 import { verifyReceipt } from './workspaceReceipt.ts';
+import { captureWorkspaceMaterials, writeWorkspaceMaterials } from './workspaceMaterials.ts';
 export { verifyReceipt } from './workspaceReceipt.ts';
 import { readdirSync } from 'node:fs';
 import { relative } from 'node:path';
@@ -41,18 +42,24 @@ export function finishWorkspace(options: {
 				locks.push(acquireLock(record[role].path, `workspace-${record.id}`, 'workspace finish'));
 				verifyReceipt(record, role);
 				refuseWorkspaceDaemons(record[role].path, record.id);
-				const cache = role === 'patchset' ? readTreeCache(record.patchset.path, treeId(record.fork.path)) : null;
-				assertWorkspaceClean(
-					record[role].path,
-					locks[locks.length - 1],
-					cache === null
-						? []
-						: [relative(record.patchset.path, treeCachePath(record.patchset.path, treeId(record.fork.path))).replaceAll('\\', '/')]
-				);
 			}
 			const config = loadConfig(record.patchset.path);
 			if (config === null || config.type !== record.type.id || options.type.id !== record.type.id)
 				throw ckError('CONFIG', 'workspace configuration/type custody differs from registry');
+			const patchsetHead = git(record.patchset.path, ['rev-parse', 'HEAD']);
+			const materials = captureWorkspaceMaterials(record, config, options.type, patchsetHead);
+			for (const [index, role] of (['patchset', 'fork'] as const).entries()) {
+				const cache = role === 'patchset' ? readTreeCache(record.patchset.path, treeId(record.fork.path)) : null;
+				assertWorkspaceClean(
+					record[role].path,
+					locks[index],
+					cache === null
+						? role === 'fork'
+							? materials.map((file) => file.path)
+							: []
+						: [relative(record.patchset.path, treeCachePath(record.patchset.path, treeId(record.fork.path))).replaceAll('\\', '/')]
+				);
+			}
 			const forkHead = git(record.fork.path, ['rev-parse', 'HEAD']);
 			const mark = readTreeMark(record.fork.path);
 			let fingerprint: string | null = null;
@@ -96,12 +103,13 @@ export function finishWorkspace(options: {
 				state: 'finished',
 				updatedAt: now,
 				finished: {
-					patchsetCommit: git(record.patchset.path, ['rev-parse', 'HEAD']),
+					patchsetCommit: patchsetHead,
 					forkCommit: forkHead,
 					deltaFingerprint: fingerprint,
 					at: now
 				}
 			});
+			writeWorkspaceMaterials(options.registryRoot, finished, materials);
 			save(registry.workspaces.map((entry) => (entry.id === record.id ? finished : entry)));
 			return finished;
 		} finally {

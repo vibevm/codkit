@@ -1290,6 +1290,19 @@ function buildBranch(
 	} finally {
 		rmSync(indexFile, { force: true });
 		rmSync(blobFile, { force: true });
+		if (config.workspace !== undefined) {
+			try {
+				rmdirSync(scratch);
+			} catch (error) {
+				if (
+					error instanceof Error &&
+					'code' in error &&
+					(error.code === 'ENOENT' || error.code === 'ENOTEMPTY' || error.code === 'EEXIST')
+				) {
+					// Another scratch user or caller data remains; do not remove it.
+				} else out.warn(`workspace temporary directory was retained: ${scratch}`);
+			}
+		}
 	}
 }
 

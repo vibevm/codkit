@@ -191,6 +191,9 @@ it('loads into UUID refs without rewriting config, protects neighbouring work an
 	expect(finished.status, finished.stderr).toBe(0);
 	expect(workspace(finished.stdout).finished?.deltaFingerprint).toMatch(/^[0-9a-f]{64}$/);
 	expect(run('where').status).toBe(2);
+	const removed = f.run(['remove', 'task']);
+	expect(removed.status, removed.stderr).toBe(0);
+	expect(existsSync(record.fork.path)).toBe(false);
 });
 
 it('binds a real daemon to its workspace and refuses a copied record in another pair before teardown', () => {

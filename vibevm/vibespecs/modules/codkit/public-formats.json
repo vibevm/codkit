@@ -1205,6 +1205,25 @@
       ]
     },
     {
+      "id": "workspace-materials",
+      "field": "codkitWorkspaceMaterials",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/workspaceMaterials.ts",
+      "owner": "Codkit workspace lifecycle",
+      "trustBoundary": "User authority outside both checkouts binds exact finish proof and current copies to saved regular Git source blobs.",
+      "compatibility": "Exact strict version 1; missing legacy receipt grants no extra cleanup paths.",
+      "migration": "No implicit migration or existing registry/checkout/config widening; finish explicitly captures a new immutable receipt.",
+      "fingerprint": "Does not enter delta/history fingerprints; binds the existing sealed finish proof and SHA-256 source/target digests.",
+      "contract": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-MATERIALS",
+      "tests": [
+        "packages/codkit/test/unit/workspaceMaterials.test.ts",
+        "packages/codkit/test/e2e/workspace.test.ts"
+      ]
+    },
+    {
       "id": "workspace-registry",
       "field": "codkitWorkspaceRegistry",
       "version": 1,

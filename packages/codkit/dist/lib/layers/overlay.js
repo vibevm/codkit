@@ -386,11 +386,23 @@ export function applyOperations(base, operations, context) {
  * does not carry).
  */
 export function writeDevChannel(type, treeDir, overlays, context, pinSha, onWarn) {
+    const { text, ...result } = renderDevChannel(type, treeDir, overlays, context, pinSha, onWarn);
+    if (text !== null) {
+        writeFileSync(result.path, text, 'utf8');
+        if (onWarn !== undefined) {
+            const warning = devChannelIgnoreWarning(type, treeDir);
+            if (warning !== null)
+                onWarn(warning);
+        }
+    }
+    return result;
+}
+export function renderDevChannel(type, treeDir, overlays, context, pinSha, onWarn) {
     const channel = devChannelTarget(type);
     if (channel === null || channel.devChannel === null) {
         // A family with no dev channel materializes through channel 2 only; there
         // is no sidecar to write and nothing to report (##OVERLAY-TWO-CHANNELS).
-        return { path: '', written: false, keys: [], overlayIds: [] };
+        return { path: '', written: false, keys: [], overlayIds: [], text: null };
     }
     const devChannelPath = channel.devChannel;
     const applicable = overlays.filter((overlay) => overlay.target === channel.path);
@@ -424,16 +436,9 @@ export function writeDevChannel(type, treeDir, overlays, context, pinSha, onWarn
     // not ask for is one more thing that could show up in `git status`. An
     // existing one is still refreshed, so removing the last overlay empties it.
     if (applicable.length === 0 && !existsSync(path)) {
-        return { path, written: false, keys: [], overlayIds: [] };
+        return { path, written: false, keys: [], overlayIds: [], text: null };
     }
-    writeFileSync(path, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
-    if (onWarn !== undefined) {
-        const ignoreWarning = devChannelIgnoreWarning(type, treeDir);
-        if (ignoreWarning !== null) {
-            onWarn(ignoreWarning);
-        }
-    }
-    return { path, written: true, keys: Object.keys(document), overlayIds: ids };
+    return { path, written: true, keys: Object.keys(document), overlayIds: ids, text: `${JSON.stringify(document, null, 2)}\n` };
 }
 /**
  * The dev-channel file is written into the tree on every load, so upstream has
