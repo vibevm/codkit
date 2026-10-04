@@ -140,6 +140,10 @@ Workspace input deliveries have immutable external witnesses and retained Git
 blob refs. Cleanup uses material receipt v3 for those copies, verifies their
 declared destinations and unchanged bytes, and retains backing blobs after
 checkout removal. A mutable input cache alone grants no cleanup authority.
+Workspace daemon teardown retains closed log generations outside the checkout
+before retiring their records. Finish requires retirement, and cleanup verifies
+matching current/rotated log bytes against those archives. Unknown or edited
+logs remain protected; retained logs survive pair removal.
 
 `codkit --json where` is configuration-free and returns a schema-2 envelope
 with `roots.tool`, `roots.patches`, and `roots.fork`. The three resolved paths
