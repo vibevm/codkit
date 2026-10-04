@@ -1207,14 +1207,15 @@
     {
       "id": "workspace-materials",
       "field": "codkitWorkspaceMaterials",
-      "version": 1,
+      "version": 2,
       "observedVersions": [
-        1
+        1,
+        2
       ],
       "source": "packages/codkit/src/lib/workspaceMaterials.ts",
       "owner": "Codkit workspace lifecycle",
       "trustBoundary": "User authority outside both checkouts binds exact finish proof and current copies to saved regular Git source blobs.",
-      "compatibility": "Exact strict version 1; missing legacy receipt grants no extra cleanup paths.",
+      "compatibility": "Strict v1 source/dev-channel receipts are unchanged. Opt-in v2 adds saved LFS and exact empty-directory evidence; v1 rejects these kinds and future versions refuse.",
       "migration": "No implicit migration or existing registry/checkout/config widening; finish explicitly captures a new immutable receipt.",
       "fingerprint": "Does not enter delta/history fingerprints; binds the existing sealed finish proof and SHA-256 source/target digests.",
       "contract": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-MATERIALS",

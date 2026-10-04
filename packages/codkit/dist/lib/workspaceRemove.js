@@ -87,6 +87,10 @@ function check(record, role, lock, extra, materials) {
         paths.add(entry.slice(tab + 1));
     }
     const directories = new Set();
+    if (role === 'fork')
+        for (const material of materials)
+            if (material.kind === 'empty-directory')
+                directories.add(material.path);
     for (const path of paths) {
         const parts = path.split('/');
         for (let count = 1; count < parts.length; count++)

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, expect, it } from 'vitest';
 import { createWorkspace } from '../../src/lib/workspaceCreate.ts';
@@ -13,11 +13,26 @@ import { Output } from '../../src/lib/jsonOut.ts';
 import { readTypeManifest } from '../../src/types/manifest.ts';
 import { projectType, STUB_TYPE_MODULE } from '../fixtures/stubType.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
+import { fixtureCommit } from '../fixtures/makeUpstream.ts';
+import { LFS_EXTRA, lfsObjectPath, provideLfsContent } from '../fixtures/lfsUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
-function fixture() {
+function fixture(kind?: 'lfs' | 'fake-lfs' | 'empty') {
 	const source = makeSyncFixture('workspace-material-source');
+	if (kind === 'lfs' || kind === 'fake-lfs') {
+		provideLfsContent(source.patchesDir, [LFS_EXTRA]);
+		writeFileSync(
+			join(source.patchesDir, kind === 'lfs' ? '.gitattributes' : '.git/info/attributes'),
+			'delta/own/asset.bin filter=lfs diff=lfs merge=lfs -text\n'
+		);
+		writeFileSync(join(source.patchesDir, 'delta/own/asset.bin'), LFS_EXTRA.content);
+		fixtureCommit(source.patchesDir, 'saved LFS own fixture', '2026-10-04T00:00:00Z');
+	} else if (kind === 'empty') {
+		mkdirSync(join(source.patchesDir, 'delta/own/empty'), { recursive: true });
+		writeFileSync(join(source.patchesDir, 'delta/own/empty/.gitkeep'), '');
+		fixtureCommit(source.patchesDir, 'saved empty directory fixture', '2026-10-04T00:00:00Z');
+	}
 	const registryRoot = makeTempRoot('workspace-material-authority');
 	const record = createWorkspace({
 		registryRoot,
@@ -47,6 +62,7 @@ function fixture() {
 		})
 	});
 	expect(result.exitCode).toBe(0);
+	if (kind === 'empty') mkdirSync(join(record.fork.path, config.typeConfig.ownRoot, 'empty'), { recursive: true });
 	return { record, config, registryRoot, finish: () => finishWorkspace({ registryRoot, name: 'task', type: projectType }) };
 }
 it('removes verified materialized sources after the patchset checkout is gone and retains the external receipt', () => {
@@ -69,6 +85,51 @@ it('removes verified materialized sources after the patchset checkout is gone an
 	expect(existsSync(f.record.patchset.path)).toBe(false);
 	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
 	expect(readWorkspaceMaterials(f.registryRoot, finished)).toEqual(files);
+});
+
+it('records hydrated LFS copies in v2 and refuses loss of their saved backing object', () => {
+	const f = fixture('lfs');
+	const finished = f.finish();
+	const files = readWorkspaceMaterials(f.registryRoot, finished);
+	const lfs = files.find((file) => file.kind === 'lfs-source');
+	expect(lfs).toMatchObject({ kind: 'lfs-source', sha256: LFS_EXTRA.oid, bytes: LFS_EXTRA.size });
+	const raw = { codkitWorkspaceMaterials: 1, id: f.record.id, finished: finished.finished, files };
+	expect(workspaceMaterialsSchema.safeParse(raw).success).toBe(false);
+	expect(workspaceMaterialsSchema.safeParse({ ...raw, codkitWorkspaceMaterials: 2 }).success).toBe(true);
+	expect(() =>
+		removeWorkspace({
+			registryRoot: f.registryRoot,
+			name: 'task',
+			checkpoint: (stage) => {
+				if (stage === 'patchset-removed') throw new Error('fixture LFS interruption');
+			}
+		})
+	).toThrow(/fixture LFS interruption/);
+	const backing = lfsObjectPath(join(f.record.patchset.commonDirectory, 'lfs'), LFS_EXTRA.oid);
+	const bytes = readFileSync(backing);
+	unlinkSync(backing);
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(/backing object is missing/);
+	expect(existsSync(f.record.fork.path)).toBe(true);
+	writeFileSync(backing, bytes);
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+});
+it('admits only saved empty directory anchors and refuses data added after finish', () => {
+	const f = fixture('empty');
+	const finished = f.finish();
+	const files = readWorkspaceMaterials(f.registryRoot, finished);
+	const dir = files.find((file) => file.kind === 'empty-directory');
+	if (dir === undefined) throw new Error('no empty directory receipt');
+	writeFileSync(join(f.record.fork.path, dir.path, 'human.txt'), 'preserve new work');
+	expect(() => removeWorkspace({ registryRoot: f.registryRoot, name: 'task' })).toThrow(/directory changed/);
+	expect(existsSync(f.record.patchset.path)).toBe(true);
+	unlinkSync(join(f.record.fork.path, dir.path, 'human.txt'));
+	expect(removeWorkspace({ registryRoot: f.registryRoot, name: 'task' }).state).toBe('removed');
+});
+it('does not let local info/attributes declare cleanup authority for a saved pointer', () => {
+	const f = fixture('fake-lfs');
+	expect(f.finish).toThrow(/LFS bytes differ/);
+	expect(readWorkspaceRegistry(f.registryRoot).workspaces[0]?.state).toBe('active');
+	expect(readFileSync(join(f.record.fork.path, f.config.typeConfig.ownRoot, 'asset.bin'))).toEqual(Buffer.from(LFS_EXTRA.content));
 });
 it('refuses edited saved material and unowned ignored content without deleting either checkout', () => {
 	const f = fixture();
@@ -100,7 +161,7 @@ it('does not accept source-map forgery, future formats or overwrite an immutable
 	const finished = f.finish();
 	const files = readWorkspaceMaterials(f.registryRoot, finished);
 	expect(
-		workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: 2, id: f.record.id, finished: finished.finished, files }).success
+		workspaceMaterialsSchema.safeParse({ codkitWorkspaceMaterials: 3, id: f.record.id, finished: finished.finished, files }).success
 	).toBe(false);
 	expect(() => writeWorkspaceMaterials(f.registryRoot, finished, [])).toThrow(/foreign/);
 	const first = files.find((file) => file.kind === 'source');

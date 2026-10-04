@@ -9,7 +9,7 @@ import { ckError } from './messages.ts';
 import { treeId } from './fingerprint.ts';
 import { readTreeCache, treeCachePath } from './treeCache.ts';
 import { readWorkspaceMaterials, verifyWorkspaceMaterials } from './workspaceMaterials.ts';
-import type { WorkspaceMaterials } from './workspaceMaterials.ts';
+import type { WorkspaceMaterial } from './workspaceMaterials.ts';
 import { verifyWorkspaceCheckout } from './workspaceCreate.ts';
 import { assertWorkspaceClean, refuseWorkspaceDaemons, verifyReceipt, workspaceOwnedPaths } from './workspaceFinish.ts';
 import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema } from './workspaceRegistry.ts';
@@ -79,7 +79,7 @@ function check(
 	role: Role,
 	lock: LockHandle | undefined,
 	extra: readonly string[],
-	materials: WorkspaceMaterials['files']
+	materials: WorkspaceMaterial[]
 ): void {
 	const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials)] : extra;
 	verifyWorkspaceCheckout(record, role, true);
@@ -97,6 +97,7 @@ function check(
 		paths.add(entry.slice(tab + 1));
 	}
 	const directories = new Set<string>();
+	if (role === 'fork') for (const material of materials) if (material.kind === 'empty-directory') directories.add(material.path);
 	for (const path of paths) {
 		const parts = path.split('/');
 		for (let count = 1; count < parts.length; count++) directories.add(parts.slice(0, count).join('/'));
