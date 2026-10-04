@@ -243,3 +243,35 @@ REPAIR-012 вернули один и тот же P1 — двумя незави
 Ни одна из этих строк не считается зелёной из-за того, что соседняя проверка
 прошла. Следующий аудит обязан перенести каждую с новым disposition, а не
 удалить молча.
+
+
+## 2026-10-04 — feature-proof workspace lifecycle audit
+
+_Run by: the current coding session under the owner's all-stages mandate. Scope: PROP-020/P0.11 and its interaction with existing cycle/publish/runtime code. This is not an independent re-audit of REPAIR-014 or a claim of universal filesystem/OS safety. Previous unresolved inventory: CK-A67–CK-A72._
+
+| ID | Cat | Finding / locator | Sev | Disposition |
+| --- | --- | --- | --- | --- |
+| 2026-10-04-01 | A1/A3 | Launcher cycle/publish assertions stopped before finish/remove; accumulated runtime made the complete lifecycle fail (`workspace.test.ts`, `workspaceFinish.ts`) | P1 | fixed dd27172 |
+| 2026-10-04-02 | A1 | Child pair operational Git calls depended on a temporary source checkout (`workspaceCreate.ts`, `workspaceRemove.ts`) | P1 | fixed dd27172; common-directory operations and linked-source removal test |
+| 2026-10-04-03 | C2/C3 | Earlier PROP-020 and campaign safe-stop text still described already implemented CLI/lifecycle work as pending | P2 | filed campaign/status reconciliation in this close-out |
+| 2026-10-04-04 | B1/B2 | Installed structural engine cannot execute Vitest and its ESLint/test-gate lanes are policy-disabled (`conform.toml`) | P2 | accepted existing dispatch boundary; mandatory separate Vitest/typecheck/format/runtime/trace/docs/supply gates run before native floor; revisit compatible engine/TS7 ESLint |
+| 2026-10-04-05 | D4 | Configured npm audit endpoint returned HTTP 404 rather than vulnerability data | P3 | accepted for this run only; public npm audit override returned zero info/low/moderate/high/critical findings; revisit endpoint support next audit |
+| CK-A67 | A1/A3 | Independent adversarial audit of REPAIR-014 remains absent | P1 | open (carried); this session's tests do not substitute for the requested independent round |
+| CK-A68 | A1/C4 | Complete native Windows/macOS protocol and concurrency proof remains absent | P1 | open (carried); a few focused Windows tests and complete Linux proof do not close it |
+| CK-A69 | C4 | btrfs/APFS/overlayfs/network filesystem inode/locking evidence remains incomplete | P2 | open (carried); no new filesystem universality claim |
+| CK-A70 | A1/C4 | Multi-machine, namespace and broader concurrency axes remain unmeasured | P2 | open (carried); deterministic lifecycle barriers cover new participating API interleavings only |
+| CK-A71 | D1 | Independent review of the R14 mutation ledger remains absent | P3 | open (carried) |
+| CK-A72 | A2 | Earlier teardown flake was not reproduced or causally closed | P3 | open (carried); current complete run passed it, which is not causal closure |
+
+**Inventory and evidence.**
+
+- A1/A3: reviewed the intended lifecycle against the actual launcher assertions and temporary Git worktrees. This exposed missing post-cycle/publish cleanup, stale apply evidence and source-checkout dependence. `dd27172` archives only recognized closed runtime through existing validators; stale cycle apply evidence still refuses until explicit load/reload. No blanket runtime cleanup permission was added.
+- A2: workspace-specific tests contain no new skip/quarantine. The complete non-root offline Linux run passed 2866 tests in 231 files; four existing conditional cases and one file remain skipped by their original predicates. Skips were not forced on an incompatible platform and are not reported as passes.
+- B1/B2: `vitest.config.ts` reaches `packages/*`; five package typecheck/runtime builds, public-format scanner, source trace, generated docs/protocol checks and supply-kit checks are mandatory. Native Rust structural engine runs in place because the npm Vibe launcher schema is incompatible with the pinned repository dispatch. Existing three disabled engine lanes are documented and not widened.
+- C1/C2/C3: generated command reference and README examples are exercised through the launcher and docs gate. Scope trace is non-vacuous for 295 source files; native specmap reports its existing zero-tagged-code limitation. Its green result alone is not treated as code trace proof. Campaign/steward records distinguish fixtures from actual partner/consumer acceptance.
+- C4: local exports, Git heads, workspace/common-directory registration and immutable byte archives were inspected through real tools. External partner, actual commercial/signing/namespace custody and measured consumer expansion remain requirements of phases 4/5, not facts supplied by fixtures.
+- D1/D2/D3: workspace source was searched for TODO/FIXME, unsafe casts/ts-ignore and blanket lint suppression; no new markers were found. Existing eight file-length findings remain frozen, with zero new structural findings. Older unresolved inventory above is retained rather than silently accepted by neighbouring green checks.
+- D4: no dependency upgrade was performed during audit. `npm audit --registry=https://registry.npmjs.org --json --ignore-scripts` reported total 0 vulnerabilities on this run; the configured endpoint produced no security result. This is current advisory evidence, not a guarantee about future advisories.
+- Depth: strict runtime/format boundaries, UUID-specific authority, exact physical writer capabilities and retained content evidence are implemented in libraries with thin CLI surfaces. The Node/TypeScript native floor ran all four available structural steps; the full suite and separate surrounding gates passed. Global portability and independent base-lock assurance remain the carried findings above.
+
+**Close-out limit.** PROP-020/P0.11 is a technical implementation candidate under the reproduced Linux/standard local-Git conditions. The global carried P1 findings remain shipping/audit risks. No full-goal completion, legal approval, real external supplier or actual consumer-expansion acceptance is claimed here.
