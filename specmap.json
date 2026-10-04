@@ -11579,7 +11579,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e23e516d14fd64c9b582660d2dd2f3399ba53d61527ab94cc1442d194986e1e1",
+      "content_hash": "sha256:809121840e2db384b3593bade1ee3bca72a9a09a6e76fff6e3ab3c2b30b90260",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -11588,7 +11588,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:6800af842a002d38a1a392caec4ed0ca6eed4b8c9ced80397986f08fa7ded2c9",
+      "content_hash": "sha256:dbfb28186d811060bc1cfd3d221213f447be441d3fee824a0c2783c83f52006b",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -11687,10 +11687,10 @@
     },
     {
       "anchor": "ORGANIZATION-OWN-SCOPES",
-      "content_hash": "sha256:f0448f8976ba8f1c9eb2560a741bb253ceb830ac09ff39c706a1d50eb97edbe2",
+      "content_hash": "sha256:a8ea101089ac3034444b141f0da3ea1c1cf2e5bad2b40f13ae1201934e91d334",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "Policy/store v1 retain their strict shape and original bytes; v1 never admits own scope fields or v2 profiles. Explicit organization policy v2 keeps a default ownLicense and adds ownLicenseScopes with contained repository-relative glob paths and exact licence expressions; store v2 holds validated v1/v2 profiles. All scopes come from user/admin authority, not patchset selection. A source must provide its contained path; one matching scope overrides the default, zero matches uses the default, and multiple matching scopes refuse even when their expressions coincide. Unsafe/repeated patterns and unapproved standard/custom licence identifiers refuse. Scope resolution cannot change ownership, erase foreign provenance, rewrite upstream licensing or weaken additional prohibitions. An all-own assembled artifact keeps the exact AND of inspected, independently policy-checked source expressions; OR/partial substitution refuses. Source-to-artifact/carrier/policy hashes and original report/SPDX formats remain intact. Custom licence text and third-party approvals must come from actual authority, never invented to turn a fixture or consumer green. Versioned scopes do not assert legal compatibility of derivative distribution. @status:impl/wip",
+      "heading": "Policy/store v1 retain their strict shape and original bytes; v1 never admits own scope fields or v2 profiles. Explicit organization policy v2 keeps a default ownLicense and adds ownLicenseScopes with contained repository-relative glob paths and exact licence expressions; store v2 holds validated v1/v2 profiles. All scopes come from user/admin authority, not patchset selection. A source must provide its contained path; one matching scope overrides the default, zero matches uses the default, and multiple matching scopes refuse even when their expressions coincide. Unsafe/repeated patterns and unapproved standard/custom licence identifiers refuse. Scope resolution cannot change ownership, erase foreign provenance, rewrite upstream licensing or weaken additional prohibitions. An all-own assembled artifact keeps the exact AND of inspected, independently policy-checked source expressions; OR/partial substitution refuses. Source-to-artifact/carrier/policy hashes and original report/SPDX formats remain intact. Custom licence text and third-party approvals must come from actual authority, never invented to turn a fixture or consumer green. Versioned scopes do not assert legal compatibility of derivative distribution. @status:impl/done",
       "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-OWN-SCOPES"
     },
