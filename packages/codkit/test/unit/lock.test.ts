@@ -120,10 +120,12 @@ describe('acquireLock', () => {
 		const outside = makeTempRoot('lock-symlink-outside');
 		const sentinel = join(outside, 'sentinel.txt');
 		writeFileSync(sentinel, 'outside\n', 'utf8');
-		if (level === 'codkit') symlinkSync(outside, join(patchset, '.codkit'), 'dir');
+		// NTFS junctions exercise directory reparse refusal without symlink privilege.
+		const linkKind = process.platform === 'win32' ? 'junction' : 'dir';
+		if (level === 'codkit') symlinkSync(outside, join(patchset, '.codkit'), linkKind);
 		else {
 			mkdirSync(join(patchset, '.codkit'));
-			symlinkSync(outside, join(patchset, '.codkit', 'locks'), 'dir');
+			symlinkSync(outside, join(patchset, '.codkit', 'locks'), linkKind);
 		}
 		expect(() => acquireLock(patchset, TREE_ID, 'symlink')).toThrow(/unsafe lock path|symlink/);
 		expect(readFileSync(sentinel, 'utf8')).toBe('outside\n');
