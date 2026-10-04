@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-006#root */
+import { decodeTextArtifact } from './artifactCodec.js';
 import { pinKey } from './pinIdentity.js';
 // The inventory: every intervention of the delta, as one generated document.
 // Contract: PROP-006 sec. 3-4.
@@ -38,7 +39,7 @@ import { ckError } from './messages.js';
 import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.js';
 import { ownCodeFilter, ownedRootsOf } from './ownedRoots.js';
 import { readVersionLiteral } from './runtimePackage.js';
-import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
+import { PATCH_FILE_SUFFIX } from './patchFormat.js';
 import { PATCHES_DIR, patchSetCommitId } from './syncEngine.js';
 export const INVENTORY_SCHEMA_VERSION = 2;
 /** Where the generated document is written, relative to the patchset root. */
@@ -456,7 +457,7 @@ export function loadPatches(patchesDir, conventions) {
         .sort((left, right) => compareBytes(left, right))
         .map((name) => {
         const artifact = `${PATCHES_DIR}/${name}`;
-        return { artifact, patch: parseCkpatch(readFileSync(join(dir, name)), conventions, artifact) };
+        return { artifact, patch: decodeTextArtifact(readFileSync(join(dir, name)), conventions, artifact) };
     });
 }
 function patchEntry(entry) {

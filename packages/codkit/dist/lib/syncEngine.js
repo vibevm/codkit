@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
+import { decodeTextArtifact } from './artifactCodec.js';
 import { workspaceForkReceipt } from './workspaceReceipt.js';
 import { pinKey } from './pinIdentity.js';
 // The sync engine: bring the fork tree to the pin and put the delta on it.
@@ -42,7 +43,7 @@ import { ckError, isCkError } from './messages.js';
 import { syncAllOwnCode } from './ownCopy.js';
 import { classifyAllOwn, ownMarkFilesOf, ownMarkState } from './ownSides.js';
 import { isBuildOutput, ownedRootOf, ownedRootsOf } from './ownedRoots.js';
-import { PATCH_FILE_SUFFIX, encodePatchName, parseCkpatch } from './patchFormat.js';
+import { PATCH_FILE_SUFFIX, encodePatchName } from './patchFormat.js';
 import { checkTree, formatCheckLine } from './treeIdentity.js';
 import { TREE_CACHE_SCHEMA_VERSION, TREE_MARK_SCHEMA_VERSION, effectiveGitPath, fastPathOk, gitCommonDirOf, gitDirOf, readTreeCache, readTreeMark, writeTreeCache, writeTreeMark } from './treeCache.js';
 import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, foreignCommits, treeHeadError, writeConsumedRef } from './treeCommits.js';
@@ -692,7 +693,7 @@ function buildPlan(patchesDir, conventions, overlays, onWarn) {
     const artifacts = [];
     for (const name of listPatchFiles(patchesDir)) {
         const artifactPath = `${PATCHES_DIR}/${name}`;
-        const patch = parseCkpatch(readFileSync(join(patchesDir, ...PATCHES_DIR.split('/'), name)), conventions, artifactPath);
+        const patch = decodeTextArtifact(readFileSync(join(patchesDir, ...PATCHES_DIR.split('/'), name)), conventions, artifactPath);
         artifacts.push({ kind: 'patch', id: patch.header.id, target: patch.targetPath, artifactPath, patch });
     }
     artifacts.push(...overlayArtifacts(overlays));

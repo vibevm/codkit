@@ -11885,6 +11885,33 @@
     },
     {
       "anchor": "root",
+      "content_hash": "sha256:f30a0cbf70377ce350719b4bf2dd505ff832ce011db593fd102eb089e3373657",
+      "doc_path": "modules/codkit/PROP-021",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-021-artifact-codec.xml",
+      "heading": "PROP-021: Artifact representation seam",
+      "line": 3,
+      "uri": "spec://codkit/modules/codkit/PROP-021#root"
+    },
+    {
+      "anchor": "ARTIFACT-CODEC",
+      "content_hash": "sha256:5c38199df67f56ce3e10cafb4515d7e75f43bfe24a100c904e98b73242868909",
+      "doc_path": "modules/codkit/PROP-021",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-021-artifact-codec.xml",
+      "heading": "The internal codec contract identifies targets, plans/applies/extracts, fingerprints deterministic artifact bytes, reports operations and inventory metadata, and declares discipline compatibility. The installed seam registers only text-patch-v2, preserving strict v2 parsing, lossless serialization, normalized regeneration and exact unified application. Unknown codecs/profiles refuse before writes. This codec advertises add/modify only; delete/move/replace remain vocabulary, not invented capability. File existence is explicit, and target/base/output digests bind a plan; changed base or plan output refuses. Known failures are typed results; programmer failures are not silently collapsed. No new persisted codec field, binary/delete implementation, ABI widening or changed delta/history domain is introduced. CLI and engines consume library capabilities rather than duplicate codec behavior. @status:impl/wip",
+      "line": 5,
+      "uri": "spec://codkit/modules/codkit/PROP-021#ARTIFACT-CODEC"
+    },
+    {
+      "anchor": "PATH-MIGRATION-DESIGN",
+      "content_hash": "sha256:01626623539ad5903591b0d918664d9dcf690661cf31f3d8882356c3b00e1bd3",
+      "doc_path": "modules/codkit/PROP-021",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-021-artifact-codec.xml",
+      "heading": "Legacy text-patch-v2 retains the / to __ filename mapping and its existing refusal for __ in a target. Do not broaden its reader or rename artifacts silently. A future representation must carry explicit target/operation data with safe artifact IDs or a uniquely reversible filename encoding, bind payload and target checksums and version its dispatch. Compatibility cases must cover spaces, quotes and __, rename conflicts and unsupported versions before writes. Migration is explicit: inspect and validate the old repository, construct a complete collision-free target manifest, preview old/new digests, then write under checkout custody with compare barriers. A migration failure keeps original bytes; no rollback of external delivery is implied. Implementation awaits a measured consumer need and is not part of this v2 seam. @status:spec/wip",
+      "line": 6,
+      "uri": "spec://codkit/modules/codkit/PROP-021#PATH-MIGRATION-DESIGN"
+    },
+    {
+      "anchor": "root",
       "content_hash": "sha256:c3849c7bc21508e9b2ef30cfe3828e3d126838bae359eb5884a084f83a56ca4e",
       "doc_path": "modules/theia/PROP-001",
       "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",

@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-006#root */
+import { decodeTextArtifact } from './artifactCodec.ts';
 import { pinKey } from './pinIdentity.ts';
 // The inventory: every intervention of the delta, as one generated document.
 // Contract: PROP-006 sec. 3-4.
@@ -48,7 +49,7 @@ import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
 import { ownCodeFilter, ownedRootsOf } from './ownedRoots.ts';
 import type { OwnedRoot } from './ownedRoots.ts';
 import { readVersionLiteral } from './runtimePackage.ts';
-import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.ts';
+import { PATCH_FILE_SUFFIX } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
 import { PATCHES_DIR, patchSetCommitId } from './syncEngine.ts';
 import type { ProjectType } from '@codkit/type-api';
@@ -663,7 +664,7 @@ export function loadPatches(patchesDir: string, conventions: Conventions): reado
 		.sort((left, right) => compareBytes(left, right))
 		.map((name) => {
 			const artifact = `${PATCHES_DIR}/${name}`;
-			return { artifact, patch: parseCkpatch(readFileSync(join(dir, name)), conventions, artifact) };
+			return { artifact, patch: decodeTextArtifact(readFileSync(join(dir, name)), conventions, artifact) };
 		});
 }
 

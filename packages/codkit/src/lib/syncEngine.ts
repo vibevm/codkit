@@ -1,4 +1,5 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
+import { decodeTextArtifact } from './artifactCodec.ts';
 import { workspaceForkReceipt } from './workspaceReceipt.ts';
 import type { WorkspaceRecord } from './workspaceRegistry.ts';
 import { pinKey } from './pinIdentity.ts';
@@ -82,7 +83,7 @@ import { classifyAllOwn, ownMarkFilesOf, ownMarkState } from './ownSides.ts';
 import { isBuildOutput, ownedRootOf, ownedRootsOf } from './ownedRoots.ts';
 import type { OwnedRoot } from './ownedRoots.ts';
 import type { OwnDivergence, OwnSyncReport } from './ownCopy.ts';
-import { PATCH_FILE_SUFFIX, encodePatchName, parseCkpatch } from './patchFormat.ts';
+import { PATCH_FILE_SUFFIX, encodePatchName } from './patchFormat.ts';
 import type { ParsedPatch } from './patchFormat.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { checkTree, formatCheckLine } from './treeIdentity.ts';
@@ -1000,7 +1001,7 @@ function buildPlan(
 	const artifacts: Artifact[] = [];
 	for (const name of listPatchFiles(patchesDir)) {
 		const artifactPath = `${PATCHES_DIR}/${name}`;
-		const patch = parseCkpatch(readFileSync(join(patchesDir, ...PATCHES_DIR.split('/'), name)), conventions, artifactPath);
+		const patch = decodeTextArtifact(readFileSync(join(patchesDir, ...PATCHES_DIR.split('/'), name)), conventions, artifactPath);
 		artifacts.push({ kind: 'patch', id: patch.header.id, target: patch.targetPath, artifactPath, patch });
 	}
 	artifacts.push(...overlayArtifacts(overlays));
