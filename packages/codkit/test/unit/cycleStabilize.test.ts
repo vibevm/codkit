@@ -281,6 +281,7 @@ describe('cycle dependency advisory and stabilization adapter', () => {
 				'\t\t\t\t\texpectedTreeId: treeId(options.resolution.path),\n' +
 				'\t\t\t\t\texpectedTreePath: options.resolution.path,\n' +
 				'\t\t\t\t\t...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),\n' +
+				'\t\t\t\t\t...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot }),\n' +
 				'\t\t\t\t\tonWarn: (text) => out.warn(text)\n' +
 				'\t\t\t\t});'
 		);

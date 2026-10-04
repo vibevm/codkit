@@ -241,5 +241,9 @@ it('binds a real daemon to its workspace and refuses a copied record in another 
 	} finally {
 		const stopped = run('task', 'build', 'down', '--channel', 'transpile');
 		expect(stopped.status, stopped.stderr).toBe(0);
+		const finished = f.run(['finish', 'task']);
+		expect(finished.status, finished.stderr).toBe(0);
+		const removed = f.run(['remove', 'task']);
+		expect(removed.status, removed.stderr).toBe(0);
 	}
 });

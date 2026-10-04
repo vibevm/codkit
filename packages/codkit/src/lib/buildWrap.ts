@@ -27,6 +27,7 @@ import type { ProjectType } from '@codkit/type-api';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.ts';
 import type { WorkspaceId } from './workspaceRegistry.ts';
+import { archiveWorkspaceLog } from './workspaceLogs.ts';
 import { updateWorkspaceRegistry, workspaceRegistryRoot } from './workspaceRegistry.ts';
 import { validateChannelSet } from './buildChannel.ts';
 import { readContainedFile } from './containedFile.ts';
@@ -347,6 +348,7 @@ export type TreeBinding = {
 export type BoundProbe = ProcessProbeOptions & TreeBinding;
 
 export type ProcessProbeOptions = {
+	readonly workspaceRegistryRoot?: string;
 	readonly expectedWorkspaceId?: WorkspaceId;
 	readonly platform?: NodeJS.Platform;
 	readonly run?: ProcessRunner;
@@ -1464,6 +1466,8 @@ async function downChannelLocked(patchesDir: string, channel: string, lock: Daem
 			return { channel, action: 'not-running', pid: 0 };
 		}
 		probe.beforeRemove?.();
+		assertRecordGeneration(patchesDir, channel, status.recordBytes);
+		if (status.record !== null) archiveWorkspaceLog(patchesDir, status.record, probe.workspaceRegistryRoot);
 		if (!removeRecord(patchesDir, channel, lock, status.recordBytes, probe.afterRemoveCompare)) {
 			throw ckError(
 				'LOCKED',
@@ -1505,6 +1509,7 @@ async function downChannelLocked(patchesDir: string, channel: string, lock: Daem
 	}
 	probe.beforeRemove?.();
 	assertRecordGeneration(patchesDir, channel, status.recordBytes);
+	archiveWorkspaceLog(patchesDir, status.record, probe.workspaceRegistryRoot);
 	if (status.recordBytes === undefined || !removeRecord(patchesDir, channel, lock, status.recordBytes, probe.afterRemoveCompare)) {
 		throw ckError('LOCKED', `${channel}: daemon record changed before completed teardown`, 'inspect the current record; it was preserved');
 	}

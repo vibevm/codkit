@@ -1205,6 +1205,25 @@
       ]
     },
     {
+      "id": "workspace-daemon-log",
+      "field": "codkitWorkspaceDaemonLog",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/workspaceLogs.ts",
+      "owner": "Codkit workspace daemon teardown",
+      "trustBoundary": "Closed owned daemon generations archive exact log bytes in external user authority before retirement; checked digests authorize only matching current/rotated log files.",
+      "compatibility": "Exact strict v1, with malformed or future versions refused. Legacy unselected logs are not adopted.",
+      "migration": "No rewriting of existing daemon/material/config formats; archive is explicit at proven teardown.",
+      "fingerprint": "Does not enter delta/history fingerprints; archive receipts bind workspace/tree/nonce/channel and log digest/size.",
+      "contract": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-DAEMON-LOGS",
+      "tests": [
+        "packages/codkit/test/unit/workspaceLogs.test.ts",
+        "packages/codkit/test/e2e/workspace.test.ts"
+      ]
+    },
+    {
       "id": "workspace-input-delivery",
       "field": "codkitWorkspaceInputDelivery",
       "version": 1,

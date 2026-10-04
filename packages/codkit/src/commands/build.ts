@@ -95,6 +95,7 @@ function runUp(ctx: CommandContext, watch: BuildWatch, requested: string | null,
 	const channels = selectChannels(watch, requested, requireProjectType(ctx).build.defaultChannels);
 	const id = treeId(treeDir);
 	const workspaceId = workspaceIdOf(ctx);
+	const registryRoot = ctx.config?.workspace?.registryRoot;
 
 	// The environment contract of PROP-010 sec. 2: a warning, never a refusal.
 	const inotify = inotifyWarning();
@@ -109,7 +110,8 @@ function runUp(ctx: CommandContext, watch: BuildWatch, requested: string | null,
 		const state = statusOf(ctx.patchesDir, known.name, {
 			expectedTreeId: id,
 			expectedTreePath: treeDir,
-			...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId })
+			...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId }),
+			...(registryRoot === undefined ? {} : { workspaceRegistryRoot: registryRoot })
 		});
 		if (state.state === 'living' && state.record !== null) {
 			ourGroups.add(state.record.pid);
@@ -172,7 +174,7 @@ function runStatus(ctx: CommandContext, watch: BuildWatch, requested: string | n
 	);
 	const rows: JsonValue[] = [];
 	for (const channel of channels) {
-		const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx)));
+		const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot));
 		const pid = state.state === 'dead' ? 0 : (state.record?.pid ?? 0);
 		ctx.out.info(`${channel.name.padEnd(12)} ${state.state.padEnd(7)} ${state.detail}`);
 		rows.push({
@@ -211,7 +213,7 @@ async function runDown(ctx: CommandContext, watch: BuildWatch, requested: string
 		// the command reported nothing about the channels it did stop.
 		try {
 			const result = await downChannel(ctx.patchesDir, channel.name, {
-				...treeProbe(treeDir, workspaceIdOf(ctx)),
+				...treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot),
 				onWarn: (text) => ctx.out.warn(text)
 			});
 			if (result.action === 'not-running') {
@@ -253,7 +255,9 @@ async function runErrors(
 		// No channel named: every channel that has an answer - one that is
 		// running, and one whose daemon is gone while its log still holds the
 		// pass it finished.
-		channels = watch.channels.filter((channel) => hasAnswer(ctx.patchesDir, channel, treeDir, workspaceIdOf(ctx)));
+		channels = watch.channels.filter((channel) =>
+			hasAnswer(ctx.patchesDir, channel, treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot)
+		);
 		if (channels.length === 0) {
 			ctx.out.warn(`no build daemon is running for this tree; hint: run codkit build up`);
 			ctx.out.setData({ channels: [] });
@@ -271,7 +275,7 @@ async function runErrors(
 	const rows: JsonValue[] = [];
 	let worst = EXIT_OK;
 	for (const channel of channels) {
-		const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx)));
+		const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot));
 		if (state.state === 'starting' || state.state === 'unknown') {
 			ctx.out.warn(`${channel.name}: ${state.detail}; refusing to read or certify any existing log`);
 			rows.push({ channel: channel.name, state: state.state, detail: state.detail });
@@ -283,7 +287,14 @@ async function runErrors(
 			// carries no finished pass. When it does, that pass is the answer, with
 			// a warning that nothing is watching the tree any more - which is what
 			// makes a single CI pass usable after its daemon has ended.
-			const finished = gonePass(ctx.patchesDir, channel, state.record !== null, treeDir, workspaceIdOf(ctx));
+			const finished = gonePass(
+				ctx.patchesDir,
+				channel,
+				state.record !== null,
+				treeDir,
+				workspaceIdOf(ctx),
+				ctx.config?.workspace?.registryRoot
+			);
 			if (finished === null) {
 				ctx.out.warn(`${channel.name}: no daemon is running (${state.detail}); ` + `hint: run codkit build up --channel ${channel.name}`);
 				rows.push({ channel: channel.name, state: 'dead' });
@@ -303,7 +314,10 @@ async function runErrors(
 			continue;
 		}
 
-		const outcome = await readPass(ctx.patchesDir, channel, { timeoutMs, probe: treeProbe(treeDir, workspaceIdOf(ctx)) });
+		const outcome = await readPass(ctx.patchesDir, channel, {
+			timeoutMs,
+			probe: treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot)
+		});
 		if (outcome.state === 'gone') {
 			ctx.out.warn(
 				`${channel.name}: the daemon stopped before the pass finished (log ${logPath(ctx.patchesDir, channel.name)}); ` +
@@ -353,18 +367,19 @@ function gonePass(
 	channel: ChannelConfig,
 	hasRecord: boolean,
 	treeDir: string,
-	workspaceId?: WorkspaceId
+	workspaceId?: WorkspaceId,
+	registryRoot?: string
 ): PassReport | null {
-	return hasRecord ? readFinishedPass(patchesDir, channel, { probe: treeProbe(treeDir, workspaceId) }) : null;
+	return hasRecord ? readFinishedPass(patchesDir, channel, { probe: treeProbe(treeDir, workspaceId, registryRoot) }) : null;
 }
 
 /** Whether `errors` has anything to report about a channel it was not asked for. */
-function hasAnswer(patchesDir: string, channel: ChannelConfig, treeDir: string, workspaceId?: WorkspaceId): boolean {
-	const state = statusOf(patchesDir, channel.name, treeProbe(treeDir, workspaceId));
+function hasAnswer(patchesDir: string, channel: ChannelConfig, treeDir: string, workspaceId?: WorkspaceId, registryRoot?: string): boolean {
+	const state = statusOf(patchesDir, channel.name, treeProbe(treeDir, workspaceId, registryRoot));
 	if (state.state !== 'dead') {
 		return true;
 	}
-	return gonePass(patchesDir, channel, state.record !== null, treeDir, workspaceId) !== null;
+	return gonePass(patchesDir, channel, state.record !== null, treeDir, workspaceId, registryRoot) !== null;
 }
 
 function workspaceIdOf(ctx: CommandContext): WorkspaceId | undefined {
@@ -373,12 +388,19 @@ function workspaceIdOf(ctx: CommandContext): WorkspaceId | undefined {
 
 function treeProbe(
 	treeDir: string,
-	workspaceId?: WorkspaceId
-): { readonly expectedTreeId: string; readonly expectedTreePath: string; readonly expectedWorkspaceId?: WorkspaceId } {
+	workspaceId?: WorkspaceId,
+	registryRoot?: string
+): {
+	readonly expectedTreeId: string;
+	readonly expectedTreePath: string;
+	readonly expectedWorkspaceId?: WorkspaceId;
+	readonly workspaceRegistryRoot?: string;
+} {
 	return {
 		expectedTreeId: treeId(treeDir),
 		expectedTreePath: treeDir,
-		...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId })
+		...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId }),
+		...(registryRoot === undefined ? {} : { workspaceRegistryRoot: registryRoot })
 	};
 }
 

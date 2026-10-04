@@ -182,6 +182,7 @@ describe('the channel calls of the build pass carry a warning channel', () => {
 				'\t\t\t\t\texpectedTreeId: id,\n' +
 				'\t\t\t\t\texpectedTreePath: tree,\n' +
 				'\t\t\t\t\t...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),\n' +
+				'\t\t\t\t\t...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot }),\n' +
 				'\t\t\t\t\tonWarn: (text) => out.warn(text)\n' +
 				'\t\t\t\t});'
 		);

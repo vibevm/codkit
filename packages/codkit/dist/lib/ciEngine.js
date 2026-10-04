@@ -749,7 +749,8 @@ async function compileOnce(options, steps) {
         const state = statusOf(patchesDir, known.name, {
             expectedTreeId: treeId(tree),
             expectedTreePath: tree,
-            ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id })
+            ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),
+            ...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot })
         });
         if (state.state === 'living' && state.record !== null) {
             ourGroups.add(state.record.pid);
@@ -796,7 +797,8 @@ async function compileOnce(options, steps) {
                 probe: {
                     expectedTreeId: id,
                     expectedTreePath: tree,
-                    ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id })
+                    ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),
+                    ...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot })
                 }
             });
             if (outcome.state !== 'ok') {
@@ -839,6 +841,7 @@ async function compileOnce(options, steps) {
                     expectedTreeId: id,
                     expectedTreePath: tree,
                     ...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),
+                    ...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot }),
                     onWarn: (text) => out.warn(text)
                 });
                 if (result.action !== 'not-running') {

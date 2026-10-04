@@ -2,6 +2,7 @@
 // Finish seals clean/save evidence while checkout writer capabilities are held.
 import { verifyReceipt } from './workspaceReceipt.ts';
 import { captureWorkspaceMaterials, writeWorkspaceMaterials } from './workspaceMaterials.ts';
+import { workspaceLogPaths } from './workspaceLogs.ts';
 export { verifyReceipt } from './workspaceReceipt.ts';
 import { readdirSync } from 'node:fs';
 import { relative } from 'node:path';
@@ -48,6 +49,7 @@ export function finishWorkspace(options: {
 				throw ckError('CONFIG', 'workspace configuration/type custody differs from registry');
 			const patchsetHead = git(record.patchset.path, ['rev-parse', 'HEAD']);
 			const materials = captureWorkspaceMaterials(record, config, options.type, patchsetHead, options.registryRoot);
+			const logs = workspaceLogPaths(options.registryRoot, record);
 			for (const [index, role] of (['patchset', 'fork'] as const).entries()) {
 				const cache = role === 'patchset' ? readTreeCache(record.patchset.path, treeId(record.fork.path)) : null;
 				assertWorkspaceClean(
@@ -56,8 +58,8 @@ export function finishWorkspace(options: {
 					cache === null
 						? role === 'fork'
 							? materials.map((file) => file.path)
-							: []
-						: [relative(record.patchset.path, treeCachePath(record.patchset.path, treeId(record.fork.path))).replaceAll('\\', '/')]
+							: logs
+						: [...logs, relative(record.patchset.path, treeCachePath(record.patchset.path, treeId(record.fork.path))).replaceAll('\\', '/')]
 				);
 			}
 			const forkHead = git(record.fork.path, ['rev-parse', 'HEAD']);
@@ -148,12 +150,7 @@ export function refuseWorkspaceDaemons(root: string, workspaceId?: WorkspaceId):
 	}
 	for (const file of files.filter((file) => file.endsWith('.json'))) {
 		const state = readRecordState(root, file.slice(0, -5));
-		if (
-			state.state !== 'valid' ||
-			(workspaceId !== undefined && state.record.workspaceId !== workspaceId) ||
-			state.record.pid === 0 ||
-			isAlive(state.record.pid)
-		)
+		if (workspaceId !== undefined || state.state !== 'valid' || state.record.pid === 0 || isAlive(state.record.pid))
 			throw ckError('LOCKED', 'workspace has an active or unresolved build daemon');
 	}
 }

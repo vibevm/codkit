@@ -57,6 +57,7 @@ function runUp(ctx, watch, requested, treeDir) {
     const channels = selectChannels(watch, requested, requireProjectType(ctx).build.defaultChannels);
     const id = treeId(treeDir);
     const workspaceId = workspaceIdOf(ctx);
+    const registryRoot = ctx.config?.workspace?.registryRoot;
     // The environment contract of PROP-010 sec. 2: a warning, never a refusal.
     const inotify = inotifyWarning();
     if (inotify !== null) {
@@ -69,7 +70,8 @@ function runUp(ctx, watch, requested, treeDir) {
         const state = statusOf(ctx.patchesDir, known.name, {
             expectedTreeId: id,
             expectedTreePath: treeDir,
-            ...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId })
+            ...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId }),
+            ...(registryRoot === undefined ? {} : { workspaceRegistryRoot: registryRoot })
         });
         if (state.state === 'living' && state.record !== null) {
             ourGroups.add(state.record.pid);
@@ -121,7 +123,7 @@ function runStatus(ctx, watch, requested, treeDir) {
     const channels = selectChannels(watch, requested, watch.channels.map((channel) => channel.name));
     const rows = [];
     for (const channel of channels) {
-        const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx)));
+        const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot));
         const pid = state.state === 'dead' ? 0 : (state.record?.pid ?? 0);
         ctx.out.info(`${channel.name.padEnd(12)} ${state.state.padEnd(7)} ${state.detail}`);
         rows.push({
@@ -154,7 +156,7 @@ async function runDown(ctx, watch, requested, treeDir) {
         // the command reported nothing about the channels it did stop.
         try {
             const result = await downChannel(ctx.patchesDir, channel.name, {
-                ...treeProbe(treeDir, workspaceIdOf(ctx)),
+                ...treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot),
                 onWarn: (text) => ctx.out.warn(text)
             });
             if (result.action === 'not-running') {
@@ -189,7 +191,7 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
         // No channel named: every channel that has an answer - one that is
         // running, and one whose daemon is gone while its log still holds the
         // pass it finished.
-        channels = watch.channels.filter((channel) => hasAnswer(ctx.patchesDir, channel, treeDir, workspaceIdOf(ctx)));
+        channels = watch.channels.filter((channel) => hasAnswer(ctx.patchesDir, channel, treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot));
         if (channels.length === 0) {
             ctx.out.warn(`no build daemon is running for this tree; hint: run codkit build up`);
             ctx.out.setData({ channels: [] });
@@ -206,7 +208,7 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
     const rows = [];
     let worst = EXIT_OK;
     for (const channel of channels) {
-        const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx)));
+        const state = statusOf(ctx.patchesDir, channel.name, treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot));
         if (state.state === 'starting' || state.state === 'unknown') {
             ctx.out.warn(`${channel.name}: ${state.detail}; refusing to read or certify any existing log`);
             rows.push({ channel: channel.name, state: state.state, detail: state.detail });
@@ -218,7 +220,7 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
             // carries no finished pass. When it does, that pass is the answer, with
             // a warning that nothing is watching the tree any more - which is what
             // makes a single CI pass usable after its daemon has ended.
-            const finished = gonePass(ctx.patchesDir, channel, state.record !== null, treeDir, workspaceIdOf(ctx));
+            const finished = gonePass(ctx.patchesDir, channel, state.record !== null, treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot);
             if (finished === null) {
                 ctx.out.warn(`${channel.name}: no daemon is running (${state.detail}); ` + `hint: run codkit build up --channel ${channel.name}`);
                 rows.push({ channel: channel.name, state: 'dead' });
@@ -235,7 +237,10 @@ async function runErrors(ctx, watch, requested, treeDir, config) {
             }
             continue;
         }
-        const outcome = await readPass(ctx.patchesDir, channel, { timeoutMs, probe: treeProbe(treeDir, workspaceIdOf(ctx)) });
+        const outcome = await readPass(ctx.patchesDir, channel, {
+            timeoutMs,
+            probe: treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot)
+        });
         if (outcome.state === 'gone') {
             ctx.out.warn(`${channel.name}: the daemon stopped before the pass finished (log ${logPath(ctx.patchesDir, channel.name)}); ` +
                 `hint: run codkit build up --channel ${channel.name}`);
@@ -273,25 +278,26 @@ function mineOnly(errors, treeDir, ownRoot, targets) {
  * record's run. A channel with no record was never started here, or was stopped
  * with `build down` - which retires the channel, and with it the answer.
  */
-function gonePass(patchesDir, channel, hasRecord, treeDir, workspaceId) {
-    return hasRecord ? readFinishedPass(patchesDir, channel, { probe: treeProbe(treeDir, workspaceId) }) : null;
+function gonePass(patchesDir, channel, hasRecord, treeDir, workspaceId, registryRoot) {
+    return hasRecord ? readFinishedPass(patchesDir, channel, { probe: treeProbe(treeDir, workspaceId, registryRoot) }) : null;
 }
 /** Whether `errors` has anything to report about a channel it was not asked for. */
-function hasAnswer(patchesDir, channel, treeDir, workspaceId) {
-    const state = statusOf(patchesDir, channel.name, treeProbe(treeDir, workspaceId));
+function hasAnswer(patchesDir, channel, treeDir, workspaceId, registryRoot) {
+    const state = statusOf(patchesDir, channel.name, treeProbe(treeDir, workspaceId, registryRoot));
     if (state.state !== 'dead') {
         return true;
     }
-    return gonePass(patchesDir, channel, state.record !== null, treeDir, workspaceId) !== null;
+    return gonePass(patchesDir, channel, state.record !== null, treeDir, workspaceId, registryRoot) !== null;
 }
 function workspaceIdOf(ctx) {
     return ctx.workspace?.id ?? ctx.config?.workspace?.record.id;
 }
-function treeProbe(treeDir, workspaceId) {
+function treeProbe(treeDir, workspaceId, registryRoot) {
     return {
         expectedTreeId: treeId(treeDir),
         expectedTreePath: treeDir,
-        ...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId })
+        ...(workspaceId === undefined ? {} : { expectedWorkspaceId: workspaceId }),
+        ...(registryRoot === undefined ? {} : { workspaceRegistryRoot: registryRoot })
     };
 }
 function printPass(ctx, channel, report, reported, mine) {

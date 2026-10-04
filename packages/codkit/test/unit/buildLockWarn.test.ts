@@ -127,7 +127,7 @@ describe('an acquisition that cannot retire its own generation is not silent', (
 			)
 		);
 		expect(build.replace(/\s/g, '')).toContain(
-			'const result = await downChannel(ctx.patchesDir, channel.name, { ...treeProbe(treeDir, workspaceIdOf(ctx)), onWarn: (text) => ctx.out.warn(text) });'.replace(
+			'const result = await downChannel(ctx.patchesDir, channel.name, { ...treeProbe(treeDir, workspaceIdOf(ctx), ctx.config?.workspace?.registryRoot), onWarn: (text) => ctx.out.warn(text) });'.replace(
 				/\s/g,
 				''
 			)

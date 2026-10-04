@@ -8,6 +8,7 @@ import { ckError } from './messages.js';
 import { treeId } from './fingerprint.js';
 import { readTreeCache, treeCachePath } from './treeCache.js';
 import { readWorkspaceMaterials, verifyWorkspaceMaterials } from './workspaceMaterials.js';
+import { workspaceLogPaths } from './workspaceLogs.js';
 import { verifyWorkspaceCheckout } from './workspaceCreate.js';
 import { assertWorkspaceClean, refuseWorkspaceDaemons, verifyReceipt, workspaceOwnedPaths } from './workspaceFinish.js';
 import { findWorkspace, updateWorkspaceRegistry, workspaceRecordSchema } from './workspaceRegistry.js';
@@ -42,7 +43,9 @@ export function removeWorkspace(options) {
                 extra.set(role, cache === null
                     ? []
                     : [relative(record.patchset.path, treeCachePath(record.patchset.path, treeId(record.fork.path))).replaceAll('\\', '/')]);
-                check(record, role, locks.get(role), extra.get(role) ?? [], materials);
+                if (role === 'patchset')
+                    extra.set(role, [...(extra.get(role) ?? []), ...workspaceLogPaths(options.registryRoot, record)]);
+                check(record, role, locks.get(role), extra.get(role) ?? [], materials, options.registryRoot);
             }
             for (const role of roles)
                 preserveHead(record, role);
@@ -52,7 +55,7 @@ export function removeWorkspace(options) {
                 const lock = locks.get(role);
                 if (lock === undefined)
                     continue;
-                check(record, role, lock, extra.get(role) ?? [], materials);
+                check(record, role, lock, extra.get(role) ?? [], materials, options.registryRoot);
                 // Force is necessary only for our verified receipt/cache and held lock files.
                 // The physical inventory below refuses all other data, including ignored/empty paths.
                 git(record[role].repository, ['worktree', 'remove', '--force', '--', record[role].path]);
@@ -68,7 +71,9 @@ export function removeWorkspace(options) {
         }
     });
 }
-function check(record, role, lock, extra, materials) {
+function check(record, role, lock, extra, materials, authority) {
+    if (role === 'patchset')
+        workspaceLogPaths(authority, record);
     const allowed = role === 'fork' ? [...extra, ...verifyWorkspaceMaterials(record, materials)] : extra;
     verifyWorkspaceCheckout(record, role, true);
     verifyReceipt(record, role);

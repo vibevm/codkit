@@ -24,6 +24,7 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { basename, delimiter, dirname, isAbsolute, join, sep, win32 } from 'node:path';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.js';
+import { archiveWorkspaceLog } from './workspaceLogs.js';
 import { updateWorkspaceRegistry, workspaceRegistryRoot } from './workspaceRegistry.js';
 import { validateChannelSet } from './buildChannel.js';
 import { readContainedFile } from './containedFile.js';
@@ -1125,6 +1126,9 @@ async function downChannelLocked(patchesDir, channel, lock, probe) {
             return { channel, action: 'not-running', pid: 0 };
         }
         probe.beforeRemove?.();
+        assertRecordGeneration(patchesDir, channel, status.recordBytes);
+        if (status.record !== null)
+            archiveWorkspaceLog(patchesDir, status.record, probe.workspaceRegistryRoot);
         if (!removeRecord(patchesDir, channel, lock, status.recordBytes, probe.afterRemoveCompare)) {
             throw ckError('LOCKED', `${channel}: daemon record changed before dead-record retirement`, 'retry after inspecting the current record');
         }
@@ -1153,6 +1157,7 @@ async function downChannelLocked(patchesDir, channel, lock, probe) {
     }
     probe.beforeRemove?.();
     assertRecordGeneration(patchesDir, channel, status.recordBytes);
+    archiveWorkspaceLog(patchesDir, status.record, probe.workspaceRegistryRoot);
     if (status.recordBytes === undefined || !removeRecord(patchesDir, channel, lock, status.recordBytes, probe.afterRemoveCompare)) {
         throw ckError('LOCKED', `${channel}: daemon record changed before completed teardown`, 'inspect the current record; it was preserved');
     }

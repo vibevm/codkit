@@ -284,6 +284,7 @@ export async function runConcreteStabilization(options: StabilizeHeavyRunnerOpti
 					expectedTreeId: treeId(options.resolution.path),
 					expectedTreePath: options.resolution.path,
 					...(options.config.workspace === undefined ? {} : { expectedWorkspaceId: options.config.workspace.record.id }),
+					...(options.config.workspace === undefined ? {} : { workspaceRegistryRoot: options.config.workspace.registryRoot }),
 					onWarn: (text) => out.warn(text)
 				});
 			} catch (error) {
