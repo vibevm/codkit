@@ -11912,6 +11912,60 @@
     },
     {
       "anchor": "root",
+      "content_hash": "sha256:36ec8fde7099bf326551d7f01e6700dfbf838e0be92042fba58b0aa0ef33eaca",
+      "doc_path": "modules/codkit/PROP-023",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml",
+      "heading": "PROP-023: Type-neutral build recipe design",
+      "line": 3,
+      "uri": "spec://codkit/modules/codkit/PROP-023#root"
+    },
+    {
+      "anchor": "ACTION-VOCABULARY",
+      "content_hash": "sha256:9b49987c6f55dbe2fa7e2110414f1bf5d47e8cec1b3e2fb1392ad4f0d7124cb2",
+      "doc_path": "modules/codkit/PROP-023",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml",
+      "heading": "Future build recipe v2 uses action kind one-shot or daemon, stable action ID, ordered argv words (executable first), contained cwd relative to its declared execution root, declared environment input names and provenance, network policy, dependency manifests and receipts, outputs and scratch roots, and cleanup/restore semantics. No npm script field belongs to this future public contract. The current Node adapter may translate its private script names into npm run argv; shell snippets remain an explicit shell executable plus separate argument, never joined/quoted implicitly. Executable resolution records host/tool identity; argv order, empty arguments, spaces, quotes and double underscores remain literal. Unknown kinds/versions refuse before spawn. This design adds no installed ABI version, public reader or existing build-watch schema field. @status:spec/wip",
+      "line": 5,
+      "uri": "spec://codkit/modules/codkit/PROP-023#ACTION-VOCABULARY"
+    },
+    {
+      "anchor": "PASS-PROTOCOL",
+      "content_hash": "sha256:cfc76fc5c07703d2449eae171492b0ce7199ee6a1113d3fea586811ea58d8166",
+      "doc_path": "modules/codkit/PROP-023",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml",
+      "heading": "One-shot success requires declared exit status and completed output receipts, with an explicit timeout/cancellation policy. Daemon actions declare pass-start, pass-end, diagnostic patterns, authoritative error count and false-end guards using a versioned protocol; process liveness or a log end marker alone is not build success. Preserve the existing ANSI stripping, guard precedence, per-pass counters and diagnostics when translating Node watch profiles. A daemon's tree/workspace identity, process-group custody, generation and closed log receipt are engine ownership facts, not caller-provided success. Startup/termination ambiguity preserves the existing fail-closed process record. No automatic restart of a living writer. @status:spec/wip",
+      "line": 6,
+      "uri": "spec://codkit/modules/codkit/PROP-023#PASS-PROTOCOL"
+    },
+    {
+      "anchor": "INPUTS-NETWORK",
+      "content_hash": "sha256:85d05598dabae45c8d966599f39e688a02f557d107acc91a54d6d5c6f5e3ed2f",
+      "doc_path": "modules/codkit/PROP-023",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml",
+      "heading": "An action declares environment names and approved sources, required versus optional inputs, network access (deny or explicit allowed endpoints), immutable dependency manifest digests and matching materialization receipts scoped to its execution root/tool/platform. Secrets are supplied by authority at execution and never stored in recipe/receipt/log values; record source identity or approved digest only. A receipt mismatch blocks the action before mutation. Legacy dependency-root npm receipts remain authoritative for current Node execution; renaming them does not establish a non-npm receipt. Network denial requires enforcement by the execution boundary and measured refusal, not an environment-variable claim. Container recipes additionally bind image digest, mounts, host route and forwarded environment names. @status:spec/wip",
+      "line": 7,
+      "uri": "spec://codkit/modules/codkit/PROP-023#INPUTS-NETWORK"
+    },
+    {
+      "anchor": "OUTPUTS-RESTORE",
+      "content_hash": "sha256:a2343c1434952bc48d9c98086ca42d85a2b05c1c7d65ff71c010682c1f8a45f9",
+      "doc_path": "modules/codkit/PROP-023",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml",
+      "heading": "Declare exact output and scratch roots with contained-path custody, including an explicit separately authorized root for outputs beside the checkout. Output receipts bind kind/path/mode/content, links without following them, and empty directories. Scratch declaration alone does not authorize deletion of foreign content. Capture restoration preimages/ownership before an action; cleanup removes only proven action-owned material under compare barriers, and restoration failure is an explicit partial result. Hash recipe semantics deterministically: kind/argv/cwd/environment declarations/network/protocol/dependencies/outputs/cleanup all contribute, but execution timestamps and secret values do not. Bind the resulting identity into existing component release evidence through a deliberate future contract transition; do not rewrite existing recipe hashes. @status:spec/wip",
+      "line": 8,
+      "uri": "spec://codkit/modules/codkit/PROP-023#OUTPUTS-RESTORE"
+    },
+    {
+      "anchor": "COMPATIBILITY-POLYGON",
+      "content_hash": "sha256:92e7943ea6d4f156eef2e783b5314b07b465d85d68dfb6095128d1c2bd6394d9",
+      "doc_path": "modules/codkit/PROP-023",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-023-build-recipe-v2-design.xml",
+      "heading": "The measured dirty nimbus consumer has Node/gulp one-shot packaging, Node watch profiles, documentation input commands and an untracked ALT p11 container route over pre-materialized source. Those observations motivate this vocabulary, not a non-Node implementation or successful consumer build claim. Compatibility examples translate existing BuildCommand to one-shot argv and current watch script to daemon argv with unchanged protocol, without executing commands or editing source. Existing config 2/3/4 and codkitBuildWatch:1 remain strict; ordinary serialization, recipe identity and installed type approvals are unchanged. Implement recipe v2 and non-npm receipt support only with the first real non-Node type and its offline/network/output/restore polygon; do not introduce generic adapters for hypothetical build systems. @status:spec/wip",
+      "line": 9,
+      "uri": "spec://codkit/modules/codkit/PROP-023#COMPATIBILITY-POLYGON"
+    },
+    {
+      "anchor": "root",
       "content_hash": "sha256:c3849c7bc21508e9b2ef30cfe3828e3d126838bae359eb5884a084f83a56ca4e",
       "doc_path": "modules/theia/PROP-001",
       "file": "vibevm/vibespecs/modules/theia/PROP-001-theia-type.xml",
@@ -13604,6 +13658,12 @@
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "line": 242,
       "message": "section `8. Decisions` spans 172 lines (threshold 120) — long sections read poorly and churn often; split into smaller leaves"
+    },
+    {
+      "code": "xml-dialect",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-022-coordinator-contract.xml",
+      "line": 11,
+      "message": "the dialect has no <code> element (inside <section>) — the vocabulary is closed"
     }
   ]
 }
