@@ -84,6 +84,7 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--type', 'value'],
     ['--owner', 'value'],
     ['--reason', 'value'],
+    ['--expected-sha256', 'value'],
     ['--category', 'value'],
     ['--layer', 'value'],
     ['--line', 'value'],

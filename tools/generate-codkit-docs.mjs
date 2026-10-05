@@ -128,6 +128,7 @@ const valueLabels = {
 	'--type': 'type',
 	'--owner': 'owner',
 	'--reason': 'text',
+	'--expected-sha256': 'sha256',
 	'--category': 'category',
 	'--contract-test': 'guard-test-id',
 	'--layer': 'patch|entry-module',
@@ -200,6 +201,12 @@ const commandGuidance = {
 		positional: '',
 		detail:
 			"Remove spent runtime state: consumed refs beyond `--keep-consumed <n>` (default 5) that are also `--older-than <days>` old (default 30), crash scratch under `.codkit/tmp`, dead-owner tree locks, apply caches of trees that no longer exist, and generated `.codkit/out` output. `--dry-run` prints the same plan without removing anything; the kept classes - a stopped sync's transaction, pending draft headers, daemon records, a live owner's lock - are named as kept in the plan and never touched."
+	},
+	'marker reason': {
+		positional: '<target>',
+		requiredFlags: ['--id', '--expected-sha256', '--reason'],
+		detail:
+			'Author only the reason of one contained existing patch. Expected id/hash are mandatory; other header fields and diff body remain byte-identical. --dry-run returns preview without Source writes; apply uses locked contained atomic CAS. It changes no fork, HEAD, refs, index or upgrade cycle.'
 	},
 	'marker new': {
 		positional: '<tree-file>',

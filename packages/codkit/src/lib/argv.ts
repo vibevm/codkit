@@ -100,6 +100,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--type', 'value'],
 	['--owner', 'value'],
 	['--reason', 'value'],
+	['--expected-sha256', 'value'],
 	['--category', 'value'],
 	['--layer', 'value'],
 	['--line', 'value'],
