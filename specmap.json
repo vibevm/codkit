@@ -11705,7 +11705,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:6793aa8006cc81bef886aae857b54fbd7e53a2e8c50948b9a4b1d23559541906",
+      "content_hash": "sha256:2dbfa3ae1aef39e54b5bf0f142ef25e6788f0d0276b8159170ee8429f299ef26",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "PROP-020: Named local workspace pairs and checkout writers",
@@ -11714,7 +11714,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:1428bb23d51006303631978a8088897bd42edbfaabce99bb661634a14a38dede",
+      "content_hash": "sha256:e757c7ca277fe6fcdc45e2d5f8482fbdb2a92c9904b71d1a0a907b05382753ce",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Checkout custody and workspace identity",
@@ -11722,12 +11722,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-020#policy"
     },
     {
+      "anchor": "WORKSPACE-REPOSITORY-COORDINATION",
+      "content_hash": "sha256:0dd1590ef14ba33fc8a5ce272b068ec5f40ea33e8a54b3df7a4b4e64e03e6fa9",
+      "doc_path": "modules/codkit/PROP-020",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
+      "heading": "Verified named workspace load retains the exclusive common Git refs lock and fresh worktree/ref preflight. Different canonical UUID workspace generated-ref or per-worktree exclude operations may wait at most five minutes using a monotonic deadline, then reacquire through the unchanged hard-link protocol. Named daemon starts similarly queue only behind another UUID workspace daemon start while holding the registry guard through lifecycle validation and PID publication. Metadata permits waiting only, never ownership or deletion. Same-process, same-workspace, legacy/unidentified holder, malformed identity, unrelated lifecycle/administration command and non-lock errors retain immediate refusal; ordinary execution retains previous behavior. Waiting never broadens checkout writer authority or skips post-acquisition preflights. Independent tasks plan/load/build/save concurrently while common Git writes and registry start transactions remain exclusive. Named save validates the exact fork custody receipt before extraction and selects individual untracked leaves when that receipt exists; only its verified untracked .codkit/workspace.json is excluded from source extraction. Tracked/staged changes receive no such exemption, and unknown neighbouring .codkit files remain ordinary refused upstream additions. Commit-state replay retains tracked-path semantics; worktree replay uses the same exact receipt proof. @status:impl/wip",
+      "line": 6,
+      "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REPOSITORY-COORDINATION"
+    },
+    {
       "anchor": "PATCHSET-WRITER",
       "content_hash": "sha256:a64844eda5c68407eda05c77fbc2c744973134fcd565fdcb53626e4decab8507",
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Every acquireLock writing scope owns a physical patchset checkout guard in addition to its legacy per-tree generation. Different fork tree IDs, aliases and separate command scopes in the same process cannot overlap one checkout. A nested scope borrows only an active issued parent capability for the same physical checkout; copying metadata or a handle, reusing a released handle or supplying a foreign parent refuses. The checkout guard survives until all parent/child references release. Partial acquisitions unwind. Existing live legacy tree owners refuse; unknown foreign owners and non-regular lock files fail closed. The requested tree generation retains its established stale recovery protocol. This is cooperative exclusion for participating writers and detection of already live legacy owners, not a claim to control arbitrary uncooperative programs starting afterward. Per-tree lock bytes and atomic hard-link/generation ownership remain unchanged. @status:impl/done",
-      "line": 6,
+      "line": 7,
       "uri": "spec://codkit/modules/codkit/PROP-020#PATCHSET-WRITER"
     },
     {
@@ -11736,7 +11745,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "The user-controlled workspaces.json carries codkitWorkspaceRegistry:1, monotonically revised under an exclusive contained registry lock with byte comparison before updates. Strict pair records bind UUID/name/state, original repository/common-directory, checkout path/task branch/base commit, type declaration digest/contract, pin and owner/session timestamps. UUID and case-insensitive name collisions, overlapping nonremoved checkout roots, shared pair roots and mismatched UUID task branch/pin refuse. UUID derives operational ref prefixes without rewriting source config. Checkout receipts use codkitWorkspaceCheckout:1, binding ID, role, common directory and base commit. Named resolution and lifecycle transitions use validated real worktrees; registry data alone never authorizes foreign cleanup. @status:impl/wip",
-      "line": 7,
+      "line": 8,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REGISTRY"
     },
     {
@@ -11745,7 +11754,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Create reserves a creating journal before Git mutations, creates a task-branch patchset worktree and detached fork worktree at the selected immutable config/pin, and records active only after actual Git registration/branch and contained checkout receipts are verified. Source repositories, Git administration, registry and pair directory are disjoint. Owner/session may retry only the same recorded creating pair; changed partial checkout, foreign receipts, namespace/name conflicts or directory aliases refuse without cleanup or overwrite. Partial failure leaves journal/resources reviewable rather than promising rollback. CLI selection and finish/remove are implemented with reproduced lifecycle proof; broader shipping acceptance retains the audit limits. @status:impl/wip",
-      "line": 8,
+      "line": 9,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CREATE"
     },
     {
@@ -11754,7 +11763,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Finish verifies both actual registered checkout identities and immutable role receipts while holding checkout writer capabilities. It refuses dirty/untracked task work, moved or missing custody, unextracted detached history, stale generated cache/mark/fingerprint, own/upstream drift and active/unresolved daemons. An untouched detached baseline can finish without fabricated apply evidence. A finished record preserves patchset/fork immutable heads and optional delta fingerprint with timestamp; finished/removing/removed states require that proof. Marked generated fork branches must belong to the workspace UUID namespace. Finish preserves both checkout directories; deletion/cleanup is a separate verified action with retained source/material/runtime evidence. Git-for-Windows junction descendant strings can match only the first physical leaf link already present in the verified owned-path set. This comparison applies only to untracked Git status/drift rows; staged changes and ordinary directory prefixes receive no exemption. Stored material paths and physical removal custody remain canonical leaf paths, never these Git projections. @status:impl/wip",
-      "line": 9,
+      "line": 10,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-FINISH"
     },
     {
@@ -11763,7 +11772,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "A named workspace is a local patchset task worktree and fork worktree pair with stable UUID, type/pin, ref namespace and owner/session metadata. Create/list/show/finish/remove operate on validated real Git worktrees. Generated refs include workspace UUID. Named launcher resolution supplies where roots and refuses conflicting root flags. Finish proves save/clean and no live writers/daemons before cleanup; removal never destroys dirty, foreign or unowned roots. Without named selection legacy root/ref behavior remains compatible. @status:spec/done",
-      "line": 10,
+      "line": 11,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-PAIR-LIFECYCLE"
     },
     {
@@ -11772,7 +11781,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Removal requires a finished proof and both unchanged recorded heads. While holding checkout writer capabilities it checks actual Git registration, exact role receipts, daemon state, Git cleanliness and a physical inventory including ignored files and empty directories. Only tracked files and validated Codkit receipts, cache and held lock generations are disposable; submodules, special files, foreign or unowned data refuse. Both heads are retained in immutable UUID-scoped repository refs before journaling removing. Git deletes only the verified worktree roots; the registry and retained refs survive. Retry accepts an absent checkout only in removing state with no remaining Git registration and the matching preserved head. A changed preserved ref refuses. Removed is recorded after both removals and repeating removed is inert. Public CLI and full phase acceptance remain pending. On native Windows, after the journal, retained refs and complete physical inventory checks, Node removes only the recorded canonical physical checkout directory without recursively following junction targets; Git subsequently removes its registration only while that checkout remains absent. Git-locked registration refuses before Windows filesystem deletion and during absent-root recovery. A recreated root refuses before Git administration removal. Retry of an absent checkout in removing state requires its existing preserved finish ref plus matching registration HEAD and UUID-scoped branch/detached custody; foreign or missing proof refuses. Missing checkouts in finished state remain invalid. File-removal checkpoints are fault-injection events, not new stored fields or silently widened schemas. This is participating-writer custody with the existing independent-audit and filesystem race limits, not a universal guarantee against arbitrary uncooperative programs. @status:impl/wip",
-      "line": 11,
+      "line": 12,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-REMOVE"
     },
     {
@@ -11781,7 +11790,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Workspace lifecycle surfaces",
-      "line": 13,
+      "line": 14,
       "uri": "spec://codkit/modules/codkit/PROP-020#surfaces"
     },
     {
@@ -11790,7 +11799,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Workspace finish refuses active cycles and archives only explicitly recognized closed cycle/dependency/release documents through their existing validators. A terminal receipt must match the completed Git/config history; noncommitted transition/apply and running restart records refuse. Dependency runtime is not a daemon record and must have its exact supported shape and matching physical tree identity; release names bind valid canonical descriptor digests. Strict codkitWorkspaceClosedRuntime:1 snapshots outside both checkouts bind ID, both immutable heads, permitted exact paths, content digests and sizes. Unknown neighbours are never inferred owned. Finish/removal grant only verified exact paths and recheck current/backing bytes at each deletion barrier; archives survive pair removal. Invalid/future/foreign or changed records refuse without widening original runtime schemas. Full lifecycle acceptance and final phase audit remain pending. @status:impl/wip",
-      "line": 14,
+      "line": 15,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CLOSED-RUNTIME"
     },
     {
@@ -11799,7 +11808,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Named cycle and publish execution preserve runtime UUID prefixes across config reloads, immutable snapshots and commit/terminal boundaries. Within a verified patchset checkout, untracked .codkit runtime scratch is not committed patchset content; this does not grant its paths cleanup ownership. Tracked runtime edits and all nonruntime dirt retain their exact commit/index checks. Provisional fork materialization certifies only the exact immutable workspace role receipt in addition to known own paths. Actual patchset cycle branches may belong to the recorded UUID cycle namespace, while creation retries remain restricted to the initial task branch. Legacy executions without context retain previous status/ref behavior. Native launcher polygons cover start/status/restart, continue to completed and local UUID release export with caller/source heads preserved. Full acceptance/audit remains pending. @status:impl/wip",
-      "line": 15,
+      "line": 16,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CYCLE-PUBLISH"
     },
     {
@@ -11808,7 +11817,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Material receipt v4 explicitly admits untracked/ignored output entries selected by the approved type layout cleanup patterns, package output patterns or per-owned-root build-output patterns. Existing saved material paths, Git-tracked files and runtime .codkit state are not reclassified. Regular bytes or literal leaf-link text are archived immutably in external user authority with SHA-256/size/mode and saved config/type declaration digests; current data is rechecked after archival. Exact empty output directories are captured without granting their contents ownership. Removal verifies retained bytes, source/type custody and current kind/content/mode before deleting only listed paths. Links are read as link text, never followed, and parents must be contained real directories. Unknown neighbours, changed output, missing archives, special files, traversal or new kinds in strict v1/v2/v3 refuse. Captures using output kinds emit v4 without rewriting old receipts. Full phase acceptance remains pending. Physical leaf links are enumerated without visiting their targets; Git junction-descendant candidates are reduced to that leaf. Git-indexed paths remain excluded even when they match output patterns. Target children never become retained output entries. @status:impl/wip",
-      "line": 16,
+      "line": 17,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-BUILD-OUTPUTS"
     },
     {
@@ -11817,7 +11826,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Workspace startup tracks whether its new log generation was created after rotation. A failure before any child exists, or after proven empty POSIX group teardown, may archive only that generation and retire only its exact reservation. Existing pre-start logs are not adopted. If termination throws, a group remains live or Windows descendant teardown is unproven, the actual spawned PID is CAS-published where the reservation is still owned and the record is retained; no false rollback or cleanup permission is issued. Missing-log proven dead generations retire without fabricated log evidence. After channel release, workspace lifecycle may prune only the exact contained empty .codkit/build directory with nonrecursive rmdir; nonempty, aliased or otherwise unavailable directories remain, with operational warnings on failures. Legacy unselected cleanup behavior remains unchanged. Build-output ownership and final phase acceptance remain pending. @status:impl/wip",
-      "line": 17,
+      "line": 18,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-DAEMON-FAILURE-CLEANUP"
     },
     {
@@ -11826,7 +11835,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "After owned daemon teardown is proven, and while the channel generation is still held, workspace down retains exact regular log bytes in immutable external user authority and writes strict codkitWorkspaceDaemonLog:1 binding ID, nonce, channel, patchset/tree path, tree ID and byte digest/size. Evidence is recorded before exact daemon record retirement; failed archival preserves the record for retry. Legacy unselected generations are not adopted. Finish requires daemon records to be retired, including dead roots whose descendant teardown or ownership may remain unresolved. Finish/removal accept only current or rotated channel log bytes matching retained archives of that workspace and tree; edited/unowned logs, missing/changed archives, unsafe paths or malformed/future receipts refuse. Archives survive checkout deletion. Original daemon/material/config schemas remain unchanged. Build-output ownership and final phase acceptance remain pending. @status:impl/wip",
-      "line": 18,
+      "line": 19,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-DAEMON-LOGS"
     },
     {
@@ -11835,7 +11844,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Workspace input delivery publishes strict codkitWorkspaceInputDelivery:1 in external user authority, binding workspace/tree path and the complete existing input snapshot with safe nonaliasing paths. Immutable receipts preserve exact file/blob mapping. Cache reuse requires a matching external witness; absent or mismatched witness causes rebuilding from declared source rather than adopting cache fields as authority. Delivery retains each backing blob in immutable UUID-scoped non-head refs, refusing foreign refs. Finish requires unchanged copies and matching delivery witnesses, then material v3 binds actual SHA-256, blob ID/ref, delivery stamp/name and saved configuration digest. Removal checks sealed config, retained blob ref/type/content and actual target bytes even after the patchset checkout disappears. Input kinds in strict v1/v2 material receipts and future versions refuse; legacy unselected input behavior is unchanged. This is owned snapshot evidence, not compiler or legal attestation. Other cleanup and final phase acceptance remain pending. @status:impl/wip",
-      "line": 19,
+      "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-INPUT-DELIVERY"
     },
     {
@@ -11844,7 +11853,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Material receipt v1 remains strict and unchanged. Explicit v2 admits hydrated LFS files only when a regular saved Git pointer, committed attribute classification in an isolated oracle, payload SHA-256/size and retained backing object agree. Local info/attributes and machine attributes cannot grant LFS ownership. Missing or modified backing data refuses before deletion. Exact empty directories require a saved own-source placeholder or own manifest anchor and remain empty at removal; no directory prefix grants its contents cleanup authority. New kinds in v1, malformed/future formats, changed content, links and special files refuse. Legacy receipts are not rewritten, and only captures using new kinds emit v2. Temporary attribute-oracle cleanup verifies its canonical private directory before removal. Other cleanup and final phase acceptance remain pending. @status:impl/wip",
-      "line": 20,
+      "line": 21,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-MATERIAL-V2"
     },
     {
@@ -11853,7 +11862,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Finish captures delivered own-source and declared extension copies whose current regular-file SHA-256 equals the saved regular Git blob of the sealed patchset commit. Edited/uncommitted source is not authorized as saved material. The dev-channel sidecar is admitted only when its bytes equal the shared read-only overlay renderer, and its config/overlay inputs equal regular blobs of the sealed commit. Retained generated text and recipe digests are checked on removal; no adapter need be re-imported. A strict codkitWorkspaceMaterials:1 receipt outside both checkouts in user registry authority binds workspace ID, the exact existing finish proof, safe source/target paths and digests; its path derives from that proof and exclusive immutable publication refuses foreign bytes. No existing registry/checkout/config schema is widened. Missing legacy receipts authorize no extra paths. Removal verifies each material against the retained source repository's sealed commit and current target bytes before allowing only those exact paths through cleanliness/physical inventory checks. Changed targets, links, special files, traversal, aliases, invalid/future receipts or unowned neighbouring data refuse. Receipt and saved source history survive partial patchset-first removal so retry need not depend on deleted source checkout files. Build outputs, input products, logs and empty unowned directories are not inferred to be disposable by this source-copy mechanism; their integration and full acceptance remain open. @status:impl/wip",
-      "line": 22,
+      "line": 23,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-MATERIALS"
     },
     {
@@ -11862,7 +11871,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "A workspace daemon start acquires the same contained user registry generation lock as finish/removal before channel directories or records are created. Under that guard it re-reads authoritative state by exact UUID only and requires active; names never authorize an ID start. Generic name/UUID lookup gives an existing exact UUID precedence over UUID-shaped names; the guard remains held through channel reservation, spawn and exact final PID publication, then releases without changing registry revision or outliving the launcher. Finished/removing/removed or unknown identity refuses before channel writes; stale starts cannot recreate removed roots. Contending lifecycle actions refuse while start is in progress, and contending starts refuse while lifecycle authority is held. Existing paired-checkout markers refuse unbound legacy starts rather than promoting patchset data into authority. Ordinary checkouts without a marker retain legacy start behavior. Registry-directory override is a privileged composition/test input, never CLI or patchset data; runtime context carries it through CI/snapshot composition and configuration serialization omits it. Registry acquisition/release warnings route to the caller. This coordinates participating APIs, not arbitrary uncooperative file/process operations. Cleanup and full phase acceptance remain pending. @status:impl/wip",
-      "line": 23,
+      "line": 24,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-DAEMON-START"
     },
     {
@@ -11871,7 +11880,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Ordinary daemon records retain exact strict codkitBuildDaemon:1 with no workspace field. Selected workspace execution explicitly writes strict version 2 with a required UUID, retaining tree ID/path, nonce and the existing reservation/finalization protocol. Readers support only these exact schemas; workspace fields in v1, absent UUID in v2, malformed UUIDs and future versions refuse without migration. Starts, status, teardown and log-pass reads bind the caller's workspace identity as well as tree identity. A v2 record requires its matching workspace context; a workspace caller does not adopt a v1 record. Identity mismatch is unknown and refuses signals, retirement, duplicate starts and log attribution before process probes. CI and cycle composition propagate the same explicit context; legacy calls without workspace retain previous behavior. Full acceptance and daemon lifecycle proof remain pending. @status:impl/wip",
-      "line": 24,
+      "line": 25,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-DAEMON-CUSTODY"
     },
     {
@@ -11880,7 +11889,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "A selected pair supplies runtime-only workspace context to its resolved configuration. UUID-derived applied/cycle/release prefixes replace operational prefixes, while the original declaration prefixes remain separately bound. Configuration serialization strips runtime context and restores declaration prefixes; no workspace field or derived prefix is written into codkit.json. Publisher immutable snapshots, CI comparison snapshots and cycle config reloads inherit the execution context explicitly. Drift checks exempt only the exact validated fork role receipt in the matching recorded fork checkout, never the containing directory or neighbouring files. Fresh cleanup preserves that same validated receipt. Disposable fork trees receive no original-checkout exemption. Legacy executions without context keep existing prefixes and serialized bytes. Namespace integration remains a candidate pending workflow and full regression proof. @status:impl/wip",
-      "line": 25,
+      "line": 26,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-NAMESPACE"
     },
     {
@@ -11889,7 +11898,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Named selection resolves an active pair by case-insensitive name or UUID from fixed user registry authority. Explicit external root flags refuse; ambient root environment/settings are not consulted. Both actual registered Git worktrees, exact role receipts and canonical paths are verified before returning roots. Creating, finished, removing and removed records refuse ordinary command selection; lifecycle inspection remains available. The selecting CLI flag is the source of both roots. Launcher integration and operational namespaces are implemented; broader acceptance retains the audit limits. @status:impl/wip",
-      "line": 26,
+      "line": 27,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-SELECTION"
     },
     {
@@ -11898,7 +11907,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "Before importing a type for a registry-selected workspace, verify its real patchset worktree and exact role receipt, load the configuration, and match its type ID to the record. The installed trusted declaration must match the saved contract version and manifest digest. Unknown, changed or incompatible declarations refuse before adapter import; only then validate typeConfig and configure the registered adapter. @status:impl/wip",
-      "line": 27,
+      "line": 28,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-TYPE-CUSTODY"
     },
     {
@@ -11907,7 +11916,7 @@
       "doc_path": "modules/codkit/PROP-020",
       "file": "vibevm/vibespecs/modules/codkit/PROP-020-workspaces.xml",
       "heading": "The workspace namespace exposes create/list/show/finish/remove as thin surfaces over lifecycle libraries. Registry authority is fixed to ~/.codkit/workspaces.json with no patchset or arbitrary-directory flag. Create requires a name, existing disjoint --dir pair parent, --owner and --session; optional --ref selects the immutable source patchset commit, with normal independently resolved source roots. List/show/finish/remove ignore ambient root settings and environment and reject explicit external root flags; their names or UUIDs select registry records. Inspection does not import an adapter. Finish checks saved type custody before import. Removal does not require an installed adapter and retains finish proof and refs. Every result remains in the existing JSON envelope; list data is the versioned registry, other operations return its strict workspace record. Missing names/required values and misplaced flags refuse without Git mutation. Named launcher selection is implemented; broader acceptance retains the audit limits. @status:impl/wip",
-      "line": 28,
+      "line": 29,
       "uri": "spec://codkit/modules/codkit/PROP-020#WORKSPACE-CLI"
     },
     {

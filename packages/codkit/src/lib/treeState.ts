@@ -23,6 +23,8 @@ import { runGit, runGitBytes } from './gitx.ts';
 import { ckError } from './messages.ts';
 import { repoRelativePathProblem } from './pathSafety.ts';
 import { toPosix } from './syncEngine.ts';
+import { workspaceForkReceipt } from './workspaceReceipt.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
 
 /** Which state of the tree a selection or a byte read is about. */
 export type TreeState = { readonly kind: 'worktree' } | { readonly kind: 'commit'; readonly sha: string };
@@ -43,7 +45,8 @@ export function changesSince(
 	state: TreeState,
 	roots: readonly OwnedRoot[],
 	forcedPaths: readonly string[] = [],
-	ownedPrefixes: readonly string[] = []
+	ownedPrefixes: readonly string[] = [],
+	workspace?: WorkspaceRecord
 ): readonly StateChange[] {
 	// ##OWN-EXTENSION-UNIT: the materialization of a declared own extension is
 	// supplied by the delta too, so it is no more an upstream file than an owned
@@ -51,11 +54,15 @@ export function changesSince(
 	// as a new file in the upstream zone.
 	const owned = [...ownedTreePrefixes(roots), ...ownedPrefixes];
 	const isOwned = (path: string): boolean => owned.some((prefix) => path.startsWith(prefix));
+	const receipts = state.kind === 'worktree' ? workspaceForkReceipt(treeDir, workspace) : [];
 	const changes: StateChange[] = diffEntries(treeDir, base, state).filter((entry) => !isOwned(entry.path));
 	if (state.kind === 'worktree') {
 		// A diff cannot see a path no commit carries yet; `??` is the only
 		// addition the porcelain union makes (S0.3).
-		const status = runGit({ args: ['status', '--porcelain', '-z'], cwd: treeDir });
+		const status = runGit({
+			args: ['status', '--porcelain', '-z', ...(receipts.length === 0 ? [] : ['--untracked-files=all'])],
+			cwd: treeDir
+		});
 		if (status.status !== 0) {
 			throw ckError(
 				'NOT-A-REPO',
@@ -64,7 +71,7 @@ export function changesSince(
 			);
 		}
 		for (const entry of expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), ownedPrefixes)) {
-			if (entry.status === '??' && !isOwned(entry.path)) {
+			if (entry.status === '??' && !isOwned(entry.path) && !receipts.includes(entry.path)) {
 				changes.push({ status: entry.status, path: entry.path });
 			}
 		}

@@ -1,5 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-008#root */
 import { pinKey } from './pinIdentity.ts';
+import { workspaceForkReceipt } from './workspaceReceipt.ts';
 // The save engine: take the work out of the fork tree and put it into patchset.
 // The pseudocode of PROP-008 sec. 4 is normative and this file follows its order.
 //
@@ -237,6 +238,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// branch, nothing here may extract - the neighbour can move the shared ref
 	// under the extraction.
 	try {
+		workspaceForkReceipt(tree, config.workspace?.record);
 		assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
 	} catch (error) {
 		if (isCkError(error) && error.code === 'WORKTREE-REF-SHARED') {
@@ -368,7 +370,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	];
 	if (headerOverrides.size > 0) {
 		const addressed = new Set(
-			changesSince(tree, treeState.base, selection, roots, forcedPaths, ownedPrefixes)
+			changesSince(tree, treeState.base, selection, roots, forcedPaths, ownedPrefixes, config.workspace?.record)
 				.filter((entry) => matchesFilters(entry.path, filters))
 				.map((entry) => entry.path)
 		);
@@ -466,7 +468,8 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 			roots,
 			forcedPaths,
 			commits: treeState.commits,
-			planFile: planFor
+			planFile: planFor,
+			...(config.workspace === undefined ? {} : { workspace: config.workspace.record })
 		});
 		planned = replayPlan.worktreePlans;
 		errors.push(...replayPlan.errors);
@@ -510,7 +513,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		// 3. Upstream files: everything the tree's final state holds outside the own
 		// directory, relative to the last applied tip - not `git status`, which is
 		// blind to everything a commit already carries (D4).
-		const changed = changesSince(tree, treeState.base, selection, roots, forcedPaths, ownedPrefixes);
+		const changed = changesSince(tree, treeState.base, selection, roots, forcedPaths, ownedPrefixes, config.workspace?.record);
 		dirty = changed.filter((entry) => matchesFilters(entry.path, filters));
 		if (options.verbose) {
 			out.diag(`changed upstream file(s): ${dirty.length === 0 ? 'none' : dirty.map((entry) => entry.path).join(', ')}`);

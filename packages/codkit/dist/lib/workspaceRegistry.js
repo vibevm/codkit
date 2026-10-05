@@ -10,6 +10,7 @@ import { readContainedFile, writeContainedFileAtomic } from './containedFile.js'
 import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.js';
 import { ckError } from './messages.js';
 import { acquirePathLock } from './lock.js';
+import { acquireWorkspaceCoordinationLock } from './workspaceCoordination.js';
 import { resolveContainedPath } from './pathSafety.js';
 export const WORKSPACE_REGISTRY_FILE = 'workspaces.json';
 export const workspaceIdSchema = z
@@ -125,12 +126,18 @@ export function readWorkspaceRegistry(root) {
     }
 }
 /** Serialize updates under the existing atomic generation lock, never under patchset authority. */
-export function updateWorkspaceRegistry(root, body, onWarn) {
+export function updateWorkspaceRegistry(root, body, onWarn, startingWorkspaceId) {
     const physical = realpathSync(root);
     const lockPath = resolveContainedPath(physical, 'workspaces.lock', { allowMissing: true });
     if (!lockPath.ok)
         throw ckError('CONFIG', 'workspace registry lock path is not contained');
-    const lock = acquirePathLock(lockPath.absolute, 'workspace registry', onWarn);
+    const lock = startingWorkspaceId === undefined
+        ? acquirePathLock(lockPath.absolute, 'workspace registry', onWarn)
+        : acquireWorkspaceCoordinationLock(lockPath.absolute, `workspace ${startingWorkspaceId} daemon start`, (holder) => {
+            const match = /^workspace ([^ ]+) daemon start$/.exec(holder.command);
+            const other = workspaceIdSchema.safeParse(match?.[1]);
+            return other.success && other.data !== startingWorkspaceId;
+        }, onWarn);
     try {
         let expected = readContainedFile(physical, WORKSPACE_REGISTRY_FILE, { what: 'workspace registry snapshot' });
         let current = readWorkspaceRegistry(physical);

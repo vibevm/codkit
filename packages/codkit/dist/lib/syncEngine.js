@@ -52,6 +52,7 @@ import { hasRebasePendingRecords } from './rebaseOntoPinPending.js';
 import { refuseOverLiveSyncTransaction } from './syncTransaction.js';
 import { restoreDeltaBytes } from './workTreeBytes.js';
 import { acquireCommonRepositoryLock, assertGeneratedRefExclusive, listWorktrees } from './worktrees.js';
+import { acquireWorkspaceRepositoryLock } from './workspaceRepositoryLock.js';
 /** Patch artifacts live here, relative to the patchset root. */
 export const PATCHES_DIR = 'delta/patches';
 /**
@@ -469,7 +470,7 @@ export function runSync(options) {
         const own = syncAllOwnCode(patchesDir, tree, roots);
         const materializer = materializerOf(options.type);
         const ownExtensions = materializer === null ? NO_OWN_EXTENSIONS : syncOwnExtensions(materializer, patchesDir, tree, declaredOwnExtensions(patchesDir));
-        writeExcludePlan(excludePlan);
+        writeExcludePlan(excludePlan, undefined, config.workspace?.record.id);
         // The inputs are delivered on every run, like own code: the branch
         // cannot vouch for files it does not carry.
         const inputs = deliveringInputs ? deliverInputs({ workspace: config.workspace, treeDir: tree, produced: producedInputs, out }) : [];
@@ -543,7 +544,7 @@ export function runSync(options) {
     let changedPaths;
     let restoredBytes;
     let discardedRef = null;
-    const coordination = acquireCommonRepositoryLock(tree, `generated ref refs/heads/${branch}`);
+    const coordination = acquireWorkspaceRepositoryLock(tree, `generated ref refs/heads/${branch}`, config.workspace?.record.id);
     try {
         assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
         // The discard's own precondition (the D6 discipline): the set the guard
@@ -624,7 +625,7 @@ export function runSync(options) {
     if (!materializeOverlays) {
         writeDevChannel(options.type, tree, overlays, context, config.pin.sha, warn);
     }
-    writeExcludePlan(excludePlan);
+    writeExcludePlan(excludePlan, undefined, config.workspace?.record.id);
     const inputs = deliveringInputs ? deliverInputs({ workspace: config.workspace, treeDir: tree, produced: producedInputs, out }) : [];
     writeTreeHook(tree, branch, out);
     // The own state is recorded after the copy, when both sides are identical by
@@ -1494,7 +1495,7 @@ function enableWorktreeConfig(treeDir) {
         hint: 'check that the repository configuration is writable'
     });
 }
-function writeExcludePlan(plan, checkpoints) {
+function writeExcludePlan(plan, checkpoints, workspaceId) {
     if (plan.kind === 'common-block') {
         writeCommonExcludePlan(plan);
         return;
@@ -1502,7 +1503,9 @@ function writeExcludePlan(plan, checkpoints) {
     // The shared config file and the shared info/exclude are involved even
     // though the exclusion itself is per-worktree: serialize with everything
     // else that touches this repository's shared state.
-    const handle = acquireCommonRepositoryLock(plan.treeDir, 'worktree-local exclude');
+    const handle = workspaceId === undefined
+        ? acquireCommonRepositoryLock(plan.treeDir, 'worktree-local exclude')
+        : acquireWorkspaceRepositoryLock(plan.treeDir, `workspace ${workspaceId} worktree-local exclude`, workspaceId);
     try {
         writeWorktreeExcludePlan(plan, checkpoints);
     }

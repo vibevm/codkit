@@ -121,7 +121,7 @@ function planEntriesOf(input, state, store, commit, errors) {
     // upstream files here either.
     const materializer = materializerOf(input.type);
     const ownedPrefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, loadOwnManifest(input.patchesDir).extensions);
-    for (const entry of changesSince(input.tree, input.base, state, input.roots, input.forcedPaths, ownedPrefixes)) {
+    for (const entry of changesSince(input.tree, input.base, state, input.roots, input.forcedPaths, ownedPrefixes, input.workspace)) {
         try {
             const plan = input.planFile(entry, state, store);
             if (plan !== null) {

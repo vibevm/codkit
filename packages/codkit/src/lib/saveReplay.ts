@@ -30,6 +30,7 @@ import { readPendingHeader } from './pendingHeader.ts';
 import { readRebasePending } from './rebaseOntoPinPending.ts';
 import type { RebasePendingOverride } from './rebaseOntoPinPending.ts';
 import type { PlannedFile } from './saveEngine.ts';
+import type { WorkspaceRecord } from './workspaceRegistry.ts';
 import type { TreeCommit } from './treeCommits.ts';
 import { materializerOf, ownExtensionTreePrefixes } from './layers/ownExtensions.ts';
 import { loadOwnManifest } from './layers/ownManifest.ts';
@@ -144,6 +145,7 @@ export type PlanStatesInput = {
 	readonly forcedPaths: readonly string[];
 	readonly commits: readonly TreeCommit[];
 	readonly planFile: PlanFileFn;
+	readonly workspace?: WorkspaceRecord;
 };
 
 /**
@@ -192,7 +194,7 @@ function planEntriesOf(
 	// upstream files here either.
 	const materializer = materializerOf(input.type);
 	const ownedPrefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, loadOwnManifest(input.patchesDir).extensions);
-	for (const entry of changesSince(input.tree, input.base, state, input.roots, input.forcedPaths, ownedPrefixes)) {
+	for (const entry of changesSince(input.tree, input.base, state, input.roots, input.forcedPaths, ownedPrefixes, input.workspace)) {
 		try {
 			const plan = input.planFile(entry, state, store);
 			if (plan !== null) {

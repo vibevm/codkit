@@ -21,6 +21,7 @@ import { runGit, runGitBytes } from './gitx.js';
 import { ckError } from './messages.js';
 import { repoRelativePathProblem } from './pathSafety.js';
 import { toPosix } from './syncEngine.js';
+import { workspaceForkReceipt } from './workspaceReceipt.js';
 /**
  * The paths in which `state` differs from `base` (D4): the worktree's final
  * state - staged, unstaged and committed together - or one commit's state.
@@ -28,23 +29,27 @@ import { toPosix } from './syncEngine.js';
  * `forcedPaths` are internal addressed targets that must be regenerated even
  * when the tree already carries their bytes, appended as modified when absent.
  */
-export function changesSince(treeDir, base, state, roots, forcedPaths = [], ownedPrefixes = []) {
+export function changesSince(treeDir, base, state, roots, forcedPaths = [], ownedPrefixes = [], workspace) {
     // ##OWN-EXTENSION-UNIT: the materialization of a declared own extension is
     // supplied by the delta too, so it is no more an upstream file than an owned
     // directory is - and without this a materialized extension would be selected
     // as a new file in the upstream zone.
     const owned = [...ownedTreePrefixes(roots), ...ownedPrefixes];
     const isOwned = (path) => owned.some((prefix) => path.startsWith(prefix));
+    const receipts = state.kind === 'worktree' ? workspaceForkReceipt(treeDir, workspace) : [];
     const changes = diffEntries(treeDir, base, state).filter((entry) => !isOwned(entry.path));
     if (state.kind === 'worktree') {
         // A diff cannot see a path no commit carries yet; `??` is the only
         // addition the porcelain union makes (S0.3).
-        const status = runGit({ args: ['status', '--porcelain', '-z'], cwd: treeDir });
+        const status = runGit({
+            args: ['status', '--porcelain', '-z', ...(receipts.length === 0 ? [] : ['--untracked-files=all'])],
+            cwd: treeDir
+        });
         if (status.status !== 0) {
             throw ckError('NOT-A-REPO', `git status failed in ${treeDir}: ${status.stderr.trim()}`, 'check that the fork tree is a healthy git work tree');
         }
         for (const entry of expandCollapsedUntracked(treeDir, porcelainZEntries(status.stdout), ownedPrefixes)) {
-            if (entry.status === '??' && !isOwned(entry.path)) {
+            if (entry.status === '??' && !isOwned(entry.path) && !receipts.includes(entry.path)) {
                 changes.push({ status: entry.status, path: entry.path });
             }
         }

@@ -1104,7 +1104,8 @@ export function upChannel(ctx: UpContext, channel: ChannelConfig, runtime = ctx.
 				if (workspace === undefined || workspace.state !== 'active') throw ckError('CONFIG', 'daemon start requires an active workspace');
 				return upChannelWithChannelLock(ctx, channel, runtime);
 			},
-			ctx.onWarn
+			ctx.onWarn,
+			workspaceId
 		);
 	} catch (error) {
 		if (isCkError(error) && (error.code === 'LOCKED' || error.code === 'CONFIG'))

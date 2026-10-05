@@ -10,6 +10,7 @@ import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts'
 import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.ts';
 import { ckError } from './messages.ts';
 import { acquirePathLock } from './lock.ts';
+import { acquireWorkspaceCoordinationLock } from './workspaceCoordination.ts';
 import type { WarnSink } from './lock.ts';
 import { resolveContainedPath } from './pathSafety.ts';
 
@@ -129,12 +130,25 @@ export function readWorkspaceRegistry(root: string): WorkspaceRegistry {
 export function updateWorkspaceRegistry<T>(
 	root: string,
 	body: (current: WorkspaceRegistry, save: (next: readonly WorkspaceRecord[]) => void) => T,
-	onWarn?: WarnSink
+	onWarn?: WarnSink,
+	startingWorkspaceId?: WorkspaceRecord['id']
 ): T {
 	const physical = realpathSync(root);
 	const lockPath = resolveContainedPath(physical, 'workspaces.lock', { allowMissing: true });
 	if (!lockPath.ok) throw ckError('CONFIG', 'workspace registry lock path is not contained');
-	const lock = acquirePathLock(lockPath.absolute, 'workspace registry', onWarn);
+	const lock =
+		startingWorkspaceId === undefined
+			? acquirePathLock(lockPath.absolute, 'workspace registry', onWarn)
+			: acquireWorkspaceCoordinationLock(
+					lockPath.absolute,
+					`workspace ${startingWorkspaceId} daemon start`,
+					(holder) => {
+						const match = /^workspace ([^ ]+) daemon start$/.exec(holder.command);
+						const other = workspaceIdSchema.safeParse(match?.[1]);
+						return other.success && other.data !== startingWorkspaceId;
+					},
+					onWarn
+				);
 	try {
 		let expected = readContainedFile(physical, WORKSPACE_REGISTRY_FILE, { what: 'workspace registry snapshot' });
 		let current = readWorkspaceRegistry(physical);
