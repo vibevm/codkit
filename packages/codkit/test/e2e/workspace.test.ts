@@ -14,11 +14,25 @@ import { depsReceiptsOf } from '../../src/lib/ciEngine.ts';
 import { dirname } from 'node:path';
 
 afterAll(cleanupTempRoots);
+// Whole-scenario budget for slow native hosts; keep the ordinary 60s default.
+const cycleScenarioTimeoutMs = Number(process.env['CODKIT_WORKSPACE_CYCLE_TEST_TIMEOUT_MS'] ?? '60000');
+if (!Number.isSafeInteger(cycleScenarioTimeoutMs) || cycleScenarioTimeoutMs < 60_000) {
+	throw new Error('CODKIT_WORKSPACE_CYCLE_TEST_TIMEOUT_MS must be an integer of at least 60000');
+}
 function fixture() {
 	const source = makeSyncFixture('workspace-cli-source');
 	const home = makeTempRoot('workspace-cli-home');
 	const directory = makeTempRoot('workspace-cli-pairs');
-	const env = withStubType({ HOME: home, USERPROFILE: home });
+	// The isolated home has no developer Git identity. Cycle commits need the
+	// same explicit fixture identity on every host and in every subprocess.
+	const env = withStubType({
+		HOME: home,
+		USERPROFILE: home,
+		GIT_AUTHOR_NAME: 'fixture',
+		GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+		GIT_COMMITTER_NAME: 'fixture',
+		GIT_COMMITTER_EMAIL: 'fixture@example.invalid'
+	});
 	const run = (args: readonly string[]) => runCli(directory, ['--json', 'workspace', ...args], env);
 	const create = () =>
 		run([
@@ -305,32 +319,36 @@ it('starts, inspects and restarts a named cycle using only workspace UUID refs',
 	expect(original).not.toContain(`codkit/workspace/${record.id}/`);
 });
 
-it('continues a stopped named cycle through completion with workspace-bound build cleanup', () => {
-	const f = fixture();
-	const created = f.create();
-	expect(created.status, created.stderr).toBe(0);
-	const record = workspace(created.stdout);
-	for (const path of depsReceiptsOf(DEPENDENCY_ROOTS)) {
-		const full = join(record.fork.path, path);
-		mkdirSync(dirname(full), { recursive: true });
-		writeFileSync(full, '{"lockfileVersion":3}\n');
-	}
-	const run = (args: readonly string[], extra: Readonly<Record<string, string>> = {}) =>
-		runCli(f.directory, ['--json', '--workspace', 'task', ...args], { ...f.env, STUB_MODE: 'ok', ...extra });
-	const started = run(['cycle', 'start', f.source.upstream.t2.tag, '--ci'], { STUB_HYGIENE_MODE: 'fail' });
-	expect(started.status, started.stderr + started.stdout).toBe(3);
-	const resumed = run(['cycle', 'continue', '--ci']);
-	expect(resumed.status, resumed.stderr + resumed.stdout).toBe(0);
-	expect(JSON.parse(resumed.stdout)).toMatchObject({ data: { status: 'completed', phase: 'done' } });
-	expect(run(['cycle', 'status']).status).toBe(0);
-	expect(readFileSync(join(f.source.patchesDir, 'codkit.json'), 'utf8')).not.toContain(`codkit/workspace/${record.id}/`);
-	const stale = f.run(['finish', 'task']);
-	expect(stale.status).toBe(2);
-	expect(stale.stderr).toContain('save/apply evidence is stale');
-	const reloaded = run(['load', '--fresh']);
-	expect(reloaded.status, reloaded.stderr + reloaded.stdout).toBe(0);
-	const finished = f.run(['finish', 'task']);
-	expect(finished.status, finished.stderr + finished.stdout).toBe(0);
-	const removed = f.run(['remove', 'task']);
-	expect(removed.status, removed.stderr + removed.stdout).toBe(0);
-}, 60_000);
+it(
+	'continues a stopped named cycle through completion with workspace-bound build cleanup',
+	() => {
+		const f = fixture();
+		const created = f.create();
+		expect(created.status, created.stderr).toBe(0);
+		const record = workspace(created.stdout);
+		for (const path of depsReceiptsOf(DEPENDENCY_ROOTS)) {
+			const full = join(record.fork.path, path);
+			mkdirSync(dirname(full), { recursive: true });
+			writeFileSync(full, '{"lockfileVersion":3}\n');
+		}
+		const run = (args: readonly string[], extra: Readonly<Record<string, string>> = {}) =>
+			runCli(f.directory, ['--json', '--workspace', 'task', ...args], { ...f.env, STUB_MODE: 'ok', ...extra });
+		const started = run(['cycle', 'start', f.source.upstream.t2.tag, '--ci'], { STUB_HYGIENE_MODE: 'fail' });
+		expect(started.status, started.stderr + started.stdout).toBe(3);
+		const resumed = run(['cycle', 'continue', '--ci']);
+		expect(resumed.status, resumed.stderr + resumed.stdout).toBe(0);
+		expect(JSON.parse(resumed.stdout)).toMatchObject({ data: { status: 'completed', phase: 'done' } });
+		expect(run(['cycle', 'status']).status).toBe(0);
+		expect(readFileSync(join(f.source.patchesDir, 'codkit.json'), 'utf8')).not.toContain(`codkit/workspace/${record.id}/`);
+		const stale = f.run(['finish', 'task']);
+		expect(stale.status).toBe(2);
+		expect(stale.stderr).toContain('save/apply evidence is stale');
+		const reloaded = run(['load', '--fresh']);
+		expect(reloaded.status, reloaded.stderr + reloaded.stdout).toBe(0);
+		const finished = f.run(['finish', 'task']);
+		expect(finished.status, finished.stderr + finished.stdout).toBe(0);
+		const removed = f.run(['remove', 'task']);
+		expect(removed.status, removed.stderr + removed.stdout).toBe(0);
+	},
+	cycleScenarioTimeoutMs
+);
