@@ -540,6 +540,19 @@ describe('(h3) the graft budget of a hook patch', () => {
 });
 
 describe('(i) no intervention outside the inventory', () => {
+	it('reports binary resource bytes that differ from the generated branch', () => {
+		const source = join(fixture.patchesDir, 'delta', 'resources', 'files', 'app-icon.bin');
+		const saved = readFileSync(source);
+		try {
+			writeFileSync(source, Buffer.from([0, 255, 128, 13, 10]));
+			const stale = verify().filter((item) => item.code === 'STALE-ARTIFACT');
+			expect(stale).toHaveLength(1);
+			expect(stale[0]?.message).toContain('the branch and the map have drifted apart');
+		} finally {
+			writeFileSync(source, saved);
+		}
+	});
+
 	it('reports a change of the branch that no artifact explains', () => {
 		// The branch still carries the patch; the artifact that put it there is
 		// gone, so nothing in the delta accounts for the changed file.

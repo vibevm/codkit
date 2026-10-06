@@ -493,8 +493,10 @@ export function serializeOverlayTarget(document) {
  * not the branch tip, which may carry one too. Reading git objects also means a
  * dirty tree is no obstacle (##PIN-FILE-READ-RULE).
  */
-export function overlayBaseAtPin(treeDir, pinSha, target, format = 'json') {
-    const shown = runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir });
+export function overlayBaseAtPin(treeDir, pinSha, target, format = 'json', pinBytes) {
+    const shown = pinBytes === undefined
+        ? runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir })
+        : { status: 0, stdout: Buffer.from(pinBytes).toString('utf8') };
     if (shown.status !== 0) {
         throw ckError('ARTIFACT-BROKEN', `the overlay target ${target} does not exist at the pin, and an overlay changes an existing file`, 'add the file with an add-file patch, or keep it in own code; an overlay only edits what upstream ships', `${OVERLAYS_DIR}/${target}${OVERLAY_FILE_SUFFIX}`);
     }
@@ -527,7 +529,7 @@ export function overlayBaseAtPin(treeDir, pinSha, target, format = 'json') {
  * composes them that way - so this takes a list and folds them one after
  * another over one base.
  */
-export function renderOverlayTarget(overlays, treeDir, pinSha, context) {
+export function renderOverlayTarget(overlays, treeDir, pinSha, context, pinBytes) {
     const target = overlays[0]?.target;
     if (target === undefined) {
         throw ckError('INTERNAL', 'cannot materialize an overlay target without an overlay');
@@ -536,7 +538,7 @@ export function renderOverlayTarget(overlays, treeDir, pinSha, context) {
     if (overlays.some((overlay) => (overlay.format ?? 'json') !== format)) {
         throw ckError('OVERLAY-SCHEMA', `overlays of ${target} disagree on the target format`);
     }
-    let document = { ...overlayBaseAtPin(treeDir, pinSha, target, format) };
+    let document = { ...overlayBaseAtPin(treeDir, pinSha, target, format, pinBytes) };
     for (const overlay of overlays) {
         document = applyOperations(document, overlay.operations, context);
     }

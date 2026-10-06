@@ -26,6 +26,7 @@ import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.js';
 import { CONFIG_FILE_NAME, loadBaseConfig, serializeBaseConfig } from './configFile.js';
 import { loadConventions } from './conventionsFile.js';
 import { runGit } from './gitx.js';
+import { readTreeEntries } from './gitHistory.js';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.js';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.js';
 import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, checkOverlay, devChannelIgnoreWarning, devChannelTarget, loadOverlays, restrictedTargetViolations, overlayDriftErrors, parseOverlay, serializeOverlay } from './layers/overlay.js';
@@ -955,14 +956,15 @@ function checkCompleteness(type, patchesDir, treeDir, config, patches, overlays,
         }
         findings.push(finding('STALE-ARTIFACT', `${entry.patch.header.id}: ${target} is identical to pin ${config.pin.tag} on ${branch}, so this patch changes nothing`, 'remove the artifact, or regenerate it from a real change (codkit save)', entry.artifact));
     }
+    const resourceBytes = resourceBlobPairs(patchesDir, treeDir, tip, resources.filter((entry) => changed.has(toPosix(entry.target))));
     for (const entry of resources) {
-        checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, findings);
+        checkResourceEntry(branch, changed, entry, resourceBytes.get(entry.target), findings);
     }
     // Overlay targets are deliberately not required to appear: the local channel
     // writes the dev channel of the type and leaves the upstream file alone
     // (##OVERLAY-TWO-CHANNELS), so an absent overlay target is the normal state.
 }
-function checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, findings) {
+function checkResourceEntry(branch, changed, entry, bytes, findings) {
     const target = toPosix(entry.target);
     if (!changed.has(target)) {
         findings.push(finding('STALE-ARTIFACT', `${entry.id}: ${target} is identical to the pin on ${branch}, so the resource is not replaced`, 'rebuild the branch (codkit load), or drop the entry if the replacement is no longer wanted', RESOURCE_MAP_PATH));
@@ -970,8 +972,8 @@ function checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, fi
     }
     // Byte equality through git's own object ids: the content is binary by
     // definition of this layer, so it is never decoded as text.
-    const onBranch = blobSha(treeDir, `${tip}:${target}`);
-    const ours = hashFile(treeDir, resourceSourcePath(patchesDir, entry));
+    const onBranch = bytes?.onBranch ?? null;
+    const ours = bytes?.ours ?? null;
     if (onBranch === null || ours === null || onBranch === ours) {
         return;
     }
@@ -993,6 +995,29 @@ function changedPaths(treeDir, from, to) {
         }
     }
     return paths;
+}
+/** Two Git processes for the whole resource layer; retain per-file failure semantics. */
+function resourceBlobPairs(patchesDir, treeDir, tip, entries) {
+    const pairs = new Map();
+    if (entries.length === 0)
+        return pairs;
+    const paths = entries.map((entry) => resourceSourcePath(patchesDir, entry));
+    // Newline-delimited stdin paths cannot represent every legal Unix filename.
+    // Rare such inputs, or an unreadable file, keep the established slow path.
+    if (paths.every((path) => !/[\r\n"]/.test(path))) {
+        const hashed = runGit({ args: ['hash-object', '--no-filters', '--stdin-paths'], cwd: treeDir, input: `${paths.join('\n')}\n` });
+        const blobs = hashed.stdout.trim().split('\n');
+        if (hashed.status === 0 && blobs.length === entries.length) {
+            const tree = readTreeEntries(treeDir, tip);
+            entries.forEach((entry, index) => pairs.set(entry.target, { onBranch: tree.get(toPosix(entry.target))?.oid ?? null, ours: blobs[index] ?? null }));
+            return pairs;
+        }
+    }
+    entries.forEach((entry, index) => pairs.set(entry.target, {
+        onBranch: blobSha(treeDir, `${tip}:${toPosix(entry.target)}`),
+        ours: hashFile(treeDir, paths[index] ?? resourceSourcePath(patchesDir, entry))
+    }));
+    return pairs;
 }
 function blobSha(treeDir, revision) {
     const result = runGit({ args: ['rev-parse', revision], cwd: treeDir });

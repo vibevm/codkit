@@ -31,6 +31,7 @@ import type { CodkitConfig } from './configFile.ts';
 import { loadConventions } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { runGit } from './gitx.ts';
+import { readTreeEntries } from './gitHistory.ts';
 import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.ts';
 import type { InventoryEntry } from './inventory.ts';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.ts';
@@ -1454,8 +1455,14 @@ function checkCompleteness(
 			)
 		);
 	}
+	const resourceBytes = resourceBlobPairs(
+		patchesDir,
+		treeDir,
+		tip,
+		resources.filter((entry) => changed.has(toPosix(entry.target)))
+	);
 	for (const entry of resources) {
-		checkResourceEntry(patchesDir, treeDir, branch, tip, changed, entry, findings);
+		checkResourceEntry(branch, changed, entry, resourceBytes.get(entry.target), findings);
 	}
 	// Overlay targets are deliberately not required to appear: the local channel
 	// writes the dev channel of the type and leaves the upstream file alone
@@ -1463,12 +1470,10 @@ function checkCompleteness(
 }
 
 function checkResourceEntry(
-	patchesDir: string,
-	treeDir: string,
 	branch: string,
-	tip: string,
 	changed: ReadonlySet<string>,
 	entry: ResourceEntry,
+	bytes: ResourceBlobPair | undefined,
 	findings: Finding[]
 ): void {
 	const target = toPosix(entry.target);
@@ -1485,8 +1490,8 @@ function checkResourceEntry(
 	}
 	// Byte equality through git's own object ids: the content is binary by
 	// definition of this layer, so it is never decoded as text.
-	const onBranch = blobSha(treeDir, `${tip}:${target}`);
-	const ours = hashFile(treeDir, resourceSourcePath(patchesDir, entry));
+	const onBranch = bytes?.onBranch ?? null;
+	const ours = bytes?.ours ?? null;
 	if (onBranch === null || ours === null || onBranch === ours) {
 		return;
 	}
@@ -1516,6 +1521,40 @@ function changedPaths(treeDir: string, from: string, to: string): ReadonlySet<st
 		}
 	}
 	return paths;
+}
+
+type ResourceBlobPair = { readonly onBranch: string | null; readonly ours: string | null };
+
+/** Two Git processes for the whole resource layer; retain per-file failure semantics. */
+function resourceBlobPairs(
+	patchesDir: string,
+	treeDir: string,
+	tip: string,
+	entries: readonly ResourceEntry[]
+): ReadonlyMap<string, ResourceBlobPair> {
+	const pairs = new Map<string, ResourceBlobPair>();
+	if (entries.length === 0) return pairs;
+	const paths = entries.map((entry) => resourceSourcePath(patchesDir, entry));
+	// Newline-delimited stdin paths cannot represent every legal Unix filename.
+	// Rare such inputs, or an unreadable file, keep the established slow path.
+	if (paths.every((path) => !/[\r\n"]/.test(path))) {
+		const hashed = runGit({ args: ['hash-object', '--no-filters', '--stdin-paths'], cwd: treeDir, input: `${paths.join('\n')}\n` });
+		const blobs = hashed.stdout.trim().split('\n');
+		if (hashed.status === 0 && blobs.length === entries.length) {
+			const tree = readTreeEntries(treeDir, tip);
+			entries.forEach((entry, index) =>
+				pairs.set(entry.target, { onBranch: tree.get(toPosix(entry.target))?.oid ?? null, ours: blobs[index] ?? null })
+			);
+			return pairs;
+		}
+	}
+	entries.forEach((entry, index) =>
+		pairs.set(entry.target, {
+			onBranch: blobSha(treeDir, `${tip}:${toPosix(entry.target)}`),
+			ours: hashFile(treeDir, paths[index] ?? resourceSourcePath(patchesDir, entry))
+		})
+	);
+	return pairs;
 }
 
 function blobSha(treeDir: string, revision: string): string | null {
