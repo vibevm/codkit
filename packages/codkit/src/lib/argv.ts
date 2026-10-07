@@ -68,6 +68,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--message', 'value'],
 	['--allow-new-file', 'repeatable'],
 	['--squash', 'boolean'],
+	['--regenerate', 'boolean'],
 	// sync (PROP-007 sec. 5a, campaign TREE-COMMITS-SAVE D15): the save/load
 	// half-flags above are shared with it; --abort/--continue are its own.
 	['--abort', 'boolean'],
@@ -103,10 +104,15 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--type', 'value'],
 	['--owner', 'value'],
 	['--reason', 'value'],
+	['--expected-sha256', 'value'],
 	['--category', 'value'],
 	['--layer', 'value'],
 	['--line', 'value'],
 	['--add-block', 'boolean'],
+	['--body-file', 'value'],
+	['--replace-lines', 'value'],
+	['--move-block-from', 'value'],
+	['--inputs-only', 'boolean'],
 	// overlay new (PROP-007 sec. 12); --id, --type, --owner, --reason and
 	// --category above are shared with marker new.
 	['--contract-test', 'repeatable'],

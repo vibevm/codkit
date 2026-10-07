@@ -707,9 +707,13 @@ export function overlayBaseAtPin(
 	treeDir: string,
 	pinSha: string,
 	target: string,
-	format: 'json' | 'jsonc' = 'json'
+	format: 'json' | 'jsonc' = 'json',
+	pinBytes?: Uint8Array
 ): { readonly [key: string]: JsonLike } {
-	const shown = runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir });
+	const shown =
+		pinBytes === undefined
+			? runGit({ args: ['show', `${pinSha}:${target}`], cwd: treeDir })
+			: { status: 0, stdout: Buffer.from(pinBytes).toString('utf8') };
 	if (shown.status !== 0) {
 		throw ckError(
 			'ARTIFACT-BROKEN',
@@ -760,7 +764,8 @@ export function renderOverlayTarget(
 	overlays: readonly Overlay[],
 	treeDir: string,
 	pinSha: string,
-	context: OverlayVarContext
+	context: OverlayVarContext,
+	pinBytes?: Uint8Array
 ): OverlayRender {
 	const target = overlays[0]?.target;
 	if (target === undefined) {
@@ -770,7 +775,7 @@ export function renderOverlayTarget(
 	if (overlays.some((overlay) => (overlay.format ?? 'json') !== format)) {
 		throw ckError('OVERLAY-SCHEMA', `overlays of ${target} disagree on the target format`);
 	}
-	let document: { [key: string]: JsonLike } = { ...overlayBaseAtPin(treeDir, pinSha, target, format) };
+	let document: { [key: string]: JsonLike } = { ...overlayBaseAtPin(treeDir, pinSha, target, format, pinBytes) };
 	for (const overlay of overlays) {
 		document = applyOperations(document, overlay.operations, context);
 	}

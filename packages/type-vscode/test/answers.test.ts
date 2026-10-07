@@ -135,12 +135,14 @@ describe('build and test', () => {
 			'macos-arm64',
 			'linux-x64-tar',
 			'linux-x64-deb',
-			'linux-x64-rpm'
+			'linux-x64-rpm',
+			'server-linux-x64-tar'
 		]);
 		expect(build.packageTargets?.filter((target) => target.outputs !== undefined).map((target) => target.id)).toEqual([
 			'linux-x64-tar',
 			'linux-x64-deb',
-			'linux-x64-rpm'
+			'linux-x64-rpm',
+			'server-linux-x64-tar'
 		]);
 		expect(makeBuild({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64'] }).defaultPackageTargets).toEqual(['windows-x64']);
 	});

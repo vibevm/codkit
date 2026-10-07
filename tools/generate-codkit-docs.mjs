@@ -129,10 +129,14 @@ const valueLabels = {
 	'--type': 'type',
 	'--owner': 'owner',
 	'--reason': 'text',
+	'--expected-sha256': 'sha256',
 	'--category': 'category',
 	'--contract-test': 'guard-test-id',
 	'--layer': 'patch|entry-module',
 	'--line': 'n',
+	'--body-file': 'path',
+	'--move-block-from': 'n',
+	'--replace-lines': 'count',
 	'--patch': 'contained-old-patch',
 	'--ref': 'ref',
 	'--release': 'semver',
@@ -219,7 +223,7 @@ const commandGuidance = {
 	save: {
 		positional: '[path ...]',
 		detail:
-			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`). An edit in the directory of an input is refused before anything is written: that content belongs to the repository of the input.'
+			'Extract all changed paths, or only the named paths, back into patchset. Tree commits replay one by one into patchset history with their own subject, author and date plus a `Codkit-Tree-Commit` trailer; `--squash` folds them into one commit, and without tree commits it is a no-op that says so. `--allow-new-file` is repeatable. `--commit` commits the uncommitted remainder; `--message` supplies its message (or the squash subject under `--squash`). `--regenerate` requires explicit existing patch target files and invokes canonical regeneration even when they are clean, retaining all lineage and marker guards. An edit in the directory of an input is refused before anything is written: that content belongs to the repository of the input.'
 	},
 	sync: {
 		positional: '',
@@ -231,11 +235,17 @@ const commandGuidance = {
 		detail:
 			"Remove spent runtime state: consumed refs beyond `--keep-consumed <n>` (default 5) that are also `--older-than <days>` old (default 30), crash scratch under `.codkit/tmp`, dead-owner tree locks, apply caches of trees that no longer exist, and generated `.codkit/out` output. `--dry-run` prints the same plan without removing anything; the kept classes - a stopped sync's transaction, pending draft headers, daemon records, a live owner's lock - are named as kept in the plan and never touched."
 	},
+	'marker reason': {
+		positional: '<target>',
+		requiredFlags: ['--id', '--expected-sha256', '--reason'],
+		detail:
+			'Author only the reason of one contained existing patch. Expected id/hash are mandatory; other header fields and diff body remain byte-identical. --dry-run returns preview without Source writes; apply uses locked contained atomic CAS. It changes no fork, HEAD, refs, index or upgrade cycle.'
+	},
 	'marker new': {
 		positional: '<tree-file>',
 		requiredFlags: ['--id', '--type', '--owner', '--reason'],
 		detail:
-			'Create an empty marker block and pending patch header. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. With `--add-block`, only `--id` (and `--line`) are given: it opens another block of an intervention the file already carries, for a graft that is an import line and a call site.'
+			'Create a marker block and pending patch header; `--body-file` supplies bounded UTF-8 code atomically, and `--replace-lines` with explicit `--line` preserves addressed originals as comments. Without body flags the scaffold stays empty. `--id`, `--type`, `--owner`, and `--reason` are required; category defaults to `follow` and layer defaults to `patch`. With `--add-block`, only `--id` (and `--line`) are given for another owned block. `--add-block --move-block-from <begin-line> --line <destination>` instead relocates that exact owned block intact, without body flags or metadata changes.'
 	},
 	reresolve: {
 		positional: '<tree-file>',

@@ -23,6 +23,7 @@ import { runGit } from '../gitx.js';
 import { ckError } from '../messages.js';
 import { fileContentEqual } from '../ownCopy.js';
 import { resolveContainedPath } from '../pathSafety.js';
+import { classifyOwn } from '../ownSides.js';
 import { OWN_MANIFEST_PATH } from './ownManifest.js';
 /** The materializer of a type, or null when the family has no such layer. */
 export function materializerOf(type) {
@@ -360,6 +361,20 @@ export function compareOwnExtensions(materializer, patchesDir, treeDir, extensio
     }
     diverged.sort((left, right) => Buffer.from(left.relative, 'utf8').compare(Buffer.from(right.relative, 'utf8')));
     return diverged;
+}
+/** The recorded artifact map supplies the same per-file direction evidence as ownFiles supplies for own code. */
+export function classifyOwnExtensions(materializer, patchesDir, treeDir, extensions, artifacts) {
+    return extensions
+        .filter((extension) => isSafeExtensionName(materializer, extension.name))
+        .flatMap((extension) => {
+        const deltaDir = `${materializer.deltaRoot}/${extension.name}`;
+        const prefix = deltaDir + '/';
+        const entries = artifacts === null ? null : Object.entries(artifacts).filter(([path]) => path.startsWith(prefix));
+        const baseline = entries !== null && entries.every(([, hash]) => /^[0-9a-f]{64}$/.test(hash))
+            ? Object.fromEntries(entries.map(([path, hash]) => [path.slice(prefix.length), hash]))
+            : null;
+        return classifyOwn(patchesDir, treeDir, { role: 'own', path: materializer.materializedPath(extension.name), deltaDir, buildOutputs: [], upstreamPaths: new Set() }, baseline, true);
+    });
 }
 // ---------------------------------------------------------------------------
 // The primitives

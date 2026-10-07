@@ -30,7 +30,7 @@ import { treeId } from '../lib/fingerprint.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { withLock } from '../lib/lock.ts';
 import { markerFormFor, parseMarkers } from '../lib/markers.ts';
-import type { MarkerForm } from '../lib/markers.ts';
+import type { MarkerForm, MarkerBlock } from '../lib/markers.ts';
 import { ckError, isCkError } from '../lib/messages.ts';
 import { OWNERS_PATH, loadOwnerKeys } from '../lib/owners.ts';
 import { DEFAULT_PATCH_LAYER, PATCH_FILE_SUFFIX, encodePatchName } from '../lib/patchFormat.ts';
@@ -57,6 +57,9 @@ const CATEGORY = '--category';
 const LAYER = '--layer';
 const LINE = '--line';
 const ADD_BLOCK = '--add-block';
+const BODY_FILE = '--body-file';
+const REPLACE_LINES = '--replace-lines';
+const MOVE_BLOCK_FROM = '--move-block-from';
 
 /** PROP-007 sec. 8: `--category` defaults to `follow`. */
 const DEFAULT_CATEGORY = 'follow';
@@ -82,6 +85,8 @@ async function run(ctx: CommandContext): Promise<number> {
 	// already carries needs the id and the line, and nothing else - the header
 	// is the one the first block has.
 	const addBlock = commandFlagGiven(ctx.commandFlags, ADD_BLOCK);
+	if (!addBlock && commandFlagValue(ctx.commandFlags, MOVE_BLOCK_FROM) !== null)
+		throw ckError('CONFIG', '--move-block-from requires --add-block and an existing owned block');
 	const fields = addBlock ? readAddBlockFields(ctx) : readFields(ctx);
 
 	const identity = checkTree(resolution, config, { mode: 'write', type: requireProjectType(ctx) });
@@ -122,6 +127,9 @@ type MarkerFields = {
 	readonly category: string;
 	readonly layer: Extract<PatchLayer, 'patch' | 'entry-module'>;
 	readonly line: number | null;
+	readonly body?: string;
+	readonly replaceLines?: number;
+	readonly moveBlockFrom?: number;
 };
 
 type LocatedTarget = { readonly target: string; readonly absolute: string; readonly form: MarkerForm };
@@ -194,6 +202,11 @@ function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, gi
 	if (parseError !== undefined) throw parseError;
 	const pendingMatches = pending !== null && JSON.stringify(pending) === JSON.stringify(header);
 	const resumedBlock = pendingMatches ? parsed.blocks.find((block) => block.id === fields.id) : undefined;
+	if (resumedBlock !== undefined && fields.body !== undefined)
+		throw ckError(
+			'CONFIG',
+			'body authoring already created this marker; inspect the retained block and continue with save instead of silently replaying another body'
+		);
 	if (resumedBlock === undefined) {
 		assertIdIsFree(ctx.patchesDir, fields.id, content, target, conventions, pendingMatches ? pendingFileName(target) : null);
 	}
@@ -324,11 +337,21 @@ function addBlockTo(ctx: CommandContext, treeDir: string, config: CodkitConfig, 
 			target
 		);
 	}
-	const updated = insertBlock(content, form, fields, target);
+	const updated =
+		fields.moveBlockFrom === undefined
+			? insertBlock(content, form, fields, target)
+			: moveMarkerBlock(content, parsed.blocks, fields.id, fields.moveBlockFrom, fields.line!, target);
 	writeMarkerFileAtomic(absolute, content, updated.text, target);
-	ctx.out.info(`${target}: inserted another block of ${fields.id} at line ${updated.at}`);
+	ctx.out.info(
+		`${target}: ${fields.moveBlockFrom === undefined ? 'inserted another' : 'moved existing'} block of ${fields.id} at line ${updated.at}`
+	);
 	ctx.out.info('now edit inside the block, then: codkit save');
-	ctx.out.setData({ target, id: fields.id, line: updated.at, block: 'added' } satisfies JsonValue);
+	ctx.out.setData({
+		target,
+		id: fields.id,
+		line: updated.at,
+		block: fields.moveBlockFrom === undefined ? 'added' : 'moved'
+	} satisfies JsonValue);
 	return EXIT_OK;
 }
 
@@ -338,13 +361,46 @@ function readAddBlockFields(ctx: CommandContext): MarkerFields {
 		if (commandFlagValue(ctx.commandFlags, name) !== null) {
 			throw ckError(
 				'CONFIG',
-				`${ADD_BLOCK} takes only ${ID} and ${LINE}; ${name} belongs to the first block`,
+				`${ADD_BLOCK} takes ${ID}, ${LINE} and optional body authoring flags; ${name} belongs to the first block`,
 				'the header of the intervention is the one its first block already has'
 			);
 		}
 	}
 	const line = readLine(ctx);
-	return { id, type: '', owner: '', reason: '', category: DEFAULT_CATEGORY, layer: 'patch', line };
+	const move = commandFlagValue(ctx.commandFlags, MOVE_BLOCK_FROM);
+	if (move !== null) {
+		if (
+			!/^[1-9]\d*$/.test(move) ||
+			line === null ||
+			commandFlagValue(ctx.commandFlags, BODY_FILE) !== null ||
+			commandFlagValue(ctx.commandFlags, REPLACE_LINES) !== null
+		)
+			throw ckError('CONFIG', '--move-block-from needs positive begin line, explicit --line and no body/replacement flags');
+		return { id, type: '', owner: '', reason: '', category: DEFAULT_CATEGORY, layer: 'patch', line, moveBlockFrom: Number(move) };
+	}
+	return { id, type: '', owner: '', reason: '', category: DEFAULT_CATEGORY, layer: 'patch', line, ...readBody(ctx, line) };
+}
+
+/** Relocate one exact owned block intact, retaining all unrelated bytes and the final-newline property. */
+export function moveMarkerBlock(
+	content: string,
+	blocks: readonly MarkerBlock[],
+	id: string,
+	from: number,
+	to: number,
+	target: string
+): { text: string; at: number } {
+	const block = blocks.find((one) => one.id === id && one.beginLine === from);
+	if (!block) throw ckError('CONFIG', 'the exact owned block begin line was not found', undefined, target);
+	const newline = content.endsWith('\n');
+	const lines = content.split('\n');
+	if (newline) lines.pop();
+	if (to < 1 || to > lines.length + 1 || blocks.some((one) => to >= one.beginLine && to <= one.endLine))
+		throw ckError('CONFIG', 'block destination is outside the file or inside marker ownership', undefined, target);
+	const moving = lines.splice(block.beginLine - 1, block.endLine - block.beginLine + 1);
+	const at = to > block.endLine ? to - moving.length : to;
+	lines.splice(at - 1, 0, ...moving);
+	return { text: lines.join('\n') + (newline ? '\n' : ''), at };
 }
 
 function readFields(ctx: CommandContext): MarkerFields {
@@ -361,7 +417,33 @@ function readFields(ctx: CommandContext): MarkerFields {
 			'rewrite-rule patches are generated by rule tooling and cannot be scaffolded by a person'
 		);
 	}
-	return { id, type, owner, reason, category, layer: rawLayer, line: readLine(ctx) };
+	const line = readLine(ctx);
+	return { id, type, owner, reason, category, layer: rawLayer, line, ...readBody(ctx, line) };
+}
+
+/** CMD-MARKER-BODY: author a bounded body through the same locked marker transaction. */
+function readBody(ctx: CommandContext, line: number | null): Pick<MarkerFields, 'body' | 'replaceLines'> {
+	const path = commandFlagValue(ctx.commandFlags, BODY_FILE);
+	const replace = commandFlagValue(ctx.commandFlags, REPLACE_LINES);
+	if (path === null) {
+		if (replace !== null) throw ckError('CONFIG', '--replace-lines requires --body-file');
+		return {};
+	}
+	const absolute = resolve(ctx.patchesDir, path);
+	const stat = lstatSync(absolute);
+	if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536)
+		throw ckError('CONFIG', '--body-file must be a bounded regular non-symlink file');
+	let body: string;
+	try {
+		body = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(absolute));
+	} catch {
+		throw ckError('CONFIG', '--body-file must be valid UTF-8');
+	}
+	if (!body.trim() || body.includes('codkit:begin') || body.includes('codkit:end'))
+		throw ckError('CONFIG', '--body-file must contain code without marker ownership tokens');
+	if (replace !== null && (line === null || !/^[1-9][0-9]*$/.test(replace) || Number(replace) > 1000))
+		throw ckError('CONFIG', '--replace-lines requires an explicit --line and a count from 1 to 1000');
+	return { body: body.replace(/\r\n/g, '\n'), replaceLines: replace === null ? 0 : Number(replace) };
 }
 
 function readLine(ctx: CommandContext): number | null {
@@ -535,7 +617,7 @@ type Insertion = { readonly text: string; readonly at: number };
  * when no line was given. The indentation is taken from the neighbouring line,
  * so the block sits where the code around it sits.
  */
-function insertBlock(content: string, form: MarkerForm, fields: MarkerFields, target: string): Insertion {
+export function insertBlock(content: string, form: MarkerForm, fields: MarkerFields, target: string): Insertion {
 	const endsWithNewline = content === '' || content.endsWith('\n');
 	const lines = content === '' ? [] : content.replace(/\n$/, '').split('\n');
 	const at = fields.line ?? lines.length + 1;
@@ -549,8 +631,28 @@ function insertBlock(content: string, form: MarkerForm, fields: MarkerFields, ta
 	}
 	const neighbour = lines[at - 1] ?? lines[at - 2] ?? '';
 	const indent = /^[\t ]*/.exec(neighbour)?.[0] ?? '';
-	const block = [`${indent}${form.open}begin ${fields.id}${form.close}`, `${indent}${form.open}end ${fields.id}${form.close}`];
-	lines.splice(at - 1, 0, ...block);
+	const replace = fields.replaceLines ?? 0;
+	if (replace > 0 && (!form.open.startsWith('//') || at - 1 + replace > lines.length))
+		throw ckError('CONFIG', 'bounded replacement requires an existing line-comment target range');
+	const originals = lines.slice(at - 1, at - 1 + replace);
+	if (originals.some((line) => line.includes('codkit:')))
+		throw ckError('CONFIG', 'replacement cannot neutralize existing marker ownership');
+	const body =
+		fields.body === undefined
+			? []
+			: fields.body
+					.replace(/\n$/, '')
+					.split('\n')
+					.map((line) => indent + line);
+	const followingIndent = /^[\t ]*/.exec(lines[at - 1 + replace] ?? '')?.[0] ?? indent;
+	const endIndent = replace > 0 && followingIndent.length > indent.length ? followingIndent : indent;
+	const block = [
+		`${indent}${form.open}begin ${fields.id}${form.close}`,
+		...originals.map((line) => `${indent}// ${line.slice(indent.length)}`),
+		...body,
+		`${endIndent}${form.open}end ${fields.id}${form.close}`
+	];
+	lines.splice(at - 1, replace, ...block);
 	// The final newline of the file is a property codkit refuses to change
 	// (PROP-004 ##GEN-BYTE-PREDICATES); the block never introduces or removes one.
 	return { text: `${lines.join('\n')}${endsWithNewline ? '\n' : ''}`, at };
@@ -561,6 +663,6 @@ export const markerNewCommand: CommandDefinition = {
 	summary: 'scaffold a codkit marker block in an upstream file of the tree',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE, ADD_BLOCK],
+	commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE, ADD_BLOCK, BODY_FILE, REPLACE_LINES, MOVE_BLOCK_FROM],
 	run
 };

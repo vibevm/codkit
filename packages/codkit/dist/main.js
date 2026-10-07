@@ -23,6 +23,7 @@ import { consumerLicenseCheckCommand } from './commands/consumerLicense.js';
 import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.js';
 import { loadCommand } from './commands/load.js';
 import { markerNewCommand } from './commands/markerNew.js';
+import { markerReasonCommand } from './commands/markerReason.js';
 import { overlayApplyCommand, overlayCheckCommand, overlayNewCommand } from './commands/overlay.js';
 import { packageCommand } from './commands/package.js';
 import { publishCommand } from './commands/publish.js';
@@ -76,6 +77,7 @@ const COMMANDS = new Map([
     syncCommand,
     gcCommand,
     markerNewCommand,
+    markerReasonCommand,
     reresolveCommand,
     inventoryCommand,
     verifyCommand,

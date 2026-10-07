@@ -24,6 +24,7 @@ import { consumerLicenseCheckCommand } from './commands/consumerLicense.ts';
 import { licenseAnnotateCommand, licenseCheckCommand, licenseCommand, licenseNoticesCommand } from './commands/license.ts';
 import { loadCommand } from './commands/load.ts';
 import { markerNewCommand } from './commands/markerNew.ts';
+import { markerReasonCommand } from './commands/markerReason.ts';
 import { overlayApplyCommand, overlayCheckCommand, overlayNewCommand } from './commands/overlay.ts';
 import { packageCommand } from './commands/package.ts';
 import { publishCommand } from './commands/publish.ts';
@@ -85,6 +86,7 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		syncCommand,
 		gcCommand,
 		markerNewCommand,
+		markerReasonCommand,
 		reresolveCommand,
 		inventoryCommand,
 		verifyCommand,

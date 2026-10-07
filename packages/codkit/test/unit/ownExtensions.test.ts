@@ -8,11 +8,13 @@
 // truth on `load`, the tree is what `save` extracts.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
 	checkOwnExtensions,
 	compareOwnExtensions,
+	classifyOwnExtensions,
 	listExtensionFiles,
 	mirrorOwnExtensionsBack,
 	ownExtensionFiles,
@@ -73,6 +75,27 @@ function writeSampleExtension(): void {
 }
 
 const noUpstream = (): boolean => false;
+
+describe('artifact-baseline classification covers the complete extension unit', () => {
+	it.each(['patchset.delta.json', '__proto__', 'constructor'])(
+		'preserves tree work in %s even though it is not ordinary own code metadata',
+		(name) => {
+			const materializer = materializerOf(stubProjectType);
+			if (materializer === null) {
+				throw new Error('fixture lacks materializer');
+			}
+			writeSampleExtension();
+			writeDelta(`acme-pack/${name}`, 'original');
+			syncOwnExtensions(materializer, patchesDir, treeDir, [PACK]);
+			const hash = createHash('sha256').update('original').digest('hex');
+			const baseline = { [`delta/own-extensions/acme-pack/${name}`]: hash };
+			writeTree(`addons/acme-pack/${name}`, 'tree work');
+			const classes = classifyOwnExtensions(materializer, patchesDir, treeDir, [PACK], baseline);
+			expect(classes.find((entry) => entry.relative === name)?.kind).toBe('tree-edited');
+			expect(readFileSync(join(treeDir, 'addons/acme-pack', name), 'utf8')).toBe('tree work');
+		}
+	);
+});
 
 describe('the extensions section of the own manifest (##OWN-EXTENSION-UNIT)', () => {
 	it('is optional: a manifest without it parses into no extensions', () => {

@@ -48,16 +48,16 @@ const OWN_FINGERPRINT_SCHEMA_VERSION = 1;
  * the copy the two sides are identical by construction and patchset is the source
  * of truth (PROP-005 ##OWN-SOURCE-OF-TRUTH).
  */
-export function ownStateOfPatchSet(patchesDir: string, owned?: OwnedRoot): OwnState {
+export function ownStateOfPatchSet(patchesDir: string, owned?: OwnedRoot, includeMetadata = false): OwnState {
 	const deltaDir = owned?.deltaDir ?? OWN_SOURCE_DIR;
 	assertContainedOwnRoot(patchesDir, deltaDir, 'own source');
-	return ownStateOf(ownSourceRoot(patchesDir, deltaDir), owned === undefined ? undefined : ownCodeFilter(owned));
+	return ownStateOf(ownSourceRoot(patchesDir, deltaDir), owned === undefined ? undefined : ownCodeFilter(owned), includeMetadata);
 }
 
-export function ownStateOfTree(treeDir: string, owned: OwnedRoot): OwnState {
+export function ownStateOfTree(treeDir: string, owned: OwnedRoot, includeMetadata = false): OwnState {
 	assertSafeOwnRoot(owned.path);
 	assertContainedOwnRoot(treeDir, owned.path, 'materialized own target');
-	return ownStateOf(ownTargetRoot(treeDir, owned.path), ownCodeFilter(owned));
+	return ownStateOf(ownTargetRoot(treeDir, owned.path), ownCodeFilter(owned), includeMetadata);
 }
 
 /**
@@ -65,13 +65,15 @@ export function ownStateOfTree(treeDir: string, owned: OwnedRoot): OwnState {
  * that is not delivered is not part of the comparison on either side, so it can
  * never be classified as "one of the sides moved it".
  */
-function ownStateOf(root: string, keep?: ((relative: string) => boolean) | undefined): OwnState {
-	const relatives = listOwnFiles(root, { refuseSymlinks: true, keep }).filter(isDeliveredOwnFile);
+function ownStateOf(root: string, keep?: ((relative: string) => boolean) | undefined, includeMetadata = false): OwnState {
+	const relatives = listOwnFiles(root, { refuseSymlinks: true, keep }).filter(
+		(relative) => includeMetadata || isDeliveredOwnFile(relative)
+	);
 	const files: Record<string, string> = {};
 	const hash = createHash('sha256');
 	for (const relative of relatives) {
 		const sha = sha256File(join(root, relative));
-		files[relative] = sha;
+		Object.defineProperty(files, relative, { value: sha, enumerable: true, configurable: true, writable: true });
 		hash.update(`${relative}\n${sha}\n`, 'utf8');
 	}
 	hash.update(`schema ${OWN_FINGERPRINT_SCHEMA_VERSION}\n`, 'utf8');
@@ -162,17 +164,23 @@ export type OwnSideClass = {
  * from a mark written before the map existed - and every difference then falls
  * into `unknown` rather than being guessed at.
  */
-export function classifyOwn(patchesDir: string, treeDir: string, owned: OwnedRoot, markFiles: OwnFileMap | null): readonly OwnSideClass[] {
-	const patchset = ownStateOfPatchSet(patchesDir, owned).files;
-	const tree = ownStateOfTree(treeDir, owned).files;
+export function classifyOwn(
+	patchesDir: string,
+	treeDir: string,
+	owned: OwnedRoot,
+	markFiles: OwnFileMap | null,
+	includeMetadata = false
+): readonly OwnSideClass[] {
+	const patchset = ownStateOfPatchSet(patchesDir, owned, includeMetadata).files;
+	const tree = ownStateOfTree(treeDir, owned, includeMetadata).files;
 	const paths = [...new Set([...Object.keys(patchset), ...Object.keys(tree)])].sort((left, right) =>
 		Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8'))
 	);
 
 	const out: OwnSideClass[] = [];
 	for (const relative of paths) {
-		const inPatchSet = patchset[relative] ?? null;
-		const inTree = tree[relative] ?? null;
+		const inPatchSet = Object.hasOwn(patchset, relative) ? (patchset[relative] ?? null) : null;
+		const inTree = Object.hasOwn(tree, relative) ? (tree[relative] ?? null) : null;
 		out.push({ relative, kind: classifyOne(inPatchSet, inTree, markFiles, relative), patchset: inPatchSet, tree: inTree, owned });
 	}
 	return out;
@@ -199,7 +207,7 @@ function classifyOne(inPatchSet: string | null, inTree: string | null, markFiles
 	if (markFiles === null) {
 		return 'unknown';
 	}
-	const marked = markFiles[relative] ?? null;
+	const marked = Object.hasOwn(markFiles, relative) ? (markFiles[relative] ?? null) : null;
 	const patchsetMoved = inPatchSet !== marked;
 	const treeMoved = inTree !== marked;
 	if (patchsetMoved && treeMoved) {

@@ -8,7 +8,7 @@ import { pinKey } from './pinIdentity.js';
 // Three properties shape the implementation, and each of them is a requirement
 // rather than a preference:
 //
-//   * the generated commits are built in a temporary index, from the pin's tree,
+//   * the generated commits are imported as objects, from the pin's tree,
 //     with a fixed author and the pin's own date - so their shas are identical
 //     on every machine (##NFR-DETERMINISM) and CI caches keyed by them work;
 //   * the work tree is moved by rewriting only the files that actually differ
@@ -20,20 +20,22 @@ import { pinKey } from './pinIdentity.js';
 // The tree is the truth about what is applied (##TREE-IS-TRUTH); the cache in
 // patchset and the mark inside .git are hints that let the next run skip the work.
 import { declaredDiscipline } from './discipline.js';
-import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync } from 'node:fs';
 import { basename, join, relative, sep } from 'node:path';
 import { applyUnified } from './applyUnified.js';
 import { encodeUtf8 } from './bytes.js';
 import { readContainedFile, removeContainedFile, writeContainedFileAtomic } from './containedFile.js';
 import { ensureAdminDirectory, sameEffectivePath } from './containedPath.js';
 import { loadConventions, matchesPatternList } from './conventionsFile.js';
-import { driftDirty, porcelainPaths } from './driftGuard.js';
+import { driftDirty, porcelainPaths, porcelainZEntries } from './driftGuard.js';
 import { MARKER_BLOCK_DISCARD_HINT, emptyWorktreeDiscardPlan, markerBlockDirtMessage, worktreeDiscardClassifier } from './discardWorktree.js';
 import { deltaArtifactMap, deltaFiles, treeId } from './fingerprint.js';
-import { appendGeneratedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.js';
-import { NO_OWN_EXTENSIONS, materializerOf, strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.js';
+import { generatedOwnCommit, assertGeneratedTargetOwnership, generatedHistoryFingerprint } from './generatedBranch.js';
+import { NO_OWN_EXTENSIONS, classifyOwnExtensions, materializerOf, ownExtensionTreePrefixes, strandedExtensionClassifier, syncOwnExtensions } from './layers/ownExtensions.js';
 import { loadOwnManifest } from './layers/ownManifest.js';
 import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
+import { readTreeEntries, writeHistory } from './gitHistory.js';
+import { readBlobs } from './publishRelease.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
 import { assertInputPlacement } from './inputsPlacement.js';
 import { appendInputCommits, deliverInputs, inputTreePaths, inputsHistoryFingerprint, produceInputs, warnInputEdits } from './inputsTree.js';
@@ -239,7 +241,7 @@ export function runSync(options) {
     const deltaState = deltaFiles(patchesDir, config.pin.sha, declaredDiscipline(config));
     const delta = deltaState.fingerprint;
     const historyFingerprint = generatedBranch
-        ? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice)
+        ? generatedHistoryFingerprint(delta, patchesDir, options.type, roots, omitLicenceNotice, options.generatedModeSource)
         : delta;
     // A committed input is part of the history, so its declaration is part of
     // what the fast path compares: a new pin of an input rebuilds the branch.
@@ -356,7 +358,8 @@ export function runSync(options) {
             return refuseDrift(`${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`);
         }
         if (drift.dirty) {
-            const verdict = judgeOwnSides(drift, patchesDir, tree, roots, mark, fingerprint);
+            const artifacts = mark !== null && mark.pinSha === config.pin.sha && mark.branchTip === drift.treeCommits.head ? (mark.artifacts ?? null) : null;
+            const verdict = judgeOwnSides(drift, patchesDir, tree, roots, mark, fingerprint, driftMaterializer, artifacts);
             if (verdict.kind === 'both-sides') {
                 out.addError(verdict.error.toPayload());
                 return result('dirty', 1, { branch, dirtyFiles: drift.files });
@@ -841,86 +844,84 @@ function listPatchFiles(patchesDir) {
 function buildBranch(options, plan, context, id, inputs = []) {
     const { patchesDir, config, out } = options;
     const tree = options.resolution.path;
-    assertGeneratedTargetOwnership(patchesDir, options.type, ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }), layerTargets(plan));
-    const scratch = join(patchesDir, '.codkit', 'tmp');
-    mkdirSync(scratch, { recursive: true });
-    const indexFile = join(scratch, `${id}.index`);
-    const blobFile = join(scratch, `${id}.blob`);
-    rmSync(indexFile, { force: true });
+    const roots = ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha });
+    assertGeneratedTargetOwnership(patchesDir, options.type, roots, layerTargets(plan));
+    const pinEntries = readTreeEntries(tree, config.pin.sha);
+    const pinBlobs = readBlobs(tree, plan.flatMap((artifact) => {
+        if (artifact.kind === 'resource' || (artifact.kind === 'patch' && artifact.patch.isAddFile))
+            return [];
+        const entry = pinEntries.get(toPosix(artifact.target));
+        return entry === undefined ? [] : [entry.oid];
+    }));
+    const existingPaths = new Set([...pinEntries].filter(([, entry]) => entry.mode !== '040000').map(([path]) => path));
     const pinDateIso = context.buildDate;
     const patchSetCommit = context.patchSetCommit;
-    const indexEnv = { GIT_INDEX_FILE: indexFile };
-    const commitEnv = {
-        GIT_INDEX_FILE: indexFile,
-        GIT_AUTHOR_DATE: pinDateIso,
-        GIT_COMMITTER_DATE: pinDateIso,
-        GIT_AUTHOR_NAME: COMMIT_AUTHOR_NAME,
-        GIT_COMMITTER_NAME: COMMIT_AUTHOR_NAME,
-        GIT_AUTHOR_EMAIL: COMMIT_AUTHOR_EMAIL,
-        GIT_COMMITTER_EMAIL: COMMIT_AUTHOR_EMAIL
-    };
-    try {
-        gitOk({ args: ['read-tree', config.pin.sha], cwd: tree, env: indexEnv }, {
-            code: 'ARTIFACT-BROKEN',
-            message: `cannot read the tree of pin ${pinKey(config.pin)} into a temporary index`,
-            hint: 'the pin is reachable but its tree is not readable; check the tree with git fsck'
+    const commits = [];
+    const labels = [];
+    let ownCommitted = false;
+    const appendOwn = () => {
+        const own = generatedOwnCommit({
+            patchesDir,
+            type: options.type,
+            existingPaths,
+            roots,
+            pinTag: config.pin.tag ?? '',
+            pinSha: config.pin.sha,
+            patchSetCommit,
+            omitLicenceNotice: options.omitLicenceNotice === true,
+            ...(options.generatedModeSource === undefined ? {} : { modeSource: options.generatedModeSource })
         });
-        let parent = config.pin.sha;
-        let ownCommitted = false;
-        const appendOwn = () => {
-            const own = appendGeneratedOwnCommit({
-                patchesDir,
-                type: options.type,
-                treeDir: tree,
-                indexFile,
-                parent,
-                roots: ownedRootsOf(options.type, config.typeConfig, { treeDir: tree, pinSha: config.pin.sha }),
-                pinTag: config.pin.tag ?? '',
-                pinSha: config.pin.sha,
-                pinDateIso,
-                patchSetCommit,
-                authorName: COMMIT_AUTHOR_NAME,
-                authorEmail: COMMIT_AUTHOR_EMAIL,
-                omitLicenceNotice: options.omitLicenceNotice === true,
-                ...(options.generatedModeSource === undefined ? {} : { modeSource: options.generatedModeSource })
-            });
-            ownCommitted = true;
-            if (own.sha === null) {
-                if (options.verbose)
-                    out.diag('  own empty; commit skipped');
-                return;
-            }
-            parent = own.sha;
+        ownCommitted = true;
+        if (own === null) {
             if (options.verbose)
-                out.diag(`  own ${own.files.length} file(s) -> ${parent.slice(0, 8)}`);
-        };
-        for (const artifact of plan) {
-            if (options.generatedBranch === true && !ownCommitted && artifact.kind !== 'patch')
-                appendOwn();
-            const blobSha = stageArtifact(artifact, options, context, blobFile, indexEnv);
-            const mode = modeAtPin(tree, config.pin.sha, artifact.target) ?? '100644';
-            gitOk({ args: ['update-index', '--add', '--cacheinfo', `${mode},${blobSha},${toPosix(artifact.target)}`], cwd: tree, env: indexEnv }, {
-                code: 'ARTIFACT-BROKEN',
-                message: `${artifact.artifactPath}: cannot stage ${artifact.target}`,
-                hint: 'this is a bug in codkit unless the tree is damaged; re-run with --verbose'
-            });
-            const treeSha = gitOk({ args: ['write-tree'], cwd: tree, env: indexEnv }, {
-                code: 'ARTIFACT-BROKEN',
-                message: `${artifact.artifactPath}: cannot write the tree after staging ${artifact.target}`,
-                hint: 're-run with --verbose'
-            }).stdout.trim();
-            parent = gitOk({ args: ['commit-tree', treeSha, '-p', parent, '-m', commitMessage(artifact, config, patchSetCommit)], cwd: tree, env: commitEnv }, {
-                code: 'ARTIFACT-BROKEN',
-                message: `${artifact.artifactPath}: cannot create the commit for ${artifact.target}`,
-                hint: 're-run with --verbose'
-            }).stdout.trim();
-            if (options.verbose) {
-                out.diag(`  ${artifact.id} ${artifact.target} -> ${parent.slice(0, 8)}`);
-            }
+                out.diag('  own empty; commit skipped');
+            return;
         }
-        if (options.generatedBranch === true && !ownCommitted)
+        commits.push(own);
+        labels.push(`own ${own.changes.filter((change) => !('remove' in change)).length} file(s)`);
+    };
+    for (const artifact of plan) {
+        if (options.generatedBranch === true && !ownCommitted && artifact.kind !== 'patch')
             appendOwn();
-        if (inputs.length > 0) {
+        const path = toPosix(artifact.target);
+        const bytes = materializeArtifact(artifact, options, context, pinEntries, pinBlobs);
+        commits.push({
+            message: commitMessage(artifact, config, patchSetCommit),
+            changes: [{ path, mode: pinEntries.get(path)?.mode ?? '100644', bytes }]
+        });
+        existingPaths.add(path);
+        labels.push(`${artifact.id} ${artifact.target}`);
+    }
+    if (options.generatedBranch === true && !ownCommitted)
+        appendOwn();
+    const shas = writeHistory({
+        treeDir: tree,
+        parent: config.pin.sha,
+        dateIso: pinDateIso,
+        authorName: COMMIT_AUTHOR_NAME,
+        authorEmail: COMMIT_AUTHOR_EMAIL,
+        commits
+    });
+    if (options.verbose)
+        shas.forEach((sha, index) => out.diag(`  ${labels[index] ?? ''} -> ${sha.slice(0, 8)}`));
+    let parent = shas.at(-1) ?? config.pin.sha;
+    if (inputs.length > 0) {
+        const scratch = join(patchesDir, '.codkit', 'tmp');
+        mkdirSync(scratch, { recursive: true });
+        const indexFile = join(scratch, `${id}.index`);
+        rmSync(indexFile, { force: true });
+        const indexEnv = { GIT_INDEX_FILE: indexFile };
+        const commitEnv = {
+            ...indexEnv,
+            GIT_AUTHOR_DATE: pinDateIso,
+            GIT_COMMITTER_DATE: pinDateIso,
+            GIT_AUTHOR_NAME: COMMIT_AUTHOR_NAME,
+            GIT_COMMITTER_NAME: COMMIT_AUTHOR_NAME,
+            GIT_AUTHOR_EMAIL: COMMIT_AUTHOR_EMAIL,
+            GIT_COMMITTER_EMAIL: COMMIT_AUTHOR_EMAIL
+        };
+        try {
+            gitOk({ args: ['read-tree', parent], cwd: tree, env: indexEnv }, { code: 'ARTIFACT-BROKEN', message: 'cannot read the generated tree for inputs' });
             parent = appendInputCommits({
                 treeDir: tree,
                 indexEnv,
@@ -932,26 +933,25 @@ function buildBranch(options, plan, context, id, inputs = []) {
                 pinSha: config.pin.sha
             });
         }
-        return { top: parent, pinDateIso, patchSetCommit };
-    }
-    finally {
-        rmSync(indexFile, { force: true });
-        rmSync(blobFile, { force: true });
-        if (config.workspace !== undefined) {
-            try {
-                rmdirSync(scratch);
-            }
-            catch (error) {
-                if (error instanceof Error &&
-                    'code' in error &&
-                    (error.code === 'ENOENT' || error.code === 'ENOTEMPTY' || error.code === 'EEXIST')) {
-                    // Another scratch user or caller data remains; do not remove it.
+        finally {
+            rmSync(indexFile, { force: true });
+            if (config.workspace !== undefined) {
+                try {
+                    rmdirSync(scratch);
                 }
-                else
-                    out.warn(`workspace temporary directory was retained: ${scratch}`);
+                catch (error) {
+                    if (error instanceof Error &&
+                        'code' in error &&
+                        (error.code === 'ENOENT' || error.code === 'ENOTEMPTY' || error.code === 'EEXIST')) {
+                        // Another scratch user or caller data remains; do not remove it.
+                    }
+                    else
+                        out.warn(`workspace temporary directory was retained: ${scratch}`);
+                }
             }
         }
     }
+    return { top: parent, pinDateIso, patchSetCommit };
 }
 /**
  * Build the generated commits of one state of patchset and return their tip,
@@ -962,7 +962,7 @@ function buildBranch(options, plan, context, id, inputs = []) {
  * the base state has to exist as objects of that tree - and building it must not
  * disturb the tree that the run has just brought to the PR state. Everything the
  * commits are made of comes from git objects and from the given patchset root, so
- * the only thing that reaches the tree is `hash-object -w`.
+ * the only changes to the tree repository are new Git objects.
  */
 export function buildAppliedTip(options) {
     const tree = options.resolution.path;
@@ -997,34 +997,32 @@ export function buildAppliedTip(options) {
 export function buildGeneratedTip(options) {
     return buildAppliedTip({ ...options, generatedBranch: true });
 }
-/** Materialize one artifact into the temporary index; returns the blob sha. */
-function stageArtifact(artifact, options, context, blobFile, indexEnv) {
+/** Materialize bytes from the pin without hashing or staging each file separately. */
+function materializeArtifact(artifact, options, context, pinEntries, pinBlobs) {
     const tree = options.resolution.path;
     if (artifact.kind === 'resource') {
-        assertTargetAtPin(tree, options.config.pin.sha, artifact.entry);
-        return hashObject(tree, resourceSourcePath(options.patchesDir, artifact.entry), indexEnv);
+        // Retain the established diagnostic for a missing target.
+        if (!pinEntries.has(toPosix(artifact.target)))
+            assertTargetAtPin(tree, options.config.pin.sha, artifact.entry);
+        return readFileSync(resourceSourcePath(options.patchesDir, artifact.entry));
     }
-    if (artifact.kind === 'overlay') {
-        // Channel 2: the base is the clean pin file, never the tree, so the commit
-        // is the same whatever state the work tree happens to be in.
-        const rendered = renderOverlayTarget(artifact.overlays, tree, options.config.pin.sha, context);
-        writeFileSync(blobFile, rendered.bytes);
-        return hashObject(tree, blobFile, indexEnv);
-    }
-    const applied = applyPatchAtPin(artifact, options);
-    writeFileSync(blobFile, applied);
-    return hashObject(tree, blobFile, indexEnv);
+    const pinBytes = pinBlobs.get(pinEntries.get(toPosix(artifact.target))?.oid ?? '');
+    if (artifact.kind === 'overlay')
+        return renderOverlayTarget(artifact.overlays, tree, options.config.pin.sha, context, pinBytes).bytes;
+    return applyPatchAtPin(artifact, options, pinBytes);
 }
 /**
  * A codkit patch is regenerated against its own pin, so it must apply with
  * exact context. When it does not, the artifact is broken - not the tree.
  */
-function applyPatchAtPin(artifact, options) {
+function applyPatchAtPin(artifact, options, pinBytes) {
     const tree = options.resolution.path;
     const pinSha = options.config.pin.sha;
     let base = new Uint8Array(0);
     if (!artifact.patch.isAddFile) {
-        const shown = runGit({ args: ['show', `${pinSha}:${toPosix(artifact.target)}`], cwd: tree });
+        const shown = pinBytes === undefined
+            ? runGit({ args: ['show', `${pinSha}:${toPosix(artifact.target)}`], cwd: tree })
+            : { status: 0, stdout: Buffer.from(pinBytes).toString('utf8') };
         if (shown.status !== 0) {
             throw ckError('ARTIFACT-BROKEN', `${artifact.artifactPath}: ${artifact.target} does not exist at pin ${pinKey(options.config.pin)}`, 'regenerate the patch against the current pin with codkit save, or resolve it in an upgrade cycle', artifact.artifactPath);
         }
@@ -1039,29 +1037,6 @@ function applyPatchAtPin(artifact, options) {
         }
         throw error;
     }
-}
-function hashObject(treeDir, filePath, indexEnv) {
-    // --no-filters: the bytes we computed are the bytes that must be stored, and
-    // no .gitattributes rule of the tree may reinterpret them.
-    const result = gitOk({ args: ['hash-object', '-w', '--no-filters', '--', filePath], cwd: treeDir, env: indexEnv }, {
-        code: 'ARTIFACT-BROKEN',
-        message: `cannot store ${filePath} in the object database of ${treeDir}`,
-        hint: 'check that the fork tree is writable'
-    });
-    return result.stdout.trim();
-}
-/** File mode of a path at the pin, so an executable file stays executable. */
-function modeAtPin(treeDir, pinSha, target) {
-    const result = runGit({ args: ['ls-tree', '--full-tree', pinSha, '--', toPosix(target)], cwd: treeDir });
-    if (result.status !== 0) {
-        return null;
-    }
-    const [line] = result.stdout.split('\n');
-    if (line === undefined || line === '') {
-        return null;
-    }
-    const [mode] = line.split(' ');
-    return mode === undefined || mode === '' ? null : mode;
 }
 function commitMessage(artifact, config, patchSetCommit) {
     // One Codkit-Artifact trailer per artifact that shaped the commit: an overlay
@@ -1842,19 +1817,22 @@ function reportBroken(out, error, branch) {
  * map: the fingerprint is then the only evidence that patchset is the side that
  * moved.
  */
-function judgeOwnSides(drift, patchesDir, treeDir, roots, mark, fingerprint) {
+function judgeOwnSides(drift, patchesDir, treeDir, roots, mark, fingerprint, materializer, artifacts) {
     if (drift.upstream.length > 0) {
         return { kind: 'unextracted' };
     }
-    // ##OWN-EXTENSION-UNIT: an extension file the tree carries and the delta does
-    // not, or one whose bytes moved apart, is unextracted work exactly like own
-    // code. There is no per-file map for it in the mark, so the two sides cannot
-    // be told apart and the conservative verdict is the only honest one: `save`
-    // mirrors the tree back, and this run does not overwrite it.
-    if (drift.extensions.some((divergence) => divergence.kind !== 'patchset-only')) {
+    const extensions = loadOwnManifest(patchesDir).extensions;
+    const prefixes = materializer === null ? [] : ownExtensionTreePrefixes(materializer, extensions);
+    const status = runGit({ cwd: treeDir, args: ['status', '--porcelain=v1', '-z', '--untracked-files=no'] });
+    if (status.status !== 0 ||
+        porcelainZEntries(status.stdout).some((entry) => entry.status[0] !== ' ' && prefixes.some((prefix) => entry.path.startsWith(prefix)))) {
         return { kind: 'unextracted' };
     }
-    const classes = classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)).filter((entry) => entry.kind !== 'same');
+    const extensionClasses = materializer === null ? [] : classifyOwnExtensions(materializer, patchesDir, treeDir, extensions, artifacts);
+    if (extensionClasses.some((entry) => entry.kind === 'unknown' && entry.tree !== null)) {
+        return { kind: 'unextracted' };
+    }
+    const classes = [...classifyAllOwn(patchesDir, treeDir, roots, (owned) => ownMarkFilesOf(mark, owned)), ...extensionClasses].filter((entry) => entry.kind !== 'same');
     const bothSides = classes.find((entry) => entry.kind === 'both-edited');
     if (bothSides !== undefined) {
         return { kind: 'both-sides', error: bothSidesError(bothSides) };
