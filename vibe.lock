@@ -1,9 +1,9 @@
 [meta]
-generated_by = "vibe 1.0.0"
-generated_at = "2026-08-30T23:34:47Z"
+generated_by = "vibe 1.0.6"
+generated_at = "2026-10-08T16:38:34Z"
 schema_version = 7
 root_dependencies = [
-    "flow:org.vibevm.world/multi-user-planning@^0.2.0",
+    "flow:org.vibevm.world/multi-user-planning@^1.0.0",
     "flow:org.vibevm.world/omnichannel@^1.0.0",
     "org.vibevm.world/redbook@^1.0.0",
     "stack:org.vibevm.ai-native/typescript-ai-native@^1.0.0",
@@ -13,30 +13,42 @@ root_dependencies = [
 kind = "flow"
 name = "multi-user-planning"
 group = "org.vibevm.world"
-version = "0.2.1"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/multi-user-planning/v0.2.1"
-content_hash = "sha256:7b55220f5abe34a9e3705914a7f4068b98c5be56ccf80ad33643f65a901ea587"
+version = "1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.multi-user-planning.git"
+source_ref = "v1.0.0"
+resolved_commit = "07b77b0e333cd1157ff61928fbb8e1f395bcfcae"
+content_hash = "sha256:99396aea6688cb39b509751cb1c12d379f28bcf986af6e4022ac52574d559a15"
 files_written = []
 admitted_by = "root-edge"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "omnichannel"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/omnichannel/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.omnichannel.git"
+source_ref = "v1.0.0"
+resolved_commit = "7a5d637d714b291deceb39dd3974a5b4e279cb9a"
 content_hash = "sha256:a6554fa5f09619a13c04be29e81f4d610a123f454dc4f01479f49c8b0a2b83f4"
 files_written = []
 admitted_by = "root-edge"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "redbook"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/redbook/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.redbook.git"
+source_ref = "v1.0.0"
+resolved_commit = "df8fdadef616422867a278886c0a3ec64c3e496d"
 content_hash = "sha256:6f3f35cc5fa58404f397a65dc65c690dd3c2ccfe516b476beddc74616d24e7b1"
 files_written = []
 dependencies = [
@@ -62,14 +74,18 @@ dependencies = [
     "flow:org.vibevm.world/two-process-model@=1.0.0",
 ]
 admitted_by = "root-edge"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "stack"
 name = "typescript-ai-native"
 group = "org.vibevm.ai-native"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.ai-native/typescript-ai-native/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.ai-native.typescript-ai-native.git"
+source_ref = "v1.0.0"
+resolved_commit = "47ec6a41070dbb45842d536db272f55a8742a448"
 content_hash = "sha256:73a11945f4baea9418f801e12b1bf87a466db2a138f9975fbfa28c3f8c24a33b"
 files_written = []
 dependencies = [
@@ -77,170 +93,230 @@ dependencies = [
     "mcp:org.vibevm.ai-native/typescript-ai-native-mcp@=1.0.0",
 ]
 admitted_by = "root-edge"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "core-ai-native"
 group = "org.vibevm.ai-native"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.ai-native/core-ai-native/v1.0.0"
-content_hash = "sha256:f46f242c5bde531bf0916dd9c42b5adede8ffaa9cc1a1148fe5466b89e367f3d"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.ai-native.core-ai-native.git"
+source_ref = "v1.0.0"
+resolved_commit = "37e8e3c30e1ce1b3ca80a5b48cc99b2309d979a7"
+content_hash = "sha256:c869ddb0f62bb842440243ab9fb5dee82e61555b27defd0fef860bd102031655"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "lang"
 name = "typescript-ai-native-lang"
 group = "org.vibevm.ai-native"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.ai-native/typescript-ai-native-lang/v1.0.0"
-content_hash = "sha256:6ec5dcde697cbffcae532b1fd2b66b825a436c33bac66fed426140d1987e54ea"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.ai-native.typescript-ai-native-lang.git"
+source_ref = "v1.0.0"
+resolved_commit = "efc686a7d0ff7d61ab3959e2b06f4684fd3356d0"
+content_hash = "sha256:69ad6e857182be47fbcf086889633ef3b0f384a73c904153a8cfa7ce6556fd52"
 files_written = []
 dependencies = ["flow:org.vibevm.ai-native/core-ai-native@=1.0.0"]
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "mcp"
 name = "typescript-ai-native-mcp"
 group = "org.vibevm.ai-native"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.ai-native/typescript-ai-native-mcp/v1.0.0"
-content_hash = "sha256:021dabcea6749f83520ad3cd9831d0e8161b262f5f804b786275510bafaecce3"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.ai-native.typescript-ai-native-mcp.git"
+source_ref = "v1.0.0"
+resolved_commit = "913d67c92c4ce68ed7654add6c4ef0e697ad4050"
+content_hash = "sha256:9072ca207ffe04f4a8a420b5d91a50d6e887381b815776022fb99a459467dad1"
 files_written = []
 dependencies = ["lang:org.vibevm.ai-native/typescript-ai-native-lang@=1.0.0"]
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "addressable-specs"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/addressable-specs/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.addressable-specs.git"
+source_ref = "v1.0.0"
+resolved_commit = "2bc016f93ce9a8e9716dfa7b835a808b80a43e00"
 content_hash = "sha256:1b30f067bd49a71f8f6d42005deba94f87c610e158cb84c8126ed3c54cf709b8"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "campaign-plans"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/campaign-plans/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.campaign-plans.git"
+source_ref = "v1.0.0"
+resolved_commit = "bb8f6728712facf208315881ae1d8a3c5af273a7"
 content_hash = "sha256:0958aff702a907784bf18262c9f1c1a0e0bb339f9406e1fa14b633cd71985615"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "comparative-research"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/comparative-research/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.comparative-research.git"
+source_ref = "v1.0.0"
+resolved_commit = "f2b149c1e188921a8dae6c68b8d2c070a4fbeb2b"
 content_hash = "sha256:88d66adcd51d8f749c2e96431ddf6b3ea80adb3f1271625bc3a3f09bb658a7a1"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "conflict-protocol"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/conflict-protocol/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.conflict-protocol.git"
+source_ref = "v1.0.0"
+resolved_commit = "2cc9c3be3b6c96fb6292c71c0e326ef9b850295d"
 content_hash = "sha256:669fb4a23f0a822cff870f18e5e8f330f82e3c6315515b47c4a691700c7c21e3"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "decision-records"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/decision-records/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.decision-records.git"
+source_ref = "v1.0.0"
+resolved_commit = "d001025f2ce14f964a5d663f55dd253e1881b57e"
 content_hash = "sha256:73a4013beb9920113723cb2fb7eed2737c91c39ba9d3015f6816283416c6a6fc"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "dev-runtime-docs"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/dev-runtime-docs/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.dev-runtime-docs.git"
+source_ref = "v1.0.0"
+resolved_commit = "213f97695f9ccc2774f4dc98c5cb974e7a4d8f61"
 content_hash = "sha256:c006b2a93b717fb71459dde404b08ce33d092e9514f4e27a2f350f21d78dad9d"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "discovery-prompt"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/discovery-prompt/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.discovery-prompt.git"
+source_ref = "v1.0.0"
+resolved_commit = "07f4a8926893e30cce88d1c134e08c7ecb4f68a7"
 content_hash = "sha256:b3e5b36ead7c6192e4e63d6bf1169fee722562852ea4b0a8ab66053db45c9157"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "git-atomic-commits"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/git-atomic-commits/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.git-atomic-commits.git"
+source_ref = "v1.0.0"
+resolved_commit = "25457d9f0cc78d68732fcc306ee4900d6396d49d"
 content_hash = "sha256:6f454486ce7f3edcc208231b2b88fea61be6b65938ada1914a98ddfcb957960d"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "git-attribution-policy"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/git-attribution-policy/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.git-attribution-policy.git"
+source_ref = "v1.0.0"
+resolved_commit = "79d9a333891f354f2d06b0ea92aa7ed937f1bdc5"
 content_hash = "sha256:6716cf448a935bcc00bbaf662b98d52517c89a4ca74e9e78b833f01c100596cb"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "git-autonomy"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/git-autonomy/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.git-autonomy.git"
+source_ref = "v1.0.0"
+resolved_commit = "28dad0e068bede59cd6d6e7f6bf5c47145f6cdd0"
 content_hash = "sha256:a4257fd33b740d36f02805ab9cc997c3c447bfbc29abf0915f38fd34bbb9f3b3"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "git-conventional-commits"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/git-conventional-commits/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.git-conventional-commits.git"
+source_ref = "v1.0.0"
+resolved_commit = "87b28eeb91d12ef8828fba7785677550737adb4e"
 content_hash = "sha256:04a03d3bd572cd3c865868c0a096f5f61606197924b886aa369bdaf56af243f8"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "git-practices"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/git-practices/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.git-practices.git"
+source_ref = "v1.0.0"
+resolved_commit = "5654ce571360981e3ea3639891ea6326ce031f3b"
 content_hash = "sha256:fb2c5b33312b1e5f5ae0fbd2b470b3a9270f81d1ee89ec358c3b6c8a8e993830"
 files_written = []
 dependencies = [
@@ -250,136 +326,184 @@ dependencies = [
     "flow:org.vibevm.world/git-conventional-commits@=1.0.0",
 ]
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "health-audit"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/health-audit/v1.0.0"
-content_hash = "sha256:afc21df266cb01af96fb8f46ac4d3abcc3da8650a0e351784bc53f43562c633b"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.health-audit.git"
+source_ref = "v1.0.0"
+resolved_commit = "06d815c89ea19302773c7c69f5bb1c7a3897309e"
+content_hash = "sha256:db3a36d635ec1dcb08878bb1c0dccb3287b6146882e92a543c4c3397318433e6"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "licensing"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/licensing/v1.0.0"
-content_hash = "sha256:1d5856c07f4d3b5481013d262eade8d96b0a8217615ab9a94ac9cfd6f53509e3"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.licensing.git"
+source_ref = "v1.0.0"
+resolved_commit = "9a1b1e9d38ea5a50c71b3f891b4ad45ddb66cccb"
+content_hash = "sha256:2c7db23ae8b7a9a3ef1f7d2a7b54425113f43c4ab14f1e83f3458ffb00a33288"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "managed-blocks"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/managed-blocks/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.managed-blocks.git"
+source_ref = "v1.0.0"
+resolved_commit = "62491603830a0937172848dc443d9c48f8b8cbcb"
 content_hash = "sha256:ce765d63e674cc98a03ab09c8b21f4f6c867007c03be1d8ef320578c6911c60e"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "manual-tests"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/manual-tests/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.manual-tests.git"
+source_ref = "v1.0.0"
+resolved_commit = "17d12996904d83d2a1afd50b09882ddc96f1b990"
 content_hash = "sha256:b2bb48eb16931767dc13b925e92449d0ab6c1fe7c4d525c8379d1e11834a70b9"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "operating-modes"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/operating-modes/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.operating-modes.git"
+source_ref = "v1.0.0"
+resolved_commit = "edb3d3def7be895d9cf5e0e9f509596e1e64e3ca"
 content_hash = "sha256:f8141eefd8e3eb76bff982065b66467cff5b7f306c8d600ba47275937153e901"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "qualified-naming"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/qualified-naming/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.qualified-naming.git"
+source_ref = "v1.0.0"
+resolved_commit = "d04840d8712f4dcf16d9739c245dec1769f620d2"
 content_hash = "sha256:0553a9f7253b3c8f2d0ef8eefeb5cfd0fd09a96db5d36b15f13701a0a878ec55"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "secrets-hygiene"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/secrets-hygiene/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.secrets-hygiene.git"
+source_ref = "v1.0.0"
+resolved_commit = "85a205e416ebd2195ce8f73e0c33b89121a59c12"
 content_hash = "sha256:384301d5e2bdee4357694666dd8c10a92fd003bb5075e8568a0c306c27363e54"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "source-mirrors"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/source-mirrors/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.source-mirrors.git"
+source_ref = "v1.0.0"
+resolved_commit = "6983d8251405e01d61676ebbca7e524280ad096d"
 content_hash = "sha256:5aa2bc90bb97123f16e9676db132f6865473b04085f7a24e9bc19651a691dc7e"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "spec-genres"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/spec-genres/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.spec-genres.git"
+source_ref = "v1.0.0"
+resolved_commit = "a18eb686012aa0455f67e9ab53bf3a11a786b860"
 content_hash = "sha256:a4f109741371ec0f02296bf8515fc360a036e804333f0a9dda71629ae0da1db7"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "sync-from-code"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/sync-from-code/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.sync-from-code.git"
+source_ref = "v1.0.0"
+resolved_commit = "5f2f6805f72929d520913dc932a9e9e177638596"
 content_hash = "sha256:c068ab0517275cc6c7d11ce0e77e20c8dc9f038c6e6e4ae0832902b063ce0fc5"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "tool-design-lessons"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/tool-design-lessons/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.tool-design-lessons.git"
+source_ref = "v1.0.0"
+resolved_commit = "2e7e2feba4561067b610da915aedb9d8f4cb3a04"
 content_hash = "sha256:e77db029e4ab66a5de85b74d13acc477ed6c268ab7ac94cdc7cc030f06622410"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"
 
 [[package]]
 kind = "flow"
 name = "two-process-model"
 group = "org.vibevm.world"
 version = "1.0.0"
-source_url = "file:///home/olegchir/git/vibevm/vibevm/vibepacks/org.vibevm.world/two-process-model/v1.0.0"
+authors = ["Oleg Chirukhin"]
+registry = "vibespecs"
+source_url = "https://github.com/vibespecs/org.vibevm.world.two-process-model.git"
+source_ref = "v1.0.0"
+resolved_commit = "e2225a9a54b648e1ba96d26bbbe0bf5476f2ecfd"
 content_hash = "sha256:2d12ef2e83579b2b6b8ee7bdb6d01f6d70d187641e8a5e8fb4c5d08369ac4d3d"
 files_written = []
 admitted_by = "public-chain"
-source_kind = "embedded"
+source_kind = "registry"

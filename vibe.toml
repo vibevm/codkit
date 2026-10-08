@@ -10,7 +10,7 @@ authors = ["Oleg Chirukhin"]
 "stack:org.vibevm.ai-native/typescript-ai-native" = "^1.0.0"
 
 [requires.packages."flow:org.vibevm.world/multi-user-planning"]
-version = "^0.2.0"
+version = "^1.0.0"
 link = "static-transitive"
 
 [requires.packages."org.vibevm.world/redbook"]

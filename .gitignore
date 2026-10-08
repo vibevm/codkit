@@ -10,6 +10,8 @@
 codkit.local.json
 .codkit/
 node_modules/
+**/__pycache__/
+**/*.pyc
 
 # AI-native TypeScript floor/build output
 target/

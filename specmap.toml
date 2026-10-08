@@ -95,7 +95,7 @@ root = "vibevm/vibedeps/org.vibevm.world.manual-tests/1.0.0/vibevm/vibespecs"
 
 [[external_specs]]
 namespace = "multi-user-planning"
-root = "vibevm/vibedeps/org.vibevm.world.multi-user-planning/0.2.1/vibevm/vibespecs"
+root = "vibevm/vibedeps/org.vibevm.world.multi-user-planning/1.0.0/vibevm/vibespecs"
 
 [[external_specs]]
 namespace = "omnichannel"
