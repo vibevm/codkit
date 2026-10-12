@@ -61,15 +61,15 @@ export function parseRemoteFlagsSnapshot(text: string): RemoteFlagsSnapshot | un
 		return undefined;
 	}
 	const record = parsed as Record<string, unknown>;
-	if (record['version'] !== 1) {
+	if (record.version !== 1) {
 		return undefined;
 	}
-	const force = record['force'] ?? {};
-	const defaults = record['defaults'] ?? {};
+	const force = record.force ?? {};
+	const defaults = record.defaults ?? {};
 	if (!isBooleanRecord(force) || !isBooleanRecord(defaults)) {
 		return undefined;
 	}
-	const issuedAt = record['issuedAt'];
+	const issuedAt = record.issuedAt;
 	if (issuedAt !== undefined && typeof issuedAt !== 'string') {
 		return undefined;
 	}
