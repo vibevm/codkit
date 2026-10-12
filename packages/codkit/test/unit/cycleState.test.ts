@@ -252,7 +252,7 @@ describe('cycle state', () => {
 	});
 
 	it('refuses a newer state schema with an update hint', () => {
-		const newer = serializeCycleState(state()).replace('"codkitCycleState": 2', '"codkitCycleState": 4');
+		const newer = serializeCycleState(state()).replace('"codkitCycleState": 2', '"codkitCycleState": 5');
 		try {
 			parseCycleState(newer);
 			throw new Error('expected newer state schema refusal');

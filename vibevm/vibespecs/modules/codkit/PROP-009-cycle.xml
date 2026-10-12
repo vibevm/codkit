@@ -14,7 +14,7 @@
     <p><cycle-state-role fact="true" status="spec/done">Committed on the cycle branch; the presence of the file in the patch-set work tree means «a cycle is running»; the state is written atomically (a temporary file + rename) after every change.</cycle-state-role></p>
     <table>
       <tr><td>Field</td><td>Type</td><td>Description</td></tr>
-      <tr><td><CS-SCHEMA fact="true" status="spec/done">`codkitCycleState`</CS-SCHEMA></td><td>int</td><td>`2`; pre-user v1 is deliberately not read after the durable transaction was added</td></tr>
+      <tr><td><CS-SCHEMA fact="true" status="spec/done">`codkitCycleState`</CS-SCHEMA></td><td>int</td><td>2 for legacy tagged pins, 3 for revision/resolution evidence, 4 when explicit branch-transition authorization is recorded; schemas 2 and 3 remain readable and retain their serialization</td></tr>
       <tr><td><CS-PINS fact="true" status="spec/done">`sourcePin` / `targetPin`</CS-PINS></td><td>`{tag,sha,date}`</td><td>the source and the target pin</td></tr>
       <tr><td><CS-BRANCH fact="true" status="spec/done">`branch`</CS-BRANCH></td><td>string</td><td>the name of the cycle branch in the patch set: `&lt;cycleBranchPrefix&gt;&lt;targetTag&gt;` (`codkit/cycle/&lt;targetTag&gt;` by default); the schema checks Git ref safety, exact equality with the config is the engine's job</td></tr>
       <tr><td><CS-TIMES fact="true" status="spec/done">`startedAt` / `updatedAt`</CS-TIMES></td><td>string</td><td>ISO time</td></tr>
@@ -35,6 +35,7 @@
     </facts>
   </journal>
   <phases title="4. The state machine - phases and transitions">
+    <p><CYCLE-BRANCH-TRANSITION fact="true" status="spec/done">By default the target must descend from the source pin. An operator may explicitly select `cycle start &lt;target&gt; --allow-branch-transition` for sibling release branches: both pins must descend from the configured upstream anchor, remain different, and the target must not be an ancestor of the source. Init records the exact authorized anchor as `branchTransitionAnchor` in state schema 4 before mutation. Recovery consumes that recorded authorization and refuses a changed configured anchor; legacy schemas cannot carry the field. This preserves the official release commit as the target rather than inventing a merge commit solely to satisfy ancestry.</CYCLE-BRANCH-TRANSITION></p>
     <p><PHASES-RESUMABLE fact="true" status="spec/done">Every phase is idempotent and resumable: `continue` re-reads `state.json`, validates the actual state of the tree and of the patch set and continues from `phase`; an interruption at any point loses no data.</PHASES-RESUMABLE></p>
     <facts ordered="true">
       <PHASE-INIT fact="true" status="spec/done">**init** (`cycle start &lt;target&gt;`): the checks (PROP-007 §14) → the branch `codkit/cycle/&lt;targetTag&gt;` off the current main → the canonical pin commit (an edit of `codkit.json`: pin.tag/sha/date; message `codkit cycle: bump pin to &lt;tag&gt;`) → state → phase=apply.</PHASE-INIT>

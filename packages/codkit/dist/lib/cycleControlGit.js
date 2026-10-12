@@ -40,13 +40,20 @@ export function resolveTargetPin(forkDir, upstreamAnchorCommit, target, git = ru
     return { tag, sha, date, ...(configVersion >= 4 ? { resolvedAt } : {}) };
 }
 /** Both source and target must be local commits, and the upgrade must move forward in that history. */
-export function assertSourceToTargetAncestry(forkDir, sourcePin, targetPin, git) {
+export function assertSourceToTargetAncestry(forkDir, sourcePin, targetPin, git, branchTransitionAnchor) {
     const source = resolveCommit(forkDir, sourcePin.sha, git);
     if (source !== sourcePin.sha) {
         throw ckError('PIN-UNREACHABLE', `source pin ${sourcePin.sha} does not name its commit directly`, 'restore the exact source commit sha');
     }
     if (sourcePin.sha === targetPin.sha) {
         throw ckError('CONFIG', 'cycle source and target pins are the same commit', 'choose a later upstream target');
+    }
+    if (branchTransitionAnchor !== undefined) {
+        assertAncestor(forkDir, branchTransitionAnchor, sourcePin.sha, 'branch transition source', git);
+        assertAncestor(forkDir, branchTransitionAnchor, targetPin.sha, 'branch transition target', git);
+        if (git({ args: ['merge-base', '--is-ancestor', targetPin.sha, sourcePin.sha], cwd: forkDir }).status === 0)
+            throw ckError('PIN-UNREACHABLE', 'branch transition target is an ancestor of the source pin', 'choose a later release');
+        return;
     }
     assertAncestor(forkDir, sourcePin.sha, targetPin.sha, `target pin ${pinKey(targetPin)}`, git);
 }

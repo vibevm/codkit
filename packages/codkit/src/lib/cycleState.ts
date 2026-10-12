@@ -14,7 +14,8 @@ import { bytesEqual, CR_BYTE, decodeUtf8Strict, encodeUtf8, LF_BYTE } from './by
 import { ckError, isCkError } from './messages.ts';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.ts';
 
-export const CYCLE_STATE_SCHEMA_VERSION = 3;
+export const CYCLE_STATE_SCHEMA_VERSION = 4;
+export const CYCLE_REVISION_STATE_SCHEMA_VERSION = 3;
 export const CYCLE_STATE_PATH = 'cycle/state.json';
 
 export const CYCLE_PHASES = ['init', 'apply', 'resolve', 'renames', 'regen', 'deps-advisory', 'stabilize', 'done'] as const;
@@ -94,7 +95,8 @@ export const cycleArtifactsSchema = z
 
 export const cycleStateSchema = z
 	.object({
-		codkitCycleState: z.union([z.literal(2), z.literal(CYCLE_STATE_SCHEMA_VERSION)]),
+		codkitCycleState: z.union([z.literal(2), z.literal(CYCLE_REVISION_STATE_SCHEMA_VERSION), z.literal(CYCLE_STATE_SCHEMA_VERSION)]),
+		branchTransitionAnchor: shaSchema.optional(),
 		sourcePin: cyclePinSchema,
 		targetPin: cyclePinSchema,
 		branch: branchSchema,
@@ -109,6 +111,8 @@ export const cycleStateSchema = z
 	})
 	.strict()
 	.superRefine((state, context) => {
+		if (state.codkitCycleState < 4 && state.branchTransitionAnchor !== undefined)
+			addIssue(context, ['codkitCycleState'], 'branch transition authorization requires cycle state schema 4');
 		if (state.codkitCycleState === 2 && [state.sourcePin, state.targetPin].some(requiresRevisionPin))
 			addIssue(context, ['codkitCycleState'], 'revision-only pins and provenance require cycle state schema 3');
 		if (state.phase === 'init' && state.transaction?.kind !== 'init') {
@@ -345,6 +349,7 @@ function canonicalState(state: CycleState): CycleState {
 	);
 	return {
 		codkitCycleState: state.codkitCycleState,
+		...(state.branchTransitionAnchor === undefined ? {} : { branchTransitionAnchor: state.branchTransitionAnchor }),
 		sourcePin: state.sourcePin,
 		targetPin: state.targetPin,
 		branch: state.branch,

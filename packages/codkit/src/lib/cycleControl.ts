@@ -32,7 +32,12 @@ import {
 import type { CycleGitRunner, RecognizedBump } from './cycleControlGit.ts';
 import { assertCurrentCycleBranch, completedRestartResult, restartAction, resumeRestart } from './cycleRestart.ts';
 import type { RestartResult } from './cycleRestart.ts';
-import { CYCLE_ARTIFACT_OUTCOMES, CYCLE_STATE_SCHEMA_VERSION, nodeCycleStateFileSystem } from './cycleState.ts';
+import {
+	CYCLE_ARTIFACT_OUTCOMES,
+	CYCLE_REVISION_STATE_SCHEMA_VERSION,
+	CYCLE_STATE_SCHEMA_VERSION,
+	nodeCycleStateFileSystem
+} from './cycleState.ts';
 import type { CycleArtifactOutcome, CycleState, CycleStateFileSystem } from './cycleState.ts';
 import { readCycleState, writeCycleState } from './cycleState.ts';
 import { gitLocal, runGit } from './gitx.ts';
@@ -76,6 +81,7 @@ export type StartCycleOptions = {
 	readonly target: string;
 	/** Continue the recorded init by immutable SHA, retaining its original label/evidence. */
 	readonly resumeInit?: boolean;
+	readonly allowBranchTransition?: boolean;
 	readonly dependencies?: CycleControlDependencies;
 };
 
@@ -171,7 +177,8 @@ export function startCycle(options: StartCycleOptions): StartCycleResult {
 		}
 
 		assertPatchSetRepositoryClean(options.patchesDir, dependencies.git, options.config.workspace?.record);
-		assertSourceToTargetAncestry(options.forkDir, options.config.pin, targetPin, dependencies.git);
+		const branchTransitionAnchor = options.allowBranchTransition === true ? options.config.upstreamAnchorCommit : undefined;
+		assertSourceToTargetAncestry(options.forkDir, options.config.pin, targetPin, dependencies.git, branchTransitionAnchor);
 		const branch = `${options.config.cycleBranchPrefix}${pinKey(targetPin)}`;
 		assertValidBranch(options.patchesDir, branch, dependencies.git);
 		const baseBranch = currentBranchName(options.patchesDir, dependencies.git);
@@ -190,11 +197,18 @@ export function startCycle(options: StartCycleOptions): StartCycleResult {
 				'commit the exact source config before cycle start'
 			);
 		}
-		const state = makeState(options.config.pin, targetPin, branch, dependencies.now(), {
-			phase: 'init',
-			nextAction: `create ${branch} from ${baseCommit}`,
-			transaction: { kind: 'init', baseCommit, baseBranch }
-		});
+		const state = makeState(
+			options.config.pin,
+			targetPin,
+			branch,
+			dependencies.now(),
+			{
+				phase: 'init',
+				nextAction: `create ${branch} from ${baseCommit}`,
+				transaction: { kind: 'init', baseCommit, baseBranch }
+			},
+			branchTransitionAnchor
+		);
 		writeCycleState(options.patchesDir, state, stateWriteOptions(dependencies));
 		if (control?.status === 'done') {
 			removeCycleControlRecord(options.patchesDir, dependencies.controlFileSystem);
@@ -421,7 +435,9 @@ function assertInitIdentity(state: CycleState, options: StartCycleOptions, targe
 	if (!samePin(state.targetPin, targetPin)) {
 		throw ckError('CONFIG', 'cycle start target does not match the durable init transaction', `retry with ${pinKey(state.targetPin)}`);
 	}
-	assertSourceToTargetAncestry(options.forkDir, state.sourcePin, state.targetPin, git);
+	if (state.branchTransitionAnchor !== undefined && state.branchTransitionAnchor !== options.config.upstreamAnchorCommit)
+		throw ckError('CONFIG', 'recorded branch transition anchor differs from the configuration', 'restore the recorded upstream anchor');
+	assertSourceToTargetAncestry(options.forkDir, state.sourcePin, state.targetPin, git, state.branchTransitionAnchor);
 }
 
 function assertBranchMatchesConfig(state: CycleState, config: CodkitConfig): void {
@@ -448,11 +464,18 @@ function makeState(
 	targetPin: PinConfig,
 	branch: string,
 	now: Date,
-	step: Pick<CycleState, 'phase' | 'nextAction' | 'transaction'>
+	step: Pick<CycleState, 'phase' | 'nextAction' | 'transaction'>,
+	branchTransitionAnchor?: string
 ): CycleState {
 	const timestamp = now.toISOString();
 	return {
-		codkitCycleState: requiresRevisionPin(sourcePin) || requiresRevisionPin(targetPin) ? CYCLE_STATE_SCHEMA_VERSION : 2,
+		codkitCycleState:
+			branchTransitionAnchor !== undefined
+				? CYCLE_STATE_SCHEMA_VERSION
+				: requiresRevisionPin(sourcePin) || requiresRevisionPin(targetPin)
+					? CYCLE_REVISION_STATE_SCHEMA_VERSION
+					: 2,
+		...(branchTransitionAnchor === undefined ? {} : { branchTransitionAnchor }),
 		sourcePin,
 		targetPin,
 		branch,

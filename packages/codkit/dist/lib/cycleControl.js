@@ -10,7 +10,7 @@ import { writeConfigPin } from './configPin.js';
 import { readCycleControlRecord, removeCycleControlRecord, writeCycleControlRecord } from './cycleControlRecord.js';
 import { withCycleLocks, assertSourceToTargetAncestry, assertValidBranch, assertPatchSetRepositoryClean, branchTip, bumpSubject, bumpTrailer, configAt, currentBranchName, findCycleBump, headCommit, mustGit, recognizeBump, resolveTargetPin, samePin } from './cycleControlGit.js';
 import { assertCurrentCycleBranch, completedRestartResult, restartAction, resumeRestart } from './cycleRestart.js';
-import { CYCLE_ARTIFACT_OUTCOMES, CYCLE_STATE_SCHEMA_VERSION, nodeCycleStateFileSystem } from './cycleState.js';
+import { CYCLE_ARTIFACT_OUTCOMES, CYCLE_REVISION_STATE_SCHEMA_VERSION, CYCLE_STATE_SCHEMA_VERSION, nodeCycleStateFileSystem } from './cycleState.js';
 import { readCycleState, writeCycleState } from './cycleState.js';
 import { gitLocal, runGit } from './gitx.js';
 import { acquireLock } from './lock.js';
@@ -51,7 +51,8 @@ export function startCycle(options) {
             throw ckError('CONFIG', 'an upgrade cycle is already active', 'run codkit cycle status or continue/restart the current cycle');
         }
         assertPatchSetRepositoryClean(options.patchesDir, dependencies.git, options.config.workspace?.record);
-        assertSourceToTargetAncestry(options.forkDir, options.config.pin, targetPin, dependencies.git);
+        const branchTransitionAnchor = options.allowBranchTransition === true ? options.config.upstreamAnchorCommit : undefined;
+        assertSourceToTargetAncestry(options.forkDir, options.config.pin, targetPin, dependencies.git, branchTransitionAnchor);
         const branch = `${options.config.cycleBranchPrefix}${pinKey(targetPin)}`;
         assertValidBranch(options.patchesDir, branch, dependencies.git);
         const baseBranch = currentBranchName(options.patchesDir, dependencies.git);
@@ -69,7 +70,7 @@ export function startCycle(options) {
             phase: 'init',
             nextAction: `create ${branch} from ${baseCommit}`,
             transaction: { kind: 'init', baseCommit, baseBranch }
-        });
+        }, branchTransitionAnchor);
         writeCycleState(options.patchesDir, state, stateWriteOptions(dependencies));
         if (control?.status === 'done') {
             removeCycleControlRecord(options.patchesDir, dependencies.controlFileSystem);
@@ -249,7 +250,9 @@ function assertInitIdentity(state, options, targetPin, git) {
     if (!samePin(state.targetPin, targetPin)) {
         throw ckError('CONFIG', 'cycle start target does not match the durable init transaction', `retry with ${pinKey(state.targetPin)}`);
     }
-    assertSourceToTargetAncestry(options.forkDir, state.sourcePin, state.targetPin, git);
+    if (state.branchTransitionAnchor !== undefined && state.branchTransitionAnchor !== options.config.upstreamAnchorCommit)
+        throw ckError('CONFIG', 'recorded branch transition anchor differs from the configuration', 'restore the recorded upstream anchor');
+    assertSourceToTargetAncestry(options.forkDir, state.sourcePin, state.targetPin, git, state.branchTransitionAnchor);
 }
 function assertBranchMatchesConfig(state, config) {
     const expected = `${config.cycleBranchPrefix}${pinKey(state.targetPin)}`;
@@ -264,10 +267,15 @@ function requiredHeadBump(patchesDir, state, git) {
     }
     return bump;
 }
-function makeState(sourcePin, targetPin, branch, now, step) {
+function makeState(sourcePin, targetPin, branch, now, step, branchTransitionAnchor) {
     const timestamp = now.toISOString();
     return {
-        codkitCycleState: requiresRevisionPin(sourcePin) || requiresRevisionPin(targetPin) ? CYCLE_STATE_SCHEMA_VERSION : 2,
+        codkitCycleState: branchTransitionAnchor !== undefined
+            ? CYCLE_STATE_SCHEMA_VERSION
+            : requiresRevisionPin(sourcePin) || requiresRevisionPin(targetPin)
+                ? CYCLE_REVISION_STATE_SCHEMA_VERSION
+                : 2,
+        ...(branchTransitionAnchor === undefined ? {} : { branchTransitionAnchor }),
         sourcePin,
         targetPin,
         branch,

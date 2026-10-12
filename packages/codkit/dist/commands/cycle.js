@@ -16,6 +16,7 @@ import { CYCLE_TEST_CRASH_ENV, cycleTestCrashCheckpoint, isCycleTestBuild } from
 import { ckError, isCkError } from '../lib/messages.js';
 import { formatForkTreeLine } from '../lib/paths.js';
 const YES = '--yes';
+const ALLOW_BRANCH_TRANSITION = '--allow-branch-transition';
 const ACTIONS = ['start', 'continue', 'status', 'restart'];
 async function run(ctx) {
     try {
@@ -57,12 +58,16 @@ async function runUnsafe(ctx) {
                 throw usage('cycle start needs exactly one target tag or sha', 'usage: codkit cycle start <tag-or-sha>');
             }
             prepareCycleStart(ctx.patchesDir, resolution.path, config, requireProjectType(ctx));
+            const allowBranchTransition = commandFlagGiven(ctx.commandFlags, ALLOW_BRANCH_TRANSITION);
+            if (allowBranchTransition)
+                ctx.out.info(`branch transition explicitly authorized within upstream anchor ${config.upstreamAnchorCommit}`);
             const started = startCycle({
                 patchesDir: ctx.patchesDir,
                 forkDir: resolution.path,
                 config,
                 type: requireProjectType(ctx),
                 target,
+                allowBranchTransition,
                 ...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
             });
             clearCycleRuntimeRecords(ctx.patchesDir);
@@ -270,6 +275,8 @@ function assertArguments(action, args) {
     throw usage(`cycle ${action} ${expected === 0 ? 'takes no arguments' : 'needs exactly one target tag or sha'}`, `usage: codkit cycle ${action}${suffix}`);
 }
 function assertFlags(action, ctx) {
+    if (action !== 'start' && commandFlagGiven(ctx.commandFlags, ALLOW_BRANCH_TRANSITION))
+        throw usage('branch transition authorization is only valid for cycle start', 'usage: codkit cycle start <target> --allow-branch-transition');
     if (action !== 'restart' && commandFlagGiven(ctx.commandFlags, YES)) {
         throw usage(`flag ${YES} is only valid for cycle restart`, 'usage: codkit cycle restart --yes');
     }
@@ -344,9 +351,9 @@ function usage(message, hint) {
 }
 export const cycleCommand = {
     name: 'cycle',
-    summary: 'upgrade cycle: start <tag-or-sha>, continue, status, restart --yes',
+    summary: 'upgrade cycle: start <tag-or-sha> [--allow-branch-transition], continue, status, restart --yes',
     configMode: 'load',
     maxArgs: 2,
-    commandFlags: [YES],
+    commandFlags: [YES, ALLOW_BRANCH_TRANSITION],
     run
 };

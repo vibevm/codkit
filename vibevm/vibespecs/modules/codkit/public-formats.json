@@ -352,20 +352,22 @@
     {
       "id": "cycle-state",
       "field": "codkitCycleState",
-      "version": 3,
+      "version": 4,
       "observedVersions": [
         2,
-        3
+        3,
+        4
       ],
       "source": "packages/codkit/src/lib/cycleState.ts",
       "owner": "Codkit engine",
       "trustBoundary": "Patchset or persisted runtime bytes cross strict validators before mutation.",
-      "compatibility": "Schema 2 requires legacy tagged pins; schema 3 carries revision-only pins and optional resolution/provenance evidence. Readers refuse future versions.",
-      "migration": "Existing schema-2 state bytes are preserved; new cycles choose schema 3 when a pin needs it. No automatic active-state migration.",
+      "compatibility": "Schema 2 requires legacy tagged pins; schema 3 carries revision/resolution evidence; schema 4 optionally records an explicitly authorized branchTransitionAnchor. Schemas 2/3 reject that field. Readers refuse future versions.",
+      "migration": "Existing schema-2/3 state bytes are preserved. Explicit cycle start --allow-branch-transition writes schema 4; ordinary cycles still select schema 2 or 3. No automatic active-state migration.",
       "fingerprint": "Not an input to delta/generated-history fingerprints; runtime records bind their own snapshots or digests.",
       "contract": "spec://codkit/modules/codkit/PROP-009#root",
       "tests": [
-        "packages/codkit/test/unit/cycleState.test.ts"
+        "packages/codkit/test/unit/cycleState.test.ts",
+        "packages/codkit/test/unit/cycleBranchTransition.test.ts"
       ]
     },
     {

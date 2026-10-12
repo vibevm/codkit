@@ -28,6 +28,7 @@ import type { DirectoryResolution } from '../lib/paths.ts';
 import type { ProjectType } from '@codkit/type-api';
 
 const YES = '--yes';
+const ALLOW_BRANCH_TRANSITION = '--allow-branch-transition';
 const ACTIONS = ['start', 'continue', 'status', 'restart'] as const;
 type CycleAction = (typeof ACTIONS)[number];
 
@@ -72,12 +73,16 @@ async function runUnsafe(ctx: CommandContext): Promise<number> {
 				throw usage('cycle start needs exactly one target tag or sha', 'usage: codkit cycle start <tag-or-sha>');
 			}
 			prepareCycleStart(ctx.patchesDir, resolution.path, config, requireProjectType(ctx));
+			const allowBranchTransition = commandFlagGiven(ctx.commandFlags, ALLOW_BRANCH_TRANSITION);
+			if (allowBranchTransition)
+				ctx.out.info(`branch transition explicitly authorized within upstream anchor ${config.upstreamAnchorCommit}`);
 			const started = startCycle({
 				patchesDir: ctx.patchesDir,
 				forkDir: resolution.path,
 				config,
 				type: requireProjectType(ctx),
 				target,
+				allowBranchTransition,
 				...(crashCheckpoint === undefined ? {} : { dependencies: { checkpoint: crashCheckpoint } })
 			});
 			clearCycleRuntimeRecords(ctx.patchesDir);
@@ -310,6 +315,11 @@ function assertArguments(action: CycleAction, args: readonly string[]): void {
 }
 
 function assertFlags(action: CycleAction, ctx: CommandContext): void {
+	if (action !== 'start' && commandFlagGiven(ctx.commandFlags, ALLOW_BRANCH_TRANSITION))
+		throw usage(
+			'branch transition authorization is only valid for cycle start',
+			'usage: codkit cycle start <target> --allow-branch-transition'
+		);
 	if (action !== 'restart' && commandFlagGiven(ctx.commandFlags, YES)) {
 		throw usage(`flag ${YES} is only valid for cycle restart`, 'usage: codkit cycle restart --yes');
 	}
@@ -404,9 +414,9 @@ function usage(message: string, hint: string) {
 
 export const cycleCommand: CommandDefinition = {
 	name: 'cycle',
-	summary: 'upgrade cycle: start <tag-or-sha>, continue, status, restart --yes',
+	summary: 'upgrade cycle: start <tag-or-sha> [--allow-branch-transition], continue, status, restart --yes',
 	configMode: 'load',
 	maxArgs: 2,
-	commandFlags: [YES],
+	commandFlags: [YES, ALLOW_BRANCH_TRANSITION],
 	run
 };

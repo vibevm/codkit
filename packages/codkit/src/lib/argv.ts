@@ -99,6 +99,7 @@ const COMMAND_FLAG_KINDS: ReadonlyMap<string, 'boolean' | 'value' | 'repeatable'
 	['--pin-guard-base', 'value'],
 	// cycle restart (PROP-007 sec. 14)
 	['--yes', 'boolean'],
+	['--allow-branch-transition', 'boolean'],
 	// marker new (PROP-007 sec. 8)
 	['--id', 'value'],
 	['--type', 'value'],

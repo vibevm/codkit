@@ -1,5 +1,6 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#state */
 import { pinKey } from './pinIdentity.ts';
+import { assertSourceToTargetAncestry } from './cycleControlGit.ts';
 // Complete deterministic classification for cycle phase apply. Preview is
 // read-only. The separate apply entry point requires both live orchestrator
 // locks and recovers a durable rename transaction before parsing inventory.
@@ -412,6 +413,18 @@ function assertCycleInput(options: CycleClassifyPreviewOptions): void {
 		throw broken(`patchset checkout must be on cycle branch ${expectedBranch}`);
 	assertPin(options.treeDir, options.state.sourcePin, 'sourcePin');
 	assertPin(options.treeDir, options.state.targetPin, 'targetPin');
+	if (options.state.branchTransitionAnchor !== undefined) {
+		if (options.state.codkitCycleState !== 4 || options.state.branchTransitionAnchor !== options.config.upstreamAnchorCommit)
+			throw broken('cycle branch transition authorization does not match schema/configuration');
+		assertSourceToTargetAncestry(
+			options.treeDir,
+			options.state.sourcePin,
+			options.state.targetPin,
+			runGit,
+			options.state.branchTransitionAnchor
+		);
+		return;
+	}
 	if (
 		runGit({ args: ['merge-base', '--is-ancestor', options.state.sourcePin.sha, options.state.targetPin.sha], cwd: options.treeDir })
 			.status !== 0

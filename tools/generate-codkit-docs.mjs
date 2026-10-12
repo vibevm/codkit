@@ -297,7 +297,7 @@ const commandGuidance = {
 	cycle: {
 		positional: '<start <tag-or-sha> | continue | status | restart>',
 		detail:
-			'In config v4, a full SHA target stays unlabelled and operational names use sha- plus the full SHA; a tag target retains its label. Config v2/v3 retain their original tag-selection rules. `restart` alone accepts and requires `--yes`. Exit 3 is a deliberate stop for human input.'
+			'In config v4, a full SHA target stays unlabelled and operational names use sha- plus the full SHA; a tag target retains its label. Config v2/v3 retain their original tag-selection rules. Only start accepts --allow-branch-transition: both pins must share the configured upstream anchor, an ancestral downgrade refuses, and schema-4 state records the exact anchor for recovery. Without the flag, forward ancestry is required. `restart` alone accepts and requires `--yes`. Exit 3 is a deliberate stop for human input.'
 	},
 	forecast: {
 		positional: '',
