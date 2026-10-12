@@ -25,6 +25,7 @@ import { parseCkpatch } from './patchFormat.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { runSave } from './saveEngine.ts';
 import type { SaveEngineOptions, SavePatchHeaderOverride, SaveResult } from './saveEngine.ts';
+import { withoutDeliveredExtensionDirt } from './cycleOwnedDirt.ts';
 import { loadConventions } from './conventionsFile.ts';
 import type { ProjectType } from '@codkit/type-api';
 
@@ -162,12 +163,13 @@ export function runCycleResolve(options: CycleResolveOptions): CycleResolveResul
 		}
 	}
 
-	const next = facts.state.resolved.includes(artifact.artifactPath)
+	const related = relatedArtifacts(facts, artifact);
+	const next = related.every((item) => facts.state.resolved.includes(item.artifactPath))
 		? facts.state
 		: cycleStateSchema.parse({
 				...facts.state,
 				updatedAt: laterTimestamp(facts.state.updatedAt, proof.ts),
-				resolved: byteSorted([...facts.state.resolved, artifact.artifactPath])
+				resolved: byteSorted([...facts.state.resolved, ...related.map((item) => item.artifactPath)])
 			});
 	if (next !== facts.state) {
 		options.runtime?.beforeStateWrite?.();
@@ -252,7 +254,7 @@ function recoverCleanTree(options: CycleResolveOptions, facts: Facts, artifact?:
 function assertAllExact(options: CycleResolveOptions, facts: Facts): void {
 	for (const artifact of facts.descriptors.values()) {
 		const proof = requireProof(facts, artifact);
-		if (artifact.kind === 'patch' && artifact.outcome === 'conflict') {
+		if (artifact.kind === 'patch' && artifact.outcome === 'conflict' && !removedConflictPatch(artifact)) {
 			if (!patchAdapter(options).prove(options, artifact, proof)) throw broken(`${artifact.artifactPath}: patch proof is stale`);
 		} else if (cycleResolveSnapshotMismatch(options.patchesDir, [], artifact, false).length > 0)
 			throw broken(`${artifact.artifactPath}: committed snapshot is stale`);
@@ -269,7 +271,12 @@ function collectFacts(options: CycleResolveOptions): Facts {
 		state,
 		entries,
 		descriptors,
-		treeDirt: workspaceCycleStatus(options.resolution.path, status(options.resolution.path), workspace),
+		treeDirt: withoutDeliveredExtensionDirt(
+			workspaceCycleStatus(options.resolution.path, status(options.resolution.path), workspace),
+			options.patchesDir,
+			options.resolution.path,
+			options.type
+		),
 		patchsetDirt: workspaceCycleStatus(options.patchesDir, status(options.patchesDir), workspace)
 	};
 }
@@ -299,11 +306,21 @@ function makePlans(options: CycleResolveOptions, facts: Facts): readonly CycleRe
 			return result('journal-red', 'latest journal verification is red', entry.cause.sha);
 		if (!sameCause(entry.cause, descriptor.cause))
 			return result('journal-cause-mismatch', 'latest journal cause differs from immutable classification cause', entry.cause.sha);
+		for (const related of relatedArtifacts(facts, descriptor)) {
+			const relatedProof = facts.entries.get(related.artifactPath);
+			if (
+				relatedProof === undefined ||
+				relatedProof.outcome !== related.outcome ||
+				!sameCause(relatedProof.cause, related.cause) ||
+				relatedProof.verified.some((check) => check.exitCode !== 0)
+			)
+				return result('journal-missing', 'coupled metadata requires every classified partner proof', entry.cause.sha);
+		}
 		if (facts.state.resolved.includes(artifactPath)) {
 			const pending = facts.patchsetDirt.filter((item) => descriptor.patchesPaths.includes(item.path));
 			if (pending.length === 0) return result('resolved', 'state and latest green journal agree', entry.cause.sha);
 			const exact =
-				descriptor.kind === 'patch' && outcome === 'conflict'
+				descriptor.kind === 'patch' && outcome === 'conflict' && !removedConflictPatch(descriptor)
 					? patchAdapter(options).prove(options, descriptor, entry)
 					: nonPatchSnapshotMismatch(options, facts, descriptor).length === 0;
 			return exact
@@ -313,9 +330,14 @@ function makePlans(options: CycleResolveOptions, facts: Facts): readonly CycleRe
 		if (unknownTree.length > 0) return result('unknown-dirt', `unknown fork-tree dirt: ${unknownTree.join(', ')}`, entry.cause.sha);
 		const unknownPatchSet = unknownPatchesPaths(facts, descriptor);
 		if (unknownPatchSet.length > 0) return result('unknown-dirt', `unknown patchset dirt: ${unknownPatchSet.join(', ')}`, entry.cause.sha);
-		if (outcome === 'conflict') {
-			if (descriptor.kind !== 'patch')
-				return result('patchset-change-missing', 'a conflict resolution must identify one patch', entry.cause.sha);
+		if (outcome === 'conflict' && descriptor.kind === 'patch' && removedConflictPatch(descriptor)) {
+			const target = requireTarget(descriptor);
+			const current = readTreeBytes(options, target);
+			const pin = runGitBytes({ args: ['show', `${facts.state.targetPin.sha}:${target}`], cwd: options.resolution.path });
+			if (current === null || pin.status !== 0 || !bytesEqual(current, pin.stdout))
+				return result('tree-change-missing', 'retired conflict patch must leave the exact upstream target', entry.cause.sha);
+		}
+		if (outcome === 'conflict' && descriptor.kind === 'patch' && !removedConflictPatch(descriptor)) {
 			const target = requireTarget(descriptor);
 			const bytes = readTreeBytes(options, target);
 			if (bytes === null) return result('tree-change-missing', `resolved target ${target} is absent`, entry.cause.sha);
@@ -352,7 +374,8 @@ function descriptorMap(state: CycleState, artifacts: readonly CycleResolveArtifa
 		if (artifact.patchesPaths.length === 0 || new Set(artifact.patchesPaths).size !== artifact.patchesPaths.length)
 			throw broken(`${artifact.artifactPath}: explicit patchset paths are empty or duplicated`);
 		if (!/^[0-9a-f]{40}$/.test(artifact.cause.sha)) throw broken(`${artifact.artifactPath}: immutable cause is not a full sha`);
-		if (artifact.kind !== 'patch' || artifact.outcome !== 'conflict') validateCycleResolveSnapshots(artifact);
+		if (artifact.kind !== 'patch' || artifact.outcome !== 'conflict' || removedConflictPatch(artifact))
+			validateCycleResolveSnapshots(artifact);
 		map.set(artifact.artifactPath, artifact);
 	}
 	const missing = [...expected.keys()].filter((path) => !map.has(path));
@@ -427,6 +450,16 @@ function nonPatchSnapshotMismatch(options: CycleResolveOptions, facts: Facts, ar
 		facts.patchsetDirt.map((item) => item.path),
 		artifact
 	);
+}
+
+function removedConflictPatch(artifact: CycleResolveArtifact): boolean {
+	return artifact.patchsetSnapshots?.some((entry) => entry.path === artifact.artifactPath && entry.sha256 === null) === true;
+}
+
+function relatedArtifacts(facts: Facts, artifact: CycleResolveArtifact): readonly CycleResolveArtifact[] {
+	if (artifact.kind !== 'overlay') return [artifact];
+	const paths = byteSorted(artifact.patchesPaths).join('\n');
+	return [...facts.descriptors.values()].filter((item) => item.kind === 'overlay' && byteSorted(item.patchesPaths).join('\n') === paths);
 }
 
 function assertLiveLocks(options: CycleResolveOptions): void {

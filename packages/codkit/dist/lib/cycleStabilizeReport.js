@@ -23,7 +23,8 @@ const inventoryEntrySchema = z
     cause: z.string().nullable(),
     pin: z.string(),
     contractTests: z.array(z.string()),
-    artifact: z.string()
+    artifact: z.string(),
+    synthetic: z.boolean().optional()
 })
     .strict();
 const inventorySchema = z

@@ -38,6 +38,7 @@ import {
 	toPosix,
 	patchSetCommitId
 } from './syncEngine.ts';
+import { writeExclude } from './syncEngine.ts';
 import { checkTree } from './treeIdentity.ts';
 import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource } from './cycleMaterializeMove.ts';
 import type { ConflictWrite, CycleMaterializeMoveCheckpoint, ProvisionalMoveOptions } from './cycleMaterializeMove.ts';
@@ -132,6 +133,7 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 		const preflight = prepareProvisionalMove(moveOptions);
 		importProspectiveObjects(tree, prospective.gitDir);
 		const move = executeProvisionalMove(moveOptions, preflight);
+		writeExclude(tree, ownedRootsOf(options.type, options.config.typeConfig, { treeDir: tree, pinSha: options.config.pin.sha }));
 		const own = syncAllOwnCode(
 			options.patchesDir,
 			tree,

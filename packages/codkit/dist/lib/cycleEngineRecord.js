@@ -192,16 +192,18 @@ function assertClassificationRelations(record) {
         seen.add(cause.artifactPath);
     }
 }
-function encodeStored(value) {
+function encodeStored(value, path = 'record') {
     if (value instanceof Uint8Array)
         return { codkitBytesBase64: Buffer.from(value).toString('base64') };
     if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
         return value;
     if (Array.isArray(value))
-        return value.map(encodeStored);
+        return value.map((item, index) => encodeStored(item, `${path}[${index}]`));
     if (typeof value === 'object')
-        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, encodeStored(item)]));
-    throw broken(`unsupported record value ${typeof value}`);
+        return Object.fromEntries(Object.entries(value)
+            .filter(([, item]) => item !== undefined)
+            .map(([key, item]) => [key, encodeStored(item, `${path}.${key}`)]));
+    throw broken(`unsupported record value ${typeof value} at ${path}`);
 }
 function decodeStored(value) {
     if (Array.isArray(value))

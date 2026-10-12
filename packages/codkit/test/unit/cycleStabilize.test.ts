@@ -174,6 +174,23 @@ describe('cycle dependency advisory and stabilization adapter', () => {
 		});
 	});
 
+	it('persists and resumes the synthetic delivered-runtime inventory record', async () => {
+		const current = fixture(false, 'stabilize');
+		const run = execution({
+			steps: greenSteps(),
+			exitCode: 0,
+			entries: [{ ...entry('runtime.guard', 'delta/own/codkit'), synthetic: true }]
+		});
+		await locked(current, async (locks) => {
+			const first = await continueCycleStabilization(options(current, locks, { runner: async () => run }));
+			expect(first.writes[0]?.contents).toContain('"synthetic": true');
+			const resumed = await continueCycleStabilization(
+				options(current, locks, { existingStabilizeReport: first.writes[0]?.contents ?? null })
+			);
+			expect(resumed.execution?.verify?.inventory?.entries[0]?.synthetic).toBe(true);
+		});
+	});
+
 	it('refuses a schema-valid exit-zero stub that did not observe every required green gate', async () => {
 		const current = fixture(false, 'stabilize');
 		await locked(current, async (locks) => {

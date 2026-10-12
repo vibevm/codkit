@@ -1,5 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
 import { pinKey } from './pinIdentity.js';
+import { withoutDeliveredExtensionDirt } from './cycleOwnedDirt.js';
+import { cycleRepositoryStatus } from './workspaceCycleStatus.js';
 import { createHash } from 'node:crypto';
 import { downChannel, loadBuildWatch } from './buildWrap.js';
 import { runCi } from './ciEngine.js';
@@ -90,8 +92,11 @@ async function planStabilize(options) {
     }
     const after = captureCycleLiveSnapshot(options.patchesDir, options.resolution.path, options.state.targetPin.sha);
     const expectedForkRef = `refs/heads/${options.config.generatedBranchPrefix}${pinKey(options.state.targetPin)}`;
+    const exactDeliveredDirt = options.runner === undefined &&
+        withoutDeliveredExtensionDirt(cycleRepositoryStatus(options.resolution.path), options.patchesDir, options.resolution.path, options.type)
+            .length === 0;
     const stable = options.runner === undefined
-        ? concreteStabilizationWorldMatches(live, after, expectedForkRef, execution.build?.branchTip ?? null)
+        ? concreteStabilizationWorldMatches(live, after, expectedForkRef, execution.build?.branchTip ?? null, exactDeliveredDirt)
         : same(live, after);
     if (!stable)
         execution = appendRunnerFailure(execution, 'live repository snapshot changed during stabilization');
@@ -440,13 +445,13 @@ function compareText(left, right) {
 function same(left, right) {
     return JSON.stringify(left) === JSON.stringify(right);
 }
-export function concreteStabilizationWorldMatches(left, right, expectedForkRef, branchTip) {
+export function concreteStabilizationWorldMatches(left, right, expectedForkRef, branchTip, exactDeliveredDirt = false) {
     if (!same(left.patchset, right.patchset))
         return false;
     if (branchTip === null || !/^[0-9a-f]{40}$/.test(branchTip))
         return same(left.fork, right.fork);
     return (right.fork.ref === expectedForkRef &&
-        right.fork.dirty === false &&
+        (right.fork.dirty === false || exactDeliveredDirt) &&
         right.fork.head === branchTip &&
         left.fork.targetCommit === right.fork.targetCommit &&
         left.fork.targetTree === right.fork.targetTree);

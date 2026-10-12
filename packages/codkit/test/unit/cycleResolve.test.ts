@@ -22,7 +22,7 @@ import { Output } from '../../src/lib/jsonOut.ts';
 import { acquireLock } from '../../src/lib/lock.ts';
 import { runSave } from '../../src/lib/saveEngine.ts';
 import { readTreeCache, readTreeMark } from '../../src/lib/treeCache.ts';
-import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
+import { EXAMPLE_PART_PATH, fixtureGit, fixtureCommit } from '../fixtures/makeUpstream.ts';
 import { PATCH_FILE_NAME, PATCH_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
@@ -210,6 +210,88 @@ function use<T>(current: Harness, body: (fixture: Harness) => T): T {
 
 describe('cycle resolve production adapter', () => {
 	afterAll(cleanupTempRoots);
+
+	it('retires a conflict patch only when its target is the exact target-pin blob', () => {
+		const artifact = { ...patchArtifact(), patchsetSnapshots: [{ path: PATCH, sha256: null }] };
+		use(harness({ artifacts: [artifact], patchsetDirt: [{ path: PATCH, status: ' D' }] }), (current) => {
+			const tree = current.options.resolution.path;
+			fixtureGit(tree, ['init', '--quiet', '--initial-branch=main', '.']);
+			mkdirSync(dirname(join(tree, TARGET)), { recursive: true });
+			writeFileSync(join(tree, TARGET), 'resolved\n');
+			const sha = fixtureCommit(tree, 'fixture: upstream target', '2026-08-13T00:00:00Z');
+			const pin = { ...current.options.state.targetPin, sha };
+			const options = {
+				...current.options,
+				config: { ...current.options.config, pin },
+				state: { ...current.options.state, targetPin: pin }
+			};
+			const result = runCycleResolve(options);
+			expect(result.state.resolved).toContain(PATCH);
+			expect(result.commit?.paths).toEqual(['cycle/state.json', PATCH]);
+			expect(current.saves).toEqual([]);
+			const unsafe = { ...options, runtime: { ...options.runtime, treeBytes: () => Buffer.from('unrecorded logic\n') } };
+			expect(planCycleResolve(unsafe).plans[0]?.status).toBe('tree-change-missing');
+		});
+	});
+
+	it('commits both coupled overlays atomically and requires every partner journal', () => {
+		const paths = ['delta/overlays/manifest.json.overlay.json', 'delta/overlays/manifest-lock.json.overlay.json'];
+		const artifacts: CycleResolveArtifact[] = paths.map((artifactPath, index) => ({
+			artifactPath,
+			artifactId: `CK-test-00${index + 1}`,
+			kind: 'overlay',
+			outcome: 'conflict',
+			cause: { sha: CAUSE, approx: false },
+			patchesPaths: paths,
+			patchsetSnapshots: paths.map((path) => ({ path, sha256: null }))
+		}));
+		use(
+			harness({
+				state: state({ conflict: paths }),
+				artifacts,
+				journal: paths.map((path) => entry(path)),
+				treeDirt: [],
+				patchsetDirt: paths.map((path) => ({ path, status: ' D' }))
+			}),
+			(current) => {
+				const missing = planCycleResolve({ ...current.options, journal: [entry(paths[0])] });
+				expect(missing.plans.every((plan) => plan.status === 'journal-missing')).toBe(true);
+				const red = planCycleResolve({ ...current.options, journal: [entry(paths[0]), entry(paths[1], 'conflict', 1)] });
+				expect(red.status).toBe('blocked');
+				const result = runCycleResolve(current.options);
+				expect(result.state.resolved).toEqual([...paths].sort());
+				expect(result.commit?.paths).toEqual(['cycle/state.json', ...[...paths].sort()]);
+				expect(current.saves).toEqual([]);
+			}
+		);
+	});
+
+	it('accepts exact declared own-extension deliveries but blocks edits and extra files', () => {
+		use(harness({ treeDirt: [], patchsetDirt: [], state: { ...state(), resolved: [PATCH] }, proved: [PATCH] }), (current) => {
+			const manifest = join(current.options.patchesDir, 'delta/own/patchset.delta.json');
+			mkdirSync(dirname(manifest), { recursive: true });
+			writeFileSync(
+				manifest,
+				JSON.stringify({
+					codkitOwnManifest: 2,
+					extensions: [{ id: 'CK-test-001', name: 'owned', owner: 'test', reason: 'test', pin: TAG, contractTests: [] }]
+				})
+			);
+			const source = join(current.options.patchesDir, 'delta/own-extensions/owned/package.json');
+			const delivered = join(current.options.resolution.path, 'addons/owned/package.json');
+			for (const path of [source, delivered]) {
+				mkdirSync(dirname(path), { recursive: true });
+				writeFileSync(path, '{"name":"owned"}');
+			}
+			current.treeDirt.push({ status: '??', path: 'addons/owned/package.json' });
+			expect(runCycleResolve(current.options).status).toBe('complete');
+			writeFileSync(delivered, '{"name":"edited"}');
+			expect(() => runCycleResolve(current.options)).toThrow(/unknown fork dirt/);
+			writeFileSync(delivered, '{"name":"owned"}');
+			current.treeDirt.push({ status: '??', path: 'addons/owned/extra.json' });
+			expect(() => runCycleResolve(current.options)).toThrow(/unknown fork dirt/);
+		});
+	});
 
 	it('uses only the latest matching all-green journal event', () =>
 		use(harness({ journal: [entry(), entry(PATCH, 'conflict', 1)] }), ({ options }) => {

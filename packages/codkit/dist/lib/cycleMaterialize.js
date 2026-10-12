@@ -19,6 +19,7 @@ import { syncAllOwnCode } from './ownCopy.js';
 import { ownedRootsOf } from './ownedRoots.js';
 import { PATCH_FILE_SUFFIX, parseCkpatch } from './patchFormat.js';
 import { COMMIT_AUTHOR_EMAIL, COMMIT_AUTHOR_NAME, PATCHES_DIR, overlayVarContext, pinCommitDate, toPosix, patchSetCommitId } from './syncEngine.js';
+import { writeExclude } from './syncEngine.js';
 import { checkTree } from './treeIdentity.js';
 import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource } from './cycleMaterializeMove.js';
 import { workspaceForkReceipt } from './workspaceReceipt.js';
@@ -50,6 +51,7 @@ export function materializeCycleApply(options) {
         const preflight = prepareProvisionalMove(moveOptions);
         importProspectiveObjects(tree, prospective.gitDir);
         const move = executeProvisionalMove(moveOptions, preflight);
+        writeExclude(tree, ownedRootsOf(options.type, options.config.typeConfig, { treeDir: tree, pinSha: options.config.pin.sha }));
         const own = syncAllOwnCode(options.patchesDir, tree, ownedRootsOf(options.type, options.config.typeConfig, { treeDir: options.resolution.path, pinSha: options.config.pin.sha }));
         for (const blocker of prepared.blockers) {
             options.out.info(`cycle blocker ${blocker.outcome}: ${blocker.artifactPath} -> ${blocker.targetPath}`);

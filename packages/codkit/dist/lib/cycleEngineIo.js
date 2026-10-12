@@ -6,6 +6,7 @@ import { ckError } from './messages.js';
 import { resolveContainedPath } from './pathSafety.js';
 import { isDeliveredOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.js';
 import { ownCodeFilter } from './ownedRoots.js';
+import { readContainedFile } from './containedFile.js';
 /**
  * The delta paths a rename plan is written against: the contract tests of the
  * own layer, and the rest of the own code. Every directory the delta owns
@@ -22,7 +23,13 @@ export function renameReferencePaths(patchesDir, roots) {
         for (const relative of listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), options)) {
             if (!isDeliveredOwnFile(relative))
                 continue;
-            (relative.startsWith('test/') ? contractTests : own).push(`${owned.deltaDir}/${relative}`);
+            const path = `${owned.deltaDir}/${relative}`;
+            const source = readContainedFile(patchesDir, path, { what: 'rename reference discovery' });
+            if (source.state === 'absent')
+                throw ckError('DIRTY-TREE', `${path}: rename reference disappeared during discovery`);
+            if (source.bytes.includes(0))
+                continue;
+            (relative.startsWith('test/') ? contractTests : own).push(path);
         }
     }
     return { contractTests, own };

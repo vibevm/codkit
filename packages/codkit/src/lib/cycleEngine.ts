@@ -467,10 +467,28 @@ function resolveArtifacts(
 		state.artifacts[outcome as keyof typeof state.artifacts].map((artifactPath): CycleResolveArtifact => {
 			const item = classifications.get(artifactPath);
 			const kind = outcome === 'contract-failed' ? 'contract' : (item?.kind ?? 'contract');
-			const patchesPaths = byteSorted([artifactPath, ...(kind === 'resource' ? [RESOURCE_MAP_PATH] : [])]);
+			const pairTarget =
+				item?.kind === 'overlay' && outcome === 'conflict'
+					? item.targetPath.endsWith('package-lock.json')
+						? item.targetPath.replace(/package-lock\.json$/, 'package.json')
+						: item.targetPath.endsWith('package.json')
+							? item.targetPath.replace(/package\.json$/, 'package-lock.json')
+							: null
+					: null;
+			const paired =
+				pairTarget === null
+					? undefined
+					: record.classifications.find(
+							(candidate) => candidate.kind === 'overlay' && candidate.targetPath === pairTarget && candidate.outcome === 'conflict'
+						);
+			const patchesPaths = byteSorted([
+				artifactPath,
+				...(kind === 'resource' ? [RESOURCE_MAP_PATH] : []),
+				...(paired === undefined ? [] : [paired.artifactPath])
+			]);
 			const proof = latest.get(artifactPath);
 			const snapshots =
-				kind === 'patch' && outcome === 'conflict'
+				kind === 'patch' && outcome === 'conflict' && fileDigest(options.patchesDir, artifactPath) !== null
 					? undefined
 					: patchesPaths.map((path) => ({ path, sha256: fileDigest(options.patchesDir, path) }));
 			return {

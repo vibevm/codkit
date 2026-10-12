@@ -8,6 +8,7 @@ import { resolveContainedPath } from './pathSafety.ts';
 import type { CycleState } from './cycleState.ts';
 import { isDeliveredOwnFile, listOwnFiles, ownSourceRoot } from './ownCopy.ts';
 import { ownCodeFilter } from './ownedRoots.ts';
+import { readContainedFile } from './containedFile.ts';
 import type { OwnedRoot } from './ownedRoots.ts';
 
 /**
@@ -28,7 +29,11 @@ export function renameReferencePaths(
 		const options = { refuseSymlinks: true, keep: ownCodeFilter(owned) };
 		for (const relative of listOwnFiles(ownSourceRoot(patchesDir, owned.deltaDir), options)) {
 			if (!isDeliveredOwnFile(relative)) continue;
-			(relative.startsWith('test/') ? contractTests : own).push(`${owned.deltaDir}/${relative}`);
+			const path = `${owned.deltaDir}/${relative}`;
+			const source = readContainedFile(patchesDir, path, { what: 'rename reference discovery' });
+			if (source.state === 'absent') throw ckError('DIRTY-TREE', `${path}: rename reference disappeared during discovery`);
+			if (source.bytes.includes(0)) continue;
+			(relative.startsWith('test/') ? contractTests : own).push(path);
 		}
 	}
 	return { contractTests, own };

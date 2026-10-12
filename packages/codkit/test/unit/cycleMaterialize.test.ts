@@ -317,6 +317,21 @@ function collidingResourceMap(current: Fixture): void {
 
 describe('materializeCycleApply', () => {
 	afterAll(cleanupTempRoots);
+	it('excludes delivered own code in the provisional checkout', () => {
+		const current = fixture();
+		materializeCycleApply({
+			patchesDir: current.patchesDir,
+			resolution: current.resolution,
+			config: current.config,
+			type: stubProjectType,
+			sourcePin: current.sourcePin,
+			classifications: current.classifications,
+			out: current.output
+		});
+		expect(readFileSync(join(current.tree, 'source/own/hello.ts'), 'utf8')).toContain('hello');
+		expect(runGit({ args: ['check-ignore', 'source/own/hello.ts'], cwd: current.tree }).status).toBe(0);
+		expect(runGit({ args: ['status', '--porcelain', '--untracked-files=all'], cwd: current.tree }).stdout).not.toContain('source/own/');
+	}, 90_000);
 
 	it('preflights without mutation, builds the complete provisional tip, and retries byte-identically', () => {
 		const current = fixture();
@@ -353,6 +368,7 @@ describe('materializeCycleApply', () => {
 			out: current.output
 		});
 		expect(first.branch).toBe('codkit/cycle/t2-provisional');
+		expect(runGit({ args: ['check-ignore', 'source/own/owned.ts'], cwd: current.tree }).status).toBe(0);
 		expect(first.provisionalTip).toMatch(/^[0-9a-f]{40}$/);
 		expect(runGit({ args: ['branch', '--show-current'], cwd: current.tree }).stdout.trim()).toBe(first.branch);
 		expect(runGit({ args: ['rev-parse', 'HEAD'], cwd: current.tree }).stdout.trim()).toBe(first.provisionalTip);
