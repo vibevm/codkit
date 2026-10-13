@@ -149,9 +149,13 @@ function bringHome(root, targets, from) {
 
 export function mirrorRepository(root, { check = false, from, log = () => {} } = {}) {
 	assertCodkitRoot(root);
-	const targets = readTargets(root);
+	let targets = readTargets(root);
 	if (check && from !== undefined) throw new Error('--check and --from cannot be combined');
-	if (from !== undefined) bringHome(root, targets, from);
+	if (from !== undefined) {
+		bringHome(root, targets, from);
+		assertCodkitRoot(root);
+		targets = readTargets(root);
+	}
 	const plans = targets.map((target) => ({ target, refs: snapshotRefs(root, target) }));
 	const main = git(root, ['rev-parse', '--verify', 'refs/heads/main^{commit}']).stdout.trim();
 	log(`mirror${check ? ' --check' : ''}: Codkit main @ ${main}`);

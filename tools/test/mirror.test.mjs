@@ -145,6 +145,39 @@ test('deletions do not propagate and a changed remote tag blocks its target', ()
 		}
 	}));
 
+test('a web merge changing repository identity cannot fan Nimbus out to another host', () =>
+	fixture(({ root, targets, folder }) => {
+		equal(mirrorRepository(root).exitCode, 0);
+		const old = ref(root);
+		const other = join(folder, 'web');
+		git(folder, 'clone', '--quiet', targets[0].url, other);
+		identity(other);
+		write(other, 'package.json', '{"name":"nimbus"}');
+		git(other, 'add', '.');
+		git(other, 'commit', '--quiet', '-m', 'fixture: incompatible repository');
+		git(other, 'push', '--quiet', 'origin', 'main');
+		throws(() => mirrorRepository(root, { from: 'github' }), /other than Codkit/);
+		equal(ref(targets[1].url), old);
+	}));
+
+test('the manifest brought home in a web merge supplies the target set for that fan-out', () =>
+	fixture(({ root, targets, folder }) => {
+		equal(mirrorRepository(root).exitCode, 0);
+		const other = join(folder, 'web');
+		git(folder, 'clone', '--quiet', targets[0].url, other);
+		identity(other);
+		const url = join(folder, 'new-host.git');
+		git(folder, 'init', '--bare', '--quiet', '--initial-branch=main', url);
+		const doc = JSON.parse(readFileSync(join(other, 'mirrors.json'), 'utf8'));
+		doc.targets.push({ name: 'new-host', url, refs: ['main'] });
+		write(other, 'mirrors.json', JSON.stringify(doc));
+		git(other, 'add', '.');
+		git(other, 'commit', '--quiet', '-m', 'fixture: onboard new host');
+		git(other, 'push', '--quiet', 'origin', 'main');
+		equal(mirrorRepository(root, { from: 'github' }).exitCode, 0);
+		equal(ref(url), ref(other));
+	}));
+
 test('transport failure is reported separately and does not stop the reachable target', () =>
 	fixture(({ root, targets, folder }) => {
 		const doc = JSON.parse(readFileSync(join(root, 'mirrors.json'), 'utf8'));
