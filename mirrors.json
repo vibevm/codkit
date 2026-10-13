@@ -3,12 +3,12 @@
 	"targets": [
 		{
 			"name": "github",
-			"url": "https://github.com/vibevm/codkit.git",
+			"url": "git@github.com:vibevm/codkit.git",
 			"refs": ["main", "tags"]
 		},
 		{
 			"name": "gitverse",
-			"url": "https://gitverse.ru/vibevm/codkit.git",
+			"url": "git@gitverse.ru:vibevm/codkit.git",
 			"refs": ["main", "tags"]
 		}
 	]
