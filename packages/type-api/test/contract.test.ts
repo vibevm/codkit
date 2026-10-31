@@ -59,6 +59,7 @@ describe('capability names', () => {
 			'entry-module',
 			'gen-brand',
 			'own-extensions',
+			'preview',
 			'runtime-library',
 			'service-override',
 			'upgrade-advisory'

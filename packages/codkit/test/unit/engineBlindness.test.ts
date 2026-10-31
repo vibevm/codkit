@@ -51,7 +51,14 @@ export const FAMILY_DICTIONARY: readonly string[] = [
 	'sysroot',
 	'dpkg',
 	'rpmbuild',
-	'VSCode-linux'
+	'VSCode-linux',
+	// The extension family: the flag its host takes to run an extension from
+	// source, its packager and the distributable the packager writes. The preview
+	// verb of the engine spawns what the type's recipe says and never names them
+	// (PROP-016 ##TYPE-AREA-PREVIEW).
+	'extensionDevelopmentPath',
+	'vsce',
+	'\\.vsix'
 ];
 
 const dictionary = new RegExp(FAMILY_DICTIONARY.join('|'), 'u');

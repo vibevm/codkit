@@ -33,6 +33,7 @@ export type { BrokenArtifact } from './refusal.ts';
 export { decodePng, encodePng, isPng, pngHeader, pngSize, rgba } from './png.ts';
 export type { PngHeader, Rgba } from './png.ts';
 export type { RuntimeArea } from './runtime.ts';
+export type { PreviewArea, PreviewIsolation, PreviewLaunch, PreviewRecipe, PreviewRequest } from './preview.ts';
 export type { StandardsArea } from './standards.ts';
 export type { ConventionsArea } from './conventions.ts';
 export type { BrandGraft, FeatureRequest, FeatureSkeleton, GeneratedModule, GeneratedRole, GeneratorsArea } from './generators.ts';
