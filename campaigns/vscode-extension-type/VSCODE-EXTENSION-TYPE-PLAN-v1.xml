@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<campaign genre="campaign-plan">
+  <title>The vscode-extension project type, the preview verb and the rebrand toolkit</title>
+  <status date="2026-11-01" state="phase-0-complete" base="9e7d474" branch="main">Design DESIGN-002 written and this plan proposed; Phase 0 spikes are read-only facts recorded in DESIGN-002 §1 and in the consumer's repository. Next: Phase 1 (contract and specifications), then Phase 2 (the type package), Phase 3 (the preview verb), Phase 4 (the first consumer, in its own repository), Phase 5 deferred by name. Owner review points are OPEN below; the campaign proceeds on the conservative reading of each and records the ruling verbatim when it arrives.</status>
+  <mandate date="2026-11-01">Я хочу научить codkit делать форки плагинов vscode. [...] продумай глобально архитектурно как это в целом может делаться. Как codkit определяет тип продукта, стратегии и так далее. [...] Надо будет поставить typescript-ai-native и применять его к новому собственному коду. [...] твоя задача как большой модели - придумать как доработать codkit так, чтобы мы могли быстро и удобно дорабатывать множество плагинов. Также специально в качестве исключения я бы придумал какой-то способ быстро предпросматривать результаты работы в каком-то из существюущих IDE на основе VSCode (пока тренируйся на дефолтном, но потом мы перейдем к кастомному) [...] патчсет имеет лицензию EULA, и у результирующего плагина лицензия тоже EULA. Это всё максимально не опенсорс, и не source available. Кроме тех частей кода, которые унаследованы от codkit</mandate>
+  <mandate-note>The elided parts of the mandate name the consumer product, its upstream and its repository; they are recorded verbatim in the consumer's own campaign plan (`common/PROP-004` `NO-CONSUMER-PRODUCT-IN-THE-TOOL`, DESIGN-002 D8). The same owner message set the session goal in the same words.</mandate-note>
+  <source>DESIGN-002-vscode-extension-type.md (vibevm/vibespecs/research/design), written 2026-11-01 from the type contract (PROP-016, `packages/type-api`), the `generic` and `theia` types as the two precedents, PROP-005/PROP-010/PROP-003 as digested on 2026-11-01, and the facts of one measured specimen kept in the consumer's repository.</source>
+  <baseline>
+    <fact>Three official types are registered: `vscode`, `generic`, `theia` (`codkit types` on 9e7d474); the contract has ten areas and the closed capability list `brand-images, gen-brand, build-channels, runtime-library, own-extensions, service-override, entry-module, config-overlay, dev-channel, upgrade-advisory` (`packages/type-api/src/capabilities.ts`).</fact>
+    <fact>No verb of the roster launches, installs, serves or previews a product; `package --keep-overlay` leaves a tree for a hand check and the quickstart runs the fork's own launcher by hand (PROP-007 roster, docs/codkit/reference/commands.md, human protocol 01-quickstart, read 2026-11-01).</fact>
+    <fact>No verb creates a patch set; the human protocol writes `codkit.json` by hand and proves it with `where`, `check-tree --require-clean` and `verify` (human protocol 15-project-types, read 2026-11-01).</fact>
+    <fact>The layer order is own → service-override → entry-module → config-overlay → resource-file → rewrite-rule → patch; no layer substitutes terms; an overlay is path-wise set/remove over JSON; `rewrite-rule` is `line-ops` without a replace action (PROP-005, read 2026-11-01).</fact>
+    <fact>The `vscode` type answers `gen-brand` with a rules table (`delta/own/common/brand.ts`, `createBrandTransform(RULES)`) and a printed hook into the `nls.ts` funnel (modules/vscode/PROP-008 `GEN-BRAND`); the transform lives in `runtime-vscode` (`common/brand/brandRules.ts`).</fact>
+    <fact>Gates on 9e7d474: format, typecheck, runtime emit, type receipts, trace (302 files, 158 units), docs, public formats, mirror tests, `vibe check --quiet` green; `publishScrub.test.ts` carries the pre-existing failure CK-A76; the structural floor and the full Vitest suite were not run on this machine today.</fact>
+    <fact>The owner's machine: VS Code 1.144.0 with `code` on PATH, Node 24.18.0, npm 11.16.0, cargo 1.93.1, no `bun`; the first consumer's upstream pins `bun@1.4.4` and `engines.vscode ^1.105.1`.</fact>
+  </baseline>
+  <decisions>
+    <decision id="D0">The specimen and the consumer are named only in the consumer's repository; Codkit's specifications, code, tests, fixtures and this plan speak of "the family" and "the specimen" (DESIGN-002 D8). Rejected: a research directory `research/<upstream>-facts` here, as was done for Theia - that upstream is one step from a consumer product, Theia was not.</decision>
+    <decision id="D1">A type of its own, `vscode-extension`, configured through `typeConfig`, not a profile of `generic` and not a variant of `vscode` (DESIGN-002 D1).</decision>
+    <decision id="D2">`preview` is the eleventh area of the contract, optional and paired with a capability like `brand-images`; the engine owns isolation, the record, the lock and the restore; the type owns the recipe (DESIGN-002 D4). Rejected: a type-specific verb; the upstream's own launcher.</decision>
+    <decision id="D3">The rebrand toolkit uses existing layers and the existing `gen brand` machinery: manifest overlay, brand table with hooks at each funnel, resource files, hook patches, and a generated leftover guard test; no term-substitution layer (DESIGN-002 D3).</decision>
+    <decision id="D4">The brand transform is generated self-contained; no runtime library for this type in the first version (DESIGN-002 D5). One universal `.vsix`; platform targets later (DESIGN-002 D9). Brand images later (DESIGN-002 D6).</decision>
+    <decision id="D5">Codkit-side work lands on `main` in atomic commits per phase, each with the floor pieces that run on this machine; the consumer's work lands in its own repository and is not a commit of this one.</decision>
+  </decisions>
+  <predictions>
+    <prediction id="P1">After Phase 1, `codkit types` prints the three existing rows unchanged except for the new capability name in the contract's list; after Phase 2 it prints a fourth row `vscode-extension` with `configurableCapabilities` empty and the declared capabilities `config-overlay, entry-module, build-channels, upgrade-advisory, gen-brand, preview`.</prediction>
+    <prediction id="P2">The engine blindness gate (PROP-016 `TYPE-ENGINE-IS-BLIND`) stays at zero hits with the family's tokens (`extensionDevelopmentPath`, `vsce`, `engines.vscode`) added to its dictionary: the engine learns them from the type's answers only.</prediction>
+    <prediction id="P3">`projectTypeProblems` refuses a type that declares `preview` without the area and one that answers the area without the capability, by the same test that holds `brandImages` today.</prediction>
+    <prediction id="P4">`npm run kit` carries `@codkit/type-vscode-extension` as a fifth type tarball without a change to the kit builder beyond the registry row.</prediction>
+    <prediction id="P5">The generated leftover guard test goes red on a fixture tree that keeps one original brand string outside the allow-list and green when the string is inside a licence file.</prediction>
+    <prediction id="P6">A fake host executable (a Node script that records its argv) proves `codkit preview` passes `--extensionDevelopmentPath`, `--user-data-dir` and `--extensions-dir` with paths under `.codkit/preview/`, and never a path under the person's home.</prediction>
+  </predictions>
+  <route>
+    <phase id="0">Design and spikes, no commits: DESIGN-002; the specimen measured in the consumer's repository; the host flags confirmed against the installed VS Code; vibevm bootstrap of an empty project studied. Complete 2026-11-01.</phase>
+    <phase id="1" depends="0">Contract and specifications: `preview` capability and `PreviewArea` in `@codkit/type-api` (and the manifest handshake); PROP-016 amendments (`TYPE-AREA-PREVIEW`, the capability in `TYPE-TERM-CAPABILITY`); PROP-007 `CMD-PREVIEW`; `modules/vscode-extension/PROP-001..005`; FEAT-002 scenarios; specmap regenerated; docs regenerated. Exit: `vibe check --quiet`, specmap --check, trace:check, typecheck, docs:check green.</phase>
+    <phase id="2" depends="1">The type package `@codkit/type-vscode-extension`: configSchema, identity, layout, layers, build, advisory, conventions, generators (feature skeleton, brand graft with the self-contained transform and the leftover guard template), preview recipe; type-manifest; the registry row; the root scripts; the kit; the synthetic polygon fixture (a minimal extension repository with a manifest, an activation module and two dictionary modules); unit suites. Exit: the package's suites green, `codkit types` prints the row, `npm run kit` carries it, the receipts refreshed, the floor pieces green.</phase>
+    <phase id="3" depends="1">The `preview` verb: `lib/previewEngine.ts`, `commands/preview.ts`, the roster and the help, the error codes with FAQ entries, the record and the state directory, overlay materialization and restore, the e2e suite with a fake host, a manual test for the real host. Exit: e2e green, docs regenerated, the manual test pre-run against the installed VS Code reported (never recorded as a pass).</phase>
+    <phase id="4" depends="2 3" scope="consumer-repository">The first consumer: its vibevm project, its EULA posture through the organization policy, its `codkit.json` of type `vscode-extension` over the pinned upstream, `standards load`, the rebrand set generated and completed, `load`, `package`, `preview` in the installed VS Code. The proof is reported in the consumer's repository; this plan records only that the type passed it.</phase>
+    <phase id="5" depends="4" scope="deferred-by-name">`codkit init --type <id> --pin <tag>` writing the first configuration from a pinned clone; `seams-vscode-extension`; brand images from the manifest's icon targets; `typeConfig.packageTargets` for platform-specific `.vsix` files; an MCP surface for `preview`; the namespace-rename intervention as a product decision.</phase>
+  </route>
+  <review-points>
+    <point id="RP-1" state="OPEN">Owner-only: whether a namespace rename of commands and settings (the upstream's `<brand>.<id>` identifiers) is part of the first change or a later one. Conservative reading applied: displayed strings only.</point>
+    <point id="RP-2" state="OPEN">Owner-only: whether the consumer keeps the upstream's service endpoints and telemetry destination in the first build. Conservative reading applied: telemetry destination removed in the consumer's set; endpoints untouched and listed.</point>
+    <point id="RP-3" state="OPEN">Owner-only: whether `bun` may be installed on the owner's machine through npm for the consumer's build. Conservative reading applied: installed only when the consumer's phase reaches the build, through `npm install -g bun@<pinned>`, and reported.</point>
+  </review-points>
+  <quick-start>
+    <step>Read DESIGN-002 and this plan; `git log --oneline -5` on main; `node packages/codkit/bin/codkit.mjs types`.</step>
+    <step>Phase 1 starts in `packages/type-api/src/` (add `preview.ts`, extend `capabilities.ts`, `OPTIONAL_AREAS`, `index.ts`) and `vibevm/vibespecs/modules/vscode-extension/`; regenerate `specmap.json` with `vibe bin exec --quiet typescript-ai-native -- specmap` and the docs with `node tools/generate-codkit-docs.mjs`.</step>
+    <step>Gates per boundary: `npm run format:check && npm run typecheck && npm run runtime:build && npm run runtime:check && npm run types:check && npm run trace:check && npm run docs:check && vibe check --quiet && vibe bin exec --quiet typescript-ai-native -- specmap --check`, plus the Vitest files the phase touched.</step>
+  </quick-start>
+  <acceptance>
+    <script>node packages/codkit/bin/codkit.mjs types | grep -c vscode-extension</script>
+    <script>npx vitest run packages/type-vscode-extension/test packages/codkit/test/e2e/preview.test.ts packages/codkit/test/unit/typeRegistry.test.ts</script>
+    <script>npm run kit &amp;&amp; grep -c type-vscode-extension target/supply-kit/kit-manifest.json</script>
+  </acceptance>
+  <deferrals>
+    <deferral id="DEF-1">Platform-specific `.vsix` targets (`typeConfig.packageTargets`) - DESIGN-002 D9.</deferral>
+    <deferral id="DEF-2">Brand images from the manifest's icon targets - DESIGN-002 D6.</deferral>
+    <deferral id="DEF-3">`seams-vscode-extension` standards package.</deferral>
+    <deferral id="DEF-4">`codkit init --type` and the pin bootstrap from a clone.</deferral>
+    <deferral id="DEF-5">The MCP surface of `preview` (omnichannel).</deferral>
+    <deferral id="DEF-6">Specification discrepancies found while reading on 2026-11-01 (PROP-007 `COMMAND-ROSTER` lacks `workspace`, `config migrate`, `marker reason`, `consumer-check`; `CMD-WHERE` vs the docs on the printed type; PROP-003 `CFG-SCHEMA`/`CFG-PIN-TAG` predate v4; the second notice copy path differs between PROP-007 and PROP-014) - for the next health audit, not this campaign.</deferral>
+  </deferrals>
+  <log>
+    <entry date="2026-11-01">Phase 0: four read-only studies (vibevm sources, the specimen, the CLI and licensing specs, the layer and build specs), the installed host's flags, the type contract and the two precedent types; DESIGN-002 written with nine decisions; this plan proposed. No tree change outside the two documents.</entry>
+  </log>
+</campaign>
