@@ -9,7 +9,7 @@
       <evidence path="vibevm/vibespecs/modules/codkit/PROP-021-artifact-codec.xml" sha256="5ff97f29e37a5b8f440a6be9eec36178a8cf2513b93c5a38ca58ec3803521e2e" bytes="2148" />
     </item>
     <item id="2" state="measured-read-only" title="Legacy compatibility">
-      <finding>Actual dirty nimbus consumer was not edited:43 artifacts/89 hunks serialized byte-exact and planned/applied in memory against pinned Git blobs. This is not its full application build.</finding>
+      <finding>Actual dirty Nimbus consumer was not edited:43 artifacts/89 hunks serialized byte-exact and planned/applied in memory against pinned Git blobs. This is not its full application build.</finding>
       <evidence path="campaigns/feature-proof/PHASE5-CONSUMER-MEASUREMENT-2026-10-04.xml" sha256="68547d6487304be7ab78cdb83fce748e389f9343a66143cea14a004f7ad40a07" bytes="16362" />
     </item>
     <item id="3" state="design-and-compatibility-examples" title="Build command rules">

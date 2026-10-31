@@ -3,8 +3,8 @@
 //
 // The vocabulary is learned the way `publish` learns it - from spec documents,
 // intervention ids, marker lines and `spec://` references - never written down
-// here as a naming pattern. The sample lines are the shapes the Nimbus tree
-// carries. The release tree runs on a two-commit repository, a pin and a tip.
+// here as a naming pattern. The sample lines follow the shapes a consumer's
+// spec tree carries. The release tree runs on a two-commit repository, a pin and a tip.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -57,7 +57,10 @@ function sources(settings: Partial<ScrubSettings> = {}): VocabularySources {
 	return {
 		interventionIds: ['CK-build-002', 'CK-build-006', 'CK-workbench-008', 'CK-brand-resources-darwin-bat.icns', 'standards'],
 		specDocuments: [
-			{ path: 'vibevm/vibespecs/modules/nimbus/FEAT-004-center-surfaces.xml', text: specDocument('nimbus FEAT-004: The center', FACTS_004) },
+			{
+				path: 'vibevm/vibespecs/modules/nimbus/FEAT-004-center-surfaces.xml',
+				text: specDocument('nimbus FEAT-004: The center', FACTS_004)
+			},
 			{
 				path: 'vibevm/vibespecs/modules/nimbus/FEAT-005-enterprise-policy.xml',
 				text: specDocument('nimbus FEAT-005: The policy', FACTS_005)

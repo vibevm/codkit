@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <measurement genre="research" date="2026-10-04" scope="P0.6/P0.12" state="read-only-measured">
-  <consumer repository="C:/Users/olegc/work/sbtgit/nimbus" head="85d1df570853c1af86211a05c19233b3c2ac14fe" dirtyEntries="110" statusSha256="34f3231c43d36b71a0a0b90736beb1511f66763ca272a7b33e18a22e2a6418e9" />
+  <consumer repository="consumer Nimbus, local checkout (machine path withheld)" head="85d1df570853c1af86211a05c19233b3c2ac14fe" dirtyEntries="110" statusSha256="34f3231c43d36b71a0a0b90736beb1511f66763ca272a7b33e18a22e2a6418e9" />
   <config workingSha256="8707b86a49014f0601309b0f31043876022930f32ccb502a93a4a4100c6040fe" committedSha256="26aab7ca8c7edb9e9425b6989755abafd4b620efcbe010272ea8628edb5e58c8" schema="2" type="vscode" />
   <pin tag="1.135.0" sha="08d4889f9ec4a1685d257b9b95de036c8e1ce1e5" date="2026-08-25" />
   <codec id="text-patch-v2" artifacts="43" hunks="89" operation="modify" inMemoryPlansApplied="43" />

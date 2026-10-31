@@ -84,7 +84,9 @@ describe('imageset verify over a declared target', () => {
 	});
 
 	it('catches a declared frame the file lacks', () => {
-		const shipped = reencoded(generated('verify-missing-gen', SAMPLE_DECLARATION), (images) => images.filter((image) => image.width !== 20));
+		const shipped = reencoded(generated('verify-missing-gen', SAMPLE_DECLARATION), (images) =>
+			images.filter((image) => image.width !== 20)
+		);
 		const verification = verifyShipping('verify-missing', shipped);
 		expect(verificationExitCode(verification)).toBe(1);
 		const ico = icoOf(verification);

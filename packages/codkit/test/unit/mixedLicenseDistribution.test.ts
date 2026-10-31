@@ -1,4 +1,4 @@
-// Actual I/O over generic source/payload fixtures, not legal decisions for Orion.
+// Actual I/O over generic source/payload fixtures, not legal decisions for any consumer product.
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
