@@ -1,6 +1,6 @@
 /** @scope spec://codkit/modules/vscode/PROP-001#VSCODE-TYPE-IS-AN-ANSWER-SET */
 // The `vscode` project type: the tool's knowledge of the Visual Studio Code
-// family of upstreams, as the ten answers of the contract.
+// family of upstreams, as its answers of the contract.
 //
 // The engine imports this package only through `ProjectType`; everything else
 // exported here exists for this package's own suite and for the type's tests.
@@ -13,6 +13,7 @@ import { generators } from './generators.js';
 import { identity } from './identity.js';
 import { layers } from './layers.js';
 import { layout } from './layout.js';
+import { licensing } from './licensing.js';
 import { runtime } from './runtime.js';
 import { standards } from './standards.js';
 /** The identifier a patch set declares in `codkit.json`. */
@@ -32,7 +33,8 @@ export const CAPABILITIES = [
     'entry-module',
     'config-overlay',
     'dev-channel',
-    'upgrade-advisory'
+    'upgrade-advisory',
+    'licensing'
 ];
 /** The type as one patch set's `typeConfig` makes it. */
 export function projectTypeFor(config) {
@@ -47,6 +49,7 @@ export function projectTypeFor(config) {
         advisory,
         brandImages,
         runtime,
+        licensing,
         standards,
         conventions,
         generators,
@@ -76,5 +79,6 @@ export { brandGraft, featureClassName, featureSkeleton, generators, settingId } 
 export { identity } from './identity.js';
 export { entryModule, layers, overlayTargets, ownExtensions, serviceOverride } from './layers.js';
 export { layout, OWN_ROOT_PREFIX } from './layout.js';
+export { COMPONENT_LICENCE_DIRECTORY, LICENCE_FIELDS, LICENCE_GUARD_PATH, LICENCE_RENDERINGS, licenceGuard, licensing, UPSTREAM_LICENCE_FILES } from './licensing.js';
 export { runtime } from './runtime.js';
 export { standards } from './standards.js';

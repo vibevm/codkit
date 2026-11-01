@@ -13766,7 +13766,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:1295f69dbb955e0f8121a16de25db198faf9f1541030b62730981d9435e65610",
+      "content_hash": "sha256:efec057cb1401dc7db097a5ccea5a3b4576d4b8ef742d48399b81a54ace1a506",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
       "heading": "vscode PROP-001: The `vscode` project type - overview and module map",
@@ -13811,7 +13811,7 @@
     },
     {
       "anchor": "capabilities",
-      "content_hash": "sha256:87677bcdbd325880dca91b18b7b64321144ba75da4b5760d80ab926eba103d98",
+      "content_hash": "sha256:66b97da873d750a65a69d7da51d2766a74c5ed3089927a10f31a1d1029bac4e1",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
       "heading": "2. Declared capabilities",
@@ -13829,10 +13829,10 @@
     },
     {
       "anchor": "VSCODE-CAPABILITIES",
-      "content_hash": "sha256:503130d854f928074a6ccb5649c39ba360476e9e1be64b726afea7e392f8e69d",
+      "content_hash": "sha256:742ce20a19b8d5e13bc221b5481533dab97982a595f4418128f35649f93732c0",
       "doc_path": "modules/vscode/PROP-001",
       "file": "vibevm/vibespecs/modules/vscode/PROP-001-vscode-type.xml",
-      "heading": "The type declares every optional capability of `spec://codkit/modules/codkit/PROP-016#TYPE-TERM-CAPABILITY`: `brand-images`, `gen-brand`, `build-channels`, `runtime-library`, `own-extensions`, `service-override`, `entry-module`, `config-overlay`, `dev-channel`, `upgrade-advisory`. No verb of the roster refuses over a `vscode` patch set for want of a capability, which is what makes the extraction invisible to the existing product. @status:spec/done",
+      "heading": "The type declares every optional capability of `spec://codkit/modules/codkit/PROP-016#TYPE-TERM-CAPABILITY` but `preview`: `brand-images`, `gen-brand`, `build-channels`, `runtime-library`, `own-extensions`, `service-override`, `entry-module`, `config-overlay`, `dev-channel`, `upgrade-advisory` and, since 2026-11-01, `licensing` (`spec://codkit/modules/vscode/PROP-010#VSCODE-LICENSING-AREA`). `preview` is the one it does not declare: a fork of the editor is looked at by building it, and the family's own build is what `package` runs. No other verb of the roster refuses over a `vscode` patch set for want of a capability, which is what makes the extraction invisible to the existing product. @status:spec/done",
       "line": 12,
       "uri": "spec://codkit/modules/vscode/PROP-001#VSCODE-CAPABILITIES"
     },
@@ -13973,7 +13973,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b892901f3bcefa6f372f871a1bf8316b836276c79729df71393046fc9f646675",
+      "content_hash": "sha256:608c4615520eeeca512e22dc8990536825b86374c7722d1835464838ab2ff923",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "vscode PROP-003: Layers - the product.json overlay, built-in extensions, service overrides, entry modules",
@@ -13982,7 +13982,7 @@
     },
     {
       "anchor": "overlay",
-      "content_hash": "sha256:d27aec8b268c4c3c96342e072e11a9e76e9b9a6c8a71b18f552ff0938657a4cd",
+      "content_hash": "sha256:173663101dd6570f88897b6886a5cfb71f1990de8bdc347b7039215b547de3b8",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "1. config-overlay: the targets and the dev channel",
@@ -14009,10 +14009,10 @@
     },
     {
       "anchor": "VSCODE-OVERLAY-TARGETS",
-      "content_hash": "sha256:f7c35e0069cb10882138b2b9b01f6b51d55f1a60491c91c7f39a30cd9e0bef6e",
+      "content_hash": "sha256:85fb55f3e38028c4daeadc51d63510e97a601493f49c79bb093c3cbeb7b0f92c",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
-      "heading": "The overlay targets of this type and their channels: `product.json` is the product manifest and the only target with a **dev channel** - the sidecar `product.overrides.json` the bootstrap reads under `VSCODE_DEV`; root and `remote/` `package.json` targets have no dev channel, admit additions under `scripts` on the root only, exact dependency-name removals and guarded exact-version updates under `dependencies`, `devDependencies` and `optionalDependencies`; their `package-lock.json` counterparts admit paired `npm-prune` and direct-version metadata updates. `src/tsconfig.json` is a target without a dev channel whose JSON keys are open to a guarded overlay: distributions can omit upstream source modules that require packages deliberately removed from their npm graph, while the pin remains the source of the other compiler options. The two-channel machinery, the composition of several overlays of one target, `expectUpstream` and `CK-E-OVERLAY-DRIFT` are the engine's (`spec://codkit/modules/codkit/PROP-005#OVERLAY-TWO-CHANNELS`, `spec://codkit/modules/codkit/PROP-005#OVERLAY-NON-PRODUCT-TARGETS`); which file is the manifest, and whether a dev channel exists at all, is the type's answer. @status:spec/done",
+      "heading": "The overlay targets of this type and their channels: `product.json` is the product manifest and the only target with a **dev channel** - the sidecar `product.overrides.json` the bootstrap reads under `VSCODE_DEV`; root and `remote/` `package.json` targets have no dev channel, admit additions under `scripts` and the key `license` on the root only (the key since 2026-11-01: the licence of the product is a declaration of the manifest, written by `gen licensing`, `spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-FIELDS`), exact dependency-name removals and guarded exact-version updates under `dependencies`, `devDependencies` and `optionalDependencies`; their `package-lock.json` counterparts admit paired `npm-prune` and direct-version metadata updates. `src/tsconfig.json` is a target without a dev channel whose JSON keys are open to a guarded overlay: distributions can omit upstream source modules that require packages deliberately removed from their npm graph, while the pin remains the source of the other compiler options. The two-channel machinery, the composition of several overlays of one target, `expectUpstream` and `CK-E-OVERLAY-DRIFT` are the engine's (`spec://codkit/modules/codkit/PROP-005#OVERLAY-TWO-CHANNELS`, `spec://codkit/modules/codkit/PROP-005#OVERLAY-NON-PRODUCT-TARGETS`); which file is the manifest, and whether a dev channel exists at all, is the type's answer. @status:spec/done",
       "line": 8,
       "uri": "spec://codkit/modules/vscode/PROP-003#VSCODE-OVERLAY-TARGETS"
     },
@@ -14870,6 +14870,96 @@
       "heading": "The base `forbiddenServiceIds` protects the bootstrap services that cannot be safely replaced by a late registration. The list is maintained in the installed policy and, at an upgrade, is checked against the actual bootstrap registrations of both the desktop and the web entry of the current pin. @status:spec/done",
       "line": 9,
       "uri": "spec://codkit/modules/vscode/PROP-009#FORBIDDEN-SERVICES-SEED"
+    },
+    {
+      "anchor": "root",
+      "content_hash": "sha256:9271cfad36cadc33e777a8041e3858e60a5bf9c4781cf8a8fbf61132ada16ee4",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "vscode PROP-010: Licensing - where this family states a licence",
+      "line": 3,
+      "uri": "spec://codkit/modules/vscode/PROP-010#root"
+    },
+    {
+      "anchor": "VSCODE-LICENSING-AREA",
+      "content_hash": "sha256:e8c557b840c7c168e2ea0d216765a97a5fff0bf797d6acb06fe2b816f50bf336",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "The type declares the capability `licensing` and answers the area (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LICENSING`): `headerStyle: block` - own files carry the ruled comment the sources of this distribution carry, so own code reads as one system with the code beside it (`MI-SAME-SHAPE-AS-UPSTREAMS-PARALLEL-SYSTEM`); `licenceFileDirectory: ''` (the root); `componentLicenceDirectory: 'licenses'`; `subsystem: 'product'`; the fields, the upstream licence file, the rendering and the guard stated below. A type writes nothing: the engine lays headers out from the profile, writes the overlays, the add-file patches, the rendering and the guard, and checks them back. @status:spec/plan",
+      "line": 5,
+      "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENSING-AREA"
+    },
+    {
+      "anchor": "fields",
+      "content_hash": "sha256:d7427d50e44aaaa0e523d4baad1c1312dd33ef098dcae45f97d40cd01fe65141",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "1. The manifest fields",
+      "line": 6,
+      "uri": "spec://codkit/modules/vscode/PROP-010#fields"
+    },
+    {
+      "anchor": "VSCODE-LICENCE-FIELDS",
+      "content_hash": "sha256:46163ca7d35e5f01f93650469ea2523477d435089ae9adcb49ae8e90939d06b4",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "Five fields of two overlay targets declare the licence of the product. In `product.json`: `licenseName` (`expression`; the upstream carries the identifier of its own licence there), `licenseFileName` (`file-name`; the build of this distribution copies the file this key names from the root into the application beside `ThirdPartyNotices.txt` and `licenses/**`, which is why the key and not a path of the build is the surface), `licenseUrl` and `serverLicenseUrl` (`url`; the upstream points them at its repository, and a product without a published URL removes them, which also hides the \"view licence\" entry of the help menu). In `package.json`: the key `license` (`expression`), which the overlay target admits beside `scripts` since 2026-11-01 (`spec://codkit/modules/vscode/PROP-003#VSCODE-OVERLAY-TARGETS`). @status:spec/plan",
+      "line": 7,
+      "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-FIELDS"
+    },
+    {
+      "anchor": "files",
+      "content_hash": "sha256:b8fa69a06173576f0fe09bfd1b67facfaee069b8892ca03616534314fda22f66",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "2. The licence file, the component licences and the installer",
+      "line": 9,
+      "uri": "spec://codkit/modules/vscode/PROP-010#files"
+    },
+    {
+      "anchor": "VSCODE-LICENCE-FILE-AT-ROOT",
+      "content_hash": "sha256:add04dc55f4ef5ebb90f3dc3608f5a85a6568ef6e5445fe3217845fee9e0c5cd",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "The product's licence file lives at the tree root under the name the product chose (`product.licenseFile` of its declaration, `LICENSE.md` by default): `build/gulpfile.vscode.ts` copies `product.licenseFileName` from the root into the application, so the name in the manifest and the file at the root are one surface, written together by `gen licensing`. The upstream's `LICENSE.txt` stays where it is: it carries the upstream's own terms, it is never edited, and it stops being the product's licence only because the manifest no longer names it. @status:spec/plan",
+      "line": 10,
+      "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-FILE-AT-ROOT"
+    },
+    {
+      "anchor": "VSCODE-COMPONENT-LICENCES",
+      "content_hash": "sha256:e7376d865ee34ece3a10712030bfbe027940004f62f1dd8465c35fb90120eb52",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "`licenses/` is the component directory: the build copies `licenses/**` into the application, so `licenses/LICENSE-code-oss.txt` (the upstream's `LICENSE.txt` byte for byte at the pin; the component is named after the upstream's own name for its open build) and `licenses/LICENSE-codkit.txt` (the tool's own licence text, present because the runtime library is delivered into `src/vs/<own>/codkit/**` and compiled into the product) travel with every distributable. `ThirdPartyNotices.txt` is not a surface of this area: it is the upstream's notices file for the upstream's dependencies and stays untouched. @status:spec/plan",
+      "line": 11,
+      "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-COMPONENT-LICENCES"
+    },
+    {
+      "anchor": "VSCODE-INSTALLER-RTF",
+      "content_hash": "sha256:28c07e05a2436e858e8e45d4a234bb154e67e4022e8d0eddd580d9908396073b",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "The Windows installer of this distribution (`build/win32/code.iss`) shows `LICENSE.rtf` from the root when the file exists and `LICENSE.txt` otherwise, and reads only text or RTF. The type therefore asks for one rendering, `LICENSE.rtf` at the root in the format `rtf`, which the engine writes from the canonical text, so the installer shows the product's terms without a change to the installer script. A rendering per installer language (`licenses/LICENSE-<language>.rtf`, which the script also looks for) is an owner's decision recorded in the campaign plan (RP-1). @status:spec/plan",
+      "line": 12,
+      "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-INSTALLER-RTF"
+    },
+    {
+      "anchor": "guard",
+      "content_hash": "sha256:d42de92e590b20975fd97916ed4e7c54411e9589db69f4ef8ba9d3c79357553e",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "3. The guard",
+      "line": 14,
+      "uri": "spec://codkit/modules/vscode/PROP-010#guard"
+    },
+    {
+      "anchor": "VSCODE-LICENCE-GUARD",
+      "content_hash": "sha256:7243524b8fc17759f2419bc2b581dfd70da26afcbcb407e56d6f3c2d95de748a",
+      "doc_path": "modules/vscode/PROP-010",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
+      "heading": "The guard is written at `delta/own/test/node/licence.leftovers.test.ts` - the own tests of this family live under `<ownRoot>/test/<layer>/` and run under the distribution's Mocha-style runner - with the words `suite` and `test`; it reads the tree from the directory the runner starts in, which is the tree root for the test scripts of this distribution, and names no path of the tool. @status:spec/plan",
+      "line": 15,
+      "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-GUARD"
     }
   ],
   "suspects": [],

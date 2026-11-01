@@ -6,7 +6,7 @@
       "package": "@codkit/type-vscode",
       "version": "1.0.0",
       "contractVersion": 1,
-      "manifestSha256": "f0973c90f7aaac6e5610a7429128e01f559a7ea5ee0148ea0b31c75aca745b2f",
+      "manifestSha256": "d2500ad32d9cd20cc2651b0fe7d50ebf149d9069f5b0d922adf9c8c4fa42bb15",
       "integrityRoots": [
         "LICENSE.md",
         "README.md",
@@ -97,15 +97,19 @@
         },
         {
           "path": "dist/index.js",
-          "sha256": "7c8426fa800576aaa6e2fb83e7b0a07edab22787a42fa2530526106cd3284e09"
+          "sha256": "16a761f05a8eafe0ee5b2fad946026a34ad9770d230b5d4f93b173893bbcaabe"
         },
         {
           "path": "dist/layers.js",
-          "sha256": "092c2483e640aa0a26f96b8ce6df5df1ee241b0518a847eefb76245790000b21"
+          "sha256": "cb14d5c1e1925653fe3722db14b5b34b14663cc86738fecba392af8ae7754a05"
         },
         {
           "path": "dist/layout.js",
           "sha256": "9a6fc85686fb3466ef1e01590617005bd151b1487cf889f695fc92d06b014b2e"
+        },
+        {
+          "path": "dist/licensing.js",
+          "sha256": "57727ec1596a1a7b04bc64df573e800caa6cd26a6a1e911808505ad73935b129"
         },
         {
           "path": "dist/npmDirectories.js",
@@ -185,15 +189,19 @@
         },
         {
           "path": "src/index.ts",
-          "sha256": "c4635b1ce56e529a02f426cc8214629aced5008eb15af6308f65364db26f0e34"
+          "sha256": "13da66afb8538fa0e9f7e162b0cb5a525dc1ad3f6b874db93d931339a4b88002"
         },
         {
           "path": "src/layers.ts",
-          "sha256": "18b54ffc5dbf82b4aa97cb3c2b60050a574289726694c9a6ed200105954dbc1e"
+          "sha256": "31af54095488bd3faff7059e06ec74b560c79ccc4404375c7b6126cb481b0634"
         },
         {
           "path": "src/layout.ts",
           "sha256": "fc40da9bbbdea9e9ec08005d17ba6717daa5e1f8c5998e8f81dbcbc8aa60c42a"
+        },
+        {
+          "path": "src/licensing.ts",
+          "sha256": "a1c654bdf9730515b03ddfedcfa0c65592b6808e0d92462ca461fa682088faa2"
         },
         {
           "path": "src/npmDirectories.ts",
@@ -209,7 +217,7 @@
         },
         {
           "path": "type-manifest.json",
-          "sha256": "f0973c90f7aaac6e5610a7429128e01f559a7ea5ee0148ea0b31c75aca745b2f"
+          "sha256": "d2500ad32d9cd20cc2651b0fe7d50ebf149d9069f5b0d922adf9c8c4fa42bb15"
         }
       ]
     },
