@@ -62,6 +62,8 @@ export type GuardSurface = {
 	readonly artifact: string;
 	readonly suite: string;
 	readonly test: string;
+	/** The lines the family needs in front of the suite; empty for a family that needs none. */
+	readonly preamble: readonly string[];
 };
 
 export type LicensingSurfaces = {
@@ -315,6 +317,6 @@ export function licensingSurfaces(options: LicensingSurfacesOptions): LicensingS
 			artifact: addFileArtifactOf(rendering.path),
 			format: rendering.format
 		})),
-		guard: { artifact: guard.path, suite: guard.suite, test: guard.test }
+		guard: { artifact: guard.path, suite: guard.suite, test: guard.test, preamble: guard.preamble ?? [] }
 	};
 }

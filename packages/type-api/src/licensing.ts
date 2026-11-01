@@ -55,12 +55,20 @@ export type LicenceRendering = {
 	readonly format: 'rtf' | 'text';
 };
 
-/** Where the leftover guard of the licence lives in the patch set, and how its runner spells a suite and a test. */
+/**
+ * Where the leftover guard of the licence lives in the patch set, how its runner
+ * spells a suite and a test, and what the family needs in front of the suite.
+ */
 export type LicenceGuard = {
 	/** Path from the patch-set root, POSIX, inside the own layer. */
 	readonly path: string;
 	readonly suite: string;
 	readonly test: string;
+	/**
+	 * Lines written right before the suite - a directive of the family's own lint
+	 * rules, say - each a complete, non-empty line of the file. None by default.
+	 */
+	readonly preamble?: readonly string[];
 };
 
 export type LicensingArea = {
@@ -111,8 +119,8 @@ export type LicensingShapeSubject = {
  * and unique; the renderings and the upstream files are tree paths and unique;
  * the subsystem is one of the type's conventions, because the ids of the
  * interventions are numbered in it; the guard lies inside the own layer of the
- * patch set, where `verify` finds suite ids. An empty list is a well-formed
- * answer.
+ * patch set, where `verify` finds suite ids, and its preamble lines are complete
+ * non-empty lines. An empty list is a well-formed answer.
  */
 export function licensingShapeProblems(type: LicensingShapeSubject): readonly string[] {
 	const area = type.licensing;
@@ -168,6 +176,9 @@ export function licensingShapeProblems(type: LicensingShapeSubject): readonly st
 	}
 	if (!guard.path.startsWith('delta/own/') || treePathProblem(guard.path) !== null) {
 		problems.push(`${type.id}: the licence guard ${JSON.stringify(guard.path)} is not a path inside delta/own/`);
+	}
+	if ((guard.preamble ?? []).some((line) => line.trim() === '' || line.includes('\n'))) {
+		problems.push(`${type.id}: the licence guard preamble has an empty or multi-line entry`);
 	}
 	if (guard.suite === '' || guard.test === '') problems.push(`${type.id}: the licence guard names no runner words`);
 	return problems;

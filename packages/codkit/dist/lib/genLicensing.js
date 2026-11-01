@@ -25,8 +25,9 @@ import { loadConventions } from './conventionsFile.js';
 import { unitReminder } from './genFeature.js';
 import { productHeader } from './genTemplates.js';
 import { buildInventory } from './inventory.js';
-import { OVERLAYS_DIR, OVERLAY_SCHEMA_VERSION, loadOverlays, overlayArtifactName, parseOverlay, serializeOverlay } from './layers/overlay.js';
+import { OVERLAYS_DIR, OVERLAY_SCHEMA_VERSION, devChannelTarget, loadOverlays, overlayArtifactName, parseOverlay, serializeOverlay } from './layers/overlay.js';
 import { renderLicencePlainText, renderLicenceRtf } from './licenceRtf.js';
+import { commentStyleNames } from './licenseAnnotate.js';
 import { licenceGuardText } from './licensingGuardTemplate.js';
 import { OWN_LAYER_DIR, headerFieldsFor, headerStyleOf, ownLicenseFor } from './licensingProfile.js';
 import { CODKIT_COMPONENT, LICENCE_GUARD_SUITE, licensingAreaOf, licensingSurfaces } from './licensingSurfaces.js';
@@ -254,8 +255,11 @@ function planGuard(options, area, surfaces) {
 function guardInput(options, area, surfaces) {
     const { profile, config } = options;
     const ownRoot = config.typeConfig.ownRoot;
+    // The dev channel of the type, and which target it feeds (PROP-005 OVERLAY-TWO-CHANNELS).
+    const channel = devChannelTarget(options.type);
     return {
         words: { suite: surfaces.guard.suite, test: surfaces.guard.test },
+        preamble: surfaces.guard.preamble,
         holders: profile.selected.policy.holders,
         scopes: [{ treeDirectory: ownRoot, expression: ownLicenseFor(profile, OWN_LAYER_DIR) }, ...extensionScopes(options)],
         skipDirectory: `${ownRoot}/codkit`,
@@ -266,8 +270,11 @@ function guardInput(options, area, surfaces) {
         fields: area.fields.map((field) => ({
             target: field.target,
             path: field.path,
-            expected: expectedFieldValue(surfaces, field.target, field.path)
+            expected: expectedFieldValue(surfaces, field.target, field.path),
+            devChannel: channel !== null && channel.path === field.target
         })),
+        devChannel: channel?.devChannel ?? null,
+        commentStyleNames: commentStyleNames(),
         components: surfaces.components.map((component) => component.treePath),
         renderings: surfaces.renderings.map((rendering) => rendering.treePath),
         retiredNotices: profile.product.retiredNotices

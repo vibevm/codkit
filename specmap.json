@@ -9302,7 +9302,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:dce01128bba30108b200a6ee5792b9de828503af9a94ab8fadf680a6557f0358",
+      "content_hash": "sha256:ec77ab220cc21207254826ceed515f83337b11153245bf0fb09a416e90767bf0",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: The standards package and licence markup",
@@ -9518,7 +9518,7 @@
     },
     {
       "anchor": "licensing",
-      "content_hash": "sha256:7f25fcd6cf878657e87fb19d58c63b4c567bb60c1d6781ba4aa5eebda0cba4eb",
+      "content_hash": "sha256:50e5c8a7f187d476df6853e787bd47d21b993cc78f73a35a4e2e52be5ab88790",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "2. The licence markup of the package",
@@ -9545,10 +9545,10 @@
     },
     {
       "anchor": "LIC-CARRIER-HEADER",
-      "content_hash": "sha256:b702f1e23c9175207ef5a5d580eb56a2800815918807f3684395b373361c0b9b",
+      "content_hash": "sha256:e9df63dc50560c6bd35a20f20164148ac3738e9fc82ee3bb2b32cfa34b1a41d8",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "A text file carries a header in its first **20 non-empty lines**: at least one copyright line and exactly one `SPDX-License-Identifier` line. The header stands right after the prelude of the file (`<?xml …?>`, a shebang, a Python encoding line, `<!DOCTYPE>`, YAML front matter), wrapped in the comment of the file's language; the check does not look at the comment markers. @status:spec/done",
+      "heading": "A text file carries a header in its first **20 non-empty lines**: at least one copyright line and exactly one `SPDX-License-Identifier` line. The header stands right after the prelude of the file (`<?xml …?>`, a shebang, a Python encoding line, `<!DOCTYPE>`, YAML front matter), wrapped in the comment of the file's language; the check does not look at the comment markers. The header form belongs to a file with a comment style (`LIC-COMMENT-STYLES`): a file without one carries no header, and a copyright-like line inside its data - the upstream's notice in a string of a translation file, say - is data, not a carrier; such a file is covered by a sidecar or an annotation (`LIC-CARRIER-ANNOTATION`; decision of 2026-11-01, when the translation files of a localisation pack were read as foreign headers). @status:spec/done",
       "line": 68,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-CARRIER-HEADER"
     },
@@ -9617,10 +9617,10 @@
     },
     {
       "anchor": "LIC-UNSCANNED-SET",
-      "content_hash": "sha256:27c624e64c810fd42424c4a7b90e7e80ee1375c0c67649af8efe0a730d614ca0",
+      "content_hash": "sha256:c28dc283c057eae39a331fb743dfcbc8f4c7cfe60fd2c31b556fbbb5ef7a7b5e",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Not marked up and not scanned: `LICENSE`, `COPYING*`, everything under `LICENSES/`, every `*.license`, `REUSE.toml`, the `.git` directory. A symbolic link anywhere in the package is a package error (`LICENSE-PACKAGE`). This is the same set that `reuse lint` ignores. @status:spec/done",
+      "heading": "Not marked up and not scanned: the licence texts `LICENSE`, `LICENCE` and `COPYING` with or without one extension (`LICENSE.md`, `COPYING.txt`; since 2026-11-01, when the licence text a localisation pack ships beside its translations was read as a foreign header), `COPYING*`, everything under `LICENSES/`, every `*.license`, `REUSE.toml`, the `.git` directory. A symbolic link anywhere in the package is a package error (`LICENSE-PACKAGE`). This is the same set that `reuse lint` ignores. @status:spec/done",
       "line": 76,
       "uri": "spec://codkit/modules/codkit/PROP-014#LIC-UNSCANNED-SET"
     },
@@ -11111,7 +11111,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b954bcb03f5f4084d1a31efa716abaf601d3ea913bb32f46fd48723a0d98c988",
+      "content_hash": "sha256:ed9736d6ddaa8e52d5a7dbc45f8e7ac8f3df21ecb2ffa8c1dfc441a8bc541308",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -11165,7 +11165,7 @@
     },
     {
       "anchor": "contract",
-      "content_hash": "sha256:94cbf63c898dcb3f7e24b73a1fbc47e35ab5eee921249011c5e4e4981b8064b8",
+      "content_hash": "sha256:889287a75da18455c9ff45cf33e913eefb21245f809be02ad9faafbdc663f32f",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "2. The contract: eleven questions a type answers",
@@ -11336,10 +11336,10 @@
     },
     {
       "anchor": "TYPE-AREA-LICENSING",
-      "content_hash": "sha256:630572fe63af440cffa5618127e916df465491679c36dc8ae78e730320051238",
+      "content_hash": "sha256:ed0ee35b68b7fbd699fe047cf7679a926d3e1fae90e1e86abe635f1af5129b1d",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Licensing** (capability `licensing`, optional area `licensing`, paired in `OPTIONAL_AREAS` exactly like `preview`). The organization's part of a licence - the rights holders, the own expression per path scope, the approved third-party expressions, the canonical texts and their digests - lives in the trusted policy store of PROP-019 and is selected by the patch set; the area answers the family's part: `headerStyle` (`line` or `block`), `licenceFileDirectory` (the directory of the product's licence file, from the tree root, the empty string for the root), `componentLicenceDirectory` (where component licences gather; the family's build copies it into the distributable), `subsystem` (the subsystem licensing interventions are numbered in), `fields` (each a declared overlay target, a key path and a role `expression` | `file-name` | `url`), `upstreamLicenceFiles` (files carrying the upstream's own terms, never edited, shipped as component licences), `renderings` (what the family's installers read instead of the text: `rtf` or `text`) and `guard(ownRoot)` (the path of the leftover guard inside the own layer and the runner's words for a suite and a test). The shape rules the contract's own test holds: the directories are tree paths, every field names a declared overlay target and the roles `expression` and `file-name` appear at most once per target, components are lower-case names and unique, the subsystem is one of the type's conventions, the guard lies under `delta/own/`. The engine lays headers out from the profile (PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`, PROP-019 `HEADER-FROM-PROFILE`), writes the surfaces (PROP-019 `GEN-LICENSING`), gives own files their carriers (PROP-019 `ANNOTATE-OWN`), renders the guard (PROP-019 `LICENCE-GUARD`) and checks everything back (PROP-019 `VERIFY-LICENSING`); a type writes nothing. Measured on 2026-11-01 on the first family: a product declared a proprietary licence name in its manifest while its build shipped the upstream's licence text as its own, because no question asked where the family states a licence (DESIGN-003 §1). @status:impl/done",
+      "heading": "**Licensing** (capability `licensing`, optional area `licensing`, paired in `OPTIONAL_AREAS` exactly like `preview`). The organization's part of a licence - the rights holders, the own expression per path scope, the approved third-party expressions, the canonical texts and their digests - lives in the trusted policy store of PROP-019 and is selected by the patch set; the area answers the family's part: `headerStyle` (`line` or `block`), `licenceFileDirectory` (the directory of the product's licence file, from the tree root, the empty string for the root), `componentLicenceDirectory` (where component licences gather; the family's build copies it into the distributable), `subsystem` (the subsystem licensing interventions are numbered in), `fields` (each a declared overlay target, a key path and a role `expression` | `file-name` | `url`), `upstreamLicenceFiles` (files carrying the upstream's own terms, never edited, shipped as component licences), `renderings` (what the family's installers read instead of the text: `rtf` or `text`) and `guard(ownRoot)` (the path of the leftover guard inside the own layer, the runner's words for a suite and a test, and the lines the family needs in front of the suite - a directive of its own lint rules, say; none by default). The shape rules the contract's own test holds: the directories are tree paths, every field names a declared overlay target and the roles `expression` and `file-name` appear at most once per target, components are lower-case names and unique, the subsystem is one of the type's conventions, the guard lies under `delta/own/` and its preamble lines are complete non-empty lines. The engine lays headers out from the profile (PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`, PROP-019 `HEADER-FROM-PROFILE`), writes the surfaces (PROP-019 `GEN-LICENSING`), gives own files their carriers (PROP-019 `ANNOTATE-OWN`), renders the guard (PROP-019 `LICENCE-GUARD`) and checks everything back (PROP-019 `VERIFY-LICENSING`); a type writes nothing. Measured on 2026-11-01 on the first family: a product declared a proprietary licence name in its manifest while its build shipped the upstream's licence text as its own, because no question asked where the family states a licence (DESIGN-003 §1). @status:impl/done",
       "line": 33,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LICENSING"
     },
@@ -11966,7 +11966,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c71df509d21f74019b0c4c487f56ed1b5209ed0d26114321c62efcbab1a357ea",
+      "content_hash": "sha256:8f78712fdd82a531159d204e8bac06aeeced628d195a7b099b085ed5e6ca7bfb",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -12083,7 +12083,7 @@
     },
     {
       "anchor": "consumer-surfaces",
-      "content_hash": "sha256:6f2899a4478b496a447a151a2bcd4805c0d3793f49870f36bb0165ed56536a33",
+      "content_hash": "sha256:9dd18d3b5dcd42c7b8dfb325ad400db42bb7f1ed2e82a327fa13af29249c2cb6",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Consumer surfaces: the profile carried into own files, manifests and the distributable (2026-11-01)",
@@ -12137,10 +12137,10 @@
     },
     {
       "anchor": "LICENCE-GUARD",
-      "content_hash": "sha256:5b0208f2ffb90a8ef200fc3ee7408034a57b6145d9c69ad764d1e9f6c1e4d077",
+      "content_hash": "sha256:c4df3b951b834c6e5a21668e476668d502da7b3ffb8e1c205c6c5d2ab25466c0",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "The leftover guard of the licence is one template of the engine rendered with the type's `guard(ownRoot)` words and the profile's values, written by `gen licensing` at the type's path and found by `verify` under its suite id `licence-leftovers`. In the fork tree, under the product's own test run and without the tool, it proves: every file of the own root and of every own extension - the tool's delivered directory excluded - carries a header in its first twenty non-empty lines with a copyright line naming one of the holders and exactly one `SPDX-License-Identifier` equal to the expression of its directory, or a `<name>.license` sidecar with the same two lines, or is covered by an `[[annotations]]` element of a `REUSE.toml` in its own or an ancestor directory inside the scope whose path glob matches it (the engine's glob semantics) - an own annotation naming one of the holders with the scope's expression, or a third-party annotation whose `SPDX-FileComment` begins with `third-party;` (declared provenance; PROP-014 `LIC-CARRIER-ANNOTATION`); `REUSE.toml` and `.license` files are metadata and are not checked for carriers; no retired notice appears in any own text file or in the licence file, the renderings and the component licences; the licence file at `<licenceFileDirectory>/<licenseFile>` is byte-identical to the canonical text (its SHA-256 baked in); every `field` reads the expected value in its manifest; every component licence exists. The guard reads the tree from the directory the runner starts in and names no path of the tool; its runner words are the type's (`suite`/`test` or `describe`/`it`). Its scopes are the own root and the own extensions present in the patch set; the owned roots of `delta/own-roots/**`, which `VERIFY-LICENSING` and `ANNOTATE-OWN` treat as own, are not yet scopes of the guard (campaign licensing-area, DEF-6: a scope per owned root with its build outputs skipped, needed before a family with several owned directories answers the area). @status:impl/done",
+      "heading": "The leftover guard of the licence is one template of the engine rendered with the type's `guard(ownRoot)` answer - the runner's words, and the preamble lines the family needs in front of the suite - and the profile's values, written by `gen licensing` at the type's path and found by `verify` under its suite id `licence-leftovers`. In the fork tree, under the product's own test run and without the tool, it proves: every file of the own root and of every own extension - the tool's delivered directory excluded - is a declared third party (an annotation whose `SPDX-FileComment` begins with `third-party;` covers it, whatever its own notice says), or carries a header in its first twenty non-empty lines - a file with a comment style only (`LIC-COMMENT-STYLES`, the table baked into the guard), a copyright-like line inside a data file being data - with a copyright line naming one of the holders and exactly one `SPDX-License-Identifier` equal to the expression of its directory, or a `<name>.license` sidecar with the same two lines, or is covered by an `[[annotations]]` element of a `REUSE.toml` in its own or an ancestor directory inside the scope whose path glob matches it (the engine's glob semantics) - an own annotation naming one of the holders with the scope's expression, or a third-party annotation whose `SPDX-FileComment` begins with `third-party;` (declared provenance; PROP-014 `LIC-CARRIER-ANNOTATION`); `REUSE.toml` and `.license` files are metadata and are not checked for carriers; no retired notice appears in any own text file or in the licence file, the renderings and the component licences; the licence file at `<licenceFileDirectory>/<licenseFile>` is byte-identical to the canonical text (its SHA-256 baked in); every `field` reads the expected value in its manifest - in a development tree, where the type's dev channel file is present (PROP-005 `OVERLAY-TWO-CHANNELS`), the way the running product reads it, with the channel merged over its target, while a key the overlay removes and a target the channel does not feed are release-only expectations that `verify`'s overlay check and the materialized tree answer; every component licence exists. The guard reads the tree from the directory the runner starts in and names no path of the tool; its runner words are the type's (`suite`/`test` or `describe`/`it`). The guard is written to pass the family's lint and hygiene as well as its runner: every branch body is braced, every baked string literal is single-quoted and ASCII-only (a code unit outside ASCII is an escape, so a rights holder's name in any script is fine), the four builtin modules are imported by their bare names (`assert`, `crypto`, `fs`, `path`), the named groups are read by dot access (2026-11-01, after the first generated guard lit 162 warnings of the editor family's lint: the `curly` rule, the quoting rule for strings, the import patterns of the test layer). Its scopes are the own root and the own extensions present in the patch set; the owned roots of `delta/own-roots/**`, which `VERIFY-LICENSING` and `ANNOTATE-OWN` treat as own, are not yet scopes of the guard (campaign licensing-area, DEF-6: a scope per owned root with its build outputs skipped, needed before a family with several owned directories answers the area). @status:impl/done",
       "line": 24,
       "uri": "spec://codkit/modules/codkit/PROP-019#LICENCE-GUARD"
     },
@@ -14882,7 +14882,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:8bc56567261402d72a1d53ef9c183566a1207567974363baabdb6813a50ac6e3",
+      "content_hash": "sha256:6e3d42bc4f3634c4ba198a9d903fb873987c655e75e5c3f504fe7258f0532c3e",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
       "heading": "vscode PROP-010: Licensing - where this family states a licence",
@@ -14954,7 +14954,7 @@
     },
     {
       "anchor": "guard",
-      "content_hash": "sha256:8a12161344773ef9bb234dd3a10aaebc3e0067b78a2d0ded569e04ab150bbb00",
+      "content_hash": "sha256:9b99e79f6ef4dc90d79640942e55fde4263c1c543729ab0b0d7e59b597181769",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
       "heading": "3. The guard",
@@ -14963,10 +14963,10 @@
     },
     {
       "anchor": "VSCODE-LICENCE-GUARD",
-      "content_hash": "sha256:6b0a0d84ab9d40a0e37225b45a653dee1c5fe815d4534c1253f7537452bcd1df",
+      "content_hash": "sha256:d6adeedbf84fb6f67eceb6a29da1b18dac38475eeee17b516dde1b412d822ed2",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
-      "heading": "The guard is written at `delta/own/test/node/licence.leftovers.test.ts` - the own tests of this family live under `<ownRoot>/test/<layer>/` and run under the distribution's Mocha-style runner - with the words `suite` and `test`; it reads the tree from the directory the runner starts in, which is the tree root for the test scripts of this distribution, and names no path of the tool. @status:impl/done",
+      "heading": "The guard is written at `delta/own/test/node/licence.leftovers.test.ts` - the own tests of this family live under `<ownRoot>/test/<layer>/` and run under the distribution's Mocha-style runner - with the words `suite` and `test`; it reads the tree from the directory the runner starts in, which is the tree root for the test scripts of this distribution, and names no path of the tool. Its preamble is one line: the directive that excuses the suite from the family's disposable-leak rule (`local/code-ensure-no-disposables-leak-in-test`) with its reason - the guard reads files and asserts and creates no disposable (2026-11-01: the first generated guard lit 162 warnings of the family's lint on the pilot, 161 of them the `curly` rule, which the template now satisfies by bracing every branch). @status:impl/done",
       "line": 15,
       "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-GUARD"
     }

@@ -56,7 +56,12 @@ describe('the licensing answer', () => {
 	});
 
 	it('writes the guard under the own tests with the words of the Mocha-style runner', () => {
-		expect(licenceGuard('src/vs/patchset')).toEqual({ path: LICENCE_GUARD_PATH, suite: 'suite', test: 'test' });
+		expect(licenceGuard('src/vs/patchset')).toEqual({
+			path: LICENCE_GUARD_PATH,
+			suite: 'suite',
+			test: 'test',
+			preamble: [expect.stringContaining('eslint-disable-next-line local/code-ensure-no-disposables-leak-in-test')]
+		});
 		expect(LICENCE_GUARD_PATH).toBe('delta/own/test/node/licence.leftovers.test.ts');
 	});
 });

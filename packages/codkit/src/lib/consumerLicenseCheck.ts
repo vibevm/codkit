@@ -6,6 +6,7 @@ import { readdirSync, realpathSync } from 'node:fs';
 import { readContainedFile } from './containedFile.ts';
 import { decodeUtf8Strict } from './bytes.ts';
 import { COPYRIGHT_LINE, MODIFICATIONS_LINE, holderOf, licenseGlobMatches, selectLicenseCarrier } from './licenseCarrier.ts';
+import { isLicenceTextName } from './licenseCheck.ts';
 import { readReuseRegistries } from './reuseRegistry.ts';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.ts';
 import { checkOrganizationExpression } from './organizationPolicy.ts';
@@ -204,10 +205,20 @@ function sourcePaths(root: string, directory: string, problems: ConsumerLicenseP
 	}
 	return result.sort((left, right) => Buffer.from(left).compare(Buffer.from(right)));
 }
+/**
+ * The files of the licence metadata itself: the licence texts of REUSE (`LICENSE`,
+ * `LICENCE`, `COPYING`, with or without one extension - the text a localisation
+ * pack ships beside its translations included), the registries, the sidecars and
+ * the LICENSES directory. Carriers of nothing, never annotated.
+ */
 export function isConsumerLicenseMetadata(path: string): boolean {
 	const name = path.slice(path.lastIndexOf('/') + 1);
 	return (
-		name === 'LICENSE' || name.startsWith('COPYING') || name === 'REUSE.toml' || name.endsWith('.license') || path.startsWith('LICENSES/')
+		isLicenceTextName(name) ||
+		name.startsWith('COPYING') ||
+		name === 'REUSE.toml' ||
+		name.endsWith('.license') ||
+		path.startsWith('LICENSES/')
 	);
 }
 

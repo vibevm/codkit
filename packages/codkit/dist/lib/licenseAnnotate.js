@@ -49,6 +49,14 @@ const COMMENT_STYLES = new Map([
     ...['tex', 'sty'].map((extension) => [extension, 'percent']),
     ...['bat', 'cmd'].map((extension) => [extension, 'rem'])
 ]);
+/**
+ * ##LIC-COMMENT-STYLES: the extensions and bare file names that have a comment
+ * style, for a guard that must tell a source file from a data file without
+ * carrying the table itself.
+ */
+export function commentStyleNames() {
+    return [...COMMENT_STYLES.keys()];
+}
 /** The comment style of a path, or null when the file needs a sidecar. */
 export function commentStyleOf(relative) {
     const name = relative.slice(relative.lastIndexOf('/') + 1);

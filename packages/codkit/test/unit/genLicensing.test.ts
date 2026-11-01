@@ -201,11 +201,11 @@ describe('planLicensing', () => {
 		expect(lines.slice(0, 5)).toEqual(fixtureBlockHeaderLines());
 		expect(lines[5]).toBe('');
 		expect(guard).toContain("describe('licence-leftovers', () => {");
-		expect(guard).toContain(`"directory":"source/own","expression":"${FIXTURE_LICENSE_ID}"`);
-		expect(guard).toContain('const SKIP_DIRECTORY = "source/own/codkit";');
-		expect(guard).toContain(`const LICENCE_SHA256 = "${createHash('sha256').update(FIXTURE_LICENSE_TEXT).digest('hex')}";`);
-		expect(guard).toContain('"path":["licenseUrl"],"expected":null');
-		expect(guard).toContain('"target":"package.json","path":["license"]');
+		expect(guard).toContain(`{ directory: 'source/own', expression: '${FIXTURE_LICENSE_ID}' }`);
+		expect(guard).toContain("const SKIP_DIRECTORY = 'source/own/codkit';");
+		expect(guard).toContain(`const LICENCE_SHA256 = '${createHash('sha256').update(FIXTURE_LICENSE_TEXT).digest('hex')}';`);
+		expect(guard).toContain("path: ['licenseUrl'], expected: null");
+		expect(guard).toContain("target: 'package.json', path: ['license']");
 	});
 
 	it('refuses the artifacts of an earlier run without --update, overlays excepted, and keeps their ids with it', () => {

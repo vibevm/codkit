@@ -345,6 +345,17 @@ describe('the licensing area', () => {
 		]);
 	});
 
+	it('accepts a preamble of complete lines in front of the suite and refuses an empty or multi-line entry', () => {
+		const good = withArea({
+			...licensing,
+			guard: () => ({ ...licensing.guard(''), preamble: ['// eslint-disable-next-line some/rule -- why'] })
+		});
+		expect(projectTypeProblems(good)).toEqual([]);
+
+		const bad = withArea({ ...licensing, guard: () => ({ ...licensing.guard(''), preamble: ['// one', '  '] }) });
+		expect(projectTypeProblems(bad)).toEqual(['bare: the licence guard preamble has an empty or multi-line entry']);
+	});
+
 	it('reads the empty string as the root for the licence file and refuses it for the component directory', () => {
 		const type = withArea({ ...licensing, componentLicenceDirectory: '' });
 		expect(projectTypeProblems(type)).toEqual(['bare: the component licence directory is empty']);

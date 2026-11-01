@@ -112,11 +112,22 @@ export type LicenseCheckOptions = {
 	readonly packageShape?: boolean;
 };
 
+/**
+ * ##LIC-UNSCANNED-SET: the licence texts of REUSE - `LICENSE`, `LICENCE` and
+ * `COPYING`, with or without one extension - are the text of a licence and carry
+ * no markup of their own; the consumer check shares the rule.
+ */
+const LICENCE_TEXT_NAME = /^(LICENSE|LICENCE|COPYING)(\.[A-Za-z0-9]+)?$/u;
+
+export function isLicenceTextName(name: string): boolean {
+	return LICENCE_TEXT_NAME.test(name);
+}
+
 /** ##LIC-UNSCANNED-SET: files that carry no markup and are never scanned. */
 function isUnscanned(relative: string): boolean {
 	const name = relative.slice(relative.lastIndexOf('/') + 1);
 	return (
-		name === 'LICENSE' ||
+		isLicenceTextName(name) ||
 		name.startsWith('COPYING') ||
 		relative.startsWith('LICENSES/') ||
 		name.endsWith('.license') ||

@@ -44,9 +44,21 @@ export const LICENCE_RENDERINGS: readonly LicenceRendering[] = [{ path: 'LICENSE
 /** ##VSCODE-LICENCE-GUARD: where the guard is written in the patch set, and the runner's words. */
 export const LICENCE_GUARD_PATH = 'delta/own/test/node/licence.leftovers.test.ts';
 
-/** ##VSCODE-LICENCE-GUARD: the own tests of this family run under a Mocha-style runner. */
+/**
+ * ##VSCODE-LICENCE-GUARD: the own tests of this family run under a Mocha-style
+ * runner, and the family's lint asks every suite for a disposable-leak check;
+ * the guard reads files and asserts, it creates no disposable, so the suite is
+ * excused by the directive in front of it, with that reason.
+ */
 export function licenceGuard(_ownRoot: string): LicenceGuard {
-	return { path: LICENCE_GUARD_PATH, suite: 'suite', test: 'test' };
+	return {
+		path: LICENCE_GUARD_PATH,
+		suite: 'suite',
+		test: 'test',
+		preamble: [
+			'// eslint-disable-next-line local/code-ensure-no-disposables-leak-in-test -- the guard reads files and asserts; it creates no disposable'
+		]
+	};
 }
 
 /** ##VSCODE-LICENSING-AREA: the answer, as data. */

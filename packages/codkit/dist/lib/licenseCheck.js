@@ -20,10 +20,19 @@ import { renderThirdPartyNotices } from './licenseNotices.js';
 import { readReuseRegistries } from './reuseRegistry.js';
 import { LICENSE_REF_PREFIX, NO_ASSERTION, expressionIds, spdxIdHint, unknownIds } from './spdxIds.js';
 export const EMPTY_REGISTRY = { annotations: [], problems: [] };
+/**
+ * ##LIC-UNSCANNED-SET: the licence texts of REUSE - `LICENSE`, `LICENCE` and
+ * `COPYING`, with or without one extension - are the text of a licence and carry
+ * no markup of their own; the consumer check shares the rule.
+ */
+const LICENCE_TEXT_NAME = /^(LICENSE|LICENCE|COPYING)(\.[A-Za-z0-9]+)?$/u;
+export function isLicenceTextName(name) {
+    return LICENCE_TEXT_NAME.test(name);
+}
 /** ##LIC-UNSCANNED-SET: files that carry no markup and are never scanned. */
 function isUnscanned(relative) {
     const name = relative.slice(relative.lastIndexOf('/') + 1);
-    return (name === 'LICENSE' ||
+    return (isLicenceTextName(name) ||
         name.startsWith('COPYING') ||
         relative.startsWith('LICENSES/') ||
         name.endsWith('.license') ||

@@ -69,14 +69,18 @@ export function selectLicenseCarrier(dir, relative, present, annotations, proble
         problem('LICENSE-HEADER', relative, 'not valid UTF-8 and no .license sidecar or REUSE.toml annotation');
         return null;
     }
-    const window = text
-        .split('\n')
-        .filter((line) => line.trim() !== '')
-        .slice(0, HEADER_WINDOW_LINES);
-    if (window.some((line) => SPDX_LINE.test(line) || COPYRIGHT_LINE.test(line))) {
-        return { lines: window, kind: 'header' };
-    }
+    // ##LIC-CARRIER-HEADER: the header form belongs to a file with a comment
+    // style. A file without one (JSON, CSV, data) carries no header, and a
+    // copyright-like line inside its data - the upstream's notice in a string of
+    // a translation file, say - is data, not a carrier (##LIC-CARRIER-ANNOTATION).
     if (commentStyleOf(relative) !== null) {
+        const window = text
+            .split('\n')
+            .filter((line) => line.trim() !== '')
+            .slice(0, HEADER_WINDOW_LINES);
+        if (window.some((line) => SPDX_LINE.test(line) || COPYRIGHT_LINE.test(line))) {
+            return { lines: window, kind: 'header' };
+        }
         problem('LICENSE-HEADER', relative, closest === undefined
             ? 'no licence carrier: no header in the first 20 non-empty lines, no sidecar, no REUSE.toml annotation'
             : 'source file without a header: a REUSE.toml annotation does not replace the header of a file that can carry one');
@@ -84,7 +88,7 @@ export function selectLicenseCarrier(dir, relative, present, annotations, proble
     }
     if (closest !== undefined)
         return annotationCarrier(closest);
-    problem('LICENSE-HEADER', relative, 'no licence carrier: no header in the first 20 non-empty lines, no sidecar, no REUSE.toml annotation');
+    problem('LICENSE-HEADER', relative, 'no licence carrier: a file without a comment style carries no header, and it has no .license sidecar and no REUSE.toml annotation');
     return null;
 }
 /**

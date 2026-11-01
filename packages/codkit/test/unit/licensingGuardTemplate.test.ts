@@ -6,6 +6,7 @@
 // does not, under a runner that supplies the two words as globals, the way the
 // product's own test run does.
 
+import { commentStyleNames } from '../../src/lib/licenseAnnotate.ts';
 import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -39,6 +40,7 @@ function sha256(text: string): string {
 function input(over: Partial<LicenceGuardInput> = {}): LicenceGuardInput {
 	return {
 		words: { suite: 'describe', test: 'it' },
+		preamble: [],
 		holders: [FIXTURE_HOLDER],
 		scopes: [
 			{ treeDirectory: OWN_ROOT, expression: FIXTURE_LICENSE_ID },
@@ -47,11 +49,13 @@ function input(over: Partial<LicenceGuardInput> = {}): LicenceGuardInput {
 		skipDirectory: `${OWN_ROOT}/codkit`,
 		licenceFile: { treePath: 'LICENSE.md', sha256: sha256(FIXTURE_LICENSE_TEXT) },
 		fields: [
-			{ target: 'manifest.json', path: ['licenseName'], expected: FIXTURE_LICENSE_ID },
-			{ target: 'manifest.json', path: ['licenseFileName'], expected: 'LICENSE.md' },
-			{ target: 'manifest.json', path: ['licenseUrl'], expected: 'absent' },
-			{ target: 'package.json', path: ['license'], expected: FIXTURE_LICENSE_ID }
+			{ target: 'manifest.json', path: ['licenseName'], expected: FIXTURE_LICENSE_ID, devChannel: false },
+			{ target: 'manifest.json', path: ['licenseFileName'], expected: 'LICENSE.md', devChannel: false },
+			{ target: 'manifest.json', path: ['licenseUrl'], expected: 'absent', devChannel: false },
+			{ target: 'package.json', path: ['license'], expected: FIXTURE_LICENSE_ID, devChannel: false }
 		],
+		devChannel: null,
+		commentStyleNames: commentStyleNames(),
 		components: [UPSTREAM_COMPONENT],
 		renderings: ['LICENSE.rtf'],
 		retiredNotices: [FIXTURE_RETIRED_NOTICE],
@@ -86,7 +90,7 @@ function conformingTree(): Files {
 			'version = 1',
 			'',
 			'[[annotations]]',
-			'path = ["tiny.js"]',
+			'path = ["tiny.js", "strings.json", "NOTICE.md"]',
 			'precedence = "closest"',
 			`SPDX-FileCopyrightText = "2020 ${FOREIGN_HOLDER}"`,
 			'SPDX-License-Identifier = "MIT"',
@@ -94,6 +98,12 @@ function conformingTree(): Files {
 			''
 		].join('\n'),
 		[`${OWN_ROOT}/vendor/tiny.js`]: 'module.exports = () => 1;\n',
+		// The third party's data file carrying its notice in a string, and its notice
+		// file with a foreign header: declared provenance covers both.
+		[`${OWN_ROOT}/vendor/strings.json`]: `${JSON.stringify({ '': [`Copyright (c) 2020 ${FOREIGN_HOLDER}. All rights reserved.`], hello: 'hi' }, null, '\t')}\n`,
+		[`${OWN_ROOT}/vendor/NOTICE.md`]: `# Notice\n\nCopyright (c) 2020 ${FOREIGN_HOLDER}\nLicensed under the MIT licence.\n`,
+		// The third party's licence text: metadata, a carrier of nothing, outside every annotation.
+		[`${OWN_ROOT}/vendor/LICENSE.md`]: `MIT License\n\nCopyright (c) 2020 ${FOREIGN_HOLDER}\n\nPermission is hereby granted, free of charge.\n`,
 		// Own files that cannot carry a comment, annotated by the registry of the scope's root.
 		[`${OWN_ROOT}/REUSE.toml`]: [
 			'version = 1',
@@ -105,7 +115,10 @@ function conformingTree(): Files {
 			'SPDX-FileComment = "the icons of the product"',
 			''
 		].join('\n'),
-		[`${OWN_ROOT}/icons/deep/a.svg`]: '<svg xmlns="http://www.w3.org/2000/svg"/>\n',
+		// Data files: one without a comment style, one whose data mentions the holder -
+		// data, not a header; the annotation of the scope's root covers both.
+		[`${OWN_ROOT}/icons/deep/a.ico`]: 'icon bytes\n',
+		[`${OWN_ROOT}/icons/meta.json`]: `${JSON.stringify({ note: `Copyright (c) 2026 ${FIXTURE_HOLDER}`, count: 1 }, null, '\t')}\n`,
 		[`${EXTENSION_ROOT}/index.ts`]: headed('export const sample = 1;\n')
 	};
 }
@@ -117,8 +130,11 @@ function brokenTree(): Files {
 		...tree,
 		[`${OWN_ROOT}/hello.ts`]: headed("export const hello = 'hello';\n", FOREIGN_HOLDER),
 		[`${OWN_ROOT}/plain.ts`]: 'export const plain = true;\n',
-		[`${OWN_ROOT}/vendor/other.js`]: 'module.exports = () => 2;\n',
-		[`${OWN_ROOT}/vendor/REUSE.toml`]: `${tree[`${OWN_ROOT}/vendor/REUSE.toml`] as string}[[annotations]]\npath = "other.js"\nSPDX-FileCopyrightText = "2026 ${FIXTURE_HOLDER}"\nSPDX-License-Identifier = "MIT"\nSPDX-FileComment = "our own"\n`,
+		// A data file under an own annotation that names the wrong licence, and a
+		// source file an own annotation covers but that carries no header of its own.
+		[`${OWN_ROOT}/vendor/other.json`]: '{}\n',
+		[`${OWN_ROOT}/vendor/REUSE.toml`]: `${tree[`${OWN_ROOT}/vendor/REUSE.toml`] as string}[[annotations]]\npath = ["other.json", "headless.js"]\nSPDX-FileCopyrightText = "2026 ${FIXTURE_HOLDER}"\nSPDX-License-Identifier = "MIT"\nSPDX-FileComment = "our own"\n`,
+		[`${OWN_ROOT}/vendor/headless.js`]: 'module.exports = () => 3;\n',
 		[`${OWN_ROOT}/notes.md`]: 'This build is Source-Available.\n',
 		'LICENSE.md': `${FIXTURE_LICENSE_TEXT}An extra line.\n`,
 		'manifest.json': `${JSON.stringify({ licenseName: 'MIT', licenseFileName: 'LICENSE.md', licenseUrl: 'https://example.invalid/licence' }, null, '\t')}\n`,
@@ -155,12 +171,17 @@ const HARNESS = [
 	''
 ].join('\n');
 
-function runGuard(label: string, files: Files, omit: readonly string[] = []): readonly RunnerEntry[] {
+function runGuard(
+	label: string,
+	files: Files,
+	omit: readonly string[] = [],
+	over: Partial<LicenceGuardInput> = {}
+): readonly RunnerEntry[] {
 	const tree = makeTempRoot(`guard-${label}-tree`);
 	writeTree(tree, files, omit);
 	const runner = makeTempRoot(`guard-${label}-runner`);
 	const guard = join(runner, 'licence.leftovers.test.ts');
-	writeFileSync(guard, licenceGuardText(input()), 'utf8');
+	writeFileSync(guard, licenceGuardText(input(over)), 'utf8');
 	const harness = join(runner, 'harness.mjs');
 	writeFileSync(harness, HARNESS, 'utf8');
 	const result = spawnSync(process.execPath, ['--no-warnings', harness, pathToFileURL(guard).href], { cwd: tree, encoding: 'utf8' });
@@ -182,30 +203,49 @@ describe('licenceGuardText', () => {
 		expect(text).toContain("suite('licence-leftovers', () => {");
 		expect(text.match(/^\ttest\('/gmu)).toHaveLength(5);
 		const imports = [...text.matchAll(/^import .* from '([^']+)';$/gmu)].map((match) => match[1]);
-		expect(imports).toEqual(['node:assert/strict', 'node:crypto', 'node:fs', 'node:path']);
+		// The builtin modules by their bare names: the import rules of a family know those.
+		expect(imports).toEqual(['assert', 'crypto', 'fs', 'path']);
 		expect(text.endsWith('\n')).toBe(true);
 	});
 
 	it('bakes the values of the profile and the carrier model in, the retired phrases as escapes', () => {
 		const text = licenceGuardText(input());
 
-		expect(text).toContain(JSON.stringify([FIXTURE_HOLDER]));
-		expect(text).toContain(`"directory":"${OWN_ROOT}","expression":"${FIXTURE_LICENSE_ID}"`);
-		expect(text).toContain(`"directory":"${EXTENSION_ROOT}"`);
-		expect(text).toContain(`const SKIP_DIRECTORY = "${OWN_ROOT}/codkit";`);
-		expect(text).toContain(`const LICENCE_SHA256 = "${sha256(FIXTURE_LICENSE_TEXT)}";`);
-		expect(text).toContain('"path":["licenseName"],"expected":"LicenseRef-FIXTURE-Private-1.0"');
-		expect(text).toContain('"path":["licenseUrl"],"expected":null');
-		expect(text).toContain(JSON.stringify([UPSTREAM_COMPONENT]));
+		// Single-quoted, ASCII-only literals: the house style of a family's lint and hygiene.
+		expect(text).toContain(`const HOLDERS: readonly string[] = ['${FIXTURE_HOLDER}'];`);
+		expect(text).toContain(`{ directory: '${OWN_ROOT}', expression: '${FIXTURE_LICENSE_ID}' }`);
+		expect(text).toContain(`{ directory: '${EXTENSION_ROOT}'`);
+		expect(text).toContain(`const SKIP_DIRECTORY = '${OWN_ROOT}/codkit';`);
+		expect(text).toContain(`const LICENCE_SHA256 = '${sha256(FIXTURE_LICENSE_TEXT)}';`);
+		expect(text).toContain("path: ['licenseName'], expected: 'LicenseRef-FIXTURE-Private-1.0', devChannel: false");
+		expect(text).toContain("path: ['licenseUrl'], expected: null");
+		expect(text).toContain(`const COMPONENTS: readonly string[] = ['${UPSTREAM_COMPONENT}'];`);
+		// No baked constant is double-quoted; the guard's own messages may quote a holder's name.
+		expect(text.match(/^const [A-Z_]+.*"/gmu)).toBeNull();
+		expect(licenceGuardText(input({ holders: ['Fixture Org', 'Fixture \u00d6rg'] }))).toContain("['Fixture Org', 'Fixture \\u00d6rg']");
 		// The whole carrier model: a header, a sidecar, or an annotation of a
 		// REUSE.toml inside the scope, with a declared third party accepted.
 		expect(text).toContain("'/REUSE.toml'");
 		expect(text).toContain("'.license'");
 		expect(text).toContain("'third-party;'");
 		expect(text).toContain("'SPDX-FileCopyrightText'");
+		// The table of comment styles and the dev channel of the type travel with the guard.
+		expect(text).toContain('const DEV_CHANNEL: string | null = null;');
+		expect(text).toContain("'md'");
+		expect(text).toContain("'gitattributes'");
 		// The guard is an own file too, and must not carry what it forbids.
 		expect(text.toLowerCase()).not.toContain(FIXTURE_RETIRED_NOTICE);
 		expect(text).toContain('\\u0073\\u006f\\u0075\\u0072\\u0063\\u0065');
+	});
+
+	it("places the family's preamble right before the suite and braces every branch for the family's lint", () => {
+		const directive = '// eslint-disable-next-line some/rule -- the reason';
+		const text = licenceGuardText(input({ words: { suite: 'suite', test: 'test' }, preamble: [directive] }));
+
+		expect(text).toContain(`${directive}\nsuite('licence-leftovers', () => {`);
+		expect(licenceGuardText(input())).not.toContain('eslint-disable');
+		// No single-line branch: the `curly` rule of a family's lint would flag each one.
+		expect(text.match(/^\s*(?:if \(.*\)|else) [^{\n]*;$/gmu)).toBeNull();
 	});
 
 	it('is deterministic', () => {
@@ -228,8 +268,14 @@ describe('licenceGuardText', () => {
 		expect(carriers.ok).toBe(false);
 		expect(carriers.message).toContain(`${OWN_ROOT}/hello.ts: its header names the holder "${FOREIGN_HOLDER}"`);
 		expect(carriers.message).toContain(`${OWN_ROOT}/plain.ts: has no licence carrier`);
-		expect(carriers.message).toContain(`${OWN_ROOT}/vendor/other.js: its REUSE.toml annotation says MIT instead of ${FIXTURE_LICENSE_ID}`);
+		expect(carriers.message).toContain(
+			`${OWN_ROOT}/vendor/other.json: its REUSE.toml annotation says MIT instead of ${FIXTURE_LICENSE_ID}`
+		);
+		expect(carriers.message).toContain(`${OWN_ROOT}/vendor/headless.js: has no licence carrier`);
 		expect(carriers.message).not.toContain('tiny.js');
+		expect(carriers.message).not.toContain('strings.json');
+		expect(carriers.message).not.toContain('NOTICE.md');
+		expect(carriers.message).not.toContain('LICENSE.md');
 		expect(carriers.message).not.toContain('codkit/runtime.ts');
 
 		const retired = testNamed(entries, 'retired notice');
@@ -249,5 +295,43 @@ describe('licenceGuardText', () => {
 		const present = testNamed(entries, 'component licence and rendering');
 		expect(present.ok).toBe(false);
 		expect(present.message).toBe('missing from the tree: LICENSE.rtf');
+	});
+
+	it('reads the manifest through the dev channel of a development tree and leaves the release-only expectations alone', () => {
+		// Upstream's manifest and package file, as a development tree carries them;
+		// the dev channel holds the values the overlay sets.
+		const development: Files = {
+			...conformingTree(),
+			'manifest.json': `${JSON.stringify({ displayName: 'Fixture', licenseName: 'MIT', licenseFileName: 'LICENSE.txt', licenseUrl: 'https://example.invalid/upstream' }, null, '\t')}\n`,
+			'manifest.overrides.json': `${JSON.stringify({ licenseName: FIXTURE_LICENSE_ID, licenseFileName: 'LICENSE.md' }, null, '\t')}\n`,
+			'package.json': `${JSON.stringify({ name: 'fixture-product', license: 'MIT' }, null, '\t')}\n`
+		};
+		const channel: Partial<LicenceGuardInput> = {
+			devChannel: 'manifest.overrides.json',
+			fields: [
+				{ target: 'manifest.json', path: ['licenseName'], expected: FIXTURE_LICENSE_ID, devChannel: true },
+				{ target: 'manifest.json', path: ['licenseFileName'], expected: 'LICENSE.md', devChannel: true },
+				{ target: 'manifest.json', path: ['licenseUrl'], expected: 'absent', devChannel: true },
+				{ target: 'package.json', path: ['license'], expected: FIXTURE_LICENSE_ID, devChannel: false }
+			]
+		};
+
+		const green = testNamed(runGuard('dev-green', development, [], channel), 'manifest field');
+		expect(green.ok).toBe(true);
+
+		const stale = testNamed(
+			runGuard(
+				'dev-red',
+				{ ...development, 'manifest.overrides.json': `${JSON.stringify({ licenseName: 'MIT' }, null, '\t')}\n` },
+				[],
+				channel
+			),
+			'manifest field'
+		);
+		expect(stale.ok).toBe(false);
+		expect(stale.message).toContain(`manifest.json:licenseName: expected "${FIXTURE_LICENSE_ID}", found "MIT"`);
+		expect(stale.message).toContain('manifest.json:licenseFileName: expected "LICENSE.md", found "LICENSE.txt"');
+		expect(stale.message).not.toContain('licenseUrl');
+		expect(stale.message).not.toContain('package.json');
 	});
 });

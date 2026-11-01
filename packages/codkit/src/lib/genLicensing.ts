@@ -32,6 +32,7 @@ import { buildInventory } from './inventory.ts';
 import {
 	OVERLAYS_DIR,
 	OVERLAY_SCHEMA_VERSION,
+	devChannelTarget,
 	loadOverlays,
 	overlayArtifactName,
 	parseOverlay,
@@ -39,6 +40,7 @@ import {
 } from './layers/overlay.ts';
 import type { Overlay, OverlayDocument, OverlayOperation } from './layers/overlay.ts';
 import { renderLicencePlainText, renderLicenceRtf } from './licenceRtf.ts';
+import { commentStyleNames } from './licenseAnnotate.ts';
 import { licenceGuardText } from './licensingGuardTemplate.ts';
 import type { LicenceGuardField, LicenceGuardInput, LicenceGuardScope } from './licensingGuardTemplate.ts';
 import { OWN_LAYER_DIR, headerFieldsFor, headerStyleOf, ownLicenseFor } from './licensingProfile.ts';
@@ -370,8 +372,11 @@ function planGuard(options: LicensingPlanOptions, area: LicensingArea, surfaces:
 function guardInput(options: LicensingPlanOptions, area: LicensingArea, surfaces: LicensingSurfaces): LicenceGuardInput {
 	const { profile, config } = options;
 	const ownRoot = config.typeConfig.ownRoot;
+	// The dev channel of the type, and which target it feeds (PROP-005 OVERLAY-TWO-CHANNELS).
+	const channel = devChannelTarget(options.type);
 	return {
 		words: { suite: surfaces.guard.suite, test: surfaces.guard.test },
+		preamble: surfaces.guard.preamble,
 		holders: profile.selected.policy.holders,
 		scopes: [{ treeDirectory: ownRoot, expression: ownLicenseFor(profile, OWN_LAYER_DIR) }, ...extensionScopes(options)],
 		skipDirectory: `${ownRoot}/codkit`,
@@ -382,8 +387,11 @@ function guardInput(options: LicensingPlanOptions, area: LicensingArea, surfaces
 		fields: area.fields.map((field) => ({
 			target: field.target,
 			path: field.path,
-			expected: expectedFieldValue(surfaces, field.target, field.path)
+			expected: expectedFieldValue(surfaces, field.target, field.path),
+			devChannel: channel !== null && channel.path === field.target
 		})),
+		devChannel: channel?.devChannel ?? null,
+		commentStyleNames: commentStyleNames(),
 		components: surfaces.components.map((component) => component.treePath),
 		renderings: surfaces.renderings.map((rendering) => rendering.treePath),
 		retiredNotices: profile.product.retiredNotices

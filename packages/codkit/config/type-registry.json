@@ -109,7 +109,7 @@
         },
         {
           "path": "dist/licensing.js",
-          "sha256": "57727ec1596a1a7b04bc64df573e800caa6cd26a6a1e911808505ad73935b129"
+          "sha256": "b0db6bfeaaeda5d5c9ee602b0e888db12d0fa3d2d4cd3cf608e166bbe0619615"
         },
         {
           "path": "dist/npmDirectories.js",
@@ -201,7 +201,7 @@
         },
         {
           "path": "src/licensing.ts",
-          "sha256": "a1c654bdf9730515b03ddfedcfa0c65592b6808e0d92462ca461fa682088faa2"
+          "sha256": "a9c360dfbc2994dcdbe7ed06ba0b5f59d734d2b3fa1f85632afcc0fc7d28c41e"
         },
         {
           "path": "src/npmDirectories.ts",

@@ -59,6 +59,15 @@ const COMMENT_STYLES: ReadonlyMap<string, CommentStyle> = new Map([
 	...(['bat', 'cmd'] as const).map((extension) => [extension, 'rem'] as const)
 ]);
 
+/**
+ * ##LIC-COMMENT-STYLES: the extensions and bare file names that have a comment
+ * style, for a guard that must tell a source file from a data file without
+ * carrying the table itself.
+ */
+export function commentStyleNames(): readonly string[] {
+	return [...COMMENT_STYLES.keys()];
+}
+
 /** The comment style of a path, or null when the file needs a sidecar. */
 export function commentStyleOf(relative: string): CommentStyle | null {
 	const name = relative.slice(relative.lastIndexOf('/') + 1);

@@ -6,6 +6,7 @@ import { readdirSync, realpathSync } from 'node:fs';
 import { readContainedFile } from './containedFile.js';
 import { decodeUtf8Strict } from './bytes.js';
 import { COPYRIGHT_LINE, MODIFICATIONS_LINE, holderOf, licenseGlobMatches, selectLicenseCarrier } from './licenseCarrier.js';
+import { isLicenceTextName } from './licenseCheck.js';
 import { readReuseRegistries } from './reuseRegistry.js';
 import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.js';
 import { checkOrganizationExpression } from './organizationPolicy.js';
@@ -194,9 +195,19 @@ function sourcePaths(root, directory, problems) {
     }
     return result.sort((left, right) => Buffer.from(left).compare(Buffer.from(right)));
 }
+/**
+ * The files of the licence metadata itself: the licence texts of REUSE (`LICENSE`,
+ * `LICENCE`, `COPYING`, with or without one extension - the text a localisation
+ * pack ships beside its translations included), the registries, the sidecars and
+ * the LICENSES directory. Carriers of nothing, never annotated.
+ */
 export function isConsumerLicenseMetadata(path) {
     const name = path.slice(path.lastIndexOf('/') + 1);
-    return (name === 'LICENSE' || name.startsWith('COPYING') || name === 'REUSE.toml' || name.endsWith('.license') || path.startsWith('LICENSES/'));
+    return (isLicenceTextName(name) ||
+        name.startsWith('COPYING') ||
+        name === 'REUSE.toml' ||
+        name.endsWith('.license') ||
+        path.startsWith('LICENSES/'));
 }
 /** The reading of a copyright line: the REUSE form without the word gets the word supplied. Shared with `license annotate --own`. */
 export function copyrightMatch(line) {

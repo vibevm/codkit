@@ -41,8 +41,8 @@ export function treePathProblem(path, options = { rootAllowed: false }) {
  * and unique; the renderings and the upstream files are tree paths and unique;
  * the subsystem is one of the type's conventions, because the ids of the
  * interventions are numbered in it; the guard lies inside the own layer of the
- * patch set, where `verify` finds suite ids. An empty list is a well-formed
- * answer.
+ * patch set, where `verify` finds suite ids, and its preamble lines are complete
+ * non-empty lines. An empty list is a well-formed answer.
  */
 export function licensingShapeProblems(type) {
     const area = type.licensing;
@@ -108,6 +108,9 @@ export function licensingShapeProblems(type) {
     }
     if (!guard.path.startsWith('delta/own/') || treePathProblem(guard.path) !== null) {
         problems.push(`${type.id}: the licence guard ${JSON.stringify(guard.path)} is not a path inside delta/own/`);
+    }
+    if ((guard.preamble ?? []).some((line) => line.trim() === '' || line.includes('\n'))) {
+        problems.push(`${type.id}: the licence guard preamble has an empty or multi-line entry`);
     }
     if (guard.suite === '' || guard.test === '')
         problems.push(`${type.id}: the licence guard names no runner words`);

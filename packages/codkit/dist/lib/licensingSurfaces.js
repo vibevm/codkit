@@ -219,6 +219,6 @@ export function licensingSurfaces(options) {
             artifact: addFileArtifactOf(rendering.path),
             format: rendering.format
         })),
-        guard: { artifact: guard.path, suite: guard.suite, test: guard.test }
+        guard: { artifact: guard.path, suite: guard.suite, test: guard.test, preamble: guard.preamble ?? [] }
     };
 }
