@@ -1108,7 +1108,7 @@ export function upstreamHygieneStep(
 function toCiCommand(command: BuildCommand, treeDir: string): CiCommand {
 	return {
 		label: command.label,
-		command: command.command === 'npm' ? npmCommand() : command.command,
+		command: command.command,
 		args: [...command.args],
 		cwd: treeDir
 	};
@@ -1213,10 +1213,6 @@ function defaultCiCommandRunner(command: CiCommand): CiCommandResult {
 		stderr: result.stderr ?? ''
 	};
 	return result.error === undefined ? base : { ...base, error: result.error };
-}
-
-function npmCommand(): string {
-	return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
 function commandCouldNotRun(result: CiCommandResult): boolean {

@@ -40,14 +40,7 @@ export function runCommands(
 				exitCode: EXIT_ENVIRONMENT
 			};
 		}
-		const outcome = runOne(
-			options,
-			declared.label,
-			declared.command === 'npm' ? npmCommand() : declared.command,
-			declared.args,
-			{ ...targetEnvironment, ...stamps },
-			into
-		);
+		const outcome = runOne(options, declared.label, declared.command, declared.args, { ...targetEnvironment, ...stamps }, into);
 		if (outcome.error !== null) {
 			return outcome;
 		}
@@ -117,10 +110,6 @@ export function defaultPackageCommandRunner(command: PackageCommand): PackageCom
 	});
 	const base = { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 	return result.error === undefined ? base : { ...base, error: result.error };
-}
-
-function npmCommand(): string {
-	return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
 export function outputLines(text: string): readonly string[] {

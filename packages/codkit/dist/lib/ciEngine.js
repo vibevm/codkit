@@ -871,7 +871,7 @@ export function upstreamHygieneStep(type, treeDir, out, run = defaultCiCommandRu
 function toCiCommand(command, treeDir) {
     return {
         label: command.label,
-        command: command.command === 'npm' ? npmCommand() : command.command,
+        command: command.command,
         args: [...command.args],
         cwd: treeDir
     };
@@ -965,9 +965,6 @@ function defaultCiCommandRunner(command) {
         stderr: result.stderr ?? ''
     };
     return result.error === undefined ? base : { ...base, error: result.error };
-}
-function npmCommand() {
-    return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 function commandCouldNotRun(result) {
     if (result.error !== undefined || result.status === null || result.status === 126 || result.status === 127) {
