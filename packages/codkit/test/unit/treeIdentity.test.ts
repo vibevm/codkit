@@ -5,9 +5,11 @@
 // at the machine's real fork tree.
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { CodkitConfig } from '../../src/lib/configFile.ts';
+import type { CodkitConfig, InputConfig } from '../../src/lib/configFile.ts';
+import { runGit } from '../../src/lib/gitx.ts';
+import { writeInputStore } from '../../src/lib/inputsStore.ts';
 import type { ForkDirResolution } from '../../src/lib/paths.ts';
 import { checkTree, LFS_POINTER_MARKER } from '../../src/lib/treeIdentity.ts';
 import type { TreeCheck, TreeCheckId } from '../../src/lib/treeIdentity.ts';
@@ -48,6 +50,12 @@ function withPin(config: CodkitConfig, sha: string): CodkitConfig {
 
 function upstreamFixture(label: string): UpstreamFixture {
 	return makeUpstream(makeTempRoot(label));
+}
+
+function writeTree(root: string, relative: string, text: string): void {
+	const absolute = join(root, ...relative.split('/'));
+	mkdirSync(dirname(absolute), { recursive: true });
+	writeFileSync(absolute, text, 'utf8');
 }
 
 function ids(checks: readonly TreeCheck[]): TreeCheckId[] {
@@ -214,6 +222,52 @@ describe('checkTree cleanliness', () => {
 		expect(result.fatal).toBeNull();
 		expect(result.dirtyFiles).toEqual(['README.md']);
 		expect(find(result.checks, 'clean').ok).toBe(false);
+	});
+
+	it('does not count an exact delivery of an own extension or an input as dirt, but everything else in their directories', () => {
+		const fixture = upstreamFixture('exact-deliveries');
+		const patchesDir = makeTempRoot('exact-deliveries-patchset');
+		const extension = {
+			id: 'CK-product-905',
+			name: 'acme-pack',
+			owner: 'product',
+			reason: 'fixture own extension',
+			pin: `${fixture.t1.tag}@${fixture.t1.sha}`,
+			contractTests: []
+		};
+		const manifest = { codkitOwnManifest: 2, units: [], serviceOverrides: [], extensions: [extension] };
+		const packageJson = '{\n\t"name": "acme-pack"\n}\n';
+		writeTree(patchesDir, 'delta/own/patchset.delta.json', `${JSON.stringify(manifest, null, 2)}\n`);
+		writeTree(patchesDir, 'delta/own-extensions/acme-pack/package.json', packageJson);
+		writeTree(fixture.dir, 'addons/acme-pack/package.json', packageJson);
+		writeTree(fixture.dir, 'addons/acme-pack/stray.txt', 'not delivered by codkit\n');
+		writeTree(fixture.dir, 'documentation/doc.md', 'delivered\n');
+		writeTree(fixture.dir, 'documentation/edited.md', 'edited in the tree\n');
+		const blob = (text: string): string => runGit({ args: ['hash-object', '--stdin'], cwd: fixture.dir, input: text }).stdout.trim();
+		writeInputStore(fixture.dir, [
+			{
+				name: 'docs',
+				to: 'documentation',
+				mode: 'working',
+				commit: null,
+				stamp: '0'.repeat(64),
+				files: { 'doc.md': blob('delivered\n'), 'edited.md': blob('original\n') }
+			}
+		]);
+		const config: CodkitConfig = { ...configFor(fixture), inputs: [{ name: 'docs', to: 'documentation' } as InputConfig] };
+
+		const judged = checkTree(resolution(fixture.dir), config, { mode: 'read', requireClean: true, type: stubProjectType, patchesDir });
+		expect(judged.fatal).toBeNull();
+		expect(judged.dirtyFiles).toEqual(['addons/acme-pack/stray.txt', 'documentation/edited.md']);
+
+		// Without the patch set nothing is a delivery, and every file is dirt.
+		const blind = checkTree(resolution(fixture.dir), config, { mode: 'read', requireClean: true, type: stubProjectType });
+		expect(blind.dirtyFiles).toEqual([
+			'addons/acme-pack/package.json',
+			'addons/acme-pack/stray.txt',
+			'documentation/doc.md',
+			'documentation/edited.md'
+		]);
 	});
 
 	it('does not count own code as dirt', () => {

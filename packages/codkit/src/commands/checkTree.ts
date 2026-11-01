@@ -35,7 +35,13 @@ async function run(ctx: CommandContext): Promise<number> {
 	}
 
 	const requireClean = commandFlagGiven(ctx.commandFlags, REQUIRE_CLEAN);
-	const result = checkTree(resolution, ctx.config, { mode: 'read', requireClean, type: requireProjectType(ctx) });
+	const result = checkTree(resolution, ctx.config, {
+		mode: 'read',
+		requireClean,
+		type: requireProjectType(ctx),
+		patchesDir: ctx.patchesDir,
+		onWarn: (text) => ctx.out.warn(text)
+	});
 
 	for (const check of result.checks) {
 		ctx.out.info(formatCheckLine(check));

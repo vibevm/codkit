@@ -22,7 +22,13 @@ async function run(ctx) {
         throw ckError('CONFIG', 'codkit.json was not found in the patchset root: check-tree needs the pin and the upstream anchor to check against', 'run check-tree from a patchset checkout that carries codkit.json');
     }
     const requireClean = commandFlagGiven(ctx.commandFlags, REQUIRE_CLEAN);
-    const result = checkTree(resolution, ctx.config, { mode: 'read', requireClean, type: requireProjectType(ctx) });
+    const result = checkTree(resolution, ctx.config, {
+        mode: 'read',
+        requireClean,
+        type: requireProjectType(ctx),
+        patchesDir: ctx.patchesDir,
+        onWarn: (text) => ctx.out.warn(text)
+    });
     for (const check of result.checks) {
         ctx.out.info(formatCheckLine(check));
     }

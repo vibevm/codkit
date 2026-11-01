@@ -26,6 +26,7 @@ import type { ForkDirResolution } from './paths.ts';
 import { runSave } from './saveEngine.ts';
 import type { SaveEngineOptions, SavePatchHeaderOverride, SaveResult } from './saveEngine.ts';
 import { withoutDeliveredExtensionDirt } from './cycleOwnedDirt.ts';
+import { withoutDeliveredInputDirt } from './inputsTree.ts';
 import { loadConventions } from './conventionsFile.ts';
 import type { ProjectType } from '@codkit/type-api';
 
@@ -271,11 +272,18 @@ function collectFacts(options: CycleResolveOptions): Facts {
 		state,
 		entries,
 		descriptors,
-		treeDirt: withoutDeliveredExtensionDirt(
-			workspaceCycleStatus(options.resolution.path, status(options.resolution.path), workspace),
-			options.patchesDir,
+		// An exact delivery of an own extension or of an input is a runtime copy
+		// of the delta, not dirt (##OWN-EXTENSION-UNIT, PROP-008 ##INPUTS-LOAD).
+		treeDirt: withoutDeliveredInputDirt(
+			withoutDeliveredExtensionDirt(
+				workspaceCycleStatus(options.resolution.path, status(options.resolution.path), workspace),
+				options.patchesDir,
+				options.resolution.path,
+				options.type
+			),
 			options.resolution.path,
-			options.type
+			options.config.inputs ?? [],
+			(text) => options.out.warn(text)
 		),
 		patchsetDirt: workspaceCycleStatus(options.patchesDir, status(options.patchesDir), workspace)
 	};

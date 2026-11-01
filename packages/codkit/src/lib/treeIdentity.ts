@@ -18,6 +18,8 @@ import { runGit } from './gitx.ts';
 import type { CkError } from './messages.ts';
 import { ckError } from './messages.ts';
 import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.ts';
+import { deliveredExtensionTargets } from './cycleOwnedDirt.ts';
+import { deliveredInputTargets } from './inputsTree.ts';
 import type { OwnedRoot } from './ownedRoots.ts';
 import type { ForkDirResolution } from './paths.ts';
 
@@ -41,6 +43,17 @@ export type CheckTreeOptions = {
 	readonly mode: 'read' | 'write';
 	/** Run the cleanliness check (PROP-008 ##ID-CHECK-CLEAN). */
 	readonly requireClean?: boolean;
+	/**
+	 * The patch set whose deliveries the tree carries. Only the cleanliness
+	 * check reads it: an exact delivery of a declared own extension
+	 * (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT) or of an input
+	 * (##INPUTS-LOAD) is a runtime copy of the delta, not dirt - the way
+	 * `status` and the upgrade cycle read it. Without it only the owned
+	 * directories are taken into account.
+	 */
+	readonly patchesDir?: string;
+	/** Where a warning of the cleanliness check goes (an inputs stamp that does not read). */
+	readonly onWarn?: (text: string) => void;
 	/**
 	 * The project type of the patch set, which is what states the fingerprints
 	 * of a healthy tree of its family (PROP-008 ##ID-CHECK-FINGERPRINTS). The
@@ -147,10 +160,29 @@ export function checkTree(resolution: ForkDirResolution, config: CodkitConfig, o
 		return checkClean(
 			repo.topLevel,
 			ownedRootsOf(options.type ?? null, config.typeConfig, { treeDir: repo.topLevel, pinSha: config.pin.sha }),
+			deliveredTargets(repo.topLevel, config, options),
 			checks
 		);
 	}
 	return { checks, fatal: null };
+}
+
+/**
+ * The exact deliveries of the delta the tree carries untracked
+ * (##ID-CHECK-CLEAN): the files of its declared own extensions and of its
+ * inputs whose copy holds what codkit delivered. Only a caller that names the
+ * patch set gets them, and the extensions only with the type that declares
+ * where they are materialized.
+ */
+function deliveredTargets(topLevel: string, config: CodkitConfig, options: CheckTreeOptions): readonly string[] {
+	if (options.patchesDir === undefined) {
+		return [];
+	}
+	const onWarn = options.onWarn ?? ((): void => {});
+	return [
+		...(options.type === undefined ? [] : deliveredExtensionTargets(options.patchesDir, topLevel, options.type)),
+		...deliveredInputTargets(topLevel, config.inputs ?? [], onWarn)
+	];
 }
 
 /**
@@ -424,8 +456,10 @@ function checkWritable(tree: string, gitDir: string, checks: TreeCheck[]): CkErr
 	return null;
 }
 
-function checkClean(topLevel: string, roots: readonly OwnedRoot[], checks: TreeCheck[]): TreeIdentityResult {
-	const status = runGit({ args: ['status', '--porcelain'], cwd: topLevel });
+function checkClean(topLevel: string, roots: readonly OwnedRoot[], delivered: readonly string[], checks: TreeCheck[]): TreeIdentityResult {
+	// Every untracked file by name: a delivery is judged file by file, and a
+	// directory git would fold into one entry could hide a stray file in it.
+	const status = runGit({ args: ['status', '--porcelain', '--untracked-files=all'], cwd: topLevel });
 	if (status.status !== 0) {
 		checks.push(makeCheck('clean', false));
 		return {
@@ -441,30 +475,37 @@ function checkClean(topLevel: string, roots: readonly OwnedRoot[], checks: TreeC
 	// from the upstream pin and is never "dirt" (PROP-008 ##ID-CHECK-CLEAN).
 	// Every directory the delta owns is expected to differ from the pin, not only
 	// the own root (PROP-016 ##TYPE-AREA-LAYOUT).
+	// An exact delivery of an own extension or an input is untracked by
+	// construction and a runtime copy of the delta: only its untracked entry
+	// is exempt, an edited or stray path in the same directory remains dirt.
 	const ownPrefixes = ownedTreePrefixes(roots);
 	const named = ownPrefixes.join(', ');
-	const dirtyFiles = parsePorcelain(status.stdout).filter((path) => !ownPrefixes.some((prefix) => path.startsWith(prefix)));
+	const exact = new Set(delivered);
+	const dirtyFiles = parsePorcelain(status.stdout)
+		.filter((entry) => !ownPrefixes.some((prefix) => entry.path.startsWith(prefix)))
+		.filter((entry) => entry.status !== '??' || !exact.has(entry.path))
+		.map((entry) => entry.path);
 	const ok = dirtyFiles.length === 0;
 	checks.push(makeCheck('clean', ok, ok ? `no changes outside ${named}` : `${dirtyFiles.length} path(s) changed outside ${named}`));
 	return { checks, fatal: null, dirtyFiles };
 }
 
 /**
- * Paths out of `git status --porcelain` v1. For a rename the target path is the
+ * The entries of `git status --porcelain` v1, status and path. For a rename the target path is the
  * one that matters here; `core.quotepath=false` (forced by gitx) keeps non-ASCII
  * paths unquoted, so only genuinely exotic names arrive quoted.
  */
-function parsePorcelain(stdout: string): string[] {
-	const paths: string[] = [];
+function parsePorcelain(stdout: string): readonly { readonly status: string; readonly path: string }[] {
+	const entries: { readonly status: string; readonly path: string }[] = [];
 	for (const line of stdout.split('\n')) {
 		if (line.length < 4) {
 			continue;
 		}
 		const rest = line.slice(3);
 		const arrow = rest.indexOf(' -> ');
-		paths.push(unquote(arrow === -1 ? rest : rest.slice(arrow + 4)));
+		entries.push({ status: line.slice(0, 2), path: unquote(arrow === -1 ? rest : rest.slice(arrow + 4)) });
 	}
-	return paths;
+	return entries;
 }
 
 function unquote(path: string): string {

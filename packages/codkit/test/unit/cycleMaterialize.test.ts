@@ -24,6 +24,8 @@ import type { CycleMaterializeOptions } from '../../src/lib/cycleMaterialize.ts'
 import { CYCLE_MATERIALIZE_RECORD_PATH } from '../../src/lib/cycleMaterializeMove.ts';
 import type { CycleMaterializeMoveCheckpoint } from '../../src/lib/cycleMaterializeMove.ts';
 import { runGit, runGitBytes } from '../../src/lib/gitx.ts';
+import { writeInputStore } from '../../src/lib/inputsStore.ts';
+import type { InputConfig } from '../../src/lib/configFile.ts';
 import { Output } from '../../src/lib/jsonOut.ts';
 import { parseOverlay } from '../../src/lib/layers/overlay.ts';
 import { parseRule } from '../../src/lib/layers/rule.ts';
@@ -331,6 +333,29 @@ describe('materializeCycleApply', () => {
 		expect(readFileSync(join(current.tree, 'source/own/hello.ts'), 'utf8')).toContain('hello');
 		expect(runGit({ args: ['check-ignore', 'source/own/hello.ts'], cwd: current.tree }).status).toBe(0);
 		expect(runGit({ args: ['status', '--porcelain', '--untracked-files=all'], cwd: current.tree }).stdout).not.toContain('source/own/');
+	}, 90_000);
+
+	it('hides the directories of the inputs as load does and accepts their exact deliveries (##INPUTS-LOAD)', () => {
+		const current = fixture();
+		const delivered = 'delivered by load\n';
+		write(current.tree, 'documentation/doc.md', delivered);
+		const blob = runGit({ args: ['hash-object', '--stdin'], cwd: current.tree, input: delivered }).stdout.trim();
+		writeInputStore(current.tree, [
+			{ name: 'docs', to: 'documentation', mode: 'working', commit: null, stamp: '0'.repeat(64), files: { 'doc.md': blob } }
+		]);
+		const config: CodkitConfig = { ...current.config, inputs: [{ name: 'docs', to: 'documentation' } as InputConfig] };
+		materializeCycleApply({
+			patchesDir: current.patchesDir,
+			resolution: current.resolution,
+			config,
+			type: stubProjectType,
+			sourcePin: current.sourcePin,
+			classifications: current.classifications,
+			out: current.output
+		});
+		expect(readFileSync(join(current.tree, 'documentation/doc.md'), 'utf8')).toBe(delivered);
+		expect(runGit({ args: ['check-ignore', 'documentation/doc.md'], cwd: current.tree }).status).toBe(0);
+		expect(runGit({ args: ['status', '--porcelain', '--untracked-files=all'], cwd: current.tree }).stdout).not.toContain('documentation/');
 	}, 90_000);
 
 	it('preflights without mutation, builds the complete provisional tip, and retries byte-identically', () => {

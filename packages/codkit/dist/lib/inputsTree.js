@@ -128,6 +128,33 @@ export function inspectInputCopies(treeDir, inputs, onWarn) {
     });
 }
 /**
+ * The tree paths of the files of the declared inputs that hold exactly what
+ * codkit delivered: runtime copies of other repositories, hidden by the managed
+ * block whenever the block is whole, and never dirt of the tree. An edited or
+ * added path is not listed, and an input the tree never received has no exact
+ * files at all. The guards that judge the tree - `check-tree --require-clean`,
+ * the materialization, resolve and stabilize of the upgrade cycle - read a
+ * delivered input through this list, the way they read a delivered own
+ * extension (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
+ */
+export function deliveredInputTargets(treeDir, inputs, onWarn) {
+    return inspectInputCopies(treeDir, inputs, onWarn).flatMap((copy) => {
+        if (copy.recorded === null)
+            return [];
+        const changed = new Set(copy.edits.map((edit) => edit.path));
+        return Object.keys(copy.recorded.files)
+            .filter((path) => !changed.has(path))
+            .map((path) => `${copy.input.to}/${path}`);
+    });
+}
+/** Only exact delivered files are runtime copies; an edit, an addition and a stray file remain dirt. */
+export function withoutDeliveredInputDirt(entries, treeDir, inputs, onWarn) {
+    if (inputs.length === 0)
+        return entries;
+    const delivered = new Set(deliveredInputTargets(treeDir, inputs, onWarn));
+    return entries.filter((entry) => entry.status !== '??' || !delivered.has(entry.path));
+}
+/**
  * `save` (##INPUTS-EDITS): the refusal over the directories of the inputs - a
  * path the command line names inside one, or an edit found in one - with the
  * repositories they belong to; null when there is nothing to refuse.

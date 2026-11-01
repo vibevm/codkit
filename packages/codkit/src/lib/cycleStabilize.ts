@@ -1,6 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-009#phases */
 import { pinKey } from './pinIdentity.ts';
 import { withoutDeliveredExtensionDirt } from './cycleOwnedDirt.ts';
+import { withoutDeliveredInputDirt } from './inputsTree.ts';
 import { cycleRepositoryStatus } from './workspaceCycleStatus.ts';
 import { createHash } from 'node:crypto';
 import { downChannel, loadBuildWatch } from './buildWrap.ts';
@@ -194,10 +195,23 @@ async function planStabilize(options: ContinueCycleStabilizationOptions): Promis
 	}
 	const after = captureCycleLiveSnapshot(options.patchesDir, options.resolution.path, options.state.targetPin.sha);
 	const expectedForkRef = `refs/heads/${options.config.generatedBranchPrefix}${pinKey(options.state.targetPin)}`;
+	// An exact delivery of an own extension or of an input is a runtime copy of
+	// the delta, not dirt (##OWN-EXTENSION-UNIT, PROP-008 ##INPUTS-LOAD); the
+	// stamp that does not read makes every input dirt here, which is the
+	// conservative answer of a check that has no channel for a warning.
 	const exactDeliveredDirt =
 		options.runner === undefined &&
-		withoutDeliveredExtensionDirt(cycleRepositoryStatus(options.resolution.path), options.patchesDir, options.resolution.path, options.type)
-			.length === 0;
+		withoutDeliveredInputDirt(
+			withoutDeliveredExtensionDirt(
+				cycleRepositoryStatus(options.resolution.path),
+				options.patchesDir,
+				options.resolution.path,
+				options.type
+			),
+			options.resolution.path,
+			options.config.inputs ?? [],
+			() => {}
+		).length === 0;
 	const stable =
 		options.runner === undefined
 			? concreteStabilizationWorldMatches(live, after, expectedForkRef, execution.build?.branchTip ?? null, exactDeliveredDirt)

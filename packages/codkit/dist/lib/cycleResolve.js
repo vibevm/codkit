@@ -18,6 +18,7 @@ import { resolveContainedPath } from './pathSafety.js';
 import { parseCkpatch } from './patchFormat.js';
 import { runSave } from './saveEngine.js';
 import { withoutDeliveredExtensionDirt } from './cycleOwnedDirt.js';
+import { withoutDeliveredInputDirt } from './inputsTree.js';
 import { loadConventions } from './conventionsFile.js';
 const CYCLE_LOCK_ID = 'cycle-global';
 const MARKER = /^(?:<{7}|\|{7}|={7}|>{7})(?: .*)?$/m;
@@ -176,7 +177,9 @@ function collectFacts(options) {
         state,
         entries,
         descriptors,
-        treeDirt: withoutDeliveredExtensionDirt(workspaceCycleStatus(options.resolution.path, status(options.resolution.path), workspace), options.patchesDir, options.resolution.path, options.type),
+        // An exact delivery of an own extension or of an input is a runtime copy
+        // of the delta, not dirt (##OWN-EXTENSION-UNIT, PROP-008 ##INPUTS-LOAD).
+        treeDirt: withoutDeliveredInputDirt(withoutDeliveredExtensionDirt(workspaceCycleStatus(options.resolution.path, status(options.resolution.path), workspace), options.patchesDir, options.resolution.path, options.type), options.resolution.path, options.config.inputs ?? [], (text) => options.out.warn(text)),
         patchsetDirt: workspaceCycleStatus(options.patchesDir, status(options.patchesDir), workspace)
     };
 }

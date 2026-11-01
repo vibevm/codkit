@@ -44,6 +44,7 @@ import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource }
 import type { ConflictWrite, CycleMaterializeMoveCheckpoint, ProvisionalMoveOptions } from './cycleMaterializeMove.ts';
 import { workspaceForkReceipt } from './workspaceReceipt.ts';
 import { deliveredExtensionTargets } from './cycleOwnedDirt.ts';
+import { deliveredInputTargets, inputTreePaths } from './inputsTree.ts';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.ts';
 import type { CycleOwnRenameAuthority } from './cycleMaterializeOwn.ts';
 import type { ProjectType } from '@codkit/type-api';
@@ -114,6 +115,8 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 	const branch = provisionalBranch(options.config, tree);
 	const checked = checkTree(options.resolution, options.config, { mode: 'write', type: options.type });
 	if (checked.fatal !== null) throw checked.fatal;
+	const inputs = options.config.inputs ?? [];
+	const warn = (text: string): void => options.out.warn(text);
 	const patchSetCommit = patchSetCommitId(options.patchesDir);
 	const prepared = prepare(options, patchSetCommit);
 	const sourceHead = provisionalMoveSource(options.patchesDir, tree);
@@ -134,6 +137,10 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 			allowedOwnPaths: [
 				...prepared.allowedOwnPaths,
 				...deliveredExtensionTargets(options.patchesDir, tree, options.type),
+				// An exact delivery of an input is a runtime copy of another
+				// repository (PROP-008 ##INPUTS-LOAD), hidden by the managed block
+				// whenever the block is whole; the preflight reads it the same way.
+				...deliveredInputTargets(tree, inputs, warn),
 				...workspaceForkReceipt(tree, options.config.workspace?.record)
 			],
 			...(options.checkpoint === undefined ? {} : { checkpoint: options.checkpoint })
@@ -141,7 +148,14 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 		const preflight = prepareProvisionalMove(moveOptions);
 		importProspectiveObjects(tree, prospective.gitDir);
 		const move = executeProvisionalMove(moveOptions, preflight);
-		writeExclude(tree, ownedRootsOf(options.type, options.config.typeConfig, { treeDir: tree, pinSha: options.config.pin.sha }));
+		// The block is written as load writes it (##INPUTS-LOAD): the cycle leaves
+		// the directories of the inputs in place, so git must keep not seeing them.
+		writeExclude(
+			tree,
+			ownedRootsOf(options.type, options.config.typeConfig, { treeDir: tree, pinSha: options.config.pin.sha }),
+			undefined,
+			inputTreePaths(tree, inputs, warn)
+		);
 		const own = syncAllOwnCode(
 			options.patchesDir,
 			tree,

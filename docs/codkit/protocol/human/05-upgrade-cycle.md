@@ -27,7 +27,8 @@ forward ancestry; переход на предка исходного пина �
 1. Создай issue по [шаблону](templates/cycle-issue.md); назначь DRI, владельцев и reviewer.
 2. `codkit hooks install` → exit `0`; затем `codkit hooks check` → exit `0`.
 3. `git status --short` → пусто. Непустой вывод должен быть сохранён отдельным commit/stash или убран владельцем до шага 4.
-4. `codkit check-tree --require-clean` → exit `0`.
+4. `codkit check-tree --require-clean` → exit `0`. Точные поставки delta — файлы объявленных own extensions и inputs,
+   байт-в-байт равные источнику, — грязью не считаются; правка или лишний файл в их каталоге — считается.
 5. `git -C <fork> cat-file -e '<target-tag-or-sha>^{commit}'` → exit `0`.
    Exit `1` означает, что зеркальный бот/оператор должен доставить ref; `cycle` сеть не вызывает.
 6. `codkit --json cycle start <target-tag-or-sha>`.

@@ -14,6 +14,8 @@ import { readContainedFile } from './containedFile.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 import { ownedRootsOf, ownedTreePrefixes } from './ownedRoots.js';
+import { deliveredExtensionTargets } from './cycleOwnedDirt.js';
+import { deliveredInputTargets } from './inputsTree.js';
 /** First bytes of a git-lfs pointer file (PROP-008 ##ID-CHECK-LFS). */
 export const LFS_POINTER_MARKER = 'version https://git-lfs.github.com/spec/v1';
 /** How many LFS paths are sampled for pointer content. */
@@ -80,9 +82,26 @@ export function checkTree(resolution, config, options) {
     }
     // 7. Cleanliness, only when the command requires it.
     if (options.requireClean === true) {
-        return checkClean(repo.topLevel, ownedRootsOf(options.type ?? null, config.typeConfig, { treeDir: repo.topLevel, pinSha: config.pin.sha }), checks);
+        return checkClean(repo.topLevel, ownedRootsOf(options.type ?? null, config.typeConfig, { treeDir: repo.topLevel, pinSha: config.pin.sha }), deliveredTargets(repo.topLevel, config, options), checks);
     }
     return { checks, fatal: null };
+}
+/**
+ * The exact deliveries of the delta the tree carries untracked
+ * (##ID-CHECK-CLEAN): the files of its declared own extensions and of its
+ * inputs whose copy holds what codkit delivered. Only a caller that names the
+ * patch set gets them, and the extensions only with the type that declares
+ * where they are materialized.
+ */
+function deliveredTargets(topLevel, config, options) {
+    if (options.patchesDir === undefined) {
+        return [];
+    }
+    const onWarn = options.onWarn ?? (() => { });
+    return [
+        ...(options.type === undefined ? [] : deliveredExtensionTargets(options.patchesDir, topLevel, options.type)),
+        ...deliveredInputTargets(topLevel, config.inputs ?? [], onWarn)
+    ];
 }
 /**
  * Does this tree carry LFS-tracked paths at all? `clone` uses it to decide
@@ -311,8 +330,10 @@ function checkWritable(tree, gitDir, checks) {
     checks.push(makeCheck('write', true, `${scratch} is writable`));
     return null;
 }
-function checkClean(topLevel, roots, checks) {
-    const status = runGit({ args: ['status', '--porcelain'], cwd: topLevel });
+function checkClean(topLevel, roots, delivered, checks) {
+    // Every untracked file by name: a delivery is judged file by file, and a
+    // directory git would fold into one entry could hide a stray file in it.
+    const status = runGit({ args: ['status', '--porcelain', '--untracked-files=all'], cwd: topLevel });
     if (status.status !== 0) {
         checks.push(makeCheck('clean', false));
         return {
@@ -324,29 +345,36 @@ function checkClean(topLevel, roots, checks) {
     // from the upstream pin and is never "dirt" (PROP-008 ##ID-CHECK-CLEAN).
     // Every directory the delta owns is expected to differ from the pin, not only
     // the own root (PROP-016 ##TYPE-AREA-LAYOUT).
+    // An exact delivery of an own extension or an input is untracked by
+    // construction and a runtime copy of the delta: only its untracked entry
+    // is exempt, an edited or stray path in the same directory remains dirt.
     const ownPrefixes = ownedTreePrefixes(roots);
     const named = ownPrefixes.join(', ');
-    const dirtyFiles = parsePorcelain(status.stdout).filter((path) => !ownPrefixes.some((prefix) => path.startsWith(prefix)));
+    const exact = new Set(delivered);
+    const dirtyFiles = parsePorcelain(status.stdout)
+        .filter((entry) => !ownPrefixes.some((prefix) => entry.path.startsWith(prefix)))
+        .filter((entry) => entry.status !== '??' || !exact.has(entry.path))
+        .map((entry) => entry.path);
     const ok = dirtyFiles.length === 0;
     checks.push(makeCheck('clean', ok, ok ? `no changes outside ${named}` : `${dirtyFiles.length} path(s) changed outside ${named}`));
     return { checks, fatal: null, dirtyFiles };
 }
 /**
- * Paths out of `git status --porcelain` v1. For a rename the target path is the
+ * The entries of `git status --porcelain` v1, status and path. For a rename the target path is the
  * one that matters here; `core.quotepath=false` (forced by gitx) keeps non-ASCII
  * paths unquoted, so only genuinely exotic names arrive quoted.
  */
 function parsePorcelain(stdout) {
-    const paths = [];
+    const entries = [];
     for (const line of stdout.split('\n')) {
         if (line.length < 4) {
             continue;
         }
         const rest = line.slice(3);
         const arrow = rest.indexOf(' -> ');
-        paths.push(unquote(arrow === -1 ? rest : rest.slice(arrow + 4)));
+        entries.push({ status: line.slice(0, 2), path: unquote(arrow === -1 ? rest : rest.slice(arrow + 4)) });
     }
-    return paths;
+    return entries;
 }
 function unquote(path) {
     return path.length >= 2 && path.startsWith('"') && path.endsWith('"') ? path.slice(1, -1) : path;
