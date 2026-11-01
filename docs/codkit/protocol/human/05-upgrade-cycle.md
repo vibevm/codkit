@@ -188,7 +188,8 @@ patch set и его upstream runner; установка Codkit не объявл
    Смысловую/криптографическую валидность receipt уже доказал шаг 2; оператор файл не меняет.
 5. `git show HEAD:cycle/log/<tag>.jsonl` и `git show HEAD:cycle/log/<tag>.md` → exit `0`; все non-clean outcomes имеют latest green record.
 6. `tail -n 1 <patchesDir>/docs/codkit/metrics/inventory-history.csv` → target SHA/tag, duration, counts, journal и inventory; exit `0`.
-7. `codkit ci --profile build --pin-guard-base <main-ref>` → exit `0`.
+7. `codkit ci --profile build --pin-guard-base <main-ref>` → exit `0`. На ветке цикла pin guard отвечает `ok`
+   по terminal receipt: «pin advanced by cycle <tag>: <source> -> <target>»; это не отказ `rebase-onto-pin`.
 8. Открой PR по [шаблону](templates/pr-checklist.md); merge commit/no-ff, **squash запрещён**.
 9. После merge `codkit cycle status` всё ещё валидирует terminal receipt как ancestor; затем следующий start безопасно очищает старый receipt.
 

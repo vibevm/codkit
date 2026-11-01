@@ -8546,7 +8546,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:8bc32460ea82f2404f67d2d0e952d28a60312c9130029fb4b263f66ceea3a88a",
+      "content_hash": "sha256:be729e07fe89fa592b71b02f3f6374b3f63e181e95bf9234ffe9de2b06c31998",
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "codkit PROP-011: CI and the air-gapped circuit",
@@ -8636,7 +8636,7 @@
     },
     {
       "anchor": "profiles",
-      "content_hash": "sha256:abf821a4f49bf0dfe31fec012c2f89c738f4250a59f7eb5cac1b858cfbc65d76",
+      "content_hash": "sha256:d47641c0d6c133ababa11a7fcee9efd52ed92484ca21f7bd686e6a2b00a94dc1",
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
       "heading": "3. Profiles",
@@ -8663,10 +8663,10 @@
     },
     {
       "anchor": "CI-PIN-GUARD-BASE-FLAG",
-      "content_hash": "sha256:985aac9a849f751f4ac24580072756419bf173acddd683dc74391bc9710fbc71",
+      "content_hash": "sha256:585cc308f4a653198cb5fb91251c3798de834c432a44fe53c0bfe4e37cf06f95",
       "doc_path": "modules/codkit/PROP-011",
       "file": "vibevm/vibespecs/modules/codkit/PROP-011-ci-and-airgap.xml",
-      "heading": "The CI itself names the base for the pin guard: the flag `--pin-guard-base <ref>` (a ref in the patch-set repository; the `codkit.json` of the patch-set work tree and the one at the ref are compared). Without the flag the step is skipped with an info line - the run does not pretend that the guard passed. On a mismatch the hint points at the implemented `rebase-onto-pin` command. @status:impl/done",
+      "heading": "The CI itself names the base for the pin guard: the flag `--pin-guard-base <ref>` (a ref in the patch-set repository; the `codkit.json` of the patch-set work tree and the one at the ref are compared). Without the flag the step is skipped with an info line - the run does not pretend that the guard passed. On a mismatch the hint points at the implemented `rebase-onto-pin` command. The one pin change the guard accepts is a completed upgrade cycle's (PROP-009): when the patch set carries a committed terminal receipt whose source pin is the base's and whose target pin is the branch's, and whose finalizing commit is an ancestor of HEAD, the step answers ok with `pin advanced by cycle <tag>: <source> -> <target>`, so the final `ci --profile build --pin-guard-base <main-ref>` of the cycle protocol runs on the cycle branch before the merge. The race the guard exists for - a base that moved on to another pin - still refuses, since the receipt's source pin is then not the base's; a receipt that does not read grants nothing. @status:impl/done",
       "line": 22,
       "uri": "spec://codkit/modules/codkit/PROP-011#CI-PIN-GUARD-BASE-FLAG"
     },

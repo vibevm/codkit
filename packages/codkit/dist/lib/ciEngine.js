@@ -36,6 +36,7 @@ import { readContainedFile, writeContainedFileAtomic } from './containedFile.js'
 import { driftDirty } from './driftGuard.js';
 import { treeId } from './fingerprint.js';
 import { runGit, useGitConfigGlobal } from './gitx.js';
+import { readCycleTerminalRecord } from './cycleEngineTerminal.js';
 import { buildInventory, checkoutPatchSetRef, diffInventories, renderInventoryDiffMarkdown } from './inventory.js';
 import { isCkError } from './messages.js';
 import { processInvocation } from './processInvocation.js';
@@ -491,6 +492,21 @@ function pinGuard(patchesDir, config, base) {
             exitCode: EXIT_OK
         };
     }
+    // The one pin change the guard accepts: a completed upgrade cycle, whose
+    // committed terminal receipt documents exactly this advance - from the pin
+    // the base carries to the pin this branch carries - and whose finalizing
+    // commit is in this history (PROP-011 ##CI-PIN-GUARD-BASE-FLAG). The race the
+    // guard exists for, a base that moved on to another pin, still refuses:
+    // the receipt's source pin is then not the base's.
+    const advance = cycleAdvance(patchesDir, basePin.sha, config.pin.sha);
+    if (advance !== null) {
+        return {
+            state: 'ok',
+            detail: `pin advanced by cycle ${advance.tag}: ${basePin.tag}@${basePin.sha.slice(0, 8)} -> ${pinKey(config.pin)}@${config.pin.sha.slice(0, 8)} (terminal receipt ${advance.commit.slice(0, 8)})`,
+            error: null,
+            exitCode: EXIT_OK
+        };
+    }
     return {
         state: 'failed',
         detail: `pin ${pinKey(config.pin)}@${config.pin.sha.slice(0, 8)} against ${basePin.tag}@${basePin.sha.slice(0, 8)} at ${base}`,
@@ -504,6 +520,31 @@ function pinGuard(patchesDir, config, base) {
         },
         exitCode: EXIT_CHECK_FAILED
     };
+}
+/**
+ * The completed upgrade cycle that advanced the pin from `from` to `to`, read
+ * from the committed terminal receipt of the patch set: its tag and its
+ * finalizing commit, which must be an ancestor of HEAD. Null when there is no
+ * such receipt, when it documents another transition, when its commit is not
+ * in this history, or when it does not read - a receipt that cannot be trusted
+ * grants nothing.
+ */
+function cycleAdvance(patchesDir, from, to) {
+    let receipt;
+    try {
+        receipt = readCycleTerminalRecord(patchesDir);
+    }
+    catch {
+        return null;
+    }
+    if (receipt === null || receipt.checkpoint !== 'committed' || receipt.commitSha === null)
+        return null;
+    if (receipt.state.sourcePin.sha !== from || receipt.state.targetPin.sha !== to)
+        return null;
+    const ancestor = runGit({ args: ['merge-base', '--is-ancestor', receipt.commitSha, 'HEAD'], cwd: patchesDir });
+    if (ancestor.status !== 0)
+        return null;
+    return { tag: pinKey(receipt.state.targetPin), commit: receipt.commitSha };
 }
 /** pinKey(pin) and pin.sha out of a codkit.json text, or null when it has none. */
 function pinOfConfigText(text) {

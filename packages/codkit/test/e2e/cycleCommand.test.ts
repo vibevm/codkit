@@ -1,7 +1,7 @@
 // e2e: the four `codkit cycle` subcommands through the real launcher.
 // Contract: PROP-007 sec. 14; resumable phase engine: PROP-009 sec. 4.
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
@@ -149,7 +149,22 @@ describe('codkit cycle continue', () => {
 		expect(resumed.envelope.data['status']).toBe('completed');
 		expect(resumed.envelope.data['phase']).toBe('done');
 		expect(resumed.envelope.data['red']).toEqual([]);
-	}, 120_000);
+
+		// The final check of the protocol runs on the cycle branch before the
+		// merge: the pin guard reads the advance from the terminal receipt
+		// (PROP-011 ##CI-PIN-GUARD-BASE-FLAG) instead of refusing the new pin.
+		const guarded = fixture.json(['ci', '--profile', 'verify', '--pin-guard-base', 'main']);
+		expect(guarded.run.status, guarded.run.stderr).toBe(0);
+		const steps = guarded.envelope.data['steps'] as { name: string; state: string; detail: string }[];
+		const pinGuard = steps.find((step) => step.name === 'pin guard');
+		expect(pinGuard?.state).toBe('ok');
+		expect(pinGuard?.detail).toContain(`pin advanced by cycle ${fixture.upstream.t2.tag}:`);
+		// Without the receipt the advance is nobody's word, and the guard refuses as before.
+		rmSync(fixture.patchesPath('.codkit/cycle-terminal.json'));
+		const unreceipted = fixture.json(['ci', '--profile', 'verify', '--pin-guard-base', 'main']);
+		expect(unreceipted.run.status).toBe(1);
+		expect(unreceipted.envelope.errors[0]?.message).toContain('branch pin');
+	}, 180_000);
 
 	it('uses the persisted R<100 preview as the second unchanged continue acknowledgement', () => {
 		const fixture = makeCliFixture('cycle-rename-review');
