@@ -198,6 +198,11 @@ export function patchsetMovedError(input) {
         const more = input.moved.length > MOVED_LIST_LIMIT ? ` +${input.moved.length - MOVED_LIST_LIMIT} more` : '';
         lines.push(`${input.moved.length} patch artifact(s) differ from the state the tree was loaded from (${loadedPhrase(input.loaded)}): ${listed}${more}`);
     }
+    if (input.cyclePhase !== undefined && input.cyclePhase !== null) {
+        lines.push(`an upgrade cycle is in its ${input.cyclePhase} phase and moved the delta itself`);
+        return ckError('PATCHSET-MOVED', lines.join('; '), 'save by hand is not a step of an upgrade cycle: leave the work in the fork tree and run codkit cycle continue ' +
+            "(in the resolve phase after the journal record under cycle/log), which extracts it with the cycle's own headers");
+    }
     return ckError('PATCHSET-MOVED', lines.join('; '), recipeHint(input.loaded));
 }
 /** How a message names the loaded state: the sha when there is one. */

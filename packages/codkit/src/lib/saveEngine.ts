@@ -65,6 +65,7 @@ import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './re
 import { ArtifactStore, planStates, replayCommitMessage, writeStates } from './saveReplay.ts';
 import type { PlannedCommitState, ReplayWrites } from './saveReplay.ts';
 import { checkLineage, classifyTargets, loadedFrom, movedArtifactsOf, patchsetMovedError } from './syncMerge.ts';
+import { readCycleState } from './cycleState.ts';
 import {
 	PATCHES_DIR,
 	bothSidesError,
@@ -284,7 +285,9 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		if (loaded.kind === 'sha') {
 			const lineage = checkLineage(patchesDir, loaded.sha);
 			if (!lineage.ok) {
-				out.addError(patchsetMovedError({ loaded, lineageHead: lineage.head, moved: [] }).toPayload());
+				out.addError(
+					patchsetMovedError({ loaded, lineageHead: lineage.head, moved: [], cyclePhase: activeCyclePhase(patchesDir) }).toPayload()
+				);
 				return result('blocked', 1, { branch });
 			}
 		} else if (loaded.kind === 'dirty' || loaded.kind === 'none') {
@@ -322,7 +325,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 		} else {
 			const moved = movedArtifactsOf(classes);
 			if (moved.length > 0) {
-				out.addError(patchsetMovedError({ loaded, lineageHead: null, moved }).toPayload());
+				out.addError(patchsetMovedError({ loaded, lineageHead: null, moved, cyclePhase: activeCyclePhase(patchesDir) }).toPayload());
 				return result('blocked', 1, { branch });
 			}
 		}
@@ -1495,4 +1498,19 @@ function result(status: SaveStatus, exitCode: number, parts: ResultParts): SaveR
 		commit: parts.commit ?? null,
 		consumedRef: parts.consumedRef ?? null
 	};
+}
+
+/**
+ * The phase of an upgrade cycle in flight in the patch set, for the refusal
+ * that names it (##PATCHSET-MOVED-RULE: the cycle's phases move the delta
+ * themselves, and a save by hand is not one of them); null without a cycle, a
+ * finished one or a state that does not read - the refusal stands either way.
+ */
+function activeCyclePhase(patchesDir: string): string | null {
+	try {
+		const state = readCycleState(patchesDir);
+		return state === null || state.phase === 'done' ? null : state.phase;
+	} catch {
+		return null;
+	}
 }

@@ -45,6 +45,7 @@ import { sha256 } from './renameFileState.js';
 import { advanceCompletedRebaseMove, assertRebasePendingMoveBinding } from './rebaseOntoPinMove.js';
 import { ArtifactStore, planStates, replayCommitMessage, writeStates } from './saveReplay.js';
 import { checkLineage, classifyTargets, loadedFrom, movedArtifactsOf, patchsetMovedError } from './syncMerge.js';
+import { readCycleState } from './cycleState.js';
 import { PATCHES_DIR, bothSidesError, overlayMaterializationClassifier, overlayVarContext, patchSetCommitId, pinCommitDate, runSync, toPosix } from './syncEngine.js';
 import { refuseOverLiveSyncTransaction, SYNC_TRANSACTION_TRAILER } from './syncTransaction.js';
 import { readTreeMark } from './treeCache.js';
@@ -134,7 +135,7 @@ export function runSave(options) {
         if (loaded.kind === 'sha') {
             const lineage = checkLineage(patchesDir, loaded.sha);
             if (!lineage.ok) {
-                out.addError(patchsetMovedError({ loaded, lineageHead: lineage.head, moved: [] }).toPayload());
+                out.addError(patchsetMovedError({ loaded, lineageHead: lineage.head, moved: [], cyclePhase: activeCyclePhase(patchesDir) }).toPayload());
                 return result('blocked', 1, { branch });
             }
         }
@@ -170,7 +171,7 @@ export function runSave(options) {
         else {
             const moved = movedArtifactsOf(classes);
             if (moved.length > 0) {
-                out.addError(patchsetMovedError({ loaded, lineageHead: null, moved }).toPayload());
+                out.addError(patchsetMovedError({ loaded, lineageHead: null, moved, cyclePhase: activeCyclePhase(patchesDir) }).toPayload());
                 return result('blocked', 1, { branch });
             }
         }
@@ -1107,4 +1108,19 @@ function result(status, exitCode, parts) {
         commit: parts.commit ?? null,
         consumedRef: parts.consumedRef ?? null
     };
+}
+/**
+ * The phase of an upgrade cycle in flight in the patch set, for the refusal
+ * that names it (##PATCHSET-MOVED-RULE: the cycle's phases move the delta
+ * themselves, and a save by hand is not one of them); null without a cycle, a
+ * finished one or a state that does not read - the refusal stands either way.
+ */
+function activeCyclePhase(patchesDir) {
+    try {
+        const state = readCycleState(patchesDir);
+        return state === null || state.phase === 'done' ? null : state.phase;
+    }
+    catch {
+        return null;
+    }
 }

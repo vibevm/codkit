@@ -275,6 +275,13 @@ export type PatchsetMovedInput = {
 	readonly lineageHead: string | null;
 	/** The moved artifacts (D16); may be empty when only the lineage broke. */
 	readonly moved: readonly string[];
+	/**
+	 * The phase of an upgrade cycle in flight in the patch set, whose phases
+	 * moved the delta themselves (PROP-009); null or absent outside a cycle.
+	 * The refusal then names the cycle instead of the manual recipe, which is
+	 * written for a tree outside one.
+	 */
+	readonly cyclePhase?: string | null;
 };
 
 /** The CK-E-PATCHSET-MOVED refusal: sha of the load, moved artifacts, recipe (D18). */
@@ -292,6 +299,15 @@ export function patchsetMovedError(input: PatchsetMovedInput): CkError {
 		const more = input.moved.length > MOVED_LIST_LIMIT ? ` +${input.moved.length - MOVED_LIST_LIMIT} more` : '';
 		lines.push(
 			`${input.moved.length} patch artifact(s) differ from the state the tree was loaded from (${loadedPhrase(input.loaded)}): ${listed}${more}`
+		);
+	}
+	if (input.cyclePhase !== undefined && input.cyclePhase !== null) {
+		lines.push(`an upgrade cycle is in its ${input.cyclePhase} phase and moved the delta itself`);
+		return ckError(
+			'PATCHSET-MOVED',
+			lines.join('; '),
+			'save by hand is not a step of an upgrade cycle: leave the work in the fork tree and run codkit cycle continue ' +
+				"(in the resolve phase after the journal record under cycle/log), which extracts it with the cycle's own headers"
 		);
 	}
 	return ckError('PATCHSET-MOVED', lines.join('; '), recipeHint(input.loaded));

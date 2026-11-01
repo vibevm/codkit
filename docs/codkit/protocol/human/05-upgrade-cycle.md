@@ -98,6 +98,8 @@ forward ancestry; переход на предка исходного пина �
 
 5. `codkit cycle continue` → exit `0` и commit `fix(cycle): resolve <id>` с точными `Cause` и `Codkit-Cycle`.
    `CK-E-LOG-INCOMPLETE`/journal status → исправь последнюю запись; markers/tree-change-missing → шаги 1–4.
+   Ручной `codkit save` в фазе resolve не нужен и отказывает `CK-E-PATCHSET-MOVED` (цикл сам сдвинул delta;
+   отказ называет фазу): экстракцию делает `cycle continue` с заголовками цикла.
 
 Запись считается завершённой только если она называет сохранённое upstream
 поведение, положение intervention, exact/approx cause и все green verification

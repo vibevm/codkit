@@ -732,7 +732,7 @@ const faqEntries = {
 	],
 	'PATCHSET-MOVED': [
 		'The patch set moved under a fork tree loaded from an older state: an artifact was edited or the patchset branch was switched between the load and the save.',
-		'Follow the printed manual merge recipe: return the delta to the loaded state (`git stash`, `git switch <branch>`, or `git checkout <sha> -- delta/`), run `codkit save`, bring the shift back (`git stash pop`, `git merge`, or `git rebase`), then `codkit load` - or let `codkit sync` perform all four in one command. Switching branches deliberately starts with a full `codkit save`, not a switch.'
+		'Follow the printed manual merge recipe: return the delta to the loaded state (`git stash`, `git switch <branch>`, or `git checkout <sha> -- delta/`), run `codkit save`, bring the shift back (`git stash pop`, `git merge`, or `git rebase`), then `codkit load` - or let `codkit sync` perform all four in one command. Switching branches deliberately starts with a full `codkit save`, not a switch. While an upgrade cycle is in flight the refusal names its phase instead: the cycle moved the delta itself, and `codkit cycle continue` - not a `save` by hand - extracts the resolution left in the fork tree.'
 	],
 	'SYNC-IN-PROGRESS': [
 		'A two-way `codkit sync` left its transaction record behind without finishing, so the fork tree and the patch set are half one state and half another - or the abort found commits above the record that were not made by that run.',
