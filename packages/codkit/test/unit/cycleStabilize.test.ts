@@ -94,6 +94,29 @@ describe('cycle dependency advisory and stabilization adapter', () => {
 		});
 	});
 
+	it('marks a failed contract of an artifact the classification never saw, the own manifest, instead of refusing', async () => {
+		const current = fixture(false, 'stabilize');
+		const own = { ...entry('guard.own', 'delta/own/patchset.delta.json'), id: 'CK-own-001', layer: 'own' as const };
+		const run = execution({
+			entries: [own, entry('guard.alpha', 'delta/a.json')],
+			steps: [{ name: 'product tests', state: 'failed', detail: 'own unit tests red' }],
+			log: ['FAIL guard.own: own unit regressed'],
+			exitCode: 1
+		});
+		await locked(current, async (locks) => {
+			const result = await continueCycleStabilization(options(current, locks, { runner: async () => run }));
+			expect(result.exitCode).toBe(3);
+			expect(result.nextState.phase).toBe('resolve');
+			expect(result.contractFailures).toEqual([{ test: 'guard.own', artifacts: ['delta/own/patchset.delta.json'] }]);
+			expect(result.nextState.artifacts['contract-failed']).toEqual(['delta/own/patchset.delta.json']);
+			expect(result.nextState.artifacts.clean).toEqual(['delta/a.json']);
+			expect(result.red.filter((item) => item.kind === 'contract')).toEqual([
+				{ kind: 'contract', id: 'guard.own', detail: 'contract test guard.own failed', artifact: 'delta/own/patchset.delta.json' }
+			]);
+			expect(result.writes[0]?.path).toBe(STABILIZE_REPORT_PATH);
+		});
+	});
+
 	it('captures all red gates, attributes multiple failed contract ids, and moves their artifacts to contract-failed', async () => {
 		const current = fixture(false, 'stabilize');
 		const entries = [entry('guard.alpha', 'delta/a.json'), entry('guard.beta', 'delta/b.json')];

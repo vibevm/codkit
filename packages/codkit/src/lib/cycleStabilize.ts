@@ -389,9 +389,12 @@ function stabilizationState(
 	red: readonly StabilizeRedItem[],
 	updatedAt: string
 ): CycleState {
+	// Every artifact of the inventory whose contract failed is marked, the
+	// records the classification never saw included - the own manifest, a
+	// service-override, a removed record (PROP-009 ##PHASE-STABILIZE): resolve
+	// describes a contract-failed artifact from the inventory, not from the
+	// classification, so a failed own unit is a blocker like any other.
 	const failed = new Set(contracts.flatMap((contract) => contract.artifacts));
-	const classified = new Set(Object.values(state.artifacts).flat());
-	for (const artifact of failed) if (!classified.has(artifact)) throw broken(`contract test names unclassified artifact ${artifact}`);
 	const artifacts = {} as Record<CycleArtifactOutcome, string[]>;
 	for (const [outcome, paths] of Object.entries(state.artifacts) as [CycleArtifactOutcome, string[]][]) {
 		artifacts[outcome] = outcome === 'contract-failed' ? [...paths] : paths.filter((path) => !failed.has(path));
