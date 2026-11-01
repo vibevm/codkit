@@ -462,7 +462,7 @@
       "package": "@codkit/type-vscode-extension",
       "version": "1.0.0",
       "contractVersion": 1,
-      "manifestSha256": "8ca1fa0f68d54a0fdbb1c942d8f678c4aa54d893352d8be3ee659b01859d98ac",
+      "manifestSha256": "f119ddcb4b7cdb9e8c79354533f5000a0b992592250580d5efa5ee269838d4b6",
       "integrityRoots": [
         "LICENSE.md",
         "README.md",
@@ -495,7 +495,7 @@
         },
         {
           "path": "dist/configSchema.js",
-          "sha256": "68dc3cd7bab32b3574edfa077f296eee4ac0d9fa28411073673ccd2223779bff"
+          "sha256": "f39c471f43fdbf912328fd3f5a1ccc35a1acfa42212e0112177f4bd3e6b0f2e9"
         },
         {
           "path": "dist/conventions.js",
@@ -511,7 +511,7 @@
         },
         {
           "path": "dist/index.js",
-          "sha256": "8b7063f55a242e7a5c6dc211121d48461a0043f42314e790eb97041c6db2194c"
+          "sha256": "6b671dbf9241158d00c47ac4850fe9afc2d035e8f4570e436d1f98a77ccdfe35"
         },
         {
           "path": "dist/layers.js",
@@ -520,6 +520,10 @@
         {
           "path": "dist/layout.js",
           "sha256": "1c56b3229512f5f62b7f81d257a799d2ec2b1987062b1fda15136840a0ecf6a2"
+        },
+        {
+          "path": "dist/licensing.js",
+          "sha256": "15366cd4ba855c0049256d96080ec90db9a3bb075c3ec3b0c35afb961a64909d"
         },
         {
           "path": "dist/manifest.js",
@@ -555,7 +559,7 @@
         },
         {
           "path": "src/configSchema.ts",
-          "sha256": "b8fe3218772c8eef920d388458afde7fa5294de21c27da5b4221fadd19b20c9d"
+          "sha256": "77420f20a1efda975b68b7deeb88c1615c4c60814e081ec31c16cd8b5c881c5f"
         },
         {
           "path": "src/conventions.ts",
@@ -571,7 +575,7 @@
         },
         {
           "path": "src/index.ts",
-          "sha256": "42c39a56560e0c67413a9df8d52e0a58b9a8c8cac56e9b5d366038810aba1cb3"
+          "sha256": "706d4cdfef848aa7772d33b796c54b330ba87cbcdc5501014cf340994361c32c"
         },
         {
           "path": "src/layers.ts",
@@ -580,6 +584,10 @@
         {
           "path": "src/layout.ts",
           "sha256": "2afb9f5878a3b1916343a37c667b610ba6be49d527769af19c6022a5cb9dd2a9"
+        },
+        {
+          "path": "src/licensing.ts",
+          "sha256": "5667fb5cec978b872a661c8c7c941404b1da3d9e2d2f81d342c9028956e99c95"
         },
         {
           "path": "src/manifest.ts",
@@ -595,7 +603,7 @@
         },
         {
           "path": "type-manifest.json",
-          "sha256": "8ca1fa0f68d54a0fdbb1c942d8f678c4aa54d893352d8be3ee659b01859d98ac"
+          "sha256": "f119ddcb4b7cdb9e8c79354533f5000a0b992592250580d5efa5ee269838d4b6"
         }
       ]
     }

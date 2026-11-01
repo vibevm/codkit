@@ -13,6 +13,7 @@
     "config-overlay",
     "entry-module",
     "gen-brand",
+    "licensing",
     "preview",
     "upgrade-advisory"
   ],

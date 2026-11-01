@@ -18,13 +18,14 @@ describe('the shape of the type', () => {
 		expect(TYPE_ID).toBe('vscode-extension');
 	});
 
-	it('declares the six capabilities every patch set of this family has, and the absences are answers too', () => {
+	it('declares the seven capabilities every patch set of this family has, and the absences are answers too', () => {
 		// ##VSX-CAPABILITIES, ##VSX-ABSENCES
 		expect([...projectType.capabilities].sort()).toEqual([
 			'build-channels',
 			'config-overlay',
 			'entry-module',
 			'gen-brand',
+			'licensing',
 			'preview',
 			'upgrade-advisory'
 		]);

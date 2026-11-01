@@ -61,7 +61,15 @@ describe('codkit types', () => {
 		// first `preview` among them, and five absences that are answers of their own.
 		expect(rows[3]?.package).toBe('@codkit/type-vscode-extension');
 		expect(rows[3]?.installed).toBe(true);
-		expect(rows[3]?.capabilities).toEqual(['build-channels', 'config-overlay', 'entry-module', 'gen-brand', 'preview', 'upgrade-advisory']);
+		expect(rows[3]?.capabilities).toEqual([
+			'build-channels',
+			'config-overlay',
+			'entry-module',
+			'gen-brand',
+			'licensing',
+			'preview',
+			'upgrade-advisory'
+		]);
 		expect(rows[3]?.configurableCapabilities).toEqual([]);
 	});
 });

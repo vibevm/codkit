@@ -30,6 +30,7 @@ import { makeGenerators } from './generators.ts';
 import { makeIdentity } from './identity.ts';
 import { makeLayers } from './layers.ts';
 import { makeLayout } from './layout.ts';
+import { makeLicensing } from './licensing.ts';
 import { makePreview } from './preview.ts';
 import { standards } from './standards.ts';
 
@@ -37,11 +38,12 @@ import { standards } from './standards.ts';
 export const TYPE_ID = 'vscode-extension';
 
 /**
- * ##VSX-CAPABILITIES: six of the eleven, for every patch set of the family, and
- * the five absences are answers too (##VSX-ABSENCES): no `own-extensions` and
- * no `service-override` (PROP-003), no `dev-channel` (the host reads the
+ * ##VSX-CAPABILITIES: seven of the twelve, for every patch set of the family,
+ * and the five absences are answers too (##VSX-ABSENCES): no `own-extensions`
+ * and no `service-override` (PROP-003), no `dev-channel` (the host reads the
  * manifest from the extension root), no `brand-images` in the first version,
  * and no `runtime-library` - the brand transform is generated self-contained.
+ * `licensing` joined on 2026-11-01 (PROP-006).
  */
 export const CAPABILITIES: readonly Capability[] = [
 	'config-overlay',
@@ -49,7 +51,8 @@ export const CAPABILITIES: readonly Capability[] = [
 	'build-channels',
 	'upgrade-advisory',
 	'gen-brand',
-	'preview'
+	'preview',
+	'licensing'
 ];
 
 /** The type as one patch set's `typeConfig` makes it. */
@@ -64,6 +67,7 @@ export function projectTypeFor(config: VsxTypeConfig): ProjectType {
 		build: makeBuild(config),
 		advisory: makeAdvisory(config),
 		preview: makePreview(config),
+		licensing: makeLicensing(config),
 		standards,
 		conventions,
 		generators: makeGenerators(config),
@@ -174,6 +178,21 @@ export {
 	sourceRootOf,
 	treePath
 } from './layout.ts';
+export {
+	COMPONENT_LICENCE_DIRECTORY,
+	DEFAULT_UPSTREAM_COMPONENT,
+	DEFAULT_UPSTREAM_LICENCE_FILE,
+	distributableExclusionsOf,
+	IGNORE_FILE,
+	LICENCE_GUARD_PATH,
+	licenceFieldsOf,
+	licenceGuardOf,
+	LICENSING_SUBSYSTEM,
+	makeLicensing,
+	upstreamComponentOf,
+	upstreamLicenceFileOf,
+	upstreamLicenceFilesOf
+} from './licensing.ts';
 export { isJsonObject, nonEmptyString, objectField, readJsonObject } from './manifest.ts';
 export type { JsonObject, TextFiles } from './manifest.ts';
 export {

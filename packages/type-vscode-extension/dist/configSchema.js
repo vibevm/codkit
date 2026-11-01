@@ -57,6 +57,18 @@ const channelSchema = z
 });
 /** ##VSX-PIN-TAGS: a tag pattern is a regular-expression source the engine can compile. */
 const regExpSourceSchema = z.string().min(1).refine(compiles, { message: 'must be a regular expression source that compiles' });
+/** One file name inside the extension root: no separator, no dot segment. */
+const fileNameSchema = z
+    .string()
+    .min(1)
+    .refine((value) => !value.includes('/') && !value.includes('\\') && value !== '.' && value !== '..', {
+    message: 'must be one file name without a separator'
+});
+/** PROP-006 ##VSX-COMPONENT-LICENCES: a lower-case component name, and never the tool's own. */
+const componentNameSchema = z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]*$/u, { message: 'must be a lower-case name of letters, digits and dashes' })
+    .refine((value) => value !== 'codkit', { message: "is the tool's own component" });
 /** ##VSX-STAMPS (PROP-004): one literal stamp, `{name, value}`. */
 const stampSchema = z
     .object({
@@ -135,6 +147,18 @@ export const configSchema = z
         .object({
         host: z.string().min(1).nullable().optional(),
         workspace: z.string().min(1).nullable().optional()
+    })
+        .strict()
+        .optional(),
+    /**
+     * PROP-006 ##VSX-COMPONENT-LICENCES: the upstream's licence file in the
+     * extension root (`LICENSE` by default) and the component its text ships
+     * under (`upstream` by default) - the family cannot know the upstream's name.
+     */
+    licensing: z
+        .object({
+        upstreamLicenceFile: fileNameSchema.optional(),
+        upstreamComponent: componentNameSchema.optional()
     })
         .strict()
         .optional()

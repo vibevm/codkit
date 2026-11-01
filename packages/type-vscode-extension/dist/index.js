@@ -27,16 +27,18 @@ import { makeGenerators } from './generators.js';
 import { makeIdentity } from './identity.js';
 import { makeLayers } from './layers.js';
 import { makeLayout } from './layout.js';
+import { makeLicensing } from './licensing.js';
 import { makePreview } from './preview.js';
 import { standards } from './standards.js';
 /** The identifier a patch set declares in `codkit.json`. */
 export const TYPE_ID = 'vscode-extension';
 /**
- * ##VSX-CAPABILITIES: six of the eleven, for every patch set of the family, and
- * the five absences are answers too (##VSX-ABSENCES): no `own-extensions` and
- * no `service-override` (PROP-003), no `dev-channel` (the host reads the
+ * ##VSX-CAPABILITIES: seven of the twelve, for every patch set of the family,
+ * and the five absences are answers too (##VSX-ABSENCES): no `own-extensions`
+ * and no `service-override` (PROP-003), no `dev-channel` (the host reads the
  * manifest from the extension root), no `brand-images` in the first version,
  * and no `runtime-library` - the brand transform is generated self-contained.
+ * `licensing` joined on 2026-11-01 (PROP-006).
  */
 export const CAPABILITIES = [
     'config-overlay',
@@ -44,7 +46,8 @@ export const CAPABILITIES = [
     'build-channels',
     'upgrade-advisory',
     'gen-brand',
-    'preview'
+    'preview',
+    'licensing'
 ];
 /** The type as one patch set's `typeConfig` makes it. */
 export function projectTypeFor(config) {
@@ -58,6 +61,7 @@ export function projectTypeFor(config) {
         build: makeBuild(config),
         advisory: makeAdvisory(config),
         preview: makePreview(config),
+        licensing: makeLicensing(config),
         standards,
         conventions,
         generators: makeGenerators(config),
@@ -92,6 +96,7 @@ export { brandGraftOf, featureConstant, featureFunctionName, featureSkeletonOf, 
 export { DEFAULT_TAG_PATTERN, EXTENSION_KEYS, extensionManifestProblem, fingerprintsOf, makeIdentity, manifestPathOf, packageManagerName, packageManagerOf, packageManagerProblem, ROOT_MANIFEST_PATH, rootManifestOf, rootManifestProblem, tagPatternOf, tagShapeOf } from './identity.js';
 export { DEFAULT_ENTRY_MODULE, entryModuleOf, entryModulesOf, makeLayers, overlayTargetsOf } from './layers.js';
 export { anchoredPattern, cleanupWhitelistOf, FORBIDDEN_PATCH_TARGETS, isTreePath, LOCKFILES, makeLayout, ownRootProblem, SOURCE_DIR, sourceRootOf, treePath } from './layout.js';
+export { COMPONENT_LICENCE_DIRECTORY, DEFAULT_UPSTREAM_COMPONENT, DEFAULT_UPSTREAM_LICENCE_FILE, distributableExclusionsOf, IGNORE_FILE, LICENCE_GUARD_PATH, licenceFieldsOf, licenceGuardOf, LICENSING_SUBSYSTEM, makeLicensing, upstreamComponentOf, upstreamLicenceFileOf, upstreamLicenceFilesOf } from './licensing.js';
 export { isJsonObject, nonEmptyString, objectField, readJsonObject } from './manifest.js';
 export { artifactRecipe, DEFAULT_PREVIEW_HOST, DEFAULT_PREVIEW_MODE, developmentRecipe, EXTENSIONS_DIR, isolationOf, makePreview, PREVIEW_MODES, USER_DATA_DIR, workspaceOf } from './preview.js';
 export { standards, STANDARDS_PACKAGES } from './standards.js';
