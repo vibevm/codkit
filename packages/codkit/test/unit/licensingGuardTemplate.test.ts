@@ -9,6 +9,7 @@
 import { commentStyleNames } from '../../src/lib/licenseAnnotate.ts';
 import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -263,6 +264,56 @@ describe('licenceGuardText', () => {
 	it('is deterministic', () => {
 		expect(licenceGuardText(input())).toBe(licenceGuardText(input()));
 	});
+
+	it('typechecks under strict settings, with and without a runner directory', () => {
+		// A product's typecheck reads the rendering with its literal types: a
+		// constant of type '' compared with '' narrows to never below, and a
+		// constant of another literal type makes the comparison itself an error.
+		// The compiler as a product runs it: the tsc of the installed TypeScript
+		// over a tsconfig, so the rendering meets the same checker a family's
+		// build does, whatever API the package of that version exposes.
+		const load = createRequire(import.meta.url);
+		const tsc = join(dirname(load.resolve('typescript/package.json')), 'bin', 'tsc');
+		const typesRoot = dirname(dirname(load.resolve('@types/node/package.json')));
+		for (const [label, runnerDirectory] of [
+			['root', ''],
+			['nested', EXTENSION_ROOT]
+		] as const) {
+			const dir = makeTempRoot(`guard-typecheck-${label}`);
+			const file = join(dir, 'licence.leftovers.test.ts');
+			const rendered = input({ runnerDirectory });
+			// The runner's two words are globals of the product's test run.
+			const globals = [rendered.words.suite, rendered.words.test].map(
+				(word) => `declare function ${word}(name: string, body: () => void): void;`
+			);
+			writeFileSync(file, `${globals.join('\n')}\n${licenceGuardText(rendered)}`, 'utf8');
+			writeFileSync(
+				join(dir, 'tsconfig.json'),
+				JSON.stringify({
+					compilerOptions: {
+						strict: true,
+						noEmit: true,
+						target: 'es2022',
+						module: 'esnext',
+						moduleResolution: 'bundler',
+						esModuleInterop: true,
+						types: ['node'],
+						typeRoots: [typesRoot],
+						skipLibCheck: true
+					},
+					files: ['licence.leftovers.test.ts']
+				}),
+				'utf8'
+			);
+			const checked = spawnSync(process.execPath, [tsc, '-p', dir, '--pretty', 'false'], { encoding: 'utf8' });
+			const diagnostics = `${checked.stdout}${checked.stderr}`
+				.split('\n')
+				.filter((line) => line.includes('error TS'))
+				.map((line) => `${label}: ${line.trim()}`);
+			expect(diagnostics).toEqual([]);
+			expect(checked.status).toBe(0);
+		}
+	}, 60_000);
 
 	it('bakes the directory the runner starts in and what the distributable leaves out', () => {
 		const text = licenceGuardText(

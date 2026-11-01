@@ -147,10 +147,12 @@ const ROOT = rootOf();
 /** The tree root: the working directory, or its ancestor when the runner starts in the directory the type names. */
 function rootOf(): string {
 	const cwd = process.cwd();
-	if (RUNNER_DIRECTORY === '') {
+	// Read through split, not compared with '': the constant has a literal
+	// type, and a comparison would narrow it to never in the lines below.
+	const suffix = RUNNER_DIRECTORY.split('/').filter((part) => part !== '');
+	if (suffix.length === 0) {
 		return cwd;
 	}
-	const suffix = RUNNER_DIRECTORY.split('/');
 	const parts = cwd.split(/[\\/]/u);
 	const tail = parts.slice(parts.length - suffix.length);
 	if (tail.length !== suffix.length || !tail.every((part, index) => part === suffix[index])) {
