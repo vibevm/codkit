@@ -23,6 +23,7 @@ import { writeExclude } from './syncEngine.js';
 import { checkTree } from './treeIdentity.js';
 import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource } from './cycleMaterializeMove.js';
 import { workspaceForkReceipt } from './workspaceReceipt.js';
+import { deliveredExtensionTargets } from './cycleOwnedDirt.js';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.js';
 /** Materialize the complete target-pin classification onto a private cycle ref. */
 export function materializeCycleApply(options) {
@@ -45,7 +46,14 @@ export function materializeCycleApply(options) {
             changedPaths: prospective.changedPaths,
             prospectiveGitDir: prospective.gitDir,
             conflicts: prepared.conflicts,
-            allowedOwnPaths: [...prepared.allowedOwnPaths, ...workspaceForkReceipt(tree, options.config.workspace?.record)],
+            // An exact delivery of a declared own extension is a runtime copy of the
+            // delta, not dirt of the tree (##OWN-EXTENSION-UNIT): resolve and stabilize
+            // already read it so, and the preflight of the move must agree with them.
+            allowedOwnPaths: [
+                ...prepared.allowedOwnPaths,
+                ...deliveredExtensionTargets(options.patchesDir, tree, options.type),
+                ...workspaceForkReceipt(tree, options.config.workspace?.record)
+            ],
             ...(options.checkpoint === undefined ? {} : { checkpoint: options.checkpoint })
         };
         const preflight = prepareProvisionalMove(moveOptions);

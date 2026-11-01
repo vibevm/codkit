@@ -43,6 +43,7 @@ import { checkTree } from './treeIdentity.ts';
 import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource } from './cycleMaterializeMove.ts';
 import type { ConflictWrite, CycleMaterializeMoveCheckpoint, ProvisionalMoveOptions } from './cycleMaterializeMove.ts';
 import { workspaceForkReceipt } from './workspaceReceipt.ts';
+import { deliveredExtensionTargets } from './cycleOwnedDirt.ts';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.ts';
 import type { CycleOwnRenameAuthority } from './cycleMaterializeOwn.ts';
 import type { ProjectType } from '@codkit/type-api';
@@ -127,7 +128,14 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 			changedPaths: prospective.changedPaths,
 			prospectiveGitDir: prospective.gitDir,
 			conflicts: prepared.conflicts,
-			allowedOwnPaths: [...prepared.allowedOwnPaths, ...workspaceForkReceipt(tree, options.config.workspace?.record)],
+			// An exact delivery of a declared own extension is a runtime copy of the
+			// delta, not dirt of the tree (##OWN-EXTENSION-UNIT): resolve and stabilize
+			// already read it so, and the preflight of the move must agree with them.
+			allowedOwnPaths: [
+				...prepared.allowedOwnPaths,
+				...deliveredExtensionTargets(options.patchesDir, tree, options.type),
+				...workspaceForkReceipt(tree, options.config.workspace?.record)
+			],
 			...(options.checkpoint === undefined ? {} : { checkpoint: options.checkpoint })
 		};
 		const preflight = prepareProvisionalMove(moveOptions);
