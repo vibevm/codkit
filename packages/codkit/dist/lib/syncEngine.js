@@ -381,6 +381,19 @@ export function runSync(options) {
                     if (worktreePlan.markerCarrying.length > 0) {
                         return refuseDrift(markerBlockDirtMessage(worktreePlan.markerCarrying), MARKER_BLOCK_DISCARD_HINT);
                     }
+                    // A plain load makes no exemption for a materialized overlay
+                    // target (##OVERLAY-KNOWN-MATERIALIZATION), but it names the ones
+                    // it sees and the recipe, which is codkit's own and not git's.
+                    const materializedTargets = options.fresh || drift.commits.length > 0
+                        ? []
+                        : drift.upstream.filter(overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, []));
+                    if (materializedTargets.length > 0) {
+                        const only = materializedTargets.length === drift.files.length;
+                        return refuseDrift(`${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet; ` +
+                            `${materializedTargets.length} of them hold the exact overlay materialization (${materializedTargets.join(', ')}), which only codkit load --fresh replaces`, only
+                            ? 'run codkit load --fresh: it returns the materialized overlay targets to the development channel (overlay apply and codkit package --keep-overlay leave that state behind)'
+                            : 'run codkit save for the other changes, or codkit status; codkit load --fresh then replaces the materialized overlay targets');
+                    }
                     return refuseDrift(drift.commits.length > 0
                         ? `${drift.commits.length} commit(s) in the fork tree since the last codkit apply are not in patchset yet`
                         : `${drift.files.length} path(s) in the fork tree carry changes that are not in patchset yet`);

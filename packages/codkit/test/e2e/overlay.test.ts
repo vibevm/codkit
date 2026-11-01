@@ -367,6 +367,10 @@ describe('codkit overlay apply', () => {
 		expect(envelope.errors.map((error) => error.code)).toEqual(['CK-E-DIRTY-TREE']);
 		expect(envelope.data['dirtyFiles']).toContain('manifest.json');
 		expect(readFileSync(fixture.treePath('manifest.json'), 'utf8')).toBe(before);
+		// ...and names what it saw, with codkit's own recipe instead of git's.
+		expect(envelope.errors[0]?.message).toContain('1 of them hold the exact overlay materialization (manifest.json)');
+		expect(envelope.errors[0]?.hint).toContain('run codkit load --fresh');
+		expect(envelope.errors[0]?.hint).not.toContain('codkit save');
 	});
 
 	it('is returned to dev mode by load --fresh, with no direct git restore', () => {
