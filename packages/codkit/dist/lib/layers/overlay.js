@@ -730,7 +730,14 @@ export function restrictedTargetViolations(type, overlay) {
                             (allowedKeys.includes(top) ||
                                 ((target?.allowedDependencyUpdates ?? []).includes(top) &&
                                     typeof operation.value === 'string' &&
-                                    typeof operation.expectUpstream === 'string')));
+                                    typeof operation.expectUpstream === 'string'))) ||
+                        // A guarded replacement of a top-level scalar the type names: the
+                        // licence identifier of a manifest (PROP-016 ##TYPE-AREA-LICENSING).
+                        (operation.op === 'set' &&
+                            operation.path.length === 1 &&
+                            (target?.allowedScalarKeys ?? []).includes(top) &&
+                            typeof operation.value === 'string' &&
+                            operation.expectUpstream !== undefined);
         if (allowed) {
             continue;
         }
@@ -739,7 +746,9 @@ export function restrictedTargetViolations(type, overlay) {
                 ? 'only paired npm-prune or guarded direct-version updates are allowed for this target'
                 : (target?.allowedRemovals?.length ?? 0) > 0
                     ? 'only declared script additions, dependency removals and version updates are allowed for this target'
-                    : `only additions under ${(allowedKeys ?? []).join(', ')} are allowed for this target`), `use a declared key addition, dependency removal, or paired npm lockfile update for this target`, overlay.artifactPath));
+                    : `only additions under ${(allowedKeys ?? []).join(', ')}${(target?.allowedScalarKeys?.length ?? 0) > 0
+                        ? ` and guarded replacements of ${(target?.allowedScalarKeys ?? []).join(', ')}`
+                        : ''} are allowed for this target`), `use a declared key addition, dependency removal, or paired npm lockfile update for this target`, overlay.artifactPath));
     }
     return errors;
 }

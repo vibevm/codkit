@@ -41,7 +41,8 @@ describe('the layers this family shapes', () => {
 		expect(manifest?.stampedKeys).toEqual(['commit', 'date', 'checksums', 'version']);
 		expect(manifest?.allowedKeys).toBeNull();
 		const treeManifest = layers.overlayTargets.find((target) => target.path === 'package.json');
-		expect(treeManifest?.allowedKeys).toEqual(['scripts', 'license']);
+		expect(treeManifest?.allowedKeys).toEqual(['scripts']);
+		expect(treeManifest?.allowedScalarKeys).toEqual(['license']);
 	});
 
 	it('proves a service override by the registration call of this family', () => {

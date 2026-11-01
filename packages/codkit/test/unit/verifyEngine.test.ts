@@ -228,7 +228,7 @@ describe('(g) overlays', () => {
 		const findings = withFile('delta/overlays/package.json.overlay.json', packageOverlay(['name']), verify);
 
 		expect(codes(findings)).toEqual(['OVERLAY-SCHEMA']);
-		expect(findings[0]?.message).toContain('only additions under scripts are allowed for this target');
+		expect(findings[0]?.message).toContain('only additions under scripts');
 	});
 
 	it('accepts an addition to scripts on that same target', () => {

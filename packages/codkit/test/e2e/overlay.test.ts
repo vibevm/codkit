@@ -199,7 +199,7 @@ describe('codkit overlay check', () => {
 			const outcome = fixture.json(['overlay', 'check', 'package.json']);
 			expect(outcome.run.status).toBe(1);
 			expect(outcome.envelope.errors[0]?.code).toBe('CK-E-OVERLAY-SCHEMA');
-			expect(outcome.envelope.errors[0]?.message).toContain('only additions under scripts are allowed');
+			expect(outcome.envelope.errors[0]?.message).toContain('only additions under scripts');
 
 			writeFileSync(artifact, packageOverlay(['scripts', 'patchset-check'], 'node ./out/check.js'), 'utf8');
 			expect(fixture.run(['overlay', 'check', 'package.json']).status).toBe(0);

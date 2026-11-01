@@ -29,6 +29,13 @@ export type OverlayTarget = {
 	 * the whole document is open to it.
 	 */
 	readonly allowedKeys: readonly string[] | null;
+	/**
+	 * Top-level scalar keys an overlay may set, with `expectUpstream` carrying
+	 * the pin's value: the licence identifier of a manifest, which the licensing
+	 * area writes (##TYPE-AREA-LICENSING, 2026-11-01). Additions under
+	 * `allowedKeys` stay what they were; a scalar is replaced, never added to.
+	 */
+	readonly allowedScalarKeys?: readonly string[];
 	/** Dependency sections from which an overlay may remove one named package. */
 	readonly allowedRemovals?: readonly string[];
 	/** Dependency sections allowing an exact, pin-guarded version replacement. */

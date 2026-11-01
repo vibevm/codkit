@@ -50,9 +50,10 @@ export const overlayTargets = [
         path: 'package.json',
         devChannel: null,
         stampedKeys: [],
+        allowedKeys: ['scripts'],
         // `license` since 2026-11-01: the licence of the product is a declaration of
-        // the manifest, written by `gen licensing` (modules/vscode/PROP-010).
-        allowedKeys: ['scripts', 'license'],
+        // the manifest, replaced under guard by `gen licensing` (modules/vscode/PROP-010).
+        allowedScalarKeys: ['license'],
         allowedRemovals: ['dependencies', 'devDependencies', 'optionalDependencies'],
         allowedDependencyUpdates: ['dependencies', 'devDependencies', 'optionalDependencies']
     },

@@ -36,8 +36,10 @@ describe('the licensing answer', () => {
 		]);
 	});
 
-	it('admits the license key of the tree manifest to overlays beside scripts', () => {
-		expect(overlayTargets.find((target) => target.path === 'package.json')?.allowedKeys).toEqual(['scripts', 'license']);
+	it('admits a guarded replacement of the license key of the tree manifest, and additions under scripts only', () => {
+		const target = overlayTargets.find((candidate) => candidate.path === 'package.json');
+		expect(target?.allowedKeys).toEqual(['scripts']);
+		expect(target?.allowedScalarKeys).toEqual(['license']);
 	});
 
 	it('puts the licence file at the root and the component licences where the build copies them', () => {

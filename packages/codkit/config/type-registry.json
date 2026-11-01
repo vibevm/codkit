@@ -101,7 +101,7 @@
         },
         {
           "path": "dist/layers.js",
-          "sha256": "cb14d5c1e1925653fe3722db14b5b34b14663cc86738fecba392af8ae7754a05"
+          "sha256": "a61deffbd32e922081a478757ed749ef38f6424b47b8b38bf69de676698dc5ef"
         },
         {
           "path": "dist/layout.js",
@@ -193,7 +193,7 @@
         },
         {
           "path": "src/layers.ts",
-          "sha256": "31af54095488bd3faff7059e06ec74b560c79ccc4404375c7b6126cb481b0634"
+          "sha256": "a2a8d3cbba0585fcdda05dc415475d5f303b7e4eddf2c9475bf7bc4d6e280cae"
         },
         {
           "path": "src/layout.ts",

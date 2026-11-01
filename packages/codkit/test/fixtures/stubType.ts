@@ -102,7 +102,7 @@ export function ownRoots(config: { readonly ownRoot: string }): readonly OwnedDi
 /** The overlay targets: the manifest with its dev channel, and the tree manifest's scripts. */
 export const overlayTargets: readonly OverlayTarget[] = [
 	{ path: MANIFEST_TARGET, devChannel: MANIFEST_OVERRIDES_FILE, stampedKeys: STAMPED_MANIFEST_KEYS, allowedKeys: null },
-	{ path: 'package.json', devChannel: null, stampedKeys: [], allowedKeys: ['scripts', 'license'] }
+	{ path: 'package.json', devChannel: null, stampedKeys: [], allowedKeys: ['scripts'], allowedScalarKeys: ['license'] }
 ];
 
 /** ##OWN-EXTENSION-UNIT: the delta directory and its materialization. */
