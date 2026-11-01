@@ -3,6 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { sameEffectivePath } from './containedPath.ts';
 import { porcelainZEntries } from './driftGuard.ts';
 import { gitOk, runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
@@ -257,7 +258,9 @@ function assertWorktreeAvailable(tree: string, branch: string): void {
 	let worktree = '';
 	for (const line of result.split('\n')) {
 		if (line.startsWith('worktree ')) worktree = line.slice('worktree '.length);
-		if (line === `branch refs/heads/${branch}` && worktree !== tree)
+		// git prints the path in its own spelling (forward slashes, its case);
+		// the tree is compared as the platform compares paths, not as text.
+		if (line === `branch refs/heads/${branch}` && !sameEffectivePath(worktree, tree))
 			throw ckError('CONFIG', `provisional branch ${branch} is checked out in ${worktree}`, 'finish that worktree before continuing here');
 	}
 }

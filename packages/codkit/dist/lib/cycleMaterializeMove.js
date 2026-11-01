@@ -2,6 +2,7 @@
 // Durable ref/HEAD/index/work-tree transaction for provisional cycle apply.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { sameEffectivePath } from './containedPath.js';
 import { porcelainZEntries } from './driftGuard.js';
 import { gitOk, runGit } from './gitx.js';
 import { ckError } from './messages.js';
@@ -175,7 +176,9 @@ function assertWorktreeAvailable(tree, branch) {
     for (const line of result.split('\n')) {
         if (line.startsWith('worktree '))
             worktree = line.slice('worktree '.length);
-        if (line === `branch refs/heads/${branch}` && worktree !== tree)
+        // git prints the path in its own spelling (forward slashes, its case);
+        // the tree is compared as the platform compares paths, not as text.
+        if (line === `branch refs/heads/${branch}` && !sameEffectivePath(worktree, tree))
             throw ckError('CONFIG', `provisional branch ${branch} is checked out in ${worktree}`, 'finish that worktree before continuing here');
     }
 }
