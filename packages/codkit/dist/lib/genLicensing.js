@@ -18,12 +18,14 @@ import { createHash } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { addFilePatchText } from './addFilePatch.js';
-import { encodeUtf8 } from './bytes.js';
+import { applyUnified } from './applyUnified.js';
+import { decodeUtf8Strict, encodeUtf8 } from './bytes.js';
 import { readContainedFile, writeContainedFileAtomic } from './containedFile.js';
 import { statIfPresent } from './containedPath.js';
 import { loadConventions } from './conventionsFile.js';
 import { unitReminder } from './genFeature.js';
 import { productHeader } from './genTemplates.js';
+import { checkHunksInsideMarkers } from './hunksInMarkers.js';
 import { buildInventory } from './inventory.js';
 import { OVERLAYS_DIR, OVERLAY_SCHEMA_VERSION, devChannelTarget, loadOverlays, overlayArtifactName, parseOverlay, serializeOverlay } from './layers/overlay.js';
 import { renderLicencePlainText, renderLicenceRtf } from './licenceRtf.js';
@@ -31,9 +33,11 @@ import { commentStyleNames } from './licenseAnnotate.js';
 import { licenceGuardText } from './licensingGuardTemplate.js';
 import { OWN_LAYER_DIR, headerFieldsFor, headerStyleOf, ownLicenseFor } from './licensingProfile.js';
 import { CODKIT_COMPONENT, LICENCE_GUARD_SUITE, licensingAreaOf, licensingSurfaces } from './licensingSurfaces.js';
+import { markerFormFor, markerKeyOf } from './markers.js';
 import { ckError } from './messages.js';
 import { OWNERS_PATH, loadOwnerKeys } from './owners.js';
 import { formatPatchHeader, parseCkpatch } from './patchFormat.js';
+import { bytesAtPin } from './pinBytes.js';
 import { pinKey } from './pinIdentity.js';
 /** PROP-007 sec. 8: the vocabularies of a licensing intervention. */
 const PATCH_TYPE = 'extend';
@@ -45,6 +49,9 @@ const LICENCE_FILE_REASON = 'the licence of the product, from the trusted profil
 const UPSTREAM_COMPONENT_REASON = "the upstream's own terms travel with the product as a component licence";
 const CODKIT_COMPONENT_REASON = "the tool's licence travels with the runtime library it delivers";
 const RENDERING_REASON = 'what the installer of this family reads instead of the licence text';
+const EXCLUSION_REASON = "the licence of the archive: the upstream's licence file is left out of the distributable";
+/** The lines of the pin's file that precede the block of an exclusion in its hunk, so the hunk applies exactly where the file ends. */
+const HUNK_CONTEXT = 3;
 export const ANNOTATE_REMINDER = 'run codkit license annotate --own to give the own files their carriers';
 export const VERIFY_REMINDER = 'run codkit verify';
 /** ##GEN-LICENSING: the plan of one run, computed without writing anything. */
@@ -63,7 +70,8 @@ export function planLicensing(options) {
         nextId: idAllocator(area.subsystem, takenIds(patchesDir, type, config, overlays))
     };
     // The order fixes the ids a fresh run allocates: the overlays per target as
-    // the type lists the fields, the licence file, the components, the renderings.
+    // the type lists the fields, the licence file, the components, the renderings,
+    // the exclusions.
     const files = [];
     const planned = [];
     for (const surface of surfaces.overlays) {
@@ -78,6 +86,9 @@ export function planLicensing(options) {
     for (const rendering of surfaces.renderings) {
         const text = rendering.format === 'rtf' ? renderLicenceRtf(surfaces.canonicalText) : renderLicencePlainText(surfaces.canonicalText);
         files.push(planPatch(context, { treePath: rendering.treePath, artifact: rendering.artifact, text }, RENDERING_REASON));
+    }
+    for (const exclusion of surfaces.exclusions) {
+        files.push(planExclusion(options, context, exclusion));
     }
     files.push(planGuard(options, area, surfaces));
     const guardDirectory = surfaces.guard.artifact.slice(0, surfaces.guard.artifact.lastIndexOf('/'));
@@ -241,6 +252,78 @@ function existingPatchId(context, artifact) {
     return parseCkpatch(read.bytes, context.conventions, artifact).header.id;
 }
 /**
+ * ##GEN-LICENSING (6): the patch of an ignore file, adding the entry as one line
+ * inside a marker block of its own at the end of the file. The hunk is cut
+ * against the pin's bytes with the last lines of the file as its context, and
+ * the text is proved three ways before it is planned: it parses, it applies to
+ * the pin, and its added lines sit inside the block it owns. An ignore file the
+ * patch set already patches for another reason is refused - one upstream file
+ * has one patch - and the line goes inside that patch's block by hand, where
+ * `verify` accepts it.
+ */
+function planExclusion(options, context, surface) {
+    const { ignoreFile, entry, artifact } = surface;
+    const key = markerKeyOf(ignoreFile);
+    const form = markerFormFor(key, context.conventions);
+    if (form === null) {
+        throw ckError('CONFIG', `the ignore file ${ignoreFile} has no marker form, so the exclusion of ${entry} cannot be written as a patch`, 'the type names an ignore file whose name the marker conventions know (PROP-004 MR-FORM-KEY)', ignoreFile);
+    }
+    const bytes = bytesAtPin(options.treeDir, options.config.pin.sha, ignoreFile);
+    const text = bytes === null ? null : decodeUtf8Strict(bytes);
+    if (bytes === null || text === null) {
+        throw ckError('CONFIG', `the ignore file ${ignoreFile} is absent at the pin or is not UTF-8`, 'the type names an ignore file the upstream carries as text at this pin', ignoreFile);
+    }
+    if (text.includes('\r') || (text !== '' && !text.endsWith('\n'))) {
+        throw ckError('CONFIG', `the ignore file ${ignoreFile} at the pin is not LF-only with a final newline`, 'the engine writes LF-only patches over files that end with a newline', ignoreFile);
+    }
+    const existing = existingExclusionId(context, artifact, ignoreFile);
+    const id = existing ?? context.nextId();
+    const header = formatPatchHeader({
+        id,
+        type: PATCH_TYPE,
+        category: CATEGORY,
+        owner: context.owner,
+        reason: EXCLUSION_REASON,
+        link: 'none',
+        cause: 'none',
+        pin: context.pin,
+        contractTests: [LICENCE_GUARD_SUITE]
+    });
+    const lines = text === '' ? [] : text.slice(0, -1).split('\n');
+    const before = lines.slice(Math.max(0, lines.length - HUNK_CONTEXT));
+    const block = [`${form.open}begin ${id}${form.close}`, entry, `${form.open}end ${id}${form.close}`];
+    const startOld = before.length === 0 ? lines.length : lines.length - before.length + 1;
+    const startNew = before.length === 0 ? lines.length + 1 : startOld;
+    const hunk = [
+        `@@ -${startOld},${before.length} +${startNew},${before.length + block.length} @@`,
+        ...before.map((line) => ` ${line}`),
+        ...block.map((line) => `+${line}`)
+    ];
+    const patchText = `${header}--- a/${ignoreFile}\n+++ b/${ignoreFile}\n${hunk.join('\n')}\n`;
+    const parsed = parseCkpatch(encodeUtf8(patchText), context.conventions, artifact);
+    applyUnified(bytes, parsed);
+    const checked = checkHunksInsideMarkers(parsed, bytes, key, context.conventions, { patchFile: artifact });
+    const problem = checked.errors[0];
+    if (problem !== undefined)
+        throw problem;
+    return { path: artifact, text: patchText, kind: 'patch', exists: existing !== null };
+}
+/**
+ * The id of the engine's own patch of an ignore file, so that `--update` keeps
+ * it; null when the patch set has none; a patch of the file that is somebody
+ * else's intervention is refused, because the file has one patch.
+ */
+function existingExclusionId(context, artifact, ignoreFile) {
+    const read = readContainedFile(context.patchesDir, artifact, { what: artifact });
+    if (read.state === 'absent')
+        return null;
+    const header = parseCkpatch(read.bytes, context.conventions, artifact).header;
+    if (header.reason !== EXCLUSION_REASON) {
+        throw ckError('CONFIG', `${ignoreFile} already carries the patch ${artifact} of ${header.id}, which is not the engine's exclusion`, 'add the excluded line inside the block of that patch by hand; verify accepts it there', artifact);
+    }
+    return header.id;
+}
+/**
  * ##LICENCE-GUARD: the guard at the type's path, headed from the profile like
  * every generated file (##HEADER-FROM-PROFILE): it is an own file of the
  * product, and the first thing it proves about its neighbours holds for itself.
@@ -260,6 +343,7 @@ function guardInput(options, area, surfaces) {
     return {
         words: { suite: surfaces.guard.suite, test: surfaces.guard.test },
         preamble: surfaces.guard.preamble,
+        runnerDirectory: surfaces.guard.runnerDirectory,
         holders: profile.selected.policy.holders,
         scopes: [{ treeDirectory: ownRoot, expression: ownLicenseFor(profile, OWN_LAYER_DIR) }, ...extensionScopes(options)],
         skipDirectory: `${ownRoot}/codkit`,
@@ -277,6 +361,7 @@ function guardInput(options, area, surfaces) {
         commentStyleNames: commentStyleNames(),
         components: surfaces.components.map((component) => component.treePath),
         renderings: surfaces.renderings.map((rendering) => rendering.treePath),
+        exclusions: surfaces.exclusions.map((exclusion) => ({ ignoreFile: exclusion.ignoreFile, entry: exclusion.entry })),
         retiredNotices: profile.product.retiredNotices
     };
 }

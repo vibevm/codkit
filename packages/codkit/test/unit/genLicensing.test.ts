@@ -10,8 +10,10 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { ProjectType } from '@codkit/type-api';
 import { addFileBodyOf } from '../../src/lib/addFilePatch.ts';
-import { encodeUtf8 } from '../../src/lib/bytes.ts';
+import { applyUnified } from '../../src/lib/applyUnified.ts';
+import { decodeUtf8Strict, encodeUtf8 } from '../../src/lib/bytes.ts';
 import { loadConfig } from '../../src/lib/configFile.ts';
 import type { CodkitConfig } from '../../src/lib/configFile.ts';
 import { loadConventions } from '../../src/lib/conventionsFile.ts';
@@ -31,7 +33,7 @@ import type { LicensingProfile } from '../../src/lib/licensingProfile.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { parseCkpatch } from '../../src/lib/patchFormat.ts';
 import { OVERLAY_ID } from '../fixtures/makePatchSet.ts';
-import { LICENCE_GUARD_PATH, projectType } from '../fixtures/stubType.ts';
+import { LICENCE_GUARD_PATH, licensingArea, projectType } from '../fixtures/stubType.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import { FIXTURE_LICENSE_ID, FIXTURE_LICENSE_TEXT, fixtureBlockHeaderLines, installLicensingProfile } from '../support/licensingFixture.ts';
@@ -44,7 +46,7 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const MANIFEST_OVERLAY = 'delta/overlays/manifest.json.overlay.json';
 const PACKAGE_OVERLAY = 'delta/overlays/package.json.overlay.json';
 const LICENCE_PATCH = 'delta/patches/LICENSE.md.ckpatch';
-const COMPONENT_PATCH = 'delta/patches/licenses__LICENSE-upstream.txt.ckpatch';
+const COMPONENT_PATCH = 'delta/patches/licenses__LICENSE-UPSTREAM.md.ckpatch';
 const RENDERING_PATCH = 'delta/patches/LICENSE.rtf.ckpatch';
 
 let fixture: CliFixture;
@@ -188,7 +190,7 @@ describe('planLicensing', () => {
 		expect(addFileBodyOf(licence)).toBe(FIXTURE_LICENSE_TEXT);
 		expect(licence.header).toMatchObject({ type: 'extend', category: 'follow', owner: 'product', contractTests: ['licence-leftovers'] });
 		expect(licence.header.pin).toBe(`${fixture.upstream.t1.tag}@${fixture.upstream.t1.sha}`);
-		expect(component.targetPath).toBe('licenses/LICENSE-upstream.txt');
+		expect(component.targetPath).toBe('licenses/LICENSE-UPSTREAM.md');
 		expect(addFileBodyOf(component)).toBe(fixture.git(['show', `${fixture.upstream.t1.sha}:LICENSE`]).stdout);
 		expect(rendering.targetPath).toBe('LICENSE.rtf');
 		expect(addFileBodyOf(rendering)).toBe(renderLicenceRtf(FIXTURE_LICENSE_TEXT));
@@ -236,5 +238,101 @@ describe('planLicensing', () => {
 			'utf8'
 		);
 		expect(planLicensing(options({ owner: null })).owner).toBe('product');
+	});
+});
+
+describe('planLicensing with an exclusion of the distributable (S97)', () => {
+	const EXCLUSION_PATCH = 'delta/patches/.gitignore.ckpatch';
+	/** The stub's answer with one exclusion - the upstream's licence file through the ignore file the pin carries - and a runner that starts under the tree root. */
+	const withExclusion: ProjectType = {
+		...projectType,
+		licensing: {
+			...licensingArea,
+			distributableExclusions: [{ ignoreFile: '.gitignore', entry: 'LICENSE' }],
+			guard: () => ({ ...licensingArea.guard(''), runnerDirectory: 'source' })
+		}
+	};
+	let own: CliFixture;
+	let ownConfig: CodkitConfig;
+	let ownProfile: LicensingProfile;
+
+	beforeAll(() => {
+		own = makeCliFixture('gen-licensing-exclusion');
+		const lic = installLicensingProfile('gen-licensing-exclusion', own.patchesDir);
+		const loaded = loadConfig(own.patchesDir);
+		if (loaded === null) throw new Error('the fixture patch set has no configuration');
+		ownConfig = loaded;
+		const selected = readLicensingProfile(own.patchesDir, join(lic.home, '.codkit'));
+		if (selected === null) throw new Error('the fixture patch set declares no profile');
+		ownProfile = selected;
+	});
+
+	function plan(type: ProjectType = withExclusion): LicensingPlan {
+		return planLicensing({
+			patchesDir: own.patchesDir,
+			treeDir: own.treeDir,
+			toolRoot: packageRoot,
+			config: ownConfig,
+			type,
+			profile: ownProfile,
+			owner: 'product'
+		});
+	}
+
+	it('plans the patch of the ignore file after the renderings, adding the entry inside a block of its own at the end of the file', () => {
+		const planned = plan();
+		const paths = planned.files.map((file) => file.path);
+		expect(paths.indexOf(EXCLUSION_PATCH)).toBe(paths.indexOf(RENDERING_PATCH) + 1);
+		expect(paths.indexOf(LICENCE_GUARD_PATH)).toBe(paths.indexOf(EXCLUSION_PATCH) + 1);
+
+		const conventions = loadConventions(withExclusion, own.patchesDir);
+		const patch = parseCkpatch(encodeUtf8(textOf(planned, EXCLUSION_PATCH)), conventions, EXCLUSION_PATCH);
+		expect(patch.isAddFile).toBe(false);
+		expect(patch.targetPath).toBe('.gitignore');
+		expect(patch.header.id).toBe('CK-product-005');
+		expect(patch.header).toMatchObject({ type: 'extend', category: 'follow', owner: 'product', contractTests: ['licence-leftovers'] });
+		expect(patch.header.reason).toContain('left out of the distributable');
+		const added = patch.hunks.flatMap((hunk) => hunk.lines.filter((line) => line.kind === '+').map((line) => line.text));
+		expect(added).toEqual(['# codkit:begin CK-product-005', 'LICENSE', '# codkit:end CK-product-005']);
+
+		// It applies to the pin: the file as the upstream wrote it, then the block.
+		const pin = encodeUtf8(own.git(['show', `${own.upstream.t1.sha}:.gitignore`]).stdout);
+		expect(decodeUtf8Strict(applyUnified(pin, patch))).toBe(`${decodeUtf8Strict(pin) ?? ''}${added.join('\n')}\n`);
+
+		// The guard knows both: where the runner starts, and what the archive leaves out.
+		const guard = textOf(planned, LICENCE_GUARD_PATH);
+		expect(guard).toContain("const RUNNER_DIRECTORY = 'source';");
+		expect(guard).toContain("{ ignoreFile: '.gitignore', entry: 'LICENSE' }");
+	});
+
+	it('keeps the id of its own patch on a rerun and refuses the patch of another intervention over the same file', () => {
+		writeLicensingPlan(own.patchesDir, plan());
+		const again = plan();
+		const file = again.files.find((candidate) => candidate.path === EXCLUSION_PATCH);
+		expect(file?.exists).toBe(true);
+		expect(patchIdOf(again, EXCLUSION_PATCH)).toBe('CK-product-005');
+		expect(existingTargets(again)).toContain(EXCLUSION_PATCH);
+
+		// Somebody else's patch of the ignore file: one upstream file has one patch,
+		// and the engine does not take it over.
+		const foreign = readFileSync(own.patchesPath(EXCLUSION_PATCH), 'utf8').replace(
+			/^# reason: .*$/mu,
+			'# reason: the product ignores its own scratch'
+		);
+		writeFileSync(own.patchesPath(EXCLUSION_PATCH), foreign, 'utf8');
+		expect(codeOf(() => plan())).toBe('CONFIG');
+	});
+
+	it('refuses an ignore file the pin does not carry, or one without a marker form', () => {
+		const absent: ProjectType = {
+			...withExclusion,
+			licensing: { ...licensingArea, distributableExclusions: [{ ignoreFile: '.dockerignore', entry: 'LICENSE' }] }
+		};
+		expect(codeOf(() => plan(absent))).toBe('CONFIG');
+		const formless: ProjectType = {
+			...withExclusion,
+			licensing: { ...licensingArea, distributableExclusions: [{ ignoreFile: 'package.json', entry: 'LICENSE' }] }
+		};
+		expect(codeOf(() => plan(formless))).toBe('CONFIG');
 	});
 });

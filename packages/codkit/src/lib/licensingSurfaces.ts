@@ -24,6 +24,7 @@ import { ckError } from './messages.ts';
 import { parsePolicyExpression } from './organizationPolicy.ts';
 import { encodePatchName } from './patchFormat.ts';
 import { bytesAtPin } from './pinBytes.ts';
+import { RUNTIME_VERSION_FILE } from './runtimePackage.ts';
 import { PATCHES_DIR } from './syncEngine.ts';
 
 /** The component under which the tool's own licence text travels when its runtime library is delivered. */
@@ -64,6 +65,18 @@ export type GuardSurface = {
 	readonly test: string;
 	/** The lines the family needs in front of the suite; empty for a family that needs none. */
 	readonly preamble: readonly string[];
+	/** The tree path the family's runner starts in; empty for the tree root. */
+	readonly runnerDirectory: string;
+};
+
+/** ##GEN-LICENSING (6): one line of an ignore file that keeps a file out of the distributable, and the patch that adds it. */
+export type ExclusionSurface = {
+	/** The ignore file, from the tree root. */
+	readonly ignoreFile: string;
+	/** The line the ignore file gains. */
+	readonly entry: string;
+	/** The patch of the ignore file, from the patch-set root. */
+	readonly artifact: string;
 };
 
 export type LicensingSurfaces = {
@@ -75,6 +88,7 @@ export type LicensingSurfaces = {
 	readonly licenceFile: LicenceFileSurface;
 	readonly components: readonly ComponentLicenceSurface[];
 	readonly renderings: readonly RenderingSurface[];
+	readonly exclusions: readonly ExclusionSurface[];
 	readonly guard: GuardSurface;
 };
 
@@ -146,7 +160,7 @@ export function canonicalTextOf(profile: LicensingProfile, expression: string): 
 	return record.text;
 }
 
-/** The artifact of an add-file patch for a tree path. */
+/** The artifact of the patch of a tree path - an add-file patch of a surface, or the patch of an upstream ignore file. */
 export function addFileArtifactOf(treePath: string): string {
 	return `${PATCHES_DIR}/${encodePatchName(treePath)}`;
 }
@@ -161,9 +175,14 @@ function licenceFileTreePath(area: LicensingArea, fileName: string): string {
 	return under(area.licenceFileDirectory, fileName);
 }
 
-/** The tree path of a component licence: `LICENSE-<component>.txt` in the component licence directory. */
+/**
+ * ##LICENCE-DOCUMENT-NAMES: the tree path of a component licence - a Markdown
+ * document named in upper case, `LICENSE-<COMPONENT>.md`, in the component
+ * licence directory; the component keeps its lower-case name in the type's
+ * answer, and the file name is where the case changes.
+ */
 function componentTreePath(area: LicensingArea, component: string): string {
-	return under(area.componentLicenceDirectory, `LICENSE-${component}.txt`);
+	return under(area.componentLicenceDirectory, `LICENSE-${component.toUpperCase()}.md`);
 }
 
 /**
@@ -256,7 +275,10 @@ function overlaySurfaces(options: LicensingSurfacesOptions, area: LicensingArea,
 /**
  * ##GEN-LICENSING (3): the component licences - every upstream licence file the
  * type names, byte for byte from the pin, and the tool's own text when the
- * runtime library is delivered into the own layer.
+ * runtime library is delivered into the own layer: its version file is present
+ * under the delivered directory. The notice copy `standards load` places there
+ * is not the library, and a product that compiles nothing of the tool ships no
+ * component of it.
  */
 function componentSurfaces(options: LicensingSurfacesOptions, area: LicensingArea): readonly ComponentLicenceSurface[] {
 	const components: ComponentLicenceSurface[] = [];
@@ -286,7 +308,7 @@ function componentSurfaces(options: LicensingSurfacesOptions, area: LicensingAre
 			text: text.endsWith('\n') ? text : `${text}\n`
 		});
 	}
-	if (existsSync(join(options.patchesDir, ...CODKIT_DELIVERED_DIR.split('/')))) {
+	if (runtimeLibraryDelivered(options.patchesDir)) {
 		const text = readFileSync(join(options.toolRoot, CODKIT_LICENCE_FILE), 'utf8');
 		const treePath = componentTreePath(area, CODKIT_COMPONENT);
 		components.push({
@@ -297,6 +319,20 @@ function componentSurfaces(options: LicensingSurfacesOptions, area: LicensingAre
 		});
 	}
 	return components;
+}
+
+/** Whether the tool's runtime library is delivered into the own layer: the version file of the library is under the delivered directory. */
+export function runtimeLibraryDelivered(patchesDir: string): boolean {
+	return existsSync(join(patchesDir, ...CODKIT_DELIVERED_DIR.split('/'), ...RUNTIME_VERSION_FILE.split('/')));
+}
+
+/** ##GEN-LICENSING (6): what the family's distributable leaves out, each through one line of an ignore file the type names. */
+function exclusionSurfaces(area: LicensingArea): readonly ExclusionSurface[] {
+	return (area.distributableExclusions ?? []).map((exclusion) => ({
+		ignoreFile: exclusion.ignoreFile,
+		entry: exclusion.entry,
+		artifact: addFileArtifactOf(exclusion.ignoreFile)
+	}));
 }
 
 /** Every surface of the product, as the writer writes it and the checker expects it. */
@@ -317,6 +353,13 @@ export function licensingSurfaces(options: LicensingSurfacesOptions): LicensingS
 			artifact: addFileArtifactOf(rendering.path),
 			format: rendering.format
 		})),
-		guard: { artifact: guard.path, suite: guard.suite, test: guard.test, preamble: guard.preamble ?? [] }
+		exclusions: exclusionSurfaces(area),
+		guard: {
+			artifact: guard.path,
+			suite: guard.suite,
+			test: guard.test,
+			preamble: guard.preamble ?? [],
+			runnerDirectory: guard.runnerDirectory ?? ''
+		}
 	};
 }

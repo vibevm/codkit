@@ -20,7 +20,7 @@ import { ownLayerPaths } from '../../src/lib/licensingProfile.ts';
 import { addFileArtifactOf } from '../../src/lib/licensingSurfaces.ts';
 import type { Finding } from '../../src/lib/verifyEngine.ts';
 import { checkLicensing } from '../../src/lib/verifyLicensing.ts';
-import { LICENCE_GUARD_PATH, projectType } from '../fixtures/stubType.ts';
+import { LICENCE_GUARD_PATH, licensingArea, projectType } from '../fixtures/stubType.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
 import {
@@ -148,6 +148,56 @@ describe('checkLicensing', () => {
 		expect(withoutFile(DECLARATION, check)).toEqual([]);
 	});
 
+	it('names an exclusion of the distributable that no patch of its ignore file adds (S97)', () => {
+		const withExclusion = {
+			...projectType,
+			licensing: { ...licensingArea, distributableExclusions: [{ ignoreFile: '.gitignore', entry: 'LICENSE' }] }
+		};
+		const artifact = 'delta/patches/.gitignore.ckpatch';
+		const exclusions = (): readonly Finding[] => {
+			const findings: Finding[] = [];
+			checkLicensing({
+				patchesDir: fixture.patchesDir,
+				type: withExclusion,
+				config,
+				treeDir: fixture.treeDir,
+				toolRoot,
+				findings,
+				trustedRoot: join(lic.home, '.codkit')
+			});
+			return findings.filter((item) => item.file === artifact);
+		};
+
+		const absent = exclusions();
+		expect(absent.map((item) => [item.code, item.message, item.hint])).toEqual([
+			['LICENSE-SURFACE', 'the exclusion of LICENSE from the distributable has no patch of .gitignore', 'run codkit gen licensing']
+		]);
+
+		// A patch of the file that adds another line keeps the distributable as it was.
+		const header = [
+			'# codkit-patch: 2',
+			'# id: CK-product-904',
+			'# type: extend',
+			'# category: follow',
+			'# owner: product',
+			'# reason: fixture ignore line, written by hand for the check',
+			'# link: none',
+			'# cause: none',
+			`# pin: ${config.pin.tag}@${config.pin.sha}`,
+			'# contract-tests: none',
+			''
+		].join('\n');
+		const other = `${header}--- a/.gitignore\n+++ b/.gitignore\n@@ -0,0 +1,3 @@\n+# codkit:begin CK-product-904\n+scratch/\n+# codkit:end CK-product-904\n`;
+		const kept = withFile(artifact, other, exclusions);
+		expect(kept.map((item) => item.message)).toEqual([
+			'the patch of .gitignore does not add the line LICENSE, so the distributable keeps what the licence leaves out'
+		]);
+		expect(kept[0]?.hint).toBe('run codkit gen licensing --update');
+
+		const added = withFile(artifact, other.replace('+scratch/', '+LICENSE'), exclusions);
+		expect(added).toEqual([]);
+	});
+
 	it('reports the profile this machine does not carry, and nothing else', () => {
 		lic.removeStore();
 		try {
@@ -181,8 +231,8 @@ describe('checkLicensing', () => {
 			[`the licence field package.json:license is not set to "${FIXTURE_LICENSE_ID}" by an overlay of the target`, PACKAGE_OVERLAY],
 			['the licence file LICENSE.md has no add-file patch', LICENCE_FILE_ARTIFACT],
 			[
-				'the component licence licenses/LICENSE-upstream.txt of upstream has no add-file patch',
-				addFileArtifactOf('licenses/LICENSE-upstream.txt')
+				'the component licence licenses/LICENSE-UPSTREAM.md of upstream has no add-file patch',
+				addFileArtifactOf('licenses/LICENSE-UPSTREAM.md')
 			],
 			['the rendering LICENSE.rtf has no add-file patch', addFileArtifactOf('LICENSE.rtf')],
 			[`the licence guard ${LICENCE_GUARD_PATH} is not written`, LICENCE_GUARD_PATH]

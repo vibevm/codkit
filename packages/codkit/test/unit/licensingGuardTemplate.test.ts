@@ -31,7 +31,7 @@ afterAll(cleanupTempRoots);
 
 const OWN_ROOT = 'source/own';
 const EXTENSION_ROOT = 'addons/sample';
-const UPSTREAM_COMPONENT = 'licenses/LICENSE-upstream.txt';
+const UPSTREAM_COMPONENT = 'licenses/LICENSE-UPSTREAM.md';
 
 function sha256(text: string): string {
 	return createHash('sha256').update(text, 'utf8').digest('hex');
@@ -58,6 +58,8 @@ function input(over: Partial<LicenceGuardInput> = {}): LicenceGuardInput {
 		commentStyleNames: commentStyleNames(),
 		components: [UPSTREAM_COMPONENT],
 		renderings: ['LICENSE.rtf'],
+		exclusions: [],
+		runnerDirectory: '',
 		retiredNotices: [FIXTURE_RETIRED_NOTICE],
 		...over
 	};
@@ -175,7 +177,8 @@ function runGuard(
 	label: string,
 	files: Files,
 	omit: readonly string[] = [],
-	over: Partial<LicenceGuardInput> = {}
+	over: Partial<LicenceGuardInput> = {},
+	startIn = ''
 ): readonly RunnerEntry[] {
 	const tree = makeTempRoot(`guard-${label}-tree`);
 	writeTree(tree, files, omit);
@@ -184,9 +187,18 @@ function runGuard(
 	writeFileSync(guard, licenceGuardText(input(over)), 'utf8');
 	const harness = join(runner, 'harness.mjs');
 	writeFileSync(harness, HARNESS, 'utf8');
-	const result = spawnSync(process.execPath, ['--no-warnings', harness, pathToFileURL(guard).href], { cwd: tree, encoding: 'utf8' });
+	// The runner starts in the tree root, or in the directory of the tree a family's runner starts in.
+	const cwd = startIn === '' ? tree : join(tree, ...startIn.split('/'));
+	const result = spawnSync(process.execPath, ['--no-warnings', harness, pathToFileURL(guard).href], { cwd, encoding: 'utf8' });
 	if (result.status !== 0) throw new Error(`the guard did not run: ${result.stderr}`);
 	return JSON.parse(result.stdout) as RunnerEntry[];
+}
+
+/** The tests of a run that did not pass, named with their messages. */
+function failures(entries: readonly RunnerEntry[]): readonly string[] {
+	return entries
+		.filter((entry) => entry.test !== undefined && entry.ok !== true)
+		.map((entry) => `${entry.test ?? ''}: ${entry.message ?? ''}`);
 }
 
 function testNamed(entries: readonly RunnerEntry[], fragment: string): RunnerEntry {
@@ -201,7 +213,7 @@ describe('licenceGuardText', () => {
 
 		expect(() => stripTypeScriptTypes(text)).not.toThrow();
 		expect(text).toContain("suite('licence-leftovers', () => {");
-		expect(text.match(/^\ttest\('/gmu)).toHaveLength(5);
+		expect(text.match(/^\ttest\('/gmu)).toHaveLength(6);
 		const imports = [...text.matchAll(/^import .* from '([^']+)';$/gmu)].map((match) => match[1]);
 		// The builtin modules by their bare names: the import rules of a family know those.
 		expect(imports).toEqual(['assert', 'crypto', 'fs', 'path']);
@@ -252,12 +264,56 @@ describe('licenceGuardText', () => {
 		expect(licenceGuardText(input())).toBe(licenceGuardText(input()));
 	});
 
+	it('bakes the directory the runner starts in and what the distributable leaves out', () => {
+		const text = licenceGuardText(
+			input({ runnerDirectory: EXTENSION_ROOT, exclusions: [{ ignoreFile: `${EXTENSION_ROOT}/.vscodeignore`, entry: 'LICENSE' }] })
+		);
+
+		expect(text).toContain(`const RUNNER_DIRECTORY = '${EXTENSION_ROOT}';`);
+		expect(text).toContain(
+			`const EXCLUSIONS: readonly Exclusion[] = [{ ignoreFile: '${EXTENSION_ROOT}/.vscodeignore', entry: 'LICENSE' }];`
+		);
+		expect(licenceGuardText(input())).toContain("const RUNNER_DIRECTORY = '';");
+		expect(licenceGuardText(input())).toContain('const EXCLUSIONS: readonly Exclusion[] = [];');
+	});
+
+	it("resolves the tree root from the directory the family's runner starts in, and runs from the root as well", () => {
+		const nested = runGuard('runner-nested', conformingTree(), [], { runnerDirectory: EXTENSION_ROOT }, EXTENSION_ROOT);
+		expect(failures(nested)).toEqual([]);
+		expect(nested.filter((entry) => entry.test !== undefined)).toHaveLength(6);
+
+		const root = runGuard('runner-root', conformingTree(), [], { runnerDirectory: EXTENSION_ROOT });
+		expect(failures(root)).toEqual([]);
+
+		// Without the directory the guard reads the working directory as the tree, and a run from the subdirectory sees nothing.
+		const blind = runGuard('runner-blind', conformingTree(), [], {}, EXTENSION_ROOT);
+		expect(testNamed(blind, 'licence file').ok).toBe(false);
+	});
+
+	it('checks that the distributable leaves out what the licence of the archive excludes', () => {
+		const exclusions: Partial<LicenceGuardInput> = { exclusions: [{ ignoreFile: '.vscodeignore', entry: 'LICENSE' }] };
+
+		const green = runGuard('exclusion-green', { ...conformingTree(), '.vscodeignore': 'node_modules/**\nLICENSE\n' }, [], exclusions);
+		expect(testNamed(green, 'leaves out').ok).toBe(true);
+
+		const kept = testNamed(
+			runGuard('exclusion-kept', { ...conformingTree(), '.vscodeignore': 'node_modules/**\n' }, [], exclusions),
+			'leaves out'
+		);
+		expect(kept.ok).toBe(false);
+		expect(kept.message).toBe('.vscodeignore: does not exclude LICENSE from the distributable');
+
+		const missing = testNamed(runGuard('exclusion-missing', conformingTree(), [], exclusions), 'leaves out');
+		expect(missing.ok).toBe(false);
+		expect(missing.message).toBe('.vscodeignore: the ignore file is missing from the tree');
+	});
+
 	it('passes over a tree that honours the profile, every carrier of the model included', () => {
 		const entries = runGuard('green', conformingTree());
 
 		expect(entries[0]).toEqual({ suite: 'licence-leftovers' });
 		const tests = entries.filter((entry) => entry.test !== undefined);
-		expect(tests).toHaveLength(5);
+		expect(tests).toHaveLength(6);
 		expect(tests.filter((entry) => entry.ok !== true).map((entry) => `${entry.test ?? ''}: ${entry.message ?? ''}`)).toEqual([]);
 	});
 

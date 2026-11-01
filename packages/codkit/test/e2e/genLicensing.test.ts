@@ -35,7 +35,7 @@ afterAll(cleanupTempRoots);
 const MANIFEST_OVERLAY = 'delta/overlays/manifest.json.overlay.json';
 const PACKAGE_OVERLAY = 'delta/overlays/package.json.overlay.json';
 const LICENCE_PATCH = 'delta/patches/LICENSE.md.ckpatch';
-const COMPONENT_PATCH = 'delta/patches/licenses__LICENSE-upstream.txt.ckpatch';
+const COMPONENT_PATCH = 'delta/patches/licenses__LICENSE-UPSTREAM.md.ckpatch';
 const RENDERING_PATCH = 'delta/patches/LICENSE.rtf.ckpatch';
 const SECOND_EDITION = '# Fixture Private Licence\n\nFixture private terms, second edition, not a commercial legal approval.\n';
 
@@ -163,7 +163,7 @@ describe('S91/S92 - gen licensing writes the surfaces of the profile, refuses a 
 		expect(licence.header.id).toBe('CK-product-002');
 		expect(licence.header.contractTests).toEqual(['licence-leftovers']);
 		expect(addFileBodyOf(licence)).toBe(FIXTURE_LICENSE_TEXT);
-		expect(readPatch(fixture, COMPONENT_PATCH).targetPath).toBe('licenses/LICENSE-upstream.txt');
+		expect(readPatch(fixture, COMPONENT_PATCH).targetPath).toBe('licenses/LICENSE-UPSTREAM.md');
 		expect(readPatch(fixture, RENDERING_PATCH).targetPath).toBe('LICENSE.rtf');
 
 		// The guard: at the type's path, headed from the profile, under its suite id.

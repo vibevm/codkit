@@ -33,7 +33,7 @@ import type { Overlay, OverlayOperation } from './layers/overlay.ts';
 import { ownLayerPaths, readLicensingDeclaration, selectLicensingProfile } from './licensingProfile.ts';
 import type { LicensingProfile } from './licensingProfile.ts';
 import { licensingSurfaces } from './licensingSurfaces.ts';
-import type { ComponentLicenceSurface, LicenceOverlaySurface, LicensingSurfaces } from './licensingSurfaces.ts';
+import type { ComponentLicenceSurface, ExclusionSurface, LicenceOverlaySurface, LicensingSurfaces } from './licensingSurfaces.ts';
 import { isCkError } from './messages.ts';
 import { organizationPolicyRoot } from './organizationPolicyStore.ts';
 import { parseCkpatch } from './patchFormat.ts';
@@ -164,7 +164,51 @@ function checkSurfaces(options: LicensingCheckOptions, profile: LicensingProfile
 			);
 		}
 	}
+	for (const exclusion of surfaces.exclusions) {
+		checkExclusion(patchesDir, exclusion, conventions, findings);
+	}
 	checkGuard(patchesDir, surfaces, findings);
+}
+
+/**
+ * ##VERIFY-LICENSING: an exclusion of the distributable is added by a patch of
+ * its ignore file whose added lines include the entry - the engine's patch of
+ * ##GEN-LICENSING (6), or another patch of the file that carries the line. A
+ * patch that does not read adds nothing; the schema pass of `verify` has
+ * already said why.
+ */
+function checkExclusion(patchesDir: string, exclusion: ExclusionSurface, conventions: Conventions, findings: Finding[]): void {
+	const read = readContainedFile(patchesDir, exclusion.artifact, { what: WHAT });
+	if (read.state === 'absent') {
+		findings.push(
+			finding(
+				'LICENSE-SURFACE',
+				`the exclusion of ${exclusion.entry} from the distributable has no patch of ${exclusion.ignoreFile}`,
+				GUARD_HINT,
+				exclusion.artifact
+			)
+		);
+		return;
+	}
+	let added: readonly string[] = [];
+	try {
+		const patch = parseCkpatch(read.bytes, conventions, exclusion.artifact);
+		added = patch.hunks.flatMap((hunk) => hunk.lines.filter((line) => line.kind === '+').map((line) => line.text));
+	} catch (error) {
+		if (!isCkError(error)) {
+			throw error;
+		}
+	}
+	if (!added.includes(exclusion.entry)) {
+		findings.push(
+			finding(
+				'LICENSE-SURFACE',
+				`the patch of ${exclusion.ignoreFile} does not add the line ${exclusion.entry}, so the distributable keeps what the licence leaves out`,
+				UPDATE_HINT,
+				exclusion.artifact
+			)
+		);
+	}
 }
 
 /**

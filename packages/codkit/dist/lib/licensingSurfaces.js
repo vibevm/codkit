@@ -19,6 +19,7 @@ import { ckError } from './messages.js';
 import { parsePolicyExpression } from './organizationPolicy.js';
 import { encodePatchName } from './patchFormat.js';
 import { bytesAtPin } from './pinBytes.js';
+import { RUNTIME_VERSION_FILE } from './runtimePackage.js';
 import { PATCHES_DIR } from './syncEngine.js';
 /** The component under which the tool's own licence text travels when its runtime library is delivered. */
 export const CODKIT_COMPONENT = 'codkit';
@@ -67,7 +68,7 @@ export function canonicalTextOf(profile, expression) {
     }
     return record.text;
 }
-/** The artifact of an add-file patch for a tree path. */
+/** The artifact of the patch of a tree path - an add-file patch of a surface, or the patch of an upstream ignore file. */
 export function addFileArtifactOf(treePath) {
     return `${PATCHES_DIR}/${encodePatchName(treePath)}`;
 }
@@ -79,9 +80,14 @@ function under(directory, name) {
 function licenceFileTreePath(area, fileName) {
     return under(area.licenceFileDirectory, fileName);
 }
-/** The tree path of a component licence: `LICENSE-<component>.txt` in the component licence directory. */
+/**
+ * ##LICENCE-DOCUMENT-NAMES: the tree path of a component licence - a Markdown
+ * document named in upper case, `LICENSE-<COMPONENT>.md`, in the component
+ * licence directory; the component keeps its lower-case name in the type's
+ * answer, and the file name is where the case changes.
+ */
 function componentTreePath(area, component) {
-    return under(area.componentLicenceDirectory, `LICENSE-${component}.txt`);
+    return under(area.componentLicenceDirectory, `LICENSE-${component.toUpperCase()}.md`);
 }
 /**
  * ##LICENCE-DOCUMENT-EXEMPTION (PROP-006): the tree paths of the licence surfaces
@@ -168,7 +174,10 @@ function overlaySurfaces(options, area, expression) {
 /**
  * ##GEN-LICENSING (3): the component licences - every upstream licence file the
  * type names, byte for byte from the pin, and the tool's own text when the
- * runtime library is delivered into the own layer.
+ * runtime library is delivered into the own layer: its version file is present
+ * under the delivered directory. The notice copy `standards load` places there
+ * is not the library, and a product that compiles nothing of the tool ships no
+ * component of it.
  */
 function componentSurfaces(options, area) {
     const components = [];
@@ -189,7 +198,7 @@ function componentSurfaces(options, area) {
             text: text.endsWith('\n') ? text : `${text}\n`
         });
     }
-    if (existsSync(join(options.patchesDir, ...CODKIT_DELIVERED_DIR.split('/')))) {
+    if (runtimeLibraryDelivered(options.patchesDir)) {
         const text = readFileSync(join(options.toolRoot, CODKIT_LICENCE_FILE), 'utf8');
         const treePath = componentTreePath(area, CODKIT_COMPONENT);
         components.push({
@@ -200,6 +209,18 @@ function componentSurfaces(options, area) {
         });
     }
     return components;
+}
+/** Whether the tool's runtime library is delivered into the own layer: the version file of the library is under the delivered directory. */
+export function runtimeLibraryDelivered(patchesDir) {
+    return existsSync(join(patchesDir, ...CODKIT_DELIVERED_DIR.split('/'), ...RUNTIME_VERSION_FILE.split('/')));
+}
+/** ##GEN-LICENSING (6): what the family's distributable leaves out, each through one line of an ignore file the type names. */
+function exclusionSurfaces(area) {
+    return (area.distributableExclusions ?? []).map((exclusion) => ({
+        ignoreFile: exclusion.ignoreFile,
+        entry: exclusion.entry,
+        artifact: addFileArtifactOf(exclusion.ignoreFile)
+    }));
 }
 /** Every surface of the product, as the writer writes it and the checker expects it. */
 export function licensingSurfaces(options) {
@@ -219,6 +240,13 @@ export function licensingSurfaces(options) {
             artifact: addFileArtifactOf(rendering.path),
             format: rendering.format
         })),
-        guard: { artifact: guard.path, suite: guard.suite, test: guard.test, preamble: guard.preamble ?? [] }
+        exclusions: exclusionSurfaces(area),
+        guard: {
+            artifact: guard.path,
+            suite: guard.suite,
+            test: guard.test,
+            preamble: guard.preamble ?? [],
+            runnerDirectory: guard.runnerDirectory ?? ''
+        }
     };
 }

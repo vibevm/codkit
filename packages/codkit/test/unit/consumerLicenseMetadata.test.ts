@@ -22,7 +22,7 @@ describe('isConsumerLicenseMetadata', () => {
 	it('leaves the files that need a carrier alone', () => {
 		for (const path of [
 			'LICENSE-CODKIT.md',
-			'licenses/LICENSE-code-oss.txt',
+			'licenses/LICENSE-CODE-OSS.md',
 			'LicenseService.ts',
 			'license.json',
 			'README.md',

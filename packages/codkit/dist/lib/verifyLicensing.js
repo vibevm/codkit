@@ -120,7 +120,37 @@ function checkSurfaces(options, profile) {
             findings.push(finding('LICENSE-SURFACE', `the rendering ${rendering.treePath} has no add-file patch`, UPDATE_HINT, rendering.artifact));
         }
     }
+    for (const exclusion of surfaces.exclusions) {
+        checkExclusion(patchesDir, exclusion, conventions, findings);
+    }
     checkGuard(patchesDir, surfaces, findings);
+}
+/**
+ * ##VERIFY-LICENSING: an exclusion of the distributable is added by a patch of
+ * its ignore file whose added lines include the entry - the engine's patch of
+ * ##GEN-LICENSING (6), or another patch of the file that carries the line. A
+ * patch that does not read adds nothing; the schema pass of `verify` has
+ * already said why.
+ */
+function checkExclusion(patchesDir, exclusion, conventions, findings) {
+    const read = readContainedFile(patchesDir, exclusion.artifact, { what: WHAT });
+    if (read.state === 'absent') {
+        findings.push(finding('LICENSE-SURFACE', `the exclusion of ${exclusion.entry} from the distributable has no patch of ${exclusion.ignoreFile}`, GUARD_HINT, exclusion.artifact));
+        return;
+    }
+    let added = [];
+    try {
+        const patch = parseCkpatch(read.bytes, conventions, exclusion.artifact);
+        added = patch.hunks.flatMap((hunk) => hunk.lines.filter((line) => line.kind === '+').map((line) => line.text));
+    }
+    catch (error) {
+        if (!isCkError(error)) {
+            throw error;
+        }
+    }
+    if (!added.includes(exclusion.entry)) {
+        findings.push(finding('LICENSE-SURFACE', `the patch of ${exclusion.ignoreFile} does not add the line ${exclusion.entry}, so the distributable keeps what the licence leaves out`, UPDATE_HINT, exclusion.artifact));
+    }
 }
 /**
  * ##VERIFY-LICENSING: every field is set by an overlay of its target to the

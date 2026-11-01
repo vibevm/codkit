@@ -23,8 +23,8 @@ describe('licensingDocumentPaths', () => {
 		expect([...licensingDocumentPaths(patchesDir, projectType)].sort()).toEqual([
 			'LICENSE.md',
 			'LICENSE.rtf',
-			'licenses/LICENSE-codkit.txt',
-			'licenses/LICENSE-upstream.txt'
+			'licenses/LICENSE-CODKIT.md',
+			'licenses/LICENSE-UPSTREAM.md'
 		]);
 	});
 

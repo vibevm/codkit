@@ -48,11 +48,19 @@ export type LicenceGuardField = {
 	readonly devChannel: boolean;
 };
 
+/** One line of an ignore file that keeps a file out of the distributable (##GEN-LICENSING (6)). */
+export type LicenceGuardExclusion = {
+	readonly ignoreFile: string;
+	readonly entry: string;
+};
+
 export type LicenceGuardInput = {
 	/** The runner's words: `suite`/`test` or `describe`/`it`. */
 	readonly words: { readonly suite: string; readonly test: string };
 	/** The lines the family needs in front of the suite - a directive of its lint rules, say; empty for none. */
 	readonly preamble: readonly string[];
+	/** The tree path the family's runner starts in; empty for the tree root. */
+	readonly runnerDirectory: string;
 	readonly holders: readonly string[];
 	readonly scopes: readonly LicenceGuardScope[];
 	/** The directory the tool delivers its runtime library into, inside the own root; never the product's. */
@@ -65,6 +73,8 @@ export type LicenceGuardInput = {
 	readonly commentStyleNames: readonly string[];
 	readonly components: readonly string[];
 	readonly renderings: readonly string[];
+	/** What the distributable leaves out, one line of an ignore file each; empty for a family whose build copies by name. */
+	readonly exclusions: readonly LicenceGuardExclusion[];
 	readonly retiredNotices: readonly string[];
 };
 
@@ -136,22 +146,25 @@ export function licenceGuardText(input: LicenceGuardInput): string {
 	}));
 	const notices = `[${input.retiredNotices.map((notice) => escapedLiteral(notice)).join(', ')}]`;
 	const preamble = input.preamble.length === 0 ? '' : `${input.preamble.join('\n')}\n`;
+	const exclusions = input.exclusions.map((exclusion) => ({ ignoreFile: exclusion.ignoreFile, entry: exclusion.entry }));
 	return String.raw`// The leftover guard of the licence (codkit, PROP-019 LICENCE-GUARD).
 //
 // Written by codkit gen licensing from the selected profile and the answers of
 // the project type; codkit gen licensing --update rewrites it, so it is not
 // edited by hand. It runs under the product's own test run from the root of the
-// tree, imports nothing of the tool, and proves that the licence the product
-// declares is the one its own files, its licence file, its manifests and its
-// component licences carry.
+// tree or from the directory the family's runner starts in, imports nothing of
+// the tool, and proves that the licence the product declares is the one its own
+// files, its licence file, its manifests, its component licences and its
+// distributable carry.
 
 import assert from 'assert';
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { join, sep } from 'path';
 
 type Scope = { readonly directory: string; readonly expression: string };
 type Field = { readonly target: string; readonly path: readonly string[]; readonly expected: string | null; readonly devChannel: boolean };
+type Exclusion = { readonly ignoreFile: string; readonly entry: string };
 type Annotation = { paths: string[]; copyright: string[]; license: string | null; comment: string };
 
 /** The rights holders of the profile: a copyright line names one of them. */
@@ -172,6 +185,10 @@ const COMMENT_STYLE_NAMES: ReadonlySet<string> = new Set(${literal([...input.com
 /** The component licences and the renderings the distributable carries. */
 const COMPONENTS: readonly string[] = ${literal(input.components)};
 const RENDERINGS: readonly string[] = ${literal(input.renderings)};
+/** What the distributable leaves out: one line of an ignore file each. */
+const EXCLUSIONS: readonly Exclusion[] = ${literal(exclusions)};
+/** The directory the family's runner starts in, from the tree root; empty for the root itself. */
+const RUNNER_DIRECTORY = ${literal(input.runnerDirectory)};
 /** Phrases the profile retired, written as escapes so that this file does not carry them itself. */
 const RETIRED_NOTICES: readonly string[] = ${notices};
 
@@ -180,7 +197,23 @@ const BINARY_PROBE = 8192;
 const COPYRIGHT_LINE = /(SPDX-FileCopyrightText:\s*)?(Copyright\s*(\(c\)|\u00a9)?|\u00a9)\s*(\d{4}(\s*[-,]\s*\d{4})*)?\s+(?<holder>.+?)\s*$/u;
 const SPDX_LINE = /SPDX-License-Identifier:\s*(?<expression>[A-Za-z0-9.+\-]+(\s+(AND|OR|WITH)\s+[A-Za-z0-9.+\-]+)*)/u;
 const TRAILING_MARKER = /(-->|\*\/|-\*\))\s*$/u;
-const ROOT = process.cwd();
+const ROOT = rootOf();
+
+/** The tree root: the working directory, or its ancestor when the runner starts in the directory the type names. */
+function rootOf(): string {
+	const cwd = process.cwd();
+	if (RUNNER_DIRECTORY === '') {
+		return cwd;
+	}
+	const suffix = RUNNER_DIRECTORY.split('/');
+	const parts = cwd.split(/[\\/]/u);
+	const tail = parts.slice(parts.length - suffix.length);
+	if (tail.length !== suffix.length || !tail.every((part, index) => part === suffix[index])) {
+		return cwd;
+	}
+	const root = parts.slice(0, parts.length - suffix.length).join(sep);
+	return root === '' ? sep : root;
+}
 
 function absolute(path: string): string {
 	return join(ROOT, ...path.split('/'));
@@ -555,6 +588,21 @@ ${preamble}${suite}('${LICENCE_GUARD_SUITE}', () => {
 	${test}('every component licence and rendering is in the tree', () => {
 		const missing = [...COMPONENTS, ...RENDERINGS].filter((path) => !isFile(path));
 		assert.ok(missing.length === 0, 'missing from the tree: ' + missing.join(', '));
+	});
+
+	${test}('the distributable leaves out what the licence of the archive excludes', () => {
+		const problems: string[] = [];
+		for (const exclusion of EXCLUSIONS) {
+			if (!isFile(exclusion.ignoreFile)) {
+				problems.push(exclusion.ignoreFile + ': the ignore file is missing from the tree');
+				continue;
+			}
+			const lines = readText(exclusion.ignoreFile).split('\n').map((line) => line.trim());
+			if (!lines.includes(exclusion.entry)) {
+				problems.push(exclusion.ignoreFile + ': does not exclude ' + exclusion.entry + ' from the distributable');
+			}
+		}
+		assert.ok(problems.length === 0, problems.join('\n'));
 	});
 });
 `;
