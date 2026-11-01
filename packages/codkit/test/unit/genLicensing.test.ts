@@ -7,7 +7,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ProjectType } from '@codkit/type-api';
@@ -319,8 +319,24 @@ describe('planLicensing with an exclusion of the distributable (S97)', () => {
 			/^# reason: .*$/mu,
 			'# reason: the product ignores its own scratch'
 		);
+		const ours = readFileSync(own.patchesPath(EXCLUSION_PATCH), 'utf8');
 		writeFileSync(own.patchesPath(EXCLUSION_PATCH), foreign, 'utf8');
 		expect(codeOf(() => plan())).toBe('CONFIG');
+		writeFileSync(own.patchesPath(EXCLUSION_PATCH), ours, 'utf8');
+	});
+
+	it("ships the tool's own text as a component only when the runtime library is delivered, never for the notice copy alone", () => {
+		const component = 'delta/patches/licenses__LICENSE-CODKIT.md.ckpatch';
+		const delivered = own.patchesPath('delta/own/codkit');
+		mkdirSync(delivered, { recursive: true });
+		writeFileSync(join(delivered, 'LICENSE-CODKIT.md'), '# the notice copy\n', 'utf8');
+		expect(plan().files.map((file) => file.path)).not.toContain(component);
+
+		mkdirSync(join(delivered, 'common'), { recursive: true });
+		writeFileSync(join(delivered, 'common', 'version.ts'), "export const CODKIT_RUNTIME_VERSION = '1.0.0';\n", 'utf8');
+		const paths = plan().files.map((file) => file.path);
+		expect(paths).toContain(component);
+		expect(paths.indexOf(component)).toBe(paths.indexOf(COMPONENT_PATCH) + 1);
 	});
 
 	it('refuses an ignore file the pin does not carry, or one without a marker form', () => {
