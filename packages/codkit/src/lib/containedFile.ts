@@ -46,6 +46,7 @@ import { constants as fsConstants } from 'node:fs';
 import type { Stats } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { isCkError } from './messages.ts';
+import { PATCH_FILE_SUFFIX } from './patchFormat.ts';
 import { safeBasenameProblem } from './pathSafety.ts';
 import {
 	NOFOLLOW,
@@ -419,7 +420,11 @@ export function renameContainedFile(root: string, from: string, to: string, opti
 export function writeRegularFileAtomic(absolutePath: string, options: AtomicWriteOptions): void {
 	const parent = dirname(absolutePath);
 	const name = absolutePath.split(sep).pop() ?? '';
-	if (name === '' || safeBasenameProblem(name) !== null) {
+	// PROP-004 ##PATCH-NAME-ENCODING: the patch of a dotfile (`.gitignore.ckpatch`)
+	// is the one administrative name the engine writes that begins with a dot;
+	// the rest of its shape is held to the portable rule like every other name.
+	const shape = name.startsWith('.') && name.endsWith(PATCH_FILE_SUFFIX) ? name.slice(1) : name;
+	if (name === '' || safeBasenameProblem(shape) !== null) {
 		refuse(
 			options,
 			`unsafe administrative file name ${JSON.stringify(name)}`,

@@ -17,7 +17,7 @@ import { pinKey } from './pinIdentity.js';
 // The verdict is the caller's: this module returns findings, and `verify`,
 // `inventory` and the pre-commit hook each decide what to do with them.
 import { existsSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 import { requireCapability } from '../types/capability.js';
 import { isCallExpression, isIdentifier, isImportDeclaration, isNamedImports } from 'typescript/unstable/ast';
 import { createVirtualFileSystem } from 'typescript/unstable/fs';
@@ -37,7 +37,7 @@ import { OWN_CODKIT_ROOT, OWN_MANIFEST_PATH, checkServiceOverrideModules, checkU
 import { REMOVED_PATH, loadRemoved, parseRemoved, serializeRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap, parseResourceMap, resourceSourcePath, serializeResourceMap } from './layers/resource.js';
 import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, serializeRule } from './layers/rule.js';
-import { BEGIN_TOKEN, END_TOKEN } from './markers.js';
+import { BEGIN_TOKEN, END_TOKEN, markerKeyOf } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.js';
 import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.js';
@@ -407,7 +407,7 @@ function checkPatchMarkers(treeDir, config, conventions, patches, documents, fin
 }
 function checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, documents, findings) {
     const { patch, artifact } = entry;
-    const ext = extname(patch.targetPath);
+    const ext = markerKeyOf(patch.targetPath);
     try {
         if (patch.isAddFile) {
             // ##LICENCE-DOCUMENT-EXEMPTION (PROP-006): a licence surface is a document

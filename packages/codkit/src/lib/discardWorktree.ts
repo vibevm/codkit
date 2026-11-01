@@ -24,9 +24,9 @@
 // refusal, and the guard keeps the path as dirt.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 import type { PorcelainEntry } from './driftGuard.ts';
-import { markerFormFor, parseMarkers } from './markers.ts';
+import { markerFormFor, markerKeyOf, parseMarkers } from './markers.ts';
 import type { MarkerConventions } from './markers.ts';
 
 /** The hint of the refusal over a path that carries a block (S59). */
@@ -108,7 +108,7 @@ function hasTipVersion(status: string): boolean {
  */
 function carriesMarkerBlock(treeDir: string, relative: string, conventions: MarkerConventions): boolean {
 	const absolute = join(treeDir, ...relative.split('/'));
-	const extension = extname(relative);
+	const extension = markerKeyOf(relative);
 	if (!existsSync(absolute) || markerFormFor(extension, conventions) === null) {
 		return false;
 	}

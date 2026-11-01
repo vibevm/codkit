@@ -253,6 +253,20 @@ export function normalizeExtension(ext: string): string {
 }
 
 /**
+ * ##MR-FORM-KEY: the key of a path in `markerComment` - its extension, or the
+ * whole name of a file that begins with a dot and carries no extension
+ * (`.vscodeignore`, `.gitignore`), which `extname` reads as nameless. Every
+ * reader and writer of markers keys a path through this one function, so a
+ * file without a key has no form everywhere alike.
+ */
+export function markerKeyOf(path: string): string {
+	const name = path.slice(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1);
+	const dot = name.lastIndexOf('.');
+	if (dot > 0) return name.slice(dot);
+	return dot === 0 ? name : '';
+}
+
+/**
  * `^\s*<open>(begin|end)\s+(CK-[a-z]+-[0-9]{3})\s*<close>\s*$` with the form
  * quoted (PROP-004 sec. 3). The id shape here is deliberately looser than
  * `idPattern`: a well-formed marker with an unknown subsystem must be reported

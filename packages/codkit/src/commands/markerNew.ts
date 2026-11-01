@@ -12,7 +12,7 @@
 // not carry a patch, an owner nobody declared, an id that is already taken.
 
 import { chmodSync, existsSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { extname, isAbsolute, join, relative as relativePath, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative as relativePath, resolve, sep } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import {
 	EXIT_CHECK_FAILED,
@@ -29,7 +29,7 @@ import type { Conventions } from '../lib/conventionsFile.ts';
 import { treeId } from '../lib/fingerprint.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { withLock } from '../lib/lock.ts';
-import { markerFormFor, parseMarkers } from '../lib/markers.ts';
+import { markerFormFor, markerKeyOf, parseMarkers } from '../lib/markers.ts';
 import type { MarkerForm, MarkerBlock, MarkerParseResult } from '../lib/markers.ts';
 import { ckError, isCkError } from '../lib/messages.ts';
 import { OWNERS_PATH, loadOwnerKeys } from '../lib/owners.ts';
@@ -186,11 +186,11 @@ function locateTarget(treeDir: string, config: CodkitConfig, given: string, conv
 			target
 		);
 	}
-	const form = markerFormFor(extname(target), conventions);
+	const form = markerFormFor(markerKeyOf(target), conventions);
 	if (form === null && !newFile) {
 		throw ckError(
 			'FORBIDDEN-TARGET',
-			`no marker form is defined for "${extname(target)}" files, so this file cannot carry a codkit marker`,
+			`no marker form is defined for "${markerKeyOf(target)}" files, so this file cannot carry a codkit marker`,
 			'a target without a comment syntax belongs to the config-overlay or resource-file layer, not to a patch; ' +
 				`a file the pin does not carry at all is a whole-file intervention: ${NEW_FILE}`,
 			target
@@ -236,7 +236,7 @@ function scaffold(
 	// file without a marker form carries no block to read.
 	const content = readFileSync(absolute, 'utf8');
 	const parsed: MarkerParseResult =
-		form === null ? { blocks: [], errors: [] } : parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+		form === null ? { blocks: [], errors: [] } : parseMarkers(Buffer.from(content, 'utf8'), markerKeyOf(target), conventions, target);
 	const parseError = parsed.errors[0];
 	if (parseError !== undefined) throw parseError;
 	const pendingMatches = pending !== null && JSON.stringify(pending) === JSON.stringify(header);
@@ -378,7 +378,7 @@ function addBlockTo(ctx: CommandContext, treeDir: string, config: CodkitConfig, 
 		);
 	}
 	const content = readFileSync(absolute, 'utf8');
-	const parsed = parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+	const parsed = parseMarkers(Buffer.from(content, 'utf8'), markerKeyOf(target), conventions, target);
 	const parseError = parsed.errors[0];
 	if (parseError !== undefined) throw parseError;
 	if (!parsed.blocks.some((block) => block.id === fields.id)) {
@@ -626,7 +626,7 @@ function assertIdIsFree(
 			);
 		}
 	}
-	const parsed = parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+	const parsed = parseMarkers(Buffer.from(content, 'utf8'), markerKeyOf(target), conventions, target);
 	if (parsed.blocks.some((block) => block.id === id)) {
 		throw ckError('MARKER-DUP-ID', `id already used: ${target} already carries a block ${id}`, 'give this intervention its own id', target);
 	}

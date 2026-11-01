@@ -11,7 +11,7 @@
 // (##PUBLISH-SCRUB-FAIL-CLOSED).
 
 import { escapeRegExp } from './bytes.ts';
-import { markerFormFor } from './markers.ts';
+import { markerFormFor, markerKeyOf } from './markers.ts';
 import type { MarkerConventions, MarkerForm } from './markers.ts';
 
 /** How one file writes its comments; read from its marker form. */
@@ -68,10 +68,9 @@ export function markerFormsOf(conventions: MarkerConventions): readonly MarkerFo
 
 /** The comment syntax of a file, or null when its extension has no marker form. */
 export function commentSyntaxOf(path: string, conventions: MarkerConventions): CommentSyntax | null {
-	const name = path.slice(path.lastIndexOf('/') + 1);
-	const dot = name.lastIndexOf('.');
-	if (dot <= 0) return null;
-	const form = markerFormFor(name.slice(dot), conventions);
+	const key = markerKeyOf(path);
+	if (key === '') return null;
+	const form = markerFormFor(key, conventions);
 	return form === null ? null : syntaxOfForm(form);
 }
 

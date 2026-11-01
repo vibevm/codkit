@@ -18,7 +18,7 @@ import { pinKey } from './pinIdentity.ts';
 // `inventory` and the pre-commit hook each decide what to do with them.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 import type { ProjectType, ServiceOverrideProblem, ServiceOverrideVerifier } from '@codkit/type-api';
 import { requireCapability } from '../types/capability.ts';
 import { isCallExpression, isIdentifier, isImportDeclaration, isNamedImports } from 'typescript/unstable/ast';
@@ -80,7 +80,7 @@ import type { ResourceMap } from './layers/resource.ts';
 import type { ResourceEntry } from './layers/resource.ts';
 import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, serializeRule } from './layers/rule.ts';
 import type { Rule } from './layers/rule.ts';
-import { BEGIN_TOKEN, END_TOKEN } from './markers.ts';
+import { BEGIN_TOKEN, END_TOKEN, markerKeyOf } from './markers.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkErrorPayload, ErrorCode } from './messages.ts';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.ts';
@@ -623,7 +623,7 @@ function checkOnePatchMarkers(
 	findings: Finding[]
 ): void {
 	const { patch, artifact } = entry;
-	const ext = extname(patch.targetPath);
+	const ext = markerKeyOf(patch.targetPath);
 	try {
 		if (patch.isAddFile) {
 			// ##LICENCE-DOCUMENT-EXEMPTION (PROP-006): a licence surface is a document

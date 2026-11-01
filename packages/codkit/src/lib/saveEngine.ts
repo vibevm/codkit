@@ -20,7 +20,7 @@ import { workspaceForkReceipt } from './workspaceReceipt.ts';
 // (##GEN-BYTE-COMPARE, so mtimes stay put and watch daemons stay asleep).
 
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, extname, isAbsolute, join, relative as relativePath } from 'node:path';
+import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 import { bytesEqual, encodeUtf8 } from './bytes.ts';
 import { applyUnified } from './applyUnified.ts';
 import type { CodkitConfig } from './configFile.ts';
@@ -31,7 +31,7 @@ import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.t
 import { licensingDocumentPaths } from './licensingSurfaces.ts';
 import { inputSaveRefusal } from './inputsTree.ts';
 import type { Output } from './jsonOut.ts';
-import { parseMarkers, parseMarkersOfNewFile } from './markers.ts';
+import { markerKeyOf, parseMarkers, parseMarkersOfNewFile } from './markers.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkError } from './messages.ts';
 import {
@@ -845,7 +845,7 @@ function planFile(
 	// The working bytes come from the selection state (D4): the worktree today,
 	// a commit's blob the day Phase 4 replays one.
 	const curBytes = bytesOf(tree, state, target);
-	const ext = extname(target);
+	const ext = markerKeyOf(target);
 
 	// Markers of the working file: a block that is not closed, nested or
 	// duplicated must be fixed by a human before any patch is generated. A new

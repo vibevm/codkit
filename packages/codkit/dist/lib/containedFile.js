@@ -32,6 +32,7 @@ import { chmodSync, closeSync, fstatSync, linkSync, lstatSync, openSync, readSyn
 import { constants as fsConstants } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { isCkError } from './messages.js';
+import { PATCH_FILE_SUFFIX } from './patchFormat.js';
 import { safeBasenameProblem } from './pathSafety.js';
 import { NOFOLLOW, NONBLOCK, ensureAdminDirectory, errnoOf, isWithin, lstatIfPresent, messageOf, realpathIfPresent, refuse, refuseNonRegularLeaf, sameFile, statIfPresent, unlinkIfPresent, writeAll } from './containedPath.js';
 function readAllFrom(handle) {
@@ -371,7 +372,11 @@ export function renameContainedFile(root, from, to, options) {
 export function writeRegularFileAtomic(absolutePath, options) {
     const parent = dirname(absolutePath);
     const name = absolutePath.split(sep).pop() ?? '';
-    if (name === '' || safeBasenameProblem(name) !== null) {
+    // PROP-004 ##PATCH-NAME-ENCODING: the patch of a dotfile (`.gitignore.ckpatch`)
+    // is the one administrative name the engine writes that begins with a dot;
+    // the rest of its shape is held to the portable rule like every other name.
+    const shape = name.startsWith('.') && name.endsWith(PATCH_FILE_SUFFIX) ? name.slice(1) : name;
+    if (name === '' || safeBasenameProblem(shape) !== null) {
         refuse(options, `unsafe administrative file name ${JSON.stringify(name)}`, 'this is a bug in codkit unless the git directory is damaged');
     }
     let canonicalParent;

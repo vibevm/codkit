@@ -59,6 +59,7 @@ describe('publish scrub: marker lines', () => {
 		expect(scrub('LICENSE-CODKIT.md', notice).text).toBe('# Notice\nstandards 1.0.0\n');
 		const toml = 'a = 1\n# codkit:begin standards\n[requires]\n# codkit:end standards\n';
 		expect(commentSyntaxOf('vibe.toml', conventions())).toBeNull();
+		expect(commentSyntaxOf('packages/sample/.vscodeignore', conventions())).toEqual(commentSyntaxOf('build/run.sh', conventions()));
 		expect(scrub('vibe.toml', toml)).toMatchObject({ text: 'a = 1\n[requires]\n', markers: 2 });
 	});
 

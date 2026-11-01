@@ -10,7 +10,7 @@
 // whatever it carries is left to the fail-closed search of the release tree
 // (##PUBLISH-SCRUB-FAIL-CLOSED).
 import { escapeRegExp } from './bytes.js';
-import { markerFormFor } from './markers.js';
+import { markerFormFor, markerKeyOf } from './markers.js';
 /** What the fail-closed search of the release tree looks for, ignoring case. */
 export const LEFTOVER_PATTERN = 'codkit:(begin|end)|spec://|vibevm';
 const MARKER_KEYWORD = 'codkit:';
@@ -44,11 +44,10 @@ export function markerFormsOf(conventions) {
 }
 /** The comment syntax of a file, or null when its extension has no marker form. */
 export function commentSyntaxOf(path, conventions) {
-    const name = path.slice(path.lastIndexOf('/') + 1);
-    const dot = name.lastIndexOf('.');
-    if (dot <= 0)
+    const key = markerKeyOf(path);
+    if (key === '')
         return null;
-    const form = markerFormFor(name.slice(dot), conventions);
+    const form = markerFormFor(key, conventions);
     return form === null ? null : syntaxOfForm(form);
 }
 function syntaxOfForm(form) {

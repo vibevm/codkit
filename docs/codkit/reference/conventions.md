@@ -37,6 +37,9 @@ Marker lines use the file's existing indentation. Content belongs between a matc
 | `.ps1` | `# codkit:begin <ID>` | `# codkit:end <ID>` |
 | `.yml` | `# codkit:begin <ID>` | `# codkit:end <ID>` |
 | `.yaml` | `# codkit:begin <ID>` | `# codkit:end <ID>` |
+| `.vscodeignore` | `# codkit:begin <ID>` | `# codkit:end <ID>` |
+| `.gitignore` | `# codkit:begin <ID>` | `# codkit:end <ID>` |
+| `.npmignore` | `# codkit:begin <ID>` | `# codkit:end <ID>` |
 
 Use `codkit marker new <tree-file> ...` to scaffold markers and the pending header. Use `codkit save` to generate/update the patch artifact; do not synthesize patch files by hand.
 

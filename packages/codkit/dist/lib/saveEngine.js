@@ -19,7 +19,7 @@ import { workspaceForkReceipt } from './workspaceReceipt.js';
 // block. Only then are the artifacts written, and only when their bytes differ
 // (##GEN-BYTE-COMPARE, so mtimes stay put and watch daemons stay asleep).
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, extname, isAbsolute, join, relative as relativePath } from 'node:path';
+import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 import { bytesEqual, encodeUtf8 } from './bytes.js';
 import { applyUnified } from './applyUnified.js';
 import { loadConventions, matchesPatternList } from './conventionsFile.js';
@@ -27,7 +27,7 @@ import { gitLocal, runGit } from './gitx.js';
 import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.js';
 import { licensingDocumentPaths } from './licensingSurfaces.js';
 import { inputSaveRefusal } from './inputsTree.js';
-import { parseMarkers, parseMarkersOfNewFile } from './markers.js';
+import { markerKeyOf, parseMarkers, parseMarkersOfNewFile } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { NO_OWN_EXTENSIONS, materializerOf, mirrorOwnExtensionsBack, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { loadResourceMap } from './layers/resource.js';
@@ -601,7 +601,7 @@ function planFile(entry, state, store, options, conventions, resources, allowNew
     // The working bytes come from the selection state (D4): the worktree today,
     // a commit's blob the day Phase 4 replays one.
     const curBytes = bytesOf(tree, state, target);
-    const ext = extname(target);
+    const ext = markerKeyOf(target);
     // Markers of the working file: a block that is not closed, nested or
     // duplicated must be fixed by a human before any patch is generated. A new
     // file without a marker form carries none (##ADD-FILE-EXEMPTION).

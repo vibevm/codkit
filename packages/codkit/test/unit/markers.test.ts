@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { encodeUtf8 } from '../../src/lib/bytes.ts';
-import { markerFormFor, parseMarkers } from '../../src/lib/markers.ts';
+import { markerFormFor, markerKeyOf, parseMarkers } from '../../src/lib/markers.ts';
 import type { MarkerParseResult } from '../../src/lib/markers.ts';
 import type { ErrorCode } from '../../src/lib/messages.ts';
 import { conventions } from '../support/conventions.ts';
@@ -34,6 +34,28 @@ function fileWithBlock(ext: string, id: string): string {
 		''
 	].join('\n');
 }
+
+describe('the marker key of a path (PROP-004 ##MR-FORM-KEY)', () => {
+	it('is the extension, or the whole name of a dotfile without one, and nothing for a bare name', () => {
+		expect(markerKeyOf('src/vs/nls.ts')).toBe('.ts');
+		expect(markerKeyOf('packages/sample/.vscodeignore')).toBe('.vscodeignore');
+		expect(markerKeyOf('.gitignore')).toBe('.gitignore');
+		expect(markerKeyOf('build/.config.json')).toBe('.json');
+		expect(markerKeyOf('Makefile')).toBe('');
+		expect(markerKeyOf('C:\\tree\\packages\\.npmignore')).toBe('.npmignore');
+	});
+
+	it('gives the ignore files of the shipped conventions the hash form, and parses a block in one', () => {
+		for (const name of ['.vscodeignore', '.gitignore', '.npmignore']) {
+			expect(markerFormFor(markerKeyOf(name), conventions())).toEqual({ open: '# codkit:', close: '' });
+		}
+		expect(markerFormFor(markerKeyOf('.dockerignore'), conventions())).toBeNull();
+		const text = ['node_modules/**', '# codkit:begin CK-shell-001', 'LICENSE', '# codkit:end CK-shell-001', ''].join('\n');
+		const result = parseMarkers(encodeUtf8(text), markerKeyOf('.vscodeignore'), conventions(), '.vscodeignore');
+		expect(codes(result)).toEqual([]);
+		expect(result.blocks).toEqual([{ id: 'CK-shell-001', beginLine: 2, endLine: 4 }]);
+	});
+});
 
 describe('marker forms', () => {
 	it('finds the block in every comment form of PROP-004 sec. 1', () => {

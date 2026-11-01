@@ -11,7 +11,7 @@ import { pinKey, pinData as serializePinData } from '../lib/pinIdentity.js';
 // work or an invalid marker", which is what makes `status` usable in a script.
 import { declaredDiscipline } from '../lib/discipline.js';
 import { existsSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.js';
 import { loadLocalConfig } from '../lib/configFile.js';
 import { inputRepositoryState } from '../lib/inputsRepository.js';
@@ -20,7 +20,7 @@ import { loadConventions } from '../lib/conventionsFile.js';
 import { expandCollapsedUntracked, porcelainZEntries } from '../lib/driftGuard.js';
 import { deltaFingerprint, treeId } from '../lib/fingerprint.js';
 import { runGit } from '../lib/gitx.js';
-import { markerFormFor, parseMarkers } from '../lib/markers.js';
+import { markerFormFor, markerKeyOf, parseMarkers } from '../lib/markers.js';
 import { ckError } from '../lib/messages.js';
 import { compareOwnExtensions, extensionsTreeDir, materializerOf, ownExtensionTreePrefixes, pinShipsExtension, strandedMaterializations } from '../lib/layers/ownExtensions.js';
 import { loadOwnManifest } from '../lib/layers/ownManifest.js';
@@ -435,11 +435,11 @@ function upstreamFiles(treeDir, roots, conventions, ownedPrefixes) {
         // CK-E-DELETES-UPSTREAM-FILE); a file whose extension has no marker form
         // is a blind zone by construction (PROP-004 ##MR-BLIND-ZONES), not a file
         // with broken markers.
-        if (!existsSync(absolute) || markerFormFor(extname(entry.path), conventions) === null) {
+        if (!existsSync(absolute) || markerFormFor(markerKeyOf(entry.path), conventions) === null) {
             files.push({ path: entry.path, status: entry.status, blocks: 0, markerErrors: 0 });
             continue;
         }
-        const parsed = parseMarkers(readFileSync(absolute), extname(entry.path), conventions, entry.path);
+        const parsed = parseMarkers(readFileSync(absolute), markerKeyOf(entry.path), conventions, entry.path);
         files.push({ path: entry.path, status: entry.status, blocks: parsed.blocks.length, markerErrors: parsed.errors.length });
     }
     return files;

@@ -22,7 +22,7 @@
     "patch"
   ],
   "markerComment": {
-    "_doc": "Marker forms by file extension (PROP-004 section 1). Every key except this one is a file extension; the value is {open, close}: the marker line is <indent><open>begin <ID><close> and <indent><open>end <ID><close>. For line-comment languages close is the empty string. Keys starting with an underscore are documentation and are never matched against an extension.",
+    "_doc": "Marker forms by file extension (PROP-004 section 1). Every key except this one is a file extension, or the whole name of a file that begins with a dot and has no extension (PROP-004 MR-FORM-KEY); the value is {open, close}: the marker line is <indent><open>begin <ID><close> and <indent><open>end <ID><close>. For line-comment languages close is the empty string. Keys starting with an underscore are documentation and are never matched against an extension.",
     ".ts": {
       "open": "// codkit:",
       "close": ""
@@ -72,6 +72,18 @@
       "close": ""
     },
     ".yaml": {
+      "open": "# codkit:",
+      "close": ""
+    },
+    ".vscodeignore": {
+      "open": "# codkit:",
+      "close": ""
+    },
+    ".gitignore": {
+      "open": "# codkit:",
+      "close": ""
+    },
+    ".npmignore": {
       "open": "# codkit:",
       "close": ""
     }

@@ -23,8 +23,8 @@
 // The classifier therefore only ever narrows: an answer it cannot prove is a
 // refusal, and the guard keeps the path as dirt.
 import { existsSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
-import { markerFormFor, parseMarkers } from './markers.js';
+import { join } from 'node:path';
+import { markerFormFor, markerKeyOf, parseMarkers } from './markers.js';
 /** The hint of the refusal over a path that carries a block (S59). */
 export const MARKER_BLOCK_DISCARD_HINT = 'this file carries a marker block: run codkit save to extract it, or move the edit out';
 export function emptyWorktreeDiscardPlan() {
@@ -83,7 +83,7 @@ function hasTipVersion(status) {
  */
 function carriesMarkerBlock(treeDir, relative, conventions) {
     const absolute = join(treeDir, ...relative.split('/'));
-    const extension = extname(relative);
+    const extension = markerKeyOf(relative);
     if (!existsSync(absolute) || markerFormFor(extension, conventions) === null) {
         return false;
     }

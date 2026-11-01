@@ -11,12 +11,12 @@
 // Everything it refuses, it refuses before writing anything: a target that may
 // not carry a patch, an owner nobody declared, an id that is already taken.
 import { chmodSync, existsSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { extname, isAbsolute, join, relative as relativePath, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative as relativePath, resolve, sep } from 'node:path';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, commandFlagValue, forkResolution, requireProjectType } from '../lib/command.js';
 import { loadConventions, matchesPatternList } from '../lib/conventionsFile.js';
 import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
-import { markerFormFor, parseMarkers } from '../lib/markers.js';
+import { markerFormFor, markerKeyOf, parseMarkers } from '../lib/markers.js';
 import { ckError, isCkError } from '../lib/messages.js';
 import { OWNERS_PATH, loadOwnerKeys } from '../lib/owners.js';
 import { DEFAULT_PATCH_LAYER, PATCH_FILE_SUFFIX, encodePatchName } from '../lib/patchFormat.js';
@@ -108,9 +108,9 @@ function locateTarget(treeDir, config, given, conventions, newFile = false) {
     if (matchesPatternList(target, conventions.forbiddenPatchTargets)) {
         throw ckError('FORBIDDEN-TARGET', 'is a forbidden patch target', `conventions.json forbids patching it (forbiddenPatchTargets: ${conventions.forbiddenPatchTargets.join(', ')})`, target);
     }
-    const form = markerFormFor(extname(target), conventions);
+    const form = markerFormFor(markerKeyOf(target), conventions);
     if (form === null && !newFile) {
-        throw ckError('FORBIDDEN-TARGET', `no marker form is defined for "${extname(target)}" files, so this file cannot carry a codkit marker`, 'a target without a comment syntax belongs to the config-overlay or resource-file layer, not to a patch; ' +
+        throw ckError('FORBIDDEN-TARGET', `no marker form is defined for "${markerKeyOf(target)}" files, so this file cannot carry a codkit marker`, 'a target without a comment syntax belongs to the config-overlay or resource-file layer, not to a patch; ' +
             `a file the pin does not carry at all is a whole-file intervention: ${NEW_FILE}`, target);
     }
     if (newFile && bytesAtPin(treeDir, config.pin.sha, target) !== null) {
@@ -136,7 +136,7 @@ function scaffold(ctx, treeDir, config, given, fields, newFile = false) {
     // 3. The id is not taken by a patch, a draft or a block of this file. A new
     // file without a marker form carries no block to read.
     const content = readFileSync(absolute, 'utf8');
-    const parsed = form === null ? { blocks: [], errors: [] } : parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+    const parsed = form === null ? { blocks: [], errors: [] } : parseMarkers(Buffer.from(content, 'utf8'), markerKeyOf(target), conventions, target);
     const parseError = parsed.errors[0];
     if (parseError !== undefined)
         throw parseError;
@@ -249,7 +249,7 @@ function addBlockTo(ctx, treeDir, config, given, fields) {
         throw ckError('MARKER-DUP-ID', `${fields.id} is not the intervention of ${target}: no patch artifact or pending draft of this file carries it`, 'scaffold the first block with codkit marker new (without --add-block), or name the id this file already has', target);
     }
     const content = readFileSync(absolute, 'utf8');
-    const parsed = parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+    const parsed = parseMarkers(Buffer.from(content, 'utf8'), markerKeyOf(target), conventions, target);
     const parseError = parsed.errors[0];
     if (parseError !== undefined)
         throw parseError;
@@ -416,7 +416,7 @@ function assertIdIsFree(patchesDir, id, content, target, conventions, allowedPen
             throw ckError('MARKER-DUP-ID', `id already used: ${id} is waiting in a pending patch header`, 'give this intervention its own id, or run codkit save to turn the pending header into a patch', `.codkit/pending/${entry.fileName}`);
         }
     }
-    const parsed = parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+    const parsed = parseMarkers(Buffer.from(content, 'utf8'), markerKeyOf(target), conventions, target);
     if (parsed.blocks.some((block) => block.id === id)) {
         throw ckError('MARKER-DUP-ID', `id already used: ${target} already carries a block ${id}`, 'give this intervention its own id', target);
     }

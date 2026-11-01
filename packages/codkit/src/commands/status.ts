@@ -12,7 +12,7 @@ import { pinKey, pinData as serializePinData } from '../lib/pinIdentity.ts';
 
 import { declaredDiscipline } from '../lib/discipline.ts';
 import { existsSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
@@ -25,7 +25,7 @@ import { expandCollapsedUntracked, porcelainZEntries } from '../lib/driftGuard.t
 import { deltaFingerprint, treeId } from '../lib/fingerprint.ts';
 import { runGit } from '../lib/gitx.ts';
 import type { JsonValue, Output } from '../lib/jsonOut.ts';
-import { markerFormFor, parseMarkers } from '../lib/markers.ts';
+import { markerFormFor, markerKeyOf, parseMarkers } from '../lib/markers.ts';
 import { ckError } from '../lib/messages.ts';
 import {
 	compareOwnExtensions,
@@ -533,11 +533,11 @@ function upstreamFiles(
 		// CK-E-DELETES-UPSTREAM-FILE); a file whose extension has no marker form
 		// is a blind zone by construction (PROP-004 ##MR-BLIND-ZONES), not a file
 		// with broken markers.
-		if (!existsSync(absolute) || markerFormFor(extname(entry.path), conventions) === null) {
+		if (!existsSync(absolute) || markerFormFor(markerKeyOf(entry.path), conventions) === null) {
 			files.push({ path: entry.path, status: entry.status, blocks: 0, markerErrors: 0 });
 			continue;
 		}
-		const parsed = parseMarkers(readFileSync(absolute), extname(entry.path), conventions, entry.path);
+		const parsed = parseMarkers(readFileSync(absolute), markerKeyOf(entry.path), conventions, entry.path);
 		files.push({ path: entry.path, status: entry.status, blocks: parsed.blocks.length, markerErrors: parsed.errors.length });
 	}
 	return files;
