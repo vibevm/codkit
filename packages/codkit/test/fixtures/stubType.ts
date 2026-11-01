@@ -29,6 +29,7 @@ import type {
 	GeneratorsArea,
 	OverlayTarget,
 	OwnedDirectory,
+	PreviewArea,
 	ProjectType,
 	Refusal,
 	ServiceOverrideVerifier
@@ -175,6 +176,93 @@ export const DEFAULT_CHANNELS: readonly string[] = ['transpile', 'typecheck'];
 /** Argv fragments that mean somebody else's watcher already runs over this tree. */
 export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['build/watch.mjs transpile --watch', 'foreign watch-'];
 
+/** The host the preview of this layout starts when nothing names one; no machine has it on PATH. */
+export const PREVIEW_DEFAULT_HOST = 'codkit-stub-host';
+
+/** The two ways a person looks at this layout: from the tree, or from its packaged distributable. */
+export const PREVIEW_MODES: readonly string[] = ['development', 'artifact'];
+
+/** Set in the environment of the CLI, the recipe places one isolation directory outside the state directory (FEAT-002 S88). */
+export const PREVIEW_BREAK_ISOLATION_VARIABLE = 'CODKIT_TEST_PREVIEW_BREAK_ISOLATION';
+
+/** Set in the environment of the CLI, the preparation of the development mode exits 3. */
+export const PREVIEW_PREPARE_FAIL_VARIABLE = 'CODKIT_TEST_PREVIEW_PREPARE_FAIL';
+
+/** What the preparation of the development mode leaves in the tree; `.build/` is ignored by the fixture upstream. */
+export const PREVIEW_PREPARED_MARKER = '.build/preview-prepared';
+
+/** What the preparation of the artifact mode writes into the isolated extensions directory. */
+export const PREVIEW_INSTALLED_FILE = 'installed.json';
+
+/** The environment variable the launch of this layout carries, so a host can tell which mode started it. */
+export const PREVIEW_MODE_VARIABLE = 'CODKIT_STUB_PREVIEW_MODE';
+
+/** The preparation of the development mode: a marker in the tree, or a red exit when the suite asks for one. */
+const PREPARE_TREE_SCRIPT = [
+	"const fs = require('node:fs');",
+	`if ((process.env.${PREVIEW_PREPARE_FAIL_VARIABLE} ?? '') !== '') { console.error('prepare: fixture preparation failed'); process.exit(3); }`,
+	"fs.mkdirSync('.build', { recursive: true });",
+	`fs.writeFileSync('${PREVIEW_PREPARED_MARKER}', 'prepared\\n', 'utf8');`,
+	"console.log('prepare: fixture preparation finished');"
+].join(' ');
+
+/** The preparation of the artifact mode: the artifact path, written into the extensions directory it was handed. */
+const INSTALL_ARTIFACT_SCRIPT = [
+	"const fs = require('node:fs');",
+	"const path = require('node:path');",
+	'fs.mkdirSync(process.argv[1], { recursive: true });',
+	`fs.writeFileSync(path.join(process.argv[1], '${PREVIEW_INSTALLED_FILE}'), JSON.stringify({ artifact: process.argv[2] }) + '\\n', 'utf8');`,
+	"console.log('install: ' + process.argv[2]);"
+].join(' ');
+
+/**
+ * ##TYPE-AREA-PREVIEW: the launch of this layout's host over the tree. The
+ * development mode runs the product from the tree after a preparation that
+ * leaves a marker; the artifact mode needs the distributable and installs it
+ * into the isolated extensions directory before the launch. Both keep the
+ * person's own profile out of reach - unless the suite asks the recipe to break
+ * the rule, so that the engine's refusal can be proved. The preparation runs
+ * the node that runs codkit, so the fixture depends on no script of the tree.
+ */
+export const previewArea: PreviewArea = {
+	modes: PREVIEW_MODES,
+	defaultMode: 'development',
+	defaultHost: PREVIEW_DEFAULT_HOST,
+	recipe(request) {
+		const broken = (process.env[PREVIEW_BREAK_ISOLATION_VARIABLE] ?? '') !== '';
+		const userDataDir = broken
+			? join(dirname(request.stateDir), 'outside-the-state-dir', 'user-data')
+			: join(request.stateDir, 'user-data');
+		const extensionsDir = join(request.stateDir, 'extensions');
+		const needsArtifact = request.mode === 'artifact';
+		const args = [
+			'--dev-path',
+			request.treeDir,
+			'--user-data-dir',
+			userDataDir,
+			'--extensions-dir',
+			extensionsDir,
+			...(request.workspaceDir === null ? [] : [request.workspaceDir]),
+			...(request.artifact === null ? [] : ['--artifact', request.artifact])
+		];
+		const prepare: readonly BuildCommand[] = needsArtifact
+			? [
+					{
+						label: 'install artifact',
+						command: process.execPath,
+						args: ['-e', INSTALL_ARTIFACT_SCRIPT, extensionsDir, request.artifact ?? '']
+					}
+				]
+			: [{ label: 'prepare', command: process.execPath, args: ['-e', PREPARE_TREE_SCRIPT] }];
+		return {
+			prepare,
+			needsArtifact,
+			launch: { command: request.host, args, env: { [PREVIEW_MODE_VARIABLE]: request.mode } },
+			isolation: { userDataDir, extensionsDir }
+		};
+	}
+};
+
 /** The own-test runner of this layout takes the own root as a glob. */
 export function ownTests(ownRoot: string): BuildCommand | null {
 	const leaf =
@@ -263,7 +351,8 @@ export const CAPABILITIES: readonly Capability[] = [
 	'entry-module',
 	'config-overlay',
 	'dev-channel',
-	'upgrade-advisory'
+	'upgrade-advisory',
+	'preview'
 ];
 
 const base: ProjectType = {
@@ -309,6 +398,7 @@ const base: ProjectType = {
 		foreignWatcherMarkers: FOREIGN_WATCHER_MARKERS
 	},
 	advisory: { readers },
+	preview: previewArea,
 	standards: { packages: [] },
 	conventions: { subsystems: SUBSYSTEMS, forbiddenServiceIds: FORBIDDEN_SERVICE_IDS },
 	generators: stubGenerators({ brand: true })

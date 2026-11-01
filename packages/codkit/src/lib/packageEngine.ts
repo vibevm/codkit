@@ -400,8 +400,11 @@ function outputsDetail(type: ProjectType, patterns: readonly string[], outputs: 
 		: 'no declared output exists in the tree';
 }
 
-/** The drift guard of `load`, with the exemption `load --fresh` makes. */
-function guardStep(
+/**
+ * The drift guard of `load`, with the exemption `load --fresh` makes. Exported
+ * for `codkit preview`, whose run opens with the same guard (##CMD-PREVIEW).
+ */
+export function guardStep(
 	options: PackageOptions,
 	overlays: readonly Overlay[],
 	context: ReturnType<typeof overlayVarContext>
@@ -459,10 +462,10 @@ function guardStep(
 	};
 }
 
-type OverlayTargetGroup = { readonly target: string; readonly overlays: readonly Overlay[] };
+export type OverlayTargetGroup = { readonly target: string; readonly overlays: readonly Overlay[] };
 
 /** The overlays of the delta, grouped by target, in target order. */
-function overlayTargets(overlays: readonly Overlay[]): readonly OverlayTargetGroup[] {
+export function overlayTargets(overlays: readonly Overlay[]): readonly OverlayTargetGroup[] {
 	const byTarget = new Map<string, Overlay[]>();
 	for (const overlay of overlays) {
 		const bucket = byTarget.get(overlay.target);
@@ -480,9 +483,10 @@ function overlayTargets(overlays: readonly Overlay[]): readonly OverlayTargetGro
  * channel over them - which is what a tree in dev mode carries
  * (PROP-005 ##OVERLAY-TWO-CHANNELS). A target somebody else materialized is
  * left alone: this run did not write it, and `load --fresh` is the command that
- * owns that state.
+ * owns that state. Exported for `codkit preview --wait`, whose end is this
+ * restore (##CMD-PREVIEW step 8).
  */
-function restoreOverlayTargets(
+export function restoreOverlayTargets(
 	options: PackageOptions,
 	overlays: readonly Overlay[],
 	context: ReturnType<typeof overlayVarContext>,
@@ -508,9 +512,10 @@ function restoreOverlayTargets(
  * differs now differs because the packaging changed it; a path nothing changed
  * is not touched and is not reported. Untracked files are left alone: removing
  * a file nobody tracked is what `load --fresh` does, and it is not a side
- * effect of packaging.
+ * effect of packaging. Exported for `codkit preview`, which builds the same
+ * distributable for a mode that needs one (##CMD-PREVIEW step 5).
  */
-function restoreScratch(options: PackageOptions): { readonly paths: readonly string[]; readonly detail: string } {
+export function restoreScratch(options: PackageOptions): { readonly paths: readonly string[]; readonly detail: string } {
 	const tree = options.resolution.path;
 	const paths = packageScratchPaths(tree, options.type.build.packageScratch, (text) => {
 		options.out.warn(text);

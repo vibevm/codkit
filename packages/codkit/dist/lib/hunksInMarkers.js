@@ -9,9 +9,22 @@
 //
 // Everything is computed against the *target* state (pin + patch), because that
 // is where the marker lines actually exist: they are added by the patch itself.
-import { markerFormFor, parseMarkers } from './markers.js';
+import { markerFormFor, parseMarkers, parseMarkersOfNewFile } from './markers.js';
 import { applyUnified } from './applyUnified.js';
 import { ckError } from './messages.js';
+/**
+ * ##ADD-FILE-EXEMPTION: the checks an add-file patch keeps - the markers of
+ * the resulting file and their ownership - or none for a file whose extension
+ * has no marker form: such a file carries no block, and an ownership check
+ * over no blocks would refuse every new JSON file.
+ */
+export function newFileMarkerErrors(targetBytes, ext, conventions, id, allowIds, patchFile) {
+    if (markerFormFor(ext, conventions) === null) {
+        return [];
+    }
+    const parsed = parseMarkersOfNewFile(targetBytes, ext, conventions, patchFile);
+    return [...parsed.errors, ...checkMarkerArtifactConsistency(parsed.blocks, id, allowIds, patchFile)];
+}
 /**
  * Check one patch against its target state. Diagnosed conditions are returned,
  * never thrown; a patch that cannot be applied to its pin at all is a different

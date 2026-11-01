@@ -30,7 +30,7 @@ import { treeId } from '../lib/fingerprint.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { withLock } from '../lib/lock.ts';
 import { markerFormFor, parseMarkers } from '../lib/markers.ts';
-import type { MarkerForm, MarkerBlock } from '../lib/markers.ts';
+import type { MarkerForm, MarkerBlock, MarkerParseResult } from '../lib/markers.ts';
 import { ckError, isCkError } from '../lib/messages.ts';
 import { OWNERS_PATH, loadOwnerKeys } from '../lib/owners.ts';
 import { DEFAULT_PATCH_LAYER, PATCH_FILE_SUFFIX, encodePatchName } from '../lib/patchFormat.ts';
@@ -46,6 +46,7 @@ import {
 } from '../lib/pendingHeader.ts';
 import type { PendingHeader } from '../lib/pendingHeader.ts';
 import { resolveContainedPath } from '../lib/pathSafety.ts';
+import { bytesAtPin } from '../lib/saveEngine.ts';
 import { PATCHES_DIR, toPosix } from '../lib/syncEngine.ts';
 import { checkTree } from '../lib/treeIdentity.ts';
 
@@ -60,6 +61,8 @@ const ADD_BLOCK = '--add-block';
 const BODY_FILE = '--body-file';
 const REPLACE_LINES = '--replace-lines';
 const MOVE_BLOCK_FROM = '--move-block-from';
+/** ##CMD-MARKER-NEW: the draft of a whole-file intervention over a file the pin does not carry. */
+const NEW_FILE = '--new-file';
 
 /** PROP-007 sec. 8: `--category` defaults to `follow`. */
 const DEFAULT_CATEGORY = 'follow';
@@ -87,6 +90,18 @@ async function run(ctx: CommandContext): Promise<number> {
 	const addBlock = commandFlagGiven(ctx.commandFlags, ADD_BLOCK);
 	if (!addBlock && commandFlagValue(ctx.commandFlags, MOVE_BLOCK_FROM) !== null)
 		throw ckError('CONFIG', '--move-block-from requires --add-block and an existing owned block');
+	// A file the pin does not carry has no line to put a block at: the whole
+	// file is the intervention, and the draft is all that is written here.
+	const newFile = commandFlagGiven(ctx.commandFlags, NEW_FILE);
+	if (
+		newFile &&
+		(addBlock || [LINE, BODY_FILE, REPLACE_LINES, MOVE_BLOCK_FROM].some((name) => commandFlagValue(ctx.commandFlags, name) !== null))
+	)
+		throw ckError(
+			'CONFIG',
+			`${NEW_FILE} writes the draft of a whole-file intervention and takes no block flag`,
+			`drop ${ADD_BLOCK}, ${LINE}, ${BODY_FILE}, ${REPLACE_LINES} and ${MOVE_BLOCK_FROM}`
+		);
 	const fields = addBlock ? readAddBlockFields(ctx) : readFields(ctx);
 
 	const identity = checkTree(resolution, config, { mode: 'write', type: requireProjectType(ctx) });
@@ -101,7 +116,9 @@ async function run(ctx: CommandContext): Promise<number> {
 		'marker new',
 		() => {
 			try {
-				return addBlock ? addBlockTo(ctx, resolution.path, config, given, fields) : scaffold(ctx, resolution.path, config, given, fields);
+				return addBlock
+					? addBlockTo(ctx, resolution.path, config, given, fields)
+					: scaffold(ctx, resolution.path, config, given, fields, newFile);
 			} catch (error) {
 				if (!isCkError(error)) {
 					throw error;
@@ -132,10 +149,14 @@ type MarkerFields = {
 	readonly moveBlockFrom?: number;
 };
 
-type LocatedTarget = { readonly target: string; readonly absolute: string; readonly form: MarkerForm };
+/** The form is null only for a new file (`--new-file`), which carries no block. */
+type LocatedTarget = { readonly target: string; readonly absolute: string; readonly form: MarkerForm | null };
 
-/** Step 1 of both forms: the target exists, is upstream and can carry a marker. */
-function locateTarget(treeDir: string, config: CodkitConfig, given: string, conventions: Conventions): LocatedTarget {
+/**
+ * Step 1 of every form: the target exists, is upstream and can carry a marker -
+ * or, for a new file, is absent from the pin and needs no marker form.
+ */
+function locateTarget(treeDir: string, config: CodkitConfig, given: string, conventions: Conventions, newFile = false): LocatedTarget {
 	const target = treeRelativePath(given, treeDir);
 	const absolute = join(treeDir, ...target.split('/'));
 
@@ -166,11 +187,20 @@ function locateTarget(treeDir: string, config: CodkitConfig, given: string, conv
 		);
 	}
 	const form = markerFormFor(extname(target), conventions);
-	if (form === null) {
+	if (form === null && !newFile) {
 		throw ckError(
 			'FORBIDDEN-TARGET',
 			`no marker form is defined for "${extname(target)}" files, so this file cannot carry a codkit marker`,
-			'a target without a comment syntax belongs to the config-overlay or resource-file layer, not to a patch',
+			'a target without a comment syntax belongs to the config-overlay or resource-file layer, not to a patch; ' +
+				`a file the pin does not carry at all is a whole-file intervention: ${NEW_FILE}`,
+			target
+		);
+	}
+	if (newFile && bytesAtPin(treeDir, config.pin.sha, target) !== null) {
+		throw ckError(
+			'FORBIDDEN-TARGET',
+			'exists at the pin, so it is not a new file',
+			`a file the pin carries is patched inside a marker block: run marker new without ${NEW_FILE}`,
 			target
 		);
 	}
@@ -178,9 +208,16 @@ function locateTarget(treeDir: string, config: CodkitConfig, given: string, conv
 	return { target, absolute, form };
 }
 
-function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, given: string, fields: MarkerFields): number {
+function scaffold(
+	ctx: CommandContext,
+	treeDir: string,
+	config: CodkitConfig,
+	given: string,
+	fields: MarkerFields,
+	newFile = false
+): number {
 	const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
-	const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
+	const { target, absolute, form } = locateTarget(treeDir, config, given, conventions, newFile);
 
 	// 2. The metadata: id shape, owner, type and category vocabularies.
 	validateFields(ctx.patchesDir, fields, conventions);
@@ -195,9 +232,11 @@ function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, gi
 	};
 	const pending = readPendingHeader(ctx.patchesDir, target);
 
-	// 3. The id is not taken by a patch, a draft or a block of this file.
+	// 3. The id is not taken by a patch, a draft or a block of this file. A new
+	// file without a marker form carries no block to read.
 	const content = readFileSync(absolute, 'utf8');
-	const parsed = parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+	const parsed: MarkerParseResult =
+		form === null ? { blocks: [], errors: [] } : parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
 	const parseError = parsed.errors[0];
 	if (parseError !== undefined) throw parseError;
 	const pendingMatches = pending !== null && JSON.stringify(pending) === JSON.stringify(header);
@@ -230,6 +269,16 @@ function scaffold(ctx: CommandContext, treeDir: string, config: CodkitConfig, gi
 
 	// 4. Persist the exact intent before touching the tree. A retry may finish an
 	// interrupted matching intent, but another id can never overwrite the draft.
+	// ##CMD-MARKER-NEW: a new file is the intervention itself, so the draft is the
+	// whole scaffold and the file stays as the person wrote it.
+	if (newFile || form === null) {
+		const draft = writePendingHeader(ctx.patchesDir, target, header);
+		ctx.out.info(`${target}: draft of ${fields.id} written; the pin does not carry the file, so the whole file is the intervention`);
+		ctx.out.info(`pending patch header: ${relativePath(ctx.patchesDir, draft)}`);
+		ctx.out.info(`now: codkit save --allow-new-file ${target}`);
+		ctx.out.setData(buildData(target, fields, null, draft, ctx.patchesDir));
+		return EXIT_OK;
+	}
 	const updated = resumedBlock === undefined ? insertBlock(content, form, fields, target) : { text: content, at: resumedBlock.beginLine };
 	const draft = writePendingHeader(ctx.patchesDir, target, header);
 	if (resumedBlock === undefined) {
@@ -286,7 +335,7 @@ function writeMarkerFileAtomic(absolute: string, before: string, after: string, 
 	renameSync(temporary, absolute);
 }
 
-function buildData(target: string, fields: MarkerFields, at: number, draft: string, patchesDir: string): JsonValue {
+function buildData(target: string, fields: MarkerFields, at: number | null, draft: string, patchesDir: string): JsonValue {
 	return {
 		target,
 		id: fields.id,
@@ -313,6 +362,9 @@ function buildData(target: string, fields: MarkerFields, at: number, draft: stri
 function addBlockTo(ctx: CommandContext, treeDir: string, config: CodkitConfig, given: string, fields: MarkerFields): number {
 	const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
 	const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
+	if (form === null) {
+		throw ckError('INTERNAL', `${target}: a located target carries a marker form`, undefined, target);
+	}
 	const artifact = `${PATCHES_DIR}/${encodePatchName(target)}`;
 	const pending = readPendingHeader(ctx.patchesDir, target);
 	const ownedByArtifact = patchIdOwner(ctx.patchesDir, fields.id) === artifact;
@@ -663,6 +715,6 @@ export const markerNewCommand: CommandDefinition = {
 	summary: 'scaffold a codkit marker block in an upstream file of the tree',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE, ADD_BLOCK, BODY_FILE, REPLACE_LINES, MOVE_BLOCK_FROM],
+	commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE, ADD_BLOCK, BODY_FILE, REPLACE_LINES, MOVE_BLOCK_FROM, NEW_FILE],
 	run
 };

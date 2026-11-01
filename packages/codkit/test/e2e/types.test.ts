@@ -45,7 +45,7 @@ describe('codkit types', () => {
 		const { status, rows } = typesOfARealRun(fixture);
 
 		expect(status).toBe(0);
-		expect(rows.map((row) => row.id)).toEqual(['vscode', 'generic', 'theia']);
+		expect(rows.map((row) => row.id)).toEqual(['vscode', 'generic', 'theia', 'vscode-extension']);
 		expect(rows[0]?.package).toBe('@codkit/type-vscode');
 		expect(rows[0]?.installed).toBe(true);
 		expect(rows[0]?.capabilities).toContain('brand-images');
@@ -57,6 +57,12 @@ describe('codkit types', () => {
 		expect(rows[2]?.package).toBe('@codkit/type-theia');
 		expect(rows[2]?.capabilities).toEqual(['build-channels', 'config-overlay', 'service-override', 'upgrade-advisory']);
 		expect(rows[2]?.configurableCapabilities).toEqual([]);
+		// The fourth type: six capabilities for every patch set of the family, the
+		// first `preview` among them, and five absences that are answers of their own.
+		expect(rows[3]?.package).toBe('@codkit/type-vscode-extension');
+		expect(rows[3]?.installed).toBe(true);
+		expect(rows[3]?.capabilities).toEqual(['build-channels', 'config-overlay', 'entry-module', 'gen-brand', 'preview', 'upgrade-advisory']);
+		expect(rows[3]?.configurableCapabilities).toEqual([]);
 	});
 });
 
@@ -67,12 +73,18 @@ describe('the test seam of the registry (PROP-016 ##TYPE-TEST-SEAM)', () => {
 		// The engine's own e2e run: the seam is on, and the stub is a row.
 		const seen = fixture.json(['types']);
 		expect(seen.run.status).toBe(0);
-		expect((seen.envelope.data['types'] as readonly TypeRow[]).map((row) => row.id)).toEqual(['vscode', 'generic', 'theia', 'stub']);
+		expect((seen.envelope.data['types'] as readonly TypeRow[]).map((row) => row.id)).toEqual([
+			'vscode',
+			'generic',
+			'theia',
+			'vscode-extension',
+			'stub'
+		]);
 
-		// The same installation without the build condition: three rows, and the
+		// The same installation without the build condition: four rows, and the
 		// variable alone changes nothing, exactly as S33 proves for the standards
 		// source.
-		expect(typesOfARealRun(fixture).rows.map((row) => row.id)).toEqual(['vscode', 'generic', 'theia']);
+		expect(typesOfARealRun(fixture).rows.map((row) => row.id)).toEqual(['vscode', 'generic', 'theia', 'vscode-extension']);
 	});
 
 	it('ignores the variable outside the test build, and the patch set is then of an unknown type', () => {
@@ -99,7 +111,7 @@ describe('the test seam of the registry (PROP-016 ##TYPE-TEST-SEAM)', () => {
 			expect(
 				(envelope.data['types'] as readonly TypeRow[]).map((row) => row.id),
 				value
-			).toEqual(['vscode', 'generic', 'theia']);
+			).toEqual(['vscode', 'generic', 'theia', 'vscode-extension']);
 		}
 	});
 });

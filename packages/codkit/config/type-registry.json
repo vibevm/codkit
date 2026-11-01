@@ -448,6 +448,148 @@
           "sha256": "f51b82dc4f28069008f96b58bbd8a789f3627715f45e661e91e8276ddb2b5fc9"
         }
       ]
+    },
+    {
+      "id": "vscode-extension",
+      "package": "@codkit/type-vscode-extension",
+      "version": "1.0.0",
+      "contractVersion": 1,
+      "manifestSha256": "8ca1fa0f68d54a0fdbb1c942d8f678c4aa54d893352d8be3ee659b01859d98ac",
+      "integrityRoots": [
+        "LICENSE.md",
+        "README.md",
+        "dist",
+        "npm-shrinkwrap.json",
+        "package.json",
+        "src",
+        "type-manifest.json"
+      ],
+      "files": [
+        {
+          "path": "LICENSE.md",
+          "sha256": "612e199805ea1fd5a36b3ecf5108fcf4db0c2082b47908452f94e773f759120c"
+        },
+        {
+          "path": "README.md",
+          "sha256": "1fd40306a905416ead8385b445cac4b4359e695ba2e18633d4a3b206c42812bd"
+        },
+        {
+          "path": "dist/advisory.js",
+          "sha256": "e11c421e9bf8f387d4eeaf4755c2f1b5f6d2321f75e2f0409675c8142c274ff3"
+        },
+        {
+          "path": "dist/brandTemplates.js",
+          "sha256": "c3e5ae6e4d5c4fa93d3dafb5ea28ffc0f2a89e85ace44abad8b43af4ab7013a8"
+        },
+        {
+          "path": "dist/build.js",
+          "sha256": "86f40190fa44dabdcf3e416a4a03c466e53dcbe2734bf17f3e41bc3302b16364"
+        },
+        {
+          "path": "dist/configSchema.js",
+          "sha256": "68dc3cd7bab32b3574edfa077f296eee4ac0d9fa28411073673ccd2223779bff"
+        },
+        {
+          "path": "dist/conventions.js",
+          "sha256": "39af9a0490cac71de872c36bb00f0bcc0c9b4cdaa3e6773519f37951bd25d977"
+        },
+        {
+          "path": "dist/generators.js",
+          "sha256": "d7728ecb720731d7e35dd24ae4a721656be982b7e74e896ba319129730cec11a"
+        },
+        {
+          "path": "dist/identity.js",
+          "sha256": "21b05819d007f2895fafad09ad503810ec3e232d9b2eb6a21783f929ee58cc28"
+        },
+        {
+          "path": "dist/index.js",
+          "sha256": "8b7063f55a242e7a5c6dc211121d48461a0043f42314e790eb97041c6db2194c"
+        },
+        {
+          "path": "dist/layers.js",
+          "sha256": "538e7b6aa4d61be9bbcfaccf928e0830ed6555d7b9e5512ebef8ddd975a34329"
+        },
+        {
+          "path": "dist/layout.js",
+          "sha256": "1c56b3229512f5f62b7f81d257a799d2ec2b1987062b1fda15136840a0ecf6a2"
+        },
+        {
+          "path": "dist/manifest.js",
+          "sha256": "09705f8cf7cf2f9a7fc16726f7b6ca6a06f816ff4bd08c4a724338c4da197153"
+        },
+        {
+          "path": "dist/preview.js",
+          "sha256": "12160d1dcb1aaf6832eeaee1caeb7d58b9cb26c81eb3f86be59378c81db249c9"
+        },
+        {
+          "path": "dist/standards.js",
+          "sha256": "714fd02c5ee056926ed24ecb89a3bf3c2a5410d2e8131ce73f1a373941ea92e8"
+        },
+        {
+          "path": "npm-shrinkwrap.json",
+          "sha256": "a6288250dfd51c04566b9624f9d91c6077a52fbbe9981fdf12f7b522528cf390"
+        },
+        {
+          "path": "package.json",
+          "sha256": "061f5e38342c1be40edb4dc61a2c1ee5b35cf191b0bf8688ef14a497ce4d2f83"
+        },
+        {
+          "path": "src/advisory.ts",
+          "sha256": "38811a08fb83efaf141f68d4489485549cf2e630d840624498413747f0d6fb52"
+        },
+        {
+          "path": "src/brandTemplates.ts",
+          "sha256": "670280a62e1b024a7c7f3f9aff9f1d1328e8e6157b7f83def39fb3e945bcdfb4"
+        },
+        {
+          "path": "src/build.ts",
+          "sha256": "48a884bbfea775ce3fc57a4acdd55099d5739f0b7ae8ed3c6b10deeff941f911"
+        },
+        {
+          "path": "src/configSchema.ts",
+          "sha256": "b8fe3218772c8eef920d388458afde7fa5294de21c27da5b4221fadd19b20c9d"
+        },
+        {
+          "path": "src/conventions.ts",
+          "sha256": "a2c2b77f5bd8eafa509cf7853073665e9a06dd2d3f3dd667d5f262fdc972b1d2"
+        },
+        {
+          "path": "src/generators.ts",
+          "sha256": "adf75e5faa3aa8ca0d8cdaa07ee65789c654bdd2dcc1e249a6b08934bb9d5e8a"
+        },
+        {
+          "path": "src/identity.ts",
+          "sha256": "d93e524cc616af998f98385f19c28343906e5c4f2fef8f28f405da410fbfaf1b"
+        },
+        {
+          "path": "src/index.ts",
+          "sha256": "42c39a56560e0c67413a9df8d52e0a58b9a8c8cac56e9b5d366038810aba1cb3"
+        },
+        {
+          "path": "src/layers.ts",
+          "sha256": "dac66e66bc026ec7d2d879ee7bdd10de33fe2b5259d2a5b2d4ab240fb7ba43aa"
+        },
+        {
+          "path": "src/layout.ts",
+          "sha256": "2afb9f5878a3b1916343a37c667b610ba6be49d527769af19c6022a5cb9dd2a9"
+        },
+        {
+          "path": "src/manifest.ts",
+          "sha256": "9fb6a6f689f245cb753f5904705dc99637285ad06351e8d2bec26d888f18d9f9"
+        },
+        {
+          "path": "src/preview.ts",
+          "sha256": "ff0ef975d4523380403eb873c8a708c2c44ce6f1a2b5671fb49a5bf840dffe40"
+        },
+        {
+          "path": "src/standards.ts",
+          "sha256": "cc0a4047f8cf0d308aae7a14025f89a5f3569faff7a73d5341ec0b5781700a73"
+        },
+        {
+          "path": "type-manifest.json",
+          "sha256": "8ca1fa0f68d54a0fdbb1c942d8f678c4aa54d893352d8be3ee659b01859d98ac"
+        }
+      ]
     }
   ]
 }

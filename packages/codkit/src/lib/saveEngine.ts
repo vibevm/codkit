@@ -27,10 +27,10 @@ import type { CodkitConfig } from './configFile.ts';
 import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { gitLocal, runGit } from './gitx.ts';
-import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.ts';
+import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.ts';
 import { inputSaveRefusal } from './inputsTree.ts';
 import type { Output } from './jsonOut.ts';
-import { parseMarkers } from './markers.ts';
+import { parseMarkers, parseMarkersOfNewFile } from './markers.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkError } from './messages.ts';
 import {
@@ -847,8 +847,9 @@ function planFile(
 	const ext = extname(target);
 
 	// Markers of the working file: a block that is not closed, nested or
-	// duplicated must be fixed by a human before any patch is generated.
-	const markers = parseMarkers(curBytes, ext, conventions, target);
+	// duplicated must be fixed by a human before any patch is generated. A new
+	// file without a marker form carries none (##ADD-FILE-EXEMPTION).
+	const markers = isAddFile ? parseMarkersOfNewFile(curBytes, ext, conventions, target) : parseMarkers(curBytes, ext, conventions, target);
 	const markerError = markers.errors[0];
 	if (markerError !== undefined) {
 		throw markerError;
@@ -931,7 +932,7 @@ function isDeletion(status: string): boolean {
 }
 
 /** The file at the pin, or null when the pin does not carry it at all. */
-function bytesAtPin(treeDir: string, pinSha: string, target: string): Uint8Array | null {
+export function bytesAtPin(treeDir: string, pinSha: string, target: string): Uint8Array | null {
 	const shown = runGit({ args: ['show', `${pinSha}:${toPosix(target)}`], cwd: treeDir });
 	return shown.status === 0 ? encodeUtf8(shown.stdout) : null;
 }
@@ -1099,8 +1100,7 @@ function checkPatchAgainstMarkers(
 	const allowIds = parsed.header.layer === 'entry-module' ? entryModuleIds : [];
 	if (isAddFile) {
 		// The target state of an add-file patch is the working file itself.
-		const markers = parseMarkers(curBytes, ext, conventions, parsed.targetPath);
-		const errors = [...markers.errors, ...checkMarkerArtifactConsistency(markers.blocks, parsed.header.id, allowIds, artifact)];
+		const errors = newFileMarkerErrors(curBytes, ext, conventions, parsed.header.id, allowIds, artifact);
 		const first = errors[0];
 		if (first !== undefined) {
 			throw first;

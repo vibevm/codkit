@@ -122,6 +122,9 @@ const valueLabels = {
 	'--inputs': 'dir',
 	'--component-id': 'identifier',
 	'--container-prefix': 'name',
+	'--mode': 'name',
+	'--host': 'executable',
+	'--workspace-dir': 'dir',
 	'--profile': 'verify|build',
 	'--effective-diff': 'base-ref',
 	'--pin-guard-base': 'ref',
@@ -316,6 +319,11 @@ const commandGuidance = {
 		positional: '[<selector>]',
 		detail:
 			"Build the distributable out of the already loaded tree: the drift guard of `load`, then the overlay targets materialized into the tree, the stamps the project type names put into the environment, the package build of the type, the packaging step the patch set declared, and finally the targets this run materialized put back and the dev channel rewritten. `<selector>` is a target of the type's catalog, a platform family (`windows`, `linux`, `macos`) or `all`; without it the patch set's default targets are built. Each target runs on the route its type answers for this host - natively in the tree, or in the type's container over a read-only view of the tree, whose artifacts are copied back into it - and a target with no route here is refused with the reason the type gives (`CK-E-CONFIG`). The inputs the targets download are checked first: `--inputs <dir>` names the pre-provisioned copies, and the global `--ci` makes the run offline, so a missing input, or a container image that is not there, is `CK-E-NET-FORBIDDEN` before any write. `--container-prefix <name>` is the first word of the names of the container route's image, volume and container (default `codkit`). `--keep-overlay` leaves the overlay targets materialized for a hand check (`codkit load --fresh` takes them back); `--skip-type-build` runs only the product step over a tree the watch channels already built; `--timeout <seconds>` bounds each command. Where the artifacts land is the answer of the type and of each target, and a raw bundle written beside the managed tree names none. A failing command is exit 1 `CK-E-PACKAGE-FAILED` with the tail of its output; there is no `--discard`. After successful restoration package emits an immutable component release descriptor with actual artifact hashes, Git/config/type/recipe/policy bindings and explicit missing distribution evidence. `--component-id <identifier>` sets stable component identity; shallow patchset histories require it. When fixed codkit.licensing.json is present, its profile ID selects the trusted user organization store and exact canonical NOTICE/SBOM, source provenance and required delivered carriers are gated before recording success. Invalid or changed declarations/store and stale attachments refuse; the component ID must agree with the declaration. Absence keeps organization evidence explicitly missing."
+	},
+	preview: {
+		positional: '',
+		detail:
+			"Show a person the product: launch a host application over the loaded tree in a profile isolated from the person's own, and leave it running. It needs the capability `preview` (`CK-E-TYPE-CAPABILITY` otherwise). The order of one run is fixed and printed: the drift guard of `load`, with the one exemption of a known overlay materialization; the host resolved - `--host`, then `CODKIT_PREVIEW_HOST`, then the host the patch set's `typeConfig` names, then the type's default host on `PATH` with the platform's suffixes, a `bin/<name>.cmd` wrapper resolved to the `<name>.exe` beside it - and the state directory `<patchesDir>/.codkit/preview/<mode>/` created, or wiped first under `--clean`; the overlay targets materialized into the tree, because the host reads the manifest from the tree; the type's recipe asked and its two isolation directories checked - both under the state directory and both whole launch arguments, else `CK-E-PREVIEW-ISOLATION` before anything is spawned; the distributable built when the mode needs one (the package build of the type, then the packaging step of the patch set, with the stamps of the type; the newest match of the package outputs is handed to the recipe); the recipe's preparation commands run in the tree with their whole output printed, unless `--no-build`; the launch spawned detached with the tree as its working directory and recorded in `<stateDir>/record.json` (`codkitPreview`, the mode, the host, the pid, the launch). Without `--wait` the command returns at once, prints the mode, the host, the state directory and the record, and the materialization stays - `status` names it, `codkit load --fresh` is the way back; with `--wait` it blocks until the host exits and then puts the overlay targets it materialized back. A refusal before the launch puts them back too. `--mode <name>` selects one of the type's modes (the type's default otherwise), `--workspace-dir <dir>` an existing folder the host opens. No host is exit 2 `CK-E-PREVIEW-HOST` naming what was tried; a preparation or packaging command that exits non-zero is exit 1 `CK-E-PACKAGE-FAILED`; an unknown mode or a missing workspace directory is `CK-E-CONFIG`. The per-tree lock is held while the run prepares and spawns, and released once the host is running; no verb stops a preview, closing the host is the person's act."
 	},
 	publish: {
 		positional: '<immutable-patchset-ref>',
@@ -796,6 +804,14 @@ const faqEntries = {
 	'PACKAGE-FAILED': [
 		'A command of the package build the project type names exited non-zero, or could not be started at all - on the container route also docker itself, the image build or the container; the message carries the exit code and the tail of what the command printed.',
 		'Run the command named in the hint inside the fork tree and read its own output. The fork tree was already put back: `codkit package` restores the overlay targets it materialized whatever the verdict.'
+	],
+	'PREVIEW-HOST': [
+		'`codkit preview` found no host executable: the value of `--host`, of `CODKIT_PREVIEW_HOST` or of the configuration does not exist, the default host of the project type is not on `PATH`, or the resolved host could not be spawned; the message names what was tried, in the order it was tried.',
+		'Pass `--host <executable>` - a path, or a name on `PATH` - or export `CODKIT_PREVIEW_HOST`. Nothing was launched, and the overlay targets the run had materialized were put back.'
+	],
+	'PREVIEW-ISOLATION': [
+		"The preview recipe of the project type would let the host touch the person's own profile: one of its two isolation directories lies outside `<patchesDir>/.codkit/preview/<mode>/`, or is not passed to the host as a whole launch argument.",
+		'Nothing was spawned, and the tree was put back. This is a defect of the type package, not of the patch set: report it with the recipe the message names; the engine refuses every such recipe before the launch.'
 	]
 };
 

@@ -16,9 +16,13 @@ describe('the vscode project type', () => {
 		expect(TYPE_ID).toBe('vscode');
 	});
 
-	it('declares every optional capability of the contract, so no verb refuses over it', () => {
-		expect([...CAPABILITIES].sort()).toEqual([...CONTRACT_CAPABILITIES].sort());
-		expect([...projectType.capabilities].sort()).toEqual([...CONTRACT_CAPABILITIES].sort());
+	it('declares every optional capability of the contract but preview, so no verb refuses over it', () => {
+		// `preview` is the eleventh capability, answered by the extension family
+		// (PROP-016 DECISION-PREVIEW-IS-A-CONTRACT-AREA); this family's host is the
+		// product itself, and its recipe is deferred (DESIGN-002).
+		const expected = CONTRACT_CAPABILITIES.filter((capability) => capability !== 'preview');
+		expect([...CAPABILITIES].sort()).toEqual([...expected].sort());
+		expect([...projectType.capabilities].sort()).toEqual([...expected].sort());
 	});
 
 	it('answers the areas that are optional in the interface', () => {

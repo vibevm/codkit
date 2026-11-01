@@ -37,6 +37,10 @@
 			"resolved": "packages/type-vscode",
 			"link": true
 		},
+		"node_modules/@codkit/type-vscode-extension": {
+			"resolved": "packages/type-vscode-extension",
+			"link": true
+		},
 		"node_modules/@jridgewell/sourcemap-codec": {
 			"version": "1.6.0",
 			"resolved": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.6.0.tgz",
@@ -1895,6 +1899,7 @@
 				"@codkit/type-generic": "1.0.0",
 				"@codkit/type-theia": "1.0.0",
 				"@codkit/type-vscode": "1.0.0",
+				"@codkit/type-vscode-extension": "1.0.0",
 				"@resvg/resvg-js": "2.6.2",
 				"jsonc-parser": "3.3.1",
 				"smol-toml": "1.8.0",
@@ -1953,6 +1958,18 @@
 			"dependencies": {
 				"@codkit/type-api": "1.0.0",
 				"typescript": "^7.0.2",
+				"zod": "^4.5.4"
+			},
+			"engines": {
+				"node": ">=22.6.0"
+			}
+		},
+		"packages/type-vscode-extension": {
+			"name": "@codkit/type-vscode-extension",
+			"version": "1.0.0",
+			"license": "UPL-1.0",
+			"dependencies": {
+				"@codkit/type-api": "1.0.0",
 				"zod": "^4.5.4"
 			},
 			"engines": {

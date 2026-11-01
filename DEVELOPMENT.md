@@ -65,7 +65,7 @@ git clone https://gitverse.ru/vibevm/codkit.git
 
 ## Раскладка workspace
 
-Репозиторий — npm workspace из четырёх публикуемых пакетов
+Репозиторий — npm workspace из шести публикуемых пакетов
 ([PROP-016 §3](vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml)):
 
 | Пакет | Что это |
@@ -74,6 +74,8 @@ git clone https://gitverse.ru/vibevm/codkit.git
 | `packages/type-api` | контракт типа проекта: интерфейс, кодек PNG обмена, форма отказа |
 | `packages/type-vscode` | тип `vscode` — знание об одном семействе апстримов |
 | `packages/type-generic` | тип `generic` — простой git-апстрим без модели продукта |
+| `packages/type-theia` | тип `theia` — монорепозиторий Eclipse Theia как апстрим |
+| `packages/type-vscode-extension` | тип `vscode-extension` — репозиторий расширения VS Code как апстрим, с ответом на вопрос `preview` |
 
 Движок слеп к семейству: он спрашивает тип и не называет его фактов. Гейт —
 `git grep` апстримных токенов по `packages/codkit/src` печатает `0`.

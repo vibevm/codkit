@@ -24,9 +24,9 @@ import { bytesEqual, encodeUtf8 } from './bytes.js';
 import { applyUnified } from './applyUnified.js';
 import { loadConventions, matchesPatternList } from './conventionsFile.js';
 import { gitLocal, runGit } from './gitx.js';
-import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.js';
+import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.js';
 import { inputSaveRefusal } from './inputsTree.js';
-import { parseMarkers } from './markers.js';
+import { parseMarkers, parseMarkersOfNewFile } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { NO_OWN_EXTENSIONS, materializerOf, mirrorOwnExtensionsBack, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes } from './layers/ownExtensions.js';
 import { loadResourceMap } from './layers/resource.js';
@@ -602,8 +602,9 @@ function planFile(entry, state, store, options, conventions, resources, allowNew
     const curBytes = bytesOf(tree, state, target);
     const ext = extname(target);
     // Markers of the working file: a block that is not closed, nested or
-    // duplicated must be fixed by a human before any patch is generated.
-    const markers = parseMarkers(curBytes, ext, conventions, target);
+    // duplicated must be fixed by a human before any patch is generated. A new
+    // file without a marker form carries none (##ADD-FILE-EXEMPTION).
+    const markers = isAddFile ? parseMarkersOfNewFile(curBytes, ext, conventions, target) : parseMarkers(curBytes, ext, conventions, target);
     const markerError = markers.errors[0];
     if (markerError !== undefined) {
         throw markerError;
@@ -672,7 +673,7 @@ function isDeletion(status) {
     return status.includes('D');
 }
 /** The file at the pin, or null when the pin does not carry it at all. */
-function bytesAtPin(treeDir, pinSha, target) {
+export function bytesAtPin(treeDir, pinSha, target) {
     const shown = runGit({ args: ['show', `${pinSha}:${toPosix(target)}`], cwd: treeDir });
     return shown.status === 0 ? encodeUtf8(shown.stdout) : null;
 }
@@ -799,8 +800,7 @@ function checkPatchAgainstMarkers(bytes, pinBytes, curBytes, ext, conventions, a
     const allowIds = parsed.header.layer === 'entry-module' ? entryModuleIds : [];
     if (isAddFile) {
         // The target state of an add-file patch is the working file itself.
-        const markers = parseMarkers(curBytes, ext, conventions, parsed.targetPath);
-        const errors = [...markers.errors, ...checkMarkerArtifactConsistency(markers.blocks, parsed.header.id, allowIds, artifact)];
+        const errors = newFileMarkerErrors(curBytes, ext, conventions, parsed.header.id, allowIds, artifact);
         const first = errors[0];
         if (first !== undefined) {
             throw first;

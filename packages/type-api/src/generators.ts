@@ -58,6 +58,13 @@ export type BrandGraft = {
 	/** The rules table, written into the own layer. */
 	readonly module: GeneratedModule;
 	/**
+	 * The leftover guard of the rebrand, written beside the own tests when the
+	 * family has one: the contract test that proves nothing of the original
+	 * terms survives in what the product ships. Absent for a family whose guard
+	 * is a person's.
+	 */
+	readonly guard?: GeneratedModule;
+	/**
 	 * The graft into the family's string funnel. It is printed and never
 	 * written: the funnel is upstream text, so the seam is a patch of the
 	 * product and the tool does not author one here.

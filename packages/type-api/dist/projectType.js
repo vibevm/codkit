@@ -1,10 +1,12 @@
 /** @scope spec://codkit/modules/codkit/PROP-016#TYPE-CONTRACT-IS-CLOSED */
-// The contract itself: the ten questions a project type answers, and nothing
+// The contract itself: the eleven questions a project type answers, and nothing
 // else. The list is the set of variation points measured in the engine; a new
 // question is added when a second type needs it, never in anticipation
 // (##DECISION-TYPE-CONTRACT-FROM-MEASUREMENT). The tenth, generators, was added
 // on 2026-09-09 exactly so: the second type needs a different skeleton and has
-// no string funnel to graft a brand table into at all.
+// no string funnel to graft a brand table into at all. The eleventh, preview,
+// was added on 2026-11-01 for the family whose whole feedback loop is a host
+// application showing the product (##TYPE-AREA-PREVIEW).
 //
 // `@codkit/type-api` is the only import a type package takes from the tool, and
 // the CLI imports a type only through this interface (##TYPE-API-STABILITY).
@@ -92,8 +94,32 @@ function packageTargetShapeProblems(typeId, target) {
  */
 export const OPTIONAL_AREAS = [
     { area: 'brandImages', capability: 'brand-images' },
-    { area: 'runtime', capability: 'runtime-library' }
+    { area: 'runtime', capability: 'runtime-library' },
+    { area: 'preview', capability: 'preview' }
 ];
+/**
+ * ##TYPE-AREA-PREVIEW: the shape of the preview answer. The modes are the names
+ * a person selects, so there is at least one and the default is among them; the
+ * default host is an executable name, never empty, because the engine looks it
+ * up on PATH when nothing else names a host.
+ */
+function previewShapeProblems(type) {
+    const preview = type.preview;
+    if (preview === undefined) {
+        return [];
+    }
+    const problems = [];
+    if (preview.modes.length === 0)
+        problems.push(`${type.id}: the preview area names no mode`);
+    if (new Set(preview.modes).size !== preview.modes.length)
+        problems.push(`${type.id}: a preview mode is named twice`);
+    if (!preview.modes.includes(preview.defaultMode)) {
+        problems.push(`${type.id}: the default preview mode ${preview.defaultMode} is absent from the modes`);
+    }
+    if (preview.defaultHost === '')
+        problems.push(`${type.id}: the preview area names no default host`);
+    return problems;
+}
 /**
  * Everything wrong with a type's own shape, as one list: an optional area that
  * disagrees with its capability, an image target whose container has no codec,
@@ -160,6 +186,7 @@ export function projectTypeProblems(type) {
         problems.push(`${type.id}: capabilities are named as configurable, and the type answers no configure`);
     }
     problems.push(...ownedDirectoryProblems(type));
+    problems.push(...previewShapeProblems(type));
     const images = type.brandImages;
     if (images !== undefined) {
         const kinds = new Set(images.codecs.map((codec) => codec.kind));

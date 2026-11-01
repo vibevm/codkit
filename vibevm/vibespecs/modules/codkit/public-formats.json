@@ -845,6 +845,25 @@
       "versionGap": "Legacy slash-to-double-underscore encoding is tied to patch v2; no separate version."
     },
     {
+      "id": "preview-record",
+      "field": "codkitPreview",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/previewIsolation.ts",
+      "owner": "Codkit engine",
+      "trustBoundary": "Runtime bytes under the patch set's .codkit/preview/<mode>/ cross a strict validator before any command reads them; the record names a session, never authorizes one.",
+      "compatibility": "Exact supported schema only; a malformed or future record is refused by the cited reader, and a stale one is replaced by the next preview run.",
+      "migration": "No implicit migration; disposable session state recreated by the next codkit preview run or removed by --clean.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; the record binds the tree id and the launch it describes.",
+      "contract": "spec://codkit/modules/codkit/PROP-007#CMD-PREVIEW-RECORD",
+      "tests": [
+        "packages/codkit/test/e2e/preview.test.ts",
+        "packages/codkit/test/unit/previewEngine.test.ts"
+      ]
+    },
+    {
       "id": "rebase-onto-pin",
       "field": "codkitRebaseOntoPin",
       "version": 1,

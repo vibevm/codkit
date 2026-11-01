@@ -26,6 +26,7 @@ import { markerNewCommand } from './commands/markerNew.js';
 import { markerReasonCommand } from './commands/markerReason.js';
 import { overlayApplyCommand, overlayCheckCommand, overlayNewCommand } from './commands/overlay.js';
 import { packageCommand } from './commands/package.js';
+import { previewCommand } from './commands/preview.js';
 import { publishCommand } from './commands/publish.js';
 import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.js';
 import { reresolveCommand } from './commands/reresolve.js';
@@ -93,6 +94,7 @@ const COMMANDS = new Map([
     rebaseOntoPinCommand,
     ciCommand,
     packageCommand,
+    previewCommand,
     publishCommand,
     inputsCommand,
     inputsPinCommand,

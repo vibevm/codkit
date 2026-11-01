@@ -10,7 +10,7 @@
 // Everything is computed against the *target* state (pin + patch), because that
 // is where the marker lines actually exist: they are added by the patch itself.
 
-import { markerFormFor, parseMarkers } from './markers.ts';
+import { markerFormFor, parseMarkers, parseMarkersOfNewFile } from './markers.ts';
 import type { MarkerBlock, MarkerConventions } from './markers.ts';
 import { applyUnified } from './applyUnified.ts';
 import { ckError } from './messages.ts';
@@ -46,6 +46,27 @@ type AddedLine = { readonly line: number; readonly text: string; readonly hunk: 
 
 /** One removed line, numbered in the pin. */
 type RemovedLine = { readonly line: number; readonly text: string; readonly hunk: number };
+
+/**
+ * ##ADD-FILE-EXEMPTION: the checks an add-file patch keeps - the markers of
+ * the resulting file and their ownership - or none for a file whose extension
+ * has no marker form: such a file carries no block, and an ownership check
+ * over no blocks would refuse every new JSON file.
+ */
+export function newFileMarkerErrors(
+	targetBytes: Uint8Array,
+	ext: string,
+	conventions: MarkerConventions,
+	id: string,
+	allowIds: readonly string[],
+	patchFile: string
+): readonly CkError[] {
+	if (markerFormFor(ext, conventions) === null) {
+		return [];
+	}
+	const parsed = parseMarkersOfNewFile(targetBytes, ext, conventions, patchFile);
+	return [...parsed.errors, ...checkMarkerArtifactConsistency(parsed.blocks, id, allowIds, patchFile)];
+}
 
 /**
  * Check one patch against its target state. Diagnosed conditions are returned,

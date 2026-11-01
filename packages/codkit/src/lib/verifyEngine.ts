@@ -33,7 +33,7 @@ import { loadConventions } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { runGit } from './gitx.ts';
 import { readTreeEntries } from './gitHistory.ts';
-import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.ts';
+import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.ts';
 import type { InventoryEntry } from './inventory.ts';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.ts';
 import type { Inventory, PatchArtifact } from './inventory.ts';
@@ -79,7 +79,7 @@ import type { ResourceMap } from './layers/resource.ts';
 import type { ResourceEntry } from './layers/resource.ts';
 import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, serializeRule } from './layers/rule.ts';
 import type { Rule } from './layers/rule.ts';
-import { BEGIN_TOKEN, END_TOKEN, parseMarkers } from './markers.ts';
+import { BEGIN_TOKEN, END_TOKEN } from './markers.ts';
 import { ckError, isCkError } from './messages.ts';
 import type { CkErrorPayload, ErrorCode } from './messages.ts';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.ts';
@@ -602,8 +602,7 @@ function checkOnePatchMarkers(
 			// ##ADD-FILE-EXEMPTION: there are no upstream lines to protect, so only
 			// the markers of the resulting file and their ownership are checked.
 			const target = applyUnified(new Uint8Array(0), patch);
-			const markers = parseMarkers(target, ext, conventions, patch.targetPath);
-			for (const error of [...markers.errors, ...checkMarkerArtifactConsistency(markers.blocks, patch.header.id, allowIds, artifact)]) {
+			for (const error of newFileMarkerErrors(target, ext, conventions, patch.header.id, allowIds, artifact)) {
 				findings.push(toFinding(error, artifact));
 			}
 			return;

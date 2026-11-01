@@ -79,6 +79,16 @@ export function markerFormFor(ext: string, conventions: MarkerConventions): Mark
  * Diagnosed conditions are returned, not thrown: `verify` reports every problem
  * of a file in one pass. `file` is the path used in the diagnostics.
  */
+/**
+ * ##ADD-FILE-EXEMPTION: the markers of a file the pin does not carry. A new file
+ * whose extension has no marker form carries no block, and that is a legal
+ * state - there are no upstream lines to protect in it - rather than the
+ * refusal `parseMarkers` gives a patched upstream file without a comment syntax.
+ */
+export function parseMarkersOfNewFile(bytes: Uint8Array, ext: string, conventions: MarkerConventions, file?: string): MarkerParseResult {
+	return markerFormFor(ext, conventions) === null ? { blocks: [], errors: [] } : parseMarkers(bytes, ext, conventions, file);
+}
+
 export function parseMarkers(bytes: Uint8Array, ext: string, conventions: MarkerConventions, file?: string): MarkerParseResult {
 	const form = markerFormFor(ext, conventions);
 	if (form === null) {

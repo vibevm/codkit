@@ -146,6 +146,10 @@ Codkit требует согласованную тройку и отказыв�
 1. Выполни:
    `codkit marker new <file> --id CK-<subsystem>-<NNN> --type <type> --owner <owner> --reason "<reason>" --category <category>`.
    Exit `0` создаёт пустой блок и pending header; exit `1` на занятом id/owner/target требует выбрать валидные данные; exit `2` означает неверный CLI/config.
+   Файл, которого нет на пине (например, `package.nls.ru.json` расширения VS Code), —
+   целиком вмешательство: `codkit marker new <file> --new-file --id … --type … --owner … --reason …`
+   пишет только pending header, блок не вставляется и форма маркера не нужна; затем
+   `codkit save --allow-new-file <file>` → exit `0` создаёт add-file patch.
 2. Помести узкий hook между ASCII-маркерами, например:
 
    ```ts

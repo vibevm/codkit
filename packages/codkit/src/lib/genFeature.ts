@@ -112,7 +112,7 @@ function assertTestLivesWithTheFeature(type: ProjectType, skeleton: FeatureSkele
 	}
 }
 
-/** ##GEN-BRAND: the rules table; the graft into the funnel is printed, not written. */
+/** ##GEN-BRAND: the rules table and, when the family answers one, the leftover guard; the graft into the funnel is printed, not written. */
 export function planBrand(options: GenOptions): BrandOutcome {
 	const graft = options.type.generators.brandGraft;
 	if (graft === undefined) {
@@ -123,8 +123,12 @@ export function planBrand(options: GenOptions): BrandOutcome {
 		);
 	}
 	const built = graft(options.ownRoot);
+	const modules = built.guard === undefined ? [built.module] : [built.module, built.guard];
 	return {
-		...withHeader([{ path: built.module.path, text: built.module.text }], options.header),
+		...withHeader(
+			modules.map((module) => ({ path: module.path, text: module.text })),
+			options.header
+		),
 		hookText: built.hookText,
 		reminders: built.reminders
 	};

@@ -15,6 +15,7 @@
 		"entry-module",
 		"gen-brand",
 		"own-extensions",
+		"preview",
 		"service-override",
 		"upgrade-advisory"
 	],

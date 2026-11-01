@@ -53,15 +53,16 @@ function assertTestLivesWithTheFeature(type, skeleton) {
         throw ckError('ARTIFACT-BROKEN', `the project type ${type.id} puts the test of a feature outside its directory: ${strays.map((module) => module.path).join(', ')}`, `a feature skeleton keeps its test under ${skeleton.directory}/, so one declared unit covers the code and the test`);
     }
 }
-/** ##GEN-BRAND: the rules table; the graft into the funnel is printed, not written. */
+/** ##GEN-BRAND: the rules table and, when the family answers one, the leftover guard; the graft into the funnel is printed, not written. */
 export function planBrand(options) {
     const graft = options.type.generators.brandGraft;
     if (graft === undefined) {
         throw ckError('TYPE-CAPABILITY', `the project type ${options.type.id} has no string funnel to graft a brand table into`, 'the capability gen-brand is what says a family has one');
     }
     const built = graft(options.ownRoot);
+    const modules = built.guard === undefined ? [built.module] : [built.module, built.guard];
     return {
-        ...withHeader([{ path: built.module.path, text: built.module.text }], options.header),
+        ...withHeader(modules.map((module) => ({ path: module.path, text: module.text })), options.header),
         hookText: built.hookText,
         reminders: built.reminders
     };

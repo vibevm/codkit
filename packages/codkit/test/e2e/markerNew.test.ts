@@ -6,6 +6,7 @@ import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'no
 import { join, relative } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EXAMPLE_PART_PATH } from '../fixtures/makeUpstream.ts';
+import { encodePatchName } from '../../src/lib/patchFormat.ts';
 import { writePendingHeader } from '../../src/lib/pendingHeader.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
@@ -464,5 +465,78 @@ describe('codkit marker new --add-block: a second block of the same intervention
 		const outcome = own.json(['marker', 'new', LIFECYCLE_PATH, '--id', ID, '--add-block']);
 		expect(outcome.run.status).toBe(1);
 		expect(outcome.envelope.errors[0]?.code).toBe('CK-E-MARKER-DUP-ID');
+	});
+});
+
+describe('codkit marker new --new-file: a file the pin does not carry', () => {
+	const NEW_PATH = 'source/app/browser/parts/example/example.nls.json';
+	const CONTENT = '{\n\t"example.title": "Example"\n}\n';
+
+	it('writes the draft only, leaves the file alone, and save --allow-new-file makes the add-file patch', () => {
+		const target = fixture.treePath(NEW_PATH);
+		writeFileSync(target, CONTENT, 'utf8');
+
+		const outcome = fixture.json([
+			'marker',
+			'new',
+			NEW_PATH,
+			'--new-file',
+			'--id',
+			'CK-shell-951',
+			'--type',
+			'extend',
+			'--owner',
+			'shell-core',
+			'--reason',
+			'a locale manifest the pin does not carry'
+		]);
+
+		expect(outcome.run.status).toBe(0);
+		expect(readFileSync(target, 'utf8')).toBe(CONTENT);
+		expect(outcome.envelope.data['line']).toBeNull();
+		expect(existsSync(fixture.patchesPath(String(outcome.envelope.data['pendingHeader'])))).toBe(true);
+
+		const saved = fixture.run(['save', '--allow-new-file', NEW_PATH]);
+		expect(saved.status, saved.stderr).toBe(0);
+		const patch = readFileSync(fixture.patchesPath(`delta/patches/${encodePatchName(NEW_PATH)}`), 'utf8');
+		expect(patch).toContain('# id: CK-shell-951');
+		expect(patch).toContain('"example.title": "Example"');
+	});
+
+	it('refuses a file the pin carries, and any block flag', () => {
+		const carried = fixture.json([
+			'marker',
+			'new',
+			UTIL_PATH,
+			'--new-file',
+			'--id',
+			'CK-shell-952',
+			'--type',
+			'extend',
+			'--owner',
+			'shell-core',
+			'--reason',
+			'not new'
+		]);
+		expect(carried.run.status).toBe(1);
+		expect(JSON.stringify(carried.envelope.errors)).toContain('exists at the pin');
+
+		const flags = fixture.json([
+			'marker',
+			'new',
+			NEW_PATH,
+			'--new-file',
+			'--line',
+			'1',
+			'--id',
+			'CK-shell-953',
+			'--type',
+			'extend',
+			'--owner',
+			'shell-core',
+			'--reason',
+			'with a line'
+		]);
+		expect(flags.run.status).toBe(2);
 	});
 });

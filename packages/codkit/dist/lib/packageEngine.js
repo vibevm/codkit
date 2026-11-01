@@ -258,8 +258,11 @@ function outputsDetail(type, patterns, outputs) {
         ? `the project type ${type.id} names no package output inside the tree`
         : 'no declared output exists in the tree';
 }
-/** The drift guard of `load`, with the exemption `load --fresh` makes. */
-function guardStep(options, overlays, context) {
+/**
+ * The drift guard of `load`, with the exemption `load --fresh` makes. Exported
+ * for `codkit preview`, whose run opens with the same guard (##CMD-PREVIEW).
+ */
+export function guardStep(options, overlays, context) {
     const { config, out, patchesDir, type } = options;
     const tree = options.resolution.path;
     const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
@@ -305,7 +308,7 @@ function guardStep(options, overlays, context) {
     };
 }
 /** The overlays of the delta, grouped by target, in target order. */
-function overlayTargets(overlays) {
+export function overlayTargets(overlays) {
     const byTarget = new Map();
     for (const overlay of overlays) {
         const bucket = byTarget.get(overlay.target);
@@ -322,9 +325,10 @@ function overlayTargets(overlays) {
  * channel over them - which is what a tree in dev mode carries
  * (PROP-005 ##OVERLAY-TWO-CHANNELS). A target somebody else materialized is
  * left alone: this run did not write it, and `load --fresh` is the command that
- * owns that state.
+ * owns that state. Exported for `codkit preview --wait`, whose end is this
+ * restore (##CMD-PREVIEW step 8).
  */
-function restoreOverlayTargets(options, overlays, context, materialized) {
+export function restoreOverlayTargets(options, overlays, context, materialized) {
     if (options.flags.keepOverlay || materialized.length === 0) {
         return [];
     }
@@ -344,9 +348,10 @@ function restoreOverlayTargets(options, overlays, context, materialized) {
  * differs now differs because the packaging changed it; a path nothing changed
  * is not touched and is not reported. Untracked files are left alone: removing
  * a file nobody tracked is what `load --fresh` does, and it is not a side
- * effect of packaging.
+ * effect of packaging. Exported for `codkit preview`, which builds the same
+ * distributable for a mode that needs one (##CMD-PREVIEW step 5).
  */
-function restoreScratch(options) {
+export function restoreScratch(options) {
     const tree = options.resolution.path;
     const paths = packageScratchPaths(tree, options.type.build.packageScratch, (text) => {
         options.out.warn(text);

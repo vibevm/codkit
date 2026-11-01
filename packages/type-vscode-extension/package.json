@@ -1,0 +1,29 @@
+{
+	"name": "@codkit/type-vscode-extension",
+	"version": "1.0.0",
+	"license": "UPL-1.0",
+	"type": "module",
+	"engines": {
+		"node": ">=22.6.0"
+	},
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./dist/index.js"
+		},
+		"./package.json": "./package.json",
+		"./type-manifest.json": "./type-manifest.json"
+	},
+	"files": [
+		"dist",
+		"src",
+		"npm-shrinkwrap.json",
+		"README.md",
+		"LICENSE.md",
+		"type-manifest.json"
+	],
+	"dependencies": {
+		"@codkit/type-api": "1.0.0",
+		"zod": "^4.5.4"
+	}
+}

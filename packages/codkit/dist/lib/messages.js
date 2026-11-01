@@ -120,7 +120,17 @@ export const ERROR_CODES = [
     // A command of the package build the project type names exited non-zero, or
     // could not be run at all; `codkit package` reports the code and the tail of
     // its output rather than the whole log a second time (PROP-007 ##CMD-PACKAGE).
-    'PACKAGE-FAILED'
+    'PACKAGE-FAILED',
+    // `codkit preview` found no host executable: the value of `--host`, of
+    // `CODKIT_PREVIEW_HOST` or of the configuration does not exist, the type's
+    // default host is not on PATH, or the resolved host could not be spawned;
+    // the message names what was tried (PROP-007 ##CMD-PREVIEW-HOST).
+    'PREVIEW-HOST',
+    // The preview recipe of the project type would let the host touch the
+    // person's own profile: an isolation directory lies outside the state
+    // directory of the mode, or is not a whole argument of the launch; the run
+    // refuses before anything is spawned (PROP-007 ##CMD-PREVIEW-ISOLATION).
+    'PREVIEW-ISOLATION'
 ];
 export const publicErrorCodeSchema = z.templateLiteral(['CK-E-', z.enum(ERROR_CODES)]);
 export const WARNING_CODES = ['MARK-RO', 'PATCHSET-SIDE-EDIT', 'EMPTY-BLOCK'];

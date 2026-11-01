@@ -23,6 +23,7 @@ import { DEFAULT_PATCH_LAYER, PATCH_FILE_SUFFIX, encodePatchName } from '../lib/
 import { formatForkTreeLine } from '../lib/paths.js';
 import { PENDING_DIR, listPendingHeaders, pendingFileName, readPendingHeader, removePendingHeader, writePendingHeader } from '../lib/pendingHeader.js';
 import { resolveContainedPath } from '../lib/pathSafety.js';
+import { bytesAtPin } from '../lib/saveEngine.js';
 import { PATCHES_DIR, toPosix } from '../lib/syncEngine.js';
 import { checkTree } from '../lib/treeIdentity.js';
 const ID = '--id';
@@ -36,6 +37,8 @@ const ADD_BLOCK = '--add-block';
 const BODY_FILE = '--body-file';
 const REPLACE_LINES = '--replace-lines';
 const MOVE_BLOCK_FROM = '--move-block-from';
+/** ##CMD-MARKER-NEW: the draft of a whole-file intervention over a file the pin does not carry. */
+const NEW_FILE = '--new-file';
 /** PROP-007 sec. 8: `--category` defaults to `follow`. */
 const DEFAULT_CATEGORY = 'follow';
 /** Owners live here, relative to the patchset root (PROP-003 sec. 4). */
@@ -55,6 +58,12 @@ async function run(ctx) {
     const addBlock = commandFlagGiven(ctx.commandFlags, ADD_BLOCK);
     if (!addBlock && commandFlagValue(ctx.commandFlags, MOVE_BLOCK_FROM) !== null)
         throw ckError('CONFIG', '--move-block-from requires --add-block and an existing owned block');
+    // A file the pin does not carry has no line to put a block at: the whole
+    // file is the intervention, and the draft is all that is written here.
+    const newFile = commandFlagGiven(ctx.commandFlags, NEW_FILE);
+    if (newFile &&
+        (addBlock || [LINE, BODY_FILE, REPLACE_LINES, MOVE_BLOCK_FROM].some((name) => commandFlagValue(ctx.commandFlags, name) !== null)))
+        throw ckError('CONFIG', `${NEW_FILE} writes the draft of a whole-file intervention and takes no block flag`, `drop ${ADD_BLOCK}, ${LINE}, ${BODY_FILE}, ${REPLACE_LINES} and ${MOVE_BLOCK_FROM}`);
     const fields = addBlock ? readAddBlockFields(ctx) : readFields(ctx);
     const identity = checkTree(resolution, config, { mode: 'write', type: requireProjectType(ctx) });
     if (identity.fatal !== null) {
@@ -63,7 +72,9 @@ async function run(ctx) {
     }
     return withLock(ctx.patchesDir, treeId(resolution.path), 'marker new', () => {
         try {
-            return addBlock ? addBlockTo(ctx, resolution.path, config, given, fields) : scaffold(ctx, resolution.path, config, given, fields);
+            return addBlock
+                ? addBlockTo(ctx, resolution.path, config, given, fields)
+                : scaffold(ctx, resolution.path, config, given, fields, newFile);
         }
         catch (error) {
             if (!isCkError(error)) {
@@ -79,8 +90,11 @@ async function run(ctx) {
         ctx.out.warn(text);
     });
 }
-/** Step 1 of both forms: the target exists, is upstream and can carry a marker. */
-function locateTarget(treeDir, config, given, conventions) {
+/**
+ * Step 1 of every form: the target exists, is upstream and can carry a marker -
+ * or, for a new file, is absent from the pin and needs no marker form.
+ */
+function locateTarget(treeDir, config, given, conventions, newFile = false) {
     const target = treeRelativePath(given, treeDir);
     const absolute = join(treeDir, ...target.split('/'));
     // 1. The target: it exists, it is upstream, and it can carry a marker.
@@ -95,14 +109,18 @@ function locateTarget(treeDir, config, given, conventions) {
         throw ckError('FORBIDDEN-TARGET', 'is a forbidden patch target', `conventions.json forbids patching it (forbiddenPatchTargets: ${conventions.forbiddenPatchTargets.join(', ')})`, target);
     }
     const form = markerFormFor(extname(target), conventions);
-    if (form === null) {
-        throw ckError('FORBIDDEN-TARGET', `no marker form is defined for "${extname(target)}" files, so this file cannot carry a codkit marker`, 'a target without a comment syntax belongs to the config-overlay or resource-file layer, not to a patch', target);
+    if (form === null && !newFile) {
+        throw ckError('FORBIDDEN-TARGET', `no marker form is defined for "${extname(target)}" files, so this file cannot carry a codkit marker`, 'a target without a comment syntax belongs to the config-overlay or resource-file layer, not to a patch; ' +
+            `a file the pin does not carry at all is a whole-file intervention: ${NEW_FILE}`, target);
+    }
+    if (newFile && bytesAtPin(treeDir, config.pin.sha, target) !== null) {
+        throw ckError('FORBIDDEN-TARGET', 'exists at the pin, so it is not a new file', `a file the pin carries is patched inside a marker block: run marker new without ${NEW_FILE}`, target);
     }
     return { target, absolute, form };
 }
-function scaffold(ctx, treeDir, config, given, fields) {
+function scaffold(ctx, treeDir, config, given, fields, newFile = false) {
     const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
-    const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
+    const { target, absolute, form } = locateTarget(treeDir, config, given, conventions, newFile);
     // 2. The metadata: id shape, owner, type and category vocabularies.
     validateFields(ctx.patchesDir, fields, conventions);
     const header = {
@@ -115,9 +133,10 @@ function scaffold(ctx, treeDir, config, given, fields) {
         link: 'none'
     };
     const pending = readPendingHeader(ctx.patchesDir, target);
-    // 3. The id is not taken by a patch, a draft or a block of this file.
+    // 3. The id is not taken by a patch, a draft or a block of this file. A new
+    // file without a marker form carries no block to read.
     const content = readFileSync(absolute, 'utf8');
-    const parsed = parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
+    const parsed = form === null ? { blocks: [], errors: [] } : parseMarkers(Buffer.from(content, 'utf8'), extname(target), conventions, target);
     const parseError = parsed.errors[0];
     if (parseError !== undefined)
         throw parseError;
@@ -137,6 +156,16 @@ function scaffold(ctx, treeDir, config, given, fields) {
     }
     // 4. Persist the exact intent before touching the tree. A retry may finish an
     // interrupted matching intent, but another id can never overwrite the draft.
+    // ##CMD-MARKER-NEW: a new file is the intervention itself, so the draft is the
+    // whole scaffold and the file stays as the person wrote it.
+    if (newFile || form === null) {
+        const draft = writePendingHeader(ctx.patchesDir, target, header);
+        ctx.out.info(`${target}: draft of ${fields.id} written; the pin does not carry the file, so the whole file is the intervention`);
+        ctx.out.info(`pending patch header: ${relativePath(ctx.patchesDir, draft)}`);
+        ctx.out.info(`now: codkit save --allow-new-file ${target}`);
+        ctx.out.setData(buildData(target, fields, null, draft, ctx.patchesDir));
+        return EXIT_OK;
+    }
     const updated = resumedBlock === undefined ? insertBlock(content, form, fields, target) : { text: content, at: resumedBlock.beginLine };
     const draft = writePendingHeader(ctx.patchesDir, target, header);
     if (resumedBlock === undefined) {
@@ -209,6 +238,9 @@ function buildData(target, fields, at, draft, patchesDir) {
 function addBlockTo(ctx, treeDir, config, given, fields) {
     const conventions = loadConventions(requireProjectType(ctx), ctx.patchesDir);
     const { target, absolute, form } = locateTarget(treeDir, config, given, conventions);
+    if (form === null) {
+        throw ckError('INTERNAL', `${target}: a located target carries a marker form`, undefined, target);
+    }
     const artifact = `${PATCHES_DIR}/${encodePatchName(target)}`;
     const pending = readPendingHeader(ctx.patchesDir, target);
     const ownedByArtifact = patchIdOwner(ctx.patchesDir, fields.id) === artifact;
@@ -459,6 +491,6 @@ export const markerNewCommand = {
     summary: 'scaffold a codkit marker block in an upstream file of the tree',
     configMode: 'load',
     maxArgs: 1,
-    commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE, ADD_BLOCK, BODY_FILE, REPLACE_LINES, MOVE_BLOCK_FROM],
+    commandFlags: [ID, TYPE, OWNER, REASON, CATEGORY, LAYER, LINE, ADD_BLOCK, BODY_FILE, REPLACE_LINES, MOVE_BLOCK_FROM, NEW_FILE],
     run
 };

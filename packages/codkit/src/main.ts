@@ -27,6 +27,7 @@ import { markerNewCommand } from './commands/markerNew.ts';
 import { markerReasonCommand } from './commands/markerReason.ts';
 import { overlayApplyCommand, overlayCheckCommand, overlayNewCommand } from './commands/overlay.ts';
 import { packageCommand } from './commands/package.ts';
+import { previewCommand } from './commands/preview.ts';
 import { publishCommand } from './commands/publish.ts';
 import { rebaseOntoPinCommand } from './commands/rebaseOntoPin.ts';
 import { reresolveCommand } from './commands/reresolve.ts';
@@ -102,6 +103,7 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		rebaseOntoPinCommand,
 		ciCommand,
 		packageCommand,
+		previewCommand,
 		publishCommand,
 		inputsCommand,
 		inputsPinCommand,

@@ -28,7 +28,7 @@ import { CONFIG_FILE_NAME, loadBaseConfig, serializeBaseConfig } from './configF
 import { loadConventions } from './conventionsFile.js';
 import { runGit } from './gitx.js';
 import { readTreeEntries } from './gitHistory.js';
-import { checkHunksInsideMarkers, checkMarkerArtifactConsistency } from './hunksInMarkers.js';
+import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.js';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.js';
 import { OVERLAYS_DIR, OVERLAY_FILE_SUFFIX, checkOverlay, devChannelIgnoreWarning, devChannelTarget, loadOverlays, restrictedTargetViolations, overlayDriftErrors, parseOverlay, serializeOverlay } from './layers/overlay.js';
 import { checkOwnExtensions, compareOwnExtensions, materializerOf, ownExtensionTargetRelativeDir, ownExtensionTreePrefixes, pinShipsExtension } from './layers/ownExtensions.js';
@@ -36,7 +36,7 @@ import { OWN_CODKIT_ROOT, OWN_MANIFEST_PATH, checkServiceOverrideModules, checkU
 import { REMOVED_PATH, loadRemoved, parseRemoved, serializeRemoved } from './layers/removed.js';
 import { RESOURCE_MAP_PATH, loadResourceMap, parseResourceMap, resourceSourcePath, serializeResourceMap } from './layers/resource.js';
 import { RULES_DIR, RULE_FILE_SUFFIX, countRuleMatches, loadRules, parseRule, serializeRule } from './layers/rule.js';
-import { BEGIN_TOKEN, END_TOKEN, parseMarkers } from './markers.js';
+import { BEGIN_TOKEN, END_TOKEN } from './markers.js';
 import { ckError, isCkError } from './messages.js';
 import { OWNERS_PATH, loadOwnerKeys, ownerKeysOf } from './owners.js';
 import { OWN_SOURCE_DIR, listOwnFiles, ownSourceRoot } from './ownCopy.js';
@@ -396,8 +396,7 @@ function checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, fin
             // ##ADD-FILE-EXEMPTION: there are no upstream lines to protect, so only
             // the markers of the resulting file and their ownership are checked.
             const target = applyUnified(new Uint8Array(0), patch);
-            const markers = parseMarkers(target, ext, conventions, patch.targetPath);
-            for (const error of [...markers.errors, ...checkMarkerArtifactConsistency(markers.blocks, patch.header.id, allowIds, artifact)]) {
+            for (const error of newFileMarkerErrors(target, ext, conventions, patch.header.id, allowIds, artifact)) {
                 findings.push(toFinding(error, artifact));
             }
             return;

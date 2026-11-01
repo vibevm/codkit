@@ -77,6 +77,15 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--inputs', 'value'],
     ['--container-prefix', 'value'],
     ['--component-id', 'value'],
+    // preview (PROP-007 sec. 29); the folder the host opens is `--workspace-dir`,
+    // because `--workspace <name>` above is the global flag that selects a
+    // registered worktree pair and is parsed before any command flag.
+    ['--mode', 'value'],
+    ['--host', 'value'],
+    ['--workspace-dir', 'value'],
+    ['--no-build', 'boolean'],
+    ['--clean', 'boolean'],
+    ['--wait', 'boolean'],
     // ci (PROP-007 sec. 17, PROP-011)
     ['--profile', 'value'],
     ['--effective-diff', 'value'],
@@ -97,6 +106,7 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--body-file', 'value'],
     ['--replace-lines', 'value'],
     ['--move-block-from', 'value'],
+    ['--new-file', 'boolean'],
     ['--inputs-only', 'boolean'],
     // overlay new (PROP-007 sec. 12); --id, --type, --owner, --reason and
     // --category above are shared with marker new.
