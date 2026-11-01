@@ -5495,7 +5495,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ba5efc5572195408dba752dc6f8928acd7e8c604bfd2f315500178e083014834",
+      "content_hash": "sha256:a307537f4647b21b18ab3064da1f7df875f71515df0d939dcccc51749cedc47a",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -7034,7 +7034,7 @@
     },
     {
       "anchor": "cmd-inputs",
-      "content_hash": "sha256:bb6923d772e13ff7c2c312fb1577406a4a506ef7432e69f2c9d44531671c6a33",
+      "content_hash": "sha256:1b6110cc882d008381649bf3b6ef921760f60d51916491c6432bc66916258a91",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "28. Inputs from other repositories, and codkit inputs pin name…|--all",
@@ -7088,10 +7088,10 @@
     },
     {
       "anchor": "INPUTS-BUILD-PORTABLE",
-      "content_hash": "sha256:85818d8e6a512282a35e0a4b0a3a3167133cb67ddfaa2a56ef2d1500e539765d",
+      "content_hash": "sha256:f8a78ce74c4d450d073d7f75e024c1b22bed527140d91f5b6a59dab08b2350a9",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "**How a command names its program, on each platform.** Elsewhere than Windows the argv goes to the program as it is, and the operating system searches `PATH` for a name without a directory. On Windows a name without a directory is searched along `PATH` with each extension of `PATHEXT` (by default `.COM;.EXE;.BAT;.CMD`), the way the command prompt finds it, and a word with a directory in it is taken from the copy with the same extensions. An executable (`.exe`, `.com`) runs directly with its argv. A batch launcher (`.cmd`, `.bat`) - the form the command of a package manager usually takes on Windows - cannot run without cmd.exe, so it runs through `%ComSpec% /d /s /c` with the command line quoted as cmd.exe reads it; since cmd.exe gives `%`, `^`, `&`, `|`, `<`, `>` and `\"` a meaning of its own, an argument that carries one of them is refused for a batch launcher (exit 2, with the hint to call the program the launcher starts directly) rather than handed to it. A name found nowhere is left to the operating system, and the run reports that the command could not start. A declaration meant for every platform names a real executable - `node`, `python`, a compiled tool - and its script. @status:impl/done",
+      "heading": "**How a command names its program, on each platform.** Elsewhere than Windows the argv goes to the program as it is, and the operating system searches `PATH` for a name without a directory. On Windows a name without a directory is searched along `PATH` with each extension of `PATHEXT` (by default `.COM;.EXE;.BAT;.CMD`), the way the command prompt finds it, and a word with a directory in it is taken from the copy with the same extensions. An executable (`.exe`, `.com`) runs directly with its argv. A batch launcher (`.cmd`, `.bat`) - the form the command of a package manager usually takes on Windows - cannot run without cmd.exe, so it runs through `%ComSpec% /d /s /c` with the command line quoted as cmd.exe reads it; since cmd.exe gives `%`, `^`, `&`, `|`, `<`, `>` and `\"` a meaning of its own, an argument that carries one of them is refused for a batch launcher (exit 2, with the hint to call the program the launcher starts directly) rather than handed to it. A name found nowhere is left to the operating system, and the run reports that the command could not start. A declaration meant for every platform names a real executable - `node`, `python`, a compiled tool - and its script. The same resolution serves every command the engine spawns in the tree: the package manager a project type names under `package`, `ci` and `preview` is a `.cmd` shim on Windows as well, and its bare name is found along `PATH` before the spawn (decision of 2026-11-01, when the first upstream built by a manager other than npm was packaged). @status:impl/done",
       "line": 407,
       "uri": "spec://codkit/modules/codkit/PROP-007#INPUTS-BUILD-PORTABLE"
     },

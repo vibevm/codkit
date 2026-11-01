@@ -137,7 +137,8 @@ export function resolveProgram(argv: readonly string[], lookup: ProgramLookup): 
 	};
 }
 
-function findOnWindows(program: string, lookup: ProgramLookup): string | null {
+/** The program a word names on Windows, found along PATH with the PATHEXT suffixes; exported for every spawn of the engine. */
+export function findOnWindows(program: string, lookup: ProgramLookup): string | null {
 	const extensions = (environmentValue(lookup.env, 'PATHEXT', 'win32') ?? DEFAULT_PATHEXT).split(';').filter((ext) => ext !== '');
 	const withExtensions = (base: string): readonly string[] => {
 		const known = extensions.some((ext) => ext.toLowerCase() === win32.extname(base).toLowerCase());
