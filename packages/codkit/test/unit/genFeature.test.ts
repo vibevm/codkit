@@ -31,11 +31,11 @@ const BRANDING_TYPE = stubType({ capabilities: new Set<Capability>(['gen-brand']
 // sit flush with the upstream file next to it, and a silent change of width is
 // exactly the regression the fields alone would not catch.
 const BLOCK_LINES: readonly string[] = [
-	'/*---------------------------------------------------------------------------------------------',
-	' *  Copyright (c) 2026 Acme. All rights reserved.',
-	' *  Licensed under the MIT licence. The full licence text is the licence file of this repository.',
+	`/*${'-'.repeat(93)}`,
+	' *  Copyright (c) 2026 Acme',
+	' *  All rights reserved. Licensed under the MIT licence; the full text is the licence file of this repository.',
 	' *  SPDX-License-Identifier: MIT',
-	' *--------------------------------------------------------------------------------------------*/'
+	` *${'-'.repeat(92)}*/`
 ];
 
 function codeOf(run: () => unknown): string | null {
@@ -147,7 +147,7 @@ describe('the header of a generated file', () => {
 			expect(lines.slice(0, 4)).toEqual([
 				'// Copyright (c) 2026 Acme',
 				'// Licensed under the MIT licence.',
-				'// The full licence text is the licence file of this repository.',
+				'// The full text is the licence file of this repository.',
 				'// SPDX-License-Identifier: MIT'
 			]);
 		}

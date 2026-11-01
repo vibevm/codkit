@@ -19,6 +19,10 @@ export type ProductHeaderFields = {
 	readonly license: string;
 	readonly year: string;
 	readonly style: HeaderStyle;
+	/** The human name of the licence, when the product declares one; the identifier stands in otherwise. */
+	readonly title?: string;
+	/** The name of the licence file of the repository, when the product declares one. */
+	readonly file?: string;
 };
 
 /**
@@ -50,33 +54,47 @@ export function headerStyleName(header: ProductHeader | null): HeaderStyleName {
 	return header.form === 'text' ? 'file' : header.style;
 }
 
+/** `Licensed under the <title>`, or the identifier with the word licence when no title is declared. */
+function licensedUnder(header: ProductHeaderFields): string {
+	return `Licensed under the ${header.title ?? `${header.license} licence`}`;
+}
+
+/** Where the full text lives: the declared licence file, or the words every product can honour. */
+function fullText(header: ProductHeaderFields): string {
+	return `the full text is ${header.file ?? 'the licence file'} of this repository`;
+}
+
 /**
  * The `line` shape: the copyright line first and the SPDX line last, which is
- * the shape every licence scanner reads; the two lines between them say where
- * the full text lives. The identifier is the product's, and codkit never
- * substitutes its own.
+ * the shape every licence scanner reads; the two lines between them say under
+ * what and where the full text lives. The identifier is the product's, and
+ * codkit never substitutes its own.
  */
 function lineHeader(header: ProductHeaderFields): string {
 	return [
 		`// Copyright (c) ${header.year} ${header.holder}`,
-		`// Licensed under the ${header.license} licence.`,
-		'// The full licence text is the licence file of this repository.',
+		`// ${licensedUnder(header)}.`,
+		`// The full text is ${header.file ?? 'the licence file'} of this repository.`,
 		`// SPDX-License-Identifier: ${header.license}`,
 		''
 	].join('\n');
 }
 
 /**
- * The `block` shape: the same four statements inside the ruled comment the
- * upstream sources carry, so own code reads as one system with the code it
- * sits beside - the standard ##GEN-HEADER-IS-THE-PRODUCTS cites as
- * `MI-SAME-SHAPE-AS-UPSTREAMS-PARALLEL-SYSTEM`.
+ * The `block` shape: the same statements inside the ruled comment the upstream
+ * sources carry, so own code reads as one system with the code it sits beside -
+ * the standard ##GEN-HEADER-IS-THE-PRODUCTS cites as
+ * `MI-SAME-SHAPE-AS-UPSTREAMS-PARALLEL-SYSTEM`. The copyright line carries the
+ * year and the holder and nothing after them: the carrier parser of PROP-014
+ * reads the holder to the end of the line, and the earlier form, which put
+ * `. All rights reserved.` there, made the consumer check of PROP-019 read a
+ * foreign holder (decision of 2026-11-01).
  */
 function blockHeader(header: ProductHeaderFields): string {
 	return [
 		BLOCK_RULE_OPEN,
-		` *  Copyright (c) ${header.year} ${header.holder}. All rights reserved.`,
-		` *  Licensed under the ${header.license} licence. The full licence text is the licence file of this repository.`,
+		` *  Copyright (c) ${header.year} ${header.holder}`,
+		` *  All rights reserved. ${licensedUnder(header)}; ${fullText(header)}.`,
 		` *  SPDX-License-Identifier: ${header.license}`,
 		BLOCK_RULE_CLOSE,
 		''

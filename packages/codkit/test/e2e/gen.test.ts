@@ -72,11 +72,13 @@ function walk(root: string, prefix = ''): readonly string[] {
 }
 
 // The block form, pinned to the character: the width is what makes an own file
-// sit flush with the upstream file beside it.
+// sit flush with the upstream file beside it, and the copyright line carries
+// the holder and nothing after it, so the carrier check reads the holder
+// (DESIGN-003 D4).
 const BLOCK_LINES: readonly string[] = [
 	'/*---------------------------------------------------------------------------------------------',
-	' *  Copyright (c) 2026 Acme. All rights reserved.',
-	' *  Licensed under the MIT licence. The full licence text is the licence file of this repository.',
+	' *  Copyright (c) 2026 Acme',
+	' *  All rights reserved. Licensed under the MIT licence; the full text is the licence file of this repository.',
 	' *  SPDX-License-Identifier: MIT',
 	' *--------------------------------------------------------------------------------------------*/'
 ];
