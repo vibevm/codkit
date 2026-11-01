@@ -59,7 +59,15 @@ import { processInvocation } from './processInvocation.ts';
 import { listOwnFiles, ownSourceRoot } from './ownCopy.ts';
 import { ownedRootsOf } from './ownedRoots.ts';
 import type { ForkDirResolution } from './paths.ts';
-import { buildGeneratedTip, runSync } from './syncEngine.ts';
+import {
+	buildGeneratedTip,
+	overlayMaterializationClassifier,
+	overlayVarContext,
+	patchSetCommitId,
+	pinCommitDate,
+	runSync
+} from './syncEngine.ts';
+import { loadOverlays } from './layers/overlay.ts';
 import { treeHeadError } from './treeCommits.ts';
 import { checkTree, formatCheckLine } from './treeIdentity.ts';
 import { runVerify } from './verifyEngine.ts';
@@ -270,14 +278,18 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	// this tree's index staged-dirty, and that state must be refused by its
 	// cause, not read as a reused developer tree.
 	//
-	// No known-materialization classifier is passed here (REPAIR-005 decision):
-	// ci materializes overlay targets only through commits of the generated
-	// branch, so its own runs leave the tree clean against its own HEAD and can
-	// never produce the state the classifier exists for. The only way those bytes
-	// reach a ci tree is an out-of-band `overlay apply` - a developer tree reused
-	// by a job, which is exactly what this guard exists to name loudly - and its
-	// way out is codkit's own (`load --fresh` on that tree) or the disposable-tree
-	// contract itself (mount a fresh tree), not a direct git restore.
+	// The known-materialization classifier of `load --fresh` is passed here as
+	// well (PROP-005 ##OVERLAY-KNOWN-MATERIALIZATION). REPAIR-005 left it out on
+	// the ground that ci meets only disposable trees: its build profile commits
+	// the overlay targets into the generated branch and leaves the tree clean
+	// against its own HEAD. The stabilize phase of an upgrade cycle runs that
+	// profile on the developer's tree pass after pass, and the second pass met
+	// the exact materialization the first one left, as nine dirty paths and a
+	// red stabilization nobody could make green without a git restore. The
+	// classifier recognizes only the exact composition of the configured
+	// overlays over the pin - codkit's own bytes, which the fresh load below
+	// replaces - and every other byte stays dirt, so a reused developer tree
+	// with real work in it is still named loudly.
 	const branch = `${config.generatedBranchPrefix}${pinKey(config.pin)}`;
 	try {
 		assertGeneratedRefExclusive(tree, `refs/heads/${branch}`);
@@ -289,6 +301,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		}
 		throw error;
 	}
+	const known: string[] = [];
 	const drift = driftDirty(
 		materializerOf(options.type),
 		tree,
@@ -297,9 +310,13 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		{
 			untrackedIsDirt: false,
 			workspace: config.workspace?.record,
-			generated: { pinSha: config.pin.sha, branch }
+			generated: { pinSha: config.pin.sha, branch },
+			...knownMaterializationExemption(patchesDir, tree, config, options.type, options.patchSetCommit, known)
 		}
 	);
+	if (known.length > 0) {
+		out.info(`fresh apply: ${known.join(', ')} carries the exact overlay materialization; this run replaces it`);
+	}
 	const head = treeHeadError(drift.treeCommits, branch);
 	if (head !== null) {
 		steps.record('fresh apply', 'failed', 'HEAD of the tree is not on the generated branch while it carries commits');
@@ -1288,4 +1305,27 @@ function firstLine(text: string): string {
 	}
 	const [line] = trimmed.split('\n');
 	return line ?? 'no output';
+}
+
+/**
+ * The exemption of `load --fresh`, built for the guard above: the configured
+ * overlays and the variable context of this run, or no exemption at all when
+ * the overlays cannot be read - the guard may only narrow, and a broken overlay
+ * artifact is named by the verify step later, not here.
+ */
+function knownMaterializationExemption(
+	patchesDir: string,
+	tree: string,
+	config: CodkitConfig,
+	type: ProjectType,
+	patchSetCommit: string | undefined,
+	known: string[]
+): { readonly isKnownMaterialization?: (path: string) => boolean } {
+	try {
+		const overlays = loadOverlays(patchesDir, type);
+		const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommit ?? patchSetCommitId(patchesDir));
+		return { isKnownMaterialization: overlayMaterializationClassifier(overlays, tree, config.pin.sha, context, known) };
+	} catch {
+		return {};
+	}
 }

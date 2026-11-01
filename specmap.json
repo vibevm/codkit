@@ -4694,7 +4694,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:b7d25608a1b30f17360fcfd8178e8739920ab0417bb1c3f74c3d68b8a8c81406",
+      "content_hash": "sha256:1e117851decbde7091c2aefc0e2a9d8540824fbb18ac1cd4d7e8f20f5184c2ce",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Delta layers - formats, materialization, prohibitions",
@@ -4937,7 +4937,7 @@
     },
     {
       "anchor": "overlay",
-      "content_hash": "sha256:74df71da464c85587919f992ba85526f2b9e5088b544b53f39c03e4252005177",
+      "content_hash": "sha256:3bad76ac71388b05e7f26a3accfcfdba8c6c19780a158381b1aaa83f97c99b9f",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "5. config-overlay - format and materialization",
@@ -5027,10 +5027,10 @@
     },
     {
       "anchor": "OVERLAY-KNOWN-MATERIALIZATION",
-      "content_hash": "sha256:d325fb0ac8e49c471db6a8626d770f3e55111728d4c5b964c00c056869e13f65",
+      "content_hash": "sha256:3ee58ec66cb2689aa9a4e6d18296564344129f2bcd47af3dbb50517f1e3998fa",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "**Known materialization (REPAIR-005):** channel 2 writes strictly deterministic bytes into the tree - the clean blob of the pin plus the operations of all overlays of that target in canonical order, tab indentation and a final LF, in the context of the run (`pin.*`, `patchset.commit`, `build.date`). Such bytes are therefore recognizable: before the drift guard refuses, `load --fresh` compares every tracked overlay target that differs from HEAD with that composition, and an exact byte match is a state that codkit wrote itself (`overlay apply`), not unextracted work; this run replaces it and returns the tree to dev mode (the raw file is the state of the dev/generated branch, the dev channel is written), without a direct `git checkout` of the target. Any deviation - an extra, a missing or a hand-made byte, a foreign file, a missing file - stays dirt, and `--fresh` is not a blanket reset. A plain `load` makes no such comparison and stays red on a materialization: its fast path could answer \"up to date\" and leave the packaging bytes standing as the dev state. A refusal to classify (an unreadable base, an unsafe target path) is treated as \"not recognized\" and stays dirt; the guard may only narrow. @status:impl/done",
+      "heading": "**Known materialization (REPAIR-005):** channel 2 writes strictly deterministic bytes into the tree - the clean blob of the pin plus the operations of all overlays of that target in canonical order, tab indentation and a final LF, in the context of the run (`pin.*`, `patchset.commit`, `build.date`). Such bytes are therefore recognizable: before the drift guard refuses, `load --fresh` compares every tracked overlay target that differs from HEAD with that composition, and an exact byte match is a state that codkit wrote itself (`overlay apply`), not unextracted work; this run replaces it and returns the tree to dev mode (the raw file is the state of the dev/generated branch, the dev channel is written), without a direct `git checkout` of the target. Any deviation - an extra, a missing or a hand-made byte, a foreign file, a missing file - stays dirt, and `--fresh` is not a blanket reset. A plain `load` makes no such comparison and stays red on a materialization: its fast path could answer \"up to date\" and leave the packaging bytes standing as the dev state; its refusal names the targets it recognizes and the recipe (`load --fresh`), so nobody has to reach for `git checkout` on them. The fresh apply of `ci` makes the same exemption as `load --fresh`: REPAIR-005 left it out on the ground that ci meets only disposable trees, and the stabilize phase of an upgrade cycle (PROP-009) proved otherwise - it runs the build profile on the developer's tree pass after pass, and the second pass met the exact materialization the first one left as dirt. A refusal to classify (an unreadable base, an unsafe target path) is treated as \"not recognized\" and stays dirt; the guard may only narrow. @status:impl/done",
       "line": 93,
       "uri": "spec://codkit/modules/codkit/PROP-005#OVERLAY-KNOWN-MATERIALIZATION"
     },
@@ -14018,7 +14018,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c70953a7dcece87a84de7e45eff637c853526a00e423177d1f1837bc1dbc39bc",
+      "content_hash": "sha256:941231840c0c47de386b4851a05579bc71940ee33bc85c1cbcdb5c9fde5e5913",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
       "heading": "vscode PROP-002: Tree layout - the own root, own extensions, cleanup, forbidden targets",
@@ -14054,7 +14054,7 @@
     },
     {
       "anchor": "own-extensions",
-      "content_hash": "sha256:36cdd42bdf793a00af741ff25b11d8c183a7a047b02bf2f5a41488319a4009fb",
+      "content_hash": "sha256:0d82feda33dbb6787153ca90ed2e81aa1db76d1503dd6ac067eac7cc77fc5de1",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
       "heading": "2. Own extensions",
@@ -14063,10 +14063,10 @@
     },
     {
       "anchor": "OWN-EXTENSION-UNIT",
-      "content_hash": "sha256:1127449cbab8d7e174f09f41fec3cd0451c7c25bbd7cfafe7a1c063f9eaf514d",
+      "content_hash": "sha256:5da5b0a011cc97f1285156d1e25a83e81d1c1fd07048fcefc13dfc92fdc24113",
       "doc_path": "modules/vscode/PROP-002",
       "file": "vibevm/vibespecs/modules/vscode/PROP-002-layout.xml",
-      "heading": "The `own-extension` kind of unit: the directory `delta/own-extensions/<name>/**` is mirrored into `<tree>/extensions/<name>/**` (the rsync semantics of `OWN-SOURCE-OF-TRUTH`: `load` into the tree, `save` back, `ci` into the own commit of the generated branch). The declaration is the section `extensions: [{ id, name, owner, reason, pin, contractTests }]` of the `patchset.delta.json` manifest (schema `codkitOwnManifest: 2`, an absent section is admissible); `name` has the form `^[a-z0-9][a-z0-9-]*$` and is unique; the directory must contain the `package.json` of the extension; a directory under `delta/own-extensions/` that is declared by no entry is a violation as well (otherwise it silently fails to materialize, the analogue of `OWN-UNCOVERED`); a violation is `CK-E-OWN-EXTENSION-MANIFEST`; an extension named after an existing upstream directory `extensions/<name>` on the pin is the same refusal with the text `name collides with an upstream extension`. Drift between the tree and the delta is `CK-E-OWN-EXTENSION-DRIFT` in `verify`. In the inventory it is an entry with layer `own` and category `own-extension`. An empty section is serialized as absent (the canonical bytes of the manifest do not change). The managed block of `info/exclude` (`OWN-EXCLUDED-LOCALLY`) does not cover extensions: `git status` shows `extensions/<name>/` as untracked, and the dirt guards - `status`, `check-tree --require-clean`, the preflight of the cycle's move, resolve and stabilize - read an exact delivery of it as a runtime copy of the delta, file by file: a file whose tree copy equals its delta source is not dirt, an edited, absent or undeclared one is; extending the block to extensions is a separate rule (deferred). Source-only updates of existing files use the artifacts baseline and ordinary load under spec://codkit/modules/codkit/PROP-008#OWN-EXTENSION-PATCHSET-SIDE; this does not relax refusal of tree work or a missing baseline. @status:spec/done",
+      "heading": "The `own-extension` kind of unit: the directory `delta/own-extensions/<name>/**` is mirrored into `<tree>/extensions/<name>/**` (the rsync semantics of `OWN-SOURCE-OF-TRUTH`: `load` into the tree, `save` back, `ci` into the own commit of the generated branch). The declaration is the section `extensions: [{ id, name, owner, reason, pin, contractTests }]` of the `patchset.delta.json` manifest (schema `codkitOwnManifest: 2`, an absent section is admissible); its `pin` is the pin of the metadata like a unit's: the upgrade cycle validates it against the source pin at classification and moves it to the target pin at regeneration (spec://codkit/modules/codkit/PROP-009#phases); `name` has the form `^[a-z0-9][a-z0-9-]*$` and is unique; the directory must contain the `package.json` of the extension; a directory under `delta/own-extensions/` that is declared by no entry is a violation as well (otherwise it silently fails to materialize, the analogue of `OWN-UNCOVERED`); a violation is `CK-E-OWN-EXTENSION-MANIFEST`; an extension named after an existing upstream directory `extensions/<name>` on the pin is the same refusal with the text `name collides with an upstream extension`. Drift between the tree and the delta is `CK-E-OWN-EXTENSION-DRIFT` in `verify`. In the inventory it is an entry with layer `own` and category `own-extension`. An empty section is serialized as absent (the canonical bytes of the manifest do not change). The managed block of `info/exclude` (`OWN-EXCLUDED-LOCALLY`) does not cover extensions: `git status` shows `extensions/<name>/` as untracked, and the dirt guards - `status`, `check-tree --require-clean`, the preflight of the cycle's move, resolve and stabilize - read an exact delivery of it as a runtime copy of the delta, file by file: a file whose tree copy equals its delta source is not dirt, an edited, absent or undeclared one is; extending the block to extensions is a separate rule (deferred). Source-only updates of existing files use the artifacts baseline and ordinary load under spec://codkit/modules/codkit/PROP-008#OWN-EXTENSION-PATCHSET-SIDE; this does not relax refusal of tree work or a missing baseline. @status:spec/done",
       "line": 10,
       "uri": "spec://codkit/modules/vscode/PROP-002#OWN-EXTENSION-UNIT"
     },

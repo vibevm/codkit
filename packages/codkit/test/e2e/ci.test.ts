@@ -367,6 +367,28 @@ describe('codkit ci --profile build', () => {
 		expect((status.envelope.data as { channels: { state: string }[] }).channels.every((row) => row.state === 'dead')).toBe(true);
 	}, 60000);
 
+	it('replaces the exact overlay materialization a previous build left instead of refusing the tree', () => {
+		// The stabilize phase of a cycle runs the build profile on the same tree
+		// pass after pass; the materialized targets of one pass are codkit's own
+		// bytes, not a developer's work (PROP-005 ##OVERLAY-KNOWN-MATERIALIZATION).
+		// The tree in development mode, then the materialization over it: the
+		// shape a cycle leaves between two stabilization passes.
+		expect(fixture.run(['load', '--fresh']).status).toBe(0);
+		provideTreeDependencies(fixture);
+		expect(fixture.run(['overlay', 'apply', 'manifest.json']).status).toBe(0);
+		expect(fixture.git(['status', '--porcelain']).stdout).toContain('manifest.json');
+
+		const { run, envelope } = fixture.json(['ci', '--profile', 'build', ...TIMEOUT], { STUB_MODE: 'ok' });
+
+		expect(
+			run.status,
+			`${run.stderr}
+${JSON.stringify(envelope.errors)}`
+		).toBe(0);
+		expect(stateOf(envelope, 'fresh apply')).toBe('ok');
+		expect(run.stderr).toContain('fresh apply: manifest.json carries the exact overlay materialization; this run replaces it');
+	});
+
 	it('fails before overlay materialization when upstream hygiene is red', () => {
 		const { run, envelope } = fixture.json(['ci', '--profile', 'build', ...TIMEOUT], {
 			STUB_MODE: 'ok',
