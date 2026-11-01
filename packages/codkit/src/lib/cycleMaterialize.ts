@@ -45,6 +45,7 @@ import type { ConflictWrite, CycleMaterializeMoveCheckpoint, ProvisionalMoveOpti
 import { workspaceForkReceipt } from './workspaceReceipt.ts';
 import { deliveredExtensionTargets } from './cycleOwnedDirt.ts';
 import { deliveredInputTargets, inputTreePaths } from './inputsTree.ts';
+import { assertTreeLineEndings } from './treeLineEndings.ts';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.ts';
 import type { CycleOwnRenameAuthority } from './cycleMaterializeOwn.ts';
 import type { ProjectType } from '@codkit/type-api';
@@ -115,6 +116,10 @@ export function materializeCycleApply(options: CycleMaterializeOptions): CycleMa
 	const branch = provisionalBranch(options.config, tree);
 	const checked = checkTree(options.resolution, options.config, { mode: 'write', type: options.type });
 	if (checked.fatal !== null) throw checked.fatal;
+	// A working copy with CRLF over an LF blob fails the byte-for-byte proof of
+	// the move (PROP-002 ##GIT-ENV-EOL); asked here, before the long build of
+	// the prospective tree, with the paths and the recipe.
+	assertTreeLineEndings(tree, (text) => options.out.info(text));
 	const inputs = options.config.inputs ?? [];
 	const warn = (text: string): void => options.out.warn(text);
 	const patchSetCommit = patchSetCommitId(options.patchesDir);

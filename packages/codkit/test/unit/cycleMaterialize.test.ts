@@ -358,6 +358,51 @@ describe('materializeCycleApply', () => {
 		expect(runGit({ args: ['status', '--porcelain', '--untracked-files=all'], cwd: current.tree }).stdout).not.toContain('documentation/');
 	}, 90_000);
 
+	it('refuses, before building anything, a tree whose copies carry CRLF over LF blobs (##GIT-ENV-EOL)', () => {
+		const current = fixture();
+		write(current.tree, '.gitattributes', '* text=auto\n');
+		fixtureGit(current.tree, ['add', '--', '.gitattributes']);
+		fixtureGit(current.tree, ['commit', '--quiet', '--message', 'fixture: text attributes', '--no-verify'], {
+			GIT_AUTHOR_NAME: 'Fixture',
+			GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+			GIT_COMMITTER_NAME: 'Fixture',
+			GIT_COMMITTER_EMAIL: 'fixture@example.invalid'
+		});
+		write(current.tree, CLEAN, 'a\r\nbase\r\nz\r\n');
+		fixtureGit(current.tree, ['update-index', '--assume-unchanged', '--', CLEAN]);
+		const lines: string[] = [];
+		const output = new Output({
+			command: 'cycle continue',
+			version: '0.0.0',
+			jsonMode: false,
+			streams: {
+				writeOut(text: string) {
+					lines.push(text);
+				},
+				writeErr(text: string) {
+					lines.push(text);
+				}
+			}
+		});
+		expect(
+			codeOf(() =>
+				materializeCycleApply({
+					patchesDir: current.patchesDir,
+					resolution: current.resolution,
+					config: current.config,
+					type: stubProjectType,
+					sourcePin: current.sourcePin,
+					classifications: current.classifications,
+					out: output
+				})
+			)
+		).toBe('CRLF');
+		expect(lines.join('')).toContain(`crlf: ${CLEAN} (blob lf, working copy crlf`);
+		expect(runGit({ args: ['show-ref', '--verify', '--quiet', 'refs/heads/codkit/cycle/t2-provisional'], cwd: current.tree }).status).toBe(
+			1
+		);
+	}, 90_000);
+
 	it('preflights without mutation, builds the complete provisional tip, and retries byte-identically', () => {
 		const current = fixture();
 		fixtureGit(current.tree, ['branch', 'codkit/applied/t2', current.oldPin]);

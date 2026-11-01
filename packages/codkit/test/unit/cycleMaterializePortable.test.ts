@@ -105,6 +105,21 @@ describe('portable cycle materialize movement', () => {
 		expect(existsSync(recordPath(current))).toBe(false);
 	});
 
+	it('names a copy that differs from the recorded bytes only by CRLF, with the recipe of the file (##GIT-ENV-EOL)', () => {
+		const current = simpleFixture();
+		expect(() => runMove(current, crashAt('index-reset'))).toThrow('loss at index-reset');
+		write(current.tree, 'file.txt', 'source bytes\r\n');
+		const refused = caught(() => prepareProvisionalMove(moveOptions(current)));
+		expect(refused.code).toBe('CRLF');
+		expect(refused.message).toContain('file.txt differs from the recorded bytes only by CRLF line endings');
+		expect(refused.hint).toContain('checkout-index --force -- file.txt');
+		expect(existsSync(recordPath(current))).toBe(true);
+		write(current.tree, 'file.txt', 'source bytes\n');
+		runMove(current);
+		expect(readFileSync(join(current.tree, 'file.txt'), 'utf8')).toBe('target bytes\n');
+		expect(existsSync(recordPath(current))).toBe(false);
+	});
+
 	it('bounds isolated checkout-index work into deterministic path batches', () => {
 		const current = fixture(
 			'cycle-portable-batches',
@@ -281,10 +296,14 @@ function hash(bytes: Uint8Array): string {
 }
 
 function codeOf(run: () => unknown): string {
+	return caught(run).code;
+}
+
+function caught(run: () => unknown): { readonly code: string; readonly message: string; readonly hint: string | undefined } {
 	try {
 		run();
 	} catch (error) {
-		if (isCkError(error)) return error.code;
+		if (isCkError(error)) return { code: error.code, message: error.message, hint: error.hint };
 		throw error;
 	}
 	throw new Error('expected a codkit error');

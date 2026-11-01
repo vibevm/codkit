@@ -34,6 +34,9 @@ forward ancestry; переход на предка исходного пина �
 6. `codkit --json cycle start <target-tag-or-sha>`.
    Exit `0` означает, что зелёные фазы прошли до следующего atom; exit `3` — обязательная остановка ниже;
    exit `1` — guard; exit `2` — окружение/граф с точным `hint`.
+   `CK-E-CRLF` до сборки prospective tree означает CRLF-копии LF-блобов без атрибута `eol=crlf`
+   (след `core.autocrlf=true`): исполни `hint` — `core.autocrlf=false`, `core.eol=lf`, затем
+   `git checkout-index --force` по перечисленным путям — и повтори команду.
 
 После любого вызова сохраняй полный stdout/stderr и exit в issue. Команда сама создаёт
 `codkit/cycle/<targetTag>` и канонический `codkit cycle: bump pin to <tag>`.

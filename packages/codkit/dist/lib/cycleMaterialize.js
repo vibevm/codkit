@@ -25,6 +25,7 @@ import { executeProvisionalMove, prepareProvisionalMove, provisionalMoveSource }
 import { workspaceForkReceipt } from './workspaceReceipt.js';
 import { deliveredExtensionTargets } from './cycleOwnedDirt.js';
 import { deliveredInputTargets, inputTreePaths } from './inputsTree.js';
+import { assertTreeLineEndings } from './treeLineEndings.js';
 import { assertCycleOwnPreflight } from './cycleMaterializeOwn.js';
 /** Materialize the complete target-pin classification onto a private cycle ref. */
 export function materializeCycleApply(options) {
@@ -33,6 +34,10 @@ export function materializeCycleApply(options) {
     const checked = checkTree(options.resolution, options.config, { mode: 'write', type: options.type });
     if (checked.fatal !== null)
         throw checked.fatal;
+    // A working copy with CRLF over an LF blob fails the byte-for-byte proof of
+    // the move (PROP-002 ##GIT-ENV-EOL); asked here, before the long build of
+    // the prospective tree, with the paths and the recipe.
+    assertTreeLineEndings(tree, (text) => options.out.info(text));
     const inputs = options.config.inputs ?? [];
     const warn = (text) => options.out.warn(text);
     const patchSetCommit = patchSetCommitId(options.patchesDir);

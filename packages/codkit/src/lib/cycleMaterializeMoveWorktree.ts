@@ -17,7 +17,12 @@ import {
 	type RebaseWorktreeDigest,
 	type RebaseWorktreeSemantics
 } from './rebaseOntoPinCheckout.ts';
-import { cycleRecordError, type CycleMoveRecord, type CycleMoveRecordEntry } from './cycleMaterializeMoveReceipt.ts';
+import {
+	CYCLE_MATERIALIZE_RECORD_PATH,
+	cycleRecordError,
+	type CycleMoveRecord,
+	type CycleMoveRecordEntry
+} from './cycleMaterializeMoveReceipt.ts';
 
 const CHECKOUT_BATCH_MAX_PATHS = 128;
 const CHECKOUT_BATCH_MAX_BYTES = 64 * 1024;
@@ -62,11 +67,40 @@ export function assertCycleEntryKnown(
 	conflict: CycleConflictWrite | undefined,
 	entries: readonly CycleMoveRecordEntry[]
 ): void {
-	const actual = worktreeState(tree, entry.path, readRebaseWorktreeSemantics(tree), managedPaths(entries));
+	const managed = managedPaths(entries);
+	const actual = worktreeState(tree, entry.path, readRebaseWorktreeSemantics(tree), managed);
 	const accepted: Array<RebaseWorktreeDigest | null> = [entry.before, entry.after];
 	if (conflict !== undefined && entry.after !== null) accepted.push(conflictState(conflict, entry.after));
-	if (!accepted.some((candidate) => sameState(candidate, actual)))
-		throw cycleRecordError(`${entry.path} is neither source, target, nor exact conflict bytes`);
+	if (accepted.some((candidate) => sameState(candidate, actual))) return;
+	// The one difference git itself makes: a working copy written with CRLF by
+	// a checkout under the machine's configuration (PROP-002 ##GIT-ENV-EOL)
+	// hashes to the recorded bytes once its line endings are LF again, and the
+	// recipe is then the file's, not the transaction's.
+	const normalized = actual === null || actual.mode === '120000' ? null : crlfNormalizedHash(entryAbsolute(tree, entry.path, managed));
+	if (normalized !== null && accepted.some((candidate) => candidate !== null && candidate.sha256 === normalized)) {
+		throw ckError(
+			'CRLF',
+			`cycle materialize record ${entry.path} differs from the recorded bytes only by CRLF line endings: ` +
+				'a checkout under core.autocrlf=true or core.eol=native wrote the working copy',
+			`in the fork tree set core.autocrlf=false and core.eol=lf, rewrite the file from the index (git -C ${tree} checkout-index --force -- ${entry.path}), then run the command again`,
+			CYCLE_MATERIALIZE_RECORD_PATH
+		);
+	}
+	throw cycleRecordError(`${entry.path} is neither source, target, nor exact conflict bytes`);
+}
+
+/** The sha256 of the file with every CRLF read as LF; null when it carries no carriage return. */
+function crlfNormalizedHash(absolute: string): string | null {
+	const bytes = readFileSync(absolute);
+	if (!bytes.includes(0x0d)) return null;
+	const chunks: Buffer[] = [];
+	let start = 0;
+	for (let at = bytes.indexOf('\r\n', start); at !== -1; at = bytes.indexOf('\r\n', start)) {
+		chunks.push(bytes.subarray(start, at));
+		start = at + 1;
+	}
+	chunks.push(bytes.subarray(start));
+	return hash(Buffer.concat(chunks));
 }
 
 export function materializeCycleEntries(options: {
