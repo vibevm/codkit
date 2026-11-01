@@ -9,6 +9,7 @@ import type { PackageContainer, PackageTarget } from '../src/build.ts';
 import { CAPABILITIES, isCapability } from '../src/capabilities.ts';
 import { OPTIONAL_AREAS, projectTypeProblems } from '../src/projectType.ts';
 import type { Capability } from '../src/capabilities.ts';
+import type { LicensingArea } from '../src/licensing.ts';
 import type { ProjectType } from '../src/projectType.ts';
 
 /** The smallest well-formed type: no optional area, no optional layer. */
@@ -58,6 +59,7 @@ describe('capability names', () => {
 			'dev-channel',
 			'entry-module',
 			'gen-brand',
+			'licensing',
 			'own-extensions',
 			'preview',
 			'runtime-library',
@@ -280,5 +282,78 @@ describe('the package targets', () => {
 			'bare: package target linux-x64-pkg names an output that is not a path inside the tree: ../beside/*.pkg',
 			'bare: package target linux-x64-pkg names an output that is not a path inside the tree: .build//x'
 		]);
+	});
+});
+
+describe('the licensing area', () => {
+	const licensing: LicensingArea = {
+		headerStyle: 'block',
+		licenceFileDirectory: '',
+		componentLicenceDirectory: 'licenses',
+		subsystem: 'product',
+		fields: [
+			{ target: 'manifest.json', path: ['licenseName'], role: 'expression' },
+			{ target: 'manifest.json', path: ['licenseUrl'], role: 'url' },
+			{ target: 'manifest.json', path: ['serverLicenseUrl'], role: 'url' }
+		],
+		upstreamLicenceFiles: [{ path: 'LICENSE', component: 'upstream' }],
+		renderings: [{ path: 'LICENSE.rtf', format: 'rtf' }],
+		guard: () => ({ path: 'delta/own/test/licence.leftovers.test.ts', suite: 'describe', test: 'it' })
+	};
+	const withArea = (area: LicensingArea): ProjectType =>
+		bareType({
+			capabilities: new Set<Capability>(['licensing', 'config-overlay']),
+			layers: {
+				overlayTargets: [{ path: 'manifest.json', devChannel: null, stampedKeys: [], allowedKeys: null }],
+				ownExtensions: null,
+				serviceOverride: null,
+				entryModule: null
+			},
+			conventions: { subsystems: ['product'], forbiddenServiceIds: [] },
+			licensing: area
+		});
+
+	it('accepts a well-formed answer, two url fields included', () => {
+		expect(projectTypeProblems(withArea(licensing))).toEqual([]);
+	});
+
+	it('is paired with its capability like every optional area', () => {
+		expect(OPTIONAL_AREAS).toContainEqual({ area: 'licensing', capability: 'licensing' });
+	});
+
+	it('names a field whose target is not an overlay target', () => {
+		const type = withArea({ ...licensing, fields: [{ target: 'other.json', path: ['licenseName'], role: 'expression' }] });
+		expect(projectTypeProblems(type)).toEqual(['bare: the licence field licenseName names other.json, which is not an overlay target']);
+	});
+
+	it('names a repeated role, a foreign subsystem, a bad component and a guard outside the own layer', () => {
+		const type = withArea({
+			...licensing,
+			subsystem: 'licence',
+			fields: [
+				{ target: 'manifest.json', path: ['licenseName'], role: 'expression' },
+				{ target: 'manifest.json', path: ['license'], role: 'expression' }
+			],
+			upstreamLicenceFiles: [{ path: 'LICENSE', component: 'Upstream' }],
+			guard: () => ({ path: 'test/guard.test.ts', suite: 'describe', test: 'it' })
+		});
+		expect(projectTypeProblems(type)).toEqual([
+			"bare: the licensing subsystem licence is not one of the type's subsystems",
+			'bare: the role expression appears twice for manifest.json',
+			'bare: the component "Upstream" is not a lower-case name',
+			'bare: the licence guard "test/guard.test.ts" is not a path inside delta/own/'
+		]);
+	});
+
+	it('reads the empty string as the root for the licence file and refuses it for the component directory', () => {
+		const type = withArea({ ...licensing, componentLicenceDirectory: '' });
+		expect(projectTypeProblems(type)).toEqual(['bare: the component licence directory is empty']);
+		const nested = withArea({ ...licensing, licenceFileDirectory: 'legal/./texts' });
+		expect(projectTypeProblems(nested)).toEqual(['bare: the licence file directory has an empty, dot or dot-dot segment']);
+	});
+
+	it('refuses a rendering or an upstream file named twice', () => {
+		const type = withArea({ ...licensing, renderings: [{ path: 'LICENSE', format: 'text' }] });
+		expect(projectTypeProblems(type)).toEqual(['bare: the rendering LICENSE is named twice']);
 	});
 });

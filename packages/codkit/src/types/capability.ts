@@ -7,8 +7,8 @@
 // capability, exit 2, before any write - rather than quietly doing something
 // else. The verbs that need one: `imageset *` (brand-images), `gen brand`
 // (gen-brand), `build *` (build-channels), `runtime load|check`
-// (runtime-library), `preview` (preview), and `verify` over an artifact of a
-// layer the type does not provide.
+// (runtime-library), `preview` (preview), `gen licensing` (licensing), and
+// `verify` over an artifact of a layer the type does not provide.
 
 import type { Capability, ProjectType } from '@codkit/type-api';
 import { ckError } from '../lib/messages.ts';
@@ -29,7 +29,8 @@ const WHAT_IT_IS: Readonly<Record<Capability, string>> = {
 	'config-overlay': 'configuration files an overlay may target',
 	'dev-channel': 'development channel beside an overlay target',
 	'upgrade-advisory': 'semantic readers for the upgrade advisory',
-	preview: 'host application to show the product in'
+	preview: 'host application to show the product in',
+	licensing: 'answer about where it states a licence'
 };
 
 /**

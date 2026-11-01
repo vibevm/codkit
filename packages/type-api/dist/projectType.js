@@ -1,16 +1,20 @@
 /** @scope spec://codkit/modules/codkit/PROP-016#TYPE-CONTRACT-IS-CLOSED */
-// The contract itself: the eleven questions a project type answers, and nothing
+// The contract itself: the twelve questions a project type answers, and nothing
 // else. The list is the set of variation points measured in the engine; a new
 // question is added when a second type needs it, never in anticipation
 // (##DECISION-TYPE-CONTRACT-FROM-MEASUREMENT). The tenth, generators, was added
 // on 2026-09-09 exactly so: the second type needs a different skeleton and has
 // no string funnel to graft a brand table into at all. The eleventh, preview,
 // was added on 2026-11-01 for the family whose whole feedback loop is a host
-// application showing the product (##TYPE-AREA-PREVIEW).
+// application showing the product (##TYPE-AREA-PREVIEW). The twelfth, licensing,
+// was added the same day, after a product shipped under a licence its own
+// surfaces contradicted: where a family states a licence is the family's
+// knowledge (##TYPE-AREA-LICENSING).
 //
 // `@codkit/type-api` is the only import a type package takes from the tool, and
 // the CLI imports a type only through this interface (##TYPE-API-STABILITY).
 import { isAbsolute } from 'node:path';
+import { licensingShapeProblems } from './licensing.js';
 /**
  * ##TYPE-AREA-LAYOUT: the shape of the owned directories, asked of the type
  * with a probe own root. The engine asks the same questions again over the real
@@ -95,7 +99,8 @@ function packageTargetShapeProblems(typeId, target) {
 export const OPTIONAL_AREAS = [
     { area: 'brandImages', capability: 'brand-images' },
     { area: 'runtime', capability: 'runtime-library' },
-    { area: 'preview', capability: 'preview' }
+    { area: 'preview', capability: 'preview' },
+    { area: 'licensing', capability: 'licensing' }
 ];
 /**
  * ##TYPE-AREA-PREVIEW: the shape of the preview answer. The modes are the names
@@ -187,6 +192,7 @@ export function projectTypeProblems(type) {
     }
     problems.push(...ownedDirectoryProblems(type));
     problems.push(...previewShapeProblems(type));
+    problems.push(...licensingShapeProblems(type));
     const images = type.brandImages;
     if (images !== undefined) {
         const kinds = new Set(images.codecs.map((codec) => codec.kind));

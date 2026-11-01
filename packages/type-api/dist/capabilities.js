@@ -18,7 +18,8 @@ export const CAPABILITIES = [
     'config-overlay',
     'dev-channel',
     'upgrade-advisory',
-    'preview'
+    'preview',
+    'licensing'
 ];
 /** Whether a string is one of the declared capability names. */
 export function isCapability(value) {

@@ -7,8 +7,8 @@
 // capability, exit 2, before any write - rather than quietly doing something
 // else. The verbs that need one: `imageset *` (brand-images), `gen brand`
 // (gen-brand), `build *` (build-channels), `runtime load|check`
-// (runtime-library), `preview` (preview), and `verify` over an artifact of a
-// layer the type does not provide.
+// (runtime-library), `preview` (preview), `gen licensing` (licensing), and
+// `verify` over an artifact of a layer the type does not provide.
 import { ckError } from '../lib/messages.js';
 /**
  * What a person reads instead of the verb's answer, per capability. Each value
@@ -26,7 +26,8 @@ const WHAT_IT_IS = {
     'config-overlay': 'configuration files an overlay may target',
     'dev-channel': 'development channel beside an overlay target',
     'upgrade-advisory': 'semantic readers for the upgrade advisory',
-    preview: 'host application to show the product in'
+    preview: 'host application to show the product in',
+    licensing: 'answer about where it states a licence'
 };
 /**
  * Refuse unless the type declares the capability. `what` names the verb or the

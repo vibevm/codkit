@@ -5,5 +5,6 @@ export { CAPABILITIES, isCapability } from './capabilities.js';
 export { oneOwnedDirectory } from './layout.js';
 export { brokenArtifact, isBrokenArtifact } from './refusal.js';
 export { decodePng, encodePng, isPng, pngHeader, pngSize, rgba } from './png.js';
+export { licensingShapeProblems, treePathProblem } from './licensing.js';
 export { OPTIONAL_AREAS, projectTypeProblems } from './projectType.js';
 export { TYPE_MANIFEST_VERSION, TYPE_CONTRACT_VERSION, typeManifestSchema, validateTypeManifest } from './typeManifest.js';

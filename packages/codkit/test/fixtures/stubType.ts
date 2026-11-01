@@ -27,6 +27,7 @@ import type {
 	EntryModuleLocator,
 	ExtensionMaterializer,
 	GeneratorsArea,
+	LicensingArea,
 	OverlayTarget,
 	OwnedDirectory,
 	PreviewArea,
@@ -101,7 +102,7 @@ export function ownRoots(config: { readonly ownRoot: string }): readonly OwnedDi
 /** The overlay targets: the manifest with its dev channel, and the tree manifest's scripts. */
 export const overlayTargets: readonly OverlayTarget[] = [
 	{ path: MANIFEST_TARGET, devChannel: MANIFEST_OVERRIDES_FILE, stampedKeys: STAMPED_MANIFEST_KEYS, allowedKeys: null },
-	{ path: 'package.json', devChannel: null, stampedKeys: [], allowedKeys: ['scripts'] }
+	{ path: 'package.json', devChannel: null, stampedKeys: [], allowedKeys: ['scripts', 'license'] }
 ];
 
 /** ##OWN-EXTENSION-UNIT: the delta directory and its materialization. */
@@ -175,6 +176,30 @@ export const DEFAULT_CHANNELS: readonly string[] = ['transpile', 'typecheck'];
 
 /** Argv fragments that mean somebody else's watcher already runs over this tree. */
 export const FOREIGN_WATCHER_MARKERS: readonly string[] = ['build/watch.mjs transpile --watch', 'foreign watch-'];
+
+/**
+ * The licensing answer of this layout (##TYPE-AREA-LICENSING): the block header,
+ * the licence file at the root, component licences under `licenses/`, three
+ * fields of the manifest and the `license` key of the tree manifest, the
+ * upstream's `LICENSE` as the component `upstream`, one RTF rendering, and a
+ * guard under the own tests found by `describe`/`it`.
+ */
+export const LICENCE_GUARD_PATH = 'delta/own/test/licence.leftovers.test.ts';
+export const licensingArea: LicensingArea = {
+	headerStyle: 'block',
+	licenceFileDirectory: '',
+	componentLicenceDirectory: 'licenses',
+	subsystem: 'product',
+	fields: [
+		{ target: MANIFEST_TARGET, path: ['licenseName'], role: 'expression' },
+		{ target: MANIFEST_TARGET, path: ['licenseFileName'], role: 'file-name' },
+		{ target: MANIFEST_TARGET, path: ['licenseUrl'], role: 'url' },
+		{ target: 'package.json', path: ['license'], role: 'expression' }
+	],
+	upstreamLicenceFiles: [{ path: 'LICENSE', component: 'upstream' }],
+	renderings: [{ path: 'LICENSE.rtf', format: 'rtf' }],
+	guard: () => ({ path: LICENCE_GUARD_PATH, suite: 'describe', test: 'it' })
+};
 
 /** The host the preview of this layout starts when nothing names one; no machine has it on PATH. */
 export const PREVIEW_DEFAULT_HOST = 'codkit-stub-host';
@@ -352,7 +377,8 @@ export const CAPABILITIES: readonly Capability[] = [
 	'config-overlay',
 	'dev-channel',
 	'upgrade-advisory',
-	'preview'
+	'preview',
+	'licensing'
 ];
 
 const base: ProjectType = {
@@ -399,6 +425,7 @@ const base: ProjectType = {
 	},
 	advisory: { readers },
 	preview: previewArea,
+	licensing: licensingArea,
 	standards: { packages: [] },
 	conventions: { subsystems: SUBSYSTEMS, forbiddenServiceIds: FORBIDDEN_SERVICE_IDS },
 	generators: stubGenerators({ brand: true })

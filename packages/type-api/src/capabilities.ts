@@ -19,7 +19,8 @@ export const CAPABILITIES = [
 	'config-overlay',
 	'dev-channel',
 	'upgrade-advisory',
-	'preview'
+	'preview',
+	'licensing'
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

@@ -1,12 +1,15 @@
 /** @scope spec://codkit/modules/codkit/PROP-016#TYPE-CONTRACT-IS-CLOSED */
-// The contract itself: the eleven questions a project type answers, and nothing
+// The contract itself: the twelve questions a project type answers, and nothing
 // else. The list is the set of variation points measured in the engine; a new
 // question is added when a second type needs it, never in anticipation
 // (##DECISION-TYPE-CONTRACT-FROM-MEASUREMENT). The tenth, generators, was added
 // on 2026-09-09 exactly so: the second type needs a different skeleton and has
 // no string funnel to graft a brand table into at all. The eleventh, preview,
 // was added on 2026-11-01 for the family whose whole feedback loop is a host
-// application showing the product (##TYPE-AREA-PREVIEW).
+// application showing the product (##TYPE-AREA-PREVIEW). The twelfth, licensing,
+// was added the same day, after a product shipped under a licence its own
+// surfaces contradicted: where a family states a licence is the family's
+// knowledge (##TYPE-AREA-LICENSING).
 //
 // `@codkit/type-api` is the only import a type package takes from the tool, and
 // the CLI imports a type only through this interface (##TYPE-API-STABILITY).
@@ -22,6 +25,8 @@ import type { GeneratorsArea } from './generators.ts';
 import type { IdentityArea } from './identity.ts';
 import type { LayersArea } from './layers.ts';
 import type { LayoutArea, OwnedDirectory } from './layout.ts';
+import { licensingShapeProblems } from './licensing.ts';
+import type { LicensingArea } from './licensing.ts';
 import type { PreviewArea } from './preview.ts';
 import type { RuntimeArea } from './runtime.ts';
 import type { StandardsArea } from './standards.ts';
@@ -56,6 +61,8 @@ export type ProjectType = {
 	readonly runtime?: RuntimeArea;
 	/** Present exactly when `preview` is declared (##TYPE-AREA-PREVIEW). */
 	readonly preview?: PreviewArea;
+	/** Present exactly when `licensing` is declared (##TYPE-AREA-LICENSING). */
+	readonly licensing?: LicensingArea;
 	readonly standards: StandardsArea;
 	readonly conventions: ConventionsArea;
 	readonly generators: GeneratorsArea;
@@ -151,10 +158,14 @@ function packageTargetShapeProblems(typeId: string, target: PackageTarget): read
  * type's own suite check the pairing, so a type cannot declare an ability it
  * does not answer for, or answer for one it never declared.
  */
-export const OPTIONAL_AREAS: readonly { readonly area: 'brandImages' | 'runtime' | 'preview'; readonly capability: Capability }[] = [
+export const OPTIONAL_AREAS: readonly {
+	readonly area: 'brandImages' | 'runtime' | 'preview' | 'licensing';
+	readonly capability: Capability;
+}[] = [
 	{ area: 'brandImages', capability: 'brand-images' },
 	{ area: 'runtime', capability: 'runtime-library' },
-	{ area: 'preview', capability: 'preview' }
+	{ area: 'preview', capability: 'preview' },
+	{ area: 'licensing', capability: 'licensing' }
 ];
 
 /**
@@ -237,6 +248,7 @@ export function projectTypeProblems(type: ProjectType): readonly string[] {
 	}
 	problems.push(...ownedDirectoryProblems(type));
 	problems.push(...previewShapeProblems(type));
+	problems.push(...licensingShapeProblems(type));
 	const images = type.brandImages;
 	if (images !== undefined) {
 		const kinds = new Set(images.codecs.map((codec) => codec.kind));
