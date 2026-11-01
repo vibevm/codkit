@@ -941,7 +941,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:46c4f34dd689c5581a6c59dba84cc0a0bce26233bd931d426a97766f808d3c5b",
+      "content_hash": "sha256:da1220c825195f8929b30c2aa0d671886731ff6d4f114d58163210d9fbeda963",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "codkit FEAT-002: End-to-end acceptance scenarios S01–S28 (Given/When/Then)",
@@ -1886,7 +1886,7 @@
     },
     {
       "anchor": "s51",
-      "content_hash": "sha256:4bf8d4bfbf68a9e3f767bad8554fde6200cb419aa95ce1845cffac3969f0cd2f",
+      "content_hash": "sha256:7a870fe32950a4b9b56316009bdfe501fab32cc91538a1a012ce70b97a76bdbd",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S51 — the notice of edition 3: the paths, the components block, the legacy copy, the REUSE rows",
@@ -1895,10 +1895,10 @@
     },
     {
       "anchor": "S51",
-      "content_hash": "sha256:a975043f2c822568fe83951ff081e7d4be71833ac147a5b85c0cd30540d14b3c",
+      "content_hash": "sha256:a1455799c35432fe03ee49395b8227278783daad8bb9de074e05daeced431383",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: a product with the copy of the edition-2 notice in `delta/own/LICENSE-CODKIT.md`. **When**: `codkit standards load`. **Then**: the copy under `delta/own/codkit/LICENSE-CODKIT.md` is created, the legacy one is deleted, the output holds `moved`; both copies hold the scope paragraphs with the four prefixes, the block `codkit:begin components` with the row `standards`, the paragraph about the vibe copies. **When**: `codkit --json standards license`. **Then**: `data.reuseAnnotation` holds `[[annotations]]`, the four paths and `SPDX-License-Identifier = \"UPL-1.0\"`; `data.scrapeContractRows` holds the three paths of the notice. **When**: `codkit standards check` with the legacy copy restored by hand. **Then**: exit 0 and the line `legacy-copy`. @status:spec/plan",
+      "heading": "**Given**: a product with the copy of the edition-2 notice in `delta/own/LICENSE-CODKIT.md`. **When**: `codkit standards load`. **Then**: the copy under `delta/own/codkit/LICENSE-CODKIT.md` is created, the legacy one is deleted, the output holds `moved`; both copies hold the scope paragraphs with the four prefixes, the block `codkit:begin components` with the row `standards`, the paragraph about the vibe copies. **When**: `codkit --json standards license`. **Then**: `data.reuseAnnotation` holds `[[annotations]]`, the paths of the notice's scope (the skill projections included) and `SPDX-License-Identifier = \"UPL-1.0\"`; `data.scrapeContractRows` holds the three paths of the notice. **When**: `codkit standards check` with the legacy copy restored by hand. **Then**: exit 0 and the line `legacy-copy`. @status:spec/plan",
       "line": 161,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S51"
     },
@@ -2606,7 +2606,7 @@
     },
     {
       "anchor": "s91",
-      "content_hash": "sha256:5c68c44075245774ef4570ade87d0a9c376da8a90caf69e21b367c710abf675a",
+      "content_hash": "sha256:b2b958e1b22a1f310b38e5918560afbbf072843531b992e3ea6862b1bb48b8a4",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S91 - gen licensing writes the surfaces from the profile",
@@ -2615,16 +2615,16 @@
     },
     {
       "anchor": "S91",
-      "content_hash": "sha256:ac070eb1f58149585ea3d7420b704b9ffaf4b1f02aae648c3d1bb9f0342e182e",
+      "content_hash": "sha256:8f1237925c30df0ceb89b1683edbdded2ef211fe27dff1bf83c5521e42d536e0",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: a patch set of a type with the `licensing` area, a trusted store in the home directory with one profile, and `codkit.licensing.json` v2 selecting it with `product.licenseFile = LICENSE.md`. **When**: `codkit --json gen licensing --owner <owner>`. **Then**: exit 0; the overlay of the manifest target carries one operation per field with the expected value and `expectUpstream` from the pin; `delta/patches/LICENSE.md.ckpatch` is an add-file patch whose body is the canonical text of the profile; the component licence of the upstream file and the rendering exist as add-file patches; the guard exists at the type's path with the suite id `licence-leftovers`; `data.reminders` names the unit, `license annotate --own` and `verify` (PROP-019 `GEN-LICENSING`). @status:spec/plan",
+      "heading": "**Given**: a patch set of a type with the `licensing` area, a trusted store in the home directory with one profile, and `codkit.licensing.json` v2 selecting it with `product.licenseFile = LICENSE.md`. **When**: `codkit --json gen licensing --owner <owner>`. **Then**: exit 0; the overlay of the manifest target carries one operation per field with the expected value and `expectUpstream` from the pin; `delta/patches/LICENSE.md.ckpatch` is an add-file patch whose body is the canonical text of the profile; the component licence of the upstream file and the rendering exist as add-file patches; the guard exists at the type's path with the suite id `licence-leftovers`; `data.reminders` names the unit, `license annotate --own` and `verify` (PROP-019 `GEN-LICENSING`). @status:impl/done",
       "line": 281,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S91"
     },
     {
       "anchor": "s92",
-      "content_hash": "sha256:e666fdbe13432100ac520b7ae4785257267e00d5694e4ee4baabd034a962dcd8",
+      "content_hash": "sha256:67e1e8d18c998838be784b064b16b4313c7bb709b5514bfc063855df8939de47",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S92 - gen licensing refuses existing artifacts and rewrites them under --update",
@@ -2633,16 +2633,16 @@
     },
     {
       "anchor": "S92",
-      "content_hash": "sha256:4506a19dab7688e5e093c8a51ac2187757115e8f09ac0c5af153a27c87d998b9",
+      "content_hash": "sha256:ad33b208c8a876b9a5e20f7b63f3676c8000a128b9188c7dea8ca702dbe22838",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: the patch set of S91 after its run. **When**: `codkit gen licensing --owner <owner>` again. **Then**: exit 1, `CK-E-GEN-EXISTS`, nothing changed. **When**: the canonical text of the profile changes in the store, then `codkit verify`, then `codkit gen licensing --owner <owner> --update`, then `codkit verify`. **Then**: the first `verify` reports one `CK-E-LICENSE-SURFACE` naming the licence file's patch; the update rewrites exactly the artifacts of the command; the second `verify` reports zero licensing findings (PROP-019 `VERIFY-LICENSING`). @status:spec/plan",
+      "heading": "**Given**: the patch set of S91 after its run. **When**: `codkit gen licensing --owner <owner>` again. **Then**: exit 1, `CK-E-GEN-EXISTS`, nothing changed. **When**: the canonical text of the profile changes in the store, then `codkit verify`, then `codkit gen licensing --owner <owner> --update`, then `codkit verify`. **Then**: the first `verify` reports one `CK-E-LICENSE-SURFACE` naming the licence file's patch; the update rewrites exactly the artifacts of the command; the second `verify` reports zero licensing findings (PROP-019 `VERIFY-LICENSING`). @status:impl/done",
       "line": 284,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S92"
     },
     {
       "anchor": "s93",
-      "content_hash": "sha256:b28dd7a453af15ea51796a98f6defff7eb4d7a5172ddd1365aef3e3163a4b3ff",
+      "content_hash": "sha256:7c05dcc2ecbd581d2ffda2207818bcf8cfbb6fd73cf5537d40d61dadd8365a61",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S93 - license annotate --own gives own files their carriers",
@@ -2651,16 +2651,16 @@
     },
     {
       "anchor": "S93",
-      "content_hash": "sha256:fa3b4e0afaafb65d8fefed1f94f15392965d4e02428d0bb015ecf933cfe318d0",
+      "content_hash": "sha256:3e287cb5f50d69f7ff4ba5cd92a0494057b3162f4bb808e5ddb49120d3e8f94a",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: the patch set of S91 whose own layer carries one headerless source, one JSON document and one source headed by a copyright line naming a holder outside the policy. **When**: `codkit --json license annotate --own`. **Then**: exit 1; `data.files` reports `header` for the source, `sidecar` for the JSON and `foreign-holder` for the third, which is unchanged. **When**: `codkit --json license annotate --own --replace-retired`, then the same again. **Then**: the second run reports `replaced` for the third file and exit 0; the third run reports every file `unchanged`; `codkit verify` reports zero `CK-E-LICENSE-HEADER` findings (PROP-019 `ANNOTATE-OWN`). @status:spec/plan",
+      "heading": "**Given**: the patch set of S91 whose own layer carries one headerless source, one JSON document and one source headed by a copyright line naming a holder outside the policy. **When**: `codkit --json license annotate --own`. **Then**: exit 1; `data.files` reports `header` for the source, `sidecar` for the JSON and `foreign-holder` for the third, which is unchanged. **When**: `codkit --json license annotate --own --replace-retired`, then the same again. **Then**: the second run reports `replaced` for the third file and exit 0; the third run reports every file `unchanged`; `codkit verify` reports zero `CK-E-LICENSE-HEADER` findings (PROP-019 `ANNOTATE-OWN`). @status:impl/done",
       "line": 287,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S93"
     },
     {
       "anchor": "s94",
-      "content_hash": "sha256:9541d56a7f06eeb57256a444846b1c7392ac97f48878810b7a5e39ba1f3b01a9",
+      "content_hash": "sha256:0a4d9eaaa67d63d2bd2c102ee57468f59e2c46f59b7df7e04cd2efae485194fc",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S94 - verify names the profile the machine does not carry",
@@ -2669,16 +2669,16 @@
     },
     {
       "anchor": "S94",
-      "content_hash": "sha256:e1d594dc04cede8e2eca36d14b60380f439ac5c052fe453ca7e5c74e4cc2d6b0",
+      "content_hash": "sha256:85edb96624d0b52bedef90fae4e709c6aba137de94957d19a752f4a7496cb4e6",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: the patch set of S91 and a home directory without the trusted store. **When**: `codkit --json verify`. **Then**: exit 1 and exactly one finding `CK-E-LICENSE-PROFILE` among the licensing findings; a copy of the store inside the patch set does not change the verdict (PROP-019 `VERIFY-LICENSING`, `ORGANIZATION-POLICY-TRUST`). @status:spec/plan",
+      "heading": "**Given**: the patch set of S91 and a home directory without the trusted store. **When**: `codkit --json verify`. **Then**: exit 1 and exactly one finding `CK-E-LICENSE-PROFILE` among the licensing findings; a copy of the store inside the patch set does not change the verdict (PROP-019 `VERIFY-LICENSING`, `ORGANIZATION-POLICY-TRUST`). @status:impl/done",
       "line": 290,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S94"
     },
     {
       "anchor": "s95",
-      "content_hash": "sha256:6fb4e9423552a14a0e5eb08d2484900b00a52e35df578ce8f11a5cac0c0210a6",
+      "content_hash": "sha256:eca4518aacc438d8c528f3ab69196aa3a4a817f77bf72afbeadcd36d0f4f956d",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S95 - gen feature heads the files from the profile",
@@ -2687,16 +2687,16 @@
     },
     {
       "anchor": "S95",
-      "content_hash": "sha256:907db58e4db6a416ce55bd42e0c5b75db3652bcb60ae88601c1aea8f3b1c08ad",
+      "content_hash": "sha256:60be9ff0918406c9122e80948b55c670543ec094cdc373f8251321a88811cfae",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: the patch set of S91. **When**: `codkit --json gen feature acme.sample --title Sample`. **Then**: exit 0, `data.headerWritten` is true, `data.headerStyle` is the type's style, and every written file resolves under `license consumer-check` to an own carrier of the profile's holder and expression. **When**: `codkit gen feature acme.other --title Other --holder \"Somebody Else\"`. **Then**: exit 2, `CK-E-CONFIG`, nothing written (PROP-019 `HEADER-FROM-PROFILE`). @status:spec/plan",
+      "heading": "**Given**: the patch set of S91. **When**: `codkit --json gen feature acme.sample --title Sample`. **Then**: exit 0, `data.headerWritten` is true, `data.headerStyle` is the type's style, and every written file resolves under `license consumer-check` to an own carrier of the profile's holder and expression. **When**: `codkit gen feature acme.other --title Other --holder \"Somebody Else\"`. **Then**: exit 2, `CK-E-CONFIG`, nothing written (PROP-019 `HEADER-FROM-PROFILE`). @status:impl/done",
       "line": 293,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S95"
     },
     {
       "anchor": "s96",
-      "content_hash": "sha256:0aae7346a2a92614a4d04a035f8a48f9d7ce98750d04966820ecaa1d2e45f087",
+      "content_hash": "sha256:adc9f01d04d432cc12ae207ea022d71e920beb6dd5b7c05fbf2c98836a3273ed",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
       "heading": "S96 - the block header is a carrier",
@@ -2705,10 +2705,10 @@
     },
     {
       "anchor": "S96",
-      "content_hash": "sha256:ac8e8b1b93193992dcd21b9c4dc516c60c6da00be05be6e4e42d3a9d050970f5",
+      "content_hash": "sha256:b327270948913c0e56d843ce7cc17f7ebc18301bed6dbb512741a8a4de0c5dec",
       "doc_path": "modules/codkit/FEAT-002",
       "file": "vibevm/vibespecs/modules/codkit/FEAT-002-acceptance-scenarios.xml",
-      "heading": "**Given**: a file headed by `gen --header-style block` from a profile. **When**: `codkit license consumer-check` over its directory with that profile. **Then**: the file is `own`, its holder is exactly the profile's holder, its licence is the own expression; the pre-campaign block form (`. All rights reserved.` on the copyright line) is read as a foreign holder, which the unit test of PROP-015 `GEN-HEADER-IS-THE-PRODUCTS` records (PROP-019 `CONSUMER-LICENSE-CHECK`). @status:spec/plan",
+      "heading": "**Given**: a file headed by `gen --header-style block` from a profile. **When**: `codkit license consumer-check` over its directory with that profile. **Then**: the file is `own`, its holder is exactly the profile's holder, its licence is the own expression; the pre-campaign block form (`. All rights reserved.` on the copyright line) is read as a foreign holder, which the unit test of PROP-015 `GEN-HEADER-IS-THE-PRODUCTS` records (PROP-019 `CONSUMER-LICENSE-CHECK`). @status:impl/done",
       "line": 296,
       "uri": "spec://codkit/modules/codkit/FEAT-002#S96"
     },
@@ -4667,7 +4667,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:62834234c78c6be4ff5ed6cbac8b2aae7318c6923be93500d2518749bcefed4d",
+      "content_hash": "sha256:f1c800063625cc0839b0c54bbbc8f3898b701aafe3f76222d98ca39d7405623d",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "codkit PROP-005: Delta layers - formats, materialization, prohibitions",
@@ -5036,7 +5036,7 @@
     },
     {
       "anchor": "overlay-npm-boundary",
-      "content_hash": "sha256:d395747173db4730d3406b25222d8d549b0e71d38d2f944be21bc8d18fe0835b",
+      "content_hash": "sha256:4849b98302264e3c81065e740539d5e7063eb6a2c2d150ca712224ef58df48a4",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
       "heading": "Declared npm semantics",
@@ -5045,10 +5045,10 @@
     },
     {
       "anchor": "OVERLAY-NPM-DECLARED-TARGETS",
-      "content_hash": "sha256:3d7824a07865154818a15f1eda552cff14e9958804ef8f672a2a8a78d0e8a40f",
+      "content_hash": "sha256:93c02b7f4dc9c69395e3f35de67dca28775287144cb1e119835c4783388ed0a5",
       "doc_path": "modules/codkit/PROP-005",
       "file": "vibevm/vibespecs/modules/codkit/PROP-005-delta-layers.xml",
-      "heading": "Cross-file npm dependency pairing is enforced only for the resolved type's targets that declare npmLockfile, allowedRemovals or allowedDependencyUpdates. The filename package.json alone never implies npm semantics: an unrestricted application manifest of another type may carry its own dependency identity. Metadata-only overlay reads parse artifacts without imposing an absent type policy; all execution/inventory/verification paths supply the resolved type before planning writes. @status:impl/done",
+      "heading": "Cross-file npm dependency pairing is enforced only for the resolved type's targets that declare npmLockfile, allowedRemovals or allowedDependencyUpdates. The filename package.json alone never implies npm semantics: an unrestricted application manifest of another type may carry its own dependency identity. Metadata-only overlay reads parse artifacts without imposing an absent type policy; all execution/inventory/verification paths supply the resolved type before planning writes. A restricted target may also name `allowedScalarKeys` (PROP-016 `TYPE-AREA-LAYERS`, 2026-11-01): a `set` of such a top-level key with a string value and an `expectUpstream` is allowed, and the refusal of every other operation names the additions and the guarded replacements the target admits. @status:impl/done",
       "line": 99,
       "uri": "spec://codkit/modules/codkit/PROP-005#OVERLAY-NPM-DECLARED-TARGETS"
     },
@@ -5288,7 +5288,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:1a1f35b90ae1827bde6427133b6f90f54eaf19e2719fe5762430aeddf0aa338b",
+      "content_hash": "sha256:90c7069328c22f7d67dedbf235ebfbd67cda5507663b6c77bde13f42319c4151",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "codkit PROP-006: Apply metadata, locking, inventory",
@@ -5522,7 +5522,7 @@
     },
     {
       "anchor": "hunks-in-markers",
-      "content_hash": "sha256:13b794e7e9ee684c03c2071615a629aa13518e12aa0c8640d809f10032a0f7bd",
+      "content_hash": "sha256:8f7d0795010ede6561fadbceb1be126e8ad763d68dd637af1ab7d57777b89689",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "5. «Every hunk inside a marker» — the matching",
@@ -5557,12 +5557,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-006#ADD-FILE-EXEMPTION"
     },
     {
+      "anchor": "LICENCE-DOCUMENT-EXEMPTION",
+      "content_hash": "sha256:83747d3ff97980ec16d457fa70c7ce9493b6bf20bd27cfae8058f0421b358c69",
+      "doc_path": "modules/codkit/PROP-006",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
+      "heading": "A licence surface of PROP-019 `GEN-LICENSING` - the licence file, a component licence, a rendering - is a document the product ships verbatim, and its add-file patch carries no marker block whatever the marker form of its extension (decision of 2026-11-01, found when the first `.md` licence file met the rule above): `VERIFY-LICENSING` compares the body of the patch with the canonical text byte for byte and the guard checks the digest of the licence file in the tree, so a block inside the document would corrupt the very text it protected. The paths of the surfaces follow from the type's licensing area and the declaration's `product.licenseFile` alone - never from the trusted store - so `verify` and `save` read such an add-file patch as block-free on every machine and attribute it to its artifact by path; a patch set without the area or without a declaration has no surfaces, and nothing changes for it. @status:impl/done",
+      "line": 73,
+      "uri": "spec://codkit/modules/codkit/PROP-006#LICENCE-DOCUMENT-EXEMPTION"
+    },
+    {
       "anchor": "NEUTRALIZATION-DETAILS",
       "content_hash": "sha256:e929a3d398dc996e743580572fc8e2dee8bd8f4696ee6dc83ae2e0d3fe481c0d",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "Clarifications of the «neutralization by commenting out» (the M0 implementation): the comment wrapper is an ORDINARY comment of the language (the marker form minus the word `codkit:`: `// `, `/* … */`, `<!-- … -->`, `# `), and the closing half is mandatory for CSS/HTML; the comparison of the text trims the leading spaces and tabs on both sides and the trailing ones on the wrapper; the commented-out copy must lie in the SAME hunk as the removal. A `-`/`+` pair that edits an upstream line in place (rather than commenting it out) is `CK-E-DELETES-UPSTREAM-LINE` by construction (the rule `##MR-FUNCTIONAL-ONLY` of PROP-004: upstream lines are commented out, not edited) — the most frequent expected signal of this check, and not a false one. @status:impl/done",
-      "line": 73,
+      "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-006#NEUTRALIZATION-DETAILS"
     },
     {
@@ -5571,7 +5580,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "The semantics of `\\ No newline at end of file` in `applyUnified`: after a `-` line the marker asserts the state of the pin (a mismatch is the refusal `CK-E-ARTIFACT-BROKEN`), after a `+` line it sets the state of the result, and after a context line it does both. @status:impl/done",
-      "line": 74,
+      "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-006#NO-NEWLINE-MARKER-SEMANTICS"
     },
     {
@@ -5580,7 +5589,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "6. «No interventions outside the inventory» (completeness)",
-      "line": 76,
+      "line": 77,
       "uri": "spec://codkit/modules/codkit/PROP-006#completeness"
     },
     {
@@ -5589,7 +5598,7 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "The input: the tree in the applied state (the tip of the generated branch) and the pin. The algorithm: `git diff --name-status <pin.sha> <branchTip>` → the list of the changed paths. Every path must be explained by exactly one source: the own directory (`src/vs/<ownDirName>/**` — only in the CI/publish mode, locally own is not in the commits), a patch with that target path, an overlay target, a resource-map target. An unexplained path → `CK-E-UNTRACKED-INTERVENTION`. Conversely: an artifact whose target is not changed in the diff → `CK-E-STALE-ARTIFACT` (an empty patch, for instance) — with the M1 reservation for overlays: a local `load` materializes an overlay through the dev channel only, so overlay targets DO explain a changed path but are NOT obliged to be present in the diff. The absence of the generated branch is not a failure of completeness but a skipped check with the warning «run codkit load first» (verify works otherwise). @status:spec/done",
-      "line": 77,
+      "line": 78,
       "uri": "spec://codkit/modules/codkit/PROP-006#COMPLETENESS-CHECK"
     },
     {
@@ -5598,12 +5607,12 @@
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "The entries of the removed registry are NOT inventory entries (the kind is not a layer): they do not enter `entries`, but they do enter the requirements of the guard coverage (`contractCoverage.requiredTotal` may exceed the number of guard-obliged entries) and are checked by verify (a clarification of M1). @status:impl/done",
-      "line": 78,
+      "line": 79,
       "uri": "spec://codkit/modules/codkit/PROP-006#REMOVED-NOT-AN-ENTRY"
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:42df23629a08d7066e45c0105a73fb5880a3de57cd3fb17eef24356d6e7205b3",
+      "content_hash": "sha256:83eb5f216ae2b6fc89e70ab921f1327fd9ae932285b808da0e1fe42ff4fa694d",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -6890,7 +6899,7 @@
     },
     {
       "anchor": "cmd-license",
-      "content_hash": "sha256:3fd8e0c84925b40dee171224b7e412bcdb6be27465d814cc480b7507c46bd5a6",
+      "content_hash": "sha256:d870ed8739444851a241d493c3bebc888f7b66c071594dc31f0885790571b259",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "23. codkit license check [<dir>] | annotate | notices",
@@ -6917,10 +6926,10 @@
     },
     {
       "anchor": "CMD-LICENSE-ANNOTATE",
-      "content_hash": "sha256:94229f2cdd72cd429581b474fc3db6de6e6a9ad5acaede74bbdbd4e924dc4b83",
+      "content_hash": "sha256:01bdfeb2e80429b027ec6a0e19b69e448df8473ac7e6806a9479d2a23d51b07a",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit license annotate [--dir <package>] <paths…> [--dry-run] [--year <YYYY>] [--holder <name>] [--third-party --license <SPDX-ID> --source <text>]` places the carrier (PROP-014 §3 `LIC-ANNOTATE`): on an own file a four-line header in the style of its extension, after the prelude, or a sidecar; on a third-party file (`--third-party`, and then `--holder` and `--license` are required) a carrier with the other party's holder and licence plus an annotation appended to the end of `REUSE.toml`. It is idempotent: a file that already carries its markup is `unchanged`. No roots are needed (`roots: 'none'`, `configMode: 'none'`); `maxArgs` is not limited (the paths); the flags `--dir`, `--year`, `--holder`, `--license`, `--source` take values, `--third-party` is boolean, and `--dry-run` is the common one. `--json`: `data: {dir, files: [{path, action: \"header\"|\"sidecar\"|\"unchanged\", kind}], registry: {path, appended}}`. Codes: 0; 1 (a path outside `--dir`, a licence outside the allowlist or not an SPDX one, a holder outside the policy without `--third-party`, `--third-party` without `--holder`/`--license`); 2 (the environment). `--own` (PROP-019 `ANNOTATE-OWN`, 2026-11-01) switches the command to the consumer's own files: the patch-set root is resolved, the type's header style is used, the holder and the expression are the selected profile's, the walk covers `delta/own/**` and `delta/own-extensions/**` narrowed by the optional paths; `--replace-retired` replaces a header that names a holder outside the policy; `--dir`, `--third-party`, `--holder`, `--license` and `--source` do not combine with it (`CK-E-CONFIG`). Exit 1 when a file is left with a foreign holder, 2 without a declaration or a trusted profile. @status:spec/done",
+      "heading": "`codkit license annotate [--dir <package>] <paths…> [--dry-run] [--year <YYYY>] [--holder <name>] [--third-party --license <SPDX-ID> --source <text>]` places the carrier (PROP-014 §3 `LIC-ANNOTATE`): on an own file a four-line header in the style of its extension, after the prelude, or a sidecar; on a third-party file (`--third-party`, and then `--holder` and `--license` are required) a carrier with the other party's holder and licence plus an annotation appended to the end of `REUSE.toml`. It is idempotent: a file that already carries its markup is `unchanged`. No roots are needed (`roots: 'none'`, `configMode: 'none'`); `maxArgs` is not limited (the paths); the flags `--dir`, `--year`, `--holder`, `--license`, `--source` take values, `--third-party` is boolean, and `--dry-run` is the common one. `--json`: `data: {dir, files: [{path, action: \"header\"|\"sidecar\"|\"unchanged\", kind}], registry: {path, appended}}`. Codes: 0; 1 (a path outside `--dir`, a licence outside the allowlist or not an SPDX one, a holder outside the policy without `--third-party`, `--third-party` without `--holder`/`--license`); 2 (the environment). `--own` (PROP-019 `ANNOTATE-OWN`, 2026-11-01) switches the command to the consumer's own files: the patch-set root is resolved, the type's header style is used, the holder and the expression are the selected profile's, the walk covers `delta/own/**` (without the tool's delivered `delta/own/codkit/**` and the own manifest), `delta/own-roots/**` and the type's own extensions, narrowed by the optional paths (a path that narrows to nothing is refused, `CK-E-CONFIG`); `--replace-retired` replaces a foreign carrier only when its leading comment block, or the sidecar, carries one of the product block's `retiredNotices`; `--year` may be given and must then equal the profile's; `--dir`, `--third-party`, `--holder`, `--license` and `--source` do not combine with it (`CK-E-CONFIG`). `--json`: `data: {scope: \"own\", dir, files: [{path, action: \"header\"|\"sidecar\"|\"unchanged\"|\"replaced\"|\"foreign-holder\"}]}`, and every file left with a foreign holder is also an error entry `CK-E-LICENSE-HEADER`. Exit 1 when a file is left with a foreign holder; 2 without a patch set, a declaration or a trusted profile, for a registry that does not read, and for a file with CR line endings that would have been edited (`CK-E-CRLF`). @status:spec/done",
       "line": 361,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LICENSE-ANNOTATE"
     },
@@ -7016,7 +7025,7 @@
     },
     {
       "anchor": "cmd-gen",
-      "content_hash": "sha256:f66d5ea58f61dc8c2d99d16609aa18b623d076edd27453c08b309064f73ffed0",
+      "content_hash": "sha256:f3e8a902c17f79b087235ed599a3331d17f7fefd0e7e189c512d25cfbb47e9ca",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "26. codkit gen feature <id> | brand",
@@ -7052,10 +7061,10 @@
     },
     {
       "anchor": "CMD-GEN-LICENSING",
-      "content_hash": "sha256:2fab148a64e293ce2857a4a40de970ac40cc46acbcd130964f6ac5fcbceeacb1",
+      "content_hash": "sha256:9dc4b2d5c01a6ba23e3d2b637633e2dc7c91b0359d80d317d142af4c6d5d34d2",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit gen licensing [--owner <name>] [--update] [--dry-run]` writes the licence surfaces of the product from the selected profile and the type's `licensing` area (PROP-019 `GEN-LICENSING`): the overlay operations of the manifest fields (merged into an existing overlay of the target), the add-file patches of the licence file, of the component licences and of the renderings, and the leftover guard (PROP-019 `LICENCE-GUARD`). It needs both roots - the pin's bytes come from the tree - and the capability `licensing` (PROP-016 `TYPE-AREA-LICENSING`). Codes: 0; 1 - `CK-E-GEN-EXISTS` without `--update`; 2 - no `codkit.licensing.json`, a store or profile the machine does not carry, a type without the area (`CK-E-TYPE-CAPABILITY`), an owner that must be named, an own expression without a text in the policy, the environment. `--json`: `data: {files: [{path, action: \"created\"|\"updated\"|\"planned\"}], overlays: [{artifact, target, operations}], reminders: [...]}`. @status:spec/plan",
+      "heading": "`codkit gen licensing [--owner <name>] [--update] [--dry-run]` writes the licence surfaces of the product from the selected profile and the type's `licensing` area (PROP-019 `GEN-LICENSING`): the overlay operations of the manifest fields (merged into an existing overlay of the target), the add-file patches of the licence file, of the component licences and of the renderings, and the leftover guard (PROP-019 `LICENCE-GUARD`). It needs both roots - the pin's bytes come from the tree - and the capability `licensing` (PROP-016 `TYPE-AREA-LICENSING`). Codes: 0; 1 - `CK-E-GEN-EXISTS` without `--update`; 2 - no `codkit.licensing.json`, a store or profile the machine does not carry, a type without the area (`CK-E-TYPE-CAPABILITY`), an owner that must be named, an own expression without a text in the policy, the environment. `--json`: `data: {files: [{path, action: \"created\"|\"updated\"|\"planned\"}], overlays: [{artifact, target, operations}], reminders: [...]}`. @status:impl/done",
       "line": 379,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-GEN-LICENSING"
     },
@@ -9293,7 +9302,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:52e1e1eb9b575bc71de2204f26c3a9d33e4d52f5c229a9a71c4bc963c590ce19",
+      "content_hash": "sha256:dce01128bba30108b200a6ee5792b9de828503af9a94ab8fadf680a6557f0358",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "codkit PROP-014: The standards package and licence markup",
@@ -9977,7 +9986,7 @@
     },
     {
       "anchor": "notice",
-      "content_hash": "sha256:1dd34e87104eaf599349e6c3559245ac680571defbb2cfd6442aaefa096789bf",
+      "content_hash": "sha256:ff12b04333bdbf712160fbec60356100c70ce5dc82559112d014e462ae780db5",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "4a. The file LICENSE-CODKIT.md",
@@ -10040,10 +10049,10 @@
     },
     {
       "anchor": "STD-LICENSE-PRINTS-REUSE-ROWS",
-      "content_hash": "sha256:8eea26e59637c0cf0569009c432342f9c1fbffa876e8ee5b7f087958896ba646",
+      "content_hash": "sha256:e4f175da6556ce1c94c6ed861a60801979f25fba4a070d12cc6275905101d2fe",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "Besides the template and the recommendations, `codkit standards license` prints a ready `[[annotations]]` entry for the product's own `REUSE.toml`: `path` with the four paths of the scope (`LICENSE-CODKIT.md`, `vibevm/vibepacks/org.vibevm.codkit/**`, `vibevm/vibedeps/org.vibevm.codkit.*/**`, `delta/own/codkit/**`), `precedence = \"aggregate\"`, `SPDX-FileCopyrightText` with the holder from the Codkit policy, `SPDX-License-Identifier = \"UPL-1.0\"`, `SPDX-FileComment = \"third-party; delivered by Codkit, see LICENSE-CODKIT.md\"`. The product adds the entry at its own wish (`REUSE-TOML-FOLLOWS-THE-SAME-RULE`); Codkit does not write the product's `REUSE.toml`. `--json`: `data.reuseAnnotation`. @status:spec/done",
+      "heading": "Besides the template and the recommendations, `codkit standards license` prints a ready `[[annotations]]` entry for the product's own `REUSE.toml`: `path` with the paths of the scope — the same list the notice names (`STD-NOTICE-SCOPE-BY-PATHS`): `LICENSE-CODKIT.md`, `vibevm/vibepacks/org.vibevm.codkit/**`, `vibevm/vibedeps/org.vibevm.codkit.*/**`, `delta/own/codkit/**` and, since 2026-11-01, the skill projections `.claude/skills/ck-*/**`, `.agents/skills/ck-*/**`, `.opencode/skills/ck-*/**` — so the annotation claims neither more nor less than the notice does; `precedence = \"aggregate\"`, `SPDX-FileCopyrightText` with the holder from the Codkit policy, `SPDX-License-Identifier = \"UPL-1.0\"`, `SPDX-FileComment = \"third-party; delivered by Codkit, see LICENSE-CODKIT.md\"`. The product adds the entry at its own wish (`REUSE-TOML-FOLLOWS-THE-SAME-RULE`); Codkit does not write the product's `REUSE.toml`. `--json`: `data.reuseAnnotation`. @status:spec/done",
       "line": 169,
       "uri": "spec://codkit/modules/codkit/PROP-014#STD-LICENSE-PRINTS-REUSE-ROWS"
     },
@@ -10328,7 +10337,7 @@
     },
     {
       "anchor": "decisions",
-      "content_hash": "sha256:5e54f6723af45eb43423aa141840015854406569b450f74a57bfb5e589ac23e1",
+      "content_hash": "sha256:8ee9502cb6573015fd81ed872e06d3efb4b85adb7fc729cd13b6b08978370d81",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
       "heading": "8. Decisions",
@@ -10490,10 +10499,10 @@
     },
     {
       "anchor": "DECISION-STD-NOTICE-SCOPE-BY-PATHS",
-      "content_hash": "sha256:e9be6abf6c6eb9120296699ce2d82491576a5af0685f9c8ac70c177c512ee654",
+      "content_hash": "sha256:c1a980b6f4d02b47eddffe3c26649b0f900f962189351cfb61d3e40bf330dcb2",
       "doc_path": "modules/codkit/PROP-014",
       "file": "vibevm/vibespecs/modules/codkit/PROP-014-standards-and-licensing.xml",
-      "heading": "**Decision:** the scope of the notice is set by paths plus the generated components block and the paragraph about the vibe copies (`STD-NOTICE-SCOPE-BY-PATHS`, `STD-NOTICE-COMPONENTS-BLOCK`, `STD-NOTICE-VIBE-COPIES`).\n\n**Why:** a path covers files of any type without sidecars, is checked mechanically and is clear to a human; a static list of components lies as soon as the components become optional (a product with the library alone, a product with the standards alone); the compiled vibe lane lies outside the package directory and without an explicit reservation would contradict the rule by paths (owner decision of 2026-09-07).\n\n**Considered and rejected:**\n- the reservation \"the licence applies only if the files exist\" — the licence applies only to what is in the copy anyway, and the reservation adds nothing;\n- recognizing the files by the header alone — impossible for images and data;\n- listing the components in prose — it goes stale at the first optional component.\n\n**When to revisit:** a fourth delivery root appears. @status:spec/done",
+      "heading": "**Decision:** the scope of the notice is set by paths plus the generated components block and the paragraph about the vibe copies (`STD-NOTICE-SCOPE-BY-PATHS`, `STD-NOTICE-COMPONENTS-BLOCK`, `STD-NOTICE-VIBE-COPIES`).\n\n**Why:** a path covers files of any type without sidecars, is checked mechanically and is clear to a human; a static list of components lies as soon as the components become optional (a product with the library alone, a product with the standards alone); the compiled vibe lane lies outside the package directory and without an explicit reservation would contradict the rule by paths (owner decision of 2026-09-07).\n\n**Considered and rejected:**\n- the reservation \"the licence applies only if the files exist\" — the licence applies only to what is in the copy anyway, and the reservation adds nothing;\n- recognizing the files by the header alone — impossible for images and data;\n- listing the components in prose — it goes stale at the first optional component.\n\n**When to revisit:** a further delivery root appears. Revisited 2026-11-01: the skill projections `vibe skill install` builds were the fourth root, and the mechanism held — the notice, the recommendation `standards load` prints and the REUSE rows `standards license` prints gained the three globs; nothing else changed. @status:spec/done",
       "line": 389,
       "uri": "spec://codkit/modules/codkit/PROP-014#DECISION-STD-NOTICE-SCOPE-BY-PATHS"
     },
@@ -11102,7 +11111,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:dc8805404123fcc23e60603bb834e41202f90d07d0248dec483f0a7d71b03a3a",
+      "content_hash": "sha256:b954bcb03f5f4084d1a31efa716abaf601d3ea913bb32f46fd48723a0d98c988",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -11156,7 +11165,7 @@
     },
     {
       "anchor": "contract",
-      "content_hash": "sha256:e20cda198a73372d865f0f63faf63abf29a341627063cd5d6148bc27cf5824af",
+      "content_hash": "sha256:94cbf63c898dcb3f7e24b73a1fbc47e35ab5eee921249011c5e4e4981b8064b8",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "2. The contract: eleven questions a type answers",
@@ -11192,10 +11201,10 @@
     },
     {
       "anchor": "TYPE-AREA-LAYERS",
-      "content_hash": "sha256:c0d53c6598036166380c226ec3e9a42fc18bb85a4e314d52bcde2e38ea348385",
+      "content_hash": "sha256:49535683cbca370b630cf84e26f041ee073f5b357c178c9aed12e09a365c43ab",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Layers.** `own`, `patch`, `resource-file` and `rewrite-rule` are universal and always present. `config-overlay` takes its targets and its optional dev channel from the type (VS Code: `product.json` with `product.overrides.json`). `own-extension` takes its materializer from the type (VS Code: `extensions/<name>`). `service-override` takes its verifier from the type (VS Code: `registerSingleton`; Theia: an inversify `rebind` in a container module). `entry-module` takes its locator from the type (VS Code: `workbench.common.main.ts`; Theia: the application's module list). A layer the type does not provide is absent for that patch set: `verify` refuses an artifact of that layer with `CK-E-TYPE-CAPABILITY`. @status:spec/done",
+      "heading": "**Layers.** `own`, `patch`, `resource-file` and `rewrite-rule` are universal and always present. `config-overlay` takes its targets and its optional dev channel from the type (VS Code: `product.json` with `product.overrides.json`). `own-extension` takes its materializer from the type (VS Code: `extensions/<name>`). `service-override` takes its verifier from the type (VS Code: `registerSingleton`; Theia: an inversify `rebind` in a container module). `entry-module` takes its locator from the type (VS Code: `workbench.common.main.ts`; Theia: the application's module list). A layer the type does not provide is absent for that patch set: `verify` refuses an artifact of that layer with `CK-E-TYPE-CAPABILITY`. Since 2026-11-01 an overlay target may also name `allowedScalarKeys`: top-level scalar keys an overlay may set with `expectUpstream` carrying the pin's value - the licence identifier of a manifest, which the licensing area writes (`TYPE-AREA-LICENSING`); additions under `allowedKeys` stay what they were, and a scalar is replaced, never added to. @status:spec/done",
       "line": 18,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS"
     },
@@ -11327,10 +11336,10 @@
     },
     {
       "anchor": "TYPE-AREA-LICENSING",
-      "content_hash": "sha256:42c7a3b17fcdf63bc1ce5cc0cbdaa26b164030901923bce60de1695de014db91",
+      "content_hash": "sha256:630572fe63af440cffa5618127e916df465491679c36dc8ae78e730320051238",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Licensing** (capability `licensing`, optional area `licensing`, paired in `OPTIONAL_AREAS` exactly like `preview`). The organization's part of a licence - the rights holders, the own expression per path scope, the approved third-party expressions, the canonical texts and their digests - lives in the trusted policy store of PROP-019 and is selected by the patch set; the area answers the family's part: `headerStyle` (`line` or `block`), `licenceFileDirectory` (the directory of the product's licence file, from the tree root, the empty string for the root), `componentLicenceDirectory` (where component licences gather; the family's build copies it into the distributable), `subsystem` (the subsystem licensing interventions are numbered in), `fields` (each a declared overlay target, a key path and a role `expression` | `file-name` | `url`), `upstreamLicenceFiles` (files carrying the upstream's own terms, never edited, shipped as component licences), `renderings` (what the family's installers read instead of the text: `rtf` or `text`) and `guard(ownRoot)` (the path of the leftover guard inside the own layer and the runner's words for a suite and a test). The shape rules the contract's own test holds: the directories are tree paths, every field names a declared overlay target and the roles `expression` and `file-name` appear at most once per target, components are lower-case names and unique, the subsystem is one of the type's conventions, the guard lies under `delta/own/`. The engine lays headers out from the profile (PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`, PROP-019 `HEADER-FROM-PROFILE`), writes the surfaces (PROP-019 `GEN-LICENSING`), gives own files their carriers (PROP-019 `ANNOTATE-OWN`), renders the guard (PROP-019 `LICENCE-GUARD`) and checks everything back (PROP-019 `VERIFY-LICENSING`); a type writes nothing. Measured on 2026-11-01 on the first family: a product declared a proprietary licence name in its manifest while its build shipped the upstream's licence text as its own, because no question asked where the family states a licence (DESIGN-003 §1). @status:spec/plan",
+      "heading": "**Licensing** (capability `licensing`, optional area `licensing`, paired in `OPTIONAL_AREAS` exactly like `preview`). The organization's part of a licence - the rights holders, the own expression per path scope, the approved third-party expressions, the canonical texts and their digests - lives in the trusted policy store of PROP-019 and is selected by the patch set; the area answers the family's part: `headerStyle` (`line` or `block`), `licenceFileDirectory` (the directory of the product's licence file, from the tree root, the empty string for the root), `componentLicenceDirectory` (where component licences gather; the family's build copies it into the distributable), `subsystem` (the subsystem licensing interventions are numbered in), `fields` (each a declared overlay target, a key path and a role `expression` | `file-name` | `url`), `upstreamLicenceFiles` (files carrying the upstream's own terms, never edited, shipped as component licences), `renderings` (what the family's installers read instead of the text: `rtf` or `text`) and `guard(ownRoot)` (the path of the leftover guard inside the own layer and the runner's words for a suite and a test). The shape rules the contract's own test holds: the directories are tree paths, every field names a declared overlay target and the roles `expression` and `file-name` appear at most once per target, components are lower-case names and unique, the subsystem is one of the type's conventions, the guard lies under `delta/own/`. The engine lays headers out from the profile (PROP-015 `GEN-HEADER-IS-THE-PRODUCTS`, PROP-019 `HEADER-FROM-PROFILE`), writes the surfaces (PROP-019 `GEN-LICENSING`), gives own files their carriers (PROP-019 `ANNOTATE-OWN`), renders the guard (PROP-019 `LICENCE-GUARD`) and checks everything back (PROP-019 `VERIFY-LICENSING`); a type writes nothing. Measured on 2026-11-01 on the first family: a product declared a proprietary licence name in its manifest while its build shipped the upstream's licence text as its own, because no question asked where the family states a licence (DESIGN-003 §1). @status:impl/done",
       "line": 33,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LICENSING"
     },
@@ -11957,7 +11966,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:2252cf3582d1a27dbc141cb84bf43c15d1ea8bea6d36a609a8f21e2de8df2c7d",
+      "content_hash": "sha256:c71df509d21f74019b0c4c487f56ed1b5209ed0d26114321c62efcbab1a357ea",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -12074,7 +12083,7 @@
     },
     {
       "anchor": "consumer-surfaces",
-      "content_hash": "sha256:7b5f83e03952a10d77cce104c5ea5d16ae44f3e9101e24d636987e4fe1a5d41a",
+      "content_hash": "sha256:6f2899a4478b496a447a151a2bcd4805c0d3793f49870f36bb0165ed56536a33",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Consumer surfaces: the profile carried into own files, manifests and the distributable (2026-11-01)",
@@ -12083,55 +12092,55 @@
     },
     {
       "anchor": "LICENSING-DECLARATION-V2",
-      "content_hash": "sha256:3f59d5fbc6f92ff4c4fa1462705fa92f7e3b0c7020e985714b486814c2402f66",
+      "content_hash": "sha256:777c4d6b4fb20a0c9d58f528817af9325ab58735db270da293f6b66a2f96bb23",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "`codkit.licensing.json` version 2 keeps every field of version 1 (`profile`, `additionalForbidden`, `componentId`, `created`, `sourceDirectory`, the optional `package` and `publish` operations) and adds an optional `product` block of display choices: `licenseFile` (the base name of the product's licence file, default `LICENSE.md`), `title` (the human name of the licence used in headers), `holder` (one of the policy's `holders`, default the first), `year` (four digits, default the year of the run), `url` (a licence URL; absent, the family's URL fields are removed) and `retiredNotices` (phrases that must not survive in own files or licence surfaces; the guard forbids them). A `holder` outside the policy, a `title` or `licenseFile` that is empty or carries a path separator, a `year` that is not four digits refuse with `CK-E-CONFIG`. Version 1 reads exactly as before; nothing in either version can name a licence, a text or a permission - those stay with the trusted store (`ORGANIZATION-POLICY-TRUST`). Reading the declaration without an operation (`gen`, `verify`, `license annotate --own`) requires only `profile` and the store; `package` and `publish` keep requiring their operation block. @status:spec/plan",
+      "heading": "`codkit.licensing.json` version 2 keeps every field of version 1 (`profile`, `additionalForbidden`, `componentId`, `created`, `sourceDirectory`, the optional `package` and `publish` operations) and adds an optional `product` block of display choices: `licenseFile` (the base name of the product's licence file, default `LICENSE.md`), `title` (the human name of the licence used in headers), `holder` (one of the policy's `holders`, default the first), `year` (four digits, default the year of the run), `url` (a licence URL; absent, the family's URL fields are removed) and `retiredNotices` (phrases that must not survive in own files or licence surfaces; the guard forbids them). A `holder` outside the policy, a `title` or `licenseFile` that is empty or carries a path separator, a `year` that is not four digits refuse with `CK-E-CONFIG`. Version 1 reads exactly as before; nothing in either version can name a licence, a text or a permission - those stay with the trusted store (`ORGANIZATION-POLICY-TRUST`). Reading the declaration without an operation (`gen`, `verify`, `license annotate --own`) requires only `profile` and the store; `package` and `publish` keep requiring their operation block. @status:impl/done",
       "line": 19,
       "uri": "spec://codkit/modules/codkit/PROP-019#LICENSING-DECLARATION-V2"
     },
     {
       "anchor": "HEADER-FROM-PROFILE",
-      "content_hash": "sha256:b99ecc82906633b8a77860bb83a1e91545f73132033e31bc6bed8b35eb3872f9",
+      "content_hash": "sha256:05274c53706d3f3fa71f31eb012ba70e30d3928352abcc7f30a67cba38d14d54",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "When the patch set carries `codkit.licensing.json`, `gen feature`, `gen brand` and `gen licensing` lay the header of every generated file out from the selected profile: the holder of the `product` block (else the policy's first holder), the own expression resolved for the generated file's path (`ORGANIZATION-OWN-SCOPES`), the year of the `product` block (else the year of the run), the title and the licence file of the `product` block, in the style the type's `licensing.headerStyle` names (`line` when the type answers no area). `--holder`, `--license`, `--year` and `--header-style` still take effect and must agree with the profile: a holder outside `holders` or an expression other than the resolved own one is `CK-E-CONFIG` with nothing written. `--header-file` keeps the house form, and its text must resolve to a carrier (`CONSUMER-LICENSE-CHECK`) naming a policy holder and the own expression, else `CK-E-CONFIG`. A generated file never leaves the run without a header while a profile is selected. Without a declaration the behaviour of `GEN-HEADER-IS-THE-PRODUCTS` is unchanged. @status:spec/plan",
+      "heading": "When the patch set carries `codkit.licensing.json`, `gen feature`, `gen brand` and `gen licensing` lay the header of every generated file out from the selected profile: the holder of the `product` block (else the policy's first holder), the own expression resolved for the generated file's path (`ORGANIZATION-OWN-SCOPES`), the year of the `product` block (else the year of the run), the title and the licence file of the `product` block, in the style the type's `licensing.headerStyle` names (`line` when the type answers no area). `--holder`, `--license`, `--year` and `--header-style` still take effect and must agree with the profile: a holder outside `holders` or an expression other than the resolved own one is `CK-E-CONFIG` with nothing written. `--header-file` keeps the house form, and its text must resolve to a carrier (`CONSUMER-LICENSE-CHECK`) naming a policy holder and the own expression, else `CK-E-CONFIG`. A generated file never leaves the run without a header while a profile is selected. Without a declaration the behaviour of `GEN-HEADER-IS-THE-PRODUCTS` is unchanged. @status:impl/done",
       "line": 20,
       "uri": "spec://codkit/modules/codkit/PROP-019#HEADER-FROM-PROFILE"
     },
     {
       "anchor": "GEN-LICENSING",
-      "content_hash": "sha256:4b7cc1e196ab8623ed8eef3611b31197e98087ce2993ba5a96b056b200ccbde2",
+      "content_hash": "sha256:bf8a43e1373dbffb13f62687c478f2393b6ecff7a7876ecc506627f6a9165fa0",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "`codkit gen licensing` writes the licence surfaces of the product from the profile and the type's `licensing` area, into the patch set, needing the fork tree for the pin's bytes: (1) for every `field` an overlay operation on its target - `expression` sets the own expression resolved for the target's scope, `file-name` sets `product.licenseFile`, `url` sets `product.url` or removes the key - merged into the existing overlay of that target when one exists (an operation with the same path is replaced, the others are kept, the document stays canonical) or written as a new overlay with the next free id, `expectUpstream` read from the target at the pin; (2) an add-file patch for `<licenceFileDirectory>/<licenseFile>` whose body is the canonical text of the own expression - the policy's custom text, or its trusted standard text; an own expression with no text in the policy refuses; (3) an add-file patch `<componentLicenceDirectory>/LICENSE-<component>.txt` for every `upstreamLicenceFile`, byte for byte from the pin, and `LICENSE-codkit.txt` with the tool's own licence text when the runtime library is delivered into the own layer (`delta/own/codkit/` exists); (4) every `rendering` from the canonical text - `rtf` as a plain RTF document (one paragraph per line, the headings of a Markdown source bold, every character outside ASCII as a `\\u` escape), `text` with the Markdown marks stripped; (5) the guard (`LICENCE-GUARD`). Ids are the next free numbers in `licensing.subsystem`; the owner is the only one of `owners.json` or `--owner`; the patches are `extend`/`follow` with the guard's suite among their contract tests; the pin is the configuration's. The command refuses existing targets like every `gen` (`CK-E-GEN-EXISTS`, nothing written); `--update` rewrites exactly the artifacts of this command - a new edition of the text takes this path; `--dry-run` prints the plan. A type without the area is `CK-E-TYPE-CAPABILITY`; no declaration is `CK-E-CONFIG`. The run ends with the reminders: declare the unit of the guard, run `license annotate --own`, run `verify`. @status:spec/plan",
+      "heading": "`codkit gen licensing` writes the licence surfaces of the product from the profile and the type's `licensing` area, into the patch set, needing the fork tree for the pin's bytes: (1) for every `field` an overlay operation on its target - `expression` sets the own expression resolved for the target's scope, `file-name` sets `product.licenseFile`, `url` sets `product.url` or removes the key - merged into the existing overlay of that target when one exists (an operation with the same path is replaced, the others are kept, the document stays canonical) or written as a new overlay with the next free id, `expectUpstream` read from the target at the pin; (2) an add-file patch for `<licenceFileDirectory>/<licenseFile>` whose body is the canonical text of the own expression - the policy's custom text, or its trusted standard text; an own expression with no text in the policy refuses; (3) an add-file patch `<componentLicenceDirectory>/LICENSE-<component>.txt` for every `upstreamLicenceFile`, byte for byte from the pin, and `LICENSE-codkit.txt` with the tool's own licence text when the runtime library is delivered into the own layer (`delta/own/codkit/` exists); (4) every `rendering` from the canonical text - `rtf` as a plain RTF document (one paragraph per line, the headings of a Markdown source bold, every character outside ASCII as a `\\u` escape), `text` with the Markdown marks stripped; (5) the guard (`LICENCE-GUARD`). Ids are the next free numbers in `licensing.subsystem`; the owner is the only one of `owners.json` or `--owner`; the patches are `extend`/`follow` with the guard's suite among their contract tests; the pin is the configuration's. The command refuses existing targets like every `gen` (`CK-E-GEN-EXISTS`, nothing written); `--update` rewrites exactly the artifacts of this command - a new edition of the text takes this path; `--dry-run` prints the plan. A type without the area is `CK-E-TYPE-CAPABILITY`; no declaration is `CK-E-CONFIG`. The run ends with the reminders: declare the unit of the guard, run `license annotate --own`, run `verify`. The add-file patches of the surfaces carry no marker blocks: a document shipped verbatim is attributed to its artifact by path (PROP-006 `LICENCE-DOCUMENT-EXEMPTION`). @status:impl/done",
       "line": 21,
       "uri": "spec://codkit/modules/codkit/PROP-019#GEN-LICENSING"
     },
     {
       "anchor": "ANNOTATE-OWN",
-      "content_hash": "sha256:b8f84d0609febc9555952b8889542b41cc74ed5a946bd2349a4d8a3a64d8f513",
+      "content_hash": "sha256:7429377443700597025ee152f54820033b53c06367409fb07980354a9944a60e",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "`codkit license annotate --own [--replace-retired] [--dry-run] [<paths…>]` gives the own files of the patch set their carriers from the profile: it walks `delta/own/**` and `delta/own-extensions/**` (the given paths narrow the walk), skips the tool's delivered paths (`delta/own/codkit/**`), the own manifest and existing sidecars, and never walks `delta/resources/**` - a resource that replaces an upstream file is a derivative work until a person says otherwise, so it is annotated by path when it is the product's own work. A file with a comment style receives the family's header: the block of `GEN-HEADER-IS-THE-PRODUCTS` for the styles `slash` and `block` when the type answers `headerStyle: block`, the comment of its extension (`LIC-COMMENT-STYLES`) otherwise, after the prelude; a file that cannot carry a comment receives `<name>.license` with the copyright and the SPDX line. The holder, the expression (resolved for the file's path), the year, the title and the licence file are the profile's as in `HEADER-FROM-PROFILE`. A file that already resolves to a carrier naming a policy holder and the own expression is `unchanged`; a file whose carrier names a holder outside the policy is reported as `foreign-holder` and left alone, unless `--replace-retired` is given: then the leading comment block that carries the foreign copyright line is removed and the family's header written in its place (`replaced`). `--json`: `data: {scope: \"own\", files: [{path, action: \"header\"|\"sidecar\"|\"unchanged\"|\"replaced\"|\"foreign-holder\"}]}`. Codes: 0; 1 (a file left with a foreign holder); 2 (no declaration, the store or the profile unavailable). @status:spec/plan",
+      "heading": "`codkit license annotate --own [--replace-retired] [--dry-run] [<paths…>]` gives the own files of the patch set their carriers from the profile: it walks `delta/own/**`, `delta/own-roots/**` and the type's own extensions (the given paths narrow the walk to the files equal to or under them; a path that narrows to nothing is refused with `CK-E-CONFIG`, because a typo that printed nothing and exited 0 would read as done), skips the tool's delivered paths (`delta/own/codkit/**`), the own manifest and existing sidecars, and never walks `delta/resources/**` - a resource that replaces an upstream file is a derivative work until a person says otherwise, so it is annotated by path when it is the product's own work. A file with a comment style receives the family's header: the block of `GEN-HEADER-IS-THE-PRODUCTS` for the styles `slash` and `block` when the type answers `headerStyle: block`, the comment of its extension (`LIC-COMMENT-STYLES`) otherwise, after the prelude; a file that cannot carry a comment receives `<name>.license` with the copyright and the SPDX line. The holder, the expression (resolved for the file's path), the year, the title and the licence file are the profile's as in `HEADER-FROM-PROFILE`. The walk honours the REUSE registries among the walked paths exactly as `CONSUMER-LICENSE-CHECK` does: a file covered by an own annotation (a policy holder and the own expression, PROP-014 `LIC-ANNOTATION-OWN`) or by a third-party annotation (`SPDX-FileComment` beginning with `third-party;`) already carries its markup and is `unchanged`, never touched - which is how a directory of data files is covered without one sidecar per file, and how a derived third-party directory keeps its provenance; a sidecar wins over an annotation; `REUSE.toml` and `.license` files are metadata and are never annotated. A file that already resolves to a carrier naming a policy holder and the own expression is `unchanged`; a file whose carrier does not conform is reported as `foreign-holder` and left alone. `--replace-retired` replaces only a carrier that is the leading comment block of the file (or the whole sidecar), contains a copyright line and carries one of the product's `retiredNotices` (case-insensitively): the block is removed together with the blank line after it, and the family's header is written in its place (`replaced`); a run of line comments ends at its SPDX line, so a description comment that follows survives; a carrier below the leading block, or a leading block without a copyright line, stays `foreign-holder`; a foreign carrier without a retired phrase is a third party's notice and stays `foreign-holder` even under the flag, because replacing it would overwrite a third party's terms; with no retired notices declared the flag replaces nothing and the run says so. `--year`, when given, must equal the product block's year (`HEADER-FROM-PROFILE`). Every decision is taken before the first write, so a refusal leaves the patch set as it was; a file about to be edited that carries CR line endings is refused (`CK-E-CRLF`). `--json`: `data: {scope: \"own\", dir, files: [{path, action: \"header\"|\"sidecar\"|\"unchanged\"|\"replaced\"|\"foreign-holder\"}]}`, every `foreign-holder` file also an error entry `CK-E-LICENSE-HEADER`. Codes: 0; 1 (a file left with a foreign holder); 2 (no patch set or declaration, the store or the profile unavailable, a registry that does not read, a CR-ended file that would have been edited). @status:impl/done",
       "line": 22,
       "uri": "spec://codkit/modules/codkit/PROP-019#ANNOTATE-OWN"
     },
     {
       "anchor": "VERIFY-LICENSING",
-      "content_hash": "sha256:ae330e856fdfcd0b96ee997f006acead0d5f769eedd991ad4bb3a2eeb736625d",
+      "content_hash": "sha256:8610699f544c5cbf2c10d7e9edaf1184c367f69c89269f2bad2cc65882216b1f",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "When the patch set carries `codkit.licensing.json`, `verify` adds three checks. The profile: the store on the machine must approve it, else one finding `CK-E-LICENSE-PROFILE` - the machine that verifies carries the policy, the CI machine included, and no patch-set fallback exists (`ORGANIZATION-POLICY-TRUST`). The carriers: `CONSUMER-LICENSE-CHECK` over the own layers - `delta/own/**` without the tool's delivered paths and the own manifest, and `delta/own-extensions/**` - every problem a `CK-E-LICENSE-HEADER` finding naming the file. The surfaces, for a type with the `licensing` area: every `field` is set by an overlay of its target to the value `GEN-LICENSING` would write (or, for `url` without `product.url`, removed), the add-file patch of the licence file exists and its body is the canonical text of the own expression, the component licences and the renderings are declared by add-file patches - each disagreement a `CK-E-LICENSE-SURFACE` finding naming the surface and the artifact. Without a declaration `verify` is unchanged. @status:spec/plan",
+      "heading": "When the patch set carries `codkit.licensing.json`, `verify` adds three checks. The profile: the store on the machine must approve it, else one finding `CK-E-LICENSE-PROFILE` - the machine that verifies carries the policy, the CI machine included, and no patch-set fallback exists (`ORGANIZATION-POLICY-TRUST`). The carriers: `CONSUMER-LICENSE-CHECK` over the own layers - `delta/own/**` without the tool's delivered paths and the own manifest, and `delta/own-extensions/**` - every problem a `CK-E-LICENSE-HEADER` finding naming the file. The surfaces, for a type with the `licensing` area: every `field` is set by an overlay of its target to the value `GEN-LICENSING` would write (or, for `url` without `product.url`, removed), the add-file patch of the licence file exists and its body is the canonical text of the own expression, the component licences and the renderings are declared by add-file patches - each disagreement a `CK-E-LICENSE-SURFACE` finding naming the surface and the artifact. Without a declaration `verify` is unchanged. @status:impl/done",
       "line": 23,
       "uri": "spec://codkit/modules/codkit/PROP-019#VERIFY-LICENSING"
     },
     {
       "anchor": "LICENCE-GUARD",
-      "content_hash": "sha256:273be19f800d03e5a24a73433a6cf361baf42a4a1a0e0751fadfd5cd6ddc7144",
+      "content_hash": "sha256:5b0208f2ffb90a8ef200fc3ee7408034a57b6145d9c69ad764d1e9f6c1e4d077",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "The leftover guard of the licence is one template of the engine rendered with the type's `guard(ownRoot)` words and the profile's values, written by `gen licensing` at the type's path and found by `verify` under its suite id `licence-leftovers`. In the fork tree, under the product's own test run and without the tool, it proves: every file of the own root and of every own extension - the tool's delivered directory excluded - carries a header in its first twenty non-empty lines with a copyright line naming one of the holders and exactly one `SPDX-License-Identifier` equal to the expression of its directory, or a `<name>.license` sidecar with the same two lines; no retired notice appears in any own text file or in the licence file, the renderings and the component licences; the licence file at `<licenceFileDirectory>/<licenseFile>` is byte-identical to the canonical text (its SHA-256 baked in); every `field` reads the expected value in its manifest; every component licence exists. The guard reads the tree from the directory the runner starts in and names no path of the tool; its runner words are the type's (`suite`/`test` or `describe`/`it`). @status:spec/plan",
+      "heading": "The leftover guard of the licence is one template of the engine rendered with the type's `guard(ownRoot)` words and the profile's values, written by `gen licensing` at the type's path and found by `verify` under its suite id `licence-leftovers`. In the fork tree, under the product's own test run and without the tool, it proves: every file of the own root and of every own extension - the tool's delivered directory excluded - carries a header in its first twenty non-empty lines with a copyright line naming one of the holders and exactly one `SPDX-License-Identifier` equal to the expression of its directory, or a `<name>.license` sidecar with the same two lines, or is covered by an `[[annotations]]` element of a `REUSE.toml` in its own or an ancestor directory inside the scope whose path glob matches it (the engine's glob semantics) - an own annotation naming one of the holders with the scope's expression, or a third-party annotation whose `SPDX-FileComment` begins with `third-party;` (declared provenance; PROP-014 `LIC-CARRIER-ANNOTATION`); `REUSE.toml` and `.license` files are metadata and are not checked for carriers; no retired notice appears in any own text file or in the licence file, the renderings and the component licences; the licence file at `<licenceFileDirectory>/<licenseFile>` is byte-identical to the canonical text (its SHA-256 baked in); every `field` reads the expected value in its manifest; every component licence exists. The guard reads the tree from the directory the runner starts in and names no path of the tool; its runner words are the type's (`suite`/`test` or `describe`/`it`). Its scopes are the own root and the own extensions present in the patch set; the owned roots of `delta/own-roots/**`, which `VERIFY-LICENSING` and `ANNOTATE-OWN` treat as own, are not yet scopes of the guard (campaign licensing-area, DEF-6: a scope per owned root with its build outputs skipped, needed before a family with several owned directories answers the area). @status:impl/done",
       "line": 24,
       "uri": "spec://codkit/modules/codkit/PROP-019#LICENCE-GUARD"
     },
@@ -13973,7 +13982,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:608c4615520eeeca512e22dc8990536825b86374c7722d1835464838ab2ff923",
+      "content_hash": "sha256:c86eff4925e9a6673767137bb0fe48198142bf5b3e7a1a5ef8f37bb34f00187d",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "vscode PROP-003: Layers - the product.json overlay, built-in extensions, service overrides, entry modules",
@@ -13982,7 +13991,7 @@
     },
     {
       "anchor": "overlay",
-      "content_hash": "sha256:173663101dd6570f88897b6886a5cfb71f1990de8bdc347b7039215b547de3b8",
+      "content_hash": "sha256:fe8a624457d7c35e4b8172d276f7d7277967bb35d1a4e0924a7595216dddaa5a",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "1. config-overlay: the targets and the dev channel",
@@ -14009,10 +14018,10 @@
     },
     {
       "anchor": "VSCODE-OVERLAY-TARGETS",
-      "content_hash": "sha256:85fb55f3e38028c4daeadc51d63510e97a601493f49c79bb093c3cbeb7b0f92c",
+      "content_hash": "sha256:616a8a63a20cdba7b40cb9ed59281e2251abdcd5c5cbffd3acb583d71304f210",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
-      "heading": "The overlay targets of this type and their channels: `product.json` is the product manifest and the only target with a **dev channel** - the sidecar `product.overrides.json` the bootstrap reads under `VSCODE_DEV`; root and `remote/` `package.json` targets have no dev channel, admit additions under `scripts` and the key `license` on the root only (the key since 2026-11-01: the licence of the product is a declaration of the manifest, written by `gen licensing`, `spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-FIELDS`), exact dependency-name removals and guarded exact-version updates under `dependencies`, `devDependencies` and `optionalDependencies`; their `package-lock.json` counterparts admit paired `npm-prune` and direct-version metadata updates. `src/tsconfig.json` is a target without a dev channel whose JSON keys are open to a guarded overlay: distributions can omit upstream source modules that require packages deliberately removed from their npm graph, while the pin remains the source of the other compiler options. The two-channel machinery, the composition of several overlays of one target, `expectUpstream` and `CK-E-OVERLAY-DRIFT` are the engine's (`spec://codkit/modules/codkit/PROP-005#OVERLAY-TWO-CHANNELS`, `spec://codkit/modules/codkit/PROP-005#OVERLAY-NON-PRODUCT-TARGETS`); which file is the manifest, and whether a dev channel exists at all, is the type's answer. @status:spec/done",
+      "heading": "The overlay targets of this type and their channels: `product.json` is the product manifest and the only target with a **dev channel** - the sidecar `product.overrides.json` the bootstrap reads under `VSCODE_DEV`; root and `remote/` `package.json` targets have no dev channel, admit additions under `scripts` and a guarded replacement of the scalar key `license` on the root only (`allowedScalarKeys`, since 2026-11-01: the licence of the product is a declaration of the manifest, written by `gen licensing` with the pin's value as `expectUpstream`, `spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-FIELDS`), exact dependency-name removals and guarded exact-version updates under `dependencies`, `devDependencies` and `optionalDependencies`; their `package-lock.json` counterparts admit paired `npm-prune` and direct-version metadata updates. `src/tsconfig.json` is a target without a dev channel whose JSON keys are open to a guarded overlay: distributions can omit upstream source modules that require packages deliberately removed from their npm graph, while the pin remains the source of the other compiler options. The two-channel machinery, the composition of several overlays of one target, `expectUpstream` and `CK-E-OVERLAY-DRIFT` are the engine's (`spec://codkit/modules/codkit/PROP-005#OVERLAY-TWO-CHANNELS`, `spec://codkit/modules/codkit/PROP-005#OVERLAY-NON-PRODUCT-TARGETS`); which file is the manifest, and whether a dev channel exists at all, is the type's answer. @status:spec/done",
       "line": 8,
       "uri": "spec://codkit/modules/vscode/PROP-003#VSCODE-OVERLAY-TARGETS"
     },
@@ -14873,7 +14882,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:9271cfad36cadc33e777a8041e3858e60a5bf9c4781cf8a8fbf61132ada16ee4",
+      "content_hash": "sha256:8bc56567261402d72a1d53ef9c183566a1207567974363baabdb6813a50ac6e3",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
       "heading": "vscode PROP-010: Licensing - where this family states a licence",
@@ -14882,16 +14891,16 @@
     },
     {
       "anchor": "VSCODE-LICENSING-AREA",
-      "content_hash": "sha256:e8c557b840c7c168e2ea0d216765a97a5fff0bf797d6acb06fe2b816f50bf336",
+      "content_hash": "sha256:13cdf9267b6d24d1f8578223462605883c830f15c00b2a3de381d78e9bfdb64e",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
-      "heading": "The type declares the capability `licensing` and answers the area (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LICENSING`): `headerStyle: block` - own files carry the ruled comment the sources of this distribution carry, so own code reads as one system with the code beside it (`MI-SAME-SHAPE-AS-UPSTREAMS-PARALLEL-SYSTEM`); `licenceFileDirectory: ''` (the root); `componentLicenceDirectory: 'licenses'`; `subsystem: 'product'`; the fields, the upstream licence file, the rendering and the guard stated below. A type writes nothing: the engine lays headers out from the profile, writes the overlays, the add-file patches, the rendering and the guard, and checks them back. @status:spec/plan",
+      "heading": "The type declares the capability `licensing` and answers the area (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LICENSING`): `headerStyle: block` - own files carry the ruled comment the sources of this distribution carry, so own code reads as one system with the code beside it (`MI-SAME-SHAPE-AS-UPSTREAMS-PARALLEL-SYSTEM`); `licenceFileDirectory: ''` (the root); `componentLicenceDirectory: 'licenses'`; `subsystem: 'product'`; the fields, the upstream licence file, the rendering and the guard stated below. A type writes nothing: the engine lays headers out from the profile, writes the overlays, the add-file patches, the rendering and the guard, and checks them back. @status:impl/done",
       "line": 5,
       "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENSING-AREA"
     },
     {
       "anchor": "fields",
-      "content_hash": "sha256:d7427d50e44aaaa0e523d4baad1c1312dd33ef098dcae45f97d40cd01fe65141",
+      "content_hash": "sha256:3a869c3eab9c13dc351b1502ed6b1fce41b579f22585df11be52cdefb201c604",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
       "heading": "1. The manifest fields",
@@ -14900,16 +14909,16 @@
     },
     {
       "anchor": "VSCODE-LICENCE-FIELDS",
-      "content_hash": "sha256:46163ca7d35e5f01f93650469ea2523477d435089ae9adcb49ae8e90939d06b4",
+      "content_hash": "sha256:939bdb6e659a2a0e31c632541153386eba12ac65ce29eb811cbbd2221f1d3f0f",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
-      "heading": "Five fields of two overlay targets declare the licence of the product. In `product.json`: `licenseName` (`expression`; the upstream carries the identifier of its own licence there), `licenseFileName` (`file-name`; the build of this distribution copies the file this key names from the root into the application beside `ThirdPartyNotices.txt` and `licenses/**`, which is why the key and not a path of the build is the surface), `licenseUrl` and `serverLicenseUrl` (`url`; the upstream points them at its repository, and a product without a published URL removes them, which also hides the \"view licence\" entry of the help menu). In `package.json`: the key `license` (`expression`), which the overlay target admits beside `scripts` since 2026-11-01 (`spec://codkit/modules/vscode/PROP-003#VSCODE-OVERLAY-TARGETS`). @status:spec/plan",
+      "heading": "Five fields of two overlay targets declare the licence of the product. In `product.json`: `licenseName` (`expression`; the upstream carries the identifier of its own licence there), `licenseFileName` (`file-name`; the build of this distribution copies the file this key names from the root into the application beside `ThirdPartyNotices.txt` and `licenses/**`, which is why the key and not a path of the build is the surface), `licenseUrl` and `serverLicenseUrl` (`url`; the upstream points them at its repository, and a product without a published URL removes them, which also hides the \"view licence\" entry of the help menu). In `package.json`: the key `license` (`expression`), which the overlay target admits as a guarded scalar replacement beside the additions under `scripts` since 2026-11-01 (`spec://codkit/modules/vscode/PROP-003#VSCODE-OVERLAY-TARGETS`). @status:impl/done",
       "line": 7,
       "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-FIELDS"
     },
     {
       "anchor": "files",
-      "content_hash": "sha256:b8fa69a06173576f0fe09bfd1b67facfaee069b8892ca03616534314fda22f66",
+      "content_hash": "sha256:2a846566ca63f198a52e44bf08a99500c5ca878e3453e0232878ef9ef86bfd27",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
       "heading": "2. The licence file, the component licences and the installer",
@@ -14918,34 +14927,34 @@
     },
     {
       "anchor": "VSCODE-LICENCE-FILE-AT-ROOT",
-      "content_hash": "sha256:add04dc55f4ef5ebb90f3dc3608f5a85a6568ef6e5445fe3217845fee9e0c5cd",
+      "content_hash": "sha256:bd25e9c473acf9dc30e406905c354e81facd6f70b0e142e28f1a4301abbc07a0",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
-      "heading": "The product's licence file lives at the tree root under the name the product chose (`product.licenseFile` of its declaration, `LICENSE.md` by default): `build/gulpfile.vscode.ts` copies `product.licenseFileName` from the root into the application, so the name in the manifest and the file at the root are one surface, written together by `gen licensing`. The upstream's `LICENSE.txt` stays where it is: it carries the upstream's own terms, it is never edited, and it stops being the product's licence only because the manifest no longer names it. @status:spec/plan",
+      "heading": "The product's licence file lives at the tree root under the name the product chose (`product.licenseFile` of its declaration, `LICENSE.md` by default): `build/gulpfile.vscode.ts` copies `product.licenseFileName` from the root into the application, so the name in the manifest and the file at the root are one surface, written together by `gen licensing`. The upstream's `LICENSE.txt` stays where it is: it carries the upstream's own terms, it is never edited, and it stops being the product's licence only because the manifest no longer names it. @status:impl/done",
       "line": 10,
       "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-FILE-AT-ROOT"
     },
     {
       "anchor": "VSCODE-COMPONENT-LICENCES",
-      "content_hash": "sha256:e7376d865ee34ece3a10712030bfbe027940004f62f1dd8465c35fb90120eb52",
+      "content_hash": "sha256:2f1eb99bcd3ab24ef34b7528ac1d82f9972aef40529b4a05efe1ed59e46eeac0",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
-      "heading": "`licenses/` is the component directory: the build copies `licenses/**` into the application, so `licenses/LICENSE-code-oss.txt` (the upstream's `LICENSE.txt` byte for byte at the pin; the component is named after the upstream's own name for its open build) and `licenses/LICENSE-codkit.txt` (the tool's own licence text, present because the runtime library is delivered into `src/vs/<own>/codkit/**` and compiled into the product) travel with every distributable. `ThirdPartyNotices.txt` is not a surface of this area: it is the upstream's notices file for the upstream's dependencies and stays untouched. @status:spec/plan",
+      "heading": "`licenses/` is the component directory: the build copies `licenses/**` into the application, so `licenses/LICENSE-code-oss.txt` (the upstream's `LICENSE.txt` byte for byte at the pin; the component is named after the upstream's own name for its open build) and `licenses/LICENSE-codkit.txt` (the tool's own licence text, present because the runtime library is delivered into `src/vs/<own>/codkit/**` and compiled into the product) travel with every distributable. `ThirdPartyNotices.txt` is not a surface of this area: it is the upstream's notices file for the upstream's dependencies and stays untouched. @status:impl/done",
       "line": 11,
       "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-COMPONENT-LICENCES"
     },
     {
       "anchor": "VSCODE-INSTALLER-RTF",
-      "content_hash": "sha256:28c07e05a2436e858e8e45d4a234bb154e67e4022e8d0eddd580d9908396073b",
+      "content_hash": "sha256:65ae8e93c1b1a17c0353de9fbed2ce85880aa8b7ad46b0805937a883de71d08d",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
-      "heading": "The Windows installer of this distribution (`build/win32/code.iss`) shows `LICENSE.rtf` from the root when the file exists and `LICENSE.txt` otherwise, and reads only text or RTF. The type therefore asks for one rendering, `LICENSE.rtf` at the root in the format `rtf`, which the engine writes from the canonical text, so the installer shows the product's terms without a change to the installer script. A rendering per installer language (`licenses/LICENSE-<language>.rtf`, which the script also looks for) is an owner's decision recorded in the campaign plan (RP-1). @status:spec/plan",
+      "heading": "The Windows installer of this distribution (`build/win32/code.iss`) shows `LICENSE.rtf` from the root when the file exists and `LICENSE.txt` otherwise, and reads only text or RTF. The type therefore asks for one rendering, `LICENSE.rtf` at the root in the format `rtf`, which the engine writes from the canonical text, so the installer shows the product's terms without a change to the installer script. A rendering per installer language (`licenses/LICENSE-<language>.rtf`, which the script also looks for) is an owner's decision recorded in the campaign plan (RP-1). @status:impl/done",
       "line": 12,
       "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-INSTALLER-RTF"
     },
     {
       "anchor": "guard",
-      "content_hash": "sha256:d42de92e590b20975fd97916ed4e7c54411e9589db69f4ef8ba9d3c79357553e",
+      "content_hash": "sha256:8a12161344773ef9bb234dd3a10aaebc3e0067b78a2d0ded569e04ab150bbb00",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
       "heading": "3. The guard",
@@ -14954,10 +14963,10 @@
     },
     {
       "anchor": "VSCODE-LICENCE-GUARD",
-      "content_hash": "sha256:7243524b8fc17759f2419bc2b581dfd70da26afcbcb407e56d6f3c2d95de748a",
+      "content_hash": "sha256:6b0a0d84ab9d40a0e37225b45a653dee1c5fe815d4534c1253f7537452bcd1df",
       "doc_path": "modules/vscode/PROP-010",
       "file": "vibevm/vibespecs/modules/vscode/PROP-010-licensing.xml",
-      "heading": "The guard is written at `delta/own/test/node/licence.leftovers.test.ts` - the own tests of this family live under `<ownRoot>/test/<layer>/` and run under the distribution's Mocha-style runner - with the words `suite` and `test`; it reads the tree from the directory the runner starts in, which is the tree root for the test scripts of this distribution, and names no path of the tool. @status:spec/plan",
+      "heading": "The guard is written at `delta/own/test/node/licence.leftovers.test.ts` - the own tests of this family live under `<ownRoot>/test/<layer>/` and run under the distribution's Mocha-style runner - with the words `suite` and `test`; it reads the tree from the directory the runner starts in, which is the tree root for the test scripts of this distribution, and names no path of the tool. @status:impl/done",
       "line": 15,
       "uri": "spec://codkit/modules/vscode/PROP-010#VSCODE-LICENCE-GUARD"
     }

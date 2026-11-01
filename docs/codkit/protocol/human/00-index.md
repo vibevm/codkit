@@ -34,10 +34,10 @@ profile выбранного проекта: его strict channel schema тре
 
 | Роль | Обязательно | По событию |
 | --- | --- | --- |
-| Разработчик | [01](01-quickstart.md), [02](02-daily.md) | [03](03-interventions.md), [04](04-team.md), [13](13-standards.md), [14](14-runtime.md), [15](15-project-types.md) |
+| Разработчик | [01](01-quickstart.md), [02](02-daily.md) | [03](03-interventions.md), [04](04-team.md), [13](13-standards.md), [14](14-runtime.md), [15](15-project-types.md), [16](16-licensing.md) |
 | Ревьюер вмешательств | [03](03-interventions.md), [10](10-roles.md) | [11](11-metrics.md) |
 | DRI / команда апгрейда | [05](05-upgrade-cycle.md), [06](06-history.md), [07](07-upstream-watch.md), [09](09-incidents.md), [10](10-roles.md) | [08](08-release-ci.md), [11](11-metrics.md) |
-| Релиз-инженер | [08](08-release-ci.md), [10](10-roles.md) | [09](09-incidents.md), [15](15-project-types.md) |
+| Релиз-инженер | [08](08-release-ci.md), [10](10-roles.md), [16](16-licensing.md) | [09](09-incidents.md), [15](15-project-types.md) |
 | Мейнтейнер протокола | [12](12-maintenance.md) и весь протокол | шаблоны ниже |
 
 Изменения форка подчиняются той же дисциплине: сначала выбирается верхний допустимый слой,
@@ -62,6 +62,7 @@ profile выбранного проекта: его strict channel schema тре
 | [13-standards](13-standards.md) | Как продукт берёт пакет стандартов и уведомление о лицензии? |
 | [14-runtime](14-runtime.md) | Как продукт берёт рантайм фичефлагов и объявляет фичу? |
 | [15-project-types](15-project-types.md) | Какой тип проекта объявляет patch set и что от него зависит? |
+| [16-licensing](16-licensing.md) | Как продукт объявляет свою лицензию один раз и несёт её на все поверхности? |
 
 ## Норма → механизм → текст
 

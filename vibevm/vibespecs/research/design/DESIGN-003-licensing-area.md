@@ -132,7 +132,9 @@ writes those surfaces by hand will drift, and its own proofs will defend the dri
   inventory; a list of modified upstream files in the distribution NOTICE is deferred (DEF-2) to
   the same campaign as D7's refusal, because it belongs to the NOTICE the provenance renders.
 - **D10. The tool's notice names the skill projections** among the paths it licenses, in both
-  languages, and the recommendation printed by `standards load` says the same.
+  languages; the recommendation printed by `standards load` and the REUSE annotation printed by
+  `standards license` list the same paths, so no printed statement of the scope is narrower than
+  the notice.
 - **D11. Scope of types.** The editor family (`vscode`) answers the area in this campaign and is
   proved by the pilot; the extension family answers a smaller set (the manifest's `license` field
   and a licence file in the extension root) when the campaign has time, else next; the

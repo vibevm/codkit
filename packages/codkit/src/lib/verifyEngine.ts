@@ -32,6 +32,7 @@ import type { CodkitConfig } from './configFile.ts';
 import { loadConventions } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { runGit } from './gitx.ts';
+import { bytesAtPin } from './pinBytes.ts';
 import { readTreeEntries } from './gitHistory.ts';
 import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.ts';
 import type { InventoryEntry } from './inventory.ts';
@@ -96,6 +97,8 @@ import type { ForkDirResolution } from './paths.ts';
 import { PATCHES_DIR, generatedBranchName, toPosix } from './syncEngine.ts';
 import { revParse } from './treeCache.ts';
 import { checkTree } from './treeIdentity.ts';
+import { licensingDocumentPaths } from './licensingSurfaces.ts';
+import { checkLicensing } from './verifyLicensing.ts';
 
 /** One violation, in the shape the `--json` data carries it. */
 export type Finding = CkErrorPayload & { readonly hint: string };
@@ -198,7 +201,7 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	checkOwners(patchesDir, inventory.entries, removed.entries, findings);
 
 	// (d) Markers, against the pin.
-	checkPatchMarkers(tree, config, conventions, patches, findings);
+	checkPatchMarkers(tree, config, conventions, patches, licensingDocumentPaths(patchesDir, options.type), findings);
 
 	// (e) and (k): the records that are invisible to compiler and marker alike.
 	checkGuards(inventory.entries, removed.entries, testIds, findings);
@@ -225,6 +228,11 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	// PROP-005 ##OWN-CODKIT-PREFIX-RESERVED).
 	checkDeliveredRuntime(patchesDir, options.toolRoot ?? CODKIT_TOOL_ROOT, options.type.runtime?.packageId ?? null, findings);
 	checkCodkitRootIsReserved(manifest, findings);
+
+	// (h5) The licensing of the product (PROP-019 ##VERIFY-LICENSING): with a
+	// declaration present, the profile this machine trusts, the carriers of the
+	// own layers and the licence surfaces of the type; without one, nothing.
+	checkLicensing({ patchesDir, type: options.type, config, treeDir: tree, toolRoot: options.toolRoot ?? CODKIT_TOOL_ROOT, findings });
 
 	// (h4) The own-extension layer: the section describes materializable
 	// extensions, and what the tree carries is what the delta holds
@@ -302,6 +310,8 @@ export function runStagedFast(options: StagedFastOptions): StagedFastResult {
 		);
 	}
 
+	// ##LICENCE-DOCUMENT-EXEMPTION: the licence surfaces carry no block, staged or not.
+	const documents = licensingDocumentPaths(patchesDir, options.type);
 	for (const path of staged) {
 		// Own code and resource blobs carry no schema of their own; reading them
 		// here would buy nothing and would decode a binary as text.
@@ -316,7 +326,7 @@ export function runStagedFast(options: StagedFastOptions): StagedFastResult {
 		if (!treeUsable || options.resolution === null || !path.endsWith(PATCH_FILE_SUFFIX)) {
 			continue;
 		}
-		checkStagedPatch(options.resolution.path, config, conventions, path, bytes, findings);
+		checkStagedPatch(options.resolution.path, config, conventions, path, bytes, documents, findings);
 	}
 
 	return { findings, warnings, counts: countByCode(findings), inventory: null, checked: staged.length, staged, treeUsable };
@@ -362,6 +372,7 @@ function checkStagedPatch(
 	conventions: Conventions,
 	path: string,
 	bytes: Uint8Array,
+	documents: ReadonlySet<string>,
 	findings: Finding[]
 ): void {
 	let patch: ParsedPatch;
@@ -371,7 +382,7 @@ function checkStagedPatch(
 		// Already reported by the schema pass; one broken file, one finding.
 		return;
 	}
-	checkOnePatchMarkers(treeDir, config, conventions, { artifact: path, patch }, [], findings);
+	checkOnePatchMarkers(treeDir, config, conventions, { artifact: path, patch }, [], documents, findings);
 }
 
 /** Whether a path under delta/ is one the schemas of the layers describe. */
@@ -575,6 +586,7 @@ function checkPatchMarkers(
 	config: CodkitConfig,
 	conventions: Conventions,
 	patches: readonly PatchArtifact[],
+	documents: ReadonlySet<string>,
 	findings: Finding[]
 ): void {
 	// ##MR-NO-NESTING: one id may cover blocks in several files only for the
@@ -583,7 +595,7 @@ function checkPatchMarkers(
 	const entryModuleIds = patches.filter((entry) => entry.patch.header.layer === 'entry-module').map((entry) => entry.patch.header.id);
 	for (const entry of patches) {
 		const allowIds = entry.patch.header.layer === 'entry-module' ? entryModuleIds : [];
-		checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, findings);
+		checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, documents, findings);
 	}
 }
 
@@ -593,12 +605,17 @@ function checkOnePatchMarkers(
 	conventions: Conventions,
 	entry: PatchArtifact,
 	allowIds: readonly string[],
+	documents: ReadonlySet<string>,
 	findings: Finding[]
 ): void {
 	const { patch, artifact } = entry;
 	const ext = extname(patch.targetPath);
 	try {
 		if (patch.isAddFile) {
+			// ##LICENCE-DOCUMENT-EXEMPTION (PROP-006): a licence surface is a document
+			// shipped verbatim and carries no block; its body is the licensing check's
+			// question, not the marker check's.
+			if (documents.has(patch.targetPath)) return;
 			// ##ADD-FILE-EXEMPTION: there are no upstream lines to protect, so only
 			// the markers of the resulting file and their ownership are checked.
 			const target = applyUnified(new Uint8Array(0), patch);
@@ -626,12 +643,6 @@ function checkOnePatchMarkers(
 	} catch (error) {
 		findings.push(toFinding(error, artifact));
 	}
-}
-
-/** The file at the pin, read from git objects, or null when the pin lacks it. */
-function bytesAtPin(treeDir: string, pinSha: string, target: string): Uint8Array | null {
-	const shown = runGit({ args: ['show', `${pinSha}:${toPosix(target)}`], cwd: treeDir });
-	return shown.status === 0 ? encodeUtf8(shown.stdout) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1571,7 +1582,8 @@ function hashFile(treeDir: string, absolutePath: string): string | null {
 // Shared pieces
 // ---------------------------------------------------------------------------
 
-function finding(code: ErrorCode, message: string, hint: string, file?: string, line?: number): Finding {
+/** One finding, in the shape the data carries it; the licensing check builds its findings through the same door. */
+export function finding(code: ErrorCode, message: string, hint: string, file?: string, line?: number): Finding {
 	const payload: { code: ErrorCode; message: string; hint: string; file?: string; line?: number } = { code, message, hint };
 	if (file !== undefined) {
 		payload.file = file;

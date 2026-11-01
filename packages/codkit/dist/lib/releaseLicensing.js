@@ -15,6 +15,26 @@ import { checkConsumerLicenses, isConsumerLicenseMetadata } from './consumerLice
 import { ckError } from './messages.js';
 import { runGit } from './gitx.js';
 export const RELEASE_LICENSING_FILE = 'codkit.licensing.json';
+/**
+ * ##LICENSING-DECLARATION-V2: the `product` block of a version-2 declaration -
+ * display choices only. The licence file is a base name; the holder must be one
+ * of the profile's holders (checked against the store, not here); the year is
+ * four digits; the retired notices are phrases the guard forbids.
+ */
+export const licensingProductSchema = z.strictObject({
+    licenseFile: z
+        .string()
+        .min(1)
+        .refine((value) => !/[\\/]/u.test(value) && value !== '.' && value !== '..', 'the licence file is a base name'),
+    title: z.string().min(1).optional(),
+    holder: z.string().min(1).optional(),
+    year: z
+        .string()
+        .regex(/^\d{4}$/u)
+        .optional(),
+    url: z.url().optional(),
+    retiredNotices: z.array(z.string().min(1)).optional()
+});
 const path = z.string().refine((value) => repoRelativePathProblem(value) === null);
 const operation = z.strictObject({ declaration: distributionDeclarationSchema, sbomFile: path.nullable() });
 export const releaseLicensingSchema = z.strictObject({
@@ -27,6 +47,15 @@ export const releaseLicensingSchema = z.strictObject({
     package: operation.optional(),
     publish: operation.optional()
 });
+/** Version 2 keeps every field of version 1 and adds the optional `product` block (##LICENSING-DECLARATION-V2). */
+export const licensingDeclarationV2Schema = releaseLicensingSchema.extend({
+    codkitReleaseLicensing: z.literal(2),
+    product: licensingProductSchema.optional()
+});
+export const licensingDeclarationSchema = z.discriminatedUnion('codkitReleaseLicensing', [
+    releaseLicensingSchema,
+    licensingDeclarationV2Schema
+]);
 export function readReleaseLicensing(patchesDir, requested, trustedRoot = organizationPolicyRoot(), trustBoundaryPatchset = patchesDir) {
     const read = readContainedFile(patchesDir, RELEASE_LICENSING_FILE, { what: 'release licensing declaration' });
     if (read.state === 'absent')
@@ -35,7 +64,7 @@ export function readReleaseLicensing(patchesDir, requested, trustedRoot = organi
         const text = decodeUtf8Strict(read.bytes);
         if (text === null)
             throw new Error('release licensing declaration is not UTF-8');
-        const declaration = releaseLicensingSchema.parse(JSON.parse(text));
+        const declaration = licensingDeclarationSchema.parse(JSON.parse(text));
         if (declaration[requested] === undefined)
             throw new Error(`release licensing declaration does not configure ${requested}`);
         const selected = readOrganizationPolicy(trustedRoot, trustBoundaryPatchset, {

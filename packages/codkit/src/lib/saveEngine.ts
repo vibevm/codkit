@@ -28,6 +28,7 @@ import { loadConventions, matchesPatternList } from './conventionsFile.ts';
 import type { Conventions } from './conventionsFile.ts';
 import { gitLocal, runGit } from './gitx.ts';
 import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.ts';
+import { licensingDocumentPaths } from './licensingSurfaces.ts';
 import { inputSaveRefusal } from './inputsTree.ts';
 import type { Output } from './jsonOut.ts';
 import { parseMarkers, parseMarkersOfNewFile } from './markers.ts';
@@ -886,7 +887,9 @@ function planFile(
 	}
 	const bytes = regenerated.unchanged ? (existingBytes ?? new Uint8Array(0)) : regenerated.bytes;
 
-	checkPatchAgainstMarkers(bytes, base, curBytes, ext, conventions, artifact, isAddFile, out, entryModuleIds);
+	// ##LICENCE-DOCUMENT-EXEMPTION (PROP-006): a licence surface shipped verbatim carries no block.
+	const isDocument = isAddFile && licensingDocumentPaths(patchesDir, options.type).has(target);
+	checkPatchAgainstMarkers(bytes, base, curBytes, ext, conventions, artifact, isAddFile, isDocument, out, entryModuleIds);
 
 	if (regenerated.unchanged) {
 		return { target, artifact, artifactAbsolute, action: 'unchanged', bytes: null, consumesPending: header.fromPending };
@@ -1083,7 +1086,8 @@ function validateHeaderOverride(override: SavePatchHeaderOverride, config: Codki
  * is an added line, and the rule that protects upstream lines has nothing to
  * protect there (PROP-005 ##NEW-FILES-LIVE-IN-OWN - the whole file is ours). What
  * still holds is the marker/artifact correspondence: the block that carries the
- * id of the patch has to exist.
+ * id of the patch has to exist - except for a licence surface shipped verbatim,
+ * which carries no block at all (PROP-006 ##LICENCE-DOCUMENT-EXEMPTION).
  */
 function checkPatchAgainstMarkers(
 	bytes: Uint8Array,
@@ -1093,11 +1097,13 @@ function checkPatchAgainstMarkers(
 	conventions: Conventions,
 	artifact: string,
 	isAddFile: boolean,
+	isDocument: boolean,
 	out: Output,
 	entryModuleIds: readonly string[]
 ): void {
 	const parsed = parseCkpatch(bytes, conventions, artifact);
 	const allowIds = parsed.header.layer === 'entry-module' ? entryModuleIds : [];
+	if (isDocument) return;
 	if (isAddFile) {
 		// The target state of an add-file patch is the working file itself.
 		const errors = newFileMarkerErrors(curBytes, ext, conventions, parsed.header.id, allowIds, artifact);

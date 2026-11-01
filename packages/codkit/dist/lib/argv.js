@@ -147,7 +147,11 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--setting', 'boolean'],
     ['--cold', 'boolean'],
     ['--header-style', 'value'],
-    ['--header-file', 'value']
+    ['--header-file', 'value'],
+    // gen licensing and license annotate --own (PROP-007 CMD-GEN-LICENSING, CMD-LICENSE-ANNOTATE); --owner and --dry-run above
+    ['--update', 'boolean'],
+    ['--own', 'boolean'],
+    ['--replace-retired', 'boolean']
 ]);
 export function parseArgv(argv) {
     let workspace;

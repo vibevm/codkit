@@ -35,12 +35,20 @@ export const PACKAGES_PREFIX = 'vibevm/vibepacks/org.vibevm.codkit';
 /** The prefix under which the runtime library lives in the product. */
 export const RUNTIME_PREFIX = 'delta/own/codkit';
 
-/** The four paths the notice's scope names, for the REUSE annotation. */
+/** The skill projections `vibe skill install` builds from the skills package; they carry the package's notice. */
+export const SKILL_PROJECTION_PATHS = ['.claude/skills/ck-*/**', '.agents/skills/ck-*/**', '.opencode/skills/ck-*/**'] as const;
+
+/**
+ * The paths the notice's scope names, for the REUSE annotation: the same list
+ * as the notice's own, so the annotation a product adds claims neither more
+ * nor less than the notice does.
+ */
 export const SCOPE_PATHS = [
 	NOTICE_ROOT_PATH,
 	`${PACKAGES_PREFIX}/**`,
 	'vibevm/vibedeps/org.vibevm.codkit.*/**',
-	`${RUNTIME_PREFIX}/**`
+	`${RUNTIME_PREFIX}/**`,
+	...SKILL_PROJECTION_PATHS
 ] as const;
 
 export type NoticeComponent = {

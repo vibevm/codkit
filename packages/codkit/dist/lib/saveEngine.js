@@ -25,6 +25,7 @@ import { applyUnified } from './applyUnified.js';
 import { loadConventions, matchesPatternList } from './conventionsFile.js';
 import { gitLocal, runGit } from './gitx.js';
 import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.js';
+import { licensingDocumentPaths } from './licensingSurfaces.js';
 import { inputSaveRefusal } from './inputsTree.js';
 import { parseMarkers, parseMarkersOfNewFile } from './markers.js';
 import { ckError, isCkError } from './messages.js';
@@ -637,7 +638,9 @@ function planFile(entry, state, store, options, conventions, resources, allowNew
         return { target, artifact, artifactAbsolute, action: 'removed', bytes: null, consumesPending: false };
     }
     const bytes = regenerated.unchanged ? (existingBytes ?? new Uint8Array(0)) : regenerated.bytes;
-    checkPatchAgainstMarkers(bytes, base, curBytes, ext, conventions, artifact, isAddFile, out, entryModuleIds);
+    // ##LICENCE-DOCUMENT-EXEMPTION (PROP-006): a licence surface shipped verbatim carries no block.
+    const isDocument = isAddFile && licensingDocumentPaths(patchesDir, options.type).has(target);
+    checkPatchAgainstMarkers(bytes, base, curBytes, ext, conventions, artifact, isAddFile, isDocument, out, entryModuleIds);
     if (regenerated.unchanged) {
         return { target, artifact, artifactAbsolute, action: 'unchanged', bytes: null, consumesPending: header.fromPending };
     }
@@ -793,11 +796,14 @@ function validateHeaderOverride(override, config) {
  * is an added line, and the rule that protects upstream lines has nothing to
  * protect there (PROP-005 ##NEW-FILES-LIVE-IN-OWN - the whole file is ours). What
  * still holds is the marker/artifact correspondence: the block that carries the
- * id of the patch has to exist.
+ * id of the patch has to exist - except for a licence surface shipped verbatim,
+ * which carries no block at all (PROP-006 ##LICENCE-DOCUMENT-EXEMPTION).
  */
-function checkPatchAgainstMarkers(bytes, pinBytes, curBytes, ext, conventions, artifact, isAddFile, out, entryModuleIds) {
+function checkPatchAgainstMarkers(bytes, pinBytes, curBytes, ext, conventions, artifact, isAddFile, isDocument, out, entryModuleIds) {
     const parsed = parseCkpatch(bytes, conventions, artifact);
     const allowIds = parsed.header.layer === 'entry-module' ? entryModuleIds : [];
+    if (isDocument)
+        return;
     if (isAddFile) {
         // The target state of an add-file patch is the working file itself.
         const errors = newFileMarkerErrors(curBytes, ext, conventions, parsed.header.id, allowIds, artifact);

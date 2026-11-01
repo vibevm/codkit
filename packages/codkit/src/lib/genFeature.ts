@@ -6,7 +6,9 @@
 // is classified before the first byte is written, so a run that would overwrite
 // somebody's file writes nothing at all. ##GEN-HEADER-IS-THE-PRODUCTS: the
 // files are product code, so their header is the product's or there is none -
-// codkit's own notice never reaches a product file.
+// codkit's own notice never reaches a product file. With a licensing profile
+// selected the header is the profile's, file by file (PROP-019
+// ##HEADER-FROM-PROFILE): the command resolves it, this module only applies it.
 
 import { join } from 'node:path';
 import type { FeatureSkeleton, ProjectType } from '@codkit/type-api';
@@ -14,7 +16,7 @@ import { statIfPresent } from './containedPath.ts';
 import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts';
 import { ckError } from './messages.ts';
 import { headerStyleName, productHeader } from './genTemplates.ts';
-import type { HeaderStyleName, ProductHeader } from './genTemplates.ts';
+import type { HeaderStyle, HeaderStyleName, ProductHeader } from './genTemplates.ts';
 
 /** ##RT-DESCRIPTOR: two or more dot-separated camelCase segments. */
 export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/u;
@@ -22,10 +24,26 @@ export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/u;
 /** One file a generator would create. */
 export type GeneratedFile = { readonly path: string; readonly text: string };
 
+/**
+ * ##HEADER-FROM-PROFILE: a header that depends on the path of the file it
+ * heads. The own licence of a profile is resolved per scope, so two files of one
+ * run may carry two identifiers; `style` is what the run reports once, and
+ * `headerFor` is asked for every file before anything is written, so a path the
+ * profile refuses stops the run with nothing on disk.
+ */
+export type HeaderByPath = {
+	readonly form: 'by-path';
+	readonly style: HeaderStyle | 'file';
+	readonly headerFor: (path: string) => ProductHeader;
+};
+
+/** The header of the generated files: one for all, one per path, or none. */
+export type GenHeader = ProductHeader | HeaderByPath | null;
+
 export type GenOptions = {
 	readonly patchesDir: string;
-	/** The product's header, or null when no header flag was given. */
-	readonly header: ProductHeader | null;
+	/** The product's header, or null when no header flag was given and no profile is selected. */
+	readonly header: GenHeader;
 	/** The project type of the patch set: the skeletons are its answer. */
 	readonly type: ProjectType;
 	/** The own root of the patch set, a path from the tree root. */
@@ -134,13 +152,19 @@ export function planBrand(options: GenOptions): BrandOutcome {
 	};
 }
 
-function withHeader(files: readonly GeneratedFile[], header: ProductHeader | null): GenOutcome {
+/**
+ * The header in front of every file, one blank line between it and the module.
+ * A header by path is resolved file by file (##HEADER-FROM-PROFILE); the style
+ * the run reports is the one the request names, so it is the same whatever the
+ * files turn out to be.
+ */
+function withHeader(files: readonly GeneratedFile[], header: GenHeader): GenOutcome {
 	if (header === null) return { files, headerWritten: false, headerStyle: null };
-	const prefix = productHeader(header);
+	const headerOf = (path: string): ProductHeader => (header.form === 'by-path' ? header.headerFor(path) : header);
 	return {
-		files: files.map((file) => ({ path: file.path, text: `${prefix}\n${file.text}` })),
+		files: files.map((file) => ({ path: file.path, text: `${productHeader(headerOf(file.path))}\n${file.text}` })),
 		headerWritten: true,
-		headerStyle: headerStyleName(header)
+		headerStyle: header.form === 'by-path' ? header.style : headerStyleName(header)
 	};
 }
 

@@ -469,6 +469,8 @@ describe('S35 - standards license prints the file, the advice and the rows', () 
 		// ##STD-LICENSE-PRINTS-REUSE-ROWS
 		expect(data.reuseAnnotation).toContain('[[annotations]]');
 		expect(data.reuseAnnotation).toContain('"delta/own/codkit/**"');
+		// The annotation claims the scope of the notice, the skill projections included.
+		expect(data.reuseAnnotation).toContain('".claude/skills/ck-*/**", ".agents/skills/ck-*/**", ".opencode/skills/ck-*/**"');
 		expect(data.reuseAnnotation).toContain('SPDX-License-Identifier = "UPL-1.0"');
 	});
 });

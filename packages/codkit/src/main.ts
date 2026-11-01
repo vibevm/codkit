@@ -15,7 +15,7 @@ import { configCommand, configMigrateCommand } from './commands/config.ts';
 import { cycleCommand } from './commands/cycle.ts';
 import { forecastCommand } from './commands/forecast.ts';
 import { gcCommand } from './commands/gc.ts';
-import { genBrandCommand, genCommand, genFeatureCommand } from './commands/gen.ts';
+import { genBrandCommand, genCommand, genFeatureCommand, genLicensingCommand } from './commands/gen.ts';
 import { hooksCommand } from './commands/hooks.ts';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.ts';
 import { inputsCommand, inputsPinCommand } from './commands/inputs.ts';
@@ -126,7 +126,8 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		runtimeCheckCommand,
 		genCommand,
 		genFeatureCommand,
-		genBrandCommand
+		genBrandCommand,
+		genLicensingCommand
 	].map((definition) => [definition.name, definition])
 );
 

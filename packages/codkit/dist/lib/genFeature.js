@@ -6,7 +6,9 @@
 // is classified before the first byte is written, so a run that would overwrite
 // somebody's file writes nothing at all. ##GEN-HEADER-IS-THE-PRODUCTS: the
 // files are product code, so their header is the product's or there is none -
-// codkit's own notice never reaches a product file.
+// codkit's own notice never reaches a product file. With a licensing profile
+// selected the header is the profile's, file by file (PROP-019
+// ##HEADER-FROM-PROFILE): the command resolves it, this module only applies it.
 import { join } from 'node:path';
 import { statIfPresent } from './containedPath.js';
 import { readContainedFile, writeContainedFileAtomic } from './containedFile.js';
@@ -67,14 +69,20 @@ export function planBrand(options) {
         reminders: built.reminders
     };
 }
+/**
+ * The header in front of every file, one blank line between it and the module.
+ * A header by path is resolved file by file (##HEADER-FROM-PROFILE); the style
+ * the run reports is the one the request names, so it is the same whatever the
+ * files turn out to be.
+ */
 function withHeader(files, header) {
     if (header === null)
         return { files, headerWritten: false, headerStyle: null };
-    const prefix = productHeader(header);
+    const headerOf = (path) => (header.form === 'by-path' ? header.headerFor(path) : header);
     return {
-        files: files.map((file) => ({ path: file.path, text: `${prefix}\n${file.text}` })),
+        files: files.map((file) => ({ path: file.path, text: `${productHeader(headerOf(file.path))}\n${file.text}` })),
         headerWritten: true,
-        headerStyle: headerStyleName(header)
+        headerStyle: header.form === 'by-path' ? header.style : headerStyleName(header)
     };
 }
 /**

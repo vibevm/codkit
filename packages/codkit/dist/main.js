@@ -14,7 +14,7 @@ import { configCommand, configMigrateCommand } from './commands/config.js';
 import { cycleCommand } from './commands/cycle.js';
 import { forecastCommand } from './commands/forecast.js';
 import { gcCommand } from './commands/gc.js';
-import { genBrandCommand, genCommand, genFeatureCommand } from './commands/gen.js';
+import { genBrandCommand, genCommand, genFeatureCommand, genLicensingCommand } from './commands/gen.js';
 import { hooksCommand } from './commands/hooks.js';
 import { imagesetCommand, imagesetGenCommand, imagesetIndexCommand, imagesetVerifyCommand } from './commands/imageset.js';
 import { inputsCommand, inputsPinCommand } from './commands/inputs.js';
@@ -117,7 +117,8 @@ const COMMANDS = new Map([
     runtimeCheckCommand,
     genCommand,
     genFeatureCommand,
-    genBrandCommand
+    genBrandCommand,
+    genLicensingCommand
 ].map((definition) => [definition.name, definition]));
 /** Immutable Codkit install/source root; never discovered from cwd or settings. */
 const toolRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');

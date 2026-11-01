@@ -27,6 +27,7 @@ import { bytesEqual, decodeUtf8Strict, encodeUtf8 } from './bytes.js';
 import { CONFIG_FILE_NAME, loadBaseConfig, serializeBaseConfig } from './configFile.js';
 import { loadConventions } from './conventionsFile.js';
 import { runGit } from './gitx.js';
+import { bytesAtPin } from './pinBytes.js';
 import { readTreeEntries } from './gitHistory.js';
 import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.js';
 import { buildInventory, loadPatches, ownTestIds, requiresGuard } from './inventory.js';
@@ -49,6 +50,8 @@ import { compareTrees } from './standardsPackage.js';
 import { PATCHES_DIR, generatedBranchName, toPosix } from './syncEngine.js';
 import { revParse } from './treeCache.js';
 import { checkTree } from './treeIdentity.js';
+import { licensingDocumentPaths } from './licensingSurfaces.js';
+import { checkLicensing } from './verifyLicensing.js';
 /**
  * ##TYPE-CAPABILITY-REFUSAL: `verify` over an artifact of a layer the declared
  * type does not provide.
@@ -108,7 +111,7 @@ export function runVerify(options) {
     checkUniqueIds(inventory.entries, removed.entries, findings);
     checkOwners(patchesDir, inventory.entries, removed.entries, findings);
     // (d) Markers, against the pin.
-    checkPatchMarkers(tree, config, conventions, patches, findings);
+    checkPatchMarkers(tree, config, conventions, patches, licensingDocumentPaths(patchesDir, options.type), findings);
     // (e) and (k): the records that are invisible to compiler and marker alike.
     checkGuards(inventory.entries, removed.entries, testIds, findings);
     // (f) Rules: the counter still agrees with the file at the pin.
@@ -129,6 +132,10 @@ export function runVerify(options) {
     // PROP-005 ##OWN-CODKIT-PREFIX-RESERVED).
     checkDeliveredRuntime(patchesDir, options.toolRoot ?? CODKIT_TOOL_ROOT, options.type.runtime?.packageId ?? null, findings);
     checkCodkitRootIsReserved(manifest, findings);
+    // (h5) The licensing of the product (PROP-019 ##VERIFY-LICENSING): with a
+    // declaration present, the profile this machine trusts, the carriers of the
+    // own layers and the licence surfaces of the type; without one, nothing.
+    checkLicensing({ patchesDir, type: options.type, config, treeDir: tree, toolRoot: options.toolRoot ?? CODKIT_TOOL_ROOT, findings });
     // (h4) The own-extension layer: the section describes materializable
     // extensions, and what the tree carries is what the delta holds
     // (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
@@ -176,6 +183,8 @@ export function runStagedFast(options) {
             : `the fork tree at ${options.resolution.path} cannot be used (${identity?.fatal?.message ?? 'unusable'}), `) +
             'so the staged patches were checked for their format only; run codkit verify once the tree is available');
     }
+    // ##LICENCE-DOCUMENT-EXEMPTION: the licence surfaces carry no block, staged or not.
+    const documents = licensingDocumentPaths(patchesDir, options.type);
     for (const path of staged) {
         // Own code and resource blobs carry no schema of their own; reading them
         // here would buy nothing and would decode a binary as text.
@@ -190,7 +199,7 @@ export function runStagedFast(options) {
         if (!treeUsable || options.resolution === null || !path.endsWith(PATCH_FILE_SUFFIX)) {
             continue;
         }
-        checkStagedPatch(options.resolution.path, config, conventions, path, bytes, findings);
+        checkStagedPatch(options.resolution.path, config, conventions, path, bytes, documents, findings);
     }
     return { findings, warnings, counts: countByCode(findings), inventory: null, checked: staged.length, staged, treeUsable };
 }
@@ -225,7 +234,7 @@ function parseStagedArtifact(path, bytes, conventions, findings) {
         findings.push(toFinding(error, path));
     }
 }
-function checkStagedPatch(treeDir, config, conventions, path, bytes, findings) {
+function checkStagedPatch(treeDir, config, conventions, path, bytes, documents, findings) {
     let patch;
     try {
         patch = parseCkpatch(bytes, conventions, path);
@@ -234,7 +243,7 @@ function checkStagedPatch(treeDir, config, conventions, path, bytes, findings) {
         // Already reported by the schema pass; one broken file, one finding.
         return;
     }
-    checkOnePatchMarkers(treeDir, config, conventions, { artifact: path, patch }, [], findings);
+    checkOnePatchMarkers(treeDir, config, conventions, { artifact: path, patch }, [], documents, findings);
 }
 /** Whether a path under delta/ is one the schemas of the layers describe. */
 function hasSchema(path) {
@@ -378,21 +387,26 @@ function checkOwners(patchesDir, entries, removed, findings) {
 // ---------------------------------------------------------------------------
 // (d) Markers
 // ---------------------------------------------------------------------------
-function checkPatchMarkers(treeDir, config, conventions, patches, findings) {
+function checkPatchMarkers(treeDir, config, conventions, patches, documents, findings) {
     // ##MR-NO-NESTING: one id may cover blocks in several files only for the
     // entry-module layer, so those ids - and only those - are allowed to appear
     // in each other's files.
     const entryModuleIds = patches.filter((entry) => entry.patch.header.layer === 'entry-module').map((entry) => entry.patch.header.id);
     for (const entry of patches) {
         const allowIds = entry.patch.header.layer === 'entry-module' ? entryModuleIds : [];
-        checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, findings);
+        checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, documents, findings);
     }
 }
-function checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, findings) {
+function checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, documents, findings) {
     const { patch, artifact } = entry;
     const ext = extname(patch.targetPath);
     try {
         if (patch.isAddFile) {
+            // ##LICENCE-DOCUMENT-EXEMPTION (PROP-006): a licence surface is a document
+            // shipped verbatim and carries no block; its body is the licensing check's
+            // question, not the marker check's.
+            if (documents.has(patch.targetPath))
+                return;
             // ##ADD-FILE-EXEMPTION: there are no upstream lines to protect, so only
             // the markers of the resulting file and their ownership are checked.
             const target = applyUnified(new Uint8Array(0), patch);
@@ -414,11 +428,6 @@ function checkOnePatchMarkers(treeDir, config, conventions, entry, allowIds, fin
     catch (error) {
         findings.push(toFinding(error, artifact));
     }
-}
-/** The file at the pin, read from git objects, or null when the pin lacks it. */
-function bytesAtPin(treeDir, pinSha, target) {
-    const shown = runGit({ args: ['show', `${pinSha}:${toPosix(target)}`], cwd: treeDir });
-    return shown.status === 0 ? encodeUtf8(shown.stdout) : null;
 }
 // ---------------------------------------------------------------------------
 // (e) and (k): guard tests
@@ -1030,7 +1039,8 @@ function hashFile(treeDir, absolutePath) {
 // ---------------------------------------------------------------------------
 // Shared pieces
 // ---------------------------------------------------------------------------
-function finding(code, message, hint, file, line) {
+/** One finding, in the shape the data carries it; the licensing check builds its findings through the same door. */
+export function finding(code, message, hint, file, line) {
     const payload = { code, message, hint };
     if (file !== undefined) {
         payload.file = file;

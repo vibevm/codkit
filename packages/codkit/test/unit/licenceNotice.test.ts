@@ -60,6 +60,10 @@ describe('the licence notice', () => {
 		expect(template).toContain('vibevm/vibepacks/org.vibevm.codkit/**');
 		expect(template).toContain('delta/own/codkit/**');
 		expect(template).toContain('vibevm/vibedeps/org.vibevm.codkit.*/**');
+		// ##STD-NOTICE-SCOPE-BY-PATHS: the skill projections, named in both languages.
+		for (const projection of ['.claude/skills/ck-*/**', '.agents/skills/ck-*/**', '.opencode/skills/ck-*/**']) {
+			expect(template.split(projection)).toHaveLength(3);
+		}
 		expect(template).toContain('generated configuration, not licensed material');
 		expect(template).toContain('copies and derivative works of the packages');
 	});
@@ -142,11 +146,11 @@ describe('the licence notice', () => {
 		expect(surveyNotice(toolRoot, root, RUNTIME_ID).copies.map((copy) => copy.state)).toEqual(['absent', 'absent']);
 	});
 
-	it('prints a REUSE annotation naming the four scope paths', () => {
+	it('prints a REUSE annotation naming the scope paths of the notice, the skill projections included', () => {
 		const rows = reuseAnnotationRows('Acme Holder', '2026');
 		expect(rows.split('\n')[0]).toBe('[[annotations]]');
 		expect(rows).toContain(
-			'"LICENSE-CODKIT.md", "vibevm/vibepacks/org.vibevm.codkit/**", "vibevm/vibedeps/org.vibevm.codkit.*/**", "delta/own/codkit/**"'
+			'"LICENSE-CODKIT.md", "vibevm/vibepacks/org.vibevm.codkit/**", "vibevm/vibedeps/org.vibevm.codkit.*/**", "delta/own/codkit/**", ".claude/skills/ck-*/**", ".agents/skills/ck-*/**", ".opencode/skills/ck-*/**"'
 		);
 		expect(rows).toContain('SPDX-FileCopyrightText = "2026 Acme Holder"');
 		expect(rows).toContain('SPDX-License-Identifier = "UPL-1.0"');

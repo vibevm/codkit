@@ -11,6 +11,14 @@ import { repoRelativePathProblem, resolveContainedPath } from './pathSafety.ts';
 import { checkOrganizationExpression } from './organizationPolicy.ts';
 import type { SelectedOrganizationPolicy } from './organizationPolicyStore.ts';
 
+/**
+ * ##CONSUMER-LICENSE-CHECK: the reading of the SPDX line - everything after the
+ * colon up to a closing comment marker, so a parenthesised expression reads
+ * whole. `license annotate --own` reads with the same expression, so what it
+ * leaves `unchanged` is what this check accepts.
+ */
+export const SPDX_EXPRESSION = /SPDX-License-Identifier:\s*(?<expr>.*?)\s*(?:\*\/|-->|-\*\))?\s*$/u;
+
 export const consumerLicenseReportSchema = z.strictObject({
 	codkitConsumerLicenseCheck: z.literal(1),
 	policy: z.strictObject({ id: z.string().min(1), version: z.number().int().positive(), sha256: z.string().regex(/^[0-9a-f]{64}$/) }),
@@ -88,9 +96,7 @@ export function checkConsumerLicenses(
 					.sort((left, right) => (right.base ?? '').split('/').length - (left.base ?? '').split('/').length);
 				const carrier = selectLicenseCarrier(physicalRoot, path, present, annotations, problem, { bytes, text });
 				if (carrier === null) continue;
-				const spdx = carrier.lines
-					.map((line) => /SPDX-License-Identifier:\s*(.*?)\s*(?:\*\/|-->|-\*\))?\s*$/u.exec(line))
-					.filter((entry) => entry !== null);
+				const spdx = carrier.lines.map((line) => SPDX_EXPRESSION.exec(line)).filter((entry) => entry !== null);
 				const copyrights = carrier.lines
 					.filter((line) => !MODIFICATIONS_LINE.test(line))
 					.map(copyrightMatch)
@@ -205,7 +211,8 @@ export function isConsumerLicenseMetadata(path: string): boolean {
 	);
 }
 
-function copyrightMatch(line: string): RegExpExecArray | null {
+/** The reading of a copyright line: the REUSE form without the word gets the word supplied. Shared with `license annotate --own`. */
+export function copyrightMatch(line: string): RegExpExecArray | null {
 	const existing = COPYRIGHT_LINE.exec(line);
 	if (existing !== null) return existing;
 	if (!/SPDX-FileCopyrightText:\s*/u.test(line)) return null;

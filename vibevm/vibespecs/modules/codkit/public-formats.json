@@ -903,17 +903,18 @@
     {
       "id": "release-licensing",
       "field": "codkitReleaseLicensing",
-      "version": 1,
+      "version": 2,
       "observedVersions": [
-        1
+        1,
+        2
       ],
       "source": "packages/codkit/src/lib/releaseLicensing.ts",
       "owner": "Patchset release operator; organization authority remains external",
       "trustBoundary": "Fixed patchset data selects IDs and restrictions only; immutable publish snapshot and contained source/output paths cross validators before delivery.",
-      "compatibility": "Strict version 1 opt-in; absent file retains explicit incomplete legacy evidence, present invalid/incomplete configuration refuses.",
+      "compatibility": "Version 1 and version 2 read side by side; version 2 adds the optional `product` block of display choices (licence file name, title, holder among the profile's holders, year, URL, retired notices) and nothing of authority. Absent file retains explicit incomplete legacy evidence; present invalid/incomplete configuration refuses.",
       "migration": "Create explicit licensing declarations and attach canonical evidence; no silent policy choice or config rewrite.",
       "fingerprint": "Declaration/authority/source/output digests bind release evidence; legacy delta/history formats are unchanged.",
-      "contract": "spec://codkit/modules/codkit/PROP-019#RELEASE-LICENSING-SELECTION",
+      "contract": "spec://codkit/modules/codkit/PROP-019#LICENSING-DECLARATION-V2",
       "tests": [
         "packages/codkit/test/unit/releaseLicensing.test.ts",
         "packages/codkit/test/unit/packageRelease.test.ts"

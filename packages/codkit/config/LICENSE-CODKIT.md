@@ -10,6 +10,10 @@ files live only under the paths named below, and nowhere else:
 - `delta/own/codkit/**` — the Codkit runtime library and the own-layer copy of
   this notice; `codkit load` materialises it at `src/vs/<own>/codkit/**` of the
   fork tree;
+- `.claude/skills/ck-*/**`, `.agents/skills/ck-*/**` and
+  `.opencode/skills/ck-*/**` — the skill projections `vibe skill install`
+  builds from the Codkit skills package; they carry the package's notice and
+  are rewritten by the install, never edited;
 - this file at the repository root.
 
 Nothing outside these paths is licensed by this notice; the licence of this
@@ -26,13 +30,16 @@ patch set, — и каждого файла, который Codkit достав�
 `vibevm/vibepacks/org.vibevm.codkit/**` и их проекция
 `vibevm/vibedeps/org.vibevm.codkit.*/**`, которую строит `vibe install`;
 библиотека рантайма Codkit и own-копия этого уведомления под
-`delta/own/codkit/**` (в дереве форка — `src/vs/<own>/codkit/**`); этот файл в
-корне репозитория. Вне этих путей уведомление ничего не лицензирует; лицензия
-этого репозитория указана отдельно. Строки, которые Codkit пишет внутри
-помеченных управляемых блоков в файлах самого репозитория (`vibe.toml`,
-`vibevm/scrape/contract.toml`), — сгенерированная конфигурация, лицензии не
-подлежащая. Codkit переписывает этот файл при каждой доставляющей команде;
-правки в нём отклоняются, а ссылки на него — осознанный выбор владельца
+`delta/own/codkit/**` (в дереве форка — `src/vs/<own>/codkit/**`); проекции
+навыков `.claude/skills/ck-*/**`, `.agents/skills/ck-*/**` и
+`.opencode/skills/ck-*/**`, которые `vibe skill install` строит из пакета
+навыков Codkit (они несут уведомление пакета и переписываются установкой, а не
+правятся); этот файл в корне репозитория. Вне этих путей уведомление ничего не
+лицензирует; лицензия этого репозитория указана отдельно. Строки, которые Codkit
+пишет внутри помеченных управляемых блоков в файлах самого репозитория
+(`vibe.toml`, `vibevm/scrape/contract.toml`), — сгенерированная конфигурация,
+лицензии не подлежащая. Codkit переписывает этот файл при каждой доставляющей
+команде; правки в нём отклоняются, а ссылки на него — осознанный выбор владельца
 репозитория. Текст лицензии существует только на английском языке; русские
 абзацы — уведомление.
 

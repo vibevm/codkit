@@ -193,11 +193,16 @@ function writeFile(dir: string, relative: string, content: string | Uint8Array):
 	}
 }
 
+/** The upstream's own terms, which the licensing area of the stub ships as the component `upstream` (PROP-016 ##TYPE-AREA-LICENSING). */
+const UPSTREAM_LICENSE =
+	'Fixture upstream licence\n\nPermissive terms of the fixture upstream; a component licence in the product, never edited.\n';
+
 function rootCommitFiles(): FileMap {
 	return new Map<string, string | Uint8Array>([
 		['.nvmrc', '24.18.0\n'],
 		['.gitignore', GITIGNORE],
 		['README.md', README],
+		['LICENSE', UPSTREAM_LICENSE],
 		['package.json', PACKAGE_JSON],
 		['manifest.json', MANIFEST_JSON],
 		['build/stub-ci-step.mjs', STUB_CI_STEP],

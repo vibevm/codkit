@@ -91,6 +91,13 @@ export const ERROR_CODES = [
     // The package as a whole is inconsistent: manifest licence field, LICENSE
     // shape, LICENSES/ contents, a symlink inside the tree (PROP-014 sec. 3).
     'LICENSE-PACKAGE',
+    // The licensing declaration of a consumer selects a profile the trusted store
+    // on this machine does not carry (PROP-019 VERIFY-LICENSING).
+    'LICENSE-PROFILE',
+    // A licence surface of the product - a manifest field, the licence file, a
+    // component licence, a rendering - disagrees with the selected profile
+    // (PROP-019 VERIFY-LICENSING).
+    'LICENSE-SURFACE',
     // The installed copy of the standards package differs from the shipped one;
     // `standards load` refuses rather than overwrite what someone edited
     // (PROP-014 ##STD-LOAD-STEP-DRIFT-REFUSAL).
