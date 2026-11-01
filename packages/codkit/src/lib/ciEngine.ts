@@ -141,6 +141,8 @@ export type CiOptions = {
 	readonly omitLicenceNotice?: boolean;
 	/** How long one compilation pass may take, in milliseconds. */
 	readonly passTimeoutMs?: number;
+	/** The trusted store the licensing check of `verify` reads; the machine's by default (PROP-019 ##ORGANIZATION-POLICY-TRUST). */
+	readonly organizationPolicyDirectory?: string;
 	/** Injectable seam for the synchronous upstream checks; production uses spawnSync. */
 	readonly runCommand?: CiCommandRunner;
 };
@@ -423,7 +425,13 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 
 	// Every integrity check of the materialized delta. In the build profile this
 	// is deliberately after upstream hygiene and overlay application.
-	const verified = runVerify({ patchesDir, resolution, config, type: options.type });
+	const verified = runVerify({
+		patchesDir,
+		resolution,
+		config,
+		type: options.type,
+		...(options.organizationPolicyDirectory === undefined ? {} : { organizationPolicyDirectory: options.organizationPolicyDirectory })
+	});
 	const generatedOwnEvidence = new Set(generatedOwnPaths);
 	const verifyFindings = verified.findings.filter((finding) => !isGeneratedOwnFinding(finding, generatedOwnEvidence, config));
 	for (const warning of verified.warnings) {

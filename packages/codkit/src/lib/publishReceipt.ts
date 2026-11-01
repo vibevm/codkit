@@ -12,7 +12,7 @@ import type { RegisteredManifest } from '../types/manifest.ts';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { runGit } from './gitx.ts';
-import { checkReleaseLicensing, readSnapshotReleaseLicensing } from './releaseLicensing.ts';
+import { checkReleaseLicensing, readSnapshotReleaseLicensing, unconfiguredReleaseLicensing } from './releaseLicensing.ts';
 import { writeExport } from './publishExport.ts';
 import { Output } from './jsonOut.ts';
 
@@ -51,7 +51,10 @@ export async function runPublishReceipt(options: PublishReceiptOptions): Promise
 			if (licensing !== null && componentId !== licensing.declaration.componentId)
 				throw ckError('CONFIG', 'component identifier differs from selected licensing declaration');
 			let licenseEvidence;
-			if (licensing !== null) {
+			// A declaration that leaves `publish` unconfigured: the trusted profile is the
+			// evidence, the rest stays missing and the release says so (PROP-019 ##LICENSING-DECLARATION-V2).
+			if (licensing !== null && !licensing.configured) licenseEvidence = unconfiguredReleaseLicensing(licensing);
+			if (licensing !== null && licensing.configured) {
 				const inspection = mkdtempSync(join(facts.workspaceRoot, 'licensing-'));
 				const delivered = join(inspection, 'delivered');
 				const inspectionExport = writeExport({

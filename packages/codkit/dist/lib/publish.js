@@ -85,7 +85,8 @@ export async function runPublish(options) {
             // developer tree and the ci branch do (PROP-014
             // ##STD-NOTICE-RELEASE-EXCLUSION). publish is the only caller that
             // asks for this, and it asks here.
-            omitLicenceNotice: true
+            omitLicenceNotice: true,
+            ...(options.organizationPolicyDirectory === undefined ? {} : { organizationPolicyDirectory: options.organizationPolicyDirectory })
         });
         if (checks.exitCode !== EXIT_OK || checks.branchTip === null) {
             if (checks.exitCode === EXIT_OK) {

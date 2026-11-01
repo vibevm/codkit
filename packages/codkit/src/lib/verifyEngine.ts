@@ -129,6 +129,12 @@ export type VerifyOptions = {
 	 * through those option types would say nothing a caller could choose.
 	 */
 	readonly toolRoot?: string;
+	/**
+	 * The directory of the trusted organization policy store the licensing check
+	 * reads (PROP-019 ##ORGANIZATION-POLICY-TRUST): the machine's `.codkit` by
+	 * default; a programmatic caller - publish under a test - names its own.
+	 */
+	readonly organizationPolicyDirectory?: string;
 };
 
 /**
@@ -232,7 +238,15 @@ export function runVerify(options: VerifyOptions): VerifyResult {
 	// (h5) The licensing of the product (PROP-019 ##VERIFY-LICENSING): with a
 	// declaration present, the profile this machine trusts, the carriers of the
 	// own layers and the licence surfaces of the type; without one, nothing.
-	checkLicensing({ patchesDir, type: options.type, config, treeDir: tree, toolRoot: options.toolRoot ?? CODKIT_TOOL_ROOT, findings });
+	checkLicensing({
+		patchesDir,
+		type: options.type,
+		config,
+		treeDir: tree,
+		toolRoot: options.toolRoot ?? CODKIT_TOOL_ROOT,
+		findings,
+		...(options.organizationPolicyDirectory === undefined ? {} : { trustedRoot: options.organizationPolicyDirectory })
+	});
 
 	// (h4) The own-extension layer: the section describes materializable
 	// extensions, and what the tree carries is what the delta holds

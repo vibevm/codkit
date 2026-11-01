@@ -93,6 +93,67 @@ it('records complete trusted distribution evidence and refuses a stale attached 
 	writeFileSync(join(fixture.treeDir, 'out/licensing-artifacts/NOTICE'), 'stale fixture notice\n');
 	expect(() => runPackageRelease(options)).toThrow(/stale or noncanonical/);
 });
+it('records incomplete distribution evidence, and says so, when the declaration leaves package unconfigured', () => {
+	const fixture = makeSyncFixture('package-release-unconfigured');
+	expect(fixture.sync().exitCode).toBe(0);
+	const data = makeDistributionDocuments();
+	const authority = makeTempRoot('package-license-authority-unconfigured');
+	writeFileSync(
+		join(authority, 'organization-policies.json'),
+		JSON.stringify({ codkitOrganizationPolicyStore: 1, policies: [data.selected.policy] })
+	);
+	mkdirSync(join(fixture.treeDir, 'out/licensing-artifacts'), { recursive: true });
+	writeFileSync(join(fixture.treeDir, 'out/licensing-artifacts/app.min.js'), '(()=>1)();');
+	// PROP-019 ##LICENSING-DECLARATION-V2: a version-2 declaration for the licence
+	// surfaces, with no package operation - the payload provenance of a bundled
+	// application is not something the area promised to write.
+	writeFileSync(
+		join(fixture.patchesDir, 'codkit.licensing.json'),
+		JSON.stringify({
+			codkitReleaseLicensing: 2,
+			profile: 'fixture',
+			componentId: data.componentId,
+			created: data.created,
+			sourceDirectory: fixture.config.typeConfig.ownRoot,
+			product: { licenseFile: 'LICENSE.md' }
+		})
+	);
+	fixtureCommit(fixture.patchesDir, 'fixture surfaces-only declaration', '2026-10-03T00:00:00Z');
+	const base = stubType({});
+	const type = stubType({
+		build: { ...base.build, packageBuild: [], packageDistributable: [], packageOutputs: ['out/licensing-artifacts'], packageScratch: [] }
+	});
+	const said: string[] = [];
+	const out = new Output({
+		command: 'package',
+		version: 'fixture',
+		jsonMode: false,
+		streams: { writeOut: (text: string) => said.push(text), writeErr: () => {} }
+	});
+
+	const result = runPackageRelease({
+		patchesDir: fixture.patchesDir,
+		resolution: fixture.resolution,
+		config: fixture.config,
+		type,
+		out,
+		flags: { keepOverlay: false, skipTypeBuild: false },
+		timeoutMs: null,
+		registration: readTypeManifest('stub', STUB_TYPE_MODULE),
+		organizationPolicyDirectory: authority
+	});
+
+	expect(result.exitCode, JSON.stringify(result)).toBe(0);
+	expect(result.release?.evidenceStatus).toBe('incomplete');
+	// The trusted profile is evidence; the notices and the SBOM of the operation are not.
+	expect(result.release?.missing).toEqual(expect.arrayContaining(['distribution-notices', 'sbom']));
+	expect(result.release?.missing).not.toContain('organization-policy');
+	expect(said.join('')).toContain('leaves package unconfigured');
+	if (result.release === null) throw new Error('fixture receipt absent');
+	const receipt = JSON.parse(readFileSync(join(fixture.patchesDir, result.release.path), 'utf8'));
+	expect(receipt.licensePolicies).toEqual(expect.arrayContaining([expect.objectContaining({ scope: 'organization', id: 'fixture' })]));
+});
+
 it('refuses a declared output whose materialized bytes were replaced by restoration, and preserves the dev state', () => {
 	const fixture = makeSyncFixture('package-release-restored-output');
 	expect(fixture.sync().exitCode).toBe(0);

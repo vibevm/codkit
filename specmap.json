@@ -11966,7 +11966,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:8f78712fdd82a531159d204e8bac06aeeced628d195a7b099b085ed5e6ca7bfb",
+      "content_hash": "sha256:9e354c6fd353ac222b3426387825aa1b0ed7d942838480b577a29c8c0012568c",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -12083,7 +12083,7 @@
     },
     {
       "anchor": "consumer-surfaces",
-      "content_hash": "sha256:9dd18d3b5dcd42c7b8dfb325ad400db42bb7f1ed2e82a327fa13af29249c2cb6",
+      "content_hash": "sha256:3e0e205e2dfea553717bc14d455b5af6a559615e366d3cae20cbccb3818b785b",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Consumer surfaces: the profile carried into own files, manifests and the distributable (2026-11-01)",
@@ -12092,10 +12092,10 @@
     },
     {
       "anchor": "LICENSING-DECLARATION-V2",
-      "content_hash": "sha256:777c4d6b4fb20a0c9d58f528817af9325ab58735db270da293f6b66a2f96bb23",
+      "content_hash": "sha256:a63a4904a2d4565812f4c96a837376882b229a8ce92f9eec07410a0d43d89a40",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "`codkit.licensing.json` version 2 keeps every field of version 1 (`profile`, `additionalForbidden`, `componentId`, `created`, `sourceDirectory`, the optional `package` and `publish` operations) and adds an optional `product` block of display choices: `licenseFile` (the base name of the product's licence file, default `LICENSE.md`), `title` (the human name of the licence used in headers), `holder` (one of the policy's `holders`, default the first), `year` (four digits, default the year of the run), `url` (a licence URL; absent, the family's URL fields are removed) and `retiredNotices` (phrases that must not survive in own files or licence surfaces; the guard forbids them). A `holder` outside the policy, a `title` or `licenseFile` that is empty or carries a path separator, a `year` that is not four digits refuse with `CK-E-CONFIG`. Version 1 reads exactly as before; nothing in either version can name a licence, a text or a permission - those stay with the trusted store (`ORGANIZATION-POLICY-TRUST`). Reading the declaration without an operation (`gen`, `verify`, `license annotate --own`) requires only `profile` and the store; `package` and `publish` keep requiring their operation block. @status:impl/done",
+      "heading": "`codkit.licensing.json` version 2 keeps every field of version 1 (`profile`, `additionalForbidden`, `componentId`, `created`, `sourceDirectory`, the optional `package` and `publish` operations) and adds an optional `product` block of display choices: `licenseFile` (the base name of the product's licence file, default `LICENSE.md`), `title` (the human name of the licence used in headers), `holder` (one of the policy's `holders`, default the first), `year` (four digits, default the year of the run), `url` (a licence URL; absent, the family's URL fields are removed) and `retiredNotices` (phrases that must not survive in own files or licence surfaces; the guard forbids them). A `holder` outside the policy, a `title` or `licenseFile` that is empty or carries a path separator, a `year` that is not four digits refuse with `CK-E-CONFIG`. Version 1 reads exactly as before; nothing in either version can name a licence, a text or a permission - those stay with the trusted store (`ORGANIZATION-POLICY-TRUST`). Reading the declaration without an operation (`gen`, `verify`, `license annotate --own`) requires only `profile` and the store; `package` and `publish` keep requiring their operation block. An operation the declaration leaves unconfigured runs: `package` and `publish` record the distribution evidence of the release as incomplete, naming the requirements it lacks, and say so (decision of 2026-11-01: the payload provenance of a bundled application is the deferral DEF-3 of the licensing-area campaign, and a declaration that exists for the licence surfaces must not stop the build of the product whose surfaces it governs); the licence surfaces and the carriers of the product are `VERIFY-LICENSING`'s question regardless. @status:impl/done",
       "line": 19,
       "uri": "spec://codkit/modules/codkit/PROP-019#LICENSING-DECLARATION-V2"
     },

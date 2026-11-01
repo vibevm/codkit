@@ -114,7 +114,13 @@ it('refuses incomplete shaped distribution before creating the actual export or 
 	const fixture = makeCliFixture('publish-licensing-missing-notice');
 	provideTreeDependencies(fixture);
 	const data = makeDistributionDocuments();
-	const authority = makeTempRoot('publish-licensing-authority');
+	// The trusted store lives where the machine keeps it, under a temporary home:
+	// the CLI runs below read it there, the programmatic publish is handed the
+	// directory (PROP-019 ##ORGANIZATION-POLICY-TRUST).
+	const home = makeTempRoot('publish-licensing-home');
+	const authority = join(home, '.codkit');
+	mkdirSync(authority, { recursive: true });
+	const env = { HOME: home, USERPROFILE: home };
 	writeFileSync(
 		join(authority, 'organization-policies.json'),
 		JSON.stringify({ codkitOrganizationPolicyStore: 1, policies: [data.selected.policy] })
@@ -130,6 +136,12 @@ it('refuses incomplete shaped distribution before creating the actual export or 
 			publish: { declaration: { ...data.declaration, metadata: ['NOTICE', 'SBOM.spdx.json'] }, sbomFile: 'SBOM.spdx.json' }
 		})
 	);
+	// A patch set that selects a profile answers for its licence surfaces and
+	// carriers under verify (##VERIFY-LICENSING), which publish runs first: the
+	// writer and the annotator give the fixture both, so that the refusal below is
+	// the distribution's and not the surfaces'.
+	expect(fixture.json(['gen', 'licensing', '--owner', 'product'], env).run.status).toBe(0);
+	expect(fixture.json(['license', 'annotate', '--own'], env).run.status).toBe(0);
 	fixtureCommit(fixture.patchesDir, 'fixture publication licensing declaration', '2026-10-03T00:00:00Z');
 	const config = loadConfig(fixture.patchesDir);
 	if (config === null) throw new Error('fixture config absent');

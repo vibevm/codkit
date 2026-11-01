@@ -11,7 +11,12 @@ import { ckError } from './messages.ts';
 import { readTypeManifest } from '../types/manifest.ts';
 import type { RegisteredManifest } from '../types/manifest.ts';
 import { effectiveRegistry } from '../types/registry.ts';
-import { assertReleaseLicensingUnchanged, checkReleaseLicensing, readReleaseLicensing } from './releaseLicensing.ts';
+import {
+	assertReleaseLicensingUnchanged,
+	checkReleaseLicensing,
+	readReleaseLicensing,
+	unconfiguredReleaseLicensing
+} from './releaseLicensing.ts';
 
 export type PackageReleaseResult = PackageResult & {
 	readonly release: {
@@ -29,6 +34,12 @@ export type PackageReleaseOptions = PackageOptions & {
 
 export function runPackageRelease(options: PackageReleaseOptions): PackageReleaseResult {
 	const licensing = readReleaseLicensing(options.patchesDir, 'package', options.organizationPolicyDirectory);
+	// A declaration that leaves `package` unconfigured does not stop the build: the
+	// release records its distribution evidence as incomplete, naming what it lacks
+	// (PROP-019 ##LICENSING-DECLARATION-V2); the licence surfaces are verify's.
+	const declared = licensing !== null && licensing.configured;
+	if (licensing !== null && !declared)
+		options.out.info('the licensing declaration leaves package unconfigured: distribution evidence is recorded as incomplete');
 	const componentId = options.componentId ?? licensing?.declaration.componentId;
 	if (licensing !== null && componentId !== licensing.declaration.componentId)
 		throw ckError('CONFIG', 'component identifier differs from release licensing declaration');
@@ -55,13 +66,15 @@ export function runPackageRelease(options: PackageReleaseOptions): PackageReleas
 			const licenseEvidence =
 				licensing === null
 					? undefined
-					: checkReleaseLicensing({
-							licensing,
-							sourceTree: options.resolution.path,
-							artifactRoot: options.resolution.path,
-							outputs: outputs.outputs,
-							operation: 'package'
-						});
+					: !declared
+						? unconfiguredReleaseLicensing(licensing)
+						: checkReleaseLicensing({
+								licensing,
+								sourceTree: options.resolution.path,
+								artifactRoot: options.resolution.path,
+								outputs: outputs.outputs,
+								operation: 'package'
+							});
 			const release = captureComponentRelease({
 				patchesDir: options.patchesDir,
 				forkDir: options.resolution.path,

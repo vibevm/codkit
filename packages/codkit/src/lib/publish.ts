@@ -82,6 +82,8 @@ export type PublishOptions = {
 	readonly orphan?: boolean;
 	/** `--scrub`: the release tree without the tooling (##PUBLISH-SCRUB). */
 	readonly scrub?: boolean;
+	/** The trusted store the licensing checks read; the machine's by default (PROP-019 ##ORGANIZATION-POLICY-TRUST), a programmatic caller's under a test. */
+	readonly organizationPolicyDirectory?: string;
 	/** `--no-lfs`: a tip that needs no git-lfs (##PUBLISH-NO-LFS). */
 	readonly noLfs?: boolean;
 	/** `--export-bare` or `--export-repo`: a new local repository instead of the remote (##PUBLISH-EXPORT). */
@@ -197,7 +199,8 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 			// developer tree and the ci branch do (PROP-014
 			// ##STD-NOTICE-RELEASE-EXCLUSION). publish is the only caller that
 			// asks for this, and it asks here.
-			omitLicenceNotice: true
+			omitLicenceNotice: true,
+			...(options.organizationPolicyDirectory === undefined ? {} : { organizationPolicyDirectory: options.organizationPolicyDirectory })
 		});
 		if (checks.exitCode !== EXIT_OK || checks.branchTip === null) {
 			if (checks.exitCode === EXIT_OK) {

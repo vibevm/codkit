@@ -287,7 +287,13 @@ export async function runCi(options) {
     }
     // Every integrity check of the materialized delta. In the build profile this
     // is deliberately after upstream hygiene and overlay application.
-    const verified = runVerify({ patchesDir, resolution, config, type: options.type });
+    const verified = runVerify({
+        patchesDir,
+        resolution,
+        config,
+        type: options.type,
+        ...(options.organizationPolicyDirectory === undefined ? {} : { organizationPolicyDirectory: options.organizationPolicyDirectory })
+    });
     const generatedOwnEvidence = new Set(generatedOwnPaths);
     const verifyFindings = verified.findings.filter((finding) => !isGeneratedOwnFinding(finding, generatedOwnEvidence, config));
     for (const warning of verified.warnings) {

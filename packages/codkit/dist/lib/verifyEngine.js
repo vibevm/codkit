@@ -135,7 +135,15 @@ export function runVerify(options) {
     // (h5) The licensing of the product (PROP-019 ##VERIFY-LICENSING): with a
     // declaration present, the profile this machine trusts, the carriers of the
     // own layers and the licence surfaces of the type; without one, nothing.
-    checkLicensing({ patchesDir, type: options.type, config, treeDir: tree, toolRoot: options.toolRoot ?? CODKIT_TOOL_ROOT, findings });
+    checkLicensing({
+        patchesDir,
+        type: options.type,
+        config,
+        treeDir: tree,
+        toolRoot: options.toolRoot ?? CODKIT_TOOL_ROOT,
+        findings,
+        ...(options.organizationPolicyDirectory === undefined ? {} : { trustedRoot: options.organizationPolicyDirectory })
+    });
     // (h4) The own-extension layer: the section describes materializable
     // extensions, and what the tree carries is what the delta holds
     // (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).

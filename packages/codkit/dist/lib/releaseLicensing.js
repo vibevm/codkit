@@ -65,19 +65,41 @@ export function readReleaseLicensing(patchesDir, requested, trustedRoot = organi
         if (text === null)
             throw new Error('release licensing declaration is not UTF-8');
         const declaration = licensingDeclarationSchema.parse(JSON.parse(text));
-        if (declaration[requested] === undefined)
-            throw new Error(`release licensing declaration does not configure ${requested}`);
+        // An operation the declaration leaves unconfigured is the caller's to report
+        // as incomplete evidence (##LICENSING-DECLARATION-V2); the declaration still
+        // selects the profile the operation is measured against.
         const selected = readOrganizationPolicy(trustedRoot, trustBoundaryPatchset, {
             profile: declaration.profile,
             ...(declaration.additionalForbidden === undefined ? {} : { additionalForbidden: declaration.additionalForbidden })
         });
         if (!selected.ok)
             throw new Error(selected.problems.join('; '));
-        return { declaration, sha256: hash(read.bytes), selected: selected.value };
+        return { declaration, sha256: hash(read.bytes), selected: selected.value, configured: declaration[requested] !== undefined };
     }
     catch (error) {
         throw ckError('CONFIG', error instanceof Error ? error.message : 'release licensing declaration is invalid');
     }
+}
+/**
+ * ##LICENSING-DECLARATION-V2: the evidence of an operation the declaration leaves
+ * unconfigured - the selected, trusted profile and nothing more. The notices, the
+ * provenance and the SBOM stay missing, and the release says so.
+ */
+export function unconfiguredReleaseLicensing(licensing) {
+    const { selected } = licensing;
+    return {
+        policy: selected,
+        evidence: [
+            {
+                requirement: 'organization-policy',
+                reference: `profile:${selected.policy.id}@${selected.policy.version}`,
+                sha256: hash(JSON.stringify({
+                    declaration: licensing.sha256,
+                    policy: { id: selected.policy.id, version: selected.policy.version, sha256: selected.sha256 }
+                }))
+            }
+        ]
+    };
 }
 export function readSnapshotReleaseLicensing(repository, snapshot, commit, trustedRoot) {
     const tree = runGit({ cwd: repository, args: ['ls-tree', '-z', commit, '--', RELEASE_LICENSING_FILE] });

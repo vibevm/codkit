@@ -106,7 +106,11 @@ it('enforces source carriers only on actual delivered paths and refuses lost hea
 });
 it('refuses policy paths/allowlist widening, future declaration and declaration/store movement', () => {
 	const f = fixture();
-	for (const extra of [{ policyDirectory: f.policyDir }, { allowedThirdParty: ['anything'] }, { codkitReleaseLicensing: 2 }]) {
+	// Version 2 is a known version since 2026-11-01 (##LICENSING-DECLARATION-V2); version 3 is the future.
+	expect(readReleaseLicensing(f.patchesDir, 'package', f.policyDir)).not.toBeNull();
+	writeFileSync(join(f.patchesDir, RELEASE_LICENSING_FILE), JSON.stringify({ ...f.declaration, codkitReleaseLicensing: 2 }));
+	expect(readReleaseLicensing(f.patchesDir, 'package', f.policyDir)?.declaration.codkitReleaseLicensing).toBe(2);
+	for (const extra of [{ policyDirectory: f.policyDir }, { allowedThirdParty: ['anything'] }, { codkitReleaseLicensing: 3 }]) {
 		writeFileSync(join(f.patchesDir, RELEASE_LICENSING_FILE), JSON.stringify({ ...f.declaration, ...extra }));
 		expect(() => readReleaseLicensing(f.patchesDir, 'package', f.policyDir)).toThrow();
 	}
@@ -119,12 +123,17 @@ it('refuses policy paths/allowlist widening, future declaration and declaration/
 	);
 	expect(() => assertReleaseLicensingUnchanged(f.patchesDir, 'package', f.licensing, f.policyDir)).toThrow(/changed during/);
 });
-it('requires a requested operation and exact metadata roles instead of hiding payload', () => {
+it('reads a declaration that leaves the operation unconfigured, and requires exact metadata roles instead of hiding payload', () => {
 	const f = fixture();
 	const packageDeclaration = f.licensing.declaration.package;
 	if (packageDeclaration === undefined) throw new Error('fixture package absent');
 	writeFileSync(join(f.patchesDir, RELEASE_LICENSING_FILE), JSON.stringify({ ...f.declaration, package: undefined }));
-	expect(() => readReleaseLicensing(f.patchesDir, 'package', f.policyDir)).toThrow(/does not configure/);
+	// ##LICENSING-DECLARATION-V2: the operation is unconfigured, not refused; its caller records incomplete evidence.
+	const unconfigured = readReleaseLicensing(f.patchesDir, 'package', f.policyDir);
+	expect(unconfigured?.declaration.package).toBeUndefined();
+	expect(unconfigured?.configured).toBe(false);
+	expect(readReleaseLicensing(f.patchesDir, 'publish', f.policyDir)?.configured).toBe(f.declaration.publish !== undefined);
+	expect(unconfigured?.selected.policy.id).toBe(f.licensing.selected.policy.id);
 	expect(() =>
 		checkReleaseLicensing({
 			licensing: {
