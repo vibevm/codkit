@@ -367,4 +367,34 @@ describe('the licensing area', () => {
 		const type = withArea({ ...licensing, renderings: [{ path: 'LICENSE', format: 'text' }] });
 		expect(projectTypeProblems(type)).toEqual(['bare: the rendering LICENSE is named twice']);
 	});
+
+	it('accepts what the distributable leaves out and the directory the runner starts in', () => {
+		const type = withArea({
+			...licensing,
+			distributableExclusions: [{ ignoreFile: 'addons/sample/.vscodeignore', entry: 'LICENSE' }],
+			guard: () => ({ ...licensing.guard(''), runnerDirectory: 'addons/sample' })
+		});
+		expect(projectTypeProblems(type)).toEqual([]);
+		const root = withArea({ ...licensing, guard: () => ({ ...licensing.guard(''), runnerDirectory: '' }) });
+		expect(projectTypeProblems(root)).toEqual([]);
+	});
+
+	it('refuses an exclusion that is not one complete line of a tree path, one named twice, and a runner directory that is no tree path', () => {
+		const type = withArea({
+			...licensing,
+			distributableExclusions: [
+				{ ignoreFile: '/.vscodeignore', entry: 'LICENSE' },
+				{ ignoreFile: '.vscodeignore', entry: ' LICENSE\n' },
+				{ ignoreFile: '.vscodeignore', entry: 'LICENSE' },
+				{ ignoreFile: '.vscodeignore', entry: 'LICENSE' }
+			],
+			guard: () => ({ ...licensing.guard(''), runnerDirectory: '../elsewhere' })
+		});
+		expect(projectTypeProblems(type)).toEqual([
+			'bare: the ignore file "/.vscodeignore" starts or ends with a slash',
+			'bare: the exclusion " LICENSE\\n" of .vscodeignore is not one complete line',
+			'bare: the exclusion LICENSE of .vscodeignore is named twice',
+			'bare: the licence guard runner directory has an empty, dot or dot-dot segment'
+		]);
+	});
 });

@@ -36,6 +36,7 @@ export type { RuntimeArea } from './runtime.ts';
 export type { PreviewArea, PreviewIsolation, PreviewLaunch, PreviewRecipe, PreviewRequest } from './preview.ts';
 export { licensingShapeProblems, treePathProblem } from './licensing.ts';
 export type {
+	DistributableExclusion,
 	LicenceField,
 	LicenceGuard,
 	LicenceHeaderStyle,

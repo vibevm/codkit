@@ -40,9 +40,11 @@ export function treePathProblem(path, options = { rootAllowed: false }) {
  * `file-name` appear at most once per target; components are lower-case names
  * and unique; the renderings and the upstream files are tree paths and unique;
  * the subsystem is one of the type's conventions, because the ids of the
- * interventions are numbered in it; the guard lies inside the own layer of the
- * patch set, where `verify` finds suite ids, and its preamble lines are complete
- * non-empty lines. An empty list is a well-formed answer.
+ * interventions are numbered in it; an exclusion names an ignore file by a tree
+ * path and one complete line, and no pair is named twice; the guard lies inside
+ * the own layer of the patch set, where `verify` finds suite ids, its preamble
+ * lines are complete non-empty lines and its runner directory is a tree path or
+ * the root. An empty list is a well-formed answer.
  */
 export function licensingShapeProblems(type) {
     const area = type.licensing;
@@ -96,6 +98,19 @@ export function licensingShapeProblems(type) {
             problems.push(`${type.id}: the rendering ${rendering.path} is named twice`);
         paths.add(rendering.path);
     }
+    const exclusions = new Set();
+    for (const exclusion of area.distributableExclusions ?? []) {
+        const problem = treePathProblem(exclusion.ignoreFile);
+        if (problem !== null)
+            problems.push(`${type.id}: the ignore file ${JSON.stringify(exclusion.ignoreFile)} ${problem}`);
+        if (exclusion.entry === '' || exclusion.entry.trim() !== exclusion.entry || /[\r\n]/u.test(exclusion.entry)) {
+            problems.push(`${type.id}: the exclusion ${JSON.stringify(exclusion.entry)} of ${exclusion.ignoreFile} is not one complete line`);
+        }
+        const key = `${exclusion.ignoreFile}\n${exclusion.entry}`;
+        if (exclusions.has(key))
+            problems.push(`${type.id}: the exclusion ${exclusion.entry} of ${exclusion.ignoreFile} is named twice`);
+        exclusions.add(key);
+    }
     let guard;
     try {
         guard = area.guard('codkit-probe/own-root');
@@ -114,5 +129,8 @@ export function licensingShapeProblems(type) {
     }
     if (guard.suite === '' || guard.test === '')
         problems.push(`${type.id}: the licence guard names no runner words`);
+    const runner = guard.runnerDirectory === undefined ? null : treePathProblem(guard.runnerDirectory, { rootAllowed: true });
+    if (runner !== null)
+        problems.push(`${type.id}: the licence guard runner directory ${runner}`);
     return problems;
 }

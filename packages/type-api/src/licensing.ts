@@ -56,6 +56,20 @@ export type LicenceRendering = {
 };
 
 /**
+ * A file the family's distributable must leave out, for a family whose packager
+ * takes everything an ignore file does not exclude: the upstream's licence file
+ * beside the product's, which the packager would otherwise take as the licence
+ * of the archive. The engine writes the exclusion as one line of that ignore
+ * file, inside a marker block of its own patch, and checks it back.
+ */
+export type DistributableExclusion = {
+	/** The ignore file the packager reads, a path from the tree root. */
+	readonly ignoreFile: string;
+	/** The line to add to it: a pattern as the packager reads it, relative to the directory of the ignore file. */
+	readonly entry: string;
+};
+
+/**
  * Where the leftover guard of the licence lives in the patch set, how its runner
  * spells a suite and a test, and what the family needs in front of the suite.
  */
@@ -69,6 +83,13 @@ export type LicenceGuard = {
 	 * rules, say - each a complete, non-empty line of the file. None by default.
 	 */
 	readonly preamble?: readonly string[];
+	/**
+	 * The directory the family's runner starts in, a path from the tree root -
+	 * the extension root of a workspace package, say - or the root when absent.
+	 * The guard resolves the tree root from its working directory through it,
+	 * so it runs from either place.
+	 */
+	readonly runnerDirectory?: string;
 };
 
 export type LicensingArea = {
@@ -82,6 +103,8 @@ export type LicensingArea = {
 	readonly fields: readonly LicenceField[];
 	readonly upstreamLicenceFiles: readonly UpstreamLicenceFile[];
 	readonly renderings: readonly LicenceRendering[];
+	/** What the family's distributable leaves out through its ignore file; none for a family whose build copies by name. */
+	readonly distributableExclusions?: readonly DistributableExclusion[];
 	/** The guard for one own root of the patch set. */
 	guard(ownRoot: string): LicenceGuard;
 };
@@ -118,9 +141,11 @@ export type LicensingShapeSubject = {
  * `file-name` appear at most once per target; components are lower-case names
  * and unique; the renderings and the upstream files are tree paths and unique;
  * the subsystem is one of the type's conventions, because the ids of the
- * interventions are numbered in it; the guard lies inside the own layer of the
- * patch set, where `verify` finds suite ids, and its preamble lines are complete
- * non-empty lines. An empty list is a well-formed answer.
+ * interventions are numbered in it; an exclusion names an ignore file by a tree
+ * path and one complete line, and no pair is named twice; the guard lies inside
+ * the own layer of the patch set, where `verify` finds suite ids, its preamble
+ * lines are complete non-empty lines and its runner directory is a tree path or
+ * the root. An empty list is a well-formed answer.
  */
 export function licensingShapeProblems(type: LicensingShapeSubject): readonly string[] {
 	const area = type.licensing;
@@ -165,6 +190,17 @@ export function licensingShapeProblems(type: LicensingShapeSubject): readonly st
 		if (paths.has(rendering.path)) problems.push(`${type.id}: the rendering ${rendering.path} is named twice`);
 		paths.add(rendering.path);
 	}
+	const exclusions = new Set<string>();
+	for (const exclusion of area.distributableExclusions ?? []) {
+		const problem = treePathProblem(exclusion.ignoreFile);
+		if (problem !== null) problems.push(`${type.id}: the ignore file ${JSON.stringify(exclusion.ignoreFile)} ${problem}`);
+		if (exclusion.entry === '' || exclusion.entry.trim() !== exclusion.entry || /[\r\n]/u.test(exclusion.entry)) {
+			problems.push(`${type.id}: the exclusion ${JSON.stringify(exclusion.entry)} of ${exclusion.ignoreFile} is not one complete line`);
+		}
+		const key = `${exclusion.ignoreFile}\n${exclusion.entry}`;
+		if (exclusions.has(key)) problems.push(`${type.id}: the exclusion ${exclusion.entry} of ${exclusion.ignoreFile} is named twice`);
+		exclusions.add(key);
+	}
 	let guard: LicenceGuard;
 	try {
 		guard = area.guard('codkit-probe/own-root');
@@ -181,5 +217,7 @@ export function licensingShapeProblems(type: LicensingShapeSubject): readonly st
 		problems.push(`${type.id}: the licence guard preamble has an empty or multi-line entry`);
 	}
 	if (guard.suite === '' || guard.test === '') problems.push(`${type.id}: the licence guard names no runner words`);
+	const runner = guard.runnerDirectory === undefined ? null : treePathProblem(guard.runnerDirectory, { rootAllowed: true });
+	if (runner !== null) problems.push(`${type.id}: the licence guard runner directory ${runner}`);
 	return problems;
 }
