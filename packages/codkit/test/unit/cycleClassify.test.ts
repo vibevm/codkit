@@ -303,6 +303,57 @@ describe('cycle apply classification adapter', () => {
 		});
 	});
 
+	it('names a clean resource whose target the upstream changed between the pins (##RESOURCE-UPSTREAM-CHANGE)', () => {
+		const tree = makeTempRoot('cycle-classify-resource-upstream-tree');
+		init(tree);
+		write(tree, 'resources/binary.bin', 'a\u0000b\n');
+		write(tree, 'resources/changed.txt', 'one\ntwo\n');
+		write(tree, 'resources/same.txt', 'same\n');
+		const oldPin = fixtureCommit(tree, 'old resources', '2026-05-13T00:00:00Z');
+		write(tree, 'resources/binary.bin', 'a\u0000c\n');
+		write(tree, 'resources/changed.txt', 'one\ntwo\nthree\n');
+		const newPin = fixtureCommit(tree, 'upstream moved two resource targets', '2026-05-14T00:00:00Z');
+		const current = cycleFixture(tree, oldPin, newPin);
+		const good = `t1@${oldPin}`;
+		for (const name of ['binary.bin', 'changed.txt', 'same.txt']) write(current.root, `delta/resources/files/${name}`, 'replacement\n');
+		writeJson(current.root, 'delta/resources/map.json', {
+			codkitResourceMap: 2,
+			entries: [
+				resourceEntry('CK-resource-binary', 'resources/binary.bin', 'binary.bin', good),
+				resourceEntry('CK-resource-changed', 'resources/changed.txt', 'changed.txt', good),
+				resourceEntry('CK-resource-same', 'resources/same.txt', 'same.txt', good)
+			]
+		});
+
+		const result = classifyCycleApply(options(current));
+		expect(result.classifications.map((item) => [item.artifactPath, item.outcome])).toEqual([
+			['delta/resources/files/binary.bin', 'clean'],
+			['delta/resources/files/changed.txt', 'clean'],
+			['delta/resources/files/same.txt', 'clean']
+		]);
+		const object = expect.stringMatching(/^[0-9a-f]{40}$/) as unknown as string;
+		expect(result.upstreamResourceChanges).toEqual([
+			{
+				artifactPath: 'delta/resources/files/binary.bin',
+				artifactId: 'CK-resource-binary',
+				targetPath: 'resources/binary.bin',
+				oldObject: object,
+				newObject: object,
+				insertions: null,
+				deletions: null
+			},
+			{
+				artifactPath: 'delta/resources/files/changed.txt',
+				artifactId: 'CK-resource-changed',
+				targetPath: 'resources/changed.txt',
+				oldObject: object,
+				newObject: object,
+				insertions: 1,
+				deletions: 0
+			}
+		]);
+	});
+
 	it('classifies resource lifecycle and validates resource, own, service-override and removed pins without patches', () => {
 		const tree = makeTempRoot('cycle-classify-layers-tree');
 		init(tree);

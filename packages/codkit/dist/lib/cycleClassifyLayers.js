@@ -108,6 +108,47 @@ export function classifyCycleResources(treeDir, oldPin, newPin, resources, renam
     })
         .sort((left, right) => compareText(left.artifactPath, right.artifactPath));
 }
+/**
+ * The clean resource entries whose target the upstream changed between the
+ * pins (PROP-005 ##RESOURCE-UPSTREAM-CHANGE): the copy replaces the target
+ * whatever it holds, so the outcome stays `clean` and the cycle names the
+ * change, so the copy can take over what matters in it.
+ */
+export function resourceUpstreamChanges(treeDir, oldPin, newPin, classifications) {
+    return classifications.flatMap((item) => {
+        if (item.outcome !== 'clean')
+            return [];
+        const oldObject = blobObject(treeDir, oldPin, item.targetPath);
+        const newObject = blobObject(treeDir, newPin, item.targetPath);
+        if (oldObject === null || newObject === null || oldObject === newObject)
+            return [];
+        const stat = runGit({ args: ['diff', '--numstat', '-z', oldPin, newPin, '--', item.targetPath], cwd: treeDir });
+        if (stat.status !== 0)
+            throw broken(`${item.artifactPath}: cannot diff ${item.targetPath} between the pins`);
+        const fields = stat.stdout.split('\t');
+        const count = (field) => (field === undefined || field === '-' ? null : Number.parseInt(field, 10));
+        return [
+            {
+                artifactPath: item.artifactPath,
+                artifactId: item.artifactId,
+                targetPath: item.targetPath,
+                oldObject,
+                newObject,
+                insertions: count(fields[0]),
+                deletions: count(fields[1])
+            }
+        ];
+    });
+}
+/** The blob of a regular file at a ref; null when the path is absent or not a blob there. */
+function blobObject(treeDir, ref, target) {
+    const listed = runGit({ args: ['--literal-pathspecs', 'ls-tree', '-z', '--full-tree', ref, '--', target], cwd: treeDir });
+    if (listed.status !== 0)
+        throw broken(`cannot inspect ${target} at ${ref}`);
+    const record = listed.stdout.split('\0').find((line) => line !== '');
+    const match = record === undefined ? null : /^\d{6} blob ([0-9a-f]{40,64})\t/.exec(record);
+    return match?.[1] ?? null;
+}
 function targetExists(treeDir, ref, target) {
     const listed = runGit({ args: ['--literal-pathspecs', 'ls-tree', '-z', '--full-tree', ref, '--', target], cwd: treeDir });
     if (listed.status !== 0 || (listed.stdout !== '' && !listed.stdout.endsWith('\0'))) {

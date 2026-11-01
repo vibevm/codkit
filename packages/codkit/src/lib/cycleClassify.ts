@@ -13,9 +13,11 @@ import { findCause } from './cause.ts';
 import {
 	classifyCycleResources,
 	loadCycleClassificationInventory,
+	resourceUpstreamChanges,
 	type CycleLayerReadRuntime,
 	type LoadedCycleInventory,
 	type ResourceCycleClassification,
+	type ResourceUpstreamChange,
 	type ValidatedCycleRecord
 } from './cycleClassifyLayers.ts';
 import {
@@ -72,6 +74,8 @@ export type CycleClassifyResult = {
 	readonly reviewRequired: boolean;
 	/** Pin-bearing records with no upstream target to classify. */
 	readonly validated: readonly ValidatedCycleRecord[];
+	/** The clean resource entries whose target the upstream changed between the pins. */
+	readonly upstreamResourceChanges: readonly ResourceUpstreamChange[];
 };
 
 export type CycleClassifyPreviewOptions = {
@@ -218,7 +222,13 @@ function completeResult(
 		renameBatch,
 		reviewRequired:
 			renameBatch.needsReview || classified.classifications.some((item) => item.kind === 'resource' && item.outcome !== 'clean'),
-		validated: loaded.validated
+		validated: loaded.validated,
+		upstreamResourceChanges: resourceUpstreamChanges(
+			options.treeDir,
+			sourcePin.sha,
+			targetPin.sha,
+			classified.classifications.filter((item): item is ResourceCycleClassification => item.kind === 'resource')
+		)
 	};
 }
 

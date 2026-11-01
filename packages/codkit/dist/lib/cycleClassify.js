@@ -7,7 +7,7 @@ import { assertSourceToTargetAncestry } from './cycleControlGit.js';
 import { lstatSync } from 'node:fs';
 import { classifyArtifacts } from './classifyEngine.js';
 import { findCause } from './cause.js';
-import { classifyCycleResources, loadCycleClassificationInventory } from './cycleClassifyLayers.js';
+import { classifyCycleResources, loadCycleClassificationInventory, resourceUpstreamChanges } from './cycleClassifyLayers.js';
 import { clearCycleClassifyRecovery, makeCycleClassifyRecovery, readCycleClassifyRecovery, writeCycleClassifyRecovery } from './cycleClassifyRecovery.js';
 import { treeId } from './fingerprint.js';
 import { runGit } from './gitx.js';
@@ -105,7 +105,8 @@ function completeResult(options, loaded, detected, relevantRenames, patchRenames
         ...classified,
         renameBatch,
         reviewRequired: renameBatch.needsReview || classified.classifications.some((item) => item.kind === 'resource' && item.outcome !== 'clean'),
-        validated: loaded.validated
+        validated: loaded.validated,
+        upstreamResourceChanges: resourceUpstreamChanges(options.treeDir, sourcePin.sha, targetPin.sha, classified.classifications.filter((item) => item.kind === 'resource'))
     };
 }
 function classifyLoadedUpgrade(type, treeDir, oldPin, newRef, loaded, detected, patchRenames, mergeFile) {

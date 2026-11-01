@@ -78,6 +78,11 @@ forward ancestry; переход на предка исходного пина �
 | `rule-broken` | владелец rule + reviewer | все новые матчи просмотрены, правило исправлено, record green |
 | `contract-failed` | владелец контракта | причина устранена или design decision принят, test green |
 
+`clean` у resource-file при изменённом upstream target остаётся `clean` — копия заменяет файл целиком, — но
+`cycle start`/`continue` печатает предупреждение `resource <id>: upstream changed <target> …` с размером
+изменения и командой `git diff`; владелец копии просматривает upstream-изменение и переносит нужное в
+`delta/resources/files/` обычным `save`. Journal record не нужен.
+
 «Дивергенции двух upstream branches» в patch-модели нет: source и target пины образуют одну проверяемую линию.
 Наличие такого запроса — terminal design stop, не новый outcome.
 

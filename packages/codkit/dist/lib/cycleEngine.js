@@ -86,6 +86,14 @@ async function continueLocked(options, locks, commits) {
 }
 function applyPhase(options, state, record, locks, commits) {
     const preview = previewCycleApply(baseClassifyOptions(options, state));
+    // A resource whose target moved upstream stays clean - the copy replaces the
+    // file whole - and is named here, with the size of the change and the
+    // command that shows it (PROP-005 ##RESOURCE-UPSTREAM-CHANGE).
+    for (const change of preview.upstreamResourceChanges) {
+        const size = change.insertions === null ? 'binary' : `+${change.insertions}/-${change.deletions} lines`;
+        options.out.warn(`resource ${change.artifactId}: upstream changed ${change.targetPath} between ${pinKey(state.sourcePin)} and ${pinKey(state.targetPin)} (${size}); ` +
+            `the carried copy replaces it unchanged, so review the upstream change: git -C ${options.resolution.path} diff ${state.sourcePin.sha} ${state.targetPin.sha} -- ${change.targetPath}`);
+    }
     const nextRecord = recordFromClassification(options, state, preview, record);
     const reviewToken = previewToken(preview);
     const resourceReview = preview.classifications.some((item) => item.kind === 'resource' && item.outcome !== 'clean');
