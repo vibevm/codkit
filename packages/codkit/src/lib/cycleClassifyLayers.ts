@@ -24,7 +24,7 @@ import type { ProjectType } from '@codkit/type-api';
 export type LoadedCyclePatch = { readonly artifactPath: string; readonly patch: ParsedPatch };
 
 export type ValidatedCycleRecord = {
-	readonly kind: 'own' | 'service-override' | 'removed';
+	readonly kind: 'own' | 'own-extension' | 'service-override' | 'removed';
 	readonly artifactPath: string;
 	readonly artifactId: string;
 	readonly pin: string;
@@ -79,7 +79,7 @@ export function loadCycleClassificationInventory(
 	for (const entry of resources) strictAbsoluteFile(resourceSourcePath(patchesDir, entry), entry.source);
 	const duplicateResource = duplicate(resources.map((entry) => entry.source));
 	if (duplicateResource !== null) throw broken(`resource source occurs more than once: ${duplicateResource}`);
-	const own = ownRaw === null ? { units: [], serviceOverrides: [] } : parseOwnManifest(ownRaw);
+	const own = ownRaw === null ? { units: [], serviceOverrides: [], extensions: [] } : parseOwnManifest(ownRaw);
 	const removed = removedRaw === null ? { entries: [] } : parseRemoved(removedRaw);
 	for (const [path, pin] of [
 		...patches.map((artifact) => [artifact.artifactPath, artifact.patch.header.pin] as const),
@@ -88,6 +88,7 @@ export function loadCycleClassificationInventory(
 		...resources.map((entry) => [entry.source, entry.pin] as const),
 		...own.units.map((unit) => [`${OWN_MANIFEST_PATH}#${unit.id}`, unit.pin] as const),
 		...own.serviceOverrides.map((entry) => [`${OWN_MANIFEST_PATH}#${entry.id}`, entry.pin] as const),
+		...own.extensions.map((entry) => [`${OWN_MANIFEST_PATH}#${entry.id}`, entry.pin] as const),
 		...removed.entries.map((entry) => [`${REMOVED_PATH}#${entry.id}`, entry.pin] as const)
 	]) {
 		if (pin !== expectedPin) throw broken(`${path}: metadata pin ${pin} does not match cycle source ${expectedPin}`);
@@ -102,6 +103,14 @@ export function loadCycleClassificationInventory(
 		...own.units.map((unit) => ({ kind: 'own' as const, artifactPath: OWN_MANIFEST_PATH, artifactId: unit.id, pin: unit.pin })),
 		...own.serviceOverrides.map((entry) => ({
 			kind: 'service-override' as const,
+			artifactPath: OWN_MANIFEST_PATH,
+			artifactId: entry.id,
+			pin: entry.pin
+		})),
+		// A declared own extension carries a pin like a unit (modules/vscode/PROP-002
+		// ##OWN-EXTENSION-UNIT): validated here, rebound by the regeneration.
+		...own.extensions.map((entry) => ({
+			kind: 'own-extension' as const,
 			artifactPath: OWN_MANIFEST_PATH,
 			artifactId: entry.id,
 			pin: entry.pin

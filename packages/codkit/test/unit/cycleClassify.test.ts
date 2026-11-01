@@ -381,7 +381,7 @@ describe('cycle apply classification adapter', () => {
 			expect.objectContaining({ outcome: 'target-deleted', cause: { sha: newPin, approx: false } }),
 			expect.objectContaining({ outcome: 'target-renamed', cause: { sha: newPin, approx: false } })
 		]);
-		expect(result.validated.map((entry) => entry.kind)).toEqual(['own', 'service-override', 'removed']);
+		expect(result.validated.map((entry) => entry.kind)).toEqual(['own-extension', 'own', 'service-override', 'removed']);
 	});
 
 	it('accepts a resource target changed to an exact detected rename destination', () => {
@@ -427,14 +427,14 @@ describe('cycle apply classification adapter', () => {
 		expect(() => classifyCycleApply(options(current))).toThrow(/resource target resources\/new-only\.bin is absent at metadata pin/);
 	});
 
-	it('rejects stale pin metadata in resource, own, service-override and removed records', () => {
+	it('rejects stale pin metadata in resource, own, own-extension, service-override and removed records', () => {
 		const tree = makeTempRoot('cycle-classify-layer-pin-tree');
 		init(tree);
 		write(tree, 'resources/stable.bin', 'stable\n');
 		const oldPin = fixtureCommit(tree, 'old', '2026-05-15T00:00:00Z');
 		write(tree, 'target-marker.txt', 'target\n');
 		const newPin = fixtureCommit(tree, 'new', '2026-05-16T00:00:00Z');
-		for (const stale of ['resource', 'own', 'service-override', 'removed'] as const) {
+		for (const stale of ['resource', 'own', 'own-extension', 'service-override', 'removed'] as const) {
 			const current = cycleFixture(tree, oldPin, newPin);
 			writeLayerMetadata(current.root, oldPin, stale);
 			expect(() => classifyCycleApply(options(current))).toThrow(/metadata pin .* does not match cycle source/);
@@ -790,7 +790,11 @@ function writeOverlay(root: string, target: string, id: string, oldPin: string, 
 	});
 }
 
-function writeLayerMetadata(root: string, oldPin: string, stale?: 'resource' | 'own' | 'service-override' | 'removed'): void {
+function writeLayerMetadata(
+	root: string,
+	oldPin: string,
+	stale?: 'resource' | 'own' | 'own-extension' | 'service-override' | 'removed'
+): void {
 	const good = `t1@${oldPin}`;
 	const bad = `stale@${'f'.repeat(40)}`;
 	for (const name of ['stable.bin', 'deleted.bin', 'renamed.bin']) write(root, `delta/resources/files/${name}`, `${name}\n`);
@@ -832,8 +836,19 @@ function writeLayerMetadata(root: string, oldPin: string, stale?: 'resource' | '
 				pin: stale === 'service-override' ? bad : good,
 				contractTests: []
 			}
+		],
+		extensions: [
+			{
+				id: 'CK-extension',
+				name: 'acme-pack',
+				owner: 'product',
+				reason: 'fixture own extension',
+				pin: stale === 'own-extension' ? bad : good,
+				contractTests: []
+			}
 		]
 	});
+	write(root, 'delta/own-extensions/acme-pack/package.json', '{\n\t"name": "acme-pack"\n}\n');
 	writeJson(root, 'delta/removed.json', {
 		codkitRemoved: 1,
 		entries: [

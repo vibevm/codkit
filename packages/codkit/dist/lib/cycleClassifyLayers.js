@@ -41,7 +41,7 @@ export function loadCycleClassificationInventory(patchesDir, type, expectedPin, 
     const duplicateResource = duplicate(resources.map((entry) => entry.source));
     if (duplicateResource !== null)
         throw broken(`resource source occurs more than once: ${duplicateResource}`);
-    const own = ownRaw === null ? { units: [], serviceOverrides: [] } : parseOwnManifest(ownRaw);
+    const own = ownRaw === null ? { units: [], serviceOverrides: [], extensions: [] } : parseOwnManifest(ownRaw);
     const removed = removedRaw === null ? { entries: [] } : parseRemoved(removedRaw);
     for (const [path, pin] of [
         ...patches.map((artifact) => [artifact.artifactPath, artifact.patch.header.pin]),
@@ -50,6 +50,7 @@ export function loadCycleClassificationInventory(patchesDir, type, expectedPin, 
         ...resources.map((entry) => [entry.source, entry.pin]),
         ...own.units.map((unit) => [`${OWN_MANIFEST_PATH}#${unit.id}`, unit.pin]),
         ...own.serviceOverrides.map((entry) => [`${OWN_MANIFEST_PATH}#${entry.id}`, entry.pin]),
+        ...own.extensions.map((entry) => [`${OWN_MANIFEST_PATH}#${entry.id}`, entry.pin]),
         ...removed.entries.map((entry) => [`${REMOVED_PATH}#${entry.id}`, entry.pin])
     ]) {
         if (pin !== expectedPin)
@@ -65,6 +66,14 @@ export function loadCycleClassificationInventory(patchesDir, type, expectedPin, 
         ...own.units.map((unit) => ({ kind: 'own', artifactPath: OWN_MANIFEST_PATH, artifactId: unit.id, pin: unit.pin })),
         ...own.serviceOverrides.map((entry) => ({
             kind: 'service-override',
+            artifactPath: OWN_MANIFEST_PATH,
+            artifactId: entry.id,
+            pin: entry.pin
+        })),
+        // A declared own extension carries a pin like a unit (modules/vscode/PROP-002
+        // ##OWN-EXTENSION-UNIT): validated here, rebound by the regeneration.
+        ...own.extensions.map((entry) => ({
+            kind: 'own-extension',
             artifactPath: OWN_MANIFEST_PATH,
             artifactId: entry.id,
             pin: entry.pin

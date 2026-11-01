@@ -117,10 +117,23 @@ function updateOwn(options: UpdateOptions): void {
 	let changed = false;
 	const units = options.inventory.own.units.map((entry) => metadataEntry(entry, 'own'));
 	const serviceOverrides = options.inventory.own.serviceOverrides.map((entry) => metadataEntry(entry, 'service-override'));
-	// The `extensions` section carries no `cause` and no transition pin of its
-	// own to rewrite here; it is round-tripped so the regenerated manifest keeps
-	// every byte the layer put there (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT).
-	const extensions = options.inventory.own.extensions;
+	// A declared own extension carries a pin like a unit and no cause
+	// (modules/vscode/PROP-002 ##OWN-EXTENSION-UNIT): the pin moves to the target
+	// with the rest of the manifest, every other byte of the record is kept.
+	const extensions = options.inventory.own.extensions.map((entry) => {
+		assertTransitionPin(entry.pin, options.sourcePin, options.targetPin, `${OWN_MANIFEST_PATH}#${entry.id}`);
+		const next = { ...entry, pin: options.targetPin };
+		const didChange = next.pin !== entry.pin;
+		changed ||= didChange;
+		options.actions.push({
+			artifactPath: OWN_MANIFEST_PATH,
+			artifactId: entry.id,
+			kind: 'own-extension',
+			action: didChange ? 'write' : 'noop',
+			cause: null
+		});
+		return next;
+	});
 	if (changed) options.desired.set(OWN_MANIFEST_PATH, encodeUtf8(serializeOwnManifest({ units, serviceOverrides, extensions })));
 	function metadataEntry<T extends OwnUnit | ServiceOverride>(entry: T, kind: 'own' | 'service-override'): T {
 		assertTransitionPin(entry.pin, options.sourcePin, options.targetPin, `${OWN_MANIFEST_PATH}#${entry.id}`);

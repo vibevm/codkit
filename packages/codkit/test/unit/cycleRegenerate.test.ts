@@ -87,8 +87,10 @@ describe('cycle regeneration transaction', () => {
 		writeJson(root, 'delta/own/patchset.delta.json', {
 			codkitOwnManifest: 2,
 			units: [own('CK-shell-914')],
-			serviceOverrides: [service('CK-platform-915')]
+			serviceOverrides: [service('CK-platform-915')],
+			extensions: [extension('CK-product-917')]
 		});
+		write(root, 'delta/own-extensions/acme-pack/package.json', '{\n\t"name": "acme-pack"\n}\n');
 		writeJson(root, 'delta/removed.json', {
 			codkitRemoved: 1,
 			entries: [removed('CK-build-916')]
@@ -144,6 +146,8 @@ describe('cycle regeneration transaction', () => {
 		expect(JSON.parse(text(root, overlayPath)).pin).toBe(TARGET_PIN);
 		expect(JSON.parse(text(root, 'delta/resources/map.json')).entries[0].pin).toBe(TARGET_PIN);
 		expect(JSON.parse(text(root, 'delta/own/patchset.delta.json')).units[0].pin).toBe(TARGET_PIN);
+		expect(JSON.parse(text(root, 'delta/own/patchset.delta.json')).extensions[0].pin).toBe(TARGET_PIN);
+		expect(result.actions.find((item) => item.artifactId === 'CK-product-917')).toMatchObject({ kind: 'own-extension', action: 'write' });
 		expect(JSON.parse(text(root, 'delta/removed.json')).entries[0].pin).toBe(TARGET_PIN);
 	});
 
@@ -475,6 +479,17 @@ function service(id: string): unknown {
 		cause: 'none',
 		pin: SOURCE_PIN,
 		contractTests: ['service.guard']
+	};
+}
+
+function extension(id: string): unknown {
+	return {
+		id,
+		name: 'acme-pack',
+		owner: 'product',
+		reason: 'fixture own extension',
+		pin: SOURCE_PIN,
+		contractTests: []
 	};
 }
 

@@ -30,7 +30,7 @@ const actionSchema = z
     .object({
     artifactPath: pathSchema,
     artifactId: z.string().min(1),
-    kind: z.enum(['patch', 'rule', 'overlay', 'resource', 'own', 'service-override', 'removed']),
+    kind: z.enum(['patch', 'rule', 'overlay', 'resource', 'own', 'own-extension', 'service-override', 'removed']),
     action: z.enum(['write', 'delete', 'noop', 'untouched']),
     cause: causeSchema.nullable()
 })
