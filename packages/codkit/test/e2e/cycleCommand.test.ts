@@ -128,6 +128,29 @@ describe('codkit cycle continue', () => {
 		expect(status.envelope.data['checklist']).toHaveLength(4);
 	}, 15_000);
 
+	it('stabilizes again after a pass that went red past the overlay application, without a load by hand', () => {
+		// The first pass ends in the generated mode of the build profile - own code
+		// committed on the branch - and the second pass used to read that as one
+		// UNTRACKED-INTERVENTION per own file (PROP-009 ##PHASE-STABILIZE).
+		const fixture = makeCliFixture('cycle-second-pass');
+		excludeRuntimeState(fixture.patchesDir);
+		provideTreeDependencies(fixture);
+		const stopped = fixture.json(['cycle', 'start', fixture.upstream.t2.tag, '--ci'], {
+			STUB_MODE: 'ok',
+			STUB_PRODUCT_TEST_MODE: 'fail'
+		});
+		expect(stopped.run.status, stopped.run.stderr).toBe(3);
+		expect(
+			(stopped.envelope.data['red'] as { kind: string; id: string }[]).some((item) => item.kind === 'build' && item.id === 'product tests')
+		).toBe(true);
+
+		const resumed = fixture.json(['cycle', 'continue', '--ci'], { STUB_MODE: 'ok' });
+		expect(resumed.run.status, resumed.run.stderr).toBe(0);
+		expect(resumed.envelope.data['status']).toBe('completed');
+		expect(resumed.envelope.data['phase']).toBe('done');
+		expect(resumed.envelope.data['red']).toEqual([]);
+	}, 120_000);
+
 	it('uses the persisted R<100 preview as the second unchanged continue acknowledgement', () => {
 		const fixture = makeCliFixture('cycle-rename-review');
 		excludeRuntimeState(fixture.patchesDir);

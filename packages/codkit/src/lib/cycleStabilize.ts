@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { downChannel, loadBuildWatch } from './buildWrap.ts';
 import type { CiResult } from './ciEngine.ts';
 import { runCi } from './ciEngine.ts';
+import { runSync } from './syncEngine.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { dependencyAdvisoryAcknowledgement, inspectDependencyAdvisory, type DependencyAdvisoryReport } from './cycleAdvisory.ts';
 import { captureCycleLiveSnapshot, type CycleLiveSnapshot } from './cycleStabilizeEvidence.ts';
@@ -284,6 +285,34 @@ export async function runConcreteStabilization(options: StabilizeHeavyRunnerOpti
 		channels = options.type.capabilities.has('build-channels')
 			? loadBuildWatch(options.type, options.patchesDir).channels.map((channel) => channel.name)
 			: [];
+		// The verify of a pass judges the delta in the development mode, the way
+		// the operator's verify does (##OWN-EXCLUDED-LOCALLY): own code and inputs
+		// untracked, the overlay targets unmaterialized. The previous pass left
+		// the tree in the generated mode its build profile ends in - own code and
+		// inputs committed on the branch - and a verify over that reads as one
+		// UNTRACKED-INTERVENTION per own file. So the pass opens with the fresh
+		// load the operator would run, from the pinned inputs like the build
+		// profile's own first load; a tree already in that mode is rebuilt idly.
+		const returned = runSync({
+			patchesDir: options.patchesDir,
+			resolution: options.resolution,
+			config: options.config,
+			type: options.type,
+			out,
+			fresh: true,
+			dryRun: false,
+			verbose: false,
+			generatedBranch: false,
+			inputs: 'pinned',
+			commitInputs: true
+		});
+		if (returned.exitCode !== 0) {
+			throw ckError(
+				'DIRTY-TREE',
+				`stabilization cannot bring the fork tree back to the development mode before verify: load --fresh answered ${returned.status}`,
+				'read the refusal above, put the tree right, and run codkit cycle continue again'
+			);
+		}
 		verify = runVerify({ ...options, type: options.type });
 		build = await runCi({
 			...options,

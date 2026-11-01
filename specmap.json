@@ -7943,7 +7943,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:8124ffd5bfc769e98e78725d69016885b2b18282da481191b1bc72186f83b71e",
+      "content_hash": "sha256:a40c99c54eecdbfa4cae2c125b70fa538475bb64bc40a890a16240ee400a8ff8",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "codkit PROP-009: The upgrade-cycle orchestrator - state, journal, phases, cadence",
@@ -8060,7 +8060,7 @@
     },
     {
       "anchor": "phases",
-      "content_hash": "sha256:adb02d843bd25297ec1212b69f6791fe9a30f964e8628cc5b3a8e8941153b852",
+      "content_hash": "sha256:60400955c4e3fc82b4293dceec884bd72b9e5177e73a6d76fb8bdd5acd0f766a",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "4. The state machine - phases and transitions",
@@ -8123,10 +8123,10 @@
     },
     {
       "anchor": "PHASE-STABILIZE",
-      "content_hash": "sha256:d399d04f34f7c8e8111549572e72e5e64babad00122b43956cc5061bff0d3fed",
+      "content_hash": "sha256:2ddff1e344fba0628492b41f765e4c63c80bcefce97940dbf8d60899348a6ffa",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
-      "heading": "**stabilize**: `build up` → `build errors` (the full output) → own tests → contract tests → (by profile) upstream tests → marking the `contract-failed` artifacts - every artifact of the inventory whose contract test failed, the records the classification never saw included (the own manifest of a failed own unit, a service-override, a removed record), since resolve describes a `contract-failed` artifact from the inventory and not from the classification → red → phase=resolve (back); green → phase=done. @status:spec/done",
+      "heading": "**stabilize**: the pass opens by bringing the tree back to the development mode - the fresh load the operator would run, without the generated branch and from the pinned inputs - because the build profile of the previous pass leaves the tree in the generated mode, own code and inputs committed on the branch, and the verify of the pass judges the delta as the operator's verify does (PROP-005 `##OWN-EXCLUDED-LOCALLY`): over a tree left in the generated mode it read as one `UNTRACKED-INTERVENTION` per own file, and every second pass was red; then `build up` → `build errors` (the full output) → own tests → contract tests → (by profile) upstream tests → marking the `contract-failed` artifacts - every artifact of the inventory whose contract test failed, the records the classification never saw included (the own manifest of a failed own unit, a service-override, a removed record), since resolve describes a `contract-failed` artifact from the inventory and not from the classification → red → phase=resolve (back); green → phase=done. @status:spec/done",
       "line": 45,
       "uri": "spec://codkit/modules/codkit/PROP-009#PHASE-STABILIZE"
     },
