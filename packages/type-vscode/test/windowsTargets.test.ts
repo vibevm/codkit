@@ -68,6 +68,13 @@ describe('the Windows x64 targets', () => {
 			`${join('C:\\Windows', 'System32')}${delimiter}D:\\tools`
 		);
 		expect(() => environment({ PATH: 'C:\\Git\\usr\\bin' })).toThrow(/SystemRoot/u);
+		// A POSIX shell on Windows hands the variables over in upper case.
+		expect(environment({ SYSTEMROOT: 'C:\\Windows', PATH: 'C:\\Git\\usr\\bin' })['PATH']).toBe(
+			`${join('C:\\Windows', 'System32')}${delimiter}C:\\Git\\usr\\bin`
+		);
+		expect(environment({ windir: 'C:\\Windows', Path: 'D:\\tools' })['PATH']).toBe(
+			`${join('C:\\Windows', 'System32')}${delimiter}D:\\tools`
+		);
 	});
 
 	it('builds the system and the user setup with the upstream tasks, after the inno updater', () => {

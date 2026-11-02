@@ -289,11 +289,23 @@ const WINDOWS_ARCHIVE_DIR = '.build/win32-x64/archive';
  * cannot write a zip, never answers in its place.
  */
 export function windowsArchiveEnvironment(environment) {
-    const systemRoot = environment['SystemRoot'];
+    // A POSIX shell on Windows hands the variables over in upper case
+    // (SYSTEMROOT, PATH), a Windows shell as Windows spells them (SystemRoot,
+    // Path); the object the engine composes keeps the spelling it got.
+    const systemRoot = valueIgnoringCase(environment, 'SystemRoot') ?? valueIgnoringCase(environment, 'windir');
     if (systemRoot === undefined || systemRoot === '') {
         throw new Error(`SystemRoot is not set: the archive is written by the bsdtar of Windows at ${join('%SystemRoot%', 'System32', 'tar.exe')}`);
     }
-    return { PATH: `${join(systemRoot, 'System32')}${delimiter}${environment['PATH'] ?? environment['Path'] ?? ''}` };
+    return { PATH: `${join(systemRoot, 'System32')}${delimiter}${valueIgnoringCase(environment, 'PATH') ?? ''}` };
+}
+/** The value of a variable whatever case its name was handed over in; the exact spelling wins. */
+function valueIgnoringCase(environment, name) {
+    const exact = environment[name];
+    if (exact !== undefined)
+        return exact;
+    const wanted = name.toLowerCase();
+    const key = Object.keys(environment).find((candidate) => candidate.toLowerCase() === wanted);
+    return key === undefined ? undefined : environment[key];
 }
 const windowsGulp = (label, task) => ({
     label,
