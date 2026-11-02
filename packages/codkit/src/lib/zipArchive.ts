@@ -23,6 +23,13 @@ import { dirname, join } from 'node:path';
 import { crc32 } from 'node:zlib';
 import { Inflate } from 'fflate';
 
+/**
+ * The version of what `extractZip` writes, which the stamp of a bundle cache
+ * records (PROP-006 ##BUNDLES-STAMP): 2 keeps the executable bit of an entry;
+ * the unpacker before it, which recorded no version, wrote every file 644.
+ */
+export const EXTRACT_VERSION = 2;
+
 const CHUNK = 1 << 20;
 /** Compressed bytes per push: deflate expands about a thousandfold at most, so what one push hands back stays bounded. */
 const INFLATE_CHUNK = 1 << 16;

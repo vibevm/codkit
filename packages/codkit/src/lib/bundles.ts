@@ -27,7 +27,7 @@ import { loadOverlays, overlayBaseAtPin, renderOverlayTarget } from './layers/ov
 import type { JsonLike, OverlayVarContext } from './layers/overlay.ts';
 import { ckError } from './messages.ts';
 import { repoRelativePathProblem } from './pathSafety.ts';
-import { extractZip, hashFile } from './zipArchive.ts';
+import { EXTRACT_VERSION, extractZip, hashFile } from './zipArchive.ts';
 
 export type BundleState = 'provisioned' | 'unchanged' | 'missing' | 'mismatch' | 'off' | 'withdrawn';
 
@@ -267,8 +267,14 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 		const sameTarget = (entry: StoredBundle): boolean => (entry.target ?? null) === bundle.target;
 		const cachePresent = (entry: StoredBundle | undefined): entry is StoredBundle =>
 			entry !== undefined && entry.cachePath === bundle.cachePath && existsSync(cacheAbsolute(treeDir, entry.cachePath));
-		const current = (entry: StoredBundle | undefined): entry is StoredBundle =>
+		const holdsUnit = (entry: StoredBundle | undefined): entry is StoredBundle =>
 			cachePresent(entry) && sameTarget(entry) && expected !== undefined && entry.sha256 === expected;
+		const current = (entry: StoredBundle | undefined): entry is StoredBundle => holdsUnit(entry) && entry.unpacker === EXTRACT_VERSION;
+		// A cache an earlier unpacker wrote holds the unit with the recorded hash
+		// but without the executable bit of its files (PROP-006 ##BUNDLES-STAMP):
+		// it is unpacked again, and never kept as it is.
+		const earlier = (entry: StoredBundle | undefined): entry is StoredBundle => holdsUnit(entry) && entry.unpacker !== EXTRACT_VERSION;
+		const earlierWords = `an earlier codkit wrote the cache in ${bundle.cachePath}, and it dropped the executable bit`;
 		const report = (state: BundleState, file: string | null, line: string): void => {
 			reports.push({
 				name,
@@ -334,11 +340,18 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 				report('unchanged', file, `${label}: unchanged in ${bundle.cachePath} (sha256 ${short(expected)}; ${file} is not there)`);
 				continue;
 			}
+			const looked = `looked for ${file}${kitDir === null ? '' : ` and ${join(kitDir, 'bundles', basename(file))}`}`;
 			if (options.mode === 'package') {
 				refuse(
-					`${label}: no archive to provision it from (looked for ${file}${kitDir === null ? '' : ` and ${join(kitDir, 'bundles', basename(file))}`})`,
+					`${label}: ${earlier(previous) ? `${earlierWords}; no archive to unpack it again from` : 'no archive to provision it from'} (${looked})`,
 					'put the archive at the declared path, or give --inputs <dir> whose bundles/ directory holds it'
 				);
+			}
+			if (earlier(previous)) {
+				// The entry stays, so the cache it names is still codkit's to replace or withdraw.
+				next.push(previous);
+				report('missing', file, `${label}: not provisioned (${earlierWords}; ${file} is not there to unpack it again)`);
+				continue;
 			}
 			report('missing', file, `${label}: not provisioned (${file} is not there)`);
 			continue;
@@ -358,7 +371,7 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 					`${label}: ${located.path} hashes to ${short(sha256)}, the record expects ${short(expected)}; codkit bundles update ${name} rewrites the record`
 				);
 			}
-			if (current(previous)) next.push(previous);
+			if (holdsUnit(previous)) next.push(previous);
 			report('mismatch', located.path, `${label}: archive differs from the record (sha256 ${short(sha256)} vs ${short(expected)})`);
 			continue;
 		}
@@ -369,7 +382,8 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 			cachePath: bundle.cachePath,
 			...(bundle.target === null ? {} : { target: bundle.target }),
 			archiveBytes: stat.size,
-			archiveMtimeMs: stat.mtimeMs
+			archiveMtimeMs: stat.mtimeMs,
+			unpacker: EXTRACT_VERSION
 		};
 		if (current(previous)) {
 			next.push(stamp);
@@ -380,7 +394,7 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 			report(
 				'provisioned',
 				located.path,
-				`${label}: to provision into ${bundle.cachePath} from ${located.where === 'kit' ? 'the kit' : located.path}`
+				`${label}: to provision into ${bundle.cachePath} from ${located.where === 'kit' ? 'the kit' : located.path}${earlier(previous) ? ` (again: ${earlierWords})` : ''}`
 			);
 			continue;
 		}
@@ -389,7 +403,7 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 		report(
 			'provisioned',
 			located.path,
-			`${label}: provisioned from ${located.where === 'kit' ? 'the kit' : located.path} into ${bundle.cachePath} (${files} file(s), sha256 ${short(sha256)})`
+			`${label}: provisioned from ${located.where === 'kit' ? 'the kit' : located.path} into ${bundle.cachePath} (${files} file(s), sha256 ${short(sha256)}${earlier(previous) ? `; unpacked again: ${earlierWords}` : ''})`
 		);
 	}
 

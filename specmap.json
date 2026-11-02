@@ -5333,7 +5333,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:862a9cdd6a88520a1808c19184c9c95e55b22978626f5b30c1fbf6e1243c4246",
+      "content_hash": "sha256:47444dc094ae629bb5733248ee5066e2ac00cf872fea682c220c11dd35561f00",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "codkit PROP-006: Apply metadata, locking, inventory",
@@ -5342,7 +5342,7 @@
     },
     {
       "anchor": "apply-metadata",
-      "content_hash": "sha256:235a42bd4147478bb9ee541f1d9517d855f82776ecc961dd640e7030202a68c4",
+      "content_hash": "sha256:c3d14a017318c91bc7e25132281114dd5cb92c03c7ee941b328a057e45206d17",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "1. Apply metadata: the cache + the mark (the truth is the tree itself)",
@@ -5405,10 +5405,10 @@
     },
     {
       "anchor": "BUNDLES-STAMP",
-      "content_hash": "sha256:30b326dbf75b91eaff13288e5ef6849ae7a324bbd0d5c9d26eeb56b45d14fc0d",
+      "content_hash": "sha256:6d1c3743d56a7f97f01a15631f5e7ea8d731b1a9eb5186e943fd3e0cc7062570",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
-      "heading": "**The stamp of the bundles** is the file `codkit/bundles.json` in the per-worktree git directory of the tree, beside the stamp of the inputs: `{\"codkitBundles\": 1, \"bundles\": [{\"name\", \"version\", \"sha256\", \"cachePath\", \"target\"?, \"archiveBytes\", \"archiveMtimeMs\"}]}` - `target` names the target whose archive was unpacked, for a unit built per target, so a run for another target unpacks its own archive over it, the bundles in the order of the declaration, rewritten by every run that provisions bundles (PROP-008 `BUNDLES-LOAD`, PROP-007 `CMD-PACKAGE-BUNDLES`). It says which unit codkit unpacked where and from what: an archive whose size and mtime did not change is not hashed again, a cache whose recorded hash is the entry's is not unpacked again, and a withdrawn or switched-off bundle is removed exactly where codkit wrote it and nowhere else. A stamp that does not read is a warning, and every bundle is provisioned again: it is a record of codkit's own writing, never a source of truth. @status:impl/done",
+      "heading": "**The stamp of the bundles** is the file `codkit/bundles.json` in the per-worktree git directory of the tree, beside the stamp of the inputs: `{\"codkitBundles\": 1, \"bundles\": [{\"name\", \"version\", \"sha256\", \"cachePath\", \"target\"?, \"archiveBytes\", \"archiveMtimeMs\", \"unpacker\"}]}` - `target` names the target whose archive was unpacked, for a unit built per target, so a run for another target unpacks its own archive over it, the bundles in the order of the declaration, rewritten by every run that provisions bundles (PROP-008 `BUNDLES-LOAD`, PROP-007 `CMD-PACKAGE-BUNDLES`). It says which unit codkit unpacked where and from what: an archive whose size and mtime did not change is not hashed again, a cache whose recorded hash is the entry's is not unpacked again, and a withdrawn or switched-off bundle is removed exactly where codkit wrote it and nowhere else. `unpacker` is the version of the unpacking that wrote the cache, 2 since a file the archive marks executable keeps its bit (PROP-008 `BUNDLES-LOAD`); an entry without it, or with another, is not current: its unit is unpacked again from the archive, and without the archive `load` says so and keeps the entry, so the cache stays codkit's to replace or withdraw, and `package` refuses (finding of 2026-11-02 on a Linux host: a cache unpacked before the executable bit was kept stayed `unchanged` under the next codkit, and the package shipped the programs of the unit with the mode 644). A stamp that does not read is a warning, and every bundle is provisioned again: it is a record of codkit's own writing, never a source of truth. @status:impl/done",
       "line": 13,
       "uri": "spec://codkit/modules/codkit/PROP-006#BUNDLES-STAMP"
     },

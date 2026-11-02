@@ -19,7 +19,7 @@ import { serializeOverlay } from '../../src/lib/layers/overlay.ts';
 import type { OverlayVarContext } from '../../src/lib/layers/overlay.ts';
 import { isCkError } from '../../src/lib/messages.ts';
 import { gitDirOf } from '../../src/lib/treeCache.ts';
-import { hashFile } from '../../src/lib/zipArchive.ts';
+import { EXTRACT_VERSION, hashFile } from '../../src/lib/zipArchive.ts';
 import { makeUpstream } from '../fixtures/makeUpstream.ts';
 import { ADDONS_CACHE_DIR, projectType as stub, stubType } from '../fixtures/stubType.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
@@ -310,6 +310,50 @@ describe('load provisions, keeps, warns and withdraws', () => {
 		const { reports, lines } = h.run({ config });
 		expect(reports.map((report) => report.state)).toEqual(['provisioned']);
 		expect(lines.some((line) => line.includes('malformed'))).toBe(true);
+	});
+});
+
+describe('a cache an earlier unpacker wrote', () => {
+	const h = harness('bundles-unpacker');
+	const file = h.archive('acme-pack.zip', { name: NAME, version: '1.0.0' });
+	const sha256 = hashFile(file).sha256;
+	h.record({ name: NAME, version: '1.0.0', sha256 });
+	const config = h.config([{ name: NAME, file }]);
+	const stampPath = join(gitDirOf(h.tree), ...BUNDLES_STAMP_RELATIVE_PATH.split('/'));
+	/** The stamp as the unpacker before the executable bit was kept wrote it: with no version of the unpacking. */
+	const earlierStamp = (): void => {
+		const stamp = JSON.parse(readFileSync(stampPath, 'utf8')) as { bundles: Record<string, unknown>[] };
+		for (const bundle of stamp.bundles) delete bundle['unpacker'];
+		writeFileSync(stampPath, `${JSON.stringify(stamp, null, 2)}\n`, 'utf8');
+	};
+
+	it('is unpacked again from its archive, and the stamp then names the unpacker', () => {
+		expect(h.run({ config }).reports.map((report) => report.state)).toEqual(['provisioned']);
+		expect(readBundleStore(h.tree, () => {})[0]?.unpacker).toBe(EXTRACT_VERSION);
+		earlierStamp();
+		writeFileSync(join(h.cache(), 'marker.txt'), 'written by the earlier unpacker\n', 'utf8');
+		const { reports, lines } = h.run({ config });
+		expect(reports.map((report) => report.state)).toEqual(['provisioned']);
+		expect(lines.some((line) => line.includes(`unpacked again: an earlier codkit wrote the cache in ${ADDONS_CACHE_DIR}/${NAME}`))).toBe(
+			true
+		);
+		expect(existsSync(join(h.cache(), 'marker.txt'))).toBe(false);
+		expect(readBundleStore(h.tree, () => {})[0]?.unpacker).toBe(EXTRACT_VERSION);
+	});
+
+	it('is not kept without its archive: load says why and keeps the entry, package refuses', () => {
+		earlierStamp();
+		rmSync(file, { force: true });
+		const { reports, lines } = h.run({ config });
+		expect(reports.map((report) => report.state)).toEqual(['missing']);
+		expect(
+			lines.some((line) => line.includes('an earlier codkit wrote the cache') && line.includes('is not there to unpack it again'))
+		).toBe(true);
+		expect(readBundleStore(h.tree, () => {})[0]?.unpacker).toBeUndefined();
+		const refused = refusal(() => h.run({ config, mode: 'package', inspect: true }));
+		expect(refused.code).toBe('CONFIG');
+		expect(refused.message).toContain('an earlier codkit wrote the cache');
+		expect(refused.message).toContain('no archive to unpack it again from');
 	});
 });
 

@@ -20,7 +20,7 @@ import { readBundleStore, writeBundleStore } from './bundlesStore.js';
 import { loadOverlays, overlayBaseAtPin, renderOverlayTarget } from './layers/overlay.js';
 import { ckError } from './messages.js';
 import { repoRelativePathProblem } from './pathSafety.js';
-import { extractZip, hashFile } from './zipArchive.js';
+import { EXTRACT_VERSION, extractZip, hashFile } from './zipArchive.js';
 const TEMP_SUFFIX = '.codkit-tmp';
 /** The bundles layer of the type; a patch set that declares bundles under a type without the layer is refused. */
 export function bundleLayerOf(type, config) {
@@ -155,7 +155,13 @@ export function provisionBundles(options) {
         const previous = stored.find((entry) => entry.name === name);
         const sameTarget = (entry) => (entry.target ?? null) === bundle.target;
         const cachePresent = (entry) => entry !== undefined && entry.cachePath === bundle.cachePath && existsSync(cacheAbsolute(treeDir, entry.cachePath));
-        const current = (entry) => cachePresent(entry) && sameTarget(entry) && expected !== undefined && entry.sha256 === expected;
+        const holdsUnit = (entry) => cachePresent(entry) && sameTarget(entry) && expected !== undefined && entry.sha256 === expected;
+        const current = (entry) => holdsUnit(entry) && entry.unpacker === EXTRACT_VERSION;
+        // A cache an earlier unpacker wrote holds the unit with the recorded hash
+        // but without the executable bit of its files (PROP-006 ##BUNDLES-STAMP):
+        // it is unpacked again, and never kept as it is.
+        const earlier = (entry) => holdsUnit(entry) && entry.unpacker !== EXTRACT_VERSION;
+        const earlierWords = `an earlier codkit wrote the cache in ${bundle.cachePath}, and it dropped the executable bit`;
         const report = (state, file, line) => {
             reports.push({
                 name,
@@ -215,8 +221,15 @@ export function provisionBundles(options) {
                 report('unchanged', file, `${label}: unchanged in ${bundle.cachePath} (sha256 ${short(expected)}; ${file} is not there)`);
                 continue;
             }
+            const looked = `looked for ${file}${kitDir === null ? '' : ` and ${join(kitDir, 'bundles', basename(file))}`}`;
             if (options.mode === 'package') {
-                refuse(`${label}: no archive to provision it from (looked for ${file}${kitDir === null ? '' : ` and ${join(kitDir, 'bundles', basename(file))}`})`, 'put the archive at the declared path, or give --inputs <dir> whose bundles/ directory holds it');
+                refuse(`${label}: ${earlier(previous) ? `${earlierWords}; no archive to unpack it again from` : 'no archive to provision it from'} (${looked})`, 'put the archive at the declared path, or give --inputs <dir> whose bundles/ directory holds it');
+            }
+            if (earlier(previous)) {
+                // The entry stays, so the cache it names is still codkit's to replace or withdraw.
+                next.push(previous);
+                report('missing', file, `${label}: not provisioned (${earlierWords}; ${file} is not there to unpack it again)`);
+                continue;
             }
             report('missing', file, `${label}: not provisioned (${file} is not there)`);
             continue;
@@ -231,7 +244,7 @@ export function provisionBundles(options) {
             if (!inspect) {
                 out.warn(`${label}: ${located.path} hashes to ${short(sha256)}, the record expects ${short(expected)}; codkit bundles update ${name} rewrites the record`);
             }
-            if (current(previous))
+            if (holdsUnit(previous))
                 next.push(previous);
             report('mismatch', located.path, `${label}: archive differs from the record (sha256 ${short(sha256)} vs ${short(expected)})`);
             continue;
@@ -243,7 +256,8 @@ export function provisionBundles(options) {
             cachePath: bundle.cachePath,
             ...(bundle.target === null ? {} : { target: bundle.target }),
             archiveBytes: stat.size,
-            archiveMtimeMs: stat.mtimeMs
+            archiveMtimeMs: stat.mtimeMs,
+            unpacker: EXTRACT_VERSION
         };
         if (current(previous)) {
             next.push(stamp);
@@ -251,12 +265,12 @@ export function provisionBundles(options) {
             continue;
         }
         if (inspect) {
-            report('provisioned', located.path, `${label}: to provision into ${bundle.cachePath} from ${located.where === 'kit' ? 'the kit' : located.path}`);
+            report('provisioned', located.path, `${label}: to provision into ${bundle.cachePath} from ${located.where === 'kit' ? 'the kit' : located.path}${earlier(previous) ? ` (again: ${earlierWords})` : ''}`);
             continue;
         }
         const files = unpackInto(treeDir, layer, located.path, bundle.cachePath, sha256);
         next.push(stamp);
-        report('provisioned', located.path, `${label}: provisioned from ${located.where === 'kit' ? 'the kit' : located.path} into ${bundle.cachePath} (${files} file(s), sha256 ${short(sha256)})`);
+        report('provisioned', located.path, `${label}: provisioned from ${located.where === 'kit' ? 'the kit' : located.path} into ${bundle.cachePath} (${files} file(s), sha256 ${short(sha256)}${earlier(previous) ? `; unpacked again: ${earlierWords}` : ''})`);
     }
     for (const entry of stored) {
         if (declared.some((bundle) => bundle.config.name === entry.name))

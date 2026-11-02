@@ -26,7 +26,9 @@ export const storedBundleSchema = z.strictObject({
 	/** The target whose archive was unpacked, for a unit built per target; absent or null for one archive. */
 	target: z.string().min(1).nullable().optional(),
 	archiveBytes: z.number().int().nonnegative(),
-	archiveMtimeMs: z.number()
+	archiveMtimeMs: z.number(),
+	/** The version of the unpacking that wrote the cache; absent in a stamp of the unpacker that dropped the executable bit. */
+	unpacker: z.number().int().positive().optional()
 });
 
 const storeSchema = z.strictObject({ codkitBundles: z.literal(STAMP_SCHEMA_VERSION), bundles: z.array(storedBundleSchema) });
