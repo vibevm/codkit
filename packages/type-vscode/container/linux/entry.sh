@@ -11,8 +11,9 @@
 #                   target's build commands with their environment),
 #                   outputs.json (the target's output patterns), executables and
 #                   symlinks (git's record of the tree, NUL-separated),
-#                   tree-inputs.json (the provisioned caches of the tree), out/
-#                   for the artifacts, and shim/ when codkit answers fetches;
+#                   tree-inputs.json (the provisioned caches of the tree, the
+#                   kit's and the bundles'), out/ for the artifacts, and shim/
+#                   when codkit answers fetches;
 #   /codkit/inputs  the pre-provisioned inputs, read-only, when there are any;
 #   CODKIT_OFFLINE  1 for an offline run.
 #
@@ -29,8 +30,9 @@
 #      dependencies), unless the key upstream computes for its node_modules
 #      cache says that this state is installed already; an offline run installs
 #      nothing and stops here when the key differs;
-#   3. puts each provisioned tree input in place of its cache in the copy, then
-#      runs the target's build commands there, in order;
+#   3. puts each provisioned cache of tree-inputs.json - the kit's tree inputs,
+#      then the bundles codkit provisioned into the tree - in place of its cache
+#      in the copy, then runs the target's build commands there, in order;
 #   4. copies every file the output patterns match into /codkit/io/out;
 #   5. hands what it wrote into /codkit/io to the owner of that directory,
 #      whatever the verdict: the container runs as root, and on a Linux host
@@ -136,13 +138,18 @@ else
 	printf '%s' "$KEY" >"$WORK/installed.key"
 fi
 
-# 3. The provisioned caches of the tree replace the copy's own, then the
-#    target's build commands run, each with its own environment.
+# 3. The provisioned caches of the tree replace the copy's own, in the order of
+#    tree-inputs.json - the kit's tree inputs from /codkit/inputs, then the
+#    bundles codkit provisioned into the tree, from the read-only tree, which
+#    the mirror left out with /.build/ -, then the target's build commands run,
+#    each with its own environment.
 if [ -s "$IO/tree-inputs.json" ]; then
 	node -e '
 		const fs = require("node:fs");
+		const path = require("node:path");
 		for (const input of JSON.parse(fs.readFileSync(process.argv[1], "utf8"))) {
 			fs.rmSync(input.target, { recursive: true, force: true });
+			fs.mkdirSync(path.dirname(input.target), { recursive: true });
 			fs.cpSync(input.source, input.target, { recursive: true });
 			console.log(`codkit-container: ${input.target} taken from ${input.source}`);
 		}

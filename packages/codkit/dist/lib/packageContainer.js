@@ -233,14 +233,22 @@ export function writeContainerIo(ioDir, io) {
         writeFileSync(join(ioDir, 'shim', 'curl'), io.shim, { encoding: 'utf8', mode: 0o755 });
     }
 }
-/** The tree inputs of a run as the entry places them into its copy. */
-export function containerTreeInputs(checked) {
-    return checked
+/**
+ * The tree inputs of a run as the entry places them into its copy, in order:
+ * the kit's inputs of the kind `tree`, then each cache of the tree a bundle of
+ * the run was provisioned into (##CMD-PACKAGE-BUNDLES), taken from the
+ * read-only view of the tree. The mirror of the entry leaves the build's caches
+ * of the host out, so a bundle reaches the copy this way alone, and it goes in
+ * after the kit's copy of a cache it sits in, which would replace it.
+ */
+export function containerTreeInputs(checked, bundleCaches) {
+    const inputs = checked
         .filter((entry) => entry.state === 'provisioned' && entry.input.use.kind === 'tree')
         .map((entry) => ({
         source: `${CONTAINER_INPUTS}/${entry.input.path}`,
         target: entry.input.use.kind === 'tree' ? entry.input.use.target : ''
     }));
+    return [...inputs, ...bundleCaches.map((cachePath) => ({ source: `${CONTAINER_TREE}/${cachePath}`, target: cachePath }))];
 }
 /** The fetch answer of a run inside the container, or null when the run needs none. */
 export function containerShim(checked, offline) {

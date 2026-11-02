@@ -37,7 +37,7 @@
         },
         {
           "path": "container/linux/entry.sh",
-          "sha256": "53575b9b3acde6d726406f9d7ed9bd7600939bebe7bd97198b321d72a6b2c2ac"
+          "sha256": "49ca6a59469d57d7d39adb1edeaa9fb3ed880a7eb224ea366577cb4adc44c0a4"
         },
         {
           "path": "dist/advisory.js",

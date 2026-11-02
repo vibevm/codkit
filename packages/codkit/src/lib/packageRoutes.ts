@@ -196,6 +196,7 @@ export function runRoutedTargets(
 	stamps: Readonly<Record<string, string>>,
 	nativeEnvironment: () => Readonly<Record<string, string>>,
 	checked: readonly CheckedInput[],
+	bundleCaches: readonly string[],
 	into: string[]
 ): CommandsOutcome {
 	const details: string[] = [];
@@ -203,7 +204,7 @@ export function runRoutedTargets(
 		const outcome =
 			entry.container === null
 				? runCommands(options, entry.target.build, nativeEnvironment(), into)
-				: runContainerTarget(options, entry.target, entry.container, stamps, checked, into);
+				: runContainerTarget(options, entry.target, entry.container, stamps, checked, bundleCaches, into);
 		if (outcome.error !== null) {
 			return outcome;
 		}
@@ -223,6 +224,7 @@ function runContainerTarget(
 	container: { readonly names: ContainerNames; readonly args: readonly TreeArgument[] },
 	stamps: Readonly<Record<string, string>>,
 	checked: readonly CheckedInput[],
+	bundleCaches: readonly string[],
 	into: string[]
 ): CommandsOutcome {
 	const recipe = target.container;
@@ -262,7 +264,7 @@ function runContainerTarget(
 			commands: containerCommands(target.build, { ...stamps, ...containerInputEnvironment(checked) }),
 			outputs: target.outputs ?? [],
 			modes: treeModes(tree),
-			treeInputs: containerTreeInputs(checked),
+			treeInputs: containerTreeInputs(checked, bundleCaches),
 			shim: containerShim(checked, offline)
 		});
 		const runEnvironment = passedEnvironment(recipe.runEnvironment, env);

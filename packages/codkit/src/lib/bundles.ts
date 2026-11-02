@@ -413,6 +413,11 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 	return reports;
 }
 
+/** The caches a run holds a unit in once it provisioned the bundles: the ones it unpacked and the ones it kept. */
+export function bundleCaches(reports: readonly BundleReport[]): readonly string[] {
+	return reports.filter((report) => report.state === 'provisioned' || report.state === 'unchanged').map((report) => report.cachePath);
+}
+
 /** The report of `status`: what `load` would do, without doing it. */
 export function inspectBundles(options: Omit<ProvisionOptions, 'inspect' | 'mode'>): readonly BundleReport[] {
 	return provisionBundles({ ...options, mode: 'load', inspect: true });

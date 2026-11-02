@@ -37,7 +37,7 @@ import { pinKey } from './pinIdentity.ts';
 
 import { packageTargetsFor, routedTarget, containerPreflight, runRoutedTargets } from './packageRoutes.ts';
 import { runCommands } from './packageRuntime.ts';
-import { provisionBundles } from './bundles.ts';
+import { bundleCaches, provisionBundles } from './bundles.ts';
 import type { BundleReport } from './bundles.ts';
 
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -399,7 +399,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 			const outcome =
 				routed.length === 0
 					? runCommands(options, packageBuild, stampValues, commands)
-					: runRoutedTargets(options, routed, stampValues, nativeEnvironment, checked, commands);
+					: runRoutedTargets(options, routed, stampValues, nativeEnvironment, checked, bundleCaches(bundles), commands);
 			record('package build', outcome.state, outcome.detail);
 			if (outcome.error !== null) {
 				out.addError(outcome.error);

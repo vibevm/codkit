@@ -36,7 +36,7 @@ import { pinKey } from './pinIdentity.js';
 // is refused while nothing has happened yet (packageInputs.ts).
 import { packageTargetsFor, routedTarget, containerPreflight, runRoutedTargets } from './packageRoutes.js';
 import { runCommands } from './packageRuntime.js';
-import { provisionBundles } from './bundles.js';
+import { bundleCaches, provisionBundles } from './bundles.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -252,7 +252,7 @@ export function runPackage(options) {
             };
             const outcome = routed.length === 0
                 ? runCommands(options, packageBuild, stampValues, commands)
-                : runRoutedTargets(options, routed, stampValues, nativeEnvironment, checked, commands);
+                : runRoutedTargets(options, routed, stampValues, nativeEnvironment, checked, bundleCaches(bundles), commands);
             record('package build', outcome.state, outcome.detail);
             if (outcome.error !== null) {
                 out.addError(outcome.error);

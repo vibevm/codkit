@@ -314,6 +314,16 @@ describe('the container recipe', () => {
 		);
 	});
 
+	it('takes each cache of tree-inputs.json into the copy in its order, its parent made where the copy has none', () => {
+		const removed = entry.indexOf('fs.rmSync(input.target, { recursive: true, force: true });');
+		const parent = entry.indexOf('fs.mkdirSync(path.dirname(input.target), { recursive: true });');
+		const copied = entry.indexOf('fs.cpSync(input.source, input.target, { recursive: true });');
+		expect(removed).toBeGreaterThan(0);
+		expect(parent).toBeGreaterThan(removed);
+		expect(copied).toBeGreaterThan(parent);
+		expect(entry.indexOf('"$IO/tree-inputs.json"')).toBeLessThan(entry.indexOf('"$IO/commands.json"'));
+	});
+
 	it('mirrors the tree without the dependencies and the build outputs of the host', () => {
 		for (const excluded of ["--exclude='node_modules/'", "--exclude='/.build/'", "--exclude='/out*/'", "--exclude='/.git'"]) {
 			expect(entry).toContain(excluded);

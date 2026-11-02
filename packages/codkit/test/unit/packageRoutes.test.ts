@@ -11,10 +11,13 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
+import { strToU8, zipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { PackageInput, PackageTarget, ProjectType } from '@codkit/type-api';
+import { BUNDLES_STAMP_RELATIVE_PATH } from '../../src/lib/bundlesStore.ts';
 import { runGit } from '../../src/lib/gitx.ts';
 import { Output } from '../../src/lib/jsonOut.ts';
+import { serializeOverlay } from '../../src/lib/layers/overlay.ts';
 import {
 	containerNames,
 	mountArg,
@@ -26,6 +29,8 @@ import {
 import { packageTargetsFor, routeOf, runPackage } from '../../src/lib/packageEngine.ts';
 import type { PackageCommand, PackageCommandResult, PackageOptions } from '../../src/lib/packageEngine.ts';
 import { checkInputs, fetchAnswerScript, nativeInputEnvironment, OFFLINE_PROXY } from '../../src/lib/packageInputs.ts';
+import { gitDirOf } from '../../src/lib/treeCache.ts';
+import { hashFile } from '../../src/lib/zipArchive.ts';
 import { stubType } from '../fixtures/stubType.ts';
 import { makeSyncFixture } from '../support/syncFixture.ts';
 import type { SyncFixture } from '../support/syncFixture.ts';
@@ -580,6 +585,67 @@ describe('the container route', () => {
 		expect(result.outputs).toEqual(['.build/out/app-2.pkg']);
 		expect(existsSync(mountSource(runArgs, '/codkit/io'))).toBe(false);
 		expect(readFileSync(join(fixture.treeDir, 'manifest.json'), 'utf8')).toBe(atPin(fixture));
+	});
+
+	it('hands the container every bundle the run provisioned, from the read-only tree and after the inputs of the kit', () => {
+		// The mirror of the entry leaves the caches of the host build out, so a
+		// bundle provisioned into the tree reaches the copy only as a tree input;
+		// it comes after the kit's copy of the cache it sits in, which would
+		// replace it (finding of 2026-11-02 on a Linux host).
+		const fixture = loadedFixture();
+		const archive = join(makeTempRoot('package-container-bundle'), 'acme-pack.zip');
+		writeFileSync(
+			archive,
+			zipSync({
+				'addon/addon.json': strToU8('{ "name": "acme.pack", "version": "1.0.0" }\n'),
+				'addon/main.js': strToU8('module.exports = 1;\n')
+			})
+		);
+		const record = join(fixture.patchesDir, 'delta', 'overlays', 'manifest.json.bundle-acme.pack.overlay.json');
+		writeFileSync(
+			record,
+			serializeOverlay({
+				codkitOverlay: 2,
+				id: 'CK-product-903',
+				target: 'manifest.json',
+				type: 'extend',
+				category: 'own',
+				owner: 'product',
+				reason: 'fixture: the product bundles one add-on',
+				link: 'none',
+				cause: 'none',
+				pin: `${fixture.config.pin.tag}@${fixture.config.pin.sha}`,
+				contractTests: ['CK-product-903'],
+				operations: [
+					{ op: 'append', path: ['builtInAddons'], value: { name: 'acme.pack', version: '1.0.0', sha256: hashFile(archive).sha256 } }
+				]
+			}),
+			'utf8'
+		);
+		try {
+			const docker = fakeDocker({ imagePresent: true });
+			const result = runPackage({
+				...packageOptions(fixture, catalogType(), {
+					config: { ...fixture.config, bundles: [{ name: 'acme.pack', file: archive.split('\\').join('/') }] },
+					runCommand: docker.run,
+					host: 'linux',
+					targetSelector: 'linux-x64-pkg',
+					container: true,
+					inputsDir: inputsDirWith('package-container-bundle-inputs', ['addons']),
+					containerPrefix: 'ck-test'
+				})
+			});
+			expect(result.exitCode).toBe(0);
+			expect(result.bundles.map((bundle) => `${bundle.name} ${bundle.state}`)).toEqual(['acme.pack provisioned']);
+			expect(JSON.parse(docker.handed[0]?.['tree-inputs.json'] ?? '[]')).toEqual([
+				{ source: '/codkit/inputs/addons', target: '.build/addons' },
+				{ source: '/codkit/tree/.build/addons/acme.pack', target: '.build/addons/acme.pack' }
+			]);
+			expect(readFileSync(join(fixture.treeDir, '.build', 'addons', 'acme.pack', 'main.js'), 'utf8')).toBe('module.exports = 1;\n');
+		} finally {
+			rmSync(record, { force: true });
+			rmSync(join(gitDirOf(fixture.treeDir), ...BUNDLES_STAMP_RELATIVE_PATH.split('/')), { force: true });
+		}
 	});
 
 	it('runs on a Linux host too when the run asks for the container route', () => {

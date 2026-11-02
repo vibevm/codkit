@@ -281,6 +281,10 @@ export function provisionBundles(options) {
         writeBundleStore(treeDir, next);
     return reports;
 }
+/** The caches a run holds a unit in once it provisioned the bundles: the ones it unpacked and the ones it kept. */
+export function bundleCaches(reports) {
+    return reports.filter((report) => report.state === 'provisioned' || report.state === 'unchanged').map((report) => report.cachePath);
+}
 /** The report of `status`: what `load` would do, without doing it. */
 export function inspectBundles(options) {
     return provisionBundles({ ...options, mode: 'load', inspect: true });

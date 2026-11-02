@@ -113,12 +113,12 @@ export function containerPreflight(options, routed, offline) {
     return null;
 }
 /** The build commands of every selected target, each on its route, stopping at the first that fails. */
-export function runRoutedTargets(options, routed, stamps, nativeEnvironment, checked, into) {
+export function runRoutedTargets(options, routed, stamps, nativeEnvironment, checked, bundleCaches, into) {
     const details = [];
     for (const entry of routed) {
         const outcome = entry.container === null
             ? runCommands(options, entry.target.build, nativeEnvironment(), into)
-            : runContainerTarget(options, entry.target, entry.container, stamps, checked, into);
+            : runContainerTarget(options, entry.target, entry.container, stamps, checked, bundleCaches, into);
         if (outcome.error !== null) {
             return outcome;
         }
@@ -131,7 +131,7 @@ export function runRoutedTargets(options, routed, stamps, nativeEnvironment, che
  * is not there, the volume, the files of the protocol, the run, and the
  * artifacts back into the tree. The run's directory goes whatever the verdict.
  */
-function runContainerTarget(options, target, container, stamps, checked, into) {
+function runContainerTarget(options, target, container, stamps, checked, bundleCaches, into) {
     const recipe = target.container;
     if (recipe === undefined) {
         throw new Error(`package target ${target.id} has no container`);
@@ -167,7 +167,7 @@ function runContainerTarget(options, target, container, stamps, checked, into) {
             commands: containerCommands(target.build, { ...stamps, ...containerInputEnvironment(checked) }),
             outputs: target.outputs ?? [],
             modes: treeModes(tree),
-            treeInputs: containerTreeInputs(checked),
+            treeInputs: containerTreeInputs(checked, bundleCaches),
             shim: containerShim(checked, offline)
         });
         const runEnvironment = passedEnvironment(recipe.runEnvironment, env);
