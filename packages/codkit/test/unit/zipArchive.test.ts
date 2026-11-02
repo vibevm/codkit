@@ -7,7 +7,7 @@
 // written byte by byte.
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { crc32 } from 'node:zlib';
 import { deflateSync, strToU8, zipSync } from 'fflate';
@@ -213,6 +213,23 @@ describe('reading an archive', () => {
 		expect(readFileSync(join(destination, 'package.json'), 'utf8')).toBe('{ "name": "acme.pack" }\n');
 		const read = readZipEntry(file, 'addon/package.json');
 		expect(read === null ? null : Buffer.from(read).toString('utf8')).toBe('{ "name": "acme.pack" }\n');
+	});
+
+	it.skipIf(process.platform === 'win32')('keeps an executable executable, and writes every other file without the bit', () => {
+		const file = join(dir, 'modes.zip');
+		writeFileSync(
+			file,
+			handZip([
+				{ name: 'addon/bin/tool', data: strToU8('#!/bin/sh\n'), unixMode: 0o100755 },
+				{ name: 'addon/lib.js', data: strToU8('exports.x = 1;\n'), unixMode: 0o100664 },
+				{ name: 'addon/plain.txt', data: strToU8('plain\n') }
+			])
+		);
+		const destination = join(dir, 'modes-unpacked');
+		expect(extractZip(file, { root: 'addon/', destination }).files).toBe(3);
+		expect(statSync(join(destination, 'bin', 'tool')).mode & 0o111).not.toBe(0);
+		expect(statSync(join(destination, 'lib.js')).mode & 0o111).toBe(0);
+		expect(statSync(join(destination, 'plain.txt')).mode & 0o111).toBe(0);
 	});
 
 	it('reads the sizes and offsets of an archive in the ZIP64 form', () => {

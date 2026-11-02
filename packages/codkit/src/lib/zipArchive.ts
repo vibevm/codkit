@@ -326,8 +326,10 @@ export type ExtractedZip = {
 
 /**
  * Unpack the regular files under `root` of the archive into `destination`, each
- * at its path without the root. The destination is created; what is already
- * there is overwritten file by file.
+ * at its path without the root, with the mode 755 when the archive marks it
+ * executable and 644 otherwise: the build of a distribution packs the files
+ * with the modes it finds, and an executable of a unit must stay one. The
+ * destination is created; what is already there is overwritten file by file.
  */
 export function extractZip(archivePath: string, options: { readonly root: string; readonly destination: string }): ExtractedZip {
 	const root = options.root;
@@ -348,7 +350,7 @@ export function extractZip(archivePath: string, options: { readonly root: string
 		for (const { entry, relative } of wanted) {
 			const target = join(options.destination, ...relative.split('/'));
 			mkdirSync(dirname(target), { recursive: true });
-			const out = openSync(target, 'w', 0o644);
+			const out = openSync(target, 'w', (entry.unixMode & 0o111) === 0 ? 0o644 : 0o755);
 			try {
 				readEntry(archive, entry, (chunk) => {
 					writeAll(out, chunk);
