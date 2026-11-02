@@ -249,6 +249,15 @@ describe('the container recipe', () => {
 		expect(dockerfile).toContain('ENTRYPOINT ["bash", "/codkit/recipe/entry.sh"]');
 	});
 
+	it('removes a sysroot whose download broke off, and installs the dependencies again, before the key is read', () => {
+		expect(entry).toContain('for SYSROOT in .build/sysroots/*/; do');
+		expect(entry).toContain('if [ ! -f "$SYSROOT.stamp" ]; then');
+		expect(entry).toContain('rm -f "$WORK/installed.key"');
+		expect(entry.indexOf('$SYSROOT.stamp')).toBeLessThan(
+			entry.indexOf('KEY="$(node build/azure-pipelines/common/computeNodeModulesCacheKey.ts')
+		);
+	});
+
 	it('hands what the entry wrote for the host back to the owner of the run directory, on every exit', () => {
 		expect(entry).toContain(`trap 'chown -R --reference="$IO" "$IO/out" 2>/dev/null || true' EXIT`);
 		expect(entry.indexOf('trap ')).toBeLessThan(entry.indexOf('# 1. The mirror.'));

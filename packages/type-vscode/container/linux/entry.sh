@@ -94,6 +94,19 @@ cd "$COPY"
 # 2. The Linux dependencies, keyed the way upstream keys its node_modules cache.
 export npm_config_arch=x64
 export VSCODE_ARCH=x64
+# A sysroot whose download broke off: install-sysroot.ts creates its directory
+# before the download and writes .stamp last, and setup-env.sh takes any
+# directory for a cached sysroot, so such a directory of the volume would serve
+# every later build empty. It is removed, and the dependencies are installed
+# again, which downloads it.
+for SYSROOT in .build/sysroots/*/; do
+	[ -d "$SYSROOT" ] || continue
+	if [ ! -f "$SYSROOT.stamp" ]; then
+		say "sysroot ${SYSROOT%/} has no .stamp: its download broke off; removed, to be installed again"
+		rm -rf "$SYSROOT"
+		rm -f "$WORK/installed.key"
+	fi
+done
 KEY="$(node build/azure-pipelines/common/computeNodeModulesCacheKey.ts linux "$VSCODE_ARCH" "$(node -p process.arch)")"
 if [ "$(cat "$WORK/installed.key" 2>/dev/null || true)" = "$KEY" ]; then
 	say "Linux dependencies: installed for this state ($KEY)"
