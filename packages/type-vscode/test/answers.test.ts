@@ -178,6 +178,29 @@ describe('build and test', () => {
 		expect(bare.packageOutputs).toEqual([]);
 	});
 
+	it('runs a scoped command for its platforms and expects a scoped output only from their targets', () => {
+		const scoped = makeBuild({
+			ownRoot: 'src/vs/patchset',
+			packageTargets: ['windows-x64-archive'],
+			packaging: {
+				commands: [{ label: 'msi', command: 'python', args: ['msi.py'], platforms: ['windows'] }],
+				outputs: [{ path: '.build/win32-x64/msi/*.msi', platforms: ['windows'] }, '.build/notes/']
+			}
+		});
+		expect(scoped.packageDistributable).toEqual([{ label: 'msi', command: 'python', args: ['msi.py'], platforms: ['windows'] }]);
+		expect(scoped.packageOutputs).toEqual(['.build/notes/']);
+		for (const target of scoped.packageTargets ?? []) {
+			const carries = (target.outputs ?? []).includes('.build/win32-x64/msi/*.msi');
+			expect(carries, target.id).toBe(target.platform === 'windows');
+		}
+		// A configuration without a scoped output keeps the catalog as it is.
+		const plain = makeBuild({
+			ownRoot: 'src/vs/patchset',
+			packaging: { commands: [{ command: 'make', args: [] }], outputs: ['.build/kit/'] }
+		});
+		expect(plain.packageTargets).toBe(build.packageTargets);
+	});
+
 	it('discovers the newest Windows SDK signing tool before a Windows package spawn', () => {
 		const root = mkdtempSync(join(tmpdir(), 'codkit-windows-sdk-'));
 		const older = join(root, 'Windows Kits', '10', 'bin', '10.0.1', 'x64');

@@ -75,4 +75,33 @@ describe('the packaging step of the product (##VSCODE-PRODUCT-PACKAGING)', () =>
 		);
 		expect(configSchema.safeParse({ ownRoot: own, packaging: { commands: 'make kit' } }).success).toBe(false);
 	});
+
+	it('scopes a command and an output to the platforms whose targets it serves', () => {
+		expect(
+			configSchema.safeParse({
+				ownRoot: own,
+				packaging: {
+					commands: [{ label: 'msi', command: 'python', args: ['msi.py'], platforms: ['windows'] }],
+					outputs: [{ path: '.build/win32-x64/msi/*.msi', platforms: ['windows'] }, '.build/notes/']
+				}
+			}).success
+		).toBe(true);
+		for (const platforms of [[], ['windows', 'windows'], ['solaris']]) {
+			expect(configSchema.safeParse({ ownRoot: own, packaging: { commands: [{ command: 'make', args: [], platforms }] } }).success).toBe(
+				false
+			);
+			expect(
+				configSchema.safeParse({
+					ownRoot: own,
+					packaging: { commands: [{ command: 'make', args: [] }], outputs: [{ path: '.build/kit/', platforms }] }
+				}).success
+			).toBe(false);
+		}
+		expect(
+			configSchema.safeParse({
+				ownRoot: own,
+				packaging: { commands: [{ command: 'make', args: [] }], outputs: [{ path: '../kit/', platforms: ['linux'] }] }
+			}).success
+		).toBe(false);
+	});
 });

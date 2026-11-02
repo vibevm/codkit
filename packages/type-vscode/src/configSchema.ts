@@ -38,12 +38,21 @@ export const PACKAGE_TARGET_IDS = [
 export type VscodeQuality = (typeof QUALITY_CHANNELS)[number];
 export type VscodePackageTargetId = (typeof PACKAGE_TARGET_IDS)[number];
 
+/** The platforms a package target of this family builds for. */
+export const PACKAGE_PLATFORMS = ['windows', 'linux', 'macos'] as const;
+export type VscodePackagePlatform = (typeof PACKAGE_PLATFORMS)[number];
+
 /** One command of the product's packaging step: an argv, no shell (##VSCODE-PRODUCT-PACKAGING). */
 export type VscodePackagingCommand = {
 	readonly label?: string | undefined;
 	readonly command: string;
 	readonly args: readonly string[];
+	/** The platforms whose targets it serves; absent, every one. */
+	readonly platforms?: readonly VscodePackagePlatform[] | undefined;
 };
+
+/** An output of the product's step that only the targets of some platforms make. */
+export type VscodePackagingOutput = { readonly path: string; readonly platforms: readonly VscodePackagePlatform[] };
 
 /**
  * ##VSCODE-PRODUCT-PACKAGING: the product's own step after the upstream tasks,
@@ -51,7 +60,7 @@ export type VscodePackagingCommand = {
  */
 export type VscodePackaging = {
 	readonly commands: readonly VscodePackagingCommand[];
-	readonly outputs?: readonly string[] | undefined;
+	readonly outputs?: readonly (string | VscodePackagingOutput)[] | undefined;
 };
 
 export type VscodeTypeConfig = {
@@ -79,22 +88,26 @@ export function packagingOutputProblem(value: string): string | null {
 
 const withoutNul = z.string().refine((value) => !value.includes('\u0000'), { message: 'must not contain NUL' });
 
+const platformsSchema = z
+	.array(z.enum(PACKAGE_PLATFORMS))
+	.min(1)
+	.refine((values) => new Set(values).size === values.length, { message: 'platforms must be unique' });
+
 const packagingCommandSchema = z.strictObject({
 	label: z.string().min(1).optional(),
 	command: withoutNul.refine((value) => value !== '', { message: 'must name a program' }),
-	args: z.array(withoutNul)
+	args: z.array(withoutNul),
+	platforms: platformsSchema.optional()
+});
+
+const outputPattern = z.string().superRefine((value, context) => {
+	const problem = packagingOutputProblem(value);
+	if (problem !== null) context.addIssue({ code: 'custom', message: problem });
 });
 
 const packagingSchema = z.strictObject({
 	commands: z.array(packagingCommandSchema).min(1),
-	outputs: z
-		.array(
-			z.string().superRefine((value, context) => {
-				const problem = packagingOutputProblem(value);
-				if (problem !== null) context.addIssue({ code: 'custom', message: problem });
-			})
-		)
-		.optional()
+	outputs: z.array(z.union([outputPattern, z.strictObject({ path: outputPattern, platforms: platformsSchema })])).optional()
 });
 
 export const configSchema = z

@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
 import { Output } from '../../src/lib/jsonOut.ts';
-import { packageStamps, packageStepPlan, packageTargetsFor, runPackage } from '../../src/lib/packageEngine.ts';
+import { packageStamps, packageStepPlan, packageTargetsFor, runPackage, runPlatforms } from '../../src/lib/packageEngine.ts';
 import { packageOutputPaths, packageScratchPaths } from '../../src/lib/packagePaths.ts';
 import type { PackageCommand } from '../../src/lib/packageEngine.ts';
 import { stubType } from '../fixtures/stubType.ts';
@@ -269,6 +269,78 @@ describe('a packager that fails', () => {
 		expect(result.restored).toEqual(['manifest.json']);
 		expect(readFileSync(target, 'utf8')).toBe(atPin);
 		expect(existsSync(join(fixture.treeDir, 'manifest.overrides.json'))).toBe(true);
+	});
+});
+
+describe('the product step and the platforms it serves', () => {
+	it('builds for the platforms of the selected targets, or of the host without a catalog', () => {
+		const windows = { id: 'windows-x64', platform: 'windows', arch: 'x64', supportedHosts: ['win32'], build: [] } as const;
+		const linux = { id: 'linux-x64', platform: 'linux', arch: 'x64', supportedHosts: ['linux'], build: [] } as const;
+		expect([...runPlatforms([windows, linux], 'darwin')].sort()).toEqual(['linux', 'windows']);
+		expect([...runPlatforms([], 'win32')]).toEqual(['windows']);
+		expect([...runPlatforms([], 'darwin')]).toEqual(['macos']);
+		expect([...runPlatforms([], 'linux')]).toEqual(['linux']);
+	});
+
+	it('runs a command for its platforms only, says what it skipped, and hands the step the targets', () => {
+		const fixture = makeSyncFixture('package-platforms');
+		expect(fixture.sync().exitCode).toBe(0);
+		const type = stubType({
+			build: {
+				...BOTH_HALVES.build,
+				packageDistributable: [
+					{ label: 'every platform', command: 'npm', args: ['run', 'package-distributable'] },
+					{ label: 'linux only', command: 'npm', args: ['run', 'linux-installer'], platforms: ['linux'] }
+				]
+			}
+		});
+		const seen: PackageCommand[] = [];
+		const lines: string[] = [];
+		const out = new Output({
+			command: 'package',
+			version: '0.0.0',
+			jsonMode: false,
+			streams: { writeOut: (text: string) => void lines.push(text), writeErr: (text: string) => void lines.push(text) }
+		});
+		const result = runPackage({
+			patchesDir: fixture.patchesDir,
+			resolution: fixture.resolution,
+			config: fixture.config,
+			type,
+			out,
+			flags: { keepOverlay: false, skipTypeBuild: false },
+			timeoutMs: null,
+			env: {},
+			host: 'win32',
+			runCommand: (command) => {
+				seen.push(command);
+				return { status: 0, stdout: '', stderr: '' };
+			}
+		});
+		expect(seen.map((command) => command.label)).toEqual(['package', 'every platform']);
+		expect(seen[1]?.env['CODKIT_PACKAGE_TARGETS']).toBe('');
+		expect(lines.join('')).toContain('--- linux only: skipped - it serves linux, and this run builds for windows');
+		expect(result.steps.find((step) => step.name === 'package distributable')?.state).toBe('ok');
+
+		const none = stubType({
+			build: {
+				...BOTH_HALVES.build,
+				packageDistributable: [{ label: 'linux only', command: 'npm', args: ['run', 'linux-installer'], platforms: ['linux'] }]
+			}
+		});
+		const skipped = runPackage({
+			patchesDir: fixture.patchesDir,
+			resolution: fixture.resolution,
+			config: fixture.config,
+			type: none,
+			out: silentOutput(),
+			flags: { keepOverlay: false, skipTypeBuild: false },
+			timeoutMs: null,
+			env: {},
+			host: 'win32',
+			runCommand: () => ({ status: 0, stdout: '', stderr: '' })
+		});
+		expect(skipped.steps.find((step) => step.name === 'package distributable')).toMatchObject({ state: 'skipped' });
 	});
 });
 

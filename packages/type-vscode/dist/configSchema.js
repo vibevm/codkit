@@ -32,6 +32,8 @@ export const PACKAGE_TARGET_IDS = [
     'windows-x64-setup-user',
     'server-linux-x64-tar'
 ];
+/** The platforms a package target of this family builds for. */
+export const PACKAGE_PLATFORMS = ['windows', 'linux', 'macos'];
 /** A tree-relative output pattern: forward slashes, no leading slash, no empty, dot or dot-dot segment. */
 export function packagingOutputProblem(value) {
     if (value.includes('\\'))
@@ -45,20 +47,24 @@ export function packagingOutputProblem(value) {
     return null;
 }
 const withoutNul = z.string().refine((value) => !value.includes('\u0000'), { message: 'must not contain NUL' });
+const platformsSchema = z
+    .array(z.enum(PACKAGE_PLATFORMS))
+    .min(1)
+    .refine((values) => new Set(values).size === values.length, { message: 'platforms must be unique' });
 const packagingCommandSchema = z.strictObject({
     label: z.string().min(1).optional(),
     command: withoutNul.refine((value) => value !== '', { message: 'must name a program' }),
-    args: z.array(withoutNul)
+    args: z.array(withoutNul),
+    platforms: platformsSchema.optional()
+});
+const outputPattern = z.string().superRefine((value, context) => {
+    const problem = packagingOutputProblem(value);
+    if (problem !== null)
+        context.addIssue({ code: 'custom', message: problem });
 });
 const packagingSchema = z.strictObject({
     commands: z.array(packagingCommandSchema).min(1),
-    outputs: z
-        .array(z.string().superRefine((value, context) => {
-        const problem = packagingOutputProblem(value);
-        if (problem !== null)
-            context.addIssue({ code: 'custom', message: problem });
-    }))
-        .optional()
+    outputs: z.array(z.union([outputPattern, z.strictObject({ path: outputPattern, platforms: platformsSchema })])).optional()
 });
 export const configSchema = z
     .object({

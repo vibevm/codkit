@@ -43,7 +43,7 @@ import type { BundleReport } from './bundles.ts';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { BuildCommand, BuildStamp, PackageHost, PackageTarget, ProjectType } from '@codkit/type-api';
+import type { BuildCommand, BuildStamp, PackageHost, PackagePlatform, PackageTarget, ProjectType } from '@codkit/type-api';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.ts';
 import type { CodkitConfig } from './configFile.ts';
 import { driftDirty } from './driftGuard.ts';
@@ -391,19 +391,41 @@ export function runPackage(options: PackageOptions): PackageResult {
 			}
 		}
 		if (exitCode === EXIT_OK && type.build.packageDistributable.length > 0) {
-			// The product's own step knows the roots of the run under the names the
-			// CLI reads its own from, so a script that lives in the patch set needs
-			// no path of its own (##CMD-PACKAGE).
-			const outcome = runCommands(
-				options,
-				type.build.packageDistributable,
-				{ ...stampValues, CODKIT_PATCHES_DIR: patchesDir, CODKIT_FORK_DIR: tree },
-				commands
+			// A command that serves other platforms than this run builds for is
+			// skipped and said so: an installer of one platform is not made from the
+			// bundle of another (##CMD-PACKAGE).
+			const platforms = runPlatforms(selectedTargets, host);
+			const serving = type.build.packageDistributable.filter(
+				(command) => command.platforms === undefined || command.platforms.some((platform) => platforms.has(platform))
 			);
-			record('package distributable', outcome.state, outcome.detail);
-			if (outcome.error !== null) {
-				out.addError(outcome.error);
-				exitCode = outcome.exitCode;
+			for (const command of type.build.packageDistributable) {
+				if (serving.includes(command)) continue;
+				out.info(
+					`--- ${command.label}: skipped - it serves ${(command.platforms ?? []).join(', ')}, and this run builds for ${[...platforms].join(', ')}`
+				);
+			}
+			if (serving.length === 0) {
+				record('package distributable', 'skipped', `no command serves ${[...platforms].join(', ')}`);
+			} else {
+				// The product's own step knows the roots of the run under the names the
+				// CLI reads its own from, so a script that lives in the patch set needs
+				// no path of its own, and the targets it packages (##CMD-PACKAGE).
+				const outcome = runCommands(
+					options,
+					serving,
+					{
+						...stampValues,
+						CODKIT_PATCHES_DIR: patchesDir,
+						CODKIT_FORK_DIR: tree,
+						CODKIT_PACKAGE_TARGETS: selectedTargets.map((target) => target.id).join(',')
+					},
+					commands
+				);
+				record('package distributable', outcome.state, outcome.detail);
+				if (outcome.error !== null) {
+					out.addError(outcome.error);
+					exitCode = outcome.exitCode;
+				}
 			}
 		}
 
@@ -441,6 +463,12 @@ export function runPackage(options: PackageOptions): PackageResult {
 }
 
 /** The route of a selected target and, for the container route, the names of its image and volume. */
+/** The platforms a run builds for: those of its targets, or the host's for a type without a catalog. */
+export function runPlatforms(targets: readonly PackageTarget[], host: PackageHost): ReadonlySet<PackagePlatform> {
+	if (targets.length > 0) return new Set(targets.map((target) => target.platform));
+	return new Set<PackagePlatform>([host === 'win32' ? 'windows' : host === 'darwin' ? 'macos' : 'linux']);
+}
+
 function outputPatterns(type: ProjectType, targets: readonly PackageTarget[]): readonly string[] {
 	return [...new Set([...targets.flatMap((target) => target.outputs ?? []), ...type.build.packageOutputs])];
 }

@@ -246,14 +246,34 @@ export function runPackage(options) {
             }
         }
         if (exitCode === EXIT_OK && type.build.packageDistributable.length > 0) {
-            // The product's own step knows the roots of the run under the names the
-            // CLI reads its own from, so a script that lives in the patch set needs
-            // no path of its own (##CMD-PACKAGE).
-            const outcome = runCommands(options, type.build.packageDistributable, { ...stampValues, CODKIT_PATCHES_DIR: patchesDir, CODKIT_FORK_DIR: tree }, commands);
-            record('package distributable', outcome.state, outcome.detail);
-            if (outcome.error !== null) {
-                out.addError(outcome.error);
-                exitCode = outcome.exitCode;
+            // A command that serves other platforms than this run builds for is
+            // skipped and said so: an installer of one platform is not made from the
+            // bundle of another (##CMD-PACKAGE).
+            const platforms = runPlatforms(selectedTargets, host);
+            const serving = type.build.packageDistributable.filter((command) => command.platforms === undefined || command.platforms.some((platform) => platforms.has(platform)));
+            for (const command of type.build.packageDistributable) {
+                if (serving.includes(command))
+                    continue;
+                out.info(`--- ${command.label}: skipped - it serves ${(command.platforms ?? []).join(', ')}, and this run builds for ${[...platforms].join(', ')}`);
+            }
+            if (serving.length === 0) {
+                record('package distributable', 'skipped', `no command serves ${[...platforms].join(', ')}`);
+            }
+            else {
+                // The product's own step knows the roots of the run under the names the
+                // CLI reads its own from, so a script that lives in the patch set needs
+                // no path of its own, and the targets it packages (##CMD-PACKAGE).
+                const outcome = runCommands(options, serving, {
+                    ...stampValues,
+                    CODKIT_PATCHES_DIR: patchesDir,
+                    CODKIT_FORK_DIR: tree,
+                    CODKIT_PACKAGE_TARGETS: selectedTargets.map((target) => target.id).join(',')
+                }, commands);
+                record('package distributable', outcome.state, outcome.detail);
+                if (outcome.error !== null) {
+                    out.addError(outcome.error);
+                    exitCode = outcome.exitCode;
+                }
             }
         }
         if (exitCode === EXIT_OK) {
@@ -291,6 +311,12 @@ export function runPackage(options) {
     return result(exitCode);
 }
 /** The route of a selected target and, for the container route, the names of its image and volume. */
+/** The platforms a run builds for: those of its targets, or the host's for a type without a catalog. */
+export function runPlatforms(targets, host) {
+    if (targets.length > 0)
+        return new Set(targets.map((target) => target.platform));
+    return new Set([host === 'win32' ? 'windows' : host === 'darwin' ? 'macos' : 'linux']);
+}
 function outputPatterns(type, targets) {
     return [...new Set([...targets.flatMap((target) => target.outputs ?? []), ...type.build.packageOutputs])];
 }

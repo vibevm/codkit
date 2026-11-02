@@ -49,11 +49,11 @@
         },
         {
           "path": "dist/build.js",
-          "sha256": "bcbe1927e67457354548d6a50836faf708be6a455b649aac2d5495fb12f2ac05"
+          "sha256": "f752f4afe6a87a59d46a15b1bbec6045765b653dfcdbacaaa6e97861977b855d"
         },
         {
           "path": "dist/configSchema.js",
-          "sha256": "dd4deaa4ed6e659e3ac7a4b5b24733b5d38ba48783ca35c6d380466aa4d9c5ab"
+          "sha256": "88d58ec73bd4f1158b058966a0258a40165320f268d44242ba1eff499a2d3c8e"
         },
         {
           "path": "dist/conventions.js",
@@ -141,11 +141,11 @@
         },
         {
           "path": "src/build.ts",
-          "sha256": "a31b9b583b41908116b4c48bd7cdbb79512a18c781b1062678312c1957392a01"
+          "sha256": "1f7ad5935d4119a3110bd4e3c6e6a958701373ac1e42d011ce892f667f746d1f"
         },
         {
           "path": "src/configSchema.ts",
-          "sha256": "8a88e511cd4c410f77bbe9f615c5b3e9de7d6e4304edd42035c55a02886bae6f"
+          "sha256": "ec04153ca2dcb651356f204d0ce6d8fc4652a23edaa2ed3323163eae60f29bc3"
         },
         {
           "path": "src/conventions.ts",

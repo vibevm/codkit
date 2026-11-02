@@ -599,8 +599,23 @@ export function packagingCommandsOf(config: VscodeTypeConfig): readonly BuildCom
 	return (config.packaging?.commands ?? []).map((command, index) => ({
 		label: command.label ?? `packaging ${index + 1}`,
 		command: command.command,
-		args: [...command.args]
+		args: [...command.args],
+		...(command.platforms === undefined ? {} : { platforms: [...command.platforms] })
 	}));
+}
+
+/**
+ * ##VSCODE-PRODUCT-PACKAGING: an output every run of the step makes is an
+ * output of the area; an output of some platforms is an output of each target
+ * of those platforms, so a run expects it exactly when it builds such a target.
+ */
+export function packagingTargetsOf(config: VscodeTypeConfig): readonly PackageTarget[] {
+	const scoped = (config.packaging?.outputs ?? []).filter((output) => typeof output !== 'string');
+	if (scoped.length === 0) return PACKAGE_TARGETS;
+	return PACKAGE_TARGETS.map((target) => {
+		const extra = scoped.filter((output) => output.platforms.includes(target.platform)).map((output) => output.path);
+		return extra.length === 0 ? target : { ...target, outputs: [...(target.outputs ?? []), ...extra] };
+	});
 }
 
 export function makeBuild(config: VscodeTypeConfig): BuildArea {
@@ -613,11 +628,14 @@ export function makeBuild(config: VscodeTypeConfig): BuildArea {
 		hygiene: HYGIENE,
 		ownTests,
 		packageBuild: defaultBuild,
-		packageTargets: PACKAGE_TARGETS,
+		packageTargets: packagingTargetsOf(config),
 		defaultPackageTargets: defaults,
 		packageDistributable: packagingCommandsOf(config),
 		packageStamps: packageStampsOf(config.quality),
-		packageOutputs: config.packaging?.outputs ?? PACKAGE_OUTPUTS,
+		packageOutputs:
+			config.packaging?.outputs === undefined
+				? PACKAGE_OUTPUTS
+				: config.packaging.outputs.filter((output): output is string => typeof output === 'string'),
 		packageScratch: PACKAGE_SCRATCH,
 		defaultChannels: DEFAULT_CHANNELS,
 		watchProfilePath: WATCH_PROFILE_PATH,

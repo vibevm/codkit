@@ -23,6 +23,7 @@ export type {
 	BuildStamp,
 	PackageContainer,
 	PackageHost,
+	PackagePlatform,
 	PackageInput,
 	PackageInputUse,
 	PackageTarget

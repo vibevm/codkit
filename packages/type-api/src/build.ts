@@ -7,6 +7,9 @@
 // pass boundaries of a watch channel are.
 
 /** One command a build step runs in the fork tree. */
+/** The platform a package target builds for. */
+export type PackagePlatform = 'windows' | 'linux' | 'macos';
+
 export type BuildCommand = {
 	/** What the step is called in the report. */
 	readonly label: string;
@@ -15,6 +18,13 @@ export type BuildCommand = {
 	readonly args: readonly string[];
 	/** Target-owned environment discovery, evaluated immediately before spawn. */
 	readonly environment?: (environment: Readonly<Record<string, string | undefined>>) => Readonly<Record<string, string>>;
+	/**
+	 * For a command of `packageDistributable`: the platforms whose targets it
+	 * serves; absent, it serves every one. The engine runs it only when a
+	 * selected target - for a type without a target catalog, the host - is of
+	 * one of them (PROP-007 ##CMD-PACKAGE).
+	 */
+	readonly platforms?: readonly PackagePlatform[];
 };
 
 export type PackageHost = 'win32' | 'linux' | 'darwin';
@@ -22,7 +32,7 @@ export type PackageHost = 'win32' | 'linux' | 'darwin';
 /** One closed package recipe owned by a project type. */
 export type PackageTarget = {
 	readonly id: string;
-	readonly platform: 'windows' | 'linux' | 'macos';
+	readonly platform: PackagePlatform;
 	readonly arch: 'x64' | 'arm64' | 'armhf';
 	readonly build: readonly BuildCommand[];
 	/** Hosts on which the build commands run natively, in the fork tree. */
