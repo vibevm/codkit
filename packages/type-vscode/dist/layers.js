@@ -117,15 +117,51 @@ export const entryModule = {
 export const BUNDLE_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/iu;
 /** Where the packaging and the development run look for a built-in extension, from the tree root. */
 export const BUILT_IN_EXTENSIONS_CACHE = '.build/builtInExtensions';
-/** The entries of `builtInExtensions` that carry a name, a version and a hash; the rest are skipped. */
+/**
+ * ##VSCODE-BUNDLED-EXTENSION: the marketplace target platforms of a
+ * platform-specific extension, the vocabulary upstream's own
+ * `build/lib/extensionTarget.ts` keys `platformSpecific` by.
+ */
+export const EXTENSION_TARGETS = [
+    'win32-x64',
+    'win32-arm64',
+    'linux-x64',
+    'linux-arm64',
+    'linux-armhf',
+    'alpine-x64',
+    'alpine-arm64',
+    'darwin-x64',
+    'darwin-arm64'
+];
+/** The marketplace target of a Node platform and architecture, as upstream derives it; Alpine is never guessed. */
+export function extensionTargetOf(platform, arch) {
+    const os = platform === 'win32' ? 'win32' : platform === 'darwin' ? 'darwin' : platform === 'linux' ? 'linux' : null;
+    if (os === null)
+        return null;
+    const target = `${os}-${arch === 'arm' ? 'armhf' : arch}`;
+    return EXTENSION_TARGETS.includes(target) ? target : null;
+}
+/** A map of target to hash, or null when the value is not one. */
+function targetHashes(value) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value))
+        return null;
+    const entries = Object.entries(value);
+    return entries.every(([, hash]) => typeof hash === 'string') ? Object.fromEntries(entries) : null;
+}
+/** The entries of `builtInExtensions` that carry a name, a version and a hash or `platformSpecific` hashes; the rest are skipped. */
 function builtInExtensionsOf(list) {
     if (!Array.isArray(list))
         return [];
     return list.flatMap((element) => {
         if (typeof element !== 'object' || element === null || Array.isArray(element))
             return [];
-        const { name, version, sha256 } = element;
-        return typeof name === 'string' && typeof version === 'string' && typeof sha256 === 'string' ? [{ name, version, sha256 }] : [];
+        const { name, version, sha256, platformSpecific } = element;
+        if (typeof name !== 'string' || typeof version !== 'string')
+            return [];
+        const targets = targetHashes(platformSpecific);
+        if (targets !== null)
+            return [{ name, version, sha256: typeof sha256 === 'string' ? sha256 : '', targets }];
+        return typeof sha256 === 'string' ? [{ name, version, sha256 }] : [];
     });
 }
 /**
@@ -142,7 +178,11 @@ export const bundles = {
     manifestTarget: PRODUCT_JSON_TARGET,
     listPath: ['builtInExtensions'],
     entries: (document) => builtInExtensionsOf(document['builtInExtensions']),
-    entry: (unit) => ({ name: unit.name, version: unit.version, sha256: unit.sha256, repo: '' }),
+    // A unit built per target is upstream's platform-specific entry: no single
+    // hash, one per marketplace target in `platformSpecific` (build/lib/builtInExtensions.ts).
+    entry: (unit) => unit.targets === undefined
+        ? { name: unit.name, version: unit.version, sha256: unit.sha256, repo: '' }
+        : { name: unit.name, version: unit.version, repo: '', platformSpecific: { ...unit.targets } },
     cachePath: (name) => `${BUILT_IN_EXTENSIONS_CACHE}/${name}`,
     archiveRoot: 'extension/',
     archiveManifest: 'extension/package.json',
@@ -164,6 +204,12 @@ export const bundles = {
         return { name: `${publisher}.${name}`, version };
     },
     namePattern: BUNDLE_NAME_PATTERN,
-    archiveWord: 'VSIX'
+    archiveWord: 'VSIX',
+    targets: EXTENSION_TARGETS,
+    hostTarget: (host) => extensionTargetOf(host.platform, host.arch),
+    packageTarget: (target) => extensionTargetOf(target.platform === 'windows' ? 'win32' : target.platform === 'macos' ? 'darwin' : 'linux', target.arch),
+    // `vsce package --target <t>` writes the target into the identity of the VSIX manifest.
+    archiveTargetManifest: 'extension.vsixmanifest',
+    archiveTarget: (manifestText) => /<Identity\b[^>]*\bTargetPlatform="([^"]+)"/u.exec(manifestText)?.[1] ?? null
 };
 export const layers = { overlayTargets, ownExtensions, serviceOverride, entryModule, bundles };

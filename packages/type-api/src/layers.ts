@@ -8,6 +8,8 @@
 // its locator. A layer the type does not provide is absent for that patch set,
 // and `verify` refuses an artifact of it with `CK-E-TYPE-CAPABILITY`.
 
+import type { PackageTarget } from './build.ts';
+
 /** One JSON file an overlay may target, with the channels it has. */
 export type OverlayTarget = {
 	/** Path of the target file from the tree root, POSIX. */
@@ -115,8 +117,17 @@ export type EntryModuleLocator = {
 export type BundleEntry = {
 	readonly name: string;
 	readonly version: string;
+	/** The hash of the one archive of a unit that serves every platform; empty for a unit built per target. */
 	readonly sha256: string;
+	/**
+	 * The hash of the archive of each target of a unit built per target, keyed
+	 * by the family's name of the target; absent for a unit with one archive.
+	 */
+	readonly targets?: Readonly<Record<string, string>> | undefined;
 };
+
+/** The host a tree runs on, as the target of a unit built per target is chosen for it. */
+export type BundleHost = { readonly platform: string; readonly arch: string };
 
 /** What the manifest inside an archive says about the unit it holds. */
 export type BundleIdentity = { readonly name: string; readonly version: string };
@@ -149,6 +160,20 @@ export type BundleLayer = {
 	readonly namePattern: RegExp;
 	/** The word for the archive in reports, e.g. VSIX. */
 	readonly archiveWord: string;
+	/**
+	 * The targets a unit may be built for, one archive each, in the family's own
+	 * names (the first family: `win32-x64`, `linux-x64`, `darwin-arm64`, ...);
+	 * empty when every unit of the family is one archive for every platform.
+	 */
+	readonly targets: readonly string[];
+	/** The target whose archive a tree on this host runs, or null when the family names none for it. */
+	hostTarget(host: BundleHost): string | null;
+	/** The target whose archive a package target of the family ships, or null when it ships none of one target. */
+	packageTarget(target: PackageTarget): string | null;
+	/** The manifest inside an archive that names the target it was built for, as an archive path; null when archives name none. */
+	readonly archiveTargetManifest: string | null;
+	/** The target that manifest text names, or null when the archive serves every platform. */
+	archiveTarget(manifestText: string): string | null;
 };
 
 export type LayersArea = {

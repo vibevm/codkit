@@ -1,12 +1,14 @@
 /** @scope spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-ADD */
-// codkit bundles add <archive> --id <id> [--owner <owner>] [--reason <text>]
+// codkit bundles add <archive>... --id <id> [--owner <owner>] [--reason <text>]
 // and codkit bundles update [<name>...|--all] (PROP-007 ##CMD-BUNDLES-ADD,
 // ##CMD-BUNDLES-UPDATE): the declaration of a bundle - a unit the product ships
 // inside its distribution, built elsewhere and delivered as an archive the
 // upstream build already takes (PROP-003 ##CFG-BUNDLES).
 //
 // `add` reads the identity of the unit from the manifest inside the archive the
-// way the type's bundles layer names it, hashes the archive, appends the
+// way the type's bundles layer names it - and the target an archive was built
+// for, when the unit is built per target, one archive each - hashes the
+// archives, appends the
 // declaration to codkit.json canonically under the configuration lock, and
 // writes the overlay record with one `append` on the manifest's list (PROP-005
 // ##OVERLAY-APPEND) and the guard test the layer makes mandatory, through the
@@ -17,9 +19,9 @@
 
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { BundleLayer, ProjectType } from '@codkit/type-api';
+import type { BundleEntry, BundleLayer, ProjectType } from '@codkit/type-api';
 import { bytesEqual, encodeUtf8 } from '../lib/bytes.ts';
-import { declaredBundleFile, resolveBundleFile } from '../lib/bundlesDeclaration.ts';
+import { declarationOf, declaredBundleFile, resolveBundleFile } from '../lib/bundlesDeclaration.ts';
 import type { BundleConfig } from '../lib/bundlesDeclaration.ts';
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import {
@@ -66,16 +68,30 @@ const CONFIG_LOCK_ID = 'cycle-global';
 /** The intervention type and category of a bundle record: the product extends a list of the manifest with its own unit. */
 const RECORD_TYPE = 'extend';
 const RECORD_CATEGORY = 'own';
-const USAGE_ADD = `usage: codkit bundles add <archive> ${ID} CK-<subsystem>-<NNN> [${OWNER} <owner>] [${REASON} <text>]`;
+const USAGE_ADD = `usage: codkit bundles add <archive>... ${ID} CK-<subsystem>-<NNN> [${OWNER} <owner>] [${REASON} <text>]`;
 const USAGE_UPDATE = 'usage: codkit bundles update <name>...|--all';
 const NO_HEADER_WARNING = 'the guard test carries no licence header: no licensing profile is selected (codkit.licensing.json)';
 
 /** What one archive holds, as the layer reads it. */
 type ReadArchive = {
 	readonly path: string;
+	readonly asGiven: string;
 	readonly name: string;
 	readonly version: string;
 	readonly sha256: string;
+	/** The target the archive was built for, or null when it serves every platform. */
+	readonly target: string | null;
+};
+
+/** A unit as one or several archives make it: one archive for every platform, or one per target. */
+type ReadUnit = {
+	readonly name: string;
+	readonly version: string;
+	readonly archives: readonly ReadArchive[];
+	/** The hash of the one archive; empty for a unit built per target. */
+	readonly sha256: string;
+	/** The hash of each target's archive, for a unit built per target. */
+	readonly targets: Readonly<Record<string, string>> | undefined;
 };
 
 /** main.ts answers a bare namespace before this runs. */
@@ -116,15 +132,16 @@ function addBundle(ctx: CommandContext): number {
 	const type = requireProjectType(ctx);
 	const layer = bundleLayer(type, 'bundles add');
 	const patchesDir = patchesRoot(ctx);
-	const given = ctx.args[0];
-	if (given === undefined || given === '') {
-		throw ckError('CONFIG', 'bundles add needs the archive of the unit', USAGE_ADD);
+	if (ctx.args.length === 0 || ctx.args.some((given) => given === '')) {
+		throw ckError('CONFIG', 'bundles add needs the archive of the unit, or the archive of each of its targets', USAGE_ADD);
 	}
 	const id = commandFlagValue(ctx.commandFlags, ID);
 	if (id === null || id === '') throw ckError('CONFIG', `bundles add needs ${ID}`, USAGE_ADD);
 
-	const absolute = resolve(given);
-	const archive = readArchive(layer, absolute, given);
+	const archive = unitOf(
+		layer,
+		ctx.args.map((given) => readArchive(layer, resolve(given), given))
+	);
 	if ((config.bundles ?? []).some((bundle) => bundle.name === archive.name)) {
 		throw ckError(
 			'CONFIG',
@@ -159,7 +176,15 @@ function addBundle(ctx: CommandContext): number {
 	}
 	const owner = ownerOf(patchesDir, commandFlagValue(ctx.commandFlags, OWNER));
 	const reason = commandFlagValue(ctx.commandFlags, REASON) ?? `the product ships ${archive.name} inside its distribution`;
-	const declared: BundleConfig = { name: archive.name, file: declaredBundleFile(patchesDir, absolute, given) };
+	const declared: BundleConfig =
+		archive.targets === undefined
+			? { name: archive.name, file: declaredBundleFile(patchesDir, archive.archives[0]?.path ?? '', archive.archives[0]?.asGiven ?? '') }
+			: {
+					name: archive.name,
+					files: Object.fromEntries(
+						archive.archives.map((read) => [read.target ?? '', declaredBundleFile(patchesDir, read.path, read.asGiven)])
+					)
+				};
 
 	const artifact = recordArtifactPath(layer, archive.name);
 	const document: OverlayDocument = {
@@ -187,7 +212,12 @@ function addBundle(ctx: CommandContext): number {
 	withLock(patchesDir, CONFIG_LOCK_ID, 'bundles add', () => appendDeclaration(patchesDir, declared));
 	writeGenerated(patchesDir, [record, guard]);
 
-	ctx.out.info(`bundle ${archive.name}@${archive.version}: ${declared.file} (sha256 ${archive.sha256.slice(0, 12)})`);
+	for (const read of archive.archives) {
+		const file = read.target === null ? declared.file : declared.files?.[read.target];
+		ctx.out.info(
+			`bundle ${archive.name}@${archive.version}${read.target === null ? '' : ` for ${read.target}`}: ${file ?? read.asGiven} (sha256 ${read.sha256.slice(0, 12)})`
+		);
+	}
 	ctx.out.info(`${CONFIG_FILE_NAME}: bundles += ${archive.name}`);
 	ctx.out.info(`created ${record.path}`);
 	ctx.out.info(`created ${guard.path}`);
@@ -198,7 +228,9 @@ function addBundle(ctx: CommandContext): number {
 		name: archive.name,
 		version: archive.version,
 		sha256: archive.sha256,
-		file: declared.file,
+		...(declared.file === undefined ? {} : { file: declared.file }),
+		...(declared.files === undefined ? {} : { files: { ...declared.files } }),
+		...(archive.targets === undefined ? {} : { targets: { ...archive.targets } }),
 		artifacts: [CONFIG_FILE_NAME, record.path, guard.path],
 		headerWritten: guard.headerWritten
 	} satisfies JsonValue);
@@ -223,17 +255,17 @@ function updateBundles(ctx: CommandContext): number {
 				`codkit bundles add <archive> --id <id> writes the record; expected ${recordArtifactPath(layer, bundle.name)}`
 			);
 		}
-		const archive = readArchive(layer, resolveBundleFile(patchesDir, bundle.file), bundle.file);
+		const archive = declaredUnitOf(layer, patchesDir, bundle);
 		if (archive.name !== bundle.name) {
 			throw ckError(
 				'CONFIG',
-				`bundle ${bundle.name}: the archive ${archive.path} holds ${archive.name}@${archive.version}`,
-				'point codkit.json at the archive of this unit, or declare the other one with codkit bundles add'
+				`bundle ${bundle.name}: the archives codkit.json names hold ${archive.name}@${archive.version}`,
+				'point codkit.json at the archives of this unit, or declare the other one with codkit bundles add'
 			);
 		}
-		const previous = found.operation.value as Readonly<Record<string, unknown>>;
-		const from = { version: String(previous['version'] ?? ''), sha256: String(previous['sha256'] ?? '') };
-		const changed = from.version !== archive.version || from.sha256 !== archive.sha256;
+		const previous = previousEntry(layer, found.operation.value);
+		const from = { version: previous?.version ?? '', sha256: previous?.sha256 ?? '', targets: previous?.targets };
+		const changed = from.version !== archive.version || from.sha256 !== archive.sha256 || !sameTargets(from.targets, archive.targets);
 		const guard = guardOf(type, patchesDir, {
 			id: found.overlay.id,
 			archive,
@@ -253,7 +285,7 @@ function updateBundles(ctx: CommandContext): number {
 		if (plan.changed) writeGenerated(patchesDir, [plan.record, plan.guard]);
 		ctx.out.info(
 			plan.changed
-				? `bundle ${plan.bundle.name}: ${plan.from.version} (${plan.from.sha256.slice(0, 12)}) -> ${plan.archive.version} (${plan.archive.sha256.slice(0, 12)})`
+				? `bundle ${plan.bundle.name}: ${plan.from.version} (${hashesOf(plan.from)}) -> ${plan.archive.version} (${hashesOf(plan.archive)})`
 				: `bundle ${plan.bundle.name}: already current`
 		);
 	}
@@ -262,8 +294,16 @@ function updateBundles(ctx: CommandContext): number {
 	ctx.out.setData({
 		bundles: planned.map((plan) => ({
 			name: plan.bundle.name,
-			from: plan.from,
-			to: { version: plan.archive.version, sha256: plan.archive.sha256 },
+			from: {
+				version: plan.from.version,
+				sha256: plan.from.sha256,
+				...(plan.from.targets === undefined ? {} : { targets: { ...plan.from.targets } })
+			},
+			to: {
+				version: plan.archive.version,
+				sha256: plan.archive.sha256,
+				...(plan.archive.targets === undefined ? {} : { targets: { ...plan.archive.targets } })
+			},
 			changed: plan.changed,
 			headerWritten: plan.guard.headerWritten,
 			artifacts: plan.changed ? [plan.record.path, plan.guard.path] : []
@@ -351,7 +391,133 @@ function readArchive(layer: BundleLayer, path: string, asGiven: string): ReadArc
 			`the name must match ${layer.namePattern.source}`
 		);
 	}
-	return { path, name: identity.name, version: identity.version, sha256: hashFile(path).sha256 };
+	return {
+		path,
+		asGiven,
+		name: identity.name,
+		version: identity.version,
+		sha256: hashFile(path).sha256,
+		target: archiveTargetOf(layer, path, asGiven)
+	};
+}
+
+/** The target an archive was built for, as its own manifest names it; null when it serves every platform. */
+function archiveTargetOf(layer: BundleLayer, path: string, asGiven: string): string | null {
+	if (layer.archiveTargetManifest === null) return null;
+	const manifest = readZipEntry(path, layer.archiveTargetManifest);
+	if (manifest === null) return null;
+	const target = layer.archiveTarget(Buffer.from(manifest).toString('utf8'));
+	if (target !== null && layer.targets.length > 0 && !layer.targets.includes(target)) {
+		throw ckError(
+			'CONFIG',
+			`${asGiven} was built for ${target}, which is not a target of the ${layer.archiveWord} kind`,
+			`the targets: ${layer.targets.join(', ')}`
+		);
+	}
+	return target;
+}
+
+/**
+ * One unit from its archives: one archive that serves every platform, or one
+ * archive per target - of one name and one version, each target once.
+ */
+function unitOf(layer: BundleLayer, archives: readonly ReadArchive[]): ReadUnit {
+	const first = archives[0];
+	if (first === undefined) throw ckError('CONFIG', 'bundles add needs the archive of the unit', USAGE_ADD);
+	for (const read of archives) {
+		if (read.name !== first.name || read.version !== first.version) {
+			throw ckError(
+				'CONFIG',
+				`${read.asGiven} holds ${read.name}@${read.version}, and ${first.asGiven} holds ${first.name}@${first.version}`,
+				'the archives of one bundle are the targets of one unit at one version'
+			);
+		}
+	}
+	const perTarget = archives.some((read) => read.target !== null);
+	if (!perTarget) {
+		if (archives.length > 1) {
+			throw ckError(
+				'CONFIG',
+				`${archives.length} archives of ${first.name} name no target`,
+				`give the one ${layer.archiveWord} that serves every platform, or the ${layer.archiveWord} of each target`
+			);
+		}
+		return { name: first.name, version: first.version, archives, sha256: first.sha256, targets: undefined };
+	}
+	const targets: Record<string, string> = {};
+	for (const read of archives) {
+		if (read.target === null) {
+			throw ckError(
+				'CONFIG',
+				`${read.asGiven} names no target, and the other archives of ${first.name} do`,
+				`give the ${layer.archiveWord} of each target`
+			);
+		}
+		if (targets[read.target] !== undefined) {
+			throw ckError('CONFIG', `two archives of ${first.name} are built for ${read.target}`, 'give each target once');
+		}
+		targets[read.target] = read.sha256;
+	}
+	return { name: first.name, version: first.version, archives, sha256: '', targets };
+}
+
+/** The unit as the archives codkit.json declares make it; every declared archive must be there. */
+function declaredUnitOf(layer: BundleLayer, patchesDir: string, bundle: BundleConfig): ReadUnit {
+	if (bundle.files === undefined) {
+		const file = bundle.file ?? '';
+		const read = readArchive(layer, resolveBundleFile(patchesDir, file), file);
+		if (read.target !== null) {
+			throw ckError(
+				'CONFIG',
+				`${file} was built for ${read.target}, and codkit.json declares one archive of ${bundle.name} for every platform`,
+				`declare "files" with the archive of each target`
+			);
+		}
+		return unitOf(layer, [read]);
+	}
+	const reads = Object.entries(bundle.files).map(([target, file]) => {
+		const read = readArchive(layer, resolveBundleFile(patchesDir, file), file);
+		if (read.target !== target) {
+			throw ckError(
+				'CONFIG',
+				`${file} is declared as the archive of ${target} of ${bundle.name}, and it was built for ${read.target ?? 'every platform'}`,
+				'point each target of the files of the bundle at the archive built for it'
+			);
+		}
+		return read;
+	});
+	return unitOf(layer, reads);
+}
+
+/** The entry a record's value is, read back through the layer. */
+function previousEntry(layer: BundleLayer, value: unknown): BundleEntry | null {
+	let document: Record<string, unknown> = {};
+	const path = [...layer.listPath];
+	const last = path.pop();
+	if (last === undefined) return null;
+	let holder: Record<string, unknown> = document;
+	for (const key of path) {
+		const next: Record<string, unknown> = {};
+		holder[key] = next;
+		holder = next;
+	}
+	holder[last] = [value];
+	document = { ...document };
+	return layer.entries(document)[0] ?? null;
+}
+
+function sameTargets(left: Readonly<Record<string, string>> | undefined, right: Readonly<Record<string, string>> | undefined): boolean {
+	const a = Object.entries(left ?? {}).sort(([x], [y]) => x.localeCompare(y));
+	const b = Object.entries(right ?? {}).sort(([x], [y]) => x.localeCompare(y));
+	return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** The hashes of a unit as a report prints them: the one hash, or each target's. */
+function hashesOf(unit: { readonly sha256: string; readonly targets?: Readonly<Record<string, string>> | undefined }): string {
+	if (unit.targets === undefined) return unit.sha256.slice(0, 12);
+	return Object.entries(unit.targets)
+		.map(([target, sha256]) => `${target} ${sha256.slice(0, 12)}`)
+		.join(', ');
 }
 
 /**
@@ -390,9 +556,16 @@ export function recordArtifactPath(layer: BundleLayer, name: string): string {
 }
 
 /** The one operation of a record: the layer's entry for the unit, appended to the list of the manifest. */
-function recordOperation(layer: BundleLayer, archive: ReadArchive): OverlayOperation {
+function recordOperation(layer: BundleLayer, archive: ReadUnit): OverlayOperation {
 	const value = JSON.parse(
-		JSON.stringify(layer.entry({ name: archive.name, version: archive.version, sha256: archive.sha256 }))
+		JSON.stringify(
+			layer.entry({
+				name: archive.name,
+				version: archive.version,
+				sha256: archive.sha256,
+				...(archive.targets === undefined ? {} : { targets: archive.targets })
+			})
+		)
 	) as JsonLike;
 	return { op: 'append', path: [...layer.listPath], value };
 }
@@ -428,7 +601,7 @@ function recordOf(
 function guardOf(
 	type: ProjectType,
 	patchesDir: string,
-	request: { readonly id: string; readonly archive: ReadArchive; readonly ownRoot: string; readonly manifestTarget: string }
+	request: { readonly id: string; readonly archive: ReadUnit; readonly ownRoot: string; readonly manifestTarget: string }
 ): GeneratedFile & { readonly headerWritten: boolean } {
 	const generate = type.generators.bundleGuard;
 	if (generate === undefined) {
@@ -440,7 +613,12 @@ function guardOf(
 	}
 	const module = generate({
 		id: request.id,
-		unit: { name: request.archive.name, version: request.archive.version, sha256: request.archive.sha256 },
+		unit: {
+			name: request.archive.name,
+			version: request.archive.version,
+			sha256: request.archive.sha256,
+			...(request.archive.targets === undefined ? {} : { targets: request.archive.targets })
+		},
 		ownRoot: request.ownRoot,
 		manifestTarget: request.manifestTarget
 	});
@@ -470,7 +648,7 @@ function appendDeclaration(patchesDir: string, bundle: BundleConfig): void {
 			`codkit bundles update ${bundle.name} rewrites its record`
 		);
 	}
-	const next = encodeUtf8(serializeBaseConfig({ ...base, bundles: [...(base.bundles ?? []), { name: bundle.name, file: bundle.file }] }));
+	const next = encodeUtf8(serializeBaseConfig({ ...base, bundles: [...(base.bundles ?? []), declarationOf(bundle)] }));
 	const current = readContainedFile(patchesDir, CONFIG_FILE_NAME, { what: CONFIG_FILE_NAME });
 	if (current.state !== 'ok' || !bytesEqual(current.bytes, read.bytes)) {
 		throw ckError(
@@ -509,7 +687,7 @@ export const bundlesAddCommand: CommandDefinition = {
 	summary: 'declare a bundle from its archive: codkit.json, the overlay record and its guard test',
 	configMode: 'load',
 	roots: 'patches',
-	maxArgs: 1,
+	maxArgs: 20,
 	commandFlags: [ID, OWNER, REASON],
 	run: runAdd
 };

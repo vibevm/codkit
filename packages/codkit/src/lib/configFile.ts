@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { CR_BYTE, decodeUtf8Strict, LF_BYTE } from './bytes.ts';
 import { readContainedFile } from './containedFile.ts';
 import { inputsSchema, localInputContentField, localInputsSchema, locateInputs } from './inputsDeclaration.ts';
-import { bundlesSchema, localBundleContentField, localBundlesSchema, locateBundles } from './bundlesDeclaration.ts';
+import { bundlesSchema, declarationOf, localBundleContentField, localBundlesSchema, locateBundles } from './bundlesDeclaration.ts';
 import type { BundleConfig } from './bundlesDeclaration.ts';
 import type { InputConfig } from './inputsDeclaration.ts';
 import { ckError } from './messages.ts';
@@ -462,7 +462,7 @@ export function serializeBaseConfig(config: CodkitConfig): string {
 			...declaredWorkspaceConfig(config),
 			pin: wirePin,
 			// A local switch is this machine's and never serialized (##LOCAL-CONFIG-RULE).
-			...(config.bundles === undefined ? {} : { bundles: config.bundles.map(({ name, file }) => ({ name, file })) })
+			...(config.bundles === undefined ? {} : { bundles: config.bundles.map(declarationOf) })
 		},
 		CONFIG_FILE_NAME
 	);

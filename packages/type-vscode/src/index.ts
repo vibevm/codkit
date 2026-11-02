@@ -93,6 +93,8 @@ export {
 	BUILT_IN_EXTENSIONS_CACHE,
 	BUNDLE_NAME_PATTERN,
 	bundles,
+	EXTENSION_TARGETS,
+	extensionTargetOf,
 	entryModule,
 	layers,
 	overlayTargets,

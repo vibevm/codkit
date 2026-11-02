@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { CR_BYTE, decodeUtf8Strict, LF_BYTE } from './bytes.js';
 import { readContainedFile } from './containedFile.js';
 import { inputsSchema, localInputContentField, localInputsSchema, locateInputs } from './inputsDeclaration.js';
-import { bundlesSchema, localBundleContentField, localBundlesSchema, locateBundles } from './bundlesDeclaration.js';
+import { bundlesSchema, declarationOf, localBundleContentField, localBundlesSchema, locateBundles } from './bundlesDeclaration.js';
 import { ckError } from './messages.js';
 import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.js';
 import { MINIMAL_DISCIPLINE } from './discipline.js';
@@ -318,7 +318,7 @@ export function serializeBaseConfig(config) {
         ...declaredWorkspaceConfig(config),
         pin: wirePin,
         // A local switch is this machine's and never serialized (##LOCAL-CONFIG-RULE).
-        ...(config.bundles === undefined ? {} : { bundles: config.bundles.map(({ name, file }) => ({ name, file })) })
+        ...(config.bundles === undefined ? {} : { bundles: config.bundles.map(declarationOf) })
     }, CONFIG_FILE_NAME);
     const canonical = {
         codkitConfig: parsed.codkitConfig,

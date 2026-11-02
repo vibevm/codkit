@@ -3983,7 +3983,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:bb432a2f4330cd819df3e90c327ce9b7a4b23ea5dc72694d6787ccdda1340e27",
+      "content_hash": "sha256:e073a10351abff5659d811d22d69c5e0c115a55cbb6ed0022ea6a7300306f38a",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "codkit PROP-003: Configuration, data conventions, the owners map, common format rules",
@@ -4190,7 +4190,7 @@
     },
     {
       "anchor": "config",
-      "content_hash": "sha256:c54400f5735a7a33f4ca9d39bfcc599eba57a258b271d67cf8a507753f45c207",
+      "content_hash": "sha256:9d39bb0dea92b392e1c20e58a52ec51e5386849c5a8c8e8054db099c4a093266",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "3. The patch-set configuration - codkit.json (+ codkit.local.json)",
@@ -4203,7 +4203,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "`upstreamAnchorCommit` is the SHA by whose reachability the tree is recognized as «the microsoft/vscode history» (the origin is checked by the reachability of a known commit, not by the name of a remote). The value is computed once when the configuration is created: `git rev-list --max-parents=0 <pin.sha>` (the root commit of the history; if there are several roots, the lexicographically smallest SHA is taken). It is committed in `codkit.json` and does not change when the pin is raised. @status:spec/done",
-      "line": 69,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/PROP-003#ANCHOR-COMMIT-RULE"
     },
     {
@@ -4212,7 +4212,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "**Schema 2 (PROP-016).** `codkit.json` carries `\"codkitConfig\": 2`, the required `\"type\": \"<identifier>\"` and the required `\"typeConfig\": { ... }`, whose first field is `ownRoot` - a full path from the tree root. The engine validates the universal fields of the table above and hands `typeConfig` to the type, which validates it with its own schema and refuses with `CK-E-CONFIG` naming the field (`spec://codkit/modules/codkit/PROP-016#TYPE-CONFIG-FIELD`, `spec://codkit/modules/codkit/PROP-016#TYPE-OWN-ROOT`). One patch set, one type. The row `ownDirName` of the table above is the schema-1 field it replaces. @status:spec/done",
-      "line": 70,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-TYPE-AND-TYPECONFIG"
     },
     {
@@ -4221,7 +4221,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "**There is no compatibility layer.** A `codkit.json` without `type` is schema 1 and is refused with `CK-E-CONFIG` that names the two fields to add - `type` and `typeConfig.ownRoot` - and nothing else; no command reads schema 1 and no code path infers a type from `ownDirName` (`spec://codkit/modules/codkit/PROP-016#TYPE-SCHEMA-2-REQUIRED`, `spec://codkit/modules/codkit/PROP-016#DECISION-NO-COMPATIBILITY-LAYER`). The single existing consumer is migrated inside the campaign, with its own gates as the proof. @status:spec/done",
-      "line": 71,
+      "line": 72,
       "uri": "spec://codkit/modules/codkit/PROP-003#CFG-SCHEMA-1-IS-REFUSED"
     },
     {
@@ -4230,7 +4230,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "`codkit.local.json` contains only optional non-pin operational overrides (`typeConfig`, the branch/ref prefixes, `publishRemoteUrl`, `publish.exclude`, `publish.scrub.specRoots`, `publish.scrub.vocabulary` and the location of an input; in schema 1 the first of them was `ownDirName`). The three `publish` lists are joined with the base instead of replacing it - a local `specRoots` joins the default when the base names none: a local file can leave more out of a release and scrub more of it, never less. For the same reason a local `publish.scrub.allow` is refused with `CK-E-CONFIG`. An entry of the local `inputs` list is `{\"name\": \"<an input of codkit.json>\", \"repository\": \"<absolute path>\"}` and nothing else: the location replaces the shared one on this machine, while every field that says what the input takes stays reviewed in `codkit.json` - any other field is refused with `CK-E-CONFIG` naming it (`inputs.ref cannot be set locally`), a name twice is refused, and an entry for a name `codkit.json` does not declare changes nothing and is named by `status`. An entry of the local `bundles` list is `{\"name\": \"<a bundle of codkit.json>\", \"file\": \"<path>\" | null}` and nothing else: the path replaces the shared one on this machine, `null` switches the bundle off for `load` and `status` here while `package` still provisions it, because a distribution carries every unit the patch set declares, and any other field is refused. The `type` itself is not overridable locally: one patch set declares one type and it is a shared invariant of the repository. It does not accept `pin`, `upstreamAnchorCommit`, the schema field, the location roots or references to a safety/build policy. The root paths belong to the CLI, the environment and the user settings alone. @status:spec/done",
-      "line": 72,
+      "line": 73,
       "uri": "spec://codkit/modules/codkit/PROP-003#LOCAL-CONFIG-RULE"
     },
     {
@@ -4239,7 +4239,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "After the initial bootstrap of a patch set the pin changes only by the canonical commit of an upgrade cycle. @status:spec/done",
-      "line": 73,
+      "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-003#PIN-CHANGES-ONLY-BY-CYCLE"
     },
     {
@@ -4248,7 +4248,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "A valid sample (the `upstreamAnchorCommit` value is a placeholder of the example; in a real file it is the computed SHA): @status:spec/done",
-      "line": 74,
+      "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-003#config-valid-sample"
     },
     {
@@ -4257,7 +4257,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "An invalid sample and the expected diagnostics: a file with `\"pin\": {\"tag\": \"1.135.0\"}` (no `sha`) → exit 2, the message `CK-E-CONFIG: codkit.json: pin.sha is required (full 40-hex commit sha of the pin tag)`. @status:spec/done",
-      "line": 88,
+      "line": 89,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONFIG-INVALID-SAMPLE"
     },
     {
@@ -4266,7 +4266,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "4. Data conventions and safe extension",
-      "line": 90,
+      "line": 91,
       "uri": "spec://codkit/modules/codkit/PROP-003#conventions-data"
     },
     {
@@ -4275,7 +4275,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The mandatory base policy lives only in `toolRoot/config/conventions.json`; the CLI, the checks, the CI and the agent protocols read it. A file with the same path under patchesDir never shadows the installed policy. @status:spec/done",
-      "line": 91,
+      "line": 92,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONVENTIONS-SINGLE-DEFINITION"
     },
     {
@@ -4284,7 +4284,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-009#FORBIDDEN-SERVICES-SEED; the address stays for citations. @status:spec/done",
-      "line": 105,
+      "line": 106,
       "uri": "spec://codkit/modules/codkit/PROP-003#FORBIDDEN-SERVICES-SEED"
     },
     {
@@ -4293,7 +4293,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "If `conventionsExtensionFile` is given, the path must stay inside patchesDir after symlinks are resolved. The strict schema `codkitConventionsExtension:1` may add `subsystems` (the effective idPattern is derived from the union), additional `forbiddenPatchTargets`, `forbiddenServiceIds` and `markerComment` for new file extensions only. It cannot delete, replace or weaken the base prohibitions, change the layer order, an existing marker form, the intervention types/categories or the cleanup policy. @status:spec/done",
-      "line": 106,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-003#CONVENTIONS-EXTENSION"
     },
     {
@@ -4302,7 +4302,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "A patch-set file `codkit/config/conventions.json` without an explicit `conventionsExtensionFile` is ignored. Even with an explicit reference the content is treated as an additive extension, not as a replacement of the shipped policy. @status:spec/done",
-      "line": 107,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-003#NO-HIDDEN-POLICY-OVERRIDE"
     },
     {
@@ -4311,7 +4311,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "By default the build wrapper reads `toolRoot/config/build-watch.json`. Only an explicit `buildWatchFile` selects the strict versioned profile of a particular fork; the patch set is the project policy chosen by the user, but a hidden copy under the same name is not taken into account. The path must be relative and contained inside patchesDir. Every channel must have at least one `errorLine` or `errorCountLine`; unknown fields are forbidden. The author of a custom profile keeps green/red log fixtures and confirms that an error does not become exit 0. @status:spec/done",
-      "line": 108,
+      "line": 109,
       "uri": "spec://codkit/modules/codkit/PROP-003#BUILD-WATCH-SELECTION"
     },
     {
@@ -4320,7 +4320,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "5. The owners map - delta/owners.json",
-      "line": 110,
+      "line": 111,
       "uri": "spec://codkit/modules/codkit/PROP-003#owners"
     },
     {
@@ -4329,7 +4329,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The format: `{\"codkitOwners\":1,\"owners\":{\"workbench-core\":{\"contact\":\"<team-or-login>\",\"paths\":[\"src/vs/workbench/**\"]}, …}}`. @status:spec/done",
-      "line": 111,
+      "line": 112,
       "uri": "spec://codkit/modules/codkit/PROP-003#OWNERS-FORMAT"
     },
     {
@@ -4338,7 +4338,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The `owner` value of any artifact must be a key of `owners`; otherwise `verify` gives exit 1, `CK-E-OWNER-UNKNOWN`. @status:spec/done",
-      "line": 113,
+      "line": 114,
       "uri": "spec://codkit/modules/codkit/PROP-003#OWNER-MUST-EXIST"
     },
     {
@@ -4347,7 +4347,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "The CODEOWNERS file of the hosting is generated from this map (the command is not in the MVP; the map itself is already in the MVP: the inventory needs the «subsystem → owner» routing). @status:spec/done",
-      "line": 114,
+      "line": 115,
       "uri": "spec://codkit/modules/codkit/PROP-003#CODEOWNERS-GENERATED-LATER"
     },
     {
@@ -4356,7 +4356,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "6. Artifact metadata - the common dictionary",
-      "line": 117,
+      "line": 118,
       "uri": "spec://codkit/modules/codkit/PROP-003#artifact-metadata"
     },
     {
@@ -4365,7 +4365,7 @@
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "Every layer gives the inventory the same set of fields: `id`, `layer`, `type`, `category`, `owner`, `reason`, `link`, `cause`, `pin`, `contract-tests`, plus the computed `subsystem` (from the id) and `files` (the targets of the intervention). The carrier for a patch is the `.ckpatch` header (PROP-004 §3); for an overlay/resource/rule it is the fields of their JSON (PROP-005); for own and entry-module it is the records in `delta/own/patchset.delta.json` (PROP-005 §3). @status:spec/done",
-      "line": 118,
+      "line": 119,
       "uri": "spec://codkit/modules/codkit/PROP-003#ARTIFACT-METADATA-DICTIONARY"
     },
     {
@@ -5333,7 +5333,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e86b7101417d6fd855368507b77c8d28a6936815843c84c80e5a1120281929ee",
+      "content_hash": "sha256:862a9cdd6a88520a1808c19184c9c95e55b22978626f5b30c1fbf6e1243c4246",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "codkit PROP-006: Apply metadata, locking, inventory",
@@ -5342,7 +5342,7 @@
     },
     {
       "anchor": "apply-metadata",
-      "content_hash": "sha256:5640278bc0fe9f5610c57b02c1dd9d9c3e6d9aa042c365fe958e350b8105da5b",
+      "content_hash": "sha256:235a42bd4147478bb9ee541f1d9517d855f82776ecc961dd640e7030202a68c4",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
       "heading": "1. Apply metadata: the cache + the mark (the truth is the tree itself)",
@@ -5405,10 +5405,10 @@
     },
     {
       "anchor": "BUNDLES-STAMP",
-      "content_hash": "sha256:c5d3674b5b4296ce29865cc643888689f2904424be03483f4f2e27195f80e33d",
+      "content_hash": "sha256:30b326dbf75b91eaff13288e5ef6849ae7a324bbd0d5c9d26eeb56b45d14fc0d",
       "doc_path": "modules/codkit/PROP-006",
       "file": "vibevm/vibespecs/modules/codkit/PROP-006-state-and-inventory.xml",
-      "heading": "**The stamp of the bundles** is the file `codkit/bundles.json` in the per-worktree git directory of the tree, beside the stamp of the inputs: `{\"codkitBundles\": 1, \"bundles\": [{\"name\", \"version\", \"sha256\", \"cachePath\", \"archiveBytes\", \"archiveMtimeMs\"}]}`, the bundles in the order of the declaration, rewritten by every run that provisions bundles (PROP-008 `BUNDLES-LOAD`, PROP-007 `CMD-PACKAGE-BUNDLES`). It says which unit codkit unpacked where and from what: an archive whose size and mtime did not change is not hashed again, a cache whose recorded hash is the entry's is not unpacked again, and a withdrawn or switched-off bundle is removed exactly where codkit wrote it and nowhere else. A stamp that does not read is a warning, and every bundle is provisioned again: it is a record of codkit's own writing, never a source of truth. @status:impl/done",
+      "heading": "**The stamp of the bundles** is the file `codkit/bundles.json` in the per-worktree git directory of the tree, beside the stamp of the inputs: `{\"codkitBundles\": 1, \"bundles\": [{\"name\", \"version\", \"sha256\", \"cachePath\", \"target\"?, \"archiveBytes\", \"archiveMtimeMs\"}]}` - `target` names the target whose archive was unpacked, for a unit built per target, so a run for another target unpacks its own archive over it, the bundles in the order of the declaration, rewritten by every run that provisions bundles (PROP-008 `BUNDLES-LOAD`, PROP-007 `CMD-PACKAGE-BUNDLES`). It says which unit codkit unpacked where and from what: an archive whose size and mtime did not change is not hashed again, a cache whose recorded hash is the entry's is not unpacked again, and a withdrawn or switched-off bundle is removed exactly where codkit wrote it and nowhere else. A stamp that does not read is a warning, and every bundle is provisioned again: it is a record of codkit's own writing, never a source of truth. @status:impl/done",
       "line": 13,
       "uri": "spec://codkit/modules/codkit/PROP-006#BUNDLES-STAMP"
     },
@@ -5666,7 +5666,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:092846bcdec5b9d85239113c0c7ca7a0c9d134037e358153cf0472ad748d34dd",
+      "content_hash": "sha256:ce97ad3389057c25f975be4e2624779aaf40f271f9b793bd16bbb1ede98aebc7",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -5801,7 +5801,7 @@
     },
     {
       "anchor": "cmd-sync",
-      "content_hash": "sha256:8043885fb60073e8576bb98ef8b33edd7160233e6181309d4a6f0a8426111def",
+      "content_hash": "sha256:47b137e10003888f5acb24b876ebcc53a5bb5f7ff4085d355c4ed89f8ef23645",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "5. codkit load […] and the two-way codkit sync […]",
@@ -5864,10 +5864,10 @@
     },
     {
       "anchor": "CMD-LOAD-BUNDLES",
-      "content_hash": "sha256:1441a5137cab8833bcd43ffa64f32ea347f2748a48bfd84dfa2d30e5ff50cad3",
+      "content_hash": "sha256:f0a7f5cfc07af5a9618bc65de7dd16101eef3d8906fae7b256c30c4ffe27a5d9",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`load` provisions the declared bundles after the inputs (PROP-003 `CFG-BUNDLES`, PROP-008 `BUNDLES-LOAD`), under a type that answers the bundles layer. For each bundle whose archive is at its path on this machine - `codkit.local.json` may move it or switch it off (PROP-003 `LOCAL-CONFIG-RULE`) - the hash of the archive is compared with the entry of the manifest the overlays compose, and the unit is unpacked into the cache of the upstream build the type names (VS Code: `.build/builtInExtensions/<name>`), recorded in the bundles stamp (PROP-006 `BUNDLES-STAMP`) so that an unchanged archive is not unpacked twice and a withdrawn or switched-off bundle is removed exactly where codkit wrote it. An archive that is not there is one line, `bundle <name>@<version>: not provisioned (<file> is not there)`, and not a failure of the load: a developer without the archives works on. An archive whose hash differs from the entry is a warning naming both hashes and `codkit bundles update <name>`, and the unit is not unpacked. A bundle `codkit.json` declares that the composed manifest does not carry is `CK-E-CONFIG` naming `codkit bundles add` or `update`. `--no-inputs` leaves the bundles as they are too, `--dry-run` provisions none and says so, and a run that commits the inputs on a generated branch (`ci`, `publish`) provisions none either: the cache is a developer's and a packager's. Each bundle prints one line and `data.bundles` is `[{name, version, sha256, file, cachePath, state}]`, `state` being `provisioned`, `unchanged`, `missing`, `mismatch`, `off` or `withdrawn`. @status:impl/done",
+      "heading": "`load` provisions the declared bundles after the inputs (PROP-003 `CFG-BUNDLES`, PROP-008 `BUNDLES-LOAD`), under a type that answers the bundles layer; of a unit built per target it provisions the archive of the host's target, and a host the family names no target for, or a target `files` does not name, is `not provisioned`. For each bundle whose archive is at its path on this machine - `codkit.local.json` may move it or switch it off (PROP-003 `LOCAL-CONFIG-RULE`) - the hash of the archive is compared with the entry of the manifest the overlays compose, and the unit is unpacked into the cache of the upstream build the type names (VS Code: `.build/builtInExtensions/<name>`), recorded in the bundles stamp (PROP-006 `BUNDLES-STAMP`) so that an unchanged archive is not unpacked twice and a withdrawn or switched-off bundle is removed exactly where codkit wrote it. An archive that is not there is one line, `bundle <name>@<version>: not provisioned (<file> is not there)`, and not a failure of the load: a developer without the archives works on. An archive whose hash differs from the entry is a warning naming both hashes and `codkit bundles update <name>`, and the unit is not unpacked. A bundle `codkit.json` declares that the composed manifest does not carry is `CK-E-CONFIG` naming `codkit bundles add` or `update`. `--no-inputs` leaves the bundles as they are too, `--dry-run` provisions none and says so, and a run that commits the inputs on a generated branch (`ci`, `publish`) provisions none either: the cache is a developer's and a packager's. Each bundle prints one line and `data.bundles` is `[{name, version, sha256, file, cachePath, state}]`, `state` being `provisioned`, `unchanged`, `missing`, `mismatch`, `off` or `withdrawn`. @status:impl/done",
       "line": 32,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-LOAD-BUNDLES"
     },
@@ -7142,7 +7142,7 @@
     },
     {
       "anchor": "cmd-package",
-      "content_hash": "sha256:b5cbc2c770409a91c6b25728c763f3b9a8d4a4b87f63810e6da6c30b61ae2328",
+      "content_hash": "sha256:6ff9b3f135ed8977222b537016e7bf0c2558d58992f6c0d78a32c3c7f4c378fd",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "27. codkit package [<selector>] [--keep-overlay] [--skip-type-build] [--timeout s] [--inputs dir] [--container-prefix name]",
@@ -7223,10 +7223,10 @@
     },
     {
       "anchor": "CMD-PACKAGE-BUNDLES",
-      "content_hash": "sha256:6de0d2cedbcd2aadea2f676427e2a897593070c448317dda4eeec759a9489710",
+      "content_hash": "sha256:318c6e3d3ea12db8479958b79acc7ddf62b4c0fdb447c82260581cecbdeab153",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`package` provisions the bundles of the patch set (PROP-003 `CFG-BUNDLES`) before the build of the targets, and refuses before its first write when one cannot be provisioned. The archive is taken from the `bundles/` directory of `--inputs <dir>` when that directory holds a file of the declared basename, otherwise from the declared path; a unit the cache already holds with the recorded hash is kept (PROP-006 `BUNDLES-STAMP`); an archive that is missing or whose hash differs from the entry is `CK-E-CONFIG` naming the bundle, the expected hash and where it looked - `CK-E-NET-FORBIDDEN` under `--ci`, the way a missing input is - because the upstream build would otherwise fetch the unit from the network or fail inside the build. A bundle switched off in `codkit.local.json` is provisioned all the same: the switch is a developer's, and a distribution carries every unit the patch set declares. The step prints `bundle <name>@<version>: provisioned from <where>` or `unchanged`, `data.bundles` carries the list of `##CMD-LOAD-BUNDLES`, and the type's own `inputs` step is unaffected: a cache the kit also provides as a tree input is replaced by the kit first and the bundles are provisioned over it. @status:impl/done",
+      "heading": "`package` provisions the bundles of the patch set (PROP-003 `CFG-BUNDLES`) before the build of the targets, and refuses before its first write when one cannot be provisioned; of a unit built per target it provisions the archive of the target the selected package targets ship, and a run whose targets ship different targets of such a unit is refused (`CK-E-CONFIG`): the cache of the build holds one archive, so the platforms are packaged in runs of their own. The archive is taken from the `bundles/` directory of `--inputs <dir>` when that directory holds a file of the declared basename, otherwise from the declared path; a unit the cache already holds with the recorded hash is kept (PROP-006 `BUNDLES-STAMP`); an archive that is missing or whose hash differs from the entry is `CK-E-CONFIG` naming the bundle, the expected hash and where it looked - `CK-E-NET-FORBIDDEN` under `--ci`, the way a missing input is - because the upstream build would otherwise fetch the unit from the network or fail inside the build. A bundle switched off in `codkit.local.json` is provisioned all the same: the switch is a developer's, and a distribution carries every unit the patch set declares. The step prints `bundle <name>@<version>: provisioned from <where>` or `unchanged`, `data.bundles` carries the list of `##CMD-LOAD-BUNDLES`, and the type's own `inputs` step is unaffected: a cache the kit also provides as a tree input is replaced by the kit first and the bundles are provisioned over it. @status:impl/done",
       "line": 392,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-BUNDLES"
     },
@@ -7241,7 +7241,7 @@
     },
     {
       "anchor": "cmd-inputs",
-      "content_hash": "sha256:a2f8ef91fe474c2ef85a5ef1b89a007624063db90fef136d3208b990e118d974",
+      "content_hash": "sha256:8e32070afd833ec73de158ac787ceb68d68d283a4b1943da4397411b332460d8",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "28. Inputs from other repositories, and codkit inputs pin name…|--all",
@@ -7358,19 +7358,19 @@
     },
     {
       "anchor": "CMD-BUNDLES-ADD",
-      "content_hash": "sha256:7bbf7eeb2f91e6ed2cf4d1ffe56e5ae1f8919e33dccb525383ed50cf78faddbb",
+      "content_hash": "sha256:c8ff123b8351a4a2b70fb9008d02c098299a7a6e7baca22cdde7c1bdad4a48c1",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit bundles add <archive> --id <id> [--owner <owner>] [--reason <text>]` declares a bundle: a unit the product ships inside its distribution, built elsewhere and delivered as an archive the upstream build already takes (PROP-003 `CFG-BUNDLES`). It needs a type that answers the bundles layer (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS`, capability `bundles`; otherwise `CK-E-TYPE-CAPABILITY`). It reads the identity of the unit - its name and version - from the manifest inside the archive the way the layer names it, hashes the archive (sha256), appends `{name, file}` to `bundles` of `codkit.json` canonically under the configuration lock - the file as given when absolute, otherwise relative to the patch-set root with `/` separators - and writes two artifacts through the type's generator: an overlay record `delta/overlays/<target>.bundle-<name>.overlay.json` (the target written as a patch name writes it) with one `append` operation that adds the unit's entry to the list of the manifest target (PROP-005 `OVERLAY-APPEND`; `type` extend, `category` own, `pin` the current pin, `contractTests` the id), and the guard test the overlay layer makes mandatory, under the own root as `suite('<id>')`, asserting that the manifest declares the unit with that version and hash; the guard is product code and carries the header of the selected licensing profile (PROP-019 `HEADER-FROM-PROFILE`), the way `gen feature` heads its files, and without a profile it has none and the run says so. Refused before anything is written: an archive that is not there or is not a zip, a manifest without a name or a version, a name the pattern of the layer refuses or `codkit.json` already declares, an id another artifact holds (`CK-E-MARKER-DUP-ID`), an owner the vocabulary does not know. Output: `bundle <name>@<version>: <file> (sha256 <12>)`, the three paths written, and `commit them together with the archive's new content`; `data` is `{name, version, sha256, file, artifacts: [...]}`. @status:impl/done",
+      "heading": "`codkit bundles add <archive>... --id <id> [--owner <owner>] [--reason <text>]` declares a bundle: a unit the product ships inside its distribution, built elsewhere and delivered as an archive the upstream build already takes (PROP-003 `CFG-BUNDLES`). It needs a type that answers the bundles layer (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS`, capability `bundles`; otherwise `CK-E-TYPE-CAPABILITY`). It reads the identity of the unit - its name and version - from the manifest inside the archive the way the layer names it, hashes the archive (sha256), and for a unit built per target takes one archive per target, each naming the target it was built for in its own manifest (VS Code: `TargetPlatform` of `extension.vsixmanifest`) - one name and one version across them, each target once - and declares them as `files` with the hash of each in the record (`spec://codkit/modules/codkit/PROP-003#CFG-BUNDLE-FILES`); appends `{name, file}` to `bundles` of `codkit.json` canonically under the configuration lock - the file as given when absolute, otherwise relative to the patch-set root with `/` separators - and writes two artifacts through the type's generator: an overlay record `delta/overlays/<target>.bundle-<name>.overlay.json` (the target written as a patch name writes it) with one `append` operation that adds the unit's entry to the list of the manifest target (PROP-005 `OVERLAY-APPEND`; `type` extend, `category` own, `pin` the current pin, `contractTests` the id), and the guard test the overlay layer makes mandatory, under the own root as `suite('<id>')`, asserting that the manifest declares the unit with that version and hash; the guard is product code and carries the header of the selected licensing profile (PROP-019 `HEADER-FROM-PROFILE`), the way `gen feature` heads its files, and without a profile it has none and the run says so. Refused before anything is written: an archive that is not there or is not a zip, a manifest without a name or a version, a name the pattern of the layer refuses or `codkit.json` already declares, an id another artifact holds (`CK-E-MARKER-DUP-ID`), an owner the vocabulary does not know. Output: `bundle <name>@<version>: <file> (sha256 <12>)`, the three paths written, and `commit them together with the archive's new content`; `data` is `{name, version, sha256, file, artifacts: [...]}`. @status:impl/done",
       "line": 419,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-ADD"
     },
     {
       "anchor": "CMD-BUNDLES-UPDATE",
-      "content_hash": "sha256:6f10b410d3c2669c59023eba0e5ad7f258875fc86ba644c13b6335e1589f19b5",
+      "content_hash": "sha256:536a3d74b79f10672c8adc3455297ef3342ad1d456b46ee1f5aeef1deb4f7139",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit bundles update [<name>…|--all]` reads the archives of the named bundles - of every bundle with `--all` - again, and rewrites the version and the hash in the overlay record and in the guard test of each (the guard is written whole, its header from the selected licensing profile again): `bundle <name>: <old version> (<old12>) -> <new version> (<new12>)` or `bundle <name>: already current`. It refuses a name `codkit.json` does not declare, an archive that is not there, a record it cannot find (`codkit bundles add` writes it), and names together with `--all` or neither; every named bundle is checked before one is written. A bare `codkit bundles` is a namespace and answers with its subcommands, exit 2. @status:impl/done",
+      "heading": "`codkit bundles update [<name>…|--all]` reads the archives of the named bundles - of every bundle with `--all`, and every archive of `files` of a unit built per target, each of which must have been built for the target it is declared for - again, and rewrites the version and the hash or the hashes in the overlay record and in the guard test of each (the guard is written whole, its header from the selected licensing profile again): `bundle <name>: <old version> (<old12>) -> <new version> (<new12>)` or `bundle <name>: already current`. It refuses a name `codkit.json` does not declare, an archive that is not there, a record it cannot find (`codkit bundles add` writes it), and names together with `--all` or neither; every named bundle is checked before one is written. A bare `codkit bundles` is a namespace and answers with its subcommands, exit 2. @status:impl/done",
       "line": 420,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-UPDATE"
     },
@@ -7511,7 +7511,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:64cd2de791c5aa15d553d829487d0d220ddf57673403743cb93dcfe3737ba5a9",
+      "content_hash": "sha256:820bdbe7e1256bfc32fee3deb8fb6933173871a3993381a482ccd6584b9ee6f9",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: The engines — the resolver, identity, load, save, 3-way, renames, the cause",
@@ -7637,7 +7637,7 @@
     },
     {
       "anchor": "sync",
-      "content_hash": "sha256:a5d772175b11129131bdaa342500d7b7900d497da9c176a082664f92e99120c1",
+      "content_hash": "sha256:1f013df72df665aeeb79dda70d4a3fc28376e5a853f6496a36081c723d8ca7c9",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "3. load: bringing the tree to the pin and building the generated branch",
@@ -7718,10 +7718,10 @@
     },
     {
       "anchor": "BUNDLES-LOAD",
-      "content_hash": "sha256:f872fe9313fd0a4295f8eda517a9d4758c527d8ddc267bd5dfa13beaa4d771e2",
+      "content_hash": "sha256:8466c8f2fad11369ff6ffa9357bf0dfeb37463cd1d3f5c1a0fa7c43deec4d00c",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
-      "heading": "**The bundles in the tree** (PROP-007 `CMD-LOAD-BUNDLES`, `CMD-PACKAGE-BUNDLES`). After the inputs are delivered - on the fast path and after a move alike, in the runs that deliver them - every bundle `codkit.json` declares (PROP-003 `CFG-BUNDLES`) is matched by name with its entry in the list of the manifest target the type's bundles layer names (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS`), read from the composition of the overlays over the pin and never from the tree, so that a materialized target and a dev-channel tree answer the same; the archive at the bundle's path is hashed, and a hash equal to the entry's is unpacked into the cache path the layer names: into a temporary directory beside it that is renamed into place, the entries under the archive root the layer names only, regular files only, each with a path that stays under the cache - an absolute path, a `..` or a `.git` segment, a link refuses the whole archive. The stamp records the name, the version, the hash, the cache path and the size and mtime of the archive (PROP-006 `BUNDLES-STAMP`). A stamp entry whose name is no longer declared, or is switched off on this machine, is withdrawn: the cache directory it names is removed and the entry dropped; a directory codkit did not write is never touched. The cache is untracked and sits inside a directory the cleanup whitelist of the type keeps, so `--fresh` neither removes nor rebuilds it; the stamp decides what to replace. @status:impl/done",
+      "heading": "**The bundles in the tree** (PROP-007 `CMD-LOAD-BUNDLES`, `CMD-PACKAGE-BUNDLES`). After the inputs are delivered - on the fast path and after a move alike, in the runs that deliver them - every bundle `codkit.json` declares (PROP-003 `CFG-BUNDLES`) is matched by name with its entry in the list of the manifest target the type's bundles layer names (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS`), read from the composition of the overlays over the pin and never from the tree, so that a materialized target and a dev-channel tree answer the same; the archive at the bundle's path - for a unit built per target, the archive of the run's target, the host's for `load` and the selected package targets' for `package`, against the hash the entry gives that target - is hashed, and a hash equal to the entry's is unpacked into the cache path the layer names: into a temporary directory beside it that is renamed into place, the entries under the archive root the layer names only, regular files only, each with a path that stays under the cache - an absolute path, a `..` or a `.git` segment, a link refuses the whole archive. The stamp records the name, the version, the hash, the cache path and the size and mtime of the archive (PROP-006 `BUNDLES-STAMP`). A stamp entry whose name is no longer declared, or is switched off on this machine, is withdrawn: the cache directory it names is removed and the entry dropped; a directory codkit did not write is never touched. The cache is untracked and sits inside a directory the cleanup whitelist of the type keeps, so `--fresh` neither removes nor rebuilds it; the stamp decides what to replace. @status:impl/done",
       "line": 103,
       "uri": "spec://codkit/modules/codkit/PROP-008#BUNDLES-LOAD"
     },
@@ -11219,7 +11219,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:db3ae402fcc3b7daf217e26d7b804953e3d7f55203f1637241d3bdc774e0249a",
+      "content_hash": "sha256:d809255519fab7e2ad124a1ec91ba7502b074217a13457b9701414fa87a1b1f9",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "codkit PROP-016: Project types",
@@ -11273,7 +11273,7 @@
     },
     {
       "anchor": "contract",
-      "content_hash": "sha256:957e2889109268bf4914e1718400888a91c05966635b3093da6fc9861f28bdc5",
+      "content_hash": "sha256:ac35ae6099c91e5721559a7089e70e516b0a07357968c2f1597c92b80f706a86",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
       "heading": "2. The contract: eleven questions a type answers",
@@ -11309,10 +11309,10 @@
     },
     {
       "anchor": "TYPE-AREA-LAYERS",
-      "content_hash": "sha256:0b6039d4935c1c1a06793763589ab2a4424c1e0bb1446f629313274cd6dd1039",
+      "content_hash": "sha256:24bba272c0faedcdc3f0c87167210410211c006ea20a602afb6f326d5ac8d61e",
       "doc_path": "modules/codkit/PROP-016",
       "file": "vibevm/vibespecs/modules/codkit/PROP-016-project-types.xml",
-      "heading": "**Layers.** `own`, `patch`, `resource-file` and `rewrite-rule` are universal and always present. `config-overlay` takes its targets and its optional dev channel from the type (VS Code: `product.json` with `product.overrides.json`). `own-extension` takes its materializer from the type (VS Code: `extensions/<name>`). `service-override` takes its verifier from the type (VS Code: `registerSingleton`; Theia: an inversify `rebind` in a container module). `entry-module` takes its locator from the type (VS Code: `workbench.common.main.ts`; Theia: the application's module list). `bundles` takes its layer from the type (added 2026-11-02 for the first family, by the rule of `##TYPE-CONTRACT-IS-CLOSED`: a unit another repository builds and the product ships inside its distribution): the manifest target whose list declares the units (VS Code: `product.json`, `builtInExtensions`), how an entry of that list is read and written - name, version, sha256 - where a unit is unpacked (VS Code: `.build/builtInExtensions/<name>`), the root inside the archive (VS Code: `extension/`), the manifest inside the archive its identity is read from (VS Code: `extension/package.json`, `publisher.name` and `version`), the shape of a name and the word for the archive; the engine provisions the units (PROP-008 `BUNDLES-LOAD`) and the type's generator writes the record and the guard test (PROP-007 `CMD-BUNDLES-ADD`). A type without the layer has no bundles, and `codkit bundles` refuses with `CK-E-TYPE-CAPABILITY`. A layer the type does not provide is absent for that patch set: `verify` refuses an artifact of that layer with `CK-E-TYPE-CAPABILITY`. Since 2026-11-01 an overlay target may also name `allowedScalarKeys`: top-level scalar keys an overlay may set with `expectUpstream` carrying the pin's value - the licence identifier of a manifest, which the licensing area writes (`TYPE-AREA-LICENSING`); additions under `allowedKeys` stay what they were, and a scalar is replaced, never added to. @status:spec/done",
+      "heading": "**Layers.** `own`, `patch`, `resource-file` and `rewrite-rule` are universal and always present. `config-overlay` takes its targets and its optional dev channel from the type (VS Code: `product.json` with `product.overrides.json`). `own-extension` takes its materializer from the type (VS Code: `extensions/<name>`). `service-override` takes its verifier from the type (VS Code: `registerSingleton`; Theia: an inversify `rebind` in a container module). `entry-module` takes its locator from the type (VS Code: `workbench.common.main.ts`; Theia: the application's module list). `bundles` takes its layer from the type (added 2026-11-02 for the first family, by the rule of `##TYPE-CONTRACT-IS-CLOSED`: a unit another repository builds and the product ships inside its distribution): the manifest target whose list declares the units (VS Code: `product.json`, `builtInExtensions`), how an entry of that list is read and written - name, version, sha256 - where a unit is unpacked (VS Code: `.build/builtInExtensions/<name>`), the root inside the archive (VS Code: `extension/`), the manifest inside the archive its identity is read from (VS Code: `extension/package.json`, `publisher.name` and `version`), the shape of a name and the word for the archive, and for a unit built per target (built per target since 2026-11-02, when the editor of the first product was packaged for three platforms from one commit of its patch set and the extension it bundles carries a native binary per platform) the targets the family names (VS Code: the marketplace target platforms `win32-x64`, `linux-x64`, `darwin-arm64`, ...), the target of a host and of a package target of its catalog, and the manifest inside an archive that names the target it was built for (VS Code: `TargetPlatform` of `extension.vsixmanifest`); the engine provisions the units (PROP-008 `BUNDLES-LOAD`) and the type's generator writes the record and the guard test (PROP-007 `CMD-BUNDLES-ADD`). A type without the layer has no bundles, and `codkit bundles` refuses with `CK-E-TYPE-CAPABILITY`. A layer the type does not provide is absent for that patch set: `verify` refuses an artifact of that layer with `CK-E-TYPE-CAPABILITY`. Since 2026-11-01 an overlay target may also name `allowedScalarKeys`: top-level scalar keys an overlay may set with `expectUpstream` carrying the pin's value - the licence identifier of a manifest, which the licensing area writes (`TYPE-AREA-LICENSING`); additions under `allowedKeys` stay what they were, and a scalar is replaced, never added to. @status:spec/done",
       "line": 18,
       "uri": "spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS"
     },
@@ -14207,7 +14207,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:fd0e3afc01283a55a99b8e077cd1aa64c9edd2bb971b391a5ece095e3af8eeb6",
+      "content_hash": "sha256:49d6761d1de59bc837aa084f5e616e9b022696c1459a840a603231068fb2b8e4",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "vscode PROP-003: Layers - the product.json overlay, built-in extensions, service overrides, entry modules",
@@ -14261,7 +14261,7 @@
     },
     {
       "anchor": "builtins",
-      "content_hash": "sha256:7acc3110c617bd44fc39ad4acbcabae94f910ea7434128f3857a938e5c4fceca",
+      "content_hash": "sha256:fb1e5fb415f20f5054147fba3f5ffb1e5fd2a9b943d86d8500b53886c1101302",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
       "heading": "2. Built-in extensions",
@@ -14279,10 +14279,10 @@
     },
     {
       "anchor": "VSCODE-BUNDLED-EXTENSION",
-      "content_hash": "sha256:80082509bdc9a18fbb38e351d12c440ee5e7079db1813df78fd896adcfcd3c1f",
+      "content_hash": "sha256:1fc77ff6086825bf9463139aeab93cbc5728fb6a50fa62f2525d2b5308e03a07",
       "doc_path": "modules/vscode/PROP-003",
       "file": "vibevm/vibespecs/modules/vscode/PROP-003-layers.xml",
-      "heading": "**A bundled extension of the product is an entry of `builtInExtensions` whose VSIX the patch set declares as a bundle** (`spec://codkit/modules/codkit/PROP-003#CFG-BUNDLES`, `spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-ADD`). The bundles layer of this type names `product.json` as the manifest target and `builtInExtensions` as its list; an entry is `{name, version, sha256, repo: \"\"}` - `name` is `publisher.name` of the extension's manifest, the key the dev scanner and the packaging look the cache up by, `repo` is empty because the bytes never come from a release of upstream's - appended by the overlay record `codkit bundles add` writes (`spec://codkit/modules/codkit/PROP-005#OVERLAY-APPEND`), beside the entries upstream ships. The unit is unpacked from `extension/` of the VSIX into `.build/builtInExtensions/<name>/`, where the packaging (`build/lib/builtInExtensions.ts`: `isUpToDate` by `version`, then the stream of the cache) and the development run (the scanner's `devSystemExtensionsList`, read from the dev channel `product.overrides.json`) both look for a built-in extension, and where upstream's own `preLaunch` never writes it, because that script reads `product.json` and not the dev channel. The hash of the VSIX is the engine's gate: the cache route of the packaging checks the version alone. A developer switches a bundled extension off for a run with upstream's own means - `VSCODE_SKIP_BUILTIN_EXTENSIONS=<name>` or the control file of `scripts/code --builtin` - and off for this machine's `load` in `codkit.local.json`. An extension that declares `enabledApiProposals` needs them granted in `extensionEnabledApiProposals` of the manifest, which the product writes into the same overlay record by hand. A platform-specific VSIX is not a bundle of this layer yet: the entry it would need (`platforms`, `platformSpecific`) is not written. @status:impl/done",
+      "heading": "**A bundled extension of the product is an entry of `builtInExtensions` whose VSIX the patch set declares as a bundle** (`spec://codkit/modules/codkit/PROP-003#CFG-BUNDLES`, `spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-ADD`). The bundles layer of this type names `product.json` as the manifest target and `builtInExtensions` as its list; an entry is `{name, version, sha256, repo: \"\"}` - `name` is `publisher.name` of the extension's manifest, the key the dev scanner and the packaging look the cache up by, `repo` is empty because the bytes never come from a release of upstream's - appended by the overlay record `codkit bundles add` writes (`spec://codkit/modules/codkit/PROP-005#OVERLAY-APPEND`), beside the entries upstream ships. The unit is unpacked from `extension/` of the VSIX into `.build/builtInExtensions/<name>/`, where the packaging (`build/lib/builtInExtensions.ts`: `isUpToDate` by `version`, then the stream of the cache) and the development run (the scanner's `devSystemExtensionsList`, read from the dev channel `product.overrides.json`) both look for a built-in extension, and where upstream's own `preLaunch` never writes it, because that script reads `product.json` and not the dev channel. The hash of the VSIX is the engine's gate: the cache route of the packaging checks the version alone. A developer switches a bundled extension off for a run with upstream's own means - `VSCODE_SKIP_BUILTIN_EXTENSIONS=<name>` or the control file of `scripts/code --builtin` - and off for this machine's `load` in `codkit.local.json`. An extension that declares `enabledApiProposals` needs them granted in `extensionEnabledApiProposals` of the manifest, which the product writes into the same overlay record by hand. A platform-specific extension - a VSIX per marketplace target, packaged with `vsce package --target`, the form an extension with a native binary takes - is a bundle built per target (built per target since 2026-11-02, when the editor of the first product was packaged for three platforms from one commit of its patch set and the extension it bundles carries a native binary per platform): `files` names the VSIX of each target, the target is read from `TargetPlatform` of the identity in `extension.vsixmanifest`, and the record appends upstream's own platform-specific entry `{name, version, repo: \"\", platformSpecific: {\"<target>\": \"<sha256>\"}}` (`build/lib/builtInExtensions.ts` and `build/lib/extensionTarget.ts` of the pin 1.144.0, whose target vocabulary - `win32-x64`, `win32-arm64`, `linux-x64`, `linux-arm64`, `linux-armhf`, `alpine-x64`, `alpine-arm64`, `darwin-x64`, `darwin-arm64` - this layer takes as its targets); a host's target is its platform and architecture as upstream derives it, Alpine never guessed, and a package target's is its platform and architecture. The packaging takes the unit from the cache by its version as before, so the hashes of `platformSpecific` are the engine's gate and never reach a download. @status:impl/done",
       "line": 13,
       "uri": "spec://codkit/modules/vscode/PROP-003#VSCODE-BUNDLED-EXTENSION"
     },
@@ -15026,7 +15026,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:45b6b12013554c631912087fe5513a05d6c60b27807ec0e000799760845d085c",
+      "content_hash": "sha256:d6b42bab57603be6fb29312935f8baca14750a5cc5e2fc1d5518211beb14368b",
       "doc_path": "modules/vscode/PROP-008",
       "file": "vibevm/vibespecs/modules/vscode/PROP-008-generators.xml",
       "heading": "vscode PROP-008: Generators - the feature skeleton, the brand table, the nls.ts hook",
@@ -15071,7 +15071,7 @@
     },
     {
       "anchor": "brand",
-      "content_hash": "sha256:b473f9cc502e4c2d06b9c7161c323ae301e9513d40371bd79eca814c8632424a",
+      "content_hash": "sha256:0619695b46b5f42d900e7feef9604c8d2999c430f442ca86064eeeef0a93c68f",
       "doc_path": "modules/vscode/PROP-008",
       "file": "vibevm/vibespecs/modules/vscode/PROP-008-generators.xml",
       "heading": "2. The brand table and the nls hook",
@@ -15089,10 +15089,10 @@
     },
     {
       "anchor": "GEN-BUNDLE",
-      "content_hash": "sha256:65602da5d523d43a8f9faa18d539a9c6630e00964b133df443c4e407740502e9",
+      "content_hash": "sha256:1e466df3fca6e6add9d11a964ee70d4c27e9ca67e2019b4f9619d828820c722c",
       "doc_path": "modules/vscode/PROP-008",
       "file": "vibevm/vibespecs/modules/vscode/PROP-008-generators.xml",
-      "heading": "**`codkit bundles add` writes two files of this family through the generator of the bundles layer** (`spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-ADD`): the overlay record `delta/overlays/product.json.bundle-<name>.overlay.json` with one `append` on `[\"builtInExtensions\"]` whose value is `{name, version, sha256, repo: \"\"}` (`##VSCODE-BUNDLED-EXTENSION` of PROP-003), and the guard test `<ownRoot>/test/node/bundles/<name>.test.ts` - a `suite('<id>')` of the node layer, which the product tests of `ci --profile build` run - that reads `product.json` of the tree through `FileAccess.asFileUri('')` of `vs/base/common/network.js`, finds the entry by name and asserts its version and hash. The test is generated and says so in its header: `codkit bundles update` rewrites it with the record. The relative specifiers are counted from the materialized location of the own root (`##VSCODE-GENERATORS-ARE-TEMPLATES`), and the directory `test/node/bundles/` must be inside a unit of the own manifest, as every own test (`##GEN-TEST-LIVES-WITH-THE-FEATURE`). @status:impl/done",
+      "heading": "**`codkit bundles add` writes two files of this family through the generator of the bundles layer** (`spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-ADD`): the overlay record `delta/overlays/product.json.bundle-<name>.overlay.json` with one `append` on `[\"builtInExtensions\"]` whose value is `{name, version, sha256, repo: \"\"}` (`##VSCODE-BUNDLED-EXTENSION` of PROP-003), and the guard test `<ownRoot>/test/node/bundles/<name>.test.ts` - a `suite('<id>')` of the node layer, which the product tests of `ci --profile build` run - that reads `product.json` of the tree through `FileAccess.asFileUri('')` of `vs/base/common/network.js`, finds the entry by name and asserts its version and hash - for a unit built per target, the whole `platformSpecific` map of the record. The test is generated and says so in its header: `codkit bundles update` rewrites it with the record. The relative specifiers are counted from the materialized location of the own root (`##VSCODE-GENERATORS-ARE-TEMPLATES`), and the directory `test/node/bundles/` must be inside a unit of the own manifest, as every own test (`##GEN-TEST-LIVES-WITH-THE-FEATURE`). @status:impl/done",
       "line": 12,
       "uri": "spec://codkit/modules/vscode/PROP-008#GEN-BUNDLE"
     },

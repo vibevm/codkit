@@ -77,7 +77,13 @@ export type BrandGraft = {
 export type BundleGuardRequest = {
 	/** The id of the overlay record the test guards. */
 	readonly id: string;
-	readonly unit: { readonly name: string; readonly version: string; readonly sha256: string };
+	readonly unit: {
+		readonly name: string;
+		readonly version: string;
+		readonly sha256: string;
+		/** The hash of each target's archive of a unit built per target. */
+		readonly targets?: Readonly<Record<string, string>> | undefined;
+	};
 	/** The own root of the patch set, a path from the tree root. */
 	readonly ownRoot: string;
 	/** The manifest target whose list the record appends to, from the tree root. */

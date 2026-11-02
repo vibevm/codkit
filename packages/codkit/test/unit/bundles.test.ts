@@ -31,7 +31,12 @@ const NAME = 'acme.pack';
 const ARCHIVE_TIME = new Date('2026-01-01T00:00:00Z');
 const RECORD = `delta/overlays/manifest.json.bundle-${NAME}.overlay.json`;
 
-type Unit = { readonly name: string; readonly version: string; readonly sha256: string };
+type Unit = {
+	readonly name: string;
+	readonly version: string;
+	readonly sha256?: string;
+	readonly targets?: Readonly<Record<string, string>>;
+};
 
 type Harness = {
 	readonly tree: string;
@@ -39,7 +44,11 @@ type Harness = {
 	readonly archives: string;
 	readonly context: OverlayVarContext;
 	/** An add-on archive at `<archives>/<file>`, as the layer reads it; the absolute path with forward slashes. */
-	archive(file: string, unit: { readonly name: string; readonly version: string }, files?: Readonly<Record<string, string>>): string;
+	archive(
+		file: string,
+		unit: { readonly name: string; readonly version: string; readonly target?: string },
+		files?: Readonly<Record<string, string>>
+	): string;
 	/** The overlay record that appends the unit to the manifest. */
 	record(unit: Unit | null): void;
 	config(bundles: readonly BundleConfig[] | undefined): CodkitConfig;
@@ -94,7 +103,9 @@ function harness(label: string): Harness {
 		context,
 		archive(file, unit, files = {}) {
 			const data: Record<string, Uint8Array> = {
-				'addon/addon.json': strToU8(`${JSON.stringify({ name: unit.name, version: unit.version })}\n`),
+				'addon/addon.json': strToU8(
+					`${JSON.stringify({ name: unit.name, version: unit.version, ...(unit.target === undefined ? {} : { target: unit.target }) })}\n`
+				),
 				'addon/main.js': strToU8(`module.exports = '${unit.version}';\n`),
 				'README.md': strToU8('outside the root\n')
 			};
@@ -333,6 +344,7 @@ describe('status inspects without writing', () => {
 			name: NAME,
 			version: '1.0.0',
 			sha256: 'f'.repeat(64),
+			target: null,
 			file: '/x/acme-pack.zip',
 			cachePath: 'cache/acme',
 			state: 'unchanged',
@@ -395,5 +407,66 @@ describe('package refuses before its first write, and takes the kit first', () =
 		expect(provisioned.reports[0]?.file).toBe(join(kit, 'bundles', 'acme-pack.zip'));
 		expect(readFileSync(join(h.cache(), 'main.js'), 'utf8')).toBe("module.exports = '1.0.0';\n");
 		expect(h.run({ config: off, mode: 'package', kitDir: kit }).reports.map((report) => report.state)).toEqual(['unchanged']);
+	});
+});
+
+describe('a unit built per target', () => {
+	const h = harness('bundles-targets');
+	const windows = h.archive('pack-win32-x64.zip', { name: NAME, version: '1.0.0', target: 'win32-x64' });
+	const linux = h.archive('pack-linux-x64.zip', { name: NAME, version: '1.0.0', target: 'linux-x64' });
+	const hashes = { 'win32-x64': hashFile(windows).sha256, 'linux-x64': hashFile(linux).sha256 };
+	h.record({ name: NAME, version: '1.0.0', targets: hashes });
+	const config = h.config([{ name: NAME, files: { 'win32-x64': windows, 'linux-x64': linux } }]);
+
+	it('provisions the archive of the host target, and switches when the target does', () => {
+		const onWindows = h.run({ config, host: { platform: 'win32', arch: 'x64' } });
+		expect(onWindows.reports.map((report) => [report.state, report.target, report.sha256])).toEqual([
+			['provisioned', 'win32-x64', hashes['win32-x64']]
+		]);
+		expect(onWindows.lines.some((line) => line.startsWith(`bundle ${NAME}@1.0.0 for win32-x64: provisioned from`))).toBe(true);
+		expect(readBundleStore(h.tree, () => {})[0]?.target).toBe('win32-x64');
+		expect(h.run({ config, host: { platform: 'win32', arch: 'x64' } }).reports[0]?.state).toBe('unchanged');
+		const onLinux = h.run({ config, host: { platform: 'linux', arch: 'x64' } });
+		expect(onLinux.reports.map((report) => [report.state, report.target])).toEqual([['provisioned', 'linux-x64']]);
+		expect(readBundleStore(h.tree, () => {})[0]?.target).toBe('linux-x64');
+	});
+
+	it('provisions for the one target the selected package targets ship, and refuses two', () => {
+		const target = (id: string, platform: 'windows' | 'linux' | 'macos') => ({
+			id,
+			platform,
+			arch: 'x64' as const,
+			supportedHosts: ['win32' as const],
+			build: []
+		});
+		const packaged = h.run({ config, mode: 'package', packageTargets: [target('w1', 'windows'), target('w2', 'windows')] });
+		expect(packaged.reports.map((report) => report.target)).toEqual(['win32-x64']);
+		const refused = refusal(() => h.run({ config, mode: 'package', packageTargets: [target('w1', 'windows'), target('l1', 'linux')] }));
+		expect(refused.code).toBe('CONFIG');
+		expect(refused.message).toContain('this run packages for win32-x64 and linux-x64');
+	});
+
+	it('reports a host the family has no target for, an undeclared target and a record without its hash', () => {
+		expect(h.run({ config, host: { platform: 'sunos', arch: 'x64' } }).reports.map((report) => report.state)).toEqual(['missing']);
+		const onMac = h.run({ config, host: { platform: 'darwin', arch: 'arm64' } });
+		expect(onMac.reports.map((report) => [report.state, report.target])).toEqual([['missing', 'darwin-arm64']]);
+		expect(onMac.lines.some((line) => line.includes('codkit.json names no archive for darwin-arm64'))).toBe(true);
+		expect(refusal(() => h.run({ config, mode: 'package', host: { platform: 'darwin', arch: 'arm64' } })).message).toContain(
+			'codkit.json names no archive of the unit for darwin-arm64'
+		);
+		h.record({ name: NAME, version: '1.0.0', targets: { 'win32-x64': hashes['win32-x64'] } });
+		const stale = h.run({ config, host: { platform: 'linux', arch: 'x64' } });
+		expect(stale.reports.map((report) => report.state)).toEqual(['mismatch']);
+		expect(refusal(() => h.run({ config, mode: 'package', host: { platform: 'linux', arch: 'x64' } })).hint).toContain(
+			`codkit bundles update ${NAME}`
+		);
+		h.record({ name: NAME, version: '1.0.0', targets: hashes });
+	});
+
+	it("refuses an archive whose hash is another target's", () => {
+		const crossed = h.config([{ name: NAME, files: { 'win32-x64': linux, 'linux-x64': linux } }]);
+		expect(h.run({ config: crossed, host: { platform: 'win32', arch: 'x64' } }).reports.map((report) => report.state)).toEqual([
+			'mismatch'
+		]);
 	});
 });

@@ -7,13 +7,16 @@
 // The declaration (PROP-003 ##CFG-BUNDLES) is joined by name with the entries
 // of the manifest the overlays compose over the pin - never with the tree's
 // file, so that a materialized target and a dev-channel tree answer the same -
-// and the entry says what the archive must hash to. The stamp (PROP-006
-// ##BUNDLES-STAMP) says what was unpacked where, so nothing is hashed or
+// and the entry says what the archive must hash to. A unit built per target has
+// one archive and one hash per target, and a run provisions the archive of the
+// one target it runs or packages for: the host's for `load`, the selected
+// package targets' for `package`. The stamp (PROP-006 ##BUNDLES-STAMP) says
+// what was unpacked where and for which target, so nothing is hashed or
 // unpacked twice and a withdrawn bundle is removed exactly where it was put.
 
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import type { BundleEntry, BundleLayer, ProjectType } from '@codkit/type-api';
+import type { BundleEntry, BundleHost, BundleLayer, PackageTarget, ProjectType } from '@codkit/type-api';
 import { resolveBundleFile } from './bundlesDeclaration.ts';
 import type { BundleConfig } from './bundlesDeclaration.ts';
 import { readBundleStore, writeBundleStore } from './bundlesStore.ts';
@@ -31,9 +34,11 @@ export type BundleState = 'provisioned' | 'unchanged' | 'missing' | 'mismatch' |
 export type BundleReport = {
 	readonly name: string;
 	readonly version: string;
-	/** The hash the manifest entry declares. */
+	/** The hash the manifest entry declares for the archive this run looked at; empty when it declares none. */
 	readonly sha256: string;
-	/** The archive the run looked at, resolved; null for a bundle switched off. */
+	/** The target whose archive this run looked at, for a unit built per target; null for one archive. */
+	readonly target: string | null;
+	/** The archive the run looked at, resolved; null for a bundle switched off or without an archive here. */
 	readonly file: string | null;
 	readonly cachePath: string;
 	readonly state: BundleState;
@@ -43,7 +48,13 @@ export type BundleReport = {
 
 export type DeclaredBundle = {
 	readonly config: BundleConfig;
-	/** The archive on this machine, resolved; null when the bundle is switched off here. */
+	/** Switched off on this machine by codkit.local.json. */
+	readonly off: boolean;
+	/** Built per target: one archive and one hash per target. */
+	readonly perTarget: boolean;
+	/** The target of this run, for a unit built per target; null for one archive or when the run has none. */
+	readonly target: string | null;
+	/** The archive of this run on this machine, resolved; null when it is switched off or declares none for the target. */
 	readonly file: string | null;
 	/** The entry of the composed manifest, or null when the manifest does not carry the unit. */
 	readonly unit: BundleEntry | null;
@@ -66,6 +77,30 @@ export function bundleLayerOf(type: ProjectType, config: CodkitConfig): BundleLa
 	return layer;
 }
 
+/**
+ * The target a run provisions for: the host's, or the one target every
+ * selected package target ships. A run that would package several targets of
+ * a unit built per target is refused - the cache of the build holds one.
+ */
+export function runTargetOf(
+	layer: BundleLayer,
+	config: CodkitConfig,
+	packageTargets: readonly PackageTarget[] | undefined,
+	host: BundleHost
+): string | null {
+	if (packageTargets === undefined || packageTargets.length === 0) return layer.hostTarget(host);
+	const targets = [...new Set(packageTargets.map((target) => layer.packageTarget(target)))];
+	const perTarget = (config.bundles ?? []).filter((bundle) => bundle.files !== undefined && bundle.off !== true);
+	if (perTarget.length > 0 && targets.length > 1) {
+		throw ckError(
+			'CONFIG',
+			`the bundle ${perTarget[0]?.name ?? ''} is built per target, and this run packages for ${targets.map((target) => target ?? 'no single target').join(' and ')}`,
+			'package the targets of each platform in a run of their own: the cache of the upstream build holds the archive of one target'
+		);
+	}
+	return targets[0] ?? null;
+}
+
 /** The manifest document the overlays compose for the layer's target over the pin. */
 export function composedManifest(
 	layer: BundleLayer,
@@ -82,24 +117,32 @@ export function composedManifest(
 	return renderOverlayTarget(overlays, treeDir, config.pin.sha, context).document;
 }
 
-/** Every declared bundle with its archive on this machine and its entry in the composed manifest. */
+/** Every declared bundle with its archive of the run's target on this machine and its entry in the composed manifest. */
 export function declaredBundles(
 	type: ProjectType,
 	config: CodkitConfig,
 	patchesDir: string,
 	treeDir: string,
-	context: OverlayVarContext
+	context: OverlayVarContext,
+	target: string | null = null
 ): readonly DeclaredBundle[] {
 	const layer = bundleLayerOf(type, config);
 	const declared = config.bundles ?? [];
 	if (layer === null || declared.length === 0) return [];
 	const units = layer.entries(composedManifest(layer, type, config, patchesDir, treeDir, context));
-	return declared.map((bundle) => ({
-		config: bundle,
-		file: bundle.off === true ? null : resolveBundleFile(patchesDir, bundle.file),
-		unit: units.find((unit) => unit.name === bundle.name) ?? null,
-		cachePath: layer.cachePath(bundle.name)
-	}));
+	return declared.map((bundle) => {
+		const perTarget = bundle.files !== undefined;
+		const declaredFile = perTarget ? (target === null ? undefined : bundle.files?.[target]) : bundle.file;
+		return {
+			config: bundle,
+			off: bundle.off === true,
+			perTarget,
+			target: perTarget ? target : null,
+			file: bundle.off === true || declaredFile === undefined ? null : resolveBundleFile(patchesDir, declaredFile),
+			unit: units.find((unit) => unit.name === bundle.name) ?? null,
+			cachePath: layer.cachePath(bundle.name)
+		};
+	});
 }
 
 /** The refusal of a bundle the composed manifest does not carry. */
@@ -107,7 +150,7 @@ function undeclaredUnit(layer: BundleLayer, name: string): never {
 	throw ckError(
 		'CONFIG',
 		`bundle ${name}: ${layer.manifestTarget} composed over the pin declares no such unit in ${layer.listPath.join('.')}`,
-		`run codkit bundles add <archive> --id <id> to write its record, or codkit bundles update ${name} to refresh it`
+		`run codkit bundles add <archive>... --id <id> to write its record, or codkit bundles update ${name} to refresh it`
 	);
 }
 
@@ -138,6 +181,10 @@ export type ProvisionOptions = {
 	readonly offline?: boolean;
 	/** False: the reports are returned and no line is printed; `status` prints its own. */
 	readonly print?: boolean;
+	/** The package targets of a `package` run; absent, the run provisions for the host. */
+	readonly packageTargets?: readonly PackageTarget[];
+	/** The host whose target a run without package targets provisions for; this process's by default. */
+	readonly host?: BundleHost;
 };
 
 function cacheAbsolute(treeDir: string, cachePath: string): string {
@@ -199,7 +246,8 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 	const { type, config, patchesDir, treeDir, out } = options;
 	const layer = bundleLayerOf(type, config);
 	if (layer === null) return [];
-	const declared = declaredBundles(type, config, patchesDir, treeDir, options.context);
+	const runTarget = runTargetOf(layer, config, options.packageTargets, options.host ?? { platform: process.platform, arch: process.arch });
+	const declared = declaredBundles(type, config, patchesDir, treeDir, options.context, runTarget);
 	const stored = readBundleStore(treeDir, (text) => out.warn(text));
 	const inspect = options.inspect === true;
 	const kitDir = options.kitDir ?? null;
@@ -213,71 +261,105 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 	for (const bundle of declared) {
 		const name = bundle.config.name;
 		const unit = bundle.unit ?? undeclaredUnit(layer, name);
+		const label = `bundle ${name}@${unit.version}${bundle.perTarget ? ` for ${bundle.target ?? 'this host'}` : ''}`;
+		const expected = bundle.perTarget ? (bundle.target === null ? undefined : unit.targets?.[bundle.target]) : unit.sha256;
 		const previous = stored.find((entry) => entry.name === name);
+		const sameTarget = (entry: StoredBundle): boolean => (entry.target ?? null) === bundle.target;
 		const cachePresent = (entry: StoredBundle | undefined): entry is StoredBundle =>
 			entry !== undefined && entry.cachePath === bundle.cachePath && existsSync(cacheAbsolute(treeDir, entry.cachePath));
+		const current = (entry: StoredBundle | undefined): entry is StoredBundle =>
+			cachePresent(entry) && sameTarget(entry) && expected !== undefined && entry.sha256 === expected;
 		const report = (state: BundleState, file: string | null, line: string): void => {
-			reports.push({ name, version: unit.version, sha256: unit.sha256, file, cachePath: bundle.cachePath, state, line });
+			reports.push({
+				name,
+				version: unit.version,
+				sha256: expected ?? '',
+				target: bundle.target,
+				file,
+				cachePath: bundle.cachePath,
+				state,
+				line
+			});
 			if (options.print !== false) out.info(line);
 		};
 
-		if (bundle.file === null && options.mode === 'load') {
+		if (bundle.off && options.mode === 'load') {
 			if (cachePresent(previous)) {
 				if (!inspect) removeCache(treeDir, previous.cachePath);
-				report('withdrawn', null, `bundle ${name}@${unit.version}: switched off in codkit.local.json; withdrawn from ${bundle.cachePath}`);
+				report('withdrawn', null, `${label}: switched off in codkit.local.json; withdrawn from ${bundle.cachePath}`);
 			} else {
-				report('off', null, `bundle ${name}@${unit.version}: switched off in codkit.local.json`);
+				report('off', null, `${label}: switched off in codkit.local.json`);
 			}
 			continue;
 		}
-		const file = bundle.file ?? resolveBundleFile(patchesDir, bundle.config.file);
+		if (bundle.perTarget && bundle.target === null) {
+			if (options.mode === 'package') {
+				refuse(
+					`${label}: the project type ${type.id} names no target of the unit for this run`,
+					'package on a host and for targets the family builds the unit for'
+				);
+			}
+			report('missing', null, `${label}: not provisioned (the family names no target of the unit for this host)`);
+			continue;
+		}
+		const declaredFile = bundle.perTarget ? bundle.config.files?.[bundle.target ?? ''] : bundle.config.file;
+		const file = bundle.file ?? (declaredFile === undefined ? null : resolveBundleFile(patchesDir, declaredFile));
+		if (file === null) {
+			if (options.mode === 'package') {
+				refuse(
+					`${label}: codkit.json names no archive of the unit for ${bundle.target ?? 'this run'}`,
+					`add the archive of ${bundle.target ?? 'the target'} to the files of the bundle and run codkit bundles update ${name}`
+				);
+			}
+			report('missing', null, `${label}: not provisioned (codkit.json names no archive for ${bundle.target ?? 'this host'})`);
+			continue;
+		}
+		if (expected === undefined) {
+			if (options.mode === 'package') {
+				refuse(
+					`${label}: the record of the unit carries no hash for ${bundle.target ?? 'this run'}`,
+					`codkit bundles update ${name} writes the hash of every archive codkit.json names`
+				);
+			}
+			if (!inspect) out.warn(`${label}: the record carries no hash for this target; codkit bundles update ${name} writes it`);
+			report('mismatch', file, `${label}: the record carries no hash for this target (codkit bundles update ${name})`);
+			continue;
+		}
 		const located = locateArchive(file, kitDir);
 		if (located === null) {
 			// A cache that holds the unit with the recorded hash is the unit: the
 			// archive is needed only to put it there (##BUNDLES-STAMP).
-			if (cachePresent(previous) && previous.sha256 === unit.sha256) {
+			if (current(previous)) {
 				next.push(previous);
-				report(
-					'unchanged',
-					file,
-					`bundle ${name}@${unit.version}: unchanged in ${bundle.cachePath} (sha256 ${short(unit.sha256)}; ${file} is not there)`
-				);
+				report('unchanged', file, `${label}: unchanged in ${bundle.cachePath} (sha256 ${short(expected)}; ${file} is not there)`);
 				continue;
 			}
 			if (options.mode === 'package') {
 				refuse(
-					`bundle ${name}@${unit.version}: no archive to provision it from (looked for ${file}${kitDir === null ? '' : ` and ${join(kitDir, 'bundles', basename(file))}`})`,
+					`${label}: no archive to provision it from (looked for ${file}${kitDir === null ? '' : ` and ${join(kitDir, 'bundles', basename(file))}`})`,
 					'put the archive at the declared path, or give --inputs <dir> whose bundles/ directory holds it'
 				);
 			}
-			report('missing', file, `bundle ${name}@${unit.version}: not provisioned (${file} is not there)`);
+			report('missing', file, `${label}: not provisioned (${file} is not there)`);
 			continue;
 		}
 		const stat = statSync(located.path);
-		const unchangedArchive =
-			cachePresent(previous) &&
-			previous.sha256 === unit.sha256 &&
-			previous.archiveBytes === stat.size &&
-			previous.archiveMtimeMs === stat.mtimeMs;
+		const unchangedArchive = current(previous) && previous.archiveBytes === stat.size && previous.archiveMtimeMs === stat.mtimeMs;
 		const sha256 = unchangedArchive ? previous.sha256 : hashFile(located.path).sha256;
-		if (sha256 !== unit.sha256) {
+		if (sha256 !== expected) {
 			if (options.mode === 'package') {
 				refuse(
-					`bundle ${name}@${unit.version}: ${located.path} hashes to ${short(sha256)}, the manifest entry expects ${short(unit.sha256)}`,
+					`${label}: ${located.path} hashes to ${short(sha256)}, the manifest entry expects ${short(expected)}`,
 					`codkit bundles update ${name} rewrites the record from the archive, or put the archive the record names at that path`
 				);
 			}
 			if (!inspect) {
 				out.warn(
-					`bundle ${name}@${unit.version}: ${located.path} hashes to ${short(sha256)}, the record expects ${short(unit.sha256)}; codkit bundles update ${name} rewrites the record`
+					`${label}: ${located.path} hashes to ${short(sha256)}, the record expects ${short(expected)}; codkit bundles update ${name} rewrites the record`
 				);
 			}
-			if (cachePresent(previous) && previous.sha256 === unit.sha256) next.push(previous);
-			report(
-				'mismatch',
-				located.path,
-				`bundle ${name}@${unit.version}: archive differs from the record (sha256 ${short(sha256)} vs ${short(unit.sha256)})`
-			);
+			if (current(previous)) next.push(previous);
+			report('mismatch', located.path, `${label}: archive differs from the record (sha256 ${short(sha256)} vs ${short(expected)})`);
 			continue;
 		}
 		const stamp: StoredBundle = {
@@ -285,19 +367,20 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 			version: unit.version,
 			sha256,
 			cachePath: bundle.cachePath,
+			...(bundle.target === null ? {} : { target: bundle.target }),
 			archiveBytes: stat.size,
 			archiveMtimeMs: stat.mtimeMs
 		};
-		if (cachePresent(previous) && previous.sha256 === sha256) {
+		if (current(previous)) {
 			next.push(stamp);
-			report('unchanged', located.path, `bundle ${name}@${unit.version}: unchanged in ${bundle.cachePath} (sha256 ${short(sha256)})`);
+			report('unchanged', located.path, `${label}: unchanged in ${bundle.cachePath} (sha256 ${short(sha256)})`);
 			continue;
 		}
 		if (inspect) {
 			report(
 				'provisioned',
 				located.path,
-				`bundle ${name}@${unit.version}: to provision into ${bundle.cachePath} from ${located.where === 'kit' ? 'the kit' : located.path}`
+				`${label}: to provision into ${bundle.cachePath} from ${located.where === 'kit' ? 'the kit' : located.path}`
 			);
 			continue;
 		}
@@ -306,7 +389,7 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 		report(
 			'provisioned',
 			located.path,
-			`bundle ${name}@${unit.version}: provisioned from ${located.where === 'kit' ? 'the kit' : located.path} into ${bundle.cachePath} (${files} file(s), sha256 ${short(sha256)})`
+			`${label}: provisioned from ${located.where === 'kit' ? 'the kit' : located.path} into ${bundle.cachePath} (${files} file(s), sha256 ${short(sha256)})`
 		);
 	}
 
@@ -318,6 +401,7 @@ export function provisionBundles(options: ProvisionOptions): readonly BundleRepo
 			name: entry.name,
 			version: entry.version,
 			sha256: entry.sha256,
+			target: entry.target ?? null,
 			file: null,
 			cachePath: entry.cachePath,
 			state: 'withdrawn',
@@ -336,14 +420,16 @@ export function inspectBundles(options: Omit<ProvisionOptions, 'inspect' | 'mode
 
 /** The line of `status` for one bundle (PROP-007 ##CMD-STATUS-BUNDLES); `declared` says whether codkit.json still names it. */
 export function bundleStatusLine(bundle: BundleReport, declared: boolean): string {
-	const head = `${bundle.name}@${bundle.version} -> ${bundle.cachePath}`;
+	const head = `${bundle.name}@${bundle.version}${bundle.target === null ? '' : ` for ${bundle.target}`} -> ${bundle.cachePath}`;
 	switch (bundle.state) {
 		case 'unchanged':
 			return `${head}: provisioned (sha256 ${bundle.sha256.slice(0, 12)})`;
 		case 'provisioned':
 			return `${head}: not provisioned (codkit load unpacks ${bundle.file ?? 'the archive'})`;
 		case 'missing':
-			return `${head}: not provisioned (${bundle.file ?? 'the archive'} is not there)`;
+			return bundle.file === null
+				? `${head}: not provisioned (no archive for this host)`
+				: `${head}: not provisioned (${bundle.file} is not there)`;
 		case 'mismatch':
 			return `${head}: archive differs from the record (codkit bundles update ${bundle.name})`;
 		case 'off':

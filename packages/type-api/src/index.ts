@@ -16,7 +16,7 @@ export type {
 	ServiceOverrideProblem,
 	ServiceOverrideVerifier
 } from './layers.ts';
-export type { BundleEntry, BundleIdentity, BundleLayer } from './layers.ts';
+export type { BundleEntry, BundleHost, BundleIdentity, BundleLayer } from './layers.ts';
 export type {
 	BuildArea,
 	BuildCommand,

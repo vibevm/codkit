@@ -61,7 +61,7 @@
         },
         {
           "path": "dist/generators.js",
-          "sha256": "921101025a3881e3097c06bea96d71f64cdd49a4ba947d0eeec29caa066a80fa"
+          "sha256": "fdc60e26913a9fdd7107ce6b701496024d26fccc4f3b4e12bf6b10933011b3de"
         },
         {
           "path": "dist/identity.js",
@@ -97,11 +97,11 @@
         },
         {
           "path": "dist/index.js",
-          "sha256": "fb140228fd70e6fffd805dc73d6c555814a88b222ae6e927201ae4743684b417"
+          "sha256": "d8e497de5617d0091c9352ed30a71c71b7404af06bd377004ea4f3fc17f214bf"
         },
         {
           "path": "dist/layers.js",
-          "sha256": "e9ac8dafc29e36216dffe180ea16fa9cdeb3ab14e59e6d631a5162506e187fbf"
+          "sha256": "e0c991d4d7f75cf4b7447228ad4032b98ce5eccc8c46598fdb4428fff23e9500"
         },
         {
           "path": "dist/layout.js",
@@ -153,7 +153,7 @@
         },
         {
           "path": "src/generators.ts",
-          "sha256": "299ec5f467cabd90fe10ced1b24982e6c24415bd105efa7969bdaac8187d7fe0"
+          "sha256": "fc6374a6aff0661cf3c5eedff7d0fe9a765cda642c618ead1889c6a4a7890e38"
         },
         {
           "path": "src/identity.ts",
@@ -189,11 +189,11 @@
         },
         {
           "path": "src/index.ts",
-          "sha256": "2014613d3a37e47bea84748e71d32a7255502b9681d3cb928fd1788ffb4abb10"
+          "sha256": "14f48a52bebec59f5a831e63f69c0d9b7c60b2e995a8769a173d51623c1dab8b"
         },
         {
           "path": "src/layers.ts",
-          "sha256": "3e7199e45d2c8096d66bdd865635bd2206562fc372038169071c689917bf4da1"
+          "sha256": "b1091bbcf16f92166170d9bf3810448e5f5eefe80b034495dab308dd6b9110a9"
         },
         {
           "path": "src/layout.ts",

@@ -7,7 +7,15 @@
 import { describe, expect, it } from 'vitest';
 import { bundleGuard } from '../src/generators.ts';
 import { CAPABILITIES } from '../src/index.ts';
-import { BUILT_IN_EXTENSIONS_CACHE, BUNDLE_NAME_PATTERN, bundles, layers, PRODUCT_JSON_TARGET } from '../src/layers.ts';
+import {
+	BUILT_IN_EXTENSIONS_CACHE,
+	BUNDLE_NAME_PATTERN,
+	bundles,
+	EXTENSION_TARGETS,
+	extensionTargetOf,
+	layers,
+	PRODUCT_JSON_TARGET
+} from '../src/layers.ts';
 
 const UNIT = { name: 'acme.pack', version: '1.2.3', sha256: 'a'.repeat(64) };
 
@@ -87,5 +95,55 @@ describe('the guard of a bundle record', () => {
 		expect(module.text).toContain("import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';");
 		const deeper = bundleGuard({ id: 'CK-product-910', unit: UNIT, ownRoot: 'src/vs/acme/patchset', manifestTarget: 'product.json' });
 		expect(deeper.text).toContain("import { FileAccess } from '../../../../../base/common/network.js';");
+	});
+});
+
+describe('a bundled extension built per target', () => {
+	it('names the marketplace targets of upstream and derives them as upstream does', () => {
+		expect(bundles.targets).toBe(EXTENSION_TARGETS);
+		expect(EXTENSION_TARGETS).toContain('darwin-arm64');
+		expect(extensionTargetOf('win32', 'x64')).toBe('win32-x64');
+		expect(extensionTargetOf('linux', 'arm')).toBe('linux-armhf');
+		expect(extensionTargetOf('darwin', 'arm64')).toBe('darwin-arm64');
+		expect(extensionTargetOf('linux', 'riscv64')).toBeNull();
+		expect(extensionTargetOf('sunos', 'x64')).toBeNull();
+		expect(bundles.hostTarget({ platform: 'darwin', arch: 'x64' })).toBe('darwin-x64');
+		const target = (platform: 'windows' | 'linux' | 'macos', arch: 'x64' | 'arm64' | 'armhf') => ({
+			id: 't',
+			platform,
+			arch,
+			supportedHosts: [],
+			build: []
+		});
+		expect(bundles.packageTarget(target('windows', 'x64'))).toBe('win32-x64');
+		expect(bundles.packageTarget(target('linux', 'armhf'))).toBe('linux-armhf');
+		expect(bundles.packageTarget(target('macos', 'arm64'))).toBe('darwin-arm64');
+	});
+
+	it('reads the target a VSIX was packaged for from its manifest', () => {
+		expect(bundles.archiveTargetManifest).toBe('extension.vsixmanifest');
+		const manifest =
+			'<PackageManifest><Metadata><Identity Language="en-US" Id="pack" Version="1.2.3" Publisher="acme" TargetPlatform="linux-x64"/></Metadata></PackageManifest>';
+		expect(bundles.archiveTarget(manifest)).toBe('linux-x64');
+		expect(bundles.archiveTarget(manifest.replace(' TargetPlatform="linux-x64"', ''))).toBeNull();
+	});
+
+	it("writes and reads upstream's platform-specific entry", () => {
+		const targets = { 'win32-x64': 'a'.repeat(64), 'linux-x64': 'b'.repeat(64) };
+		const entry = bundles.entry({ name: 'acme.pack', version: '1.2.3', sha256: '', targets });
+		expect(entry).toEqual({ name: 'acme.pack', version: '1.2.3', repo: '', platformSpecific: targets });
+		expect(bundles.entries({ builtInExtensions: [entry] })).toEqual([{ name: 'acme.pack', version: '1.2.3', sha256: '', targets }]);
+	});
+
+	it('guards every target hash of the record', () => {
+		const targets = { 'win32-x64': 'a'.repeat(64), 'darwin-arm64': 'c'.repeat(64) };
+		const module = bundleGuard({
+			id: 'CK-product-910',
+			unit: { name: 'acme.pack', version: '1.2.3', sha256: '', targets },
+			ownRoot: 'src/vs/patchset',
+			manifestTarget: 'product.json'
+		});
+		expect(module.text).toContain(`assert.deepStrictEqual(entry.platformSpecific, ${JSON.stringify(targets)});`);
+		expect(module.text).not.toContain('assert.strictEqual(entry.sha256');
 	});
 });

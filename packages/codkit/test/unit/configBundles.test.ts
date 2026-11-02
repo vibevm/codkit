@@ -179,3 +179,36 @@ describe('the path of an archive', () => {
 		);
 	});
 });
+
+describe('bundles built per target', () => {
+	it('reads and writes an archive per target, and needs exactly one of file and files', () => {
+		const parsed = parseBaseConfig(
+			{ ...SAMPLE, bundles: [{ name: 'acme.pack', files: { 'win32-x64': '../b/pack-win32-x64.vsix', 'linux-x64': ABSOLUTE } }] },
+			CONFIG_FILE_NAME
+		);
+		expect(parsed.bundles).toEqual([{ name: 'acme.pack', files: { 'win32-x64': '../b/pack-win32-x64.vsix', 'linux-x64': ABSOLUTE } }]);
+		const written = JSON.parse(serializeBaseConfig(parsed)) as Record<string, unknown>;
+		expect(written['bundles']).toEqual([{ name: 'acme.pack', files: { 'win32-x64': '../b/pack-win32-x64.vsix', 'linux-x64': ABSOLUTE } }]);
+		for (const entry of [
+			{ name: 'acme.pack' },
+			{ name: 'acme.pack', file: 'a.vsix', files: { 'win32-x64': 'a.vsix' } },
+			{ name: 'acme.pack', files: {} },
+			{ name: 'acme.pack', files: { 'Win32 x64': 'a.vsix' } },
+			{ name: 'acme.pack', files: { 'win32-x64': 'a\\b.vsix' } }
+		]) {
+			expect(message(() => parseBaseConfig({ ...SAMPLE, bundles: [entry] }, CONFIG_FILE_NAME))).toContain('bundles');
+		}
+	});
+
+	it('takes the archives of this machine from codkit.local.json in the same form, and refuses the other form', () => {
+		const declared = [{ name: 'acme.pack', files: { 'win32-x64': 'a.vsix' } }];
+		expect(locateBundles(declared, [{ name: 'acme.pack', files: { 'linux-x64': 'b.vsix' } }])).toEqual([
+			{ name: 'acme.pack', files: { 'linux-x64': 'b.vsix' } }
+		]);
+		expect(locateBundles(declared, [{ name: 'acme.pack', file: null }])).toEqual([{ ...declared[0], off: true }]);
+		expect(message(() => locateBundles(declared, [{ name: 'acme.pack', file: 'c.vsix' }]))).toContain('an archive per target');
+		expect(
+			message(() => locateBundles([{ name: 'acme.pack', file: 'a.vsix' }], [{ name: 'acme.pack', files: { 'win32-x64': 'b.vsix' } }]))
+		).toContain('one archive for it');
+	});
+});

@@ -23,6 +23,8 @@ export const storedBundleSchema = z.strictObject({
 	version: z.string(),
 	sha256: z.string().regex(/^[0-9a-f]{64}$/u),
 	cachePath: z.string().min(1),
+	/** The target whose archive was unpacked, for a unit built per target; absent or null for one archive. */
+	target: z.string().min(1).nullable().optional(),
 	archiveBytes: z.number().int().nonnegative(),
 	archiveMtimeMs: z.number()
 });

@@ -224,7 +224,7 @@ export function brandGraft(ownRoot: string): BrandGraft {
  */
 export function bundleGuard(request: BundleGuardRequest): GeneratedModule {
 	const up = '../'.repeat(underSourceRoot(request.ownRoot).split('/').length + 3);
-	const { name, version, sha256 } = request.unit;
+	const { name, version, sha256, targets } = request.unit;
 	const target = request.manifestTarget;
 	return {
 		path: `delta/own/test/node/bundles/${name}.test.ts`,
@@ -242,13 +242,15 @@ export function bundleGuard(request: BundleGuardRequest): GeneratedModule {
 			`suite('${request.id}', () => {`,
 			'\tensureNoDisposablesAreLeakedInTestSuite();',
 			'',
-			`\ttest('${target} declares ${name}@${version} with the hash of its VSIX', () => {`,
+			`\ttest('${target} declares ${name}@${version} with the hash of ${targets === undefined ? 'its VSIX' : 'the VSIX of each target'}', () => {`,
 			`\t\tconst manifest = JSON.parse(readFileSync(join(FileAccess.asFileUri('').fsPath, '..', ...${JSON.stringify(target.split('/'))}), 'utf8'));`,
-			'\t\tconst entries: { name: string; version: string; sha256: string }[] = manifest.builtInExtensions ?? [];',
+			'\t\tconst entries: { name: string; version: string; sha256?: string; platformSpecific?: Record<string, string> }[] = manifest.builtInExtensions ?? [];',
 			`\t\tconst entry = entries.find((candidate) => candidate.name === '${name}');`,
 			`\t\tassert.ok(entry, 'builtInExtensions declares no ${name}');`,
 			`\t\tassert.strictEqual(entry.version, '${version}');`,
-			`\t\tassert.strictEqual(entry.sha256, '${sha256}');`,
+			...(targets === undefined
+				? [`\t\tassert.strictEqual(entry.sha256, '${sha256}');`]
+				: [`\t\tassert.deepStrictEqual(entry.platformSpecific, ${JSON.stringify(targets)});`]),
 			'\t});',
 			'});'
 		].join('\n')}\n`

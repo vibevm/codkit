@@ -312,7 +312,9 @@ export function runPackage(options: PackageOptions): PackageResult {
 			kitDir: inputsDir,
 			mode: 'package',
 			inspect: true,
-			offline
+			offline,
+			packageTargets: selectedTargets,
+			host: { platform: host, arch: process.arch }
 		});
 	} catch (error) {
 		if (!isCkError(error)) throw error;
@@ -350,7 +352,19 @@ export function runPackage(options: PackageOptions): PackageResult {
 		if (bundles.length > 0) {
 			// Into the cache of the upstream build, after the kit's own copy of that
 			// cache was wired and before the build reads it (##CMD-PACKAGE-BUNDLES).
-			bundles = provisionBundles({ type, config, patchesDir, treeDir: tree, context, out, kitDir: inputsDir, mode: 'package', offline });
+			bundles = provisionBundles({
+				type,
+				config,
+				patchesDir,
+				treeDir: tree,
+				context,
+				out,
+				kitDir: inputsDir,
+				mode: 'package',
+				offline,
+				packageTargets: selectedTargets,
+				host: { platform: host, arch: process.arch }
+			});
 			record('bundles', 'ok', bundles.map((bundle) => `${bundle.name}@${bundle.version} ${bundle.state}`).join(', '));
 		}
 
