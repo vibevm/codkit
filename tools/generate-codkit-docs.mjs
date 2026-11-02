@@ -426,6 +426,21 @@ const commandGuidance = {
 		detail:
 			"Move the pin (`ref` in `codkit.json`) of the named inputs, or of every input with `--all`, to the HEAD of each input's repository, rewriting `codkit.json` canonically. A repository with uncommitted changes is refused with its paths before anything is written, because a pin names committed content; commit the new pin together with the change that needs it."
 	},
+	bundles: {
+		positional: '<add | update>',
+		detail:
+			'A namespace, not a command: bare `codkit bundles` prints its subcommands and exits 2 before any root is resolved. A bundle is a unit the product ships inside its distribution - a built-in extension of the first family - built by another repository and delivered as an archive the upstream build already takes; the bundles are declared in the top-level `bundles` list of `codkit.json`, provisioned into the cache of the upstream build by `load` and `package`, and need a project type that answers the bundles layer (capability `bundles`).'
+	},
+	'bundles add': {
+		positional: '<archive>',
+		detail:
+			"Declare a bundle from its archive: read the identity of the unit from the manifest inside the archive (a VSIX: `publisher.name` and `version` of `extension/package.json`), hash the archive, append `{name, file}` to `bundles` of `codkit.json` canonically under the configuration lock - the file as given when absolute, otherwise relative to the patch-set root - and write the overlay record `delta/overlays/<target>.bundle-<name>.overlay.json` with one `append` of the unit's entry to the list of the manifest target (`--id` is its id, `--owner` the only owner of `delta/owners.json` unless given, `--reason` a default sentence unless given) and the guard test the overlay layer makes mandatory, under the own root as `suite('<id>')`. Refused before anything is written: an archive that is not there or is not a zip, a manifest without a name or a version, a name the layer refuses or `codkit.json` already declares, an id another artifact holds, an owner the vocabulary does not know. Commit the three files together with the archive's new content; the archive itself never enters git."
+	},
+	'bundles update': {
+		positional: '[name ...]',
+		detail:
+			'Read the archives of the named bundles - of every bundle with `--all` - again and rewrite the version and the hash in the overlay record and in the guard test of each, printing `bundle <name>: <old> (<hash>) -> <new> (<hash>)` or `already current`. A name `codkit.json` does not declare, an archive that is not there, an archive that holds another unit, a record it cannot find, and names together with `--all` or neither are refused; every named bundle is checked before one is written.'
+	},
 	gen: {
 		positional: '<feature | brand | licensing>',
 		detail:

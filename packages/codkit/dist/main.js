@@ -7,6 +7,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDownCommand, buildErrorsCommand, buildStatusCommand, buildUpCommand } from './commands/build.js';
+import { bundlesAddCommand, bundlesCommand, bundlesUpdateCommand } from './commands/bundles.js';
 import { checkTreeCommand } from './commands/checkTree.js';
 import { ciCommand } from './commands/ci.js';
 import { cloneCommand } from './commands/clone.js';
@@ -98,6 +99,9 @@ const COMMANDS = new Map([
     publishCommand,
     inputsCommand,
     inputsPinCommand,
+    bundlesCommand,
+    bundlesAddCommand,
+    bundlesUpdateCommand,
     hooksCommand,
     imagesetCommand,
     imagesetGenCommand,

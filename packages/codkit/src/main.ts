@@ -8,6 +8,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDownCommand, buildErrorsCommand, buildStatusCommand, buildUpCommand } from './commands/build.ts';
+import { bundlesAddCommand, bundlesCommand, bundlesUpdateCommand } from './commands/bundles.ts';
 import { checkTreeCommand } from './commands/checkTree.ts';
 import { ciCommand } from './commands/ci.ts';
 import { cloneCommand } from './commands/clone.ts';
@@ -107,6 +108,9 @@ const COMMANDS: ReadonlyMap<string, CommandDefinition> = new Map(
 		publishCommand,
 		inputsCommand,
 		inputsPinCommand,
+		bundlesCommand,
+		bundlesAddCommand,
+		bundlesUpdateCommand,
 		hooksCommand,
 		imagesetCommand,
 		imagesetGenCommand,
