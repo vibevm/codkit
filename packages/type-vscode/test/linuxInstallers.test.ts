@@ -249,6 +249,12 @@ describe('the container recipe', () => {
 		expect(dockerfile).toContain('ENTRYPOINT ["bash", "/codkit/recipe/entry.sh"]');
 	});
 
+	it('keeps the copy its own on a Linux host: no owner of the host, and a safe directory of its git', () => {
+		expect(entry).toContain('rsync -a --no-owner --no-group --delete --chmod=D755,F644');
+		expect(entry).toContain('git config --global --add safe.directory "$COPY"');
+		expect(entry.indexOf('safe.directory "$COPY"')).toBeLessThan(entry.indexOf('git -C "$COPY" init --quiet'));
+	});
+
 	it('removes a sysroot whose download broke off, and installs the dependencies again, before the key is read', () => {
 		expect(entry).toContain('for SYSROOT in .build/sysroots/*/; do');
 		expect(entry).toContain('if [ ! -f "$SYSROOT.stamp" ]; then');

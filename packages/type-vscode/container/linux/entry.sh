@@ -60,7 +60,7 @@ fi
 # 1. The mirror. The left-out paths are what an install or a build writes:
 #    they are the host's, built for the host's OS, and the copy keeps its own.
 say "mirror of the fork tree into $COPY"
-rsync -a --delete --chmod=D755,F644 \
+rsync -a --no-owner --no-group --delete --chmod=D755,F644 \
 	--exclude='/.git' \
 	--exclude='node_modules/' \
 	--exclude='/.build/' \
@@ -86,6 +86,13 @@ if [ -s "$IO/symlinks" ]; then
 fi
 # Upstream's install ends with `git config` in the tree it installs, so the copy
 # has to be a git work tree; it is one of its own and never sees the host's.
+# The copy is the container's own, whoever owns the tree on the host: rsync
+# leaves the owner of a file it does not rewrite as it was, and on a Linux host
+# a copy of an earlier run belongs to the host user, which git running as root
+# refuses as dubious ownership - so the copy is a safe directory as well.
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$COPY"; then
+	git config --global --add safe.directory "$COPY"
+fi
 if [ ! -d "$COPY/.git" ]; then
 	git -C "$COPY" init --quiet
 fi
