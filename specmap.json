@@ -12074,7 +12074,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:8e20000131e90539a3a2ab3598204b752ccea9435ffd8665586a9dee129a8802",
+      "content_hash": "sha256:fd11a3f5686ff86dabdfc9e95dd29ddead4e7217e3b223c95cc6d92aeb3f9ab4",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "PROP-019: Organization consumer licensing and distribution evidence",
@@ -12083,7 +12083,7 @@
     },
     {
       "anchor": "policy",
-      "content_hash": "sha256:1bf89a56c0dbeba8963c759867c85e37cf35f6d10b45ca29762817846517e437",
+      "content_hash": "sha256:466f386b8213950b04f69109a3d870b622bc9c659a8b55f9d4822aedb0dd9a9f",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
       "heading": "Separate authorities and controlled expressions",
@@ -12101,10 +12101,10 @@
     },
     {
       "anchor": "ORGANIZATION-POLICY-TRUST",
-      "content_hash": "sha256:a89a86f8c31aa9a3e46581593094d7f0bc615d7e1c95a45b5a07ae736d162d00",
+      "content_hash": "sha256:4f7785a333f94257b553251c80a6cac7756ce68d7e3b91fab0bcddb81ea2dbcc",
       "doc_path": "modules/codkit/PROP-019",
       "file": "vibevm/vibespecs/modules/codkit/PROP-019-organization-licensing.xml",
-      "heading": "A user/admin composition root supplies the policy directory; the default is the user .codkit directory. organization-policies.json carries strict codkitOrganizationPolicyStore:1 with v1 records or explicit store v2 with validated v1/v2 records. Store reads use contained regular-file I/O, validate every profile and refuse conflicting IDs including case aliases. A directory inside the physical patchset or an alias resolving into it refuses. No cwd/patchset fallback or patchset-supplied policy path is accepted. The selected policy and raw store bytes each receive their own digest; a digest is not an invented signature or legal approval. @status:impl/done",
+      "heading": "A user/admin composition root supplies the policy directory; the default is the user .codkit directory. organization-policies.json carries strict codkitOrganizationPolicyStore:1 with v1 records or explicit store v2 with validated v1/v2 records. Store reads use contained regular-file I/O, validate every profile and refuse conflicting IDs including case aliases. A directory inside the physical patchset or an alias resolving into it refuses. No cwd/patchset fallback or patchset-supplied policy path is accepted. A machine without the store - no policy directory, or no organization-policies.json in it - is refused with the path where the store belongs and the profile the patch set selects, never with the error of the file system (finding of 2026-11-02, when a build host with a private home reported a bare ENOENT for the directory). The selected policy and raw store bytes each receive their own digest; a digest is not an invented signature or legal approval. @status:impl/done",
       "line": 7,
       "uri": "spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-TRUST"
     },

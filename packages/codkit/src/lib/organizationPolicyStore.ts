@@ -1,7 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-019#ORGANIZATION-POLICY-TRUST */
 // The composition root supplies the user/admin policy directory; patchsets select only IDs.
 import { createHash } from 'node:crypto';
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { z } from 'zod';
@@ -50,6 +50,7 @@ export function readOrganizationPolicy(
 ): OrganizationPolicyResult<SelectedOrganizationPolicy> {
 	try {
 		const identifiers = standard ?? loadSpdxLicenseIds();
+		if (!existsSync(root)) return refuse(missingStore(root, rawSelection));
 		const trusted = realpathSync(root);
 		const patchset = realpathSync(patchesDir);
 		const fromPatchset = relative(patchset, trusted);
@@ -58,7 +59,7 @@ export function readOrganizationPolicy(
 		const selection = organizationPolicySelectionSchema.safeParse(rawSelection);
 		if (!selection.success) return refuse('patchset selection may contain only profile ID and additional prohibitions');
 		const read = readContainedFile(trusted, ORGANIZATION_POLICY_STORE_FILE, { what: 'organization policy store' });
-		if (read.state === 'absent') return refuse('trusted organization policy store is missing; no patchset fallback is allowed');
+		if (read.state === 'absent') return refuse(missingStore(root, rawSelection));
 		const text = decodeUtf8Strict(read.bytes);
 		if (text === null) return refuse('organization policy store is not UTF-8');
 		let raw: unknown;
@@ -98,6 +99,20 @@ export function readOrganizationPolicy(
 		return refuse(error instanceof Error ? error.message : 'organization policy store cannot be read');
 	}
 }
+/**
+ * A machine without the store - no directory, or no store in it - is told where
+ * the store belongs and which profile the patch set selects, never the error of
+ * the file system (finding of 2026-11-02: a build host with a private home
+ * reported a bare ENOENT).
+ */
+function missingStore(root: string, rawSelection: unknown): string {
+	const selection = organizationPolicySelectionSchema.safeParse(rawSelection);
+	const profile = selection.success
+		? `, one that approves the profile ${JSON.stringify(selection.data.profile)} the patch set selects`
+		: '';
+	return `trusted organization policy store is missing at ${join(root, ORGANIZATION_POLICY_STORE_FILE)}, and no patchset fallback is allowed: install the organization's store there${profile}`;
+}
+
 function refuse(message: string): { readonly ok: false; readonly problems: readonly string[] } {
 	return { ok: false, problems: [message] };
 }

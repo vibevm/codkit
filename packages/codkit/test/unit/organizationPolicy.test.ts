@@ -141,6 +141,18 @@ describe('organization policy authority', () => {
 			).ok
 		).toBe(false);
 	});
+	it('names where the store belongs and the profile selected, on a machine without one', () => {
+		const patchset = root();
+		const home = root();
+		for (const trusted of [join(home, '.codkit'), home]) {
+			const result = readOrganizationPolicy(trusted, patchset, { profile: 'fixture-policy' }, standard);
+			expect(result.ok, trusted).toBe(false);
+			const problems = result.ok ? [] : result.problems;
+			expect(problems).toEqual([
+				`trusted organization policy store is missing at ${join(trusted, ORGANIZATION_POLICY_STORE_FILE)}, and no patchset fallback is allowed: install the organization's store there, one that approves the profile "fixture-policy" the patch set selects`
+			]);
+		}
+	});
 	it('rejects a trusted-root alias into the patchset and conflicting case-insensitive policy IDs', () => {
 		const parent = root();
 		const patchset = root();
