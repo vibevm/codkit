@@ -137,12 +137,18 @@ describe('build and test', () => {
 			'linux-x64-tar',
 			'linux-x64-deb',
 			'linux-x64-rpm',
+			'windows-x64-archive',
+			'windows-x64-setup-system',
+			'windows-x64-setup-user',
 			'server-linux-x64-tar'
 		]);
 		expect(build.packageTargets?.filter((target) => target.outputs !== undefined).map((target) => target.id)).toEqual([
 			'linux-x64-tar',
 			'linux-x64-deb',
 			'linux-x64-rpm',
+			'windows-x64-archive',
+			'windows-x64-setup-system',
+			'windows-x64-setup-user',
 			'server-linux-x64-tar'
 		]);
 		expect(makeBuild({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64'] }).defaultPackageTargets).toEqual(['windows-x64']);

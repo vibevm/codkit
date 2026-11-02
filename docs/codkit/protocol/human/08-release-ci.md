@@ -204,6 +204,13 @@ codkit publish <patchset-commit> --branch <ветка> --release <semver> \
 тип (`CK-E-CONFIG`). У `vscode` цели `linux-x64-tar`, `linux-x64-deb` и `linux-x64-rpm`
 собираются нативно на Linux и в контейнере на Windows и macOS, а сырой `linux-x64` —
 только на Linux: собранный на Windows бандл несёт виндовые нативные модули.
+Цели Windows x64 `windows-x64-archive`, `windows-x64-setup-system` и
+`windows-x64-setup-user` собираются только на Windows и без контейнера: архив сырого
+бандла пишет системный bsdtar (`%SystemRoot%\System32\tar.exe`, он первым ставится в
+`PATH` этой команды), установщики делают задачи Inno Setup самого апстрима
+(`vscode-win32-x64-inno-updater`, затем `-system-setup` или `-user-setup`); выходы
+лежат под `.build/win32-x64/` и попадают в дескриптор релиза. MSI, подпись и arm64
+каталог не обещает: это шаг продукта или инфраструктура.
 
 Контейнеру нужен Docker. Образ `<префикс>-<тип>-<платформа>-<арх>:<хэш рецепта>`
 строится при первом запуске; где Docker Hub недоступен, его строят вручную под тем

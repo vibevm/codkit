@@ -330,9 +330,90 @@ export const LINUX_INSTALLER_TARGETS: readonly PackageTarget[] = [
 	)
 ];
 
+/** The raw Windows x64 bundle, as the first step of every Windows x64 target (##VSCODE-WINDOWS-TARGETS). */
+const BUNDLE_WINDOWS_X64: BuildCommand = {
+	label: 'bundle windows-x64',
+	command: 'npm',
+	args: ['run', 'gulp', '--', 'vscode-win32-x64'],
+	environment: windowsSdkEnvironment
+};
+
+const WINDOWS_ARCHIVE_DIR = '.build/win32-x64/archive';
+
+/**
+ * ##VSCODE-WINDOWS-TARGETS: the archive is written by the bsdtar every Windows
+ * carries in System32, which `-a` makes write a zip; that directory goes first
+ * on the PATH of the command so that the GNU tar of a Git installation, which
+ * cannot write a zip, never answers in its place.
+ */
+export function windowsArchiveEnvironment(environment: Readonly<Record<string, string | undefined>>): Readonly<Record<string, string>> {
+	const systemRoot = environment['SystemRoot'];
+	if (systemRoot === undefined || systemRoot === '') {
+		throw new Error(
+			`SystemRoot is not set: the archive is written by the bsdtar of Windows at ${join('%SystemRoot%', 'System32', 'tar.exe')}`
+		);
+	}
+	return { PATH: `${join(systemRoot, 'System32')}${delimiter}${environment['PATH'] ?? environment['Path'] ?? ''}` };
+}
+
+const windowsGulp = (label: string, task: string): BuildCommand => ({
+	label,
+	command: 'npm',
+	args: ['run', 'gulp', '--', task],
+	environment: windowsSdkEnvironment
+});
+
+/** One Windows x64 setup target: the bundle, the inno updater, then upstream's setup task of that kind. */
+const windowsSetup = (kind: 'system' | 'user'): PackageTarget => ({
+	id: `windows-x64-setup-${kind}`,
+	platform: 'windows',
+	arch: 'x64',
+	supportedHosts: ['win32'],
+	outputs: [`.build/win32-x64/${kind}-setup/*.exe`],
+	build: [
+		BUNDLE_WINDOWS_X64,
+		windowsGulp('inno updater', 'vscode-win32-x64-inno-updater'),
+		windowsGulp(`${kind} setup`, `vscode-win32-x64-${kind}-setup`)
+	]
+});
+
+/**
+ * ##VSCODE-WINDOWS-TARGETS: the archive of the raw bundle and the two Inno
+ * Setup installers of upstream's own gulp tasks; Windows-hosted, no container.
+ */
+export const WINDOWS_X64_TARGETS: readonly PackageTarget[] = [
+	{
+		id: 'windows-x64-archive',
+		platform: 'windows',
+		arch: 'x64',
+		supportedHosts: ['win32'],
+		outputs: [`${WINDOWS_ARCHIVE_DIR}/*.zip`],
+		build: [
+			BUNDLE_WINDOWS_X64,
+			{
+				label: 'clean archive',
+				command: 'node',
+				args: [
+					'-e',
+					`const fs=require('node:fs');fs.rmSync('${WINDOWS_ARCHIVE_DIR}',{recursive:true,force:true});fs.mkdirSync('${WINDOWS_ARCHIVE_DIR}',{recursive:true});`
+				]
+			},
+			{
+				label: 'archive windows-x64',
+				command: 'tar',
+				args: ['-a', '-c', '-f', `${WINDOWS_ARCHIVE_DIR}/VSCode-win32-x64.zip`, '-C', '..', 'VSCode-win32-x64'],
+				environment: windowsArchiveEnvironment
+			}
+		]
+	},
+	windowsSetup('system'),
+	windowsSetup('user')
+];
+
 /**
  * The catalog (##VSCODE-PACKAGE-TARGET-CATALOG): the raw application bundles,
- * one upstream task each, and the Linux x64 installer targets.
+ * one upstream task each, the Linux x64 installer targets and the Windows x64
+ * archive and setup targets.
  */
 export const PACKAGE_TARGETS: readonly PackageTarget[] = [
 	target('windows-x64', 'windows', 'x64', 'vscode-win32-x64', ['win32'], windowsSdkEnvironment),
@@ -345,6 +426,7 @@ export const PACKAGE_TARGETS: readonly PackageTarget[] = [
 	target('macos-x64', 'macos', 'x64', 'vscode-darwin-x64', ['darwin']),
 	target('macos-arm64', 'macos', 'arm64', 'vscode-darwin-arm64', ['darwin']),
 	...LINUX_INSTALLER_TARGETS,
+	...WINDOWS_X64_TARGETS,
 	{
 		id: 'server-linux-x64-tar',
 		platform: 'linux',

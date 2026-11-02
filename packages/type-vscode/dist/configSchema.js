@@ -27,6 +27,9 @@ export const PACKAGE_TARGET_IDS = [
     'linux-x64-tar',
     'linux-x64-deb',
     'linux-x64-rpm',
+    'windows-x64-archive',
+    'windows-x64-setup-system',
+    'windows-x64-setup-user',
     'server-linux-x64-tar'
 ];
 export const configSchema = z
