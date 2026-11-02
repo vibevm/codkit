@@ -16,6 +16,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runGit } from '../../src/lib/gitx.ts';
+import { serializeOverlay } from '../../src/lib/layers/overlay.ts';
 import { OVERLAY_ID } from '../fixtures/makePatchSet.ts';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
@@ -617,3 +618,63 @@ function gitOut(treeDir: string, args: readonly string[]): string {
 	expect(result.status).toBe(0);
 	return result.stdout.trimEnd();
 }
+
+describe('an append on the product manifest (##OVERLAY-APPEND)', () => {
+	const ARTIFACT = 'delta/overlays/manifest.json.addons.overlay.json';
+	const ELEMENT = { name: 'acme.pack', version: '1.0.0' };
+	let fixture: CliFixture;
+
+	beforeAll(() => {
+		fixture = makeCliFixture('overlay-append');
+		writeFileSync(
+			fixture.patchesPath(ARTIFACT),
+			serializeOverlay({
+				codkitOverlay: 2,
+				id: 'CK-product-903',
+				target: 'manifest.json',
+				type: 'extend',
+				category: 'own',
+				owner: 'product',
+				reason: 'fixture: the product bundles one add-on',
+				link: 'none',
+				cause: 'none',
+				pin: `${fixture.upstream.t1.tag}@${fixture.upstream.t1.sha}`,
+				contractTests: ['CK-product-903'],
+				operations: [{ op: 'append', path: ['builtInAddons'], value: ELEMENT }]
+			}),
+			'utf8'
+		);
+		expect(fixture.run(['load']).status).toBe(0);
+	});
+
+	it('reaches the dev channel as the whole key, seeded from the pin', () => {
+		const channel = JSON.parse(readFileSync(fixture.treePath('manifest.overrides.json'), 'utf8')) as Record<string, unknown>;
+		expect(channel['builtInAddons']).toEqual([ELEMENT]);
+	});
+
+	it('materializes into the target once, however often it is applied, and check agrees', () => {
+		expect(fixture.run(['overlay', 'apply', 'manifest.json']).status).toBe(0);
+		expect(fixture.run(['overlay', 'apply', 'manifest.json']).status).toBe(0);
+		const document = JSON.parse(readFileSync(fixture.treePath('manifest.json'), 'utf8')) as Record<string, unknown>;
+		expect(document['builtInAddons']).toEqual([ELEMENT]);
+		expect(document['displayName']).toBe('Fixture PatchSet');
+		const check = fixture.json(['overlay', 'check', 'manifest.json']);
+		expect(check.run.status).toBe(0);
+		expect(check.envelope.data['matchesOperations']).toBe(true);
+		expect(fixture.run(['load', '--fresh']).status).toBe(0);
+	});
+
+	it('drifts when the pin holds no array at the path', () => {
+		const artifact = fixture.patchesPath(ARTIFACT);
+		const saved = readFileSync(artifact, 'utf8');
+		writeFileSync(artifact, saved.replace('"builtInAddons"', '"addonGallery"'), 'utf8');
+		try {
+			const outcome = fixture.run(['overlay', 'check', 'manifest.json']);
+			expect(outcome.status).toBe(1);
+			expect(outcome.stderr).toContain('CK-E-OVERLAY-DRIFT');
+			expect(outcome.stderr).toContain('appends to it and needs an array there');
+		} finally {
+			writeFileSync(artifact, saved, 'utf8');
+		}
+	});
+});

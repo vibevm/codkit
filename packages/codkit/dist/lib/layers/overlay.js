@@ -79,7 +79,7 @@ export function allowedOverlayKeys(type, target) {
 export const OVERLAY_VARS = ['pin.tag', 'pin.sha', 'pin.date', 'patchset.commit', 'build.date'];
 const jsonSchema = z.lazy(() => z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonSchema), z.record(z.string(), jsonSchema)]));
 const operationSchema = z.object({
-    op: z.enum(['set', 'remove', 'npm-prune']),
+    op: z.enum(['set', 'remove', 'npm-prune', 'append']),
     path: z.array(z.string()).min(1),
     value: jsonSchema.optional(),
     expectUpstream: jsonSchema.optional()
@@ -118,7 +118,7 @@ const FIELD_EXPECTATION = {
     pin: 'must be "<tag>@<sha>" of the pin the overlay was written against',
     contractTests: 'must be a non-empty list of contract test names (a guard test is mandatory for this layer)',
     operations: 'must be a list of operations',
-    op: 'must be "set", "remove" or "npm-prune"',
+    op: 'must be "set", "remove", "npm-prune" or "append"',
     path: 'must be a non-empty list of object keys (array indices are not supported)',
     value: 'must be a JSON value or {"$var": "<name>"}',
     expectUpstream: 'must be a JSON value or {"$absent": true}',
@@ -355,6 +355,9 @@ export function applyOperations(base, operations, context) {
         if (operation.op === 'set') {
             setAtPath(result, operation.path, materializeValue(operation.value, context));
         }
+        else if (operation.op === 'append') {
+            appendAtPath(result, operation.path, materializeValue(operation.value, context));
+        }
         else if (operation.op === 'remove') {
             removeAtPath(result, operation.path);
         }
@@ -418,7 +421,9 @@ export function renderDevChannel(type, treeDir, overlays, context, pinSha, onWar
                 continue;
             }
             const top = operation.path[0] ?? '';
-            if (operation.path.length > 1 && top !== '' && !seeded.has(top) && document[top] === undefined) {
+            // A nested path, and an append at the top level, change a key upstream
+            // carries, so the key is seeded from the pin first (##OVERLAY-TWO-CHANNELS).
+            if ((operation.path.length > 1 || operation.op === 'append') && top !== '' && !seeded.has(top) && document[top] === undefined) {
                 const upstream = valueAtPinPath(treeDir, pinSha, overlay.target, top);
                 if (upstream !== undefined) {
                     document[top] = upstream;
@@ -633,6 +638,21 @@ export function checkOverlay(overlay, options) {
         if (stamped !== null) {
             warnings.push(stamped);
         }
+        // ##OVERLAY-APPEND: an append needs an array at the pin, whatever else it expects.
+        if (operation.op === 'append' && !Array.isArray(valueAtPath(base, operation.path))) {
+            drift.push({
+                overlayId: overlay.id,
+                artifactPath: overlay.artifactPath,
+                target: overlay.target,
+                operationIndex: index,
+                path: operation.path,
+                expected: operation.expectUpstream,
+                expectedAbsent: false,
+                actual: valueAtPath(base, operation.path),
+                needsArray: true
+            });
+            continue;
+        }
         if (operation.expectUpstream === undefined) {
             continue;
         }
@@ -695,49 +715,51 @@ export function restrictedTargetViolations(type, overlay) {
             continue;
         }
         const top = operation.path[0] ?? '';
-        const allowed = operation.op === 'npm-prune'
-            ? target?.npmLockfile === true &&
-                operation.path.length === 4 &&
-                operation.path[0] === 'packages' &&
-                operation.path[1] === '' &&
-                (target.allowedRemovals ?? []).includes(operation.path[2] ?? '') &&
-                operation.path[3] !== '' &&
-                operation.value === undefined &&
-                operation.expectUpstream !== undefined
-            : operation.op === 'remove'
-                ? allowedKeys === null ||
-                    (target !== null &&
-                        (target?.allowedRemovals ?? []).includes(top) &&
-                        operation.path.length === 2 &&
-                        operation.path[1] !== '' &&
-                        operation.expectUpstream !== undefined)
-                : target?.npmLockfile === true
-                    ? operation.expectUpstream !== undefined &&
-                        ((operation.path.length === 4 &&
-                            operation.path[0] === 'packages' &&
-                            operation.path[1] === '' &&
-                            (target.allowedDependencyUpdates ?? []).includes(operation.path[2] ?? '') &&
-                            operation.path[3] !== '' &&
-                            typeof operation.value === 'string' &&
-                            typeof operation.expectUpstream === 'string') ||
-                            (operation.path.length === 2 &&
+        const allowed = operation.op === 'append'
+            ? allowedKeys === null
+            : operation.op === 'npm-prune'
+                ? target?.npmLockfile === true &&
+                    operation.path.length === 4 &&
+                    operation.path[0] === 'packages' &&
+                    operation.path[1] === '' &&
+                    (target.allowedRemovals ?? []).includes(operation.path[2] ?? '') &&
+                    operation.path[3] !== '' &&
+                    operation.value === undefined &&
+                    operation.expectUpstream !== undefined
+                : operation.op === 'remove'
+                    ? allowedKeys === null ||
+                        (target !== null &&
+                            (target?.allowedRemovals ?? []).includes(top) &&
+                            operation.path.length === 2 &&
+                            operation.path[1] !== '' &&
+                            operation.expectUpstream !== undefined)
+                    : target?.npmLockfile === true
+                        ? operation.expectUpstream !== undefined &&
+                            ((operation.path.length === 4 &&
                                 operation.path[0] === 'packages' &&
-                                operation.path[1]?.startsWith('node_modules/') &&
-                                isJsonObject(operation.value) &&
-                                isJsonObject(operation.expectUpstream)))
-                    : allowedKeys === null ||
-                        (operation.path.length === 2 &&
-                            (allowedKeys.includes(top) ||
-                                ((target?.allowedDependencyUpdates ?? []).includes(top) &&
-                                    typeof operation.value === 'string' &&
-                                    typeof operation.expectUpstream === 'string'))) ||
-                        // A guarded replacement of a top-level scalar the type names: the
-                        // licence identifier of a manifest (PROP-016 ##TYPE-AREA-LICENSING).
-                        (operation.op === 'set' &&
-                            operation.path.length === 1 &&
-                            (target?.allowedScalarKeys ?? []).includes(top) &&
-                            typeof operation.value === 'string' &&
-                            operation.expectUpstream !== undefined);
+                                operation.path[1] === '' &&
+                                (target.allowedDependencyUpdates ?? []).includes(operation.path[2] ?? '') &&
+                                operation.path[3] !== '' &&
+                                typeof operation.value === 'string' &&
+                                typeof operation.expectUpstream === 'string') ||
+                                (operation.path.length === 2 &&
+                                    operation.path[0] === 'packages' &&
+                                    operation.path[1]?.startsWith('node_modules/') &&
+                                    isJsonObject(operation.value) &&
+                                    isJsonObject(operation.expectUpstream)))
+                        : allowedKeys === null ||
+                            (operation.path.length === 2 &&
+                                (allowedKeys.includes(top) ||
+                                    ((target?.allowedDependencyUpdates ?? []).includes(top) &&
+                                        typeof operation.value === 'string' &&
+                                        typeof operation.expectUpstream === 'string'))) ||
+                            // A guarded replacement of a top-level scalar the type names: the
+                            // licence identifier of a manifest (PROP-016 ##TYPE-AREA-LICENSING).
+                            (operation.op === 'set' &&
+                                operation.path.length === 1 &&
+                                (target?.allowedScalarKeys ?? []).includes(top) &&
+                                typeof operation.value === 'string' &&
+                                operation.expectUpstream !== undefined);
         if (allowed) {
             continue;
         }
@@ -758,8 +780,11 @@ export function restrictedTargetViolations(type, overlay) {
  * several and fixing them one run at a time is what makes upgrades expensive.
  */
 export function overlayDriftErrors(drift) {
-    return drift.map((entry) => ckError('OVERLAY-DRIFT', `${entry.overlayId}: ${entry.target}:${renderPath(entry.path)} at the pin is ${renderValue(entry.actual)}, ` +
-        `but the overlay expects ${entry.expectedAbsent ? 'no such key' : renderValue(entry.expected)}`, 'upstream changed the key this intervention is written against: review the overlay and update expectUpstream', entry.artifactPath));
+    return drift.map((entry) => entry.needsArray === true
+        ? ckError('OVERLAY-DRIFT', `${entry.overlayId}: ${entry.target}:${renderPath(entry.path)} at the pin is ${renderValue(entry.actual)}, ` +
+            'but the overlay appends to it and needs an array there', 'upstream changed the list this intervention appends to: review the overlay and its path', entry.artifactPath)
+        : ckError('OVERLAY-DRIFT', `${entry.overlayId}: ${entry.target}:${renderPath(entry.path)} at the pin is ${renderValue(entry.actual)}, ` +
+            `but the overlay expects ${entry.expectedAbsent ? 'no such key' : renderValue(entry.expected)}`, 'upstream changed the key this intervention is written against: review the overlay and update expectUpstream', entry.artifactPath));
 }
 /**
  * The advisory about a key the packaging step of this family stamps by itself,
@@ -886,6 +911,33 @@ function setAtPath(root, path, value) {
         current[last] = value;
     }
 }
+/**
+ * ##OVERLAY-APPEND: one more element at the end of the array at the path,
+ * unless a deep-equal one is already there. An absent key becomes the array
+ * with that element alone - the dev channel seeds from a pin that may lack the
+ * key, and the drift detector is what refuses such a pin; anything else in the
+ * way is a document the operation cannot mean.
+ */
+function appendAtPath(root, path, value) {
+    const parentPath = path.slice(0, -1);
+    const last = path[path.length - 1];
+    if (last === undefined)
+        return;
+    const parent = parentPath.length === 0 ? root : valueAtPath(root, parentPath);
+    if (parent === undefined || parent === null || typeof parent !== 'object' || Array.isArray(parent)) {
+        throw new Error(`append ${renderPath(path)}: the document holds no object above the array`);
+    }
+    const current = parent[last];
+    if (current === undefined) {
+        parent[last] = [value];
+        return;
+    }
+    if (!Array.isArray(current)) {
+        throw new Error(`append ${renderPath(path)}: the document holds ${renderValue(current)} there, not an array`);
+    }
+    if (!current.some((element) => deepEqual(element, value)))
+        current.push(value);
+}
 function removeAtPath(root, path) {
     let current = root;
     for (let index = 0; index < path.length - 1; index += 1) {
@@ -923,8 +975,8 @@ function assertVariableNames(operations, artifactPath) {
 function assertSetHasValue(operations, artifactPath) {
     for (let index = 0; index < operations.length; index += 1) {
         const operation = operations[index];
-        if (operation !== undefined && operation.op === 'set' && operation.value === undefined) {
-            throw overlayError(`operations[${index}].value`, 'is required for op "set"', undefined, artifactPath);
+        if (operation !== undefined && (operation.op === 'set' || operation.op === 'append') && operation.value === undefined) {
+            throw overlayError(`operations[${index}].value`, `is required for op "${operation.op}"`, undefined, artifactPath);
         }
     }
 }

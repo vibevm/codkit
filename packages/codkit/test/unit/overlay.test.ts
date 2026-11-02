@@ -85,7 +85,7 @@ describe('overlay schema', () => {
 	it('refuses an unknown operation with the wording of the spec', () => {
 		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'insert', path: ['displayName'], value: 'x' }]), ARTIFACT));
 		expect(failure.code).toBe('OVERLAY-SCHEMA');
-		expect(failure.message).toBe('operations[0].op must be "set", "remove" or "npm-prune", got "insert"');
+		expect(failure.message).toBe('operations[0].op must be "set", "remove", "npm-prune" or "append", got "insert"');
 		expect(failure.file).toBe(ARTIFACT);
 	});
 
@@ -105,6 +105,12 @@ describe('overlay schema', () => {
 	it('refuses an empty path', () => {
 		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'remove', path: [] }]), ARTIFACT));
 		expect(failure.message).toContain('operations[0].path');
+	});
+
+	it('refuses an append without a value', () => {
+		const failure = codeOf(() => parseOverlay(withOperations([{ op: 'append', path: ['builtInAddons'] }]), ARTIFACT));
+		expect(failure.code).toBe('OVERLAY-SCHEMA');
+		expect(failure.message).toContain('operations[0].value is required for op "append"');
 	});
 
 	it('refuses a set without a value', () => {
@@ -177,6 +183,36 @@ describe('applyOperations', () => {
 		expect(applyOperations({ displayName: 'x', keep: 1 }, overlay.operations, CONTEXT)).toEqual({ keep: 1 });
 	});
 
+	it('appends once to an array, and makes the array when the key is absent', () => {
+		// ##OVERLAY-APPEND: the product's element goes last; a second run, or a
+		// materialized target read back, does not add it twice.
+		const overlay = parseOverlay(
+			withOperations([
+				{ op: 'append', path: ['builtInAddons'], value: { name: 'acme.pack', version: '1.0.0' } },
+				{ op: 'append', path: ['builtInAddons'], value: { name: 'acme.pack', version: '1.0.0' } },
+				{ op: 'append', path: ['gallery', 'extra'], value: { $var: 'pin.tag' } }
+			]),
+			ARTIFACT
+		);
+		const document = applyOperations(
+			{ builtInAddons: [{ name: 'upstream.one', version: '2.0.0' }], gallery: {} },
+			overlay.operations,
+			CONTEXT
+		);
+		expect(document).toEqual({
+			builtInAddons: [
+				{ name: 'upstream.one', version: '2.0.0' },
+				{ name: 'acme.pack', version: '1.0.0' }
+			],
+			gallery: { extra: [CONTEXT.pinTag] }
+		});
+	});
+
+	it('refuses to append where the document holds something that is not an array', () => {
+		const overlay = parseOverlay(withOperations([{ op: 'append', path: ['displayName'], value: 'x' }]), ARTIFACT);
+		expect(() => applyOperations({ displayName: 'Code - OSS' }, overlay.operations, CONTEXT)).toThrow(/not an array/u);
+	});
+
 	it('does not mutate the document it was given', () => {
 		const overlay = parseOverlay(withOperations([{ op: 'set', path: ['displayName'], value: 'PatchSet' }]), ARTIFACT);
 		const base = { displayName: 'Code - OSS' };
@@ -232,6 +268,14 @@ describe('the dev channel', () => {
 		const { document, warnings } = devChannel([{ op: 'set', path: ['addonGallery', 'serviceUrl'], value: 'https://gallery.invalid' }]);
 		expect(warnings).toEqual([]);
 		expect(document).toEqual({ addonGallery: { serviceUrl: 'https://gallery.invalid' } });
+	});
+
+	it('carries a top-level append as the whole key, seeded from the pin when there is one', () => {
+		// Without a tree to read the pin from, the array starts empty and holds
+		// the product's element alone (##OVERLAY-APPEND, ##OVERLAY-TWO-CHANNELS).
+		const { document, warnings } = devChannel([{ op: 'append', path: ['builtInAddons'], value: { name: 'acme.pack' } }]);
+		expect(warnings).toEqual([]);
+		expect(document).toEqual({ builtInAddons: [{ name: 'acme.pack' }] });
 	});
 
 	it('writes two-space JSON with a final newline', () => {

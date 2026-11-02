@@ -386,7 +386,8 @@ const MANIFEST_JSON = `{
 	"addonGallery": {
 		"serviceUrl": "https://gallery.fixture.invalid/api",
 		"itemUrl": "https://gallery.fixture.invalid/item"
-	}
+	},
+	"builtInAddons": []
 }
 `;
 
