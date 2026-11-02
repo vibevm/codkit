@@ -9,6 +9,7 @@ import { encodeUtf8 } from '../../src/lib/bytes.ts';
 import { markerFormFor, markerKeyOf, parseMarkers } from '../../src/lib/markers.ts';
 import type { MarkerParseResult } from '../../src/lib/markers.ts';
 import type { ErrorCode } from '../../src/lib/messages.ts';
+import { idPatternOf } from '../../src/lib/conventionsFile.ts';
 import { conventions } from '../support/conventions.ts';
 
 function parse(text: string, ext: string): MarkerParseResult {
@@ -159,6 +160,16 @@ describe('marker rules', () => {
 		expect(result.errors[0]?.message).toContain('CK-nosuch-001');
 		// The block structure is still understood, so nothing cascades.
 		expect(result.blocks).toEqual([{ id: 'CK-nosuch-001', beginLine: 1, endLine: 2 }]);
+	});
+
+	it('reads an id whose subsystem carries digits or hyphens, the shape the conventions allow a subsystem', () => {
+		const custom = { ...conventions(), idPattern: idPatternOf(['i18n', 'rich-text']) };
+		const text =
+			'// codkit:begin CK-i18n-002\n// codkit:end CK-i18n-002\n// codkit:begin CK-rich-text-001\n// codkit:end CK-rich-text-001\n';
+		const result = parseMarkers(encodeUtf8(text), '.ts', custom, 'fixture.ts');
+
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.map((block) => block.id)).toEqual(['CK-i18n-002', 'CK-rich-text-001']);
 	});
 
 	it('reports MARKER-MALFORMED for a line that mentions a marker but is not one', () => {

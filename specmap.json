@@ -4370,7 +4370,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:737eb2aca59256f1e28b163eb6b6606ba4c0a17a37cfebfed24e467c59823296",
+      "content_hash": "sha256:1b004225a4c147b8268c71e0df74be11aad0cd1eef72ff850c75fdbe2d56b404",
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "codkit PROP-004: Markers and the .ckpatch patch format",
@@ -4478,7 +4478,7 @@
     },
     {
       "anchor": "marker-parser",
-      "content_hash": "sha256:1ca4a3849bce04388edfeb7bf825c9220a8b7aa4fb3b2ae1ab249a1b26807097",
+      "content_hash": "sha256:2e14b8f180ae96070cbdcaf11abb82661c2c01d69c16a9d7cafe2d69e6255faf",
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "3. Marker parsing (the algorithm)",
@@ -4500,7 +4500,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "Performance: a linear pass; the pre-commit requirement is a fraction of a second per file (PROP-012 §3). @status:spec/done",
-      "line": 47,
+      "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-004#PARSER-PERFORMANCE"
     },
     {
@@ -4509,7 +4509,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "4. A patch - the file delta/patches/*.ckpatch",
-      "line": 49,
+      "line": 51,
       "uri": "spec://codkit/modules/codkit/PROP-004#patch-file"
     },
     {
@@ -4518,7 +4518,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "**The file name** encodes the path of the upstream file: the separator `/` is replaced by `__` (a double underscore), and the extension `.ckpatch` is appended to the full name. The patch of a file whose name begins with a dot (`.gitignore.ckpatch`, `MR-FORM-KEY`) therefore begins with a dot too: it is the one artifact name the engine writes that does, and the portable-name rule of the engine's file writer holds for the rest of its shape (2026-11-01). Example: `src/vs/workbench/browser/parts/titlebar/titlebarPart.ts` → `delta/patches/src__vs__workbench__browser__parts__titlebar__titlebarPart.ts.ckpatch`. Decoding back: cut off `.ckpatch`, replace `__` with `/`. Before the replacement the encoder checks that the path contains no `__`, and on a collision it fails with code 2 (there are no such paths at the pin; the check is for the future). @status:spec/done",
-      "line": 50,
+      "line": 52,
       "uri": "spec://codkit/modules/codkit/PROP-004#PATCH-NAME-ENCODING"
     },
     {
@@ -4527,7 +4527,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "**The structure of the file**: the metadata header, then the unified diff. The header is the lines that start with `# `, up to the first `--- ` line; `git apply` ignores such lines (garbage before the diff headers), so the file is applicable as an ordinary patch. @status:spec/done",
-      "line": 51,
+      "line": 53,
       "uri": "spec://codkit/modules/codkit/PROP-004#PATCH-STRUCTURE"
     },
     {
@@ -4536,7 +4536,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "The header fields (the order is fixed, all of them are mandatory): @status:spec/done",
-      "line": 52,
+      "line": 54,
       "uri": "spec://codkit/modules/codkit/PROP-004#patch-header-lead"
     },
     {
@@ -4545,7 +4545,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "**The body** is a normalized unified diff of exactly one file: @status:spec/done",
-      "line": 67,
+      "line": 69,
       "uri": "spec://codkit/modules/codkit/PROP-004#patch-body-lead"
     },
     {
@@ -4554,7 +4554,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "exactly one pair of headers `--- a/<path>` and `+++ b/<path>` with the same `<path>` (LF line endings, no tabs and no quotes; paths with spaces are not escaped - there are none in the upstream tree, and their presence is an encoder error); @status:spec/done",
-      "line": 69,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-004#PB-ONE-FILE-HEADERS"
     },
     {
@@ -4563,7 +4563,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "then the hunks `@@ -l,c +l,c @@` with a context of exactly 3 lines (`-U3`); refined by the M0 implementation: git omits the `,1` of single-line ranges and adds a section heading after the second `@@` - both forms are accepted and preserved byte for byte (otherwise double regeneration is unreachable); an empty context line may arrive without the leading space - it is accepted and reproduced verbatim; @status:impl/done",
-      "line": 70,
+      "line": 72,
       "uri": "spec://codkit/modules/codkit/PROP-004#PB-U3-HUNKS"
     },
     {
@@ -4572,7 +4572,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "no `diff --git`, `index` or `mode` lines, no dates, authors or series numbers: they are not needed for applying and they carry non-deterministic data; @status:spec/done",
-      "line": 71,
+      "line": 73,
       "uri": "spec://codkit/modules/codkit/PROP-004#PB-NO-VOLATILE-HEADERS"
     },
     {
@@ -4581,7 +4581,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "the content of the lines is byte for byte as in the files (LF; trailing spaces are preserved); the file ends with an LF; the marker `\\ No newline at end of file` is allowed by the rules of unified diff. @status:spec/done",
-      "line": 72,
+      "line": 74,
       "uri": "spec://codkit/modules/codkit/PROP-004#PB-BYTES-VERBATIM"
     },
     {
@@ -4590,7 +4590,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "A patch always describes a **state**, «the file at the pin → our state of the file», not an increment. There is no order and no dependency between patches (one file is one patch by construction); the order of applying under `load` is the lexicographic sort of the patch file names by UTF-8 bytes (it is needed only for the determinism of the branch). @status:spec/done",
-      "line": 74,
+      "line": 76,
       "uri": "spec://codkit/modules/codkit/PROP-004#PATCH-IS-STATE-NOT-INCREMENT"
     },
     {
@@ -4599,7 +4599,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "**An add-file patch** (a new file in the upstream zone - allowed only as an exception, PROP-005 §9): `--- /dev/null`, `+++ b/<path>`, one hunk `@@ -0,0 +1,N @@`. **Deleting an upstream file by a patch is forbidden** (`--- a/… +++ /dev/null` is a validation error; hide plus the removed registry are used instead). @status:spec/done",
-      "line": 75,
+      "line": 77,
       "uri": "spec://codkit/modules/codkit/PROP-004#ADD-FILE-PATCH"
     },
     {
@@ -4608,7 +4608,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "A valid sample in full (ours, written from scratch; the path and the context lines are notional and show the form only; a real patch carries the bytes of a real upstream file): @status:spec/done",
-      "line": 76,
+      "line": 78,
       "uri": "spec://codkit/modules/codkit/PROP-004#patch-valid-sample"
     },
     {
@@ -4617,7 +4617,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "An invalid sample: the same file, but the added lines stand **outside** the `codkit:begin`/`codkit:end` pair. The expected diagnostics of `codkit verify` (exit 1): `CK-E-HUNK-OUTSIDE-MARKER: delta/patches/…ckpatch: hunk at target line 113 adds lines outside any codkit marker block. Wrap the change in \"// codkit:begin CK-workbench-001\" … \"// codkit:end CK-workbench-001\".` @status:spec/done",
-      "line": 99,
+      "line": 101,
       "uri": "spec://codkit/modules/codkit/PROP-004#PATCH-INVALID-SAMPLE"
     },
     {
@@ -4626,7 +4626,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "5. Deterministic patch generation, «pin → file»",
-      "line": 101,
+      "line": 103,
       "uri": "spec://codkit/modules/codkit/PROP-004#patch-generation"
     },
     {
@@ -4635,7 +4635,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "Input: the path F, the pin bytes `pinBytes` (the git object: `git show <pin.sha>:<path>` - with no network and no checkout), the target bytes `curBytes` (the working file of the tree). Output: the bytes of the `.ckpatch` (the header preserved or updated + the new body) or «no changes». @status:spec/done",
-      "line": 102,
+      "line": 104,
       "uri": "spec://codkit/modules/codkit/PROP-004#gen-io"
     },
     {
@@ -4644,7 +4644,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "**The byte predicates** (before the diff): `curBytes` is valid UTF-8; the line endings are LF (a CR found → refusal `CK-E-CRLF`, with a hint about `core.autocrlf=false`); the trailing LF is present if it was present at the pin (lost → refusal `CK-E-EOF-NEWLINE`); the file is not binary (a NUL byte → refusal: binary targets belong to the resource-file layer). Trailing spaces are NOT cleaned up - the bytes are preserved. @status:spec/done",
-      "line": 104,
+      "line": 106,
       "uri": "spec://codkit/modules/codkit/PROP-004#GEN-BYTE-PREDICATES"
     },
     {
@@ -4653,7 +4653,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "The diff: `git diff --no-index -U3 --no-color --no-ext-diff --no-textconv -- <tmpPin> <tmpCur>` in the isolated environment (PROP-002 §2), with the explicit `-c diff.algorithm=myers -c core.autocrlf=false -c diff.renames=false -c diff.mnemonicPrefix=false -c diff.noprefix=false`. The temporary files are created in `.codkit/tmp/` under the fixed names `a`/`b` (which do not depend on absolute paths); the `diff --git`/`index`/`old mode`/`new mode` lines are removed from the output; the `---`/`+++` headers are rewritten to the canonical path F. (The hashes of the `index` lines are thrown away: their abbreviated length depends on the number of objects in the repository - a source of non-determinism.) @status:spec/done",
-      "line": 105,
+      "line": 107,
       "uri": "spec://codkit/modules/codkit/PROP-004#GEN-DIFF-INVOCATION"
     },
     {
@@ -4662,7 +4662,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "An empty diff → the patch file is not written at all; an existing patch, once the target has returned to the pin, is deleted by the `save` command with a message. @status:spec/done",
-      "line": 106,
+      "line": 108,
       "uri": "spec://codkit/modules/codkit/PROP-004#GEN-EMPTY-DIFF"
     },
     {
@@ -4671,7 +4671,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "Assembling the `.ckpatch`: an existing header is preserved (regeneration changes neither the id nor the metadata; the `pin` field is updated only by the regeneration step of an upgrade cycle); for a new file the header comes from the answer of `marker new` or from the flags. @status:spec/done",
-      "line": 107,
+      "line": 109,
       "uri": "spec://codkit/modules/codkit/PROP-004#GEN-HEADER-PRESERVED"
     },
     {
@@ -4680,7 +4680,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "The comparison with the old `.ckpatch` is **byte-wise**: on a match → do not write (do not touch the mtime). @status:spec/done",
-      "line": 108,
+      "line": 110,
       "uri": "spec://codkit/modules/codkit/PROP-004#GEN-BYTE-COMPARE"
     },
     {
@@ -4689,7 +4689,7 @@
       "doc_path": "modules/codkit/PROP-004",
       "file": "vibevm/vibespecs/modules/codkit/PROP-004-markers-and-patch-format.xml",
       "heading": "The format requires a double regeneration to produce an empty diff. The Linux check is part of the current floor; native macOS/Windows proofs are separate open rows of the S16/PROP-013 matrix, not an implied result. @status:spec/done",
-      "line": 110,
+      "line": 112,
       "uri": "spec://codkit/modules/codkit/PROP-004#DOUBLE-REGEN-INVARIANT"
     },
     {

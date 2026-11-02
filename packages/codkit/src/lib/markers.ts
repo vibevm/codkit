@@ -267,13 +267,15 @@ export function markerKeyOf(path: string): string {
 }
 
 /**
- * `^\s*<open>(begin|end)\s+(CK-[a-z]+-[0-9]{3})\s*<close>\s*$` with the form
- * quoted (PROP-004 sec. 3). The id shape here is deliberately looser than
- * `idPattern`: a well-formed marker with an unknown subsystem must be reported
- * as a bad id, not as a malformed line.
+ * `^\s*<open>(begin|end)\s+(CK-[a-z][a-z0-9-]*-[0-9]{3})\s*<close>\s*$` with
+ * the form quoted (PROP-004 sec. 3). The id shape here is deliberately looser
+ * than `idPattern`: a well-formed marker with an unknown subsystem must be
+ * reported as a bad id, not as a malformed line. The subsystem has the shape
+ * the conventions allow a subsystem, digits and hyphens included, so the
+ * `i18n` of a family can mark a block.
  */
 function markerPattern(form: MarkerForm): RegExp {
-	return new RegExp(`^\\s*${escapeRegExp(form.open)}(begin|end)\\s+(CK-[a-z]+-[0-9]{3})\\s*${escapeRegExp(form.close)}\\s*$`);
+	return new RegExp(`^\\s*${escapeRegExp(form.open)}(begin|end)\\s+(CK-[a-z][a-z0-9-]*-[0-9]{3})\\s*${escapeRegExp(form.close)}\\s*$`);
 }
 
 function readForm(raw: unknown, key: string): MarkerForm {

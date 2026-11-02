@@ -31,8 +31,10 @@
   text = decodeUtf8Strict(bytes)               # invalid UTF-8 -> error CK-E-ENCODING
   opened = stack; blocks = []; errors = []
   for every line i (split on \n; a \r at the end of a line -> error CK-E-CRLF):
-    m = the line matches ^\s*&lt;form.open&gt;(begin|end)\s+(CK-[a-z]+-[0-9]{3})\s*&lt;form.close&gt;\s*$
+    m = the line matches ^\s*&lt;form.open&gt;(begin|end)\s+(CK-[a-z][a-z0-9-]*-[0-9]{3})\s*&lt;form.close&gt;\s*$
         # form.open already ENDS with "codkit:" (the form of ##CONV-MARKER-FORMS) - the word is not duplicated
+        # the subsystem has the shape the conventions allow one (^[a-z][a-z0-9-]*$), digits and hyphens included:
+        # until 2026-11-02 it took letters alone, and the i18n subsystem of the extension family could mark no block
     if the line contains "codkit:begin"|"codkit:end" but m did not match -> error CK-E-MARKER-MALFORMED(i)
     if m.kind == begin:
       if the stack is not empty -> error CK-E-MARKER-NESTED(i)   # nesting is forbidden
