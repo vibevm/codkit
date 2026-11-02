@@ -327,8 +327,9 @@ describe('the inputs of a run', () => {
 		expect(out.lines).toContain(
 			'input the helper script: not pre-provisioned, the build fetches it from https://example.invalid/helper.pl'
 		);
-		const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-		expect(docker.calls.map((call) => call.slice(0, 3).join(' '))).toEqual([`${npm} run bundle`, 'bash -c pack the bundle']);
+		// The run's environment carries no PATH, and a bare name is searched along the PATH the command runs
+		// with (##INPUTS-BUILD-PORTABLE), so it reaches the runner as it is on every host.
+		expect(docker.calls.map((call) => call.slice(0, 3).join(' '))).toEqual(['npm run bundle', 'bash -c pack the bundle']);
 	});
 
 	it('are wired into the environment of the native commands, with the fence when the run is offline', () => {
