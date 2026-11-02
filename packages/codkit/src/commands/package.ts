@@ -35,6 +35,7 @@ const SKIP_TYPE_BUILD = '--skip-type-build';
 const TIMEOUT = '--timeout';
 const INPUTS = '--inputs';
 const CONTAINER_PREFIX = '--container-prefix';
+const CONTAINER = '--container';
 const COMPONENT_ID = '--component-id';
 
 async function run(ctx: CommandContext): Promise<number> {
@@ -79,6 +80,7 @@ async function run(ctx: CommandContext): Promise<number> {
 				inputsDir,
 				offline: ctx.flags.ci,
 				containerPrefix,
+				container: commandFlagGiven(ctx.commandFlags, CONTAINER),
 				...(componentId === null ? {} : { componentId })
 			});
 			ctx.out.setData(dataOf(result));
@@ -148,6 +150,6 @@ export const packageCommand: CommandDefinition = {
 	summary: 'build the distributable from the loaded tree and put the tree back',
 	configMode: 'load',
 	maxArgs: 1,
-	commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT, INPUTS, CONTAINER_PREFIX, COMPONENT_ID],
+	commandFlags: [KEEP_OVERLAY, SKIP_TYPE_BUILD, TIMEOUT, INPUTS, CONTAINER_PREFIX, CONTAINER, COMPONENT_ID],
 	run
 };

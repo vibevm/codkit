@@ -2,7 +2,8 @@
 # The entry of the Linux build container of the `vscode` project type
 # (spec://codkit/modules/vscode/PROP-004#VSCODE-LINUX-CONTAINER-ENTRY).
 #
-# `codkit package` starts this container on a host that is not Linux, with
+# `codkit package` starts this container on a host that is not Linux, and on a
+# Linux host whose run asks for the container route (`--container`), with
 # (spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-CONTAINER-PROTOCOL):
 #   /codkit/tree    the fork tree, read-only;
 #   /codkit/work    a volume the container owns, one per fork tree;
@@ -30,7 +31,10 @@
 #      nothing and stops here when the key differs;
 #   3. puts each provisioned tree input in place of its cache in the copy, then
 #      runs the target's build commands there, in order;
-#   4. copies every file the output patterns match into /codkit/io/out.
+#   4. copies every file the output patterns match into /codkit/io/out;
+#   5. hands what it wrote into /codkit/io to the owner of that directory,
+#      whatever the verdict: the container runs as root, and on a Linux host
+#      the run's directory is the host user's, who removes it afterwards.
 set -euo pipefail
 
 TREE=/codkit/tree
@@ -46,6 +50,9 @@ say() {
 export HOME="$WORK/home"
 export TMPDIR="$WORK/tmp"
 mkdir -p "$HOME" "$TMPDIR" "$COPY" "$IO/out"
+# 5. On every exit. A mount of Docker Desktop has no owner to hand to, so a
+#    refusal there changes nothing.
+trap 'chown -R --reference="$IO" "$IO/out" 2>/dev/null || true' EXIT
 if [ -d "$IO/shim" ]; then
 	export PATH="$IO/shim:$PATH"
 fi

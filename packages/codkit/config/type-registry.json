@@ -33,11 +33,11 @@
         },
         {
           "path": "container/linux/Dockerfile",
-          "sha256": "972b40a78f91d4866c43ca6b6bf274cd44c165db27923b7959e9fc099ca15b92"
+          "sha256": "4b5a2c0bd1d160b3c12d8595320b914d382b400e693ebf606209dffd519ecfde"
         },
         {
           "path": "container/linux/entry.sh",
-          "sha256": "1590b124c1f8c3e513118047e3656f45d6b92d6e3531dc39b8d9d93f915771db"
+          "sha256": "2735163dcf06650cf8112d9a3f8eb571440b76ca1fa7060d0fd9929d0439459b"
         },
         {
           "path": "dist/advisory.js",
@@ -49,7 +49,7 @@
         },
         {
           "path": "dist/build.js",
-          "sha256": "f752f4afe6a87a59d46a15b1bbec6045765b653dfcdbacaaa6e97861977b855d"
+          "sha256": "51b587e39dff6f48be960a2aedac79d0f8326a418f76256f7a7734416d78a374"
         },
         {
           "path": "dist/configSchema.js",
@@ -141,7 +141,7 @@
         },
         {
           "path": "src/build.ts",
-          "sha256": "1f7ad5935d4119a3110bd4e3c6e6a958701373ac1e42d011ce892f667f746d1f"
+          "sha256": "bf5b75c989101cd3a2b01222d0c14837cb5c0294c4ff6da4d93faaa20eca557a"
         },
         {
           "path": "src/configSchema.ts",

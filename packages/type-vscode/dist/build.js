@@ -68,7 +68,8 @@ export function windowsSdkEnvironment(environment) {
 }
 /**
  * ##VSCODE-LINUX-CONTAINER-RECIPE: the Linux container the installer targets are
- * built in on a host that is not Linux - a public Ubuntu 22.04 with exactly the
+ * built in on a host that is not Linux, and on a Linux host whose run asks for
+ * it with `--container` - a public Ubuntu 22.04 with exactly the
  * prerequisites of upstream's Linux build, Node of the tree's `.nvmrc`, and the
  * entry that installs the Linux dependencies and runs the commands.
  */

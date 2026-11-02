@@ -8,8 +8,16 @@ import { treeId } from './fingerprint.js';
 import { ckError } from './messages.js';
 import { DEFAULT_CONTAINER_PREFIX, containerCommands, containerInputEnvironment, containerMounts, containerNames, containerRunArgs, containerShim, containerTreeInputs, dockerPlatform, imageBuildArgs, passedEnvironment, recipeHash, takeContainerOutputs, treeArguments, treeModes, writeContainerIo } from './packageContainer.js';
 import { runCommands, runOne, defaultPackageCommandRunner, outputLines } from './packageRuntime.js';
-/** The route of a target on a host: native, in the type's container, or none (##CMD-PACKAGE-HOST-ROUTES). */
-export function routeOf(target, host) {
+/**
+ * The route of a target on a host: native, in the type's container, or none
+ * (##CMD-PACKAGE-HOST-ROUTES). A run that asks for the container route takes it
+ * wherever the target has one, a native host included, and has no route for a
+ * target without one.
+ */
+export function routeOf(target, host, containerAsked = false) {
+    if (containerAsked) {
+        return target.container === undefined ? null : 'container';
+    }
     if (target.supportedHosts.includes(host)) {
         return 'native';
     }
@@ -18,7 +26,7 @@ export function routeOf(target, host) {
     }
     return null;
 }
-export function packageTargetsFor(type, selector, host) {
+export function packageTargetsFor(type, selector, host, containerAsked = false) {
     const catalog = type.build.packageTargets ?? [];
     if (catalog.length === 0) {
         if (selector !== null)
@@ -28,10 +36,10 @@ export function packageTargetsFor(type, selector, host) {
     const ids = selector === null
         ? (type.build.defaultPackageTargets ?? [])
         : selector === 'all'
-            ? catalog.filter((candidate) => routeOf(candidate, host) !== null).map((candidate) => candidate.id)
+            ? catalog.filter((candidate) => routeOf(candidate, host, containerAsked) !== null).map((candidate) => candidate.id)
             : ['windows', 'linux', 'macos'].includes(selector)
                 ? catalog
-                    .filter((candidate) => candidate.platform === selector && routeOf(candidate, host) !== null)
+                    .filter((candidate) => candidate.platform === selector && routeOf(candidate, host, containerAsked) !== null)
                     .map((candidate) => candidate.id)
                 : [selector];
     const unique = [...new Set(ids)];
@@ -40,7 +48,11 @@ export function packageTargetsFor(type, selector, host) {
         .filter((candidate) => candidate !== undefined);
     if (targets.length !== unique.length)
         throw ckError('CONFIG', `unknown package target: ${unique.find((id) => !catalog.some((candidate) => candidate.id === id))}`, `choose one of: ${catalog.map((target) => target.id).join(', ')}, a platform family, or all`);
-    const unsupported = targets.find((candidate) => routeOf(candidate, host) === null);
+    const unsupported = targets.find((candidate) => routeOf(candidate, host, containerAsked) === null);
+    if (unsupported !== undefined && containerAsked) {
+        const routed = catalog.filter((candidate) => candidate.container !== undefined).map((candidate) => candidate.id);
+        throw ckError('CONFIG', `package target ${unsupported.id} has no container route, and --container asks for one`, `run ${unsupported.id} without --container${routed.length === 0 ? '' : `, or choose a target with a container route: ${routed.join(', ')}`}`);
+    }
     if (unsupported !== undefined) {
         const reason = unsupported.hostRefusal?.reason;
         const hosts = [...unsupported.supportedHosts, ...(unsupported.container?.hosts ?? [])];
@@ -51,7 +63,7 @@ export function packageTargetsFor(type, selector, host) {
     return targets;
 }
 export function routedTarget(options, target, host) {
-    const route = routeOf(target, host) ?? 'native';
+    const route = routeOf(target, host, options.container === true) ?? 'native';
     const container = target.container;
     if (route === 'native' || container === undefined) {
         return { target, route: 'native', container: null };
@@ -181,7 +193,20 @@ function runContainerTarget(options, target, container, stamps, checked, into) {
         return { ...outcome, detail: `in the container ${names.image}, ${arrived.length} artifact(s) copied into the fork tree` };
     }
     finally {
-        rmSync(ioDir, { recursive: true, force: true });
+        removeRunDirectory(ioDir, options);
+    }
+}
+/**
+ * The directory of one run goes whatever the verdict; a removal the platform
+ * refuses - a file the container left that its owner cannot remove - is a
+ * warning naming the directory, never the end of a run that built its target.
+ */
+function removeRunDirectory(ioDir, options) {
+    try {
+        rmSync(ioDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    }
+    catch (error) {
+        options.out.warn(`the directory of the container run ${ioDir} could not be removed: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 /** A docker command whose output nobody reads: a probe, or a cleanup. */

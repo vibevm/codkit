@@ -107,7 +107,7 @@ export function runPackage(options) {
     let restored = [];
     let scratchRestored = [];
     let outputs = [];
-    const selectedTargets = packageTargetsFor(type, options.targetSelector ?? null, host);
+    const selectedTargets = packageTargetsFor(type, options.targetSelector ?? null, host, options.container === true);
     const routed = selectedTargets.map((target) => routedTarget(options, target, host));
     const packageBuild = selectedTargets.length === 0 ? type.build.packageBuild : selectedTargets.flatMap((target) => target.build);
     const targets = selectedTargets.map((target) => target.id);

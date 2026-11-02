@@ -2,7 +2,8 @@
 # (spec://codkit/modules/vscode/PROP-004#VSCODE-LINUX-CONTAINER-RECIPE).
 #
 # `codkit package` builds the Linux targets in this container on a host that is
-# not Linux. It is a public image plus exactly what the upstream Linux build
+# not Linux, and on a Linux host whose run asks for it with `--container`. It is
+# a public image plus exactly what the upstream Linux build
 # installs, so a package built here is built the way upstream CI builds it:
 #
 #   * the base is the operating system of upstream's Linux build pool, Ubuntu

@@ -249,6 +249,11 @@ describe('the container recipe', () => {
 		expect(dockerfile).toContain('ENTRYPOINT ["bash", "/codkit/recipe/entry.sh"]');
 	});
 
+	it('hands what the entry wrote for the host back to the owner of the run directory, on every exit', () => {
+		expect(entry).toContain(`trap 'chown -R --reference="$IO" "$IO/out" 2>/dev/null || true' EXIT`);
+		expect(entry.indexOf('trap ')).toBeLessThan(entry.indexOf('# 1. The mirror.'));
+	});
+
 	it('starts from the public Ubuntu of upstream Linux build pool, with Node of the tree', () => {
 		expect(dockerfile).toMatch(/^FROM ubuntu:22\.04$/mu);
 		expect(dockerfile).toContain('ARG NODE_VERSION');

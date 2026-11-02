@@ -76,6 +76,7 @@ const COMMAND_FLAG_KINDS = new Map([
     ['--skip-type-build', 'boolean'],
     ['--inputs', 'value'],
     ['--container-prefix', 'value'],
+    ['--container', 'boolean'],
     ['--component-id', 'value'],
     // preview (PROP-007 sec. 29); the folder the host opens is `--workspace-dir`,
     // because `--workspace <name>` above is the global flag that selects a

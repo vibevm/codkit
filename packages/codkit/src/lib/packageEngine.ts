@@ -192,6 +192,8 @@ export type PackageOptions = {
 	readonly offline?: boolean;
 	/** `--container-prefix <name>`: the first word of the names of the container route. */
 	readonly containerPrefix?: string;
+	/** `--container`: every selected target takes its container route, on a native host too (##CMD-PACKAGE-HOST-ROUTES). */
+	readonly container?: boolean;
 	/** The host the run is on; a test names one instead of the process's. */
 	readonly host?: PackageHost;
 };
@@ -241,7 +243,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 	let restored: readonly string[] = [];
 	let scratchRestored: readonly string[] = [];
 	let outputs: readonly string[] = [];
-	const selectedTargets = packageTargetsFor(type, options.targetSelector ?? null, host);
+	const selectedTargets = packageTargetsFor(type, options.targetSelector ?? null, host, options.container === true);
 	const routed = selectedTargets.map((target) => routedTarget(options, target, host));
 	const packageBuild = selectedTargets.length === 0 ? type.build.packageBuild : selectedTargets.flatMap((target) => target.build);
 	const targets = selectedTargets.map((target) => target.id);

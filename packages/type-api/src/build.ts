@@ -63,9 +63,13 @@ export type PackageTarget = {
 	readonly inputs?: (treeDir: string) => readonly PackageInput[];
 };
 
-/** The container a target is built in on a host that cannot build it natively. */
+/** The container a target is built in on a host that cannot build it natively, or wherever a run asks for it. */
 export type PackageContainer = {
-	/** The hosts that take this route; none of them is a native host of the target. */
+	/**
+	 * The hosts that take this route by themselves; none of them is a native
+	 * host of the target. A run that asks for the container route takes it on a
+	 * native host too (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-HOST-ROUTES`).
+	 */
 	readonly hosts: readonly PackageHost[];
 	/**
 	 * The absolute path of the recipe inside the type package: a directory with

@@ -137,6 +137,26 @@ describe('the route of a target on a host', () => {
 		expect(routeOf(WINDOWS_TARGET, 'linux')).toBeNull();
 	});
 
+	it('takes the container route wherever a run asks for it, and refuses a target that has none', () => {
+		expect(routeOf(CONTAINER_TARGET, 'linux', true)).toBe('container');
+		expect(routeOf(CONTAINER_TARGET, 'win32', true)).toBe('container');
+		expect(routeOf(RAW_TARGET, 'linux', true)).toBeNull();
+		const type = catalogType();
+		expect(packageTargetsFor(type, 'linux-x64-pkg', 'linux', true).map((target) => target.id)).toEqual(['linux-x64-pkg']);
+		expect(packageTargetsFor(type, 'linux', 'linux', true).map((target) => target.id)).toEqual(['linux-x64-pkg']);
+		expect(packageTargetsFor(type, 'all', 'linux', true).map((target) => target.id)).toEqual(['linux-x64-pkg']);
+		let refusal: unknown = null;
+		try {
+			packageTargetsFor(type, 'linux-x64', 'linux', true);
+		} catch (error) {
+			refusal = error;
+		}
+		const payload = (refusal as { toPayload(): { code: string; message: string; hint?: string } }).toPayload();
+		expect(payload.code).toBe('CONFIG');
+		expect(payload.message).toBe('package target linux-x64 has no container route, and --container asks for one');
+		expect(payload.hint).toBe('run linux-x64 without --container, or choose a target with a container route: linux-x64-pkg');
+	});
+
 	it('keeps a container target in a family and in all, and leaves out a target with no route', () => {
 		const type = catalogType();
 		expect(packageTargetsFor(type, 'linux', 'win32').map((target) => target.id)).toEqual(['linux-x64-pkg']);
@@ -560,6 +580,31 @@ describe('the container route', () => {
 		expect(result.outputs).toEqual(['.build/out/app-2.pkg']);
 		expect(existsSync(mountSource(runArgs, '/codkit/io'))).toBe(false);
 		expect(readFileSync(join(fixture.treeDir, 'manifest.json'), 'utf8')).toBe(atPin(fixture));
+	});
+
+	it('runs on a Linux host too when the run asks for the container route', () => {
+		const fixture = loadedFixture();
+		const docker = fakeDocker({ imagePresent: true });
+		const result = runPackage({
+			...packageOptions(fixture, catalogType(), {
+				runCommand: docker.run,
+				host: 'linux',
+				targetSelector: 'linux-x64-pkg',
+				container: true,
+				containerPrefix: 'ck-test'
+			})
+		});
+		expect(result.exitCode).toBe(0);
+		expect(result.routes[0]?.route).toBe('container');
+		expect(result.routes[0]?.image).toMatch(/^ck-test-stub-linux-x64:[0-9a-f]{12}$/u);
+		expect(docker.calls.map((call) => call.slice(0, 3).join(' '))).toEqual([
+			'docker version --format',
+			'docker image inspect',
+			'docker volume create',
+			'docker run --rm'
+		]);
+		expect(result.outputs).toEqual(['.build/out/app-2.pkg']);
+		expect(existsSync(mountSource(docker.calls[3] ?? [], '/codkit/io'))).toBe(false);
 	});
 
 	it('uses an image that is there, and runs offline without a network', () => {
