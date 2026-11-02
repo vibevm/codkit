@@ -36,6 +36,8 @@ import type { CodkitConfig } from '../lib/configFile.ts';
 import { readContainedFile, writeContainedFileAtomic } from '../lib/containedFile.ts';
 import { loadConventions } from '../lib/conventionsFile.ts';
 import { refuseExisting, unitReminder, writeGenerated } from '../lib/genFeature.ts';
+import { productHeader } from '../lib/genTemplates.ts';
+import { profileHeaderOf } from './gen.ts';
 import type { GeneratedFile } from '../lib/genFeature.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import {
@@ -66,6 +68,7 @@ const RECORD_TYPE = 'extend';
 const RECORD_CATEGORY = 'own';
 const USAGE_ADD = `usage: codkit bundles add <archive> ${ID} CK-<subsystem>-<NNN> [${OWNER} <owner>] [${REASON} <text>]`;
 const USAGE_UPDATE = 'usage: codkit bundles update <name>...|--all';
+const NO_HEADER_WARNING = 'the guard test carries no licence header: no licensing profile is selected (codkit.licensing.json)';
 
 /** What one archive holds, as the layer reads it. */
 type ReadArchive = {
@@ -176,7 +179,7 @@ function addBundle(ctx: CommandContext): number {
 	const record: GeneratedFile = { path: artifact, text: serializeOverlay(document) };
 	// The bytes this command writes are the bytes the loader accepts.
 	parseOverlay(JSON.parse(record.text), artifact);
-	const guard = guardOf(type, { id, archive, ownRoot: config.typeConfig.ownRoot, manifestTarget: layer.manifestTarget });
+	const guard = guardOf(type, patchesDir, { id, archive, ownRoot: config.typeConfig.ownRoot, manifestTarget: layer.manifestTarget });
 	refuseExisting(patchesDir, [record, guard]);
 
 	// codkit.json first, under the lock every writer of it takes; the two
@@ -188,6 +191,7 @@ function addBundle(ctx: CommandContext): number {
 	ctx.out.info(`${CONFIG_FILE_NAME}: bundles += ${archive.name}`);
 	ctx.out.info(`created ${record.path}`);
 	ctx.out.info(`created ${guard.path}`);
+	if (!guard.headerWritten) ctx.out.warn(NO_HEADER_WARNING);
 	ctx.out.info(`next: ${unitReminder(guard.path.slice(0, guard.path.lastIndexOf('/')))}`);
 	ctx.out.info("commit them together with the archive's new content");
 	ctx.out.setData({
@@ -195,7 +199,8 @@ function addBundle(ctx: CommandContext): number {
 		version: archive.version,
 		sha256: archive.sha256,
 		file: declared.file,
-		artifacts: [CONFIG_FILE_NAME, record.path, guard.path]
+		artifacts: [CONFIG_FILE_NAME, record.path, guard.path],
+		headerWritten: guard.headerWritten
 	} satisfies JsonValue);
 	return EXIT_OK;
 }
@@ -229,7 +234,7 @@ function updateBundles(ctx: CommandContext): number {
 		const previous = found.operation.value as Readonly<Record<string, unknown>>;
 		const from = { version: String(previous['version'] ?? ''), sha256: String(previous['sha256'] ?? '') };
 		const changed = from.version !== archive.version || from.sha256 !== archive.sha256;
-		const guard = guardOf(type, {
+		const guard = guardOf(type, patchesDir, {
 			id: found.overlay.id,
 			archive,
 			ownRoot: config.typeConfig.ownRoot,
@@ -253,12 +258,14 @@ function updateBundles(ctx: CommandContext): number {
 		);
 	}
 	if (planned.some((plan) => plan.changed)) ctx.out.info("commit the rewritten record and guard together with the archive's new content");
+	if (planned.some((plan) => plan.changed && !plan.guard.headerWritten)) ctx.out.warn(NO_HEADER_WARNING);
 	ctx.out.setData({
 		bundles: planned.map((plan) => ({
 			name: plan.bundle.name,
 			from: plan.from,
 			to: { version: plan.archive.version, sha256: plan.archive.sha256 },
 			changed: plan.changed,
+			headerWritten: plan.guard.headerWritten,
 			artifacts: plan.changed ? [plan.record.path, plan.guard.path] : []
 		}))
 	} satisfies JsonValue);
@@ -417,11 +424,12 @@ function recordOf(
 	return null;
 }
 
-/** The guard test the type generates for the record (PROP-007 ##CMD-BUNDLES-ADD). */
+/** The guard test the type generates for the record (PROP-007 ##CMD-BUNDLES-ADD), headed the way the product heads its files. */
 function guardOf(
 	type: ProjectType,
+	patchesDir: string,
 	request: { readonly id: string; readonly archive: ReadArchive; readonly ownRoot: string; readonly manifestTarget: string }
-): GeneratedFile {
+): GeneratedFile & { readonly headerWritten: boolean } {
 	const generate = type.generators.bundleGuard;
 	if (generate === undefined) {
 		throw ckError(
@@ -436,7 +444,12 @@ function guardOf(
 		ownRoot: request.ownRoot,
 		manifestTarget: request.manifestTarget
 	});
-	return { path: module.path, text: module.text };
+	// ##HEADER-FROM-PROFILE: the guard is product code, so it carries the
+	// product's header when a licensing profile is selected, the way gen feature
+	// heads its files; update rewrites the file whole, header included.
+	const header = profileHeaderOf(patchesDir, type);
+	const text = header === null ? module.text : `${productHeader(header.headerFor(module.path))}\n${module.text}`;
+	return { path: module.path, text, headerWritten: header !== null };
 }
 
 /**

@@ -88,6 +88,18 @@ function headerOf(ctx, patchesDir, type) {
     };
 }
 /**
+ * ##HEADER-FROM-PROFILE for the files other verbs write for the product - the
+ * guard of a bundle record (PROP-007 ##CMD-BUNDLES-ADD): the header of the
+ * selected profile with no flag to shape it, or null when no profile is
+ * selected.
+ */
+export function profileHeaderOf(patchesDir, type) {
+    const profile = readLicensingProfile(patchesDir);
+    if (profile === null)
+        return null;
+    return headerFromProfile(patchesDir, profile, type, { file: null, holder: null, license: null, year: null, style: null });
+}
+/**
  * ##HEADER-FROM-PROFILE: the header of every generated file from the selected
  * profile - the holder of the product block, the own expression resolved for
  * the file's path, the year, the title and the licence file, in the style the

@@ -5666,7 +5666,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:c830af856ca26d8837eb11170b01c2f44fb59fe8f3a9070de7ee093f961726e3",
+      "content_hash": "sha256:49ef668e2404165bbddeb66aedcf8f18c39c4acbac97d2fd4811c70a49d97b6d",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -7241,7 +7241,7 @@
     },
     {
       "anchor": "cmd-inputs",
-      "content_hash": "sha256:08d1d649165165a2e753d88ec8c4659dca65e206f229ced71cde08c3b39a9f18",
+      "content_hash": "sha256:a2f8ef91fe474c2ef85a5ef1b89a007624063db90fef136d3208b990e118d974",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "28. Inputs from other repositories, and codkit inputs pin name…|--all",
@@ -7358,19 +7358,19 @@
     },
     {
       "anchor": "CMD-BUNDLES-ADD",
-      "content_hash": "sha256:6e63c9d98dd9a98f6487e0c0361fcd8c7029851206027c5061ca3a4ad45f9eec",
+      "content_hash": "sha256:7bbf7eeb2f91e6ed2cf4d1ffe56e5ae1f8919e33dccb525383ed50cf78faddbb",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit bundles add <archive> --id <id> [--owner <owner>] [--reason <text>]` declares a bundle: a unit the product ships inside its distribution, built elsewhere and delivered as an archive the upstream build already takes (PROP-003 `CFG-BUNDLES`). It needs a type that answers the bundles layer (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS`, capability `bundles`; otherwise `CK-E-TYPE-CAPABILITY`). It reads the identity of the unit - its name and version - from the manifest inside the archive the way the layer names it, hashes the archive (sha256), appends `{name, file}` to `bundles` of `codkit.json` canonically under the configuration lock - the file as given when absolute, otherwise relative to the patch-set root with `/` separators - and writes two artifacts through the type's generator: an overlay record `delta/overlays/<target>.bundle-<name>.overlay.json` (the target written as a patch name writes it) with one `append` operation that adds the unit's entry to the list of the manifest target (PROP-005 `OVERLAY-APPEND`; `type` extend, `category` own, `pin` the current pin, `contractTests` the id), and the guard test the overlay layer makes mandatory, under the own root as `suite('<id>')`, asserting that the manifest declares the unit with that version and hash. Refused before anything is written: an archive that is not there or is not a zip, a manifest without a name or a version, a name the pattern of the layer refuses or `codkit.json` already declares, an id another artifact holds (`CK-E-MARKER-DUP-ID`), an owner the vocabulary does not know. Output: `bundle <name>@<version>: <file> (sha256 <12>)`, the three paths written, and `commit them together with the archive's new content`; `data` is `{name, version, sha256, file, artifacts: [...]}`. @status:impl/done",
+      "heading": "`codkit bundles add <archive> --id <id> [--owner <owner>] [--reason <text>]` declares a bundle: a unit the product ships inside its distribution, built elsewhere and delivered as an archive the upstream build already takes (PROP-003 `CFG-BUNDLES`). It needs a type that answers the bundles layer (`spec://codkit/modules/codkit/PROP-016#TYPE-AREA-LAYERS`, capability `bundles`; otherwise `CK-E-TYPE-CAPABILITY`). It reads the identity of the unit - its name and version - from the manifest inside the archive the way the layer names it, hashes the archive (sha256), appends `{name, file}` to `bundles` of `codkit.json` canonically under the configuration lock - the file as given when absolute, otherwise relative to the patch-set root with `/` separators - and writes two artifacts through the type's generator: an overlay record `delta/overlays/<target>.bundle-<name>.overlay.json` (the target written as a patch name writes it) with one `append` operation that adds the unit's entry to the list of the manifest target (PROP-005 `OVERLAY-APPEND`; `type` extend, `category` own, `pin` the current pin, `contractTests` the id), and the guard test the overlay layer makes mandatory, under the own root as `suite('<id>')`, asserting that the manifest declares the unit with that version and hash; the guard is product code and carries the header of the selected licensing profile (PROP-019 `HEADER-FROM-PROFILE`), the way `gen feature` heads its files, and without a profile it has none and the run says so. Refused before anything is written: an archive that is not there or is not a zip, a manifest without a name or a version, a name the pattern of the layer refuses or `codkit.json` already declares, an id another artifact holds (`CK-E-MARKER-DUP-ID`), an owner the vocabulary does not know. Output: `bundle <name>@<version>: <file> (sha256 <12>)`, the three paths written, and `commit them together with the archive's new content`; `data` is `{name, version, sha256, file, artifacts: [...]}`. @status:impl/done",
       "line": 419,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-ADD"
     },
     {
       "anchor": "CMD-BUNDLES-UPDATE",
-      "content_hash": "sha256:e2b7703eb625bfc1688f5ba157202051a6367c61d5e41137d987e3eb393a3764",
+      "content_hash": "sha256:6f10b410d3c2669c59023eba0e5ad7f258875fc86ba644c13b6335e1589f19b5",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "`codkit bundles update [<name>…|--all]` reads the archives of the named bundles - of every bundle with `--all` - again, and rewrites the version and the hash in the overlay record and in the guard test of each: `bundle <name>: <old version> (<old12>) -> <new version> (<new12>)` or `bundle <name>: already current`. It refuses a name `codkit.json` does not declare, an archive that is not there, a record it cannot find (`codkit bundles add` writes it), and names together with `--all` or neither; every named bundle is checked before one is written. A bare `codkit bundles` is a namespace and answers with its subcommands, exit 2. @status:impl/done",
+      "heading": "`codkit bundles update [<name>…|--all]` reads the archives of the named bundles - of every bundle with `--all` - again, and rewrites the version and the hash in the overlay record and in the guard test of each (the guard is written whole, its header from the selected licensing profile again): `bundle <name>: <old version> (<old12>) -> <new version> (<new12>)` or `bundle <name>: already current`. It refuses a name `codkit.json` does not declare, an archive that is not there, a record it cannot find (`codkit bundles add` writes it), and names together with `--all` or neither; every named bundle is checked before one is written. A bare `codkit bundles` is a namespace and answers with its subcommands, exit 2. @status:impl/done",
       "line": 420,
       "uri": "spec://codkit/modules/codkit/PROP-007#CMD-BUNDLES-UPDATE"
     },

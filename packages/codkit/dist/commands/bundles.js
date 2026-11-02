@@ -23,6 +23,8 @@ import { CONFIG_FILE_NAME, parseBaseConfig, parseConfigBytes, serializeBaseConfi
 import { readContainedFile, writeContainedFileAtomic } from '../lib/containedFile.js';
 import { loadConventions } from '../lib/conventionsFile.js';
 import { refuseExisting, unitReminder, writeGenerated } from '../lib/genFeature.js';
+import { productHeader } from '../lib/genTemplates.js';
+import { profileHeaderOf } from './gen.js';
 import { OVERLAY_FILE_SUFFIX, OVERLAY_SCHEMA_VERSION, OVERLAYS_DIR, loadOverlays, overlayArtifactName, parseOverlay, serializeOverlay } from '../lib/layers/overlay.js';
 import { withLock } from '../lib/lock.js';
 import { ckError, isCkError } from '../lib/messages.js';
@@ -41,6 +43,7 @@ const RECORD_TYPE = 'extend';
 const RECORD_CATEGORY = 'own';
 const USAGE_ADD = `usage: codkit bundles add <archive> ${ID} CK-<subsystem>-<NNN> [${OWNER} <owner>] [${REASON} <text>]`;
 const USAGE_UPDATE = 'usage: codkit bundles update <name>...|--all';
+const NO_HEADER_WARNING = 'the guard test carries no licence header: no licensing profile is selected (codkit.licensing.json)';
 /** main.ts answers a bare namespace before this runs. */
 async function runNamespace() {
     return EXIT_ENVIRONMENT;
@@ -123,7 +126,7 @@ function addBundle(ctx) {
     const record = { path: artifact, text: serializeOverlay(document) };
     // The bytes this command writes are the bytes the loader accepts.
     parseOverlay(JSON.parse(record.text), artifact);
-    const guard = guardOf(type, { id, archive, ownRoot: config.typeConfig.ownRoot, manifestTarget: layer.manifestTarget });
+    const guard = guardOf(type, patchesDir, { id, archive, ownRoot: config.typeConfig.ownRoot, manifestTarget: layer.manifestTarget });
     refuseExisting(patchesDir, [record, guard]);
     // codkit.json first, under the lock every writer of it takes; the two
     // artifacts after it, so that a refusal of the declaration leaves nothing.
@@ -133,6 +136,8 @@ function addBundle(ctx) {
     ctx.out.info(`${CONFIG_FILE_NAME}: bundles += ${archive.name}`);
     ctx.out.info(`created ${record.path}`);
     ctx.out.info(`created ${guard.path}`);
+    if (!guard.headerWritten)
+        ctx.out.warn(NO_HEADER_WARNING);
     ctx.out.info(`next: ${unitReminder(guard.path.slice(0, guard.path.lastIndexOf('/')))}`);
     ctx.out.info("commit them together with the archive's new content");
     ctx.out.setData({
@@ -140,7 +145,8 @@ function addBundle(ctx) {
         version: archive.version,
         sha256: archive.sha256,
         file: declared.file,
-        artifacts: [CONFIG_FILE_NAME, record.path, guard.path]
+        artifacts: [CONFIG_FILE_NAME, record.path, guard.path],
+        headerWritten: guard.headerWritten
     });
     return EXIT_OK;
 }
@@ -164,7 +170,7 @@ function updateBundles(ctx) {
         const previous = found.operation.value;
         const from = { version: String(previous['version'] ?? ''), sha256: String(previous['sha256'] ?? '') };
         const changed = from.version !== archive.version || from.sha256 !== archive.sha256;
-        const guard = guardOf(type, {
+        const guard = guardOf(type, patchesDir, {
             id: found.overlay.id,
             archive,
             ownRoot: config.typeConfig.ownRoot,
@@ -185,12 +191,15 @@ function updateBundles(ctx) {
     }
     if (planned.some((plan) => plan.changed))
         ctx.out.info("commit the rewritten record and guard together with the archive's new content");
+    if (planned.some((plan) => plan.changed && !plan.guard.headerWritten))
+        ctx.out.warn(NO_HEADER_WARNING);
     ctx.out.setData({
         bundles: planned.map((plan) => ({
             name: plan.bundle.name,
             from: plan.from,
             to: { version: plan.archive.version, sha256: plan.archive.sha256 },
             changed: plan.changed,
+            headerWritten: plan.guard.headerWritten,
             artifacts: plan.changed ? [plan.record.path, plan.guard.path] : []
         }))
     });
@@ -299,8 +308,8 @@ function recordOf(overlays, layer, name) {
     }
     return null;
 }
-/** The guard test the type generates for the record (PROP-007 ##CMD-BUNDLES-ADD). */
-function guardOf(type, request) {
+/** The guard test the type generates for the record (PROP-007 ##CMD-BUNDLES-ADD), headed the way the product heads its files. */
+function guardOf(type, patchesDir, request) {
     const generate = type.generators.bundleGuard;
     if (generate === undefined) {
         throw ckError('TYPE-CAPABILITY', `the project type ${type.id} answers the bundles layer but generates no guard test for a record`, 'report this to the author of the type');
@@ -311,7 +320,12 @@ function guardOf(type, request) {
         ownRoot: request.ownRoot,
         manifestTarget: request.manifestTarget
     });
-    return { path: module.path, text: module.text };
+    // ##HEADER-FROM-PROFILE: the guard is product code, so it carries the
+    // product's header when a licensing profile is selected, the way gen feature
+    // heads its files; update rewrites the file whole, header included.
+    const header = profileHeaderOf(patchesDir, type);
+    const text = header === null ? module.text : `${productHeader(header.headerFor(module.path))}\n${module.text}`;
+    return { path: module.path, text, headerWritten: header !== null };
 }
 /**
  * Append the declaration to codkit.json, canonically. The file is read,
