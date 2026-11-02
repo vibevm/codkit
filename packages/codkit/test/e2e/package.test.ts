@@ -8,6 +8,7 @@
 // from the packager's side, and the state of the tree afterwards from codkit's.
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { makeCliFixture } from '../support/cliFixture.ts';
 import type { CliFixture } from '../support/cliFixture.ts';
@@ -81,6 +82,12 @@ describe('codkit package', () => {
 		expect(report.stamps['BUILD_QUALITY']).toBe(fixture.upstream.t1.tag);
 		expect(run.stderr).toContain(`build: BUILD_QUALITY=${fixture.upstream.t1.tag}`);
 		expect(run.stderr).toContain('distributable: fixture packaging finished');
+
+		// The product's own step knows the roots of the run under the CLI's own
+		// names, so a script that lives in the patch set needs no path of its own
+		// (PROP-007 ##CMD-PACKAGE).
+		expect(existsSync(join(rootPrinted(run.stderr, 'CODKIT_PATCHES_DIR'), 'codkit.json'))).toBe(true);
+		expect(existsSync(join(rootPrinted(run.stderr, 'CODKIT_FORK_DIR'), 'manifest.json'))).toBe(true);
 
 		// Both halves ran, in that order, and the packager saw the materialized
 		// target - it exits 1 otherwise.
@@ -238,3 +245,11 @@ describe('codkit package', () => {
 		expect(outcome.stderr).toContain("flag --discard is not a flag of command 'package'");
 	});
 });
+
+/** The root the distributable half printed under the given name; the line is `distributable: <name>=<path>`. */
+function rootPrinted(stderr: string, name: string): string {
+	const match = new RegExp(`distributable: ${name}=(.+)$`, 'mu').exec(stderr);
+	const value = match?.[1]?.trim();
+	if (value === undefined || value === '') throw new Error(`${name} was not printed by the distributable half`);
+	return value;
+}

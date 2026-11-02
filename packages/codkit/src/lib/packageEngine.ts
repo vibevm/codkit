@@ -344,7 +344,15 @@ export function runPackage(options: PackageOptions): PackageResult {
 			}
 		}
 		if (exitCode === EXIT_OK && type.build.packageDistributable.length > 0) {
-			const outcome = runCommands(options, type.build.packageDistributable, stampValues, commands);
+			// The product's own step knows the roots of the run under the names the
+			// CLI reads its own from, so a script that lives in the patch set needs
+			// no path of its own (##CMD-PACKAGE).
+			const outcome = runCommands(
+				options,
+				type.build.packageDistributable,
+				{ ...stampValues, CODKIT_PATCHES_DIR: patchesDir, CODKIT_FORK_DIR: tree },
+				commands
+			);
 			record('package distributable', outcome.state, outcome.detail);
 			if (outcome.error !== null) {
 				out.addError(outcome.error);

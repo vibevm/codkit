@@ -342,6 +342,8 @@ const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 
 console.log(half + ': BUILD_SOURCE_VERSION=' + String(process.env.BUILD_SOURCE_VERSION ?? ''));
 console.log(half + ': BUILD_QUALITY=' + String(process.env.BUILD_QUALITY ?? ''));
+console.log(half + ': CODKIT_PATCHES_DIR=' + String(process.env.CODKIT_PATCHES_DIR ?? ''));
+console.log(half + ': CODKIT_FORK_DIR=' + String(process.env.CODKIT_FORK_DIR ?? ''));
 
 if (manifest.displayName !== 'Fixture PatchSet') {
 	console.error(half + ': the overlay target was not materialized before the package build');
