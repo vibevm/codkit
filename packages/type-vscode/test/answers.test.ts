@@ -140,6 +140,10 @@ describe('build and test', () => {
 			'windows-x64-archive',
 			'windows-x64-setup-system',
 			'windows-x64-setup-user',
+			'macos-x64-archive',
+			'macos-x64-dmg',
+			'macos-arm64-archive',
+			'macos-arm64-dmg',
 			'server-linux-x64-tar'
 		]);
 		expect(build.packageTargets?.filter((target) => target.outputs !== undefined).map((target) => target.id)).toEqual([
@@ -149,6 +153,10 @@ describe('build and test', () => {
 			'windows-x64-archive',
 			'windows-x64-setup-system',
 			'windows-x64-setup-user',
+			'macos-x64-archive',
+			'macos-x64-dmg',
+			'macos-arm64-archive',
+			'macos-arm64-dmg',
 			'server-linux-x64-tar'
 		]);
 		expect(makeBuild({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64'] }).defaultPackageTargets).toEqual(['windows-x64']);

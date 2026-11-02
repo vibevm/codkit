@@ -375,9 +375,87 @@ export const WINDOWS_X64_TARGETS = [
     windowsSetup('user')
 ];
 /**
+ * ##VSCODE-MACOS-TARGETS: the name of the application bundle, read from the
+ * materialized product.json the way upstream's darwin scripts read it.
+ */
+const MACOS_APP = `APP="$(node -p "require('./product.json').nameLong").app"`;
+/** The raw macOS bundle of an architecture, as the first step of its archive and dmg targets. */
+const macosBundle = (arch) => ({
+    label: `bundle macos-${arch}`,
+    command: 'npm',
+    args: ['run', 'gulp', '--', `vscode-darwin-${arch}`]
+});
+/**
+ * ##VSCODE-MACOS-TARGETS: the bundle copied with `ditto` into the stage of the
+ * target and signed there ad hoc. The bundle task rewrites the Info.plist of the
+ * Electron application and breaks its signature, and an arm64 application
+ * without one does not start on Apple silicon; the bundle beside the tree stays
+ * as the task wrote it, so that a universal application merges unsigned slices
+ * the way upstream's pipeline does. The tools are named by their paths: a tar
+ * found first on PATH need not be the bsdtar of macOS.
+ */
+const macosSign = (arch) => pipelineLines(`sign macos-${arch}`, [
+    MACOS_APP,
+    `STAGE=".build/darwin-${arch}/stage/VSCode-darwin-${arch}"`,
+    `rm -rf ".build/darwin-${arch}/stage"`,
+    'mkdir -p "$STAGE"',
+    `/usr/bin/ditto "../VSCode-darwin-${arch}/$APP" "$STAGE/$APP"`,
+    '/usr/bin/codesign --force --deep --sign - "$STAGE/$APP"',
+    '/usr/bin/codesign --verify --deep --strict "$STAGE/$APP"'
+]);
+/** ##VSCODE-MACOS-TARGETS: the signed application as a tar.gz whose entries belong to root:wheel and carry no AppleDouble files. */
+const macosArchiveTarget = (arch) => ({
+    id: `macos-${arch}-archive`,
+    platform: 'macos',
+    arch,
+    supportedHosts: ['darwin'],
+    outputs: [`.build/darwin-${arch}/archive/*.tar.gz`],
+    build: [
+        macosBundle(arch),
+        macosSign(arch),
+        pipelineLines(`archive macos-${arch}`, [
+            MACOS_APP,
+            `ARCHIVE=".build/darwin-${arch}/archive/VSCode-darwin-${arch}.tar.gz"`,
+            `rm -rf ".build/darwin-${arch}/archive"`,
+            `mkdir -p ".build/darwin-${arch}/archive"`,
+            `COPYFILE_DISABLE=1 /usr/bin/tar --uid 0 --gid 0 --uname root --gname wheel -czf "$ARCHIVE" -C ".build/darwin-${arch}/stage/VSCode-darwin-${arch}" "$APP"`,
+            '/usr/bin/gzip -t "$ARCHIVE"',
+            `rm -rf ".build/darwin-${arch}/stage"`
+        ])
+    ]
+});
+/** ##VSCODE-MACOS-TARGETS: the signed application in upstream's own disk image, `build/darwin/create-dmg.ts`. */
+const macosDmgTarget = (arch) => ({
+    id: `macos-${arch}-dmg`,
+    platform: 'macos',
+    arch,
+    supportedHosts: ['darwin'],
+    outputs: [`.build/darwin-${arch}/dmg/*.dmg`],
+    build: [
+        macosBundle(arch),
+        macosSign(arch),
+        pipelineLines(`dmg macos-${arch}`, [
+            `rm -rf ".build/darwin-${arch}/dmg"`,
+            `mkdir -p ".build/darwin-${arch}/dmg"`,
+            `VSCODE_ARCH=${arch} node build/darwin/create-dmg.ts ".build/darwin-${arch}/stage" ".build/darwin-${arch}/dmg"`,
+            `rm -rf ".build/darwin-${arch}/stage"`
+        ])
+    ]
+});
+/**
+ * ##VSCODE-MACOS-TARGETS: the archive and the disk image of each architecture,
+ * macOS-hosted, without a container; a universal application is not claimed.
+ */
+export const MACOS_TARGETS = [
+    macosArchiveTarget('x64'),
+    macosDmgTarget('x64'),
+    macosArchiveTarget('arm64'),
+    macosDmgTarget('arm64')
+];
+/**
  * The catalog (##VSCODE-PACKAGE-TARGET-CATALOG): the raw application bundles,
- * one upstream task each, the Linux x64 installer targets and the Windows x64
- * archive and setup targets.
+ * one upstream task each, the Linux x64 installer targets, the Windows x64
+ * archive and setup targets and the macOS archive and disk image targets.
  */
 export const PACKAGE_TARGETS = [
     target('windows-x64', 'windows', 'x64', 'vscode-win32-x64', ['win32'], windowsSdkEnvironment),
@@ -391,6 +469,7 @@ export const PACKAGE_TARGETS = [
     target('macos-arm64', 'macos', 'arm64', 'vscode-darwin-arm64', ['darwin']),
     ...LINUX_INSTALLER_TARGETS,
     ...WINDOWS_X64_TARGETS,
+    ...MACOS_TARGETS,
     {
         id: 'server-linux-x64-tar',
         platform: 'linux',

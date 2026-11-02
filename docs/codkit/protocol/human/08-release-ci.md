@@ -219,7 +219,17 @@ codkit publish <patchset-commit> --branch <ветка> --release <semver> \
 из Git пишет под именем `.zip` обычный tar с exit 0), установщики делают задачи Inno Setup самого апстрима
 (`vscode-win32-x64-inno-updater`, затем `-system-setup` или `-user-setup`); выходы
 лежат под `.build/win32-x64/` и попадают в дескриптор релиза. MSI, подпись и arm64
-каталог не обещает: это шаг продукта (`typeConfig.packaging`) или инфраструктура. Команда шага
+каталог не обещает: это шаг продукта (`typeConfig.packaging`) или инфраструктура.
+Цели macOS `macos-x64-archive`, `macos-x64-dmg`, `macos-arm64-archive` и `macos-arm64-dmg`
+собираются только на macOS и без контейнера: бандл задачи апстрима копируется `ditto` в
+`.build/darwin-<arch>/stage/` и подписывается там ad hoc (`codesign --sign -`: без подписи
+arm64-приложение на Apple silicon не запускается, а сам бандл рядом с деревом остаётся
+неподписанным); архив — tar.gz системным `/usr/bin/tar` с владельцем `root:wheel` и без
+файлов AppleDouble, образ диска — скрипт апстрима `build/darwin/create-dmg.ts` (ему нужен
+Python 3.10+ в `PATH`, сеть до GitHub при первом запуске и качество выпуска в
+`typeConfig.quality`). Зависимости дерева должны быть собраны под архитектуру цели: на
+Intel-маке перед arm64 их ставят с `npm_config_arch=arm64` — это шаг оператора.
+Universal-приложение каталог пока не обещает. Команда шага
 продукта с `platforms: ["windows"]` выполняется, только если среди выбранных целей есть цель
 этой платформы, а выход вида `{ "path", "platforms" }` ждут только от таких целей; шаг получает
 и `CODKIT_PACKAGE_TARGETS` со списком выбранных целей.

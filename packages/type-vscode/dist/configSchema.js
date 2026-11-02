@@ -30,6 +30,10 @@ export const PACKAGE_TARGET_IDS = [
     'windows-x64-archive',
     'windows-x64-setup-system',
     'windows-x64-setup-user',
+    'macos-x64-archive',
+    'macos-x64-dmg',
+    'macos-arm64-archive',
+    'macos-arm64-dmg',
     'server-linux-x64-tar'
 ];
 /** The platforms a package target of this family builds for. */

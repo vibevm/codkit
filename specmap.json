@@ -14351,7 +14351,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e25db4868b4d2325def440f618db549a4519c1c98dd0ded18608d6f678903354",
+      "content_hash": "sha256:a767e36b763be9bb6b1ed289d7a90eaba13bbc8eb0c3c25b422d4c55d2fe1a93",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "vscode PROP-004: Build and test - install, hygiene, watch channels, runners, packaging stamps",
@@ -14360,7 +14360,7 @@
     },
     {
       "anchor": "steps",
-      "content_hash": "sha256:805041fcd591ba59e49f8fc52682def1a966055a78d462d43ff3a527cee54038",
+      "content_hash": "sha256:5dfae3b050c1b691ef62525282ed176ad7623fa590a9542e3889a50657ad79ee",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "1. The commands of the type",
@@ -14432,10 +14432,10 @@
     },
     {
       "anchor": "VSCODE-PACKAGE-TARGET-CATALOG",
-      "content_hash": "sha256:96c8afc8b41ad43e241b2977359f1d2b0299aae041f734819b9658077c31fefc",
+      "content_hash": "sha256:c00272bd3b41fa67bbaf13dcfffd6512e9f2087559eb8604cac20f0bd5a5b529",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
-      "heading": "The catalog is the seven raw bundles - `windows-x64`, `windows-arm64`, `linux-x64`, `linux-arm64`, `linux-armhf`, `macos-x64`, `macos-arm64`, mapped one-to-one to the upstream `vscode-win32-*`, `vscode-linux-*` and `vscode-darwin-*` tasks - the three Linux x64 installer targets `linux-x64-tar`, `linux-x64-deb` and `linux-x64-rpm` (`##VSCODE-LINUX-INSTALLER-TARGETS`) and the three Windows x64 targets `windows-x64-archive`, `windows-x64-setup-system` and `windows-x64-setup-user` (`##VSCODE-WINDOWS-TARGETS`); `typeConfig.packageTargets` may list these thirteen or the independent server target defined by `VSCODE-REH-LINUX-PACKAGE`. Windows hosts are measured for both Windows architectures. Every Linux recipe runs natively on a Linux host only: the raw `linux-x64` bundle a Windows host built carried Windows native modules, so it is refused on any other host with the way to the container named (`##DECISION-VSCODE-RAW-LINUX-BUNDLE-IS-LINUX-HOSTED`), and the three installer targets take the container route on Windows and macOS hosts (`##VSCODE-LINUX-CONTAINER-RECIPE`); the Linux ARM recipes have no container. Both Intel and Apple-Silicon macOS recipes remain macOS-hosted. There is no upstream universal-mac task. Signing, notarization, an MSI, the arm64 Windows setups and `.snap` are not claimed by this catalog. Windows recipes resolve `signtool.exe` from PATH or the newest installed Windows 10 SDK before spawning gulp. @status:impl/done",
+      "heading": "The catalog is the seven raw bundles - `windows-x64`, `windows-arm64`, `linux-x64`, `linux-arm64`, `linux-armhf`, `macos-x64`, `macos-arm64`, mapped one-to-one to the upstream `vscode-win32-*`, `vscode-linux-*` and `vscode-darwin-*` tasks - the three Linux x64 installer targets `linux-x64-tar`, `linux-x64-deb` and `linux-x64-rpm` (`##VSCODE-LINUX-INSTALLER-TARGETS`) the three Windows x64 targets `windows-x64-archive`, `windows-x64-setup-system` and `windows-x64-setup-user` (`##VSCODE-WINDOWS-TARGETS`) and the four macOS targets `macos-x64-archive`, `macos-x64-dmg`, `macos-arm64-archive` and `macos-arm64-dmg` (`##VSCODE-MACOS-TARGETS`); `typeConfig.packageTargets` may list these seventeen or the independent server target defined by `VSCODE-REH-LINUX-PACKAGE`. Windows hosts are measured for both Windows architectures. Every Linux recipe runs natively on a Linux host only: the raw `linux-x64` bundle a Windows host built carried Windows native modules, so it is refused on any other host with the way to the container named (`##DECISION-VSCODE-RAW-LINUX-BUNDLE-IS-LINUX-HOSTED`), and the three installer targets take the container route on Windows and macOS hosts (`##VSCODE-LINUX-CONTAINER-RECIPE`); the Linux ARM recipes have no container. Both Intel and Apple-Silicon macOS recipes remain macOS-hosted. There is no upstream universal-mac task, and the universal application its pipeline merges with `build/darwin/create-universal-app.ts` is not claimed: a package target has no universal architecture, and a bundle built per target has no archive to give a target that only merges. Signing with an identity, notarization, an MSI, the arm64 Windows setups and `.snap` are not claimed by this catalog; the macOS targets sign ad hoc. Windows recipes resolve `signtool.exe` from PATH or the newest installed Windows 10 SDK before spawning gulp. @status:impl/done",
       "line": 13,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-PACKAGE-TARGET-CATALOG"
     },
@@ -14449,12 +14449,21 @@
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-LINUX-INSTALLER-TARGETS"
     },
     {
+      "anchor": "VSCODE-MACOS-TARGETS",
+      "content_hash": "sha256:8c4a0503ebeeef306dfe77288dca27a6a67fba46f4e105f7905efb4bbb783ff1",
+      "doc_path": "modules/vscode/PROP-004",
+      "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
+      "heading": "**Four macOS targets carry the archive and the disk image of each architecture** (decision of 2026-11-02, when the editor of the first product was released for every platform from one commit of its patch set; measurements of 2026-11-02 on an Intel host of macOS 15.7.7 with the Command Line Tools 16.4 (SDK 15.5, Apple clang 17): the raw `macos-x64` of a product of this family in 4.6 minutes, a bundle of 1.6 GB). Each runs natively on `darwin` only, has no container, and begins with the upstream task of the raw bundle, `npm run gulp -- vscode-darwin-<arch>`, which writes `../VSCode-darwin-<arch>/<nameLong>.app`; the tree's dependencies are the architecture's own, so on an Intel host the arm64 targets need the dependencies installed for arm64 first (`npm_config_arch=arm64`), which is the operator's step and not the target's. Then the application is copied with `/usr/bin/ditto` into the stage of the target, `.build/darwin-<arch>/stage/VSCode-darwin-<arch>/`, and signed there ad hoc - `/usr/bin/codesign --force --deep --sign -`, checked with `codesign --verify --deep --strict` - because the bundle task rewrites the `Info.plist` of the Electron application and breaks its signature, and an arm64 application without a signature does not start on Apple silicon; the bundle beside the tree stays as the task wrote it, so that a universal application can merge unsigned slices the way upstream's pipeline does. `macos-<arch>-archive` writes `.build/darwin-<arch>/archive/VSCode-darwin-<arch>.tar.gz` with the application at its root, with `COPYFILE_DISABLE=1 /usr/bin/tar --uid 0 --gid 0 --uname root --gname wheel -czf` - the bsdtar of macOS by its path, because a tar found first on `PATH` need not be it (`##VSCODE-WINDOWS-TARGETS` for the same lesson on Windows), every entry owned by `root:wheel` and no AppleDouble file - and checks it with `/usr/bin/gzip -t`; upstream's pipeline publishes a zip of `ditto -c -k --keepParent`, and the tar.gz keeps the form of the product's earlier releases. `macos-<arch>-dmg` runs upstream's `node build/darwin/create-dmg.ts <stage> .build/darwin-<arch>/dmg` with `VSCODE_ARCH`, which writes `VSCode-darwin-<arch>.dmg` with dmgbuild of a pinned commit cloned from GitHub into `build/darwin/.dmgbuild` (ignored by the tree) and installed into a virtual environment of a Python 3.10 or newer found on `PATH`; the background is `build/darwin/dmg-background-<quality>.tiff` and the title of the volume follows the quality, so the dmg needs the quality of a released channel (`##VSCODE-QUALITY-IS-A-PRODUCT-ANSWER`), and a product that names its volume otherwise patches the script. Both remove the stage once the artifact is written; their outputs are `.build/darwin-<arch>/archive/*.tar.gz` and `.build/darwin-<arch>/dmg/*.dmg`, named as upstream names its artifacts, so a product's own name is given by its packaging step. Not yet measured by `codkit package` end to end. @status:impl/done",
+      "line": 15,
+      "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-MACOS-TARGETS"
+    },
+    {
       "anchor": "VSCODE-WINDOWS-TARGETS",
       "content_hash": "sha256:eccb7bf09dbcbb7d0c5e421ef4968972a91279eaf154e6e523734d59b850a1d5",
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**Three Windows x64 targets carry what upstream's Windows build publishes for the client: the archive, the system setup and the user setup.** Each begins with the upstream task of the raw bundle, `npm run gulp -- vscode-win32-x64`, which writes `../VSCode-win32-x64` with `signtool.exe` resolved the way the raw target resolves it (`##VSCODE-PACKAGE-TARGET-CATALOG`), and goes on with what `build/gulpfile.vscode.win32.ts` does after the bundle at the pin 1.144.0. `windows-x64-archive` writes `.build/win32-x64/archive/VSCode-win32-x64.zip`: a Node one-liner empties and recreates the archive directory, then `tar -a -c -f <archive> -C .. VSCode-win32-x64` writes the zip with the bsdtar every Windows carries at `%SystemRoot%\\System32\\tar.exe` (`-a` chooses the format from the name of the archive), which the command puts first on its own `PATH` so that the GNU tar of a Git installation, which cannot write a zip, never answers, and a fourth step - a Node one-liner - reads the first bytes of the archive and refuses a file that does not open with the `PK` signature of a zip: the GNU tar answers `-a` with a tar under the name and exit 0, so only the bytes tell the two apart (finding of 2026-11-02, when it answered under a POSIX shell on Windows because the engine searched codkit's own `PATH`, `spec://codkit/modules/codkit/PROP-007#INPUTS-BUILD-PORTABLE`); upstream's pipeline archives its builds with `7z.exe a -mx1` into its staging directory (`build/azure-pipelines/win32/product-build-win32.yml`, the step \"Archive client, server and web server builds\"), a tool a host does not carry, and publishes the client as `VSCode-win32-<arch>-<version>.zip`; the output is `.build/win32-x64/archive/*.zip`. `windows-x64-setup-system` and `windows-x64-setup-user` run upstream's `vscode-win32-x64-inno-updater` (it copies `inno_updater.exe` and `vcruntime140.dll` of `build/win32/` into `tools/` of the bundle and gives the updater the product icon) and then `vscode-win32-x64-system-setup` or `vscode-win32-x64-user-setup`, which empties `.build/win32-x64/<target>-setup/` and runs the `ISCC.exe` of the `innosetup` package of `build/node_modules` over `build/win32/code.iss` with the definitions of `product.json` and `package.json`; their outputs are `.build/win32-x64/system-setup/*.exe` and `.build/win32-x64/user-setup/*.exe`. The three targets run natively on `win32` only and have no container route: Inno Setup and the Windows SDK are a Windows host's. The arm64 setups and archive are not claimed until a host has built them. `windows-x64-archive` was measured by `codkit package` on a tree of a product of this family on 2026-11-02, from a POSIX shell on Windows: exit 0 in 213 s, a zip of 312 MB and 3272 entries that opens with `PK`, the product's own packaging step after it, both artifacts in the release descriptor. The two setup targets are not yet carried to the end by `codkit package`: the same upstream tasks were run by hand on that product on 2026-09-29 and produced the bundle and the system setup, and the run of 2026-11-02 stopped in Inno Setup over a licence file the product had not provided (`LocalizedLanguageFile` of `code.iss`), which is the product's to fix. @status:impl/done",
-      "line": 15,
+      "line": 16,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-WINDOWS-TARGETS"
     },
     {
@@ -14463,7 +14472,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**A product's own packaging step is the patch set's answer, declared in `typeConfig.packaging`.** The upstream tasks are the whole packaging of this family, so the type itself answers `build.packageDistributable` with nothing (`##VSCODE-PACKAGE-OUTPUTS`); a product whose release needs one more step after them - an installer of a kind upstream does not build, a signed bundle, a kit - declares it: `packaging: { commands: [{ label?, command, args }, …], outputs?: [pattern, …] }`. Each command is an argv - the program and its arguments, no shell - run in the tree in the order declared, after the build of the selected targets (or alone under `--skip-type-build`), with the stamps of this type in its environment and, besides them, `CODKIT_PATCHES_DIR` and `CODKIT_FORK_DIR` (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE`), so a step whose script lives in the patch set finds it without a path of its own; `label` names the command in the report and defaults to `packaging <n>`; `platforms` (`windows`, `linux`, `macos`, each once) makes a command serve the targets of those platforms only, so an MSI step does not run when the run builds a Linux package. `outputs` are tree-relative patterns read like the outputs of a target (`spec://codkit/modules/codkit/PROP-016#TYPE-PACKAGE-ANSWERS`) and become the `packageOutputs` of this type; an output written as `{\"path\", \"platforms\"}` becomes an output of every target of those platforms instead, so a run expects it exactly when it builds such a target, so what the step leaves is printed, captured into the release descriptor and kept like any other artifact; a step that writes beside the tree names none. The schema refuses an empty command list, an empty program, a NUL in a program or an argument, and a pattern that would leave the tree. The step is the product's and this type never reads what it runs: which installer it builds and with what is the product's business, and a second product of the family declares its own. @status:impl/done",
-      "line": 16,
+      "line": 17,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-PRODUCT-PACKAGING"
     },
     {
@@ -14472,7 +14481,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**On a host that is not Linux the three installer targets are built in the Linux container of this type, and on a Linux host when the run asks for it** (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-CONTAINER`), whose recipe is `packages/type-vscode/container/linux/`: a `Dockerfile` and the entry it copies (`##VSCODE-LINUX-CONTAINER-ENTRY`). The container hosts are `win32` and `darwin`; a Linux host takes the container when the run asks for it with `--container` (decision of 2026-11-02, when the deb of the first family failed on an Ubuntu 26.04 host: Chromium's `dpkg-shlibdeps` that upstream's `prepare-deb` runs stops under the Perl Dpkg modules from 1.22 on, while the container's Ubuntu 22.04 builds the deb and the rpm the way upstream does). The base is the public `ubuntu:22.04`, the operating system of upstream's Linux build pool (`1es-ubuntu-22.04-x64` in `build/azure-pipelines/product-build.yml`, `1es-vscode-oss-ubuntu-22.04-x64` in `.github/workflows/pr.yml`), never a private build image of Microsoft. glibc compatibility is not the image's: the entry runs upstream's `setup-env.sh`, which builds the native modules against upstream's glibc 2.28 sysroots, so the glibc of the image never reaches a package. Node is the version of the tree's `.nvmrc`, handed over as the build argument `NODE_VERSION` (`treeArguments`), from the official tarball checked against its `SHASUMS256.txt`, which is what upstream's `NodeTool@0` with `versionFilePath: .nvmrc` installs; `NODEJS_ORG_MIRROR`, the variable node-gyp and nvm read for the same downloads, names a mirror of `https://nodejs.org/dist` when the operator exported one. The packages are exactly upstream's prerequisites, with their sources: the list of the step \"Setup system services\" of `product-build-linux-compile.yml` - `pkg-config xvfb libgtk-3-0 libxkbfile-dev libkrb5-dev libgbm1 rpm bubblewrap socat`; the list of the step \"Install build tools\" of `.github/workflows/pr.yml`, upstream's own list for a stock Ubuntu runner - `build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev`; and the tools upstream's steps call that its build image carries - `curl` and `ca-certificates` (`setup-env.sh`, `build/linux/debian/calculate-deps.ts`, `build/linux/debian/install-sysroot.ts`), `python3` and `python-is-python3` (node-gyp, and `setup-env.sh` pipes into `python`), `git` (`build/npm/postinstall.ts` ends with `git config`), `fakeroot` and `dpkg-dev` (`build-deb` runs `fakeroot dpkg-deb`, `prepare-deb` runs Chromium's `dpkg-shlibdeps.pl` over the Dpkg perl modules), `file` (the deb check of the pipeline); `rsync` is the entry's own. They are installed with upstream's own `apt-get install -y`, recommended packages included. The image build receives `NODEJS_ORG_MIRROR` and the proxy variables (`buildEnvironment`: `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` and their lowercase forms); the container receives the proxy variables, `NODE_USE_ENV_PROXY`, `npm_config_registry`, `NODEJS_ORG_MIRROR`, `ELECTRON_MIRROR` and `GITHUB_TOKEN`, the variables upstream's downloads read (`runEnvironment`). @status:impl/done",
-      "line": 17,
+      "line": 18,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-LINUX-CONTAINER-RECIPE"
     },
     {
@@ -14481,7 +14490,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**The entry builds in a copy of the tree the container owns, over Linux dependencies it installed the way upstream CI does** (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-CONTAINER-PROTOCOL`). `HOME` and `TMPDIR` are directories of the volume, so the caches of npm, node-gyp and Electron and the downloaded sysroots live as long as the volume. (1) The copy is `/codkit/work/tree`, mirrored from `/codkit/tree` by `rsync --delete` with the modes `D755,F644` and without what an install or a build of the host wrote there, which is built for the host: every `node_modules/`, `/.build/`, `/out*/`, `/extensions/**/out/`, `/extensions/**/dist/`, `/.vscode/extensions/**/out/`, `/cli/target/`, `*.tsbuildinfo` and the `.git` of the tree - the host's native modules therefore never reach the build and nothing is written to the host tree; the paths of `executables` then get the mode 755 and those of `symlinks` become links again, and the copy is made a git work tree of its own, because upstream's install ends with `git config` in the tree it installs. That work tree has no commit, so upstream's `build-date-file` task (`build/lib/date.ts`), which writes the commit date of `HEAD` for a build that other machines reproduce, falls back to its other answer, the time of the build - each of the four container runs logged in full on 2026-09-24 printed git's `fatal: ambiguous argument 'HEAD'` for it; the version and the commit the package names are the stamps and are not affected. (2) The dependencies are keyed the way upstream keys its node_modules cache, by `build/azure-pipelines/common/computeNodeModulesCacheKey.ts linux x64 <arch of node>`: when the key the last install recorded in the volume is this one, nothing is installed; otherwise the entry runs the install of the pipeline in its order - `npm ci` in `build/`, then `setup-env.sh` (the sysroots and the toolchain), `node build/npm/preinstall.ts` and `npm ci` with `npm_config_arch=x64`, `VSCODE_ARCH=x64`, `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` and `ONNXRUNTIME_NODE_INSTALL=skip`, then `checkNativeOptionalDeps.ts` - and records the key only once all of it passed. An offline run installs nothing: when the key differs it stops before any build command, exit 3, saying that a run without `--ci` installs the dependencies into the volume of this tree. (3) Each provisioned tree input of `tree-inputs.json` replaces its cache in the copy, and the commands of `commands.json` run in the copy, in order. (4) Each output pattern is expanded as a shell glob in the copy, which reads it the way the engine does, and every match is copied to `/codkit/io/out` at the same relative path. (5) On every exit, a trap hands `/codkit/io/out` to the owner of `/codkit/io` (`chown -R --reference`): the container runs as root, and on a Linux host the run's directory is the host user's, who removes it afterwards; on a mount of Docker Desktop there is no owner to hand to, and the refusal changes nothing. @status:impl/done",
-      "line": 18,
+      "line": 19,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-LINUX-CONTAINER-ENTRY"
     },
     {
@@ -14490,7 +14499,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**What the Linux targets download, and where a pre-provisioned copy goes** (`spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-INPUTS`). Each of the three installer targets builds the bundle and checks its glibc first, which downloads three inputs: Electron, the version of `target` in the tree's `.npmrc`, which the bundle task downloads with `@electron/get` from `https://github.com/electron/electron/releases/download/` - `v<version>/electron-v<version>-linux-x64.zip` and `v<version>/SHASUMS256.txt` (`@electron/get` 5.0.0 keeps the archive in its cache but fetches `SHASUMS256.txt` on every run past it, so a warm cache still reaches the network: an offline run over a warm cache failed on that fetch with `EAI_AGAIN` on 2026-09-24), which is why the input is a mirror: `electron-mirror`, a directory laid out like those downloads (`v<version>/<file>`), handed to the bundle command as `CODKIT_ELECTRON_MIRROR_DIR` (`environment`), which serves it with a static server of node on the loopback for the run of the task, points `ELECTRON_MIRROR` - the variable `@electron/get` reads for its base address - at it, and takes the loopback out of any proxy, since the offline fence points the proxies at a closed port; the built-in extensions of `product.json`, which the packaging reads from `.build/builtInExtensions/<name>` when that holds the version the product names and otherwise fetches from their releases without keeping them (upstream's `npm run download-builtin-extensions` is what writes that directory) - the input `builtInExtensions`, which replaces that directory of the tree (`tree`); and the VS Code sysroot `x86_64-linux-gnu-glibc-2.28-gcc-10.5.0` from the releases of `microsoft/vscode-linux-build-agent`, found by `VSCODE_SYSROOT_DIR` with its `.stamp`, whose objdump the glibc check runs and which `prepare-deb` reads - the input `vscode-sysroot` (`environment`). `linux-x64-deb` adds what `prepare-deb` downloads: the Chromium sysroot that `build/linux/debian/install-sysroot.ts` keeps in the temporary directory under the name Electron's `sysroots.json` gives it, with its `.stamp` - the input `tmp`, a directory the commands get as `TMPDIR` holding that sysroot (`directory`); and the two files the upstream fetches with `curl` on every run, whatever is cached - Electron's `https://raw.githubusercontent.com/electron/electron/v<version>/script/sysroots.json`, the input `sysroots.json`, and Chromium's `https://raw.githubusercontent.com/chromium/chromium/<chromium version of cgmanifest.json>/third_party/dpkg-shlibdeps/dpkg-shlibdeps.pl`, the input `dpkg-shlibdeps.pl` (`fetch`). `build-deb`, `prepare-rpm` and `build-rpm` download nothing: the rpm dependencies come from the local `/usr/lib/rpm/find-requires`. The versions in the addresses are read from the tree, so a new pin names new inputs. In the container the Linux dependencies are the volume's own (`##VSCODE-LINUX-CONTAINER-ENTRY`) and are not inputs: an offline run needs an earlier online one to have installed them. @status:impl/done",
-      "line": 19,
+      "line": 20,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-LINUX-INPUTS"
     },
     {
@@ -14499,7 +14508,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**Decision:** the raw `linux-x64` bundle is built natively on a Linux host only; on any other host it is refused, and the refusal names the container route - the target `linux-x64-tar`, which builds the same bundle in the container of `packages/type-vscode/container/linux` and archives it - instead of building the bundle in that container.\n\n**Why:** `codkit package linux-x64` on Windows used to run `gulp vscode-linux-x64` over the Windows dependencies of the tree, and the bundle it left carried Windows native modules - 19 of its 20 `.node` files began with `MZ` on 2026-09-24 - so the Linux application would not start and nothing warned. Building it in the container fixes the modules but not the bundle: the bundle is a directory of the host, and a directory of Linux files copied onto a Windows file system loses the modes a Linux application needs - the executable bits of the application and of `bin/`, the set-uid bit of `chrome-sandbox` - so what would land beside the tree would still not be a Linux bundle. The archive keeps them, and the installers carry the bundle inside them.\n\n**Considered and rejected:**\n- building `linux-x64` in the container and copying the bundle out - a Linux bundle without its modes on a host that cannot hold them, and a directory beside the tree that the engine would have to write, which `spec://codkit/modules/codkit/PROP-007#CMD-PACKAGE-OUTPUTS-STAY-IN-THE-TREE` keeps out of its reach;\n- keeping the cross-build with a warning - the bundle is broken on every run, and a warning that always fires is not read;\n- installing Linux native modules into the Windows tree - they would replace the ones the Windows development build runs on.\n\n**When to revisit:** if a host that is not Linux has to hand a raw Linux bundle to a later step that cannot take an archive - observed as a release step that unpacks `linux-x64-tar` by hand. @status:impl/done",
-      "line": 20,
+      "line": 21,
       "uri": "spec://codkit/modules/vscode/PROP-004#DECISION-VSCODE-RAW-LINUX-BUNDLE-IS-LINUX-HOSTED"
     },
     {
@@ -14508,7 +14517,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**Measured on Windows 11 with Docker Desktop on 2026-09-24**, by the opt-in proof `packages/type-vscode/test/linuxInstallers.proof.test.ts` (`CODKIT_LINUX_INSTALLERS_PROOF=1`) over a replica of the Nimbus patch set at `c86cb38` loaded onto the pin 1.135.0: `codkit package linux-x64-deb` and `codkit package linux-x64-rpm` took the container route and each left one artifact in the tree; apt installed the deb into a clean `ubuntu:22.04` and dnf the rpm into a clean `fedora:42`; `nimbus` resolved to a file of each package and printed `1.135.0` and the commit of the tree, the maintainer fields were the patch set's own, `/etc/apt/sources.list.d` and `/etc/yum.repos.d` gained nothing, and no installed script, desktop entry or AppStream file carried a CR. With the pin's Microsoft repository blocks put back into the replica's templates, the deb run failed on its new `vscode.sources` and the rpm run on its new `nimbus.repo`, every earlier check of both passing. The patch set alone builds `linux-x64-tar` and neither installer: `prepare-deb` requires the tunnel CLI `bin/nimbus-tunnel`, which the product does not build, and `prepare-rpm` finds five dependencies fewer than upstream's reference list, which upstream computes over a bundle that carries the tunnel CLI (`librt.so.1` and `GLIBC_2.5`, `GLIBC_2.27` of `libc` and `libm`); the replica carried two grafts of its own for them (`CK-build-901`, `CK-build-902`), which are not part of the patch set. Offline, `codkit --ci package linux-x64-tar` refused with `CK-E-NET-FORBIDDEN` before any write while its three inputs were missing, and with them provisioned built the archive in a container run with `--network none`. @status:impl/done",
-      "line": 30,
+      "line": 31,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-LINUX-INSTALLERS-NATIVE-PROOF"
     },
     {
@@ -14517,7 +14526,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "2. Watch channels",
-      "line": 32,
+      "line": 33,
       "uri": "spec://codkit/modules/vscode/PROP-004#channels"
     },
     {
@@ -14526,7 +14535,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "Traps the wrapper implements: `npm run compile` and a restart of the transpile daemon wipe `out/`, so `build up` does not restart a living channel; before `npm install` in the tree the daemons must be stopped, so `build down --all` is invoked by the deps-advisory protocol; the upstream `watchd` scripts and our channels are mutually exclusive, so `up` refuses to start when a foreign watch process over the same tree is detected (probing by the command-line substrings `build/next/index.ts transpile --watch` and `gulp watch-`). On Windows the native process table carries parent pids, so the guard follows the complete available parent chain to a live identity-verified recorded daemon before classifying nested npm/cmd/compiler descendants as owned. A missing ancestor, a cycle, or an unrelated matching watcher remains foreign; POSIX process-group ownership is unchanged. @status:spec/done",
-      "line": 40,
+      "line": 41,
       "uri": "spec://codkit/modules/vscode/PROP-004#DAEMON-TRAPS"
     },
     {
@@ -14535,7 +14544,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "3. Pass boundaries and error lines",
-      "line": 42,
+      "line": 43,
       "uri": "spec://codkit/modules/vscode/PROP-004#pass-boundaries"
     },
     {
@@ -14544,7 +14553,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "`falseEndGuards`: the lines `Finished compilation <id> with … errors` with a non-empty `<id>` come from the code-generation channels (`api-proposal-names`, `extension-point-names`), which print their markers on every change; a naive match yields false pass ends. M1 refinement: with strict `passEnd` expressions the guards are defence in depth and become load-bearing only when `passEnd` is weakened; the count lines are separated into their own data field `errorCountLine` (for typecheck/copilot the count line is not a diagnostic; extensions has NO count field, and the authority there is the parsed diagnostics, REPAIR-003/006). @status:impl/done",
-      "line": 50,
+      "line": 51,
       "uri": "spec://codkit/modules/vscode/PROP-004#FALSE-END-GUARDS"
     },
     {
@@ -14553,7 +14562,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "4. Test runners",
-      "line": 52,
+      "line": 53,
       "uri": "spec://codkit/modules/vscode/PROP-004#tests"
     },
     {
@@ -14562,7 +14571,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "**The split by runners.** `--runGlob` bypasses the regular layer exclusion of the upstream node runner, and a suite that brings up the workbench pulls in style sheets that node does not load; therefore `ci --profile build` runs the node runner over the glob `vs/<own>/**/test/{common,node}/**/*.test.js`, while the `test/browser` suites of the product, of the library and of the features are a mandatory protocol step outside `ci`: the upstream electron runner (`scripts/test.sh --runGlob 'vs/<own>/**/test/browser/**/*.test.js'`, under `xvfb-run` on a machine without a display), because a CI container without a display cannot make it mandatory for the profile. @status:spec/plan",
-      "line": 53,
+      "line": 54,
       "uri": "spec://codkit/modules/vscode/PROP-004#TESTS-LAYER-SPLIT"
     },
     {
@@ -14571,7 +14580,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "Remote extension host server packaging",
-      "line": 55,
+      "line": 56,
       "uri": "spec://codkit/modules/vscode/PROP-004#server-package"
     },
     {
@@ -14580,7 +14589,7 @@
       "doc_path": "modules/vscode/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode/PROP-004-build-and-test.xml",
       "heading": "`server-linux-x64-tar` is an additional independent catalog target. It invokes the upstream `vscode-reh-linux-x64` task in the existing public Linux container route and archives the sibling `vscode-reh-linux-x64` into `.build/linux/server/vscode-server-*-x64-*.tar.gz`, retaining Linux modes. Node follows `remote/.npmrc` and the upstream Node checksum file, with built-in extension inputs declared separately; it does not substitute Electron client inputs, a model/account, authentication or an unpatched external server. Normal package drift guards, overlays, stamps and scratch restoration apply. Client target recipes remain unchanged. Actual server package/transport acceptance is required before reporting remote product behavior. @status:spec/done",
-      "line": 56,
+      "line": 57,
       "uri": "spec://codkit/modules/vscode/PROP-004#VSCODE-REH-LINUX-PACKAGE"
     },
     {
