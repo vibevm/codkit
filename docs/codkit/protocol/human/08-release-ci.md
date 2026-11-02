@@ -49,7 +49,7 @@ mount остаётся контрактом runner.
 | Patch set | repository bundle/checkout с config, delta и refs; отдельный writable `.codkit` при read-only source | source mirror job |
 | Tree npm dependencies (60+ каталогов) | внутренний registry/cache/mount | main cache job |
 | Electron/Node artifacts | внутренние feeds или `.build/` cache | supply-kit job |
-| Built-in extensions | `vsix` в metadata или `.build/builtInExtensions` | supply-kit job |
+| Built-in extensions | `vsix` в metadata или `.build/builtInExtensions`; бандлы patch set — архивы в `bundles/` комплекта под объявленным именем файла (`package --inputs <dir>`) | supply-kit job |
 | Base images | внутренний image registry | image pipeline |
 | Extension marketplace | внутренний gallery service через overlay | product platform |
 
@@ -165,7 +165,11 @@ codkit publish <patchset-commit> --branch <ветка> --release <semver> \
 1. страж дрейфа как у `load`: неизвлечённая работа останавливает запуск
    (`CK-E-DIRTY-TREE`, exit `1`); флага `--discard` у команды нет;
 2. overlay-цели материализуются в дерево — упакованный продукт читает сам файл-цель,
-   а не dev-канал;
+   а не dev-канал; следом бандлы patch set (`bundles` в `codkit.json`) распаковываются
+   в кэш сборки апстрима — из `bundles/` комплекта `--inputs <dir>` по имени файла
+   объявленного архива, иначе по объявленному пути; отсутствующий или не тот по хешу
+   архив — `CK-E-CONFIG` (под `--ci` — `CK-E-NET-FORBIDDEN`) до первой записи, а
+   локальный выключатель `codkit.local.json` упаковка не учитывает;
 3. штампы, которые называет тип (`packageStamps`), выставляются в окружение команд;
    имя, которое уже несёт непустое значение в окружении запуска, **сохраняется** и
    печатается как `stamp <имя>=<значение> (from environment)`: штамп типа заполняет

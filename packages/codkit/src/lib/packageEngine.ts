@@ -37,6 +37,8 @@ import { pinKey } from './pinIdentity.ts';
 
 import { packageTargetsFor, routedTarget, containerPreflight, runRoutedTargets } from './packageRoutes.ts';
 import { runCommands } from './packageRuntime.ts';
+import { provisionBundles } from './bundles.ts';
+import type { BundleReport } from './bundles.ts';
 
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -47,6 +49,7 @@ import type { CodkitConfig } from './configFile.ts';
 import { driftDirty } from './driftGuard.ts';
 
 import type { CkErrorPayload } from './messages.ts';
+import { isCkError } from './messages.ts';
 import type { Output } from './jsonOut.ts';
 import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/overlay.ts';
 import type { Overlay } from './layers/overlay.ts';
@@ -70,6 +73,7 @@ const DIRTY_LIST_LIMIT = 20;
 /** The steps of one run, in the order they happen. */
 export type PackageStepName =
 	| 'inputs'
+	| 'bundles'
 	| 'drift guard'
 	| 'overlay apply'
 	| 'stamps'
@@ -116,9 +120,18 @@ export function packageStepPlan(
 	type: ProjectType,
 	flags: PackageFlags,
 	packageBuild: readonly BuildCommand[] = type.build.packageBuild,
-	hasInputs = false
+	hasInputs = false,
+	hasBundles = false
 ): readonly PackageStepName[] {
-	const steps: PackageStepName[] = [...(hasInputs ? (['inputs'] as const) : []), 'drift guard', 'overlay apply', 'stamps'];
+	// The bundles land after the overlay targets - the manifest they are declared
+	// in among them - and before the build reads the cache (##CMD-PACKAGE-BUNDLES).
+	const steps: PackageStepName[] = [
+		...(hasInputs ? (['inputs'] as const) : []),
+		'drift guard',
+		'overlay apply',
+		...(hasBundles ? (['bundles'] as const) : []),
+		'stamps'
+	];
 	if (!flags.skipTypeBuild && packageBuild.length > 0) {
 		steps.push('package build');
 	}
@@ -210,6 +223,8 @@ export type PackageResult = {
 	readonly routes: readonly PackageRoute[];
 	/** Every input the selected targets declare, and whether it was pre-provisioned. */
 	readonly inputs: readonly { readonly name: string; readonly path: string; readonly from: string; readonly state: string }[];
+	/** The bundles of the patch set, as this run provisioned them (##CMD-PACKAGE-BUNDLES). */
+	readonly bundles: readonly BundleReport[];
 };
 
 /** One package run over an already loaded tree. The caller holds the tree lock. */
@@ -237,6 +252,7 @@ export function runPackage(options: PackageOptions): PackageResult {
 		volume: entry.container?.names.volume ?? null
 	}));
 	const checked = checkInputs(inputsOf(selectedTargets, tree), inputsDir);
+	let bundles: readonly BundleReport[] = [];
 	const inputs = checked.map((entry) => ({ name: entry.input.name, path: entry.input.path, from: entry.input.from, state: entry.state }));
 	const record = (name: PackageStepName, state: PackageStep['state'], detail: string): void => {
 		steps.push({ name, state, detail });
@@ -244,7 +260,9 @@ export function runPackage(options: PackageOptions): PackageResult {
 	};
 
 	out.info(`package targets: ${targets.length === 0 ? 'legacy' : routed.map((entry) => `${entry.target.id} (${entry.route})`).join(', ')}`);
-	out.info(`package plan: ${packageStepPlan(type, options.flags, packageBuild, checked.length > 0).join(' -> ')}`);
+	out.info(
+		`package plan: ${packageStepPlan(type, options.flags, packageBuild, checked.length > 0, (config.bundles?.length ?? 0) > 0).join(' -> ')}`
+	);
 	const overlays = loadOverlays(patchesDir, type);
 	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir));
 	const stamps = packageStamps(type, config, tree, env);
@@ -262,7 +280,8 @@ export function runPackage(options: PackageOptions): PackageResult {
 		outputs,
 		targets,
 		routes,
-		inputs
+		inputs,
+		bundles
 	});
 
 	// The checks that only read come before any write: the inputs, and what the
@@ -279,6 +298,28 @@ export function runPackage(options: PackageOptions): PackageResult {
 			return result(EXIT_ENVIRONMENT);
 		}
 		record('inputs', 'ok', `${checked.length - missing.length} of ${checked.length} input(s) pre-provisioned${offline ? ', offline' : ''}`);
+	}
+	// The bundles are a read-only question here: an archive that is missing or
+	// differs from its record refuses before the first write (##CMD-PACKAGE-BUNDLES).
+	try {
+		bundles = provisionBundles({
+			type,
+			config,
+			patchesDir,
+			treeDir: tree,
+			context,
+			out,
+			kitDir: inputsDir,
+			mode: 'package',
+			inspect: true,
+			offline
+		});
+	} catch (error) {
+		if (!isCkError(error)) throw error;
+		record('bundles', 'failed', error.message);
+		out.addError(error.toPayload());
+		// What this machine lacks, offline or not, is its environment (##CLI-EXIT-CODES).
+		return result(EXIT_ENVIRONMENT);
 	}
 	const preflight = containerPreflight(options, routed, offline);
 	if (preflight !== null) {
@@ -306,6 +347,12 @@ export function runPackage(options: PackageOptions): PackageResult {
 			}
 		}
 		record('overlay apply', 'ok', materialized.length === 0 ? 'every target was already materialized' : materialized.join(', '));
+		if (bundles.length > 0) {
+			// Into the cache of the upstream build, after the kit's own copy of that
+			// cache was wired and before the build reads it (##CMD-PACKAGE-BUNDLES).
+			bundles = provisionBundles({ type, config, patchesDir, treeDir: tree, context, out, kitDir: inputsDir, mode: 'package', offline });
+			record('bundles', 'ok', bundles.map((bundle) => `${bundle.name}@${bundle.version} ${bundle.state}`).join(', '));
+		}
 
 		record(
 			'stamps',

@@ -17,6 +17,9 @@ import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.ts';
 import type { CodkitConfig } from '../lib/configFile.ts';
 import { loadLocalConfig } from '../lib/configFile.ts';
+import { bundleStatusLine, inspectBundles } from '../lib/bundles.ts';
+import type { BundleReport } from '../lib/bundles.ts';
+import { unmatchedLocalBundles } from '../lib/bundlesDeclaration.ts';
 import { inputRepositoryState } from '../lib/inputsRepository.ts';
 import { inspectInputCopies } from '../lib/inputsTree.ts';
 import { loadConventions } from '../lib/conventionsFile.ts';
@@ -26,7 +29,7 @@ import { deltaFingerprint, treeId } from '../lib/fingerprint.ts';
 import { runGit } from '../lib/gitx.ts';
 import type { JsonValue, Output } from '../lib/jsonOut.ts';
 import { markerFormFor, markerKeyOf, parseMarkers } from '../lib/markers.ts';
-import { ckError } from '../lib/messages.ts';
+import { ckError, isCkError } from '../lib/messages.ts';
 import {
 	compareOwnExtensions,
 	extensionsTreeDir,
@@ -203,6 +206,10 @@ async function run(ctx: CommandContext): Promise<number> {
 	// own is what would make a release take other content than the tree shows.
 	const inputs = reportInputs(ctx, config, tree);
 
+	// 2c. The bundles (PROP-007 ##CMD-STATUS-BUNDLES): what load would do about
+	// each on this machine, without doing it; none of it is work in the tree.
+	const bundles = reportBundles(ctx, config, tree);
+
 	// 3. Upstream files: what git sees outside the own directory and outside
 	// the declared own extensions, and whether the markers of those files are
 	// still valid.
@@ -281,7 +288,8 @@ async function run(ctx: CommandContext): Promise<number> {
 		},
 		patchset: { uncommittedDelta: [...uncommitted] },
 		pendingHeaders: pending.map((entry) => entry.header.id),
-		inputs: inputs.data
+		inputs: inputs.data,
+		bundles
 	});
 
 	if (unextracted > 0) {
@@ -302,6 +310,36 @@ async function run(ctx: CommandContext): Promise<number> {
  * there. A location codkit.local.json gives for an input codkit.json does not
  * declare is named as well.
  */
+function reportBundles(ctx: CommandContext, config: CodkitConfig, tree: string): JsonValue {
+	const declared = config.bundles ?? [];
+	const local = loadLocalConfig(ctx.patchesDir);
+	const unmatched = unmatchedLocalBundles(declared, local?.bundles);
+	if (declared.length === 0 && unmatched.length === 0) return [];
+	const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(ctx.patchesDir));
+	let reports: readonly BundleReport[];
+	try {
+		reports = inspectBundles({
+			type: requireProjectType(ctx),
+			config,
+			patchesDir: ctx.patchesDir,
+			treeDir: tree,
+			context,
+			out: ctx.out,
+			print: false
+		});
+	} catch (error) {
+		if (!isCkError(error)) throw error;
+		ctx.out.warn(`bundles: ${error.message}${error.hint === undefined ? '' : `; ${error.hint}`}`);
+		return [];
+	}
+	const provisioned = reports.filter((bundle) => bundle.state === 'unchanged').length;
+	ctx.out.info(`bundles: ${declared.length} declared, ${provisioned} provisioned, ${declared.length - provisioned} not provisioned`);
+	const names = new Set(declared.map((bundle) => bundle.name));
+	for (const bundle of reports) ctx.out.info(`  ${bundleStatusLine(bundle, names.has(bundle.name))}`);
+	for (const name of unmatched) ctx.out.warn(`codkit.local.json names bundle ${name}, which codkit.json does not declare`);
+	return reports.map((bundle) => ({ ...bundle }));
+}
+
 function reportInputs(ctx: CommandContext, config: CodkitConfig, tree: string): { readonly data: JsonValue; readonly edits: number } {
 	const declared = config.inputs ?? [];
 	const unmatched = unmatchedLocalInputs(ctx.patchesDir, declared);

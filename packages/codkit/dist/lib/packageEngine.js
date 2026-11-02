@@ -36,11 +36,13 @@ import { pinKey } from './pinIdentity.js';
 // is refused while nothing has happened yet (packageInputs.ts).
 import { packageTargetsFor, routedTarget, containerPreflight, runRoutedTargets } from './packageRoutes.js';
 import { runCommands } from './packageRuntime.js';
+import { provisionBundles } from './bundles.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
 import { driftDirty } from './driftGuard.js';
+import { isCkError } from './messages.js';
 import { applyOverlaysToTree, loadOverlays, writeDevChannel } from './layers/overlay.js';
 import { materializerOf } from './layers/ownExtensions.js';
 import { ownedRootsOf } from './ownedRoots.js';
@@ -63,8 +65,16 @@ const DIRTY_LIST_LIMIT = 20;
  * (##CMD-PACKAGE-INPUTS): the check only reads, and an offline run that misses
  * one is refused before the guard has even looked at the tree.
  */
-export function packageStepPlan(type, flags, packageBuild = type.build.packageBuild, hasInputs = false) {
-    const steps = [...(hasInputs ? ['inputs'] : []), 'drift guard', 'overlay apply', 'stamps'];
+export function packageStepPlan(type, flags, packageBuild = type.build.packageBuild, hasInputs = false, hasBundles = false) {
+    // The bundles land after the overlay targets - the manifest they are declared
+    // in among them - and before the build reads the cache (##CMD-PACKAGE-BUNDLES).
+    const steps = [
+        ...(hasInputs ? ['inputs'] : []),
+        'drift guard',
+        'overlay apply',
+        ...(hasBundles ? ['bundles'] : []),
+        'stamps'
+    ];
     if (!flags.skipTypeBuild && packageBuild.length > 0) {
         steps.push('package build');
     }
@@ -108,13 +118,14 @@ export function runPackage(options) {
         volume: entry.container?.names.volume ?? null
     }));
     const checked = checkInputs(inputsOf(selectedTargets, tree), inputsDir);
+    let bundles = [];
     const inputs = checked.map((entry) => ({ name: entry.input.name, path: entry.input.path, from: entry.input.from, state: entry.state }));
     const record = (name, state, detail) => {
         steps.push({ name, state, detail });
         out.info(`package ${name}: ${state}${detail === '' ? '' : ` (${detail})`}`);
     };
     out.info(`package targets: ${targets.length === 0 ? 'legacy' : routed.map((entry) => `${entry.target.id} (${entry.route})`).join(', ')}`);
-    out.info(`package plan: ${packageStepPlan(type, options.flags, packageBuild, checked.length > 0).join(' -> ')}`);
+    out.info(`package plan: ${packageStepPlan(type, options.flags, packageBuild, checked.length > 0, (config.bundles?.length ?? 0) > 0).join(' -> ')}`);
     const overlays = loadOverlays(patchesDir, type);
     const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(patchesDir));
     const stamps = packageStamps(type, config, tree, env);
@@ -132,7 +143,8 @@ export function runPackage(options) {
         outputs,
         targets,
         routes,
-        inputs
+        inputs,
+        bundles
     });
     // The checks that only read come before any write: the inputs, and what the
     // container route needs of the host (##CMD-PACKAGE-INPUTS,
@@ -148,6 +160,30 @@ export function runPackage(options) {
             return result(EXIT_ENVIRONMENT);
         }
         record('inputs', 'ok', `${checked.length - missing.length} of ${checked.length} input(s) pre-provisioned${offline ? ', offline' : ''}`);
+    }
+    // The bundles are a read-only question here: an archive that is missing or
+    // differs from its record refuses before the first write (##CMD-PACKAGE-BUNDLES).
+    try {
+        bundles = provisionBundles({
+            type,
+            config,
+            patchesDir,
+            treeDir: tree,
+            context,
+            out,
+            kitDir: inputsDir,
+            mode: 'package',
+            inspect: true,
+            offline
+        });
+    }
+    catch (error) {
+        if (!isCkError(error))
+            throw error;
+        record('bundles', 'failed', error.message);
+        out.addError(error.toPayload());
+        // What this machine lacks, offline or not, is its environment (##CLI-EXIT-CODES).
+        return result(EXIT_ENVIRONMENT);
     }
     const preflight = containerPreflight(options, routed, offline);
     if (preflight !== null) {
@@ -173,6 +209,12 @@ export function runPackage(options) {
             }
         }
         record('overlay apply', 'ok', materialized.length === 0 ? 'every target was already materialized' : materialized.join(', '));
+        if (bundles.length > 0) {
+            // Into the cache of the upstream build, after the kit's own copy of that
+            // cache was wired and before the build reads it (##CMD-PACKAGE-BUNDLES).
+            bundles = provisionBundles({ type, config, patchesDir, treeDir: tree, context, out, kitDir: inputsDir, mode: 'package', offline });
+            record('bundles', 'ok', bundles.map((bundle) => `${bundle.name}@${bundle.version} ${bundle.state}`).join(', '));
+        }
         record('stamps', 'ok', stamps.length === 0 ? `the project type ${type.id} stamps nothing` : stamps.map((stamp) => stamp.name).join(', '));
         for (const stamp of stamps) {
             out.info(`stamp ${stamp.name}=${stamp.value}${stamp.fromEnvironment ? ' (from environment)' : ''}`);

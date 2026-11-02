@@ -214,6 +214,10 @@ function buildData(result, flags) {
     if (result.inputs.length > 0) {
         data['inputs'] = result.inputs.map((input) => ({ ...input }));
     }
+    // PROP-007 ##CMD-LOAD-BUNDLES: what the run did about each bundle.
+    if (result.bundles.length > 0) {
+        data['bundles'] = result.bundles.map((bundle) => ({ ...bundle }));
+    }
     return data;
 }
 export const loadCommand = {

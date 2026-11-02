@@ -14,6 +14,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requireProjectType } from '../lib/command.js';
 import { loadLocalConfig } from '../lib/configFile.js';
+import { bundleStatusLine, inspectBundles } from '../lib/bundles.js';
+import { unmatchedLocalBundles } from '../lib/bundlesDeclaration.js';
 import { inputRepositoryState } from '../lib/inputsRepository.js';
 import { inspectInputCopies } from '../lib/inputsTree.js';
 import { loadConventions } from '../lib/conventionsFile.js';
@@ -21,7 +23,7 @@ import { expandCollapsedUntracked, porcelainZEntries } from '../lib/driftGuard.j
 import { deltaFingerprint, treeId } from '../lib/fingerprint.js';
 import { runGit } from '../lib/gitx.js';
 import { markerFormFor, markerKeyOf, parseMarkers } from '../lib/markers.js';
-import { ckError } from '../lib/messages.js';
+import { ckError, isCkError } from '../lib/messages.js';
 import { compareOwnExtensions, extensionsTreeDir, materializerOf, ownExtensionTreePrefixes, pinShipsExtension, strandedMaterializations } from '../lib/layers/ownExtensions.js';
 import { loadOwnManifest } from '../lib/layers/ownManifest.js';
 import { loadOverlays } from '../lib/layers/overlay.js';
@@ -159,6 +161,9 @@ async function run(ctx) {
     // against its pin - a pin behind HEAD or a working tree with changes of its
     // own is what would make a release take other content than the tree shows.
     const inputs = reportInputs(ctx, config, tree);
+    // 2c. The bundles (PROP-007 ##CMD-STATUS-BUNDLES): what load would do about
+    // each on this machine, without doing it; none of it is work in the tree.
+    const bundles = reportBundles(ctx, config, tree);
     // 3. Upstream files: what git sees outside the own directory and outside
     // the declared own extensions, and whether the markers of those files are
     // still valid.
@@ -228,7 +233,8 @@ async function run(ctx) {
         },
         patchset: { uncommittedDelta: [...uncommitted] },
         pendingHeaders: pending.map((entry) => entry.header.id),
-        inputs: inputs.data
+        inputs: inputs.data,
+        bundles
     });
     if (unextracted > 0) {
         ctx.out.info(nextStepLine(unextracted, upstream, materializedTargets, packagingScratch));
@@ -247,6 +253,40 @@ async function run(ctx) {
  * there. A location codkit.local.json gives for an input codkit.json does not
  * declare is named as well.
  */
+function reportBundles(ctx, config, tree) {
+    const declared = config.bundles ?? [];
+    const local = loadLocalConfig(ctx.patchesDir);
+    const unmatched = unmatchedLocalBundles(declared, local?.bundles);
+    if (declared.length === 0 && unmatched.length === 0)
+        return [];
+    const context = overlayVarContext(config, pinCommitDate(tree, config.pin.sha), patchSetCommitId(ctx.patchesDir));
+    let reports;
+    try {
+        reports = inspectBundles({
+            type: requireProjectType(ctx),
+            config,
+            patchesDir: ctx.patchesDir,
+            treeDir: tree,
+            context,
+            out: ctx.out,
+            print: false
+        });
+    }
+    catch (error) {
+        if (!isCkError(error))
+            throw error;
+        ctx.out.warn(`bundles: ${error.message}${error.hint === undefined ? '' : `; ${error.hint}`}`);
+        return [];
+    }
+    const provisioned = reports.filter((bundle) => bundle.state === 'unchanged').length;
+    ctx.out.info(`bundles: ${declared.length} declared, ${provisioned} provisioned, ${declared.length - provisioned} not provisioned`);
+    const names = new Set(declared.map((bundle) => bundle.name));
+    for (const bundle of reports)
+        ctx.out.info(`  ${bundleStatusLine(bundle, names.has(bundle.name))}`);
+    for (const name of unmatched)
+        ctx.out.warn(`codkit.local.json names bundle ${name}, which codkit.json does not declare`);
+    return reports.map((bundle) => ({ ...bundle }));
+}
 function reportInputs(ctx, config, tree) {
     const declared = config.inputs ?? [];
     const unmatched = unmatchedLocalInputs(ctx.patchesDir, declared);

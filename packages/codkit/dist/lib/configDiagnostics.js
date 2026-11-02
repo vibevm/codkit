@@ -1,6 +1,7 @@
 /** @scope spec://codkit/modules/codkit/PROP-003#root */
 // Configuration diagnostic vocabulary and unknown-data narrowing.
 import { ckError } from './messages.js';
+import { BUNDLE_FIELD_DOCS, LOCAL_BUNDLE_FIELD_DOCS } from './bundlesDeclaration.js';
 import { INPUT_FIELD_DOCS, LOCAL_INPUT_FIELD_DOCS } from './inputsDeclaration.js';
 import { MINIMAL_DISCIPLINE } from './discipline.js';
 /**
@@ -121,10 +122,11 @@ export function configFieldDocs(version) {
             invalid: 'publish.scrub.allow must be a list of non-empty tokens',
             hint: 'set "allow": ["<a token the release may carry where the scrub leaves it>"]'
         },
-        ...INPUT_FIELD_DOCS
+        ...INPUT_FIELD_DOCS,
+        ...BUNDLE_FIELD_DOCS
     };
     /** codkit.local.json reads the same table, with its own words for an input entry. */
-    return { base: FIELD_DOCS, local: { ...FIELD_DOCS, ...LOCAL_INPUT_FIELD_DOCS } };
+    return { base: FIELD_DOCS, local: { ...FIELD_DOCS, ...LOCAL_INPUT_FIELD_DOCS, ...LOCAL_BUNDLE_FIELD_DOCS } };
 }
 const FALLBACK_DOC = {
     required: 'is required',

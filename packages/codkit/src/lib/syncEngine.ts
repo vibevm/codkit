@@ -73,6 +73,8 @@ import {
 	warnInputEdits
 } from './inputsTree.ts';
 import type { InputDelivery } from './inputsTree.ts';
+import { provisionBundles } from './bundles.ts';
+import type { BundleReport } from './bundles.ts';
 import type { Output } from './jsonOut.ts';
 import {
 	OVERLAYS_DIR,
@@ -346,6 +348,8 @@ export type SyncResult = {
 	readonly restoredBytes: readonly string[];
 	/** The inputs this run delivered into the tree (##INPUTS-LOAD); empty when it delivered none. */
 	readonly inputs: readonly InputDelivery[];
+	/** What the run did about the bundles (PROP-008 ##BUNDLES-LOAD); empty when it provisioned none. */
+	readonly bundles: readonly BundleReport[];
 };
 
 type PatchArtifact = {
@@ -787,6 +791,10 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		// The inputs are delivered on every run, like own code: the branch
 		// cannot vouch for files it does not carry.
 		const inputs = deliveringInputs ? deliverInputs({ workspace: config.workspace, treeDir: tree, produced: producedInputs, out }) : [];
+		// The bundles follow the inputs: a developer's and a packager's cache, never a commit (##BUNDLES-LOAD).
+		const bundles = deliveringInputs
+			? provisionBundles({ type: options.type, config, patchesDir, treeDir: tree, context, out, mode: 'load' })
+			: [];
 		writeTreeHook(tree, branch, out);
 		reportOwn(out, own);
 		reportOwnExtensions(out, ownExtensions);
@@ -797,7 +805,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			own,
 			generatedOwnPaths: generatedBranch ? generatedOwnPathsOf(ownershipEvidence) : [],
 			restoredBytes,
-			inputs
+			inputs,
+			bundles
 		});
 	}
 	if (options.verbose) {
@@ -952,6 +961,9 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	}
 	writeExcludePlan(excludePlan, undefined, config.workspace?.record.id);
 	const inputs = deliveringInputs ? deliverInputs({ workspace: config.workspace, treeDir: tree, produced: producedInputs, out }) : [];
+	const bundles = deliveringInputs
+		? provisionBundles({ type: options.type, config, patchesDir, treeDir: tree, context, out, mode: 'load' })
+		: [];
 	writeTreeHook(tree, branch, out);
 	// The own state is recorded after the copy, when both sides are identical by
 	// construction: that is what makes the map usable as "who moved" evidence.
@@ -1014,7 +1026,8 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 		discardedPaths,
 		fastPathReason: verdict.reason,
 		restoredBytes,
-		inputs
+		inputs,
+		bundles
 	});
 }
 
@@ -2645,6 +2658,7 @@ type ResultParts = {
 	readonly fastPathReason?: string;
 	readonly restoredBytes?: readonly string[];
 	readonly inputs?: readonly InputDelivery[];
+	readonly bundles?: readonly BundleReport[];
 };
 
 function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncResult {
@@ -2668,7 +2682,8 @@ function result(status: SyncStatus, exitCode: number, parts: ResultParts): SyncR
 		discardedPaths: parts.discardedPaths ?? [],
 		fastPathReason: parts.fastPathReason ?? null,
 		restoredBytes: parts.restoredBytes ?? [],
-		inputs: parts.inputs ?? []
+		inputs: parts.inputs ?? [],
+		bundles: parts.bundles ?? []
 	};
 }
 

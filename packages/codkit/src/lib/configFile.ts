@@ -15,6 +15,8 @@ import { z } from 'zod';
 import { CR_BYTE, decodeUtf8Strict, LF_BYTE } from './bytes.ts';
 import { readContainedFile } from './containedFile.ts';
 import { inputsSchema, localInputContentField, localInputsSchema, locateInputs } from './inputsDeclaration.ts';
+import { bundlesSchema, localBundleContentField, localBundlesSchema, locateBundles } from './bundlesDeclaration.ts';
+import type { BundleConfig } from './bundlesDeclaration.ts';
 import type { InputConfig } from './inputsDeclaration.ts';
 import { ckError } from './messages.ts';
 import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.ts';
@@ -106,6 +108,8 @@ export type CodkitConfig = {
 	readonly conventionsExtensionFile: string | null;
 	/** Absent unless the file carries it; written before `publish` (##CFG-INPUTS). */
 	readonly inputs?: readonly InputConfig[] | undefined;
+	/** Absent unless the file carries it; written after inputs (##CFG-BUNDLES). */
+	readonly bundles?: readonly BundleConfig[] | undefined;
 	/** Absent unless the file carries it; written last (##CFG-PUBLISH-EXCLUDE). */
 	readonly publish?: PublishConfig | undefined;
 };
@@ -162,6 +166,7 @@ const configFields = {
 	buildWatchFile: repositoryFilePath.nullable().default(null),
 	conventionsExtensionFile: repositoryFilePath.nullable().default(null),
 	inputs: inputsSchema.optional(),
+	bundles: bundlesSchema.optional(),
 	publish: publishSchema.optional()
 };
 
@@ -184,6 +189,7 @@ const localConfigSchema = z.object({
 	releaseRefPrefix: z.string().min(1).optional(),
 	publishRemoteUrl: z.string().nullable().optional(),
 	inputs: localInputsSchema.optional(),
+	bundles: localBundlesSchema.optional(),
 	publish: publishSchema.optional()
 });
 
@@ -203,6 +209,7 @@ const CONFIG_KEYS: readonly string[] = [
 	'buildWatchFile',
 	'conventionsExtensionFile',
 	'inputs',
+	'bundles',
 	'publish'
 ];
 
@@ -217,6 +224,7 @@ const LOCAL_ALLOWED_KEYS: readonly string[] = [
 	'releaseRefPrefix',
 	'publishRemoteUrl',
 	'inputs',
+	'bundles',
 	'publish'
 ];
 
@@ -361,6 +369,7 @@ export function parseLocalConfig(raw: unknown, fileLabel: string): LocalConfig {
 		);
 	}
 	refuseLocalInputContent(object['inputs'], fileLabel);
+	refuseLocalBundleContent(object['bundles'], fileLabel);
 
 	const parsed = localConfigSchema.safeParse(object);
 	if (!parsed.success) {
@@ -381,6 +390,18 @@ function refuseLocalInputContent(inputs: unknown, fileLabel: string): void {
 	);
 }
 
+/** ##LOCAL-CONFIG-RULE: a local entry of `bundles` names the archive of a bundle, or switches it off, and nothing else. */
+function refuseLocalBundleContent(bundles: unknown, fileLabel: string): void {
+	const field = localBundleContentField(bundles);
+	if (field === null) return;
+	throw ckError(
+		'CONFIG',
+		`bundles.${field} cannot be set locally: ${LOCAL_CONFIG_FILE_NAME} may name only the archive of a bundle on this machine, or null to switch it off`,
+		`remove "${field}" from ${LOCAL_CONFIG_FILE_NAME}; what a bundle is, is declared in ${CONFIG_FILE_NAME}, where it is reviewed`,
+		fileLabel
+	);
+}
+
 /** Apply the non-empty fields of codkit.local.json on top of the base config. */
 export function mergeLocal(base: CodkitConfig, local: LocalConfig): CodkitConfig {
 	return {
@@ -397,6 +418,7 @@ export function mergeLocal(base: CodkitConfig, local: LocalConfig): CodkitConfig
 		buildWatchFile: base.buildWatchFile,
 		conventionsExtensionFile: base.conventionsExtensionFile,
 		...(base.inputs === undefined ? {} : { inputs: locateInputs(base.inputs, local.inputs) }),
+		...(base.bundles === undefined ? {} : { bundles: locateBundles(base.bundles, local.bundles) }),
 		publish: joinPublish(base.publish, local.publish)
 	};
 }
@@ -435,7 +457,15 @@ export function serializeBaseConfig(config: CodkitConfig): string {
 					...(config.pin.provenance === undefined ? {} : { provenance: config.pin.provenance })
 				}
 			: config.pin;
-	const parsed = parseBaseConfig({ ...declaredWorkspaceConfig(config), pin: wirePin }, CONFIG_FILE_NAME);
+	const parsed = parseBaseConfig(
+		{
+			...declaredWorkspaceConfig(config),
+			pin: wirePin,
+			// A local switch is this machine's and never serialized (##LOCAL-CONFIG-RULE).
+			...(config.bundles === undefined ? {} : { bundles: config.bundles.map(({ name, file }) => ({ name, file })) })
+		},
+		CONFIG_FILE_NAME
+	);
 	const canonical = {
 		codkitConfig: parsed.codkitConfig,
 		pin: {
@@ -457,6 +487,7 @@ export function serializeBaseConfig(config: CodkitConfig): string {
 		conventionsExtensionFile: parsed.conventionsExtensionFile,
 		// Absent stays absent: JSON.stringify drops an undefined member.
 		inputs: parsed.inputs,
+		bundles: parsed.bundles,
 		publish: parsed.publish
 	};
 	return `${JSON.stringify(canonical, null, 2)}\n`;

@@ -623,6 +623,26 @@
       ]
     },
     {
+      "id": "bundles",
+      "field": "codkitBundles",
+      "version": 1,
+      "observedVersions": [
+        1
+      ],
+      "source": "packages/codkit/src/lib/bundlesStore.ts",
+      "versionSymbol": "STAMP_SCHEMA_VERSION",
+      "owner": "Codkit engine",
+      "trustBoundary": "Persisted runtime bytes in the git directory of the tree cross a strict validator before any cache directory they name is removed or replaced.",
+      "compatibility": "Only the current record is read; a stamp that does not read is a warning and every bundle is provisioned again.",
+      "migration": "Rebuild through load or package; a discarded stamp never removes a directory it did not name.",
+      "fingerprint": "Not an input to delta/generated-history fingerprints; the record binds the hash of the archive and the cache path it wrote.",
+      "contract": "spec://codkit/modules/codkit/PROP-006#BUNDLES-STAMP",
+      "tests": [
+        "packages/codkit/test/unit/bundles.test.ts",
+        "packages/codkit/test/e2e/bundles.test.ts"
+      ]
+    },
+    {
       "id": "inventory",
       "field": "codkitInventory",
       "version": 2,

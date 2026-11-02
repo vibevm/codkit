@@ -103,7 +103,9 @@ function dataOf(result: PackageReleaseResult): JsonValue {
 		outputs: [...result.outputs],
 		targets: [...result.targets],
 		routes: result.routes.map((route) => ({ target: route.target, route: route.route, image: route.image, volume: route.volume })),
-		inputs: result.inputs.map((input) => ({ name: input.name, path: input.path, from: input.from, state: input.state }))
+		inputs: result.inputs.map((input) => ({ name: input.name, path: input.path, from: input.from, state: input.state })),
+		// PROP-007 ##CMD-PACKAGE-BUNDLES: the list load reports, as this run provisioned it.
+		bundles: result.bundles.map((bundle) => ({ ...bundle }))
 	};
 }
 

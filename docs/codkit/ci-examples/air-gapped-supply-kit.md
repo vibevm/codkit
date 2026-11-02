@@ -12,7 +12,7 @@ An air-gapped run is the primary Codkit CI mode. Codkit does not make `ci` insta
 | Fork repository | Export a bundle/mirror containing upstream history, generated refs, the configured pin, and required future/base refs. Include LFS objects. | Import into internal Git hosting or materialize the mounted fork-tree checkout. |
 | Fork-tree npm dependencies | Mirror every upstream workspace package in an internal npm registry and/or prepare a cache keyed by pin SHA plus lock-file hash. | Restore/mount tree `node_modules` before `ci --profile build`. Codkit never installs it. |
 | Electron and Node build inputs | Mirror approved headers/binaries in internal feeds or prepare the upstream `.build/` cache. | Configure the upstream-supported feed settings/overlay or restore `.build/`. |
-| Built-in extensions | Mirror the VSIX inputs declared by product configuration or prepare `.build/builtInExtensions`. | Restore them before the build profile. |
+| Built-in extensions | Mirror the VSIX inputs declared by product configuration or prepare `.build/builtInExtensions`; put the archive of every bundle `codkit.json` declares into `bundles/` of the kit under its declared file name. | Restore them before the build profile; `codkit package --inputs <kit>` provisions the bundles from `bundles/` and verifies each hash against the record. |
 | CI environment image | Build the supplied Dockerfile with Node 24, Git, and Git LFS where approved package mirrors are reachable. | Promote by digest to the internal image registry; run with `--network none`. |
 | Extension marketplace service | Provide the organization’s internal gallery service and product overlay values. | The built product uses the internal service; this is not contacted by `codkit ci`. |
 

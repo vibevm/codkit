@@ -10,6 +10,7 @@
       "license": "UPL-1.0",
       "dependencies": {
         "@resvg/resvg-js": "2.6.2",
+        "fflate": "0.8.3",
         "jsonc-parser": "3.3.1",
         "smol-toml": "1.8.0",
         "typescript": "^7.0.2",
@@ -568,6 +569,12 @@
       "engines": {
         "node": ">=16.20.0"
       }
+    },
+    "node_modules/fflate": {
+      "version": "0.8.3",
+      "resolved": "https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz",
+      "integrity": "sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==",
+      "license": "MIT"
     },
     "node_modules/jsonc-parser": {
       "version": "3.3.1",
