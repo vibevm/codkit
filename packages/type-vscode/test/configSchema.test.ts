@@ -38,3 +38,41 @@ describe('the typeConfig schema', () => {
 		expect(parsed.error?.issues[0]?.message).toContain('src/vs/');
 	});
 });
+
+describe('the packaging step of the product (##VSCODE-PRODUCT-PACKAGING)', () => {
+	const own = 'src/vs/patchset';
+
+	it('accepts commands as argv lists, a label at will, and tree-relative outputs', () => {
+		expect(
+			configSchema.safeParse({
+				ownRoot: own,
+				packaging: {
+					commands: [
+						{ command: 'python', args: ['devops/pack.py', '--out', '.build/kit'] },
+						{ label: 'sign', command: 'sign.exe', args: [] }
+					],
+					outputs: ['.build/kit/*.zip', '.build/kit/notes/']
+				}
+			}).success
+		).toBe(true);
+		expect(configSchema.safeParse({ ownRoot: own, packaging: { commands: [{ command: 'make', args: ['kit'] }] } }).success).toBe(true);
+	});
+
+	it('refuses an empty step, an empty program, a NUL and a pattern that leaves the tree', () => {
+		expect(configSchema.safeParse({ ownRoot: own, packaging: { commands: [] } }).success).toBe(false);
+		expect(configSchema.safeParse({ ownRoot: own, packaging: { commands: [{ command: '', args: [] }] } }).success).toBe(false);
+		expect(
+			configSchema.safeParse({ ownRoot: own, packaging: { commands: [{ command: 'make', args: ['a' + String.fromCharCode(0)] }] } }).success
+		).toBe(false);
+		expect(
+			configSchema.safeParse({ ownRoot: own, packaging: { commands: [{ command: 'make', args: [] }], outputs: ['../kit/*.zip'] } }).success
+		).toBe(false);
+		expect(
+			configSchema.safeParse({ ownRoot: own, packaging: { commands: [{ command: 'make', args: [] }], outputs: ['/kit'] } }).success
+		).toBe(false);
+		expect(configSchema.safeParse({ ownRoot: own, packaging: { commands: [{ command: 'make', args: [] }], shell: true } }).success).toBe(
+			false
+		);
+		expect(configSchema.safeParse({ ownRoot: own, packaging: { commands: 'make kit' } }).success).toBe(false);
+	});
+});

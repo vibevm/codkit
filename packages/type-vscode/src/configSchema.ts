@@ -38,6 +38,22 @@ export const PACKAGE_TARGET_IDS = [
 export type VscodeQuality = (typeof QUALITY_CHANNELS)[number];
 export type VscodePackageTargetId = (typeof PACKAGE_TARGET_IDS)[number];
 
+/** One command of the product's packaging step: an argv, no shell (##VSCODE-PRODUCT-PACKAGING). */
+export type VscodePackagingCommand = {
+	readonly label?: string | undefined;
+	readonly command: string;
+	readonly args: readonly string[];
+};
+
+/**
+ * ##VSCODE-PRODUCT-PACKAGING: the product's own step after the upstream tasks,
+ * and where it leaves what it makes, as tree-relative output patterns.
+ */
+export type VscodePackaging = {
+	readonly commands: readonly VscodePackagingCommand[];
+	readonly outputs?: readonly string[] | undefined;
+};
+
 export type VscodeTypeConfig = {
 	readonly ownRoot: string;
 	/**
@@ -47,7 +63,39 @@ export type VscodeTypeConfig = {
 	 */
 	readonly quality?: VscodeQuality | undefined;
 	readonly packageTargets?: readonly VscodePackageTargetId[] | undefined;
+	readonly packaging?: VscodePackaging | undefined;
 };
+
+/** A tree-relative output pattern: forward slashes, no leading slash, no empty, dot or dot-dot segment. */
+export function packagingOutputProblem(value: string): string | null {
+	if (value.includes('\\')) return 'must use forward slashes';
+	if (value.startsWith('/')) return 'must be a path from the tree root, without a leading slash';
+	const inner = value.endsWith('/') ? value.slice(0, -1) : value;
+	if (inner === '' || inner.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')) {
+		return 'must stay inside the tree: no empty, dot or dot-dot segment';
+	}
+	return null;
+}
+
+const withoutNul = z.string().refine((value) => !value.includes('\u0000'), { message: 'must not contain NUL' });
+
+const packagingCommandSchema = z.strictObject({
+	label: z.string().min(1).optional(),
+	command: withoutNul.refine((value) => value !== '', { message: 'must name a program' }),
+	args: z.array(withoutNul)
+});
+
+const packagingSchema = z.strictObject({
+	commands: z.array(packagingCommandSchema).min(1),
+	outputs: z
+		.array(
+			z.string().superRefine((value, context) => {
+				const problem = packagingOutputProblem(value);
+				if (problem !== null) context.addIssue({ code: 'custom', message: problem });
+			})
+		)
+		.optional()
+});
 
 export const configSchema = z
 	.object({
@@ -68,7 +116,8 @@ export const configSchema = z
 			.refine((values) => new Set(values).size === values.length, {
 				message: 'package target ids must be unique'
 			})
-			.optional()
+			.optional(),
+		packaging: packagingSchema.optional()
 	})
 	.strict();
 

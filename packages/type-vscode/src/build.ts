@@ -561,6 +561,19 @@ export function ownTests(ownRoot: string): BuildCommand | null {
  * the section: every command of this family is the same script whoever declares
  * it, and the quality channel is the one thing the product answers for itself.
  */
+/**
+ * ##VSCODE-PRODUCT-PACKAGING: the product's own step after the upstream tasks,
+ * exactly as the patch set declared it - an argv each, no shell, a label of its
+ * own or its place in the list - and nothing when it declared none.
+ */
+export function packagingCommandsOf(config: VscodeTypeConfig): readonly BuildCommand[] {
+	return (config.packaging?.commands ?? []).map((command, index) => ({
+		label: command.label ?? `packaging ${index + 1}`,
+		command: command.command,
+		args: [...command.args]
+	}));
+}
+
 export function makeBuild(config: VscodeTypeConfig): BuildArea {
 	const defaults = config.packageTargets ?? ['linux-x64'];
 	const defaultIds = new Set<string>(defaults);
@@ -573,9 +586,9 @@ export function makeBuild(config: VscodeTypeConfig): BuildArea {
 		packageBuild: defaultBuild,
 		packageTargets: PACKAGE_TARGETS,
 		defaultPackageTargets: defaults,
-		packageDistributable: PACKAGE_DISTRIBUTABLE,
+		packageDistributable: packagingCommandsOf(config),
 		packageStamps: packageStampsOf(config.quality),
-		packageOutputs: PACKAGE_OUTPUTS,
+		packageOutputs: config.packaging?.outputs ?? PACKAGE_OUTPUTS,
 		packageScratch: PACKAGE_SCRATCH,
 		defaultChannels: DEFAULT_CHANNELS,
 		watchProfilePath: WATCH_PROFILE_PATH,

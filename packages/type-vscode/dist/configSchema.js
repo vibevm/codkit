@@ -32,6 +32,34 @@ export const PACKAGE_TARGET_IDS = [
     'windows-x64-setup-user',
     'server-linux-x64-tar'
 ];
+/** A tree-relative output pattern: forward slashes, no leading slash, no empty, dot or dot-dot segment. */
+export function packagingOutputProblem(value) {
+    if (value.includes('\\'))
+        return 'must use forward slashes';
+    if (value.startsWith('/'))
+        return 'must be a path from the tree root, without a leading slash';
+    const inner = value.endsWith('/') ? value.slice(0, -1) : value;
+    if (inner === '' || inner.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')) {
+        return 'must stay inside the tree: no empty, dot or dot-dot segment';
+    }
+    return null;
+}
+const withoutNul = z.string().refine((value) => !value.includes('\u0000'), { message: 'must not contain NUL' });
+const packagingCommandSchema = z.strictObject({
+    label: z.string().min(1).optional(),
+    command: withoutNul.refine((value) => value !== '', { message: 'must name a program' }),
+    args: z.array(withoutNul)
+});
+const packagingSchema = z.strictObject({
+    commands: z.array(packagingCommandSchema).min(1),
+    outputs: z
+        .array(z.string().superRefine((value, context) => {
+        const problem = packagingOutputProblem(value);
+        if (problem !== null)
+            context.addIssue({ code: 'custom', message: problem });
+    }))
+        .optional()
+});
 export const configSchema = z
     .object({
     ownRoot: z
@@ -51,7 +79,8 @@ export const configSchema = z
         .refine((values) => new Set(values).size === values.length, {
         message: 'package target ids must be unique'
     })
-        .optional()
+        .optional(),
+    packaging: packagingSchema.optional()
 })
     .strict();
 /** What the type answers for a section that never passed the schema. */

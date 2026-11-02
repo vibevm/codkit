@@ -154,6 +154,30 @@ describe('build and test', () => {
 		expect(makeBuild({ ownRoot: 'src/vs/patchset', packageTargets: ['windows-x64'] }).defaultPackageTargets).toEqual(['windows-x64']);
 	});
 
+	it('answers the product packaging step from the configuration, with its outputs', () => {
+		// ##VSCODE-PRODUCT-PACKAGING: the upstream tasks are the whole packaging of
+		// the family; a second step is the product's, and only its declaration
+		// makes the type answer one.
+		const declared = makeBuild({
+			ownRoot: 'src/vs/patchset',
+			packaging: {
+				commands: [
+					{ command: 'python', args: ['devops/pack.py', '--out', '.build/kit'] },
+					{ label: 'sign the kit', command: 'sign.exe', args: ['.build/kit'] }
+				],
+				outputs: ['.build/kit/*.zip']
+			}
+		});
+		expect(declared.packageDistributable).toEqual([
+			{ label: 'packaging 1', command: 'python', args: ['devops/pack.py', '--out', '.build/kit'] },
+			{ label: 'sign the kit', command: 'sign.exe', args: ['.build/kit'] }
+		]);
+		expect(declared.packageOutputs).toEqual(['.build/kit/*.zip']);
+		const bare = makeBuild({ ownRoot: 'src/vs/patchset', packaging: { commands: [{ command: 'make', args: ['kit'] }] } });
+		expect(bare.packageDistributable).toEqual([{ label: 'packaging 1', command: 'make', args: ['kit'] }]);
+		expect(bare.packageOutputs).toEqual([]);
+	});
+
 	it('discovers the newest Windows SDK signing tool before a Windows package spawn', () => {
 		const root = mkdtempSync(join(tmpdir(), 'codkit-windows-sdk-'));
 		const older = join(root, 'Windows Kits', '10', 'bin', '10.0.1', 'x64');
