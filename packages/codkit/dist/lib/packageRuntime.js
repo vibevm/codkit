@@ -2,6 +2,7 @@
 // Package process invocation and structured outcomes.
 import { spawnSync } from 'node:child_process';
 import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK } from './command.js';
+import { buildEnvironment } from './inputsBuild.js';
 import { processInvocation } from './processInvocation.js';
 const FAILURE_TAIL_LINES = 20;
 export function runCommands(options, build, stamps, into) {
@@ -72,10 +73,16 @@ export function runOne(options, label, executable, args, env, into) {
     };
 }
 export function defaultPackageCommandRunner(command) {
-    const invocation = processInvocation(command.command, command.args);
+    // The environment the command runs with - codkit's own, the variables of the
+    // type and the stamps over it, one spelling per name on Windows - is also the
+    // one its bare name is searched along (PROP-007 ##INPUTS-BUILD-PORTABLE): a
+    // directory a type puts first on PATH is where its program is found, whatever
+    // codkit's own PATH would have answered.
+    const env = buildEnvironment(process.env, command.env, process.platform);
+    const invocation = processInvocation(command.command, command.args, process.platform, process.env['ComSpec'], env, command.cwd);
     const result = spawnSync(invocation.command, [...invocation.args], {
         cwd: command.cwd,
-        env: { ...process.env, ...command.env },
+        env,
         encoding: 'utf8',
         shell: false,
         windowsHide: true,

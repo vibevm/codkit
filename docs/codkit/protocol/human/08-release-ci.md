@@ -211,7 +211,8 @@ codkit publish <patchset-commit> --branch <ветка> --release <semver> \
 Цели Windows x64 `windows-x64-archive`, `windows-x64-setup-system` и
 `windows-x64-setup-user` собираются только на Windows и без контейнера: архив сырого
 бандла пишет системный bsdtar (`%SystemRoot%\System32\tar.exe`, он первым ставится в
-`PATH` этой команды), установщики делают задачи Inno Setup самого апстрима
+`PATH` этой команды, а отдельный шаг проверяет сигнатуру `PK` записанного файла: GNU tar
+из Git пишет под именем `.zip` обычный tar с exit 0), установщики делают задачи Inno Setup самого апстрима
 (`vscode-win32-x64-inno-updater`, затем `-system-setup` или `-user-setup`); выходы
 лежат под `.build/win32-x64/` и попадают в дескриптор релиза. MSI, подпись и arm64
 каталог не обещает: это шаг продукта (`typeConfig.packaging`) или инфраструктура.

@@ -340,6 +340,22 @@ const BUNDLE_WINDOWS_X64: BuildCommand = {
 
 const WINDOWS_ARCHIVE_DIR = '.build/win32-x64/archive';
 
+const WINDOWS_ARCHIVE_FILE = `${WINDOWS_ARCHIVE_DIR}/VSCode-win32-x64.zip`;
+
+/**
+ * ##VSCODE-WINDOWS-TARGETS: the archive has to open with the signature of a
+ * zip. The GNU tar of a Git installation answers `-a` with a tar under the
+ * name and exit 0, so the exit code of the archive command proves nothing and
+ * the first bytes are read instead.
+ */
+const ZIP_SIGNATURE_CHECK = [
+	"const fs=require('node:fs');",
+	`const path='${WINDOWS_ARCHIVE_FILE}';`,
+	"const fd=fs.openSync(path,'r');const head=Buffer.alloc(4);const read=fs.readSync(fd,head,0,4,0);fs.closeSync(fd);",
+	"if(read<4||head[0]!==0x50||head[1]!==0x4b){console.error(path+' does not open with the PK signature of a zip: a tar answered for the bsdtar of Windows');process.exit(1);}",
+	"console.log(path+': zip signature ok');"
+].join('');
+
 /**
  * ##VSCODE-WINDOWS-TARGETS: the archive is written by the bsdtar every Windows
  * carries in System32, which `-a` makes write a zip; that directory goes first
@@ -413,9 +429,10 @@ export const WINDOWS_X64_TARGETS: readonly PackageTarget[] = [
 			{
 				label: 'archive windows-x64',
 				command: 'tar',
-				args: ['-a', '-c', '-f', `${WINDOWS_ARCHIVE_DIR}/VSCode-win32-x64.zip`, '-C', '..', 'VSCode-win32-x64'],
+				args: ['-a', '-c', '-f', WINDOWS_ARCHIVE_FILE, '-C', '..', 'VSCode-win32-x64'],
 				environment: windowsArchiveEnvironment
-			}
+			},
+			{ label: 'check archive', command: 'node', args: ['-e', ZIP_SIGNATURE_CHECK] }
 		]
 	},
 	windowsSetup('system'),

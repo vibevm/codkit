@@ -49,7 +49,7 @@
         },
         {
           "path": "dist/build.js",
-          "sha256": "1911e9006e9965505150aefedfa425664a5f54cebbd2c492d7c1b6a23cdc5f04"
+          "sha256": "bcbe1927e67457354548d6a50836faf708be6a455b649aac2d5495fb12f2ac05"
         },
         {
           "path": "dist/configSchema.js",
@@ -141,7 +141,7 @@
         },
         {
           "path": "src/build.ts",
-          "sha256": "d8c1d57fe5d5f8e07e8314c73ea54c887a9962135680a59c5bbd4af07def6b70"
+          "sha256": "a31b9b583b41908116b4c48bd7cdbb79512a18c781b1062678312c1957392a01"
         },
         {
           "path": "src/configSchema.ts",

@@ -45,9 +45,9 @@ describe('the Windows x64 targets', () => {
 		}
 	});
 
-	it('archives the bundle with the bsdtar of Windows into the tree', () => {
+	it('archives the bundle with the bsdtar of Windows into the tree, and proves the bytes are a zip', () => {
 		const commands = commandsOf('windows-x64-archive');
-		expect(commands).toHaveLength(3);
+		expect(commands).toHaveLength(4);
 		const clean = targetOf('windows-x64-archive').build[1];
 		expect(clean?.label).toBe('clean archive');
 		expect(clean?.command).toBe('node');
@@ -57,6 +57,16 @@ describe('the Windows x64 targets', () => {
 		expect(clean?.args[1]).toContain('mkdirSync');
 		expect(commands[2]).toBe('archive windows-x64: tar -a -c -f .build/win32-x64/archive/VSCode-win32-x64.zip -C .. VSCode-win32-x64');
 		expect(targetOf('windows-x64-archive').outputs).toEqual(['.build/win32-x64/archive/*.zip']);
+		// The GNU tar of a Git installation writes a tar under the name with exit 0,
+		// so the archive command's exit code proves nothing: the signature does.
+		const check = targetOf('windows-x64-archive').build[3];
+		expect(check?.label).toBe('check archive');
+		expect(check?.command).toBe('node');
+		expect(check?.args[0]).toBe('-e');
+		expect(check?.args[1]).toContain(".build/win32-x64/archive/VSCode-win32-x64.zip'");
+		expect(check?.args[1]).toContain('head[0]!==0x50||head[1]!==0x4b');
+		expect(check?.args[1]).toContain('process.exit(1)');
+		expect(check?.environment).toBeUndefined();
 	});
 
 	it('puts System32 first on the PATH of the archive command, and refuses without SystemRoot', () => {
