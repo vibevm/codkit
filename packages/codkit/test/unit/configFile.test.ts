@@ -3,7 +3,7 @@
 // is asserted verbatim.
 
 import { existsSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
 	CONFIG_FILE_NAME,
@@ -16,6 +16,7 @@ import {
 } from '../../src/lib/configFile.ts';
 import type { PinConfig } from '../../src/lib/configFile.ts';
 import { nodeConfigFileSystem, writeConfigPin } from '../../src/lib/configPin.ts';
+import { inputsOnThisMachine } from '../../src/lib/inputsDeclaration.ts';
 import type { WriteConfigPinOptions } from '../../src/lib/configPin.ts';
 import { acquireLock } from '../../src/lib/lock.ts';
 import type { LockHandle } from '../../src/lib/lock.ts';
@@ -320,7 +321,7 @@ describe('inputs', () => {
 			[{ ref: undefined }, 'inputs.ref is required'],
 			[{ repository: 'https://git.example.org/pages.git' }, 'a remote address is not supported'],
 			[{ repository: 'git@example.org:pages.git' }, 'a remote address is not supported'],
-			[{ repository: 'pages' }, 'inputs.repository must be the absolute path of a local git repository'],
+			[{ repository: 'pages\\site' }, 'inputs.repository must name a local git repository by an absolute path, or by a path relative'],
 			[{ build: ['node build.mjs'] }, 'inputs.build must be a list of commands'],
 			[{ build: [[]] }, 'inputs.build must be a list of commands'],
 			[{ build: [['', 'x']] }, 'inputs.build must be a list of commands'],
@@ -378,6 +379,29 @@ describe('inputs', () => {
 			parseLocalConfig({ inputs: [{ name: 'pages', repository: 'ssh://host/pages' }] }, LOCAL_CONFIG_FILE_NAME)
 		);
 		expect(remote.message).toContain('a remote address is not supported');
+	});
+
+	it('takes a repository relative to the patch-set root, locates it there and writes it back as declared', () => {
+		const patchesDir = process.platform === 'win32' ? 'C:/work/patches' : '/work/patches';
+		const parsed = parseBaseConfig({ ...VALID_SAMPLE, inputs: [{ ...input, repository: '../pages' }] }, CONFIG_FILE_NAME);
+		expect(parsed.inputs?.[0]?.repository).toBe('../pages');
+		const written = JSON.parse(serializeBaseConfig(parsed)) as { inputs: { repository: string }[] };
+		expect(written.inputs[0]?.repository).toBe('../pages');
+		const located = inputsOnThisMachine(patchesDir, parsed.inputs ?? []);
+		expect(located[0]?.repository).toBe(resolve(patchesDir, '..', 'pages'));
+		// The directory a command runs in never decides it.
+		expect(located[0]?.repository).not.toBe(resolve('..', 'pages'));
+		// An absolute location is taken as it is declared.
+		const absolute = parseBaseConfig({ ...VALID_SAMPLE, inputs: [input] }, CONFIG_FILE_NAME).inputs ?? [];
+		expect(inputsOnThisMachine(patchesDir, absolute)[0]).toBe(absolute[0]);
+		// codkit.local.json names a location the same way, against the same root.
+		const local = parseLocalConfig({ inputs: [{ name: 'pages', repository: '../../shared/pages' }] }, LOCAL_CONFIG_FILE_NAME);
+		const merged = mergeLocal(parsed, local).inputs ?? [];
+		expect(inputsOnThisMachine(patchesDir, merged)[0]?.repository).toBe(resolve(patchesDir, '..', '..', 'shared', 'pages'));
+		const backslashes = configError(() =>
+			parseBaseConfig({ ...VALID_SAMPLE, inputs: [{ ...input, repository: '..\\pages' }] }, CONFIG_FILE_NAME)
+		);
+		expect(backslashes.message).toContain('with forward slashes');
 	});
 });
 

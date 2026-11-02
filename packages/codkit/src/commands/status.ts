@@ -20,6 +20,7 @@ import { loadLocalConfig } from '../lib/configFile.ts';
 import { bundleStatusLine, inspectBundles } from '../lib/bundles.ts';
 import type { BundleReport } from '../lib/bundles.ts';
 import { unmatchedLocalBundles } from '../lib/bundlesDeclaration.ts';
+import { inputsOnThisMachine } from '../lib/inputsDeclaration.ts';
 import { inputRepositoryState } from '../lib/inputsRepository.ts';
 import { inspectInputCopies } from '../lib/inputsTree.ts';
 import { loadConventions } from '../lib/conventionsFile.ts';
@@ -341,7 +342,7 @@ function reportBundles(ctx: CommandContext, config: CodkitConfig, tree: string):
 }
 
 function reportInputs(ctx: CommandContext, config: CodkitConfig, tree: string): { readonly data: JsonValue; readonly edits: number } {
-	const declared = config.inputs ?? [];
+	const declared = inputsOnThisMachine(ctx.patchesDir, config.inputs ?? []);
 	const unmatched = unmatchedLocalInputs(ctx.patchesDir, declared);
 	if (declared.length === 0 && unmatched.length === 0) return { data: [], edits: 0 };
 	ctx.out.info(`inputs: ${declared.length} declared`);

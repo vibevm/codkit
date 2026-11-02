@@ -10,10 +10,12 @@ import { bytesEqual, encodeUtf8 } from './bytes.js';
 import { CONFIG_FILE_NAME, parseBaseConfig, parseConfigBytes, serializeBaseConfig } from './configFile.js';
 import { readContainedFile, writeContainedFileAtomic } from './containedFile.js';
 import { porcelainZEntries } from './driftGuard.js';
+import { assertInputLocated } from './inputsDeclaration.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 /** Where the repository of an input stands against its pin, without writing anything. */
 export function inputRepositoryState(input) {
+    assertInputLocated(input);
     const absent = { present: false, head: null, pin: null, behind: null, uncommitted: [] };
     if (!existsSync(input.repository))
         return absent;

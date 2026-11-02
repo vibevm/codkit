@@ -26,6 +26,7 @@ import { loadConventions, matchesPatternList } from './conventionsFile.js';
 import { gitLocal, runGit } from './gitx.js';
 import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.js';
 import { licensingDocumentPaths } from './licensingSurfaces.js';
+import { inputsOnThisMachine } from './inputsDeclaration.js';
 import { inputSaveRefusal } from './inputsTree.js';
 import { markerKeyOf, parseMarkers, parseMarkersOfNewFile } from './markers.js';
 import { ckError, isCkError } from './messages.js';
@@ -202,7 +203,7 @@ export function runSave(options) {
     // repository. An edit there is never extracted into the patch set and never
     // dropped without a word: save refuses it, naming where it belongs, before
     // anything is written - and so it refuses a path that names such a directory.
-    const inputRefusal = inputSaveRefusal(tree, config.inputs ?? [], filters, (text) => out.warn(text));
+    const inputRefusal = inputSaveRefusal(tree, inputsOnThisMachine(patchesDir, config.inputs ?? []), filters, (text) => out.warn(text));
     if (inputRefusal !== null) {
         for (const line of inputRefusal.lines)
             out.info(`  ${line}`);

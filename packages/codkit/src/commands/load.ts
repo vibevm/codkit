@@ -30,6 +30,7 @@ import { withLock } from '../lib/lock.ts';
 import { ckError } from '../lib/messages.ts';
 import { formatForkTreeLine, refreshResolution } from '../lib/paths.ts';
 import type { ForkDirResolution } from '../lib/paths.ts';
+import { inputsOnThisMachine } from '../lib/inputsDeclaration.ts';
 import type { InputMode } from '../lib/inputsSource.ts';
 import { runSync } from '../lib/syncEngine.ts';
 import type { SyncResult } from '../lib/syncEngine.ts';
@@ -104,7 +105,7 @@ async function run(ctx: CommandContext): Promise<number> {
 					report(ctx, preflight, { fresh: false, dryRun: true, discard: false });
 					return preflight.exitCode;
 				}
-				const declared = config.inputs ?? [];
+				const declared = inputsOnThisMachine(ctx.patchesDir, config.inputs ?? []);
 				let delivered: readonly InputDelivery[] = [];
 				if (!dryRun) {
 					warnInputEdits(resolution.path, declared, ctx.out);

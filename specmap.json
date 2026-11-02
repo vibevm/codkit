@@ -3983,7 +3983,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:e073a10351abff5659d811d22d69c5e0c115a55cbb6ed0022ea6a7300306f38a",
+      "content_hash": "sha256:a7efa09c2e55cccfd9f9fe99aeb095e1e91a87723c494215f993ab6fd7ba35a7",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "codkit PROP-003: Configuration, data conventions, the owners map, common format rules",
@@ -4190,7 +4190,7 @@
     },
     {
       "anchor": "config",
-      "content_hash": "sha256:9d39bb0dea92b392e1c20e58a52ec51e5386849c5a8c8e8054db099c4a093266",
+      "content_hash": "sha256:403ed3d859c38ec40f06a19042699cda73c08ec35198f4b2b49b63317e86b94a",
       "doc_path": "modules/codkit/PROP-003",
       "file": "vibevm/vibespecs/modules/codkit/PROP-003-config-and-data.xml",
       "heading": "3. The patch-set configuration - codkit.json (+ codkit.local.json)",
@@ -5666,7 +5666,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:ce97ad3389057c25f975be4e2624779aaf40f271f9b793bd16bbb1ede98aebc7",
+      "content_hash": "sha256:5f2d4fb4e40cb1c2e25558de40ce5d2f3e9e8381dcdacfdd724b764d78b4f4fa",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "codkit PROP-007: CLI commands - contracts",
@@ -7241,7 +7241,7 @@
     },
     {
       "anchor": "cmd-inputs",
-      "content_hash": "sha256:8e32070afd833ec73de158ac787ceb68d68d283a4b1943da4397411b332460d8",
+      "content_hash": "sha256:935cfcc8280b4a1c8cdf124aab24e238020a0bc5262a068873f29b311bd7b401",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
       "heading": "28. Inputs from other repositories, and codkit inputs pin name…|--all",
@@ -7259,10 +7259,10 @@
     },
     {
       "anchor": "INPUTS-LOCAL-REPOSITORY",
-      "content_hash": "sha256:53a0f52a31e75a9a39a4cc0a36ce21f4b935b6409d7e62ee3b2a3069d92118b1",
+      "content_hash": "sha256:d7771566341c6787e2944d3dd884b7bcd2d93cebabc10fa9cd66275f35f62094",
       "doc_path": "modules/codkit/PROP-007",
       "file": "vibevm/vibespecs/modules/codkit/PROP-007-cli.xml",
-      "heading": "**The repository of an input is a local git repository, named by an absolute path** (`##DECISION-INPUTS-LOCAL-ONLY`). `load` and `ci` never reach the network (PROP-011 `ZERO-NET-IN-CI`, `AIRGAP-IS-PRIMARY`), and `publish` keeps its gate for its own remote alone (`##PUBLISH-NETWORK-GATE`): no command fetches an input, and a remote address is refused by the schema. The path in `codkit.json` is where the authors of the patch set keep the repository; a machine that keeps it elsewhere names its location in `codkit.local.json`, and only its location (PROP-003 `LOCAL-CONFIG-RULE`). The repository is read and never written: the copy is made out of it (`##INPUTS-SOURCE`), and neither the build nor codkit writes into it. For a working-tree source the path must be the top of its working tree; a repository without a working tree - a bare one - serves its pinned commits only. A repository that is not there is exit 2 `CK-E-CONFIG` naming it, with the hint to clone it there, to name its location in `codkit.local.json`, or to run `load --no-inputs`. @status:impl/done",
+      "heading": "**The repository of an input is a local git repository, named by an absolute path or by a path relative to the patch-set root** (`##DECISION-INPUTS-LOCAL-ONLY`). `load` and `ci` never reach the network (PROP-011 `ZERO-NET-IN-CI`, `AIRGAP-IS-PRIMARY`), and `publish` keeps its gate for its own remote alone (`##PUBLISH-NETWORK-GATE`): no command fetches an input, and a remote address is refused by the schema. The path in `codkit.json` is where the authors of the patch set keep the repository; a machine that keeps it elsewhere names its location in `codkit.local.json`, and only its location (PROP-003 `LOCAL-CONFIG-RULE`). A relative path, with `/` separators, is resolved against the root of the patch set - the directory of `codkit.json`, where `codkit.local.json` is too - and never against the directory the command runs in, so `\"../handbook\"` names the repository kept next to the patch set on every machine that lays them out so (decision of 2026-11-02, when the editor of the first product was built on three hosts from one commit of its patch set by one script that lays its repositories side by side; until then every host but the authors' needed `codkit.local.json`). The configuration keeps the declared form: `inputs pin` writes it back into `codkit.json` as it was, and the digest of the configuration a release records does not depend on where the patch set is; what the commands report - the messages, `data.inputs[].repository` of `status` - is the located path. The repository is read and never written: the copy is made out of it (`##INPUTS-SOURCE`), and neither the build nor codkit writes into it. For a working-tree source the path must be the top of its working tree; a repository without a working tree - a bare one - serves its pinned commits only. A repository that is not there is exit 2 `CK-E-CONFIG` naming it, with the hint to clone it there, to name its location in `codkit.local.json`, or to run `load --no-inputs`. @status:impl/done",
       "line": 407,
       "uri": "spec://codkit/modules/codkit/PROP-007#INPUTS-LOCAL-REPOSITORY"
     },

@@ -62,6 +62,7 @@ import type { HistoryCommit, TreeEntry } from './gitHistory.ts';
 import { readBlobs } from './publishRelease.ts';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.ts';
 import type { ProducedInput } from './inputsBuild.ts';
+import { inputsOnThisMachine } from './inputsDeclaration.ts';
 import { assertInputPlacement } from './inputsPlacement.ts';
 import type { InputMode } from './inputsSource.ts';
 import {
@@ -464,7 +465,7 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 	// tree still carries from an earlier declaration until this run takes them
 	// away. They are committed instead only on a generated branch of `ci` and
 	// `publish` (##INPUTS-GENERATED).
-	const declaredInputs = config.inputs ?? [];
+	const declaredInputs = inputsOnThisMachine(patchesDir, config.inputs ?? []);
 	const inputMode = options.inputs;
 	const committingInputs = generatedBranch && options.commitInputs === true && inputMode !== undefined && declaredInputs.length > 0;
 	if (committingInputs && inputMode !== 'pinned') {

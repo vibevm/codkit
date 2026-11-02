@@ -12,6 +12,7 @@
 import type { CommandContext, CommandDefinition } from '../lib/command.ts';
 import { EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot } from '../lib/command.ts';
 import type { CodkitConfig, InputConfig } from '../lib/configFile.ts';
+import { inputsOnThisMachine } from '../lib/inputsDeclaration.ts';
 import { inputRepositoryState, writeInputRefs } from '../lib/inputsRepository.ts';
 import type { JsonValue } from '../lib/jsonOut.ts';
 import { withLock } from '../lib/lock.ts';
@@ -72,7 +73,7 @@ async function runPin(ctx: CommandContext): Promise<number> {
 
 /** The inputs the arguments name, or every one with `--all`; a name codkit.json does not declare is refused. */
 function selectedInputs(ctx: CommandContext, config: CodkitConfig): readonly InputConfig[] {
-	const declared = config.inputs ?? [];
+	const declared = inputsOnThisMachine(ctx.patchesDir, config.inputs ?? []);
 	const all = commandFlagGiven(ctx.commandFlags, ALL);
 	if (all === ctx.args.length > 0) {
 		throw ckError('CONFIG', 'inputs pin needs the names of inputs, or --all', 'usage: codkit inputs pin <name>...|--all');

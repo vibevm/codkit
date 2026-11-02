@@ -9,6 +9,7 @@
 // for every named input or none of them; the change and the pin that goes with
 // it then land in the same patch-set commit.
 import { EXIT_ENVIRONMENT, EXIT_OK, commandFlagGiven, patchesRoot } from '../lib/command.js';
+import { inputsOnThisMachine } from '../lib/inputsDeclaration.js';
 import { inputRepositoryState, writeInputRefs } from '../lib/inputsRepository.js';
 import { withLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
@@ -55,7 +56,7 @@ async function runPin(ctx) {
 }
 /** The inputs the arguments name, or every one with `--all`; a name codkit.json does not declare is refused. */
 function selectedInputs(ctx, config) {
-    const declared = config.inputs ?? [];
+    const declared = inputsOnThisMachine(ctx.patchesDir, config.inputs ?? []);
     const all = commandFlagGiven(ctx.commandFlags, ALL);
     if (all === ctx.args.length > 0) {
         throw ckError('CONFIG', 'inputs pin needs the names of inputs, or --all', 'usage: codkit inputs pin <name>...|--all');

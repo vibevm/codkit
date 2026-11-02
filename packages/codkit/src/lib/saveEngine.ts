@@ -29,6 +29,7 @@ import type { Conventions } from './conventionsFile.ts';
 import { gitLocal, runGit } from './gitx.ts';
 import { checkHunksInsideMarkers, newFileMarkerErrors } from './hunksInMarkers.ts';
 import { licensingDocumentPaths } from './licensingSurfaces.ts';
+import { inputsOnThisMachine } from './inputsDeclaration.ts';
 import { inputSaveRefusal } from './inputsTree.ts';
 import type { Output } from './jsonOut.ts';
 import { markerKeyOf, parseMarkers, parseMarkersOfNewFile } from './markers.ts';
@@ -363,7 +364,7 @@ export function runSave(options: SaveEngineOptions): SaveResult {
 	// repository. An edit there is never extracted into the patch set and never
 	// dropped without a word: save refuses it, naming where it belongs, before
 	// anything is written - and so it refuses a path that names such a directory.
-	const inputRefusal = inputSaveRefusal(tree, config.inputs ?? [], filters, (text) => out.warn(text));
+	const inputRefusal = inputSaveRefusal(tree, inputsOnThisMachine(patchesDir, config.inputs ?? []), filters, (text) => out.warn(text));
 	if (inputRefusal !== null) {
 		for (const line of inputRefusal.lines) out.info(`  ${line}`);
 		out.addError({ code: 'DIRTY-TREE', message: inputRefusal.message, hint: inputRefusal.hint });

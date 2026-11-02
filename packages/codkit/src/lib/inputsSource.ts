@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { InputConfig } from './configFile.ts';
+import { assertInputLocated } from './inputsDeclaration.ts';
 import { runGit } from './gitx.ts';
 import type { GitEnv } from './gitx.ts';
 import type { Output } from './jsonOut.ts';
@@ -41,6 +42,7 @@ const CONTROL = /[\u0000-\u001f\u007f]/;
  * computed, and nothing is copied yet. A refusal names the input and what to do.
  */
 export function inspectSource(input: InputConfig, mode: InputMode): InputSource {
+	assertInputLocated(input);
 	if (!existsSync(input.repository)) {
 		throw ckError(
 			'CONFIG',

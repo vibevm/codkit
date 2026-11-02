@@ -7,8 +7,9 @@
 //
 // Nothing here names a kind of input. An input is a directory another
 // repository builds; what is in it is the declaration's business.
-import { posix, win32 } from 'node:path';
+import { posix, resolve, win32 } from 'node:path';
 import { z } from 'zod';
+import { ckError } from './messages.js';
 import { repoRelativePathProblem, safeBasenameProblem } from './pathSafety.js';
 const SHA40 = /^[0-9a-f]{40}$/;
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -19,8 +20,10 @@ const DRIVE_ABSOLUTE = /^[A-Za-z]:[\\/]/;
 const CONTROL = /[\u0000-\u001f\u007f]/;
 /**
  * ##INPUTS-LOCAL-REPOSITORY: an input's repository is a local git repository,
- * named by an absolute path. A remote address is refused: `load` and `ci` never
- * reach the network, and codkit keeps no cache of fetched repositories.
+ * named by an absolute path or by a path relative to the patch-set root with
+ * `/` separators - the form of a repository kept next to the patch set on every
+ * machine. A remote address is refused: `load` and `ci` never reach the
+ * network, and codkit keeps no cache of fetched repositories.
  */
 export function localRepositoryProblem(value) {
     if (value === '')
@@ -30,9 +33,41 @@ export function localRepositoryProblem(value) {
     if (URL_SCHEME.test(value) || (REMOTE_SHORTHAND.test(value) && !DRIVE_ABSOLUTE.test(value))) {
         return 'names a remote repository; clone it and name the clone';
     }
-    if (!posix.isAbsolute(value) && !win32.isAbsolute(value))
-        return 'must be an absolute path';
+    if (isAbsoluteLocation(value))
+        return null;
+    if (value.includes('\\'))
+        return 'must use forward slashes when it is relative';
     return null;
+}
+function isAbsoluteLocation(value) {
+    return posix.isAbsolute(value) || win32.isAbsolute(value);
+}
+/**
+ * ##INPUTS-LOCAL-REPOSITORY: where this machine finds the repository of an
+ * input - an absolute path as it is declared, a relative one against the root
+ * of the patch set, where codkit.json and codkit.local.json are, and never
+ * against the directory the command runs in.
+ */
+export function inputRepositoryPath(patchesDir, repository) {
+    return isAbsoluteLocation(repository) ? repository : resolve(patchesDir, ...repository.split('/'));
+}
+/**
+ * The declared inputs with each repository where this machine finds it. Every
+ * command that reads the repository of an input takes its inputs through here;
+ * the configuration keeps the declared form, so codkit.json is rewritten with
+ * it and the digest of a release does not depend on where the patch set is.
+ */
+export function inputsOnThisMachine(patchesDir, inputs) {
+    return inputs.map((input) => {
+        const repository = inputRepositoryPath(patchesDir, input.repository);
+        return repository === input.repository ? input : { ...input, repository };
+    });
+}
+/** A repository read before it was located against the patch-set root is a defect of the caller, never a path of the working directory. */
+export function assertInputLocated(input) {
+    if (isAbsoluteLocation(input.repository))
+        return;
+    throw ckError('INTERNAL', `input ${input.name}: the repository ${input.repository} was read before it was located against the patch-set root`, 'report this defect of codkit');
 }
 /** A segment git itself refuses to carry in a tree, whatever its case. */
 export function hasGitSegment(path) {
@@ -127,7 +162,7 @@ export function locateInputs(inputs, local) {
         return location === undefined ? input : { ...input, repository: location.repository };
     });
 }
-const INPUT_SAMPLE = '"inputs": [{ "name": "<name>", "repository": "<absolute path>", "ref": "<40 hex>", "from": "<dir>", "to": "<dir>" }]';
+const INPUT_SAMPLE = '"inputs": [{ "name": "<name>", "repository": "../<repository>", "ref": "<40 hex>", "from": "<dir>", "to": "<dir>" }]';
 /** Diagnostics of the `inputs` fields, joined into the table of configFile.ts. */
 export const INPUT_FIELD_DOCS = {
     inputs: {
@@ -141,9 +176,9 @@ export const INPUT_FIELD_DOCS = {
         hint: 'set "name": "<name>"'
     },
     'inputs.repository': {
-        required: 'inputs.repository is required (the absolute path of the local git repository)',
-        invalid: 'inputs.repository must be the absolute path of a local git repository; a remote address is not supported',
-        hint: 'clone the repository and name the clone; codkit.local.json may name another location on this machine'
+        required: 'inputs.repository is required (the local git repository: an absolute path, or one relative to the patch-set root)',
+        invalid: 'inputs.repository must name a local git repository by an absolute path, or by a path relative to the patch-set root with forward slashes; a remote address is not supported',
+        hint: 'clone the repository and name the clone, e.g. "../<repository>" beside the patch set; codkit.local.json may name another location on this machine'
     },
     'inputs.ref': {
         required: 'inputs.ref is required (the full commit id the release takes)',
@@ -181,7 +216,7 @@ export const LOCAL_INPUT_FIELD_DOCS = {
     inputs: {
         required: 'inputs is optional',
         invalid: 'inputs of codkit.local.json must be a list of { "name", "repository" } objects, each name once',
-        hint: 'set "inputs": [{ "name": "<name>", "repository": "<absolute path>" }]'
+        hint: 'set "inputs": [{ "name": "<name>", "repository": "<absolute path, or a path relative to the patch-set root>" }]'
     },
     'inputs.name': {
         required: 'inputs.name is required (the name of the input codkit.json declares)',

@@ -12,6 +12,7 @@ import { CONFIG_FILE_NAME, parseBaseConfig, parseConfigBytes, serializeBaseConfi
 import type { InputConfig } from './configFile.ts';
 import { readContainedFile, writeContainedFileAtomic } from './containedFile.ts';
 import { porcelainZEntries } from './driftGuard.ts';
+import { assertInputLocated } from './inputsDeclaration.ts';
 import { runGit } from './gitx.ts';
 import { ckError } from './messages.ts';
 
@@ -31,6 +32,7 @@ export type InputRepositoryState = {
 
 /** Where the repository of an input stands against its pin, without writing anything. */
 export function inputRepositoryState(input: InputConfig): InputRepositoryState {
+	assertInputLocated(input);
 	const absent: InputRepositoryState = { present: false, head: null, pin: null, behind: null, uncommitted: [] };
 	if (!existsSync(input.repository)) return absent;
 	if (runGit({ args: ['rev-parse', '--git-dir'], cwd: input.repository }).status !== 0) return absent;

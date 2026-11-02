@@ -37,6 +37,7 @@ import { gitOk, runGit, runGitUserPathResolution } from './gitx.js';
 import { readTreeEntries, writeHistory } from './gitHistory.js';
 import { readBlobs } from './publishRelease.js';
 import { HOOK_MARKER, isOurs } from './hooksPatchSet.js';
+import { inputsOnThisMachine } from './inputsDeclaration.js';
 import { assertInputPlacement } from './inputsPlacement.js';
 import { appendInputCommits, deliverInputs, inputTreePaths, inputsHistoryFingerprint, produceInputs, warnInputEdits } from './inputsTree.js';
 import { provisionBundles } from './bundles.js';
@@ -176,7 +177,7 @@ export function runSync(options) {
     // tree still carries from an earlier declaration until this run takes them
     // away. They are committed instead only on a generated branch of `ci` and
     // `publish` (##INPUTS-GENERATED).
-    const declaredInputs = config.inputs ?? [];
+    const declaredInputs = inputsOnThisMachine(patchesDir, config.inputs ?? []);
     const inputMode = options.inputs;
     const committingInputs = generatedBranch && options.commitInputs === true && inputMode !== undefined && declaredInputs.length > 0;
     if (committingInputs && inputMode !== 'pinned') {

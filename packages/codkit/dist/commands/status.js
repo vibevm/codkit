@@ -16,6 +16,7 @@ import { EXIT_CHECK_FAILED, EXIT_ENVIRONMENT, EXIT_OK, forkResolution, requirePr
 import { loadLocalConfig } from '../lib/configFile.js';
 import { bundleStatusLine, inspectBundles } from '../lib/bundles.js';
 import { unmatchedLocalBundles } from '../lib/bundlesDeclaration.js';
+import { inputsOnThisMachine } from '../lib/inputsDeclaration.js';
 import { inputRepositoryState } from '../lib/inputsRepository.js';
 import { inspectInputCopies } from '../lib/inputsTree.js';
 import { loadConventions } from '../lib/conventionsFile.js';
@@ -288,7 +289,7 @@ function reportBundles(ctx, config, tree) {
     return reports.map((bundle) => ({ ...bundle }));
 }
 function reportInputs(ctx, config, tree) {
-    const declared = config.inputs ?? [];
+    const declared = inputsOnThisMachine(ctx.patchesDir, config.inputs ?? []);
     const unmatched = unmatchedLocalInputs(ctx.patchesDir, declared);
     if (declared.length === 0 && unmatched.length === 0)
         return { data: [], edits: 0 };

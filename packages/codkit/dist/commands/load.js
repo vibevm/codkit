@@ -25,6 +25,7 @@ import { treeId } from '../lib/fingerprint.js';
 import { withLock } from '../lib/lock.js';
 import { ckError } from '../lib/messages.js';
 import { formatForkTreeLine, refreshResolution } from '../lib/paths.js';
+import { inputsOnThisMachine } from '../lib/inputsDeclaration.js';
 import { runSync } from '../lib/syncEngine.js';
 import { cloneForkTree } from './clone.js';
 import { deliverInputs, produceInputs, warnInputEdits } from '../lib/inputsTree.js';
@@ -83,7 +84,7 @@ async function run(ctx) {
                 report(ctx, preflight, { fresh: false, dryRun: true, discard: false });
                 return preflight.exitCode;
             }
-            const declared = config.inputs ?? [];
+            const declared = inputsOnThisMachine(ctx.patchesDir, config.inputs ?? []);
             let delivered = [];
             if (!dryRun) {
                 warnInputEdits(resolution.path, declared, ctx.out);

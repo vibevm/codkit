@@ -6,7 +6,7 @@
 // remote. The input is a tiny repository with a Node build.
 
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { publishCommand } from '../../src/commands/publish.ts';
 import type { CommandContext } from '../../src/lib/command.ts';
@@ -189,6 +189,41 @@ describe('inputs pin and the status of a pin', () => {
 		expect(usage.run.status).toBe(2);
 		expect(usage.envelope.errors[0]?.message).toContain('needs the names of inputs, or --all');
 		expect(polygon.json(['inputs', 'pin', 'absent']).envelope.errors[0]?.message).toContain('declares no input named absent');
+	}, 300_000);
+});
+
+describe('a repository named relative to the patch-set root', () => {
+	it('is found beside the patch set, and codkit.json keeps the relative form when a pin moves', () => {
+		const polygon = makeCliFixture('inputs-relative');
+		const repo = makeInputRepository('inputs-relative');
+		const beside = relative(polygon.patchesDir, repo.dir).split(sep).join('/');
+		expect(beside.startsWith('../')).toBe(true);
+		declare(polygon, [{ ...repo.declaration(), repository: beside }]);
+
+		const loaded = polygon.json(['load']);
+		expect(loaded.run.status, text(loaded.run)).toBe(0);
+		expect(inputsOf(loaded.envelope)).toEqual([
+			{ name: 'pages', to: 'handbook', mode: 'working', commit: null, files: 3, written: 3, removed: 0, built: true }
+		]);
+		expect(readFileSync(polygon.treePath('handbook/guide.md'), 'utf8')).toBe('# Guide\n\nThe first page.\n');
+		const status = polygon.json(['status']);
+		expect(status.run.status, text(status.run)).toBe(0);
+		expect(inputsOf(status.envelope)[0]).toMatchObject({
+			repository: resolve(polygon.patchesDir, ...beside.split('/')),
+			repositoryState: { present: true, pin: 'at-head', uncommitted: 0 }
+		});
+
+		repo.write('pages/guide.md', '# Guide\n\nThe second edition.\n');
+		const second = repo.commit('pages: the second edition');
+		const moved = polygon.json(['inputs', 'pin', 'pages']);
+		expect(moved.run.status, text(moved.run)).toBe(0);
+		expect(moved.envelope.data).toMatchObject({ changed: true, inputs: [{ name: 'pages', to: second, moved: true }] });
+		const declared = JSON.parse(readFileSync(polygon.patchesPath('codkit.json'), 'utf8')) as { inputs: InputConfig[] };
+		expect(declared.inputs[0]).toMatchObject({ repository: beside, ref: second });
+		const pinned = polygon.json(['load', '--inputs', 'pinned']);
+		expect(pinned.run.status, text(pinned.run)).toBe(0);
+		expect(inputsOf(pinned.envelope)[0]).toMatchObject({ mode: 'pinned', commit: second, built: true });
+		expect(readFileSync(polygon.treePath('handbook/guide.md'), 'utf8')).toBe('# Guide\n\nThe second edition.\n');
 	}, 300_000);
 });
 

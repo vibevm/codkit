@@ -7,6 +7,7 @@
 import { createHash } from 'node:crypto';
 import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { assertInputLocated } from './inputsDeclaration.js';
 import { runGit } from './gitx.js';
 import { ckError } from './messages.js';
 const STAMP_VERSION = '1';
@@ -16,6 +17,7 @@ const CONTROL = /[\u0000-\u001f\u007f]/;
  * computed, and nothing is copied yet. A refusal names the input and what to do.
  */
 export function inspectSource(input, mode) {
+    assertInputLocated(input);
     if (!existsSync(input.repository)) {
         throw ckError('CONFIG', `input ${input.name}: the repository ${input.repository} does not exist`, 'clone it there, name its location on this machine in codkit.local.json, or run codkit load --no-inputs');
     }
