@@ -26,7 +26,8 @@ export function makeLayers(overlayTargetPaths: readonly string[]): LayersArea {
 		overlayTargets: overlayTargetsOf(overlayTargetPaths),
 		ownExtensions: null,
 		serviceOverride: null,
-		entryModule: null
+		entryModule: null,
+		bundles: null
 	};
 }
 

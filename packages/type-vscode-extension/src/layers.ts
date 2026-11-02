@@ -59,6 +59,7 @@ export function makeLayers(config: VsxTypeConfig): LayersArea {
 		overlayTargets: overlayTargetsOf(config),
 		ownExtensions: null,
 		serviceOverride: null,
-		entryModule: entryModuleOf(config)
+		entryModule: entryModuleOf(config),
+		bundles: null
 	};
 }

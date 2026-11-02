@@ -49,6 +49,7 @@ export function makeLayers(config) {
         overlayTargets: overlayTargetsOf(config),
         ownExtensions: null,
         serviceOverride: null,
-        entryModule: entryModuleOf(config)
+        entryModule: entryModuleOf(config),
+        bundles: null
     };
 }

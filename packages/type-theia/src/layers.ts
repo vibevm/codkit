@@ -62,7 +62,8 @@ export function makeLayers(applicationRoot: string): LayersArea {
 		overlayTargets: overlayTargetsOf(applicationRoot),
 		ownExtensions: null,
 		serviceOverride,
-		entryModule: null
+		entryModule: null,
+		bundles: null
 	};
 }
 

@@ -39,7 +39,8 @@ export const CAPABILITIES: readonly Capability[] = [
 	'config-overlay',
 	'dev-channel',
 	'upgrade-advisory',
-	'licensing'
+	'licensing',
+	'bundles'
 ];
 
 /** The type as one patch set's `typeConfig` makes it. */
@@ -86,9 +87,18 @@ export { build, makeBuild, packageStampsOf } from './build.ts';
 export { configSchema, PLACEHOLDER_CONFIG, QUALITY_CHANNELS } from './configSchema.ts';
 export type { VscodeQuality, VscodeTypeConfig } from './configSchema.ts';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.ts';
-export { brandGraft, featureClassName, featureSkeleton, generators, settingId } from './generators.ts';
+export { brandGraft, bundleGuard, featureClassName, featureSkeleton, generators, settingId } from './generators.ts';
 export { identity } from './identity.ts';
-export { entryModule, layers, overlayTargets, ownExtensions, serviceOverride } from './layers.ts';
+export {
+	BUILT_IN_EXTENSIONS_CACHE,
+	BUNDLE_NAME_PATTERN,
+	bundles,
+	entryModule,
+	layers,
+	overlayTargets,
+	ownExtensions,
+	serviceOverride
+} from './layers.ts';
 export { layout, OWN_ROOT_PREFIX } from './layout.ts';
 export {
 	COMPONENT_LICENCE_DIRECTORY,

@@ -26,7 +26,7 @@ function bareType(overrides: Partial<ProjectType> = {}): ProjectType {
 			cleanupWhitelist: [],
 			forbiddenPatchTargets: []
 		},
-		layers: { overlayTargets: [], ownExtensions: null, serviceOverride: null, entryModule: null },
+		layers: { overlayTargets: [], ownExtensions: null, serviceOverride: null, entryModule: null, bundles: null },
 		build: {
 			install: [],
 			dependencyRoots: [],
@@ -55,6 +55,7 @@ describe('capability names', () => {
 		expect([...CAPABILITIES].sort()).toEqual([
 			'brand-images',
 			'build-channels',
+			'bundles',
 			'config-overlay',
 			'dev-channel',
 			'entry-module',
@@ -98,7 +99,8 @@ describe('the shape gate of a type', () => {
 				overlayTargets: [],
 				ownExtensions: null,
 				serviceOverride: null,
-				entryModule: { entries: ['src/main.ts'], why: 'the composition root' }
+				entryModule: { entries: ['src/main.ts'], why: 'the composition root' },
+				bundles: null
 			}
 		});
 		expect(projectTypeProblems(type)).toEqual(['bare: layers.entryModule is answered but the capability entry-module is not declared']);
@@ -111,7 +113,8 @@ describe('the shape gate of a type', () => {
 				overlayTargets: [{ path: 'app.json', devChannel: 'app.overrides.json', stampedKeys: [], allowedKeys: null }],
 				ownExtensions: null,
 				serviceOverride: null,
-				entryModule: null
+				entryModule: null,
+				bundles: null
 			}
 		});
 		expect(projectTypeProblems(withOverlay)).toEqual([
@@ -307,7 +310,8 @@ describe('the licensing area', () => {
 				overlayTargets: [{ path: 'manifest.json', devChannel: null, stampedKeys: [], allowedKeys: null }],
 				ownExtensions: null,
 				serviceOverride: null,
-				entryModule: null
+				entryModule: null,
+				bundles: null
 			},
 			conventions: { subsystems: ['product'], forbiddenServiceIds: [] },
 			licensing: area

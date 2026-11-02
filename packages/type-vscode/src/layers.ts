@@ -6,7 +6,15 @@
 // `own-extension` its materializer, `service-override` its verifier and
 // `entry-module` its locator.
 
-import type { EntryModuleLocator, ExtensionMaterializer, LayersArea, OverlayTarget, ServiceOverrideVerifier } from '@codkit/type-api';
+import type {
+	BundleEntry,
+	BundleLayer,
+	EntryModuleLocator,
+	ExtensionMaterializer,
+	LayersArea,
+	OverlayTarget,
+	ServiceOverrideVerifier
+} from '@codkit/type-api';
 import { ownExtensionPath } from './layout.ts';
 
 /** The product manifest of the distribution, from the tree root. */
@@ -124,4 +132,55 @@ export const entryModule: EntryModuleLocator = {
 	why: 'these modules are the import lists the renderer of this distribution is assembled from, so a contribution reaches the product by being imported there'
 };
 
-export const layers: LayersArea = { overlayTargets, ownExtensions, serviceOverride, entryModule };
+/** The marketplace identity of an extension: `publisher.name`, each a word of letters, digits and `-`. */
+export const BUNDLE_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/iu;
+
+/** Where the packaging and the development run look for a built-in extension, from the tree root. */
+export const BUILT_IN_EXTENSIONS_CACHE = '.build/builtInExtensions';
+
+/** The entries of `builtInExtensions` that carry a name, a version and a hash; the rest are skipped. */
+function builtInExtensionsOf(list: unknown): readonly BundleEntry[] {
+	if (!Array.isArray(list)) return [];
+	return list.flatMap((element: unknown) => {
+		if (typeof element !== 'object' || element === null || Array.isArray(element)) return [];
+		const { name, version, sha256 } = element as Record<string, unknown>;
+		return typeof name === 'string' && typeof version === 'string' && typeof sha256 === 'string' ? [{ name, version, sha256 }] : [];
+	});
+}
+
+/**
+ * ##VSCODE-BUNDLED-EXTENSION: a bundled extension is an entry of
+ * `builtInExtensions` of `product.json` whose VSIX the patch set declares as a
+ * bundle. `name` is `publisher.name` of the extension's manifest - the key the
+ * dev scanner and the packaging look the cache up by - and `repo` is empty,
+ * because the bytes never come from a release of upstream's. The unit is
+ * `extension/` of the VSIX, unpacked into `.build/builtInExtensions/<name>`,
+ * where `build/lib/builtInExtensions.ts` takes it by version and the scanner
+ * of the development run finds it through the dev channel.
+ */
+export const bundles: BundleLayer = {
+	manifestTarget: PRODUCT_JSON_TARGET,
+	listPath: ['builtInExtensions'],
+	entries: (document) => builtInExtensionsOf(document['builtInExtensions']),
+	entry: (unit) => ({ name: unit.name, version: unit.version, sha256: unit.sha256, repo: '' }),
+	cachePath: (name) => `${BUILT_IN_EXTENSIONS_CACHE}/${name}`,
+	archiveRoot: 'extension/',
+	archiveManifest: 'extension/package.json',
+	identity(manifestText) {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(manifestText);
+		} catch {
+			return null;
+		}
+		if (typeof parsed !== 'object' || parsed === null) return null;
+		const { publisher, name, version } = parsed as Record<string, unknown>;
+		if (typeof publisher !== 'string' || typeof name !== 'string' || typeof version !== 'string') return null;
+		if (publisher === '' || name === '' || version === '') return null;
+		return { name: `${publisher}.${name}`, version };
+	},
+	namePattern: BUNDLE_NAME_PATTERN,
+	archiveWord: 'VSIX'
+};
+
+export const layers: LayersArea = { overlayTargets, ownExtensions, serviceOverride, entryModule, bundles };

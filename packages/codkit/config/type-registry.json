@@ -6,7 +6,7 @@
       "package": "@codkit/type-vscode",
       "version": "1.0.0",
       "contractVersion": 1,
-      "manifestSha256": "d2500ad32d9cd20cc2651b0fe7d50ebf149d9069f5b0d922adf9c8c4fa42bb15",
+      "manifestSha256": "eea8ae9b069f7bf82e1c2fedfd351aa3506a2bf27771cd669b4d0e5547734b1e",
       "integrityRoots": [
         "LICENSE.md",
         "README.md",
@@ -61,7 +61,7 @@
         },
         {
           "path": "dist/generators.js",
-          "sha256": "a3a22460630abd743bace1e5be2f7334098feee66ebf09d0bef64aa96030d6a6"
+          "sha256": "921101025a3881e3097c06bea96d71f64cdd49a4ba947d0eeec29caa066a80fa"
         },
         {
           "path": "dist/identity.js",
@@ -97,11 +97,11 @@
         },
         {
           "path": "dist/index.js",
-          "sha256": "16a761f05a8eafe0ee5b2fad946026a34ad9770d230b5d4f93b173893bbcaabe"
+          "sha256": "fb140228fd70e6fffd805dc73d6c555814a88b222ae6e927201ae4743684b417"
         },
         {
           "path": "dist/layers.js",
-          "sha256": "a61deffbd32e922081a478757ed749ef38f6424b47b8b38bf69de676698dc5ef"
+          "sha256": "e9ac8dafc29e36216dffe180ea16fa9cdeb3ab14e59e6d631a5162506e187fbf"
         },
         {
           "path": "dist/layout.js",
@@ -153,7 +153,7 @@
         },
         {
           "path": "src/generators.ts",
-          "sha256": "79cd09f97c4945f119f955a6d7bd1215eda04c36c907d9c7d19ba13b6f2c2527"
+          "sha256": "299ec5f467cabd90fe10ced1b24982e6c24415bd105efa7969bdaac8187d7fe0"
         },
         {
           "path": "src/identity.ts",
@@ -189,11 +189,11 @@
         },
         {
           "path": "src/index.ts",
-          "sha256": "13da66afb8538fa0e9f7e162b0cb5a525dc1ad3f6b874db93d931339a4b88002"
+          "sha256": "2014613d3a37e47bea84748e71d32a7255502b9681d3cb928fd1788ffb4abb10"
         },
         {
           "path": "src/layers.ts",
-          "sha256": "a2a8d3cbba0585fcdda05dc415475d5f303b7e4eddf2c9475bf7bc4d6e280cae"
+          "sha256": "3e7199e45d2c8096d66bdd865635bd2206562fc372038169071c689917bf4da1"
         },
         {
           "path": "src/layout.ts",
@@ -217,7 +217,7 @@
         },
         {
           "path": "type-manifest.json",
-          "sha256": "d2500ad32d9cd20cc2651b0fe7d50ebf149d9069f5b0d922adf9c8c4fa42bb15"
+          "sha256": "eea8ae9b069f7bf82e1c2fedfd351aa3506a2bf27771cd669b4d0e5547734b1e"
         }
       ]
     },
@@ -275,7 +275,7 @@
         },
         {
           "path": "dist/layers.js",
-          "sha256": "930fa40e81161423da186f8cceaad6fd679156ad417d5e5a4f18dced9eddfe5d"
+          "sha256": "fd09101ccb20e429abe7efbf4001ff3d1447a495e7d2a332d6a7a93b1db9554f"
         },
         {
           "path": "dist/layout.js",
@@ -323,7 +323,7 @@
         },
         {
           "path": "src/layers.ts",
-          "sha256": "bb0ba25d4974e715de4df473992293bbf247930f9bd38a938b69472ab0647f2f"
+          "sha256": "f23ae3cc5749782be85feb7be630a60166ce7eafef2ba4a34f0534c25722ddbc"
         },
         {
           "path": "src/layout.ts",
@@ -393,7 +393,7 @@
         },
         {
           "path": "dist/layers.js",
-          "sha256": "a97c2f01e4a6c8a2284c66cf45d4395a609edf7b80395679fbbbb530ed7de211"
+          "sha256": "64892eddae6c3526fd5ee9fd53f4bcf6b8e61d4277c3d778838280778b6605d3"
         },
         {
           "path": "dist/layout.js",
@@ -441,7 +441,7 @@
         },
         {
           "path": "src/layers.ts",
-          "sha256": "bafb7a1d1d986f63492accdb821429c08187b6ac419cfa2c0c4f38cc33e367dd"
+          "sha256": "1d04366d813b383a95dbfb0412a2b185eeccb7e8302f3ba99ef3435580735b99"
         },
         {
           "path": "src/layout.ts",
@@ -515,7 +515,7 @@
         },
         {
           "path": "dist/layers.js",
-          "sha256": "538e7b6aa4d61be9bbcfaccf928e0830ed6555d7b9e5512ebef8ddd975a34329"
+          "sha256": "8a8241729fc681d08679a9b516a76c953a3b0a7a018d5f4b0718eb3f01d7a772"
         },
         {
           "path": "dist/layout.js",
@@ -579,7 +579,7 @@
         },
         {
           "path": "src/layers.ts",
-          "sha256": "dac66e66bc026ec7d2d879ee7bdd10de33fe2b5259d2a5b2d4ab240fb7ba43aa"
+          "sha256": "7a735c6c1e5a95aeb20efe5ef6f59064d5beb5dc43e5573e16cd42d649575412"
         },
         {
           "path": "src/layout.ts",

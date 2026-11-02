@@ -162,7 +162,8 @@ export function projectTypeProblems(type) {
     for (const [area, capability] of [
         ['ownExtensions', 'own-extensions'],
         ['serviceOverride', 'service-override'],
-        ['entryModule', 'entry-module']
+        ['entryModule', 'entry-module'],
+        ['bundles', 'bundles']
     ]) {
         const present = type.layers[area] !== null;
         const declared = type.capabilities.has(capability);

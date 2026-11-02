@@ -27,7 +27,8 @@ const WHAT_IT_IS = {
     'dev-channel': 'development channel beside an overlay target',
     'upgrade-advisory': 'semantic readers for the upgrade advisory',
     preview: 'host application to show the product in',
-    licensing: 'answer about where it states a licence'
+    licensing: 'answer about where it states a licence',
+    bundles: 'unit built by another repository that it ships inside its distribution'
 };
 /**
  * Refuse unless the type declares the capability. `what` names the verb or the

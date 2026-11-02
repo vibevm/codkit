@@ -111,6 +111,46 @@ export type EntryModuleLocator = {
 	readonly why: string;
 };
 
+/** One unit of the list a manifest of the family declares its bundled units in. */
+export type BundleEntry = {
+	readonly name: string;
+	readonly version: string;
+	readonly sha256: string;
+};
+
+/** What the manifest inside an archive says about the unit it holds. */
+export type BundleIdentity = { readonly name: string; readonly version: string };
+
+/**
+ * How a family ships a unit another repository built - a built-in extension of
+ * the first family - delivered as an archive its own build already takes
+ * (PROP-016 ##TYPE-AREA-LAYERS, PROP-008 ##BUNDLES-LOAD). The engine provisions
+ * the unit into the cache the build reads; the type says what the list, the
+ * archive and the cache look like, and never sees the bytes.
+ */
+export type BundleLayer = {
+	/** The manifest target whose list declares the units, from the tree root. */
+	readonly manifestTarget: string;
+	/** The key of that list in the manifest document, as an overlay path. */
+	readonly listPath: readonly string[];
+	/** The entries of the list of a manifest document; an element without the three fields is skipped. */
+	entries(document: Readonly<Record<string, unknown>>): readonly BundleEntry[];
+	/** The element the overlay appends to the list for one unit. */
+	entry(unit: BundleEntry): Readonly<Record<string, unknown>>;
+	/** Where a unit is unpacked in the tree, from the tree root, POSIX. */
+	cachePath(name: string): string;
+	/** The directory inside the archive the unit is read from, with a trailing slash; empty for the whole archive. */
+	readonly archiveRoot: string;
+	/** The manifest inside the archive the identity is read from, as an archive path. */
+	readonly archiveManifest: string;
+	/** The identity a manifest text declares, or null when it declares none. */
+	identity(manifestText: string): BundleIdentity | null;
+	/** The shape a unit name may take. */
+	readonly namePattern: RegExp;
+	/** The word for the archive in reports, e.g. VSIX. */
+	readonly archiveWord: string;
+};
+
 export type LayersArea = {
 	/** The overlay targets of this family, in a stable order. */
 	readonly overlayTargets: readonly OverlayTarget[];
@@ -120,4 +160,6 @@ export type LayersArea = {
 	readonly serviceOverride: ServiceOverrideVerifier | null;
 	/** The entry-module locator, or null when the family has no entry list. */
 	readonly entryModule: EntryModuleLocator | null;
+	/** The bundles layer, or null when the family ships no unit another repository built. */
+	readonly bundles: BundleLayer | null;
 };

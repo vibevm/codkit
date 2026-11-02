@@ -34,7 +34,8 @@ export const CAPABILITIES = [
     'config-overlay',
     'dev-channel',
     'upgrade-advisory',
-    'licensing'
+    'licensing',
+    'bundles'
 ];
 /** The type as one patch set's `typeConfig` makes it. */
 export function projectTypeFor(config) {
@@ -75,9 +76,9 @@ export { brandImages, codecs, familyNotes, targets } from './brandImages.js';
 export { build, makeBuild, packageStampsOf } from './build.js';
 export { configSchema, PLACEHOLDER_CONFIG, QUALITY_CHANNELS } from './configSchema.js';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.js';
-export { brandGraft, featureClassName, featureSkeleton, generators, settingId } from './generators.js';
+export { brandGraft, bundleGuard, featureClassName, featureSkeleton, generators, settingId } from './generators.js';
 export { identity } from './identity.js';
-export { entryModule, layers, overlayTargets, ownExtensions, serviceOverride } from './layers.js';
+export { BUILT_IN_EXTENSIONS_CACHE, BUNDLE_NAME_PATTERN, bundles, entryModule, layers, overlayTargets, ownExtensions, serviceOverride } from './layers.js';
 export { layout, OWN_ROOT_PREFIX } from './layout.js';
 export { COMPONENT_LICENCE_DIRECTORY, LICENCE_FIELDS, LICENCE_GUARD_PATH, LICENCE_RENDERINGS, licenceGuard, licensing, UPSTREAM_LICENCE_FILES } from './licensing.js';
 export { runtime } from './runtime.js';

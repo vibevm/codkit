@@ -73,6 +73,17 @@ export type BrandGraft = {
 	readonly reminders: readonly string[];
 };
 
+/** Everything the guard test of a bundle is generated from (PROP-007 ##CMD-BUNDLES-ADD). */
+export type BundleGuardRequest = {
+	/** The id of the overlay record the test guards. */
+	readonly id: string;
+	readonly unit: { readonly name: string; readonly version: string; readonly sha256: string };
+	/** The own root of the patch set, a path from the tree root. */
+	readonly ownRoot: string;
+	/** The manifest target whose list the record appends to, from the tree root. */
+	readonly manifestTarget: string;
+};
+
 export type GeneratorsArea = {
 	/** The files a feature of this family starts as. */
 	featureSkeleton(request: FeatureRequest): FeatureSkeleton;
@@ -82,4 +93,6 @@ export type GeneratorsArea = {
 	 * no single funnel has no honest graft to print.
 	 */
 	brandGraft?(ownRoot: string): BrandGraft;
+	/** The guard test of a bundle record, under the own root; present with the bundles layer. */
+	bundleGuard?(request: BundleGuardRequest): GeneratedModule;
 };

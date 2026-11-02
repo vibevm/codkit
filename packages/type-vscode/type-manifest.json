@@ -11,6 +11,7 @@
   "capabilities": [
     "brand-images",
     "build-channels",
+    "bundles",
     "config-overlay",
     "dev-channel",
     "entry-module",

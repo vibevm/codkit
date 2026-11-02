@@ -10,6 +10,7 @@
 	},
 	"capabilities": [
 		"build-channels",
+		"bundles",
 		"config-overlay",
 		"dev-channel",
 		"entry-module",

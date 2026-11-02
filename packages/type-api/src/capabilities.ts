@@ -20,7 +20,8 @@ export const CAPABILITIES = [
 	'dev-channel',
 	'upgrade-advisory',
 	'preview',
-	'licensing'
+	'licensing',
+	'bundles'
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

@@ -22,7 +22,8 @@ export function makeLayers(overlayTargetPaths) {
         overlayTargets: overlayTargetsOf(overlayTargetPaths),
         ownExtensions: null,
         serviceOverride: null,
-        entryModule: null
+        entryModule: null,
+        bundles: null
     };
 }
 export const layers = makeLayers([]);
