@@ -42,6 +42,8 @@ import { ckError } from './messages.ts';
 import { ownedRootsOf } from './ownedRoots.ts';
 import type { ForkDirResolution } from './paths.ts';
 import { RESOURCE_MAP_PATH } from './layers/resource.ts';
+import { OWN_MANIFEST_PATH } from './layers/ownManifest.ts';
+import { porcelainZEntries } from './driftGuard.ts';
 import type { ProjectType } from '@codkit/type-api';
 
 const GLOBAL_LOCK_ID = 'cycle-global';
@@ -492,7 +494,7 @@ function resolveArtifacts(
 							(candidate) => candidate.kind === 'overlay' && candidate.targetPath === pairTarget && candidate.outcome === 'conflict'
 						);
 			const patchesPaths = byteSorted([
-				artifactPath,
+				...(kind === 'contract' && artifactPath === OWN_MANIFEST_PATH ? ownContractPaths(options.patchesDir) : [artifactPath]),
 				...(kind === 'resource' ? [RESOURCE_MAP_PATH] : []),
 				...(paired === undefined ? [] : [paired.artifactPath])
 			]);
@@ -513,6 +515,23 @@ function resolveArtifacts(
 			};
 		})
 	);
+}
+
+/** The directory of the own units in the patch set. */
+const OWN_DELTA_DIR = OWN_MANIFEST_PATH.slice(0, OWN_MANIFEST_PATH.lastIndexOf('/'));
+
+/**
+ * ##CYCLE-OWN-CONTRACT-FIX: what a fix of an own unit's failed contract may
+ * change - the own manifest, or any file of the own units, a guard test among
+ * them - as far as it is changed now. The resolve commit takes exactly these
+ * paths; with nothing changed the manifest alone stays the answer, so the plan
+ * still asks for a change instead of finding the fix complete.
+ */
+function ownContractPaths(patchesDir: string): readonly string[] {
+	const status = runGit({ args: ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', OWN_DELTA_DIR], cwd: patchesDir });
+	if (status.status !== 0) throw ckError('ARTIFACT-BROKEN', `cannot read the changes of ${OWN_DELTA_DIR} in the patch set`);
+	const changed = porcelainZEntries(status.stdout).map((entry) => entry.path);
+	return changed.length === 0 ? [OWN_MANIFEST_PATH] : changed;
 }
 
 function transition(state: CycleState, phase: CycleState['phase'], nextAction: string, updatedAt: string): CycleState {

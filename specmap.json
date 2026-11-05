@@ -7511,7 +7511,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:d6091dbb6d5715b91a1f358b3849b08dd6ae72fa08d28c81c57fc335cbf705e1",
+      "content_hash": "sha256:b99c6e64b04c4b1e0871a11955dc770db0753b7f8fef8d3e39092c55617bec7d",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "codkit PROP-008: The engines — the resolver, identity, load, save, 3-way, renames, the cause",
@@ -7745,7 +7745,7 @@
     },
     {
       "anchor": "save",
-      "content_hash": "sha256:9afd0035e02895594cea84a3314fb274984d09dbdfedcfe3c21296093be39834",
+      "content_hash": "sha256:d012aed029a1cc114f7e37fc4c2d8bf186adddbccc71859e7403017f8d9df3a1",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "4. save/extract and the drift guard",
@@ -7789,12 +7789,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-MOVED-RULE"
     },
     {
+      "anchor": "FORCED-LOAD-OWN-DELIVERY",
+      "content_hash": "sha256:353858a258d541c5a0d2149ac83c628af9bcafb45bd472011f6e93fddfe024c4",
+      "doc_path": "modules/codkit/PROP-008",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
+      "heading": "A forced load - the one a cycle uses to bring the tree back to the patch set - refuses any dirt before it touches the tree, except an own file present on both sides with different bytes: that one it leaves to the drift guard of the load, which tells from the mark which side moved, delivers the patch-set side and refuses an edit made in the tree. A tree commit, upstream dirt, an own file only the tree carries and an own extension divergence still stop it. @status:impl/done",
+      "line": 159,
+      "uri": "spec://codkit/modules/codkit/PROP-008#FORCED-LOAD-OWN-DELIVERY"
+    },
+    {
       "anchor": "DRIFT-GUARD-PREDICATE",
       "content_hash": "sha256:36c2fbb748d7612da95a94dee9ebfa8244f67b7311eba96f93bcca63e92e3098",
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The drift guard**: `dirty(tree)` = (`git status --porcelain` is non-empty outside the own directory) ∨ (an own divergence of the classes `both` — the bytes differ — or `tree-only` — the file exists only in the tree) ∨ (**the third half**, campaign TREE-COMMITS-SAVE, decision D7) the foreign commits of the tree are non-empty (`##TREE-COMMITS-ARE-WORK`): the commits of the first-parent line above the last generated tip, which the other two halves do not see — over a commit `git status` gives a clean tree. The list for the human holds the lines `commit <short> \"<subject>\" (not in patchset)`; the refusal is exit 1 `CK-E-DIRTY-TREE`: for edits \"N path(s) … not in patchset yet\", for commits \"N commit(s) in the fork tree since the last codkit apply are not in patchset yet\", with a hint (\"codkit save\" or \"codkit status\"). **The order of the refusals (owner ruling 2026-09-06, spike S0.12)**: the preflight of a shared generated ref (`##GENERATED-REF-WORKTREE-PREFLIGHT`) runs BEFORE any dirt check, unconditionally, in every guarding command: a commit of a neighbouring worktree on the shared branch moves the shared ref and makes the index of THIS tree \"staged-dirty\" — phantom dirt whose cause is the sharing of the ref, not local work; the refusal `CK-E-WORKTREE-REF-SHARED` (exit 2) names both trees and does not advise `save` — a hint \"run codkit save\" would here pull foreign work into this patch set as an edit of our own. The cause is diagnosed before the symptom; `CK-E-TREE-HEAD` obeys the same order (D8: an anomaly of the line, or HEAD off the branch with foreign — exit 1, with the same code from `##TREE-COMMITS-ARE-WORK`). A file that exists ONLY in the `delta/own/` of patchset (`patchset-only`) is NOT dirt: otherwise the first load of any tree would be impossible (a refinement of the M0 implementation). `--fresh` suppresses the fast path and does not count untracked paths as dirt (otherwise fresh would never clean anything), but it does NOT lift the refusal over commits: `--fresh` is about the untracked, while a commit is the same unextracted work as an edit. `--dry-run` does not run the guard; `skipDriftGuard` is the only bypass, only for `save` / the future two-way `sync` after the extraction. The refinement of REPAIR-005 (PROP-005 §5 `##OVERLAY-KNOWN-MATERIALIZATION`): before refusing, `load --fresh` classifies every tracked overlay target that differs from HEAD — bytes exactly equal to the strict composition of the configured overlays at the pin in the context of the run are a known materialization of codkit, which this run replaces (and says so in the output), not dirt; everything else stays dirt, `--fresh` is not a blanket reset. An ordinary `load` gets no such exception: the fast path could answer \"up to date\" and leave the packaging bytes. `ci` deliberately passes no classifier: ci materializes overlay targets only through the commits of the generated branch, ci's own runs do not create that state, and the single source of such bytes in a ci tree is an out-of-band `overlay apply`, that is a reused developer tree, which the guard must name out loud; the way out there too is a codkit command (`load --fresh` of that tree) or a single-use fresh tree, not a direct git restore. **The exception for a stranded materialization of an own extension (2026-09-08, PROP-005 `OWN-EXTENSION-STRANDED`):** for an ordinary `load` (without `--fresh`; not for `cycle start`, which refuses `CK-E-DIRTY-TREE` over such a tree, and not for the two-way `sync`, where the extracting half fires before the guard with `CK-E-NEW-FILE-IN-UPSTREAM-ZONE`; `ci` and `publish` go by a fresh pass, where the untracked is taken away by the cleanup, and do not meet the guard on that path — measured 2026-09-08) a first-level untracked directory under `extensions/` that no record of the `extensions` section of the manifest declares and that the pin does not ship is not dirt: `load` writes not a byte into such a directory and does not delete it, so a refusal would guard nothing and would lock a daily command after a legitimate step in patchset (the removal of the declaration); the reminder about the directory is taken over by `status` (PROP-007 `CMD-STATUS`, the line about stranded materializations with the recipe `load --fresh`). The predicate gets a hook into the same pure classification as `status` (`isStrandedExtension` next to `isKnownMaterialization` and `isDiscardable`); the rule about a new file in the upstream zone does not change for anything else. @status:impl/done",
-      "line": 159,
+      "line": 160,
       "uri": "spec://codkit/modules/codkit/PROP-008#DRIFT-GUARD-PREDICATE"
     },
     {
@@ -7803,7 +7812,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**Commits in the fork tree are work** (campaign TREE-COMMITS-SAVE, decisions D1/D2/D8). Work = the uncommitted ∨ the commits of the first-parent line unreachable from the last generated tip. The detector `foreignCommits(tree, pin, branch)` (`lib/treeCommits.ts`): `git rev-list --first-parent --format=…` for `<ref>` ∈ {HEAD, `refs/heads/<branch>`} (those that exist), the lower bound is always the pin; a commit is generated ⟺ the author is `codkit@patchset.invalid` AND the trailer `Codkit-Upstream-Pin` is non-empty (F13); `base` = the topmost generated one, and when there is none — `base = pin.sha` (an empty patchset, the branch is not created); `foreign` = the commits above `base`, from the old to the new. An anomaly: a non-generated commit below `base` — the history under the generated tip was rewritten → `CK-E-TREE-HEAD` (exit 1, \"reset the branch to <sha> or restore it from refs/codkit/consumed/…\"). The same code refuses when the branch exists, HEAD is off it and the line of HEAD carries foreign work (\"HEAD is on <ref|detached> with N commit(s) not in patchset; switch to <branch> (git switch) or merge them there, then run codkit save\"). When there is no branch, the chain of HEAD above the pin is work wherever HEAD may be (the first load after a clone); the generated tip itself is not work. Rejected: a base from the cache/mark (they are not authoritative, `##TREE-IS-TRUTH`); a rev-list without `--first-parent` (the states of side branches never existed on the line of the branch). The format of a record is NOT NUL-clean: before every record there is a `commit <sha>` line, and the trailer adds its own `\\n` (S0.2); the parser cuts by `/^commit [0-9a-f]{40}\\n/m`, then by `\\0`, stripping the trailing `\\n`. Consumed commits stay reachable through `refs/codkit/consumed/*` (PROP-006 §1 `##CONSUMED-REFS`). @status:impl/done",
-      "line": 160,
+      "line": 161,
       "uri": "spec://codkit/modules/codkit/PROP-008#TREE-COMMITS-ARE-WORK"
     },
     {
@@ -7812,7 +7821,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The reverse direction, file by file and for every layer of the delta (a generalization from own code to the whole patch layer, campaign TREE-COMMITS-SAVE, decision D16): own is told apart by the `ownFiles` map of the mark (PROP-006 §1 `##TREE-MARK`), the remaining `delta/**` files outside `delta/own/**` by the `artifacts` map of the same mark (Phase 7). The tree file == the mark → patchset changed (apply patchset); the patchset file == the mark → the tree changed (the dirt of the guard, extracted by save); both sides != the mark — a conflict of the two sides: for own — exit 1 `CK-E-BOTH-SIDES-EDITED` with the name of the file; for non-own artifacts in `save` — the refusal `CK-E-PATCHSET-MOVED` with the recipe (`##PATCHSET-MOVED-RULE`: an extraction into a foreign moved artifact neither stays silent nor merges), in the two-way `sync` (Phase 8) — the same stop `CK-E-BOTH-SIDES-EDITED`, generalized from own to the patch layer (F20). The overlay/resource/rule/removed layers are authored only in patchset and are always \"patchset only\". For own over a clean tree `load` warns `CK-W-PATCHSET-SIDE-EDIT` and applies the patchset version (at the moment of a load the direction of truth is patchset). Rejected: auto-merging patches (3-way is the territory of the cycle; the diff3 materialization for a human is Phase 8b, not an auto-merge). @status:impl/done",
-      "line": 161,
+      "line": 162,
       "uri": "spec://codkit/modules/codkit/PROP-008#PATCHSET-SIDE-EDIT-RULE"
     },
     {
@@ -7821,7 +7830,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Own-extension files use the recorded artifacts map, narrowed by the declared type deltaRoot and materializedPath. The baseline is usable only for the current pin and generated HEAD. Tree bytes equal baseline and source bytes changed: ordinary load warns PATCHSET-SIDE-EDIT and mirrors source; source deletion follows the same per-file rule. Tree-only and unknown/invalid/missing baseline remain unextracted; both-edited returns BOTH-SIDES-EDITED before any write. A staged extension projection remains unextracted even if working-tree bytes still equal baseline; unrelated upstream/overlay dirt keeps its existing guard. The entire extension unit is classified, including names that are metadata only in the primary own directory; inherited object properties are not file hashes. Load and save write the ordinary artifacts map after successful synchronization. Decision: use existing recorded per-file evidence, not a new CLI bypass. Why: the existing conservative branch refused a source-only language-pack update despite exact tree/baseline equality. Rejected: unconditional overwrite, save old projection over source, discard, manual mark repair. Revisit: the recorded baseline no longer binds to generated HEAD or a project type cannot provide exact source/target mapping. @status:spec/done",
-      "line": 162,
+      "line": 163,
       "uri": "spec://codkit/modules/codkit/PROP-008#OWN-EXTENSION-PATCHSET-SIDE"
     },
     {
@@ -7830,7 +7839,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`save` extracts the final state of the tree relative to the last applied tip** (campaign TREE-COMMITS-SAVE, decisions D3/D4/D6). The selection is `changesSince(tree, base, state)` (`lib/treeState.ts`): `git diff --name-status --no-renames <base>` (staged+unstaged+committed together — the final state) ∪ the `??` records of `git status --porcelain -z` (the only thing the diff does not see), minus the own prefix, plus the `forcedPaths` of internal calls; the bytes of a file come through `bytesOf(state, path)` (the working file, or `git cat-file blob` for a commit state — the foundation of the replay `##SAVE-REPLAYS-TREE-COMMITS`). The selection is NOT `git status`: over a commit it is empty, and committed work used to be invisible (F7). A rename under `--no-renames` = a deletion + a new file — the deletion refuses `CK-E-DELETES-UPSTREAM-FILE`, as an unstaged rename does today. \"Nothing to save\" takes the commits into account: a tree with empty commits and no file changes is not nothing but a consumption. The precondition before the rebuild (D6): the foreign set has not changed since the extraction began, otherwise `CK-E-INTERNAL` (exit 2) BEFORE `updateRef`/`moveWorkTree` — it closes the order of F3 (destruction before the check). Consumed commits stay reachable: `refs/codkit/consumed/<UTC yyyymmddThhmmssZ>-<short7>` → the former HEAD of the tree, `update-ref` under the shared lock of the repository, the message `tree commits consumed: N (<first>..<last>); kept as …`. An addressed `save <paths>` with foreign commits: the branch is not touched (##SAVE-SCOPED-BRANCH-RULE), the commits stay in the tree — `info` \"N tree commit(s) stay in the tree until a full save\", no consumed ref is written. The patchset commits made from the consumed ones — see `##SAVE-REPLAYS-TREE-COMMITS`: by default one per state, `--squash` — one folded commit. Rejected: two lists, `diff base..HEAD` + `status` — it duplicates paths and loses the staged ones; a refusal without `--commit` — an extraction must not demand a flag. @status:impl/done",
-      "line": 163,
+      "line": 164,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-CONSUMES-TREE-COMMITS"
     },
     {
@@ -7839,7 +7848,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`save` replays the commits of the tree into the history of patchset one by one** (campaign TREE-COMMITS-SAVE, Phase 4, decision D5; owner ruling RP-3: the mode with commits is the default, \"rebase and merge\"). The states `S_1…S_n` = the foreign first-parent commits from the old to the new, then `S_wt` = the working tree. **Two passes** (`lib/saveReplay.ts`). Pass 1 (`planStates`) writes nothing: `planFile` for every `S_i` over an in-memory `ArtifactStore` (an overlay over `delta/patches` and `.codkit/pending`; it records the consumption of the pending drafts — the later states see the artifacts and the drafts of the earlier ones as they will be after those are written). Any error → `blocked`, exit 1, **nothing written** (no artifact, no own byte, no commit), the text carrying the sha and the subject of the source state; the validation of `Cause:` uses the same code as `hooks commit-msg` (F12: the patchset hooks do not run on the commits of `save`, and pass 1 does their work). Pass 2 (`writeStates`): for `S_1…S_n` the writing of the artifacts (`commitArtifacts`) + a patchset commit; for `S_wt` own (`mirrorOwnBack`) + the artifacts, with a commit only under `--commit`. The patchset commit for `S_i`: the paths = the changed artifacts of the state; the message = the original one verbatim (`%B`) + an empty line + `Codkit-Tree-Commit: <sha40>` (the separator is unconditional: a subject of the form \"work: …\" is indistinguishable from a trailer line, and guessing would glue the trailer to the subject paragraph); `GIT_AUTHOR_*` = the author of the tree commit, committer = the one who runs it (`commitIdentity()`). A state whose staged diff is empty → the commit is skipped with a message (the skip is visible: an empty tree of commits is consumed work too, but the history for it is empty). **Idempotence**: `git log --fixed-strings --grep=\"Codkit-Tree-Commit: <sha>\" -1` in patchset; a state that is found is skipped (an interruption after its commit — the repeated `save` does not duplicate it), and `--squash` after a partial replay finishes the rest in one commit. `--squash`: the intermediate states are validated all the same (a naive single-pass implementation lets through a violation hidden by a later commit — the P4 prediction was proven by a red run: with the state-by-state validation switched off, S17c-reverted gives a false exit 0), while only the final state is written and committed — the plan is written from the disk, not from the store (the store describes the state after writes that never happened). The test seam `replayCheckpoint` (`CODKIT_TEST_SAVE_REPLAY_CRASH_AT`, the test build only): a hard exit after the commit of a state — the crash point of idempotence. Rejected: a single-pass write (a half-extracted delta is worse than one a human edits and repeats); squash by default (RP-3); own per commit (F14: own is excluded locally, the commits of the tree do not carry it). @status:impl/done",
-      "line": 164,
+      "line": 165,
       "uri": "spec://codkit/modules/codkit/PROP-008#SAVE-REPLAYS-TREE-COMMITS"
     },
     {
@@ -7848,7 +7857,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "5. The 3-way apply at a foreign pin and the classification of the outcomes",
-      "line": 167,
+      "line": 168,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify"
     },
     {
@@ -7857,7 +7866,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Used by `cycle`, `forecast` and `rebase-onto-pin` (at one's own pin there are no conflicts by construction — the self-consistency invariant). Input: an artifact A with the target F, the old pin `oldPin`, the target ref `newRef`. Output: an outcome from the classes below + the materials. @status:spec/done",
-      "line": 168,
+      "line": 169,
       "uri": "spec://codkit/modules/codkit/PROP-008#classify-usage"
     },
     {
@@ -7866,7 +7875,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The names of the outcome classes in the state of the cycle: `clean`, `shifted`, `merged`, `conflict`, `target-deleted`, `target-renamed` (from §6), `rule-broken`, `contract-failed`. @status:spec/done",
-      "line": 184,
+      "line": 185,
       "uri": "spec://codkit/modules/codkit/PROP-008#OUTCOME-CLASS-NAMES"
     },
     {
@@ -7875,7 +7884,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The engine does not stop at the first conflict: it goes through every independent artifact and gives back the full classified list; exit 3 belongs to the final mandatory human stop. @status:spec/done",
-      "line": 185,
+      "line": 186,
       "uri": "spec://codkit/modules/codkit/PROP-008#ENGINE-NEVER-STOPS-AT-FIRST"
     },
     {
@@ -7884,7 +7893,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "The materialization for the resolve: for a `conflict` the orchestrator writes the result of `merge-file --diff3` with the standard conflict markers into the working file of the tree — a human and an agent edit it in the IDE the ordinary way. @status:spec/done",
-      "line": 186,
+      "line": 187,
       "uri": "spec://codkit/modules/codkit/PROP-008#CONFLICT-MATERIALIZATION"
     },
     {
@@ -7893,7 +7902,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "5a. sync: merging the two sides",
-      "line": 189,
+      "line": 190,
       "uri": "spec://codkit/modules/codkit/PROP-008#sync-two-way"
     },
     {
@@ -7902,7 +7911,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**Two passes, and both orders are deliberate** (campaign TREE-COMMITS-SAVE, Phase 8, decisions D15/D16/D19). The first pass is reading: the lineage (D17), the D16 classification (`classifyTargets`, `##PATCHSET-MOVED-RULE`), both sides of own and of the patch layer; a conflict is found **before the first write**, and every 3-way merge is computed before it too (Phase 8b, D19): a conflict of the patch layer is materialized with diff3 markers (`##SYNC-CONFLICT-DIFF3` below) with exit 1 and a live transaction; an own conflict is `CK-E-BOTH-SIDES-EDITED` without markers (own code has no marker blocks), F20, with the manual recipe \"pick a side\": to take the tree — `git checkout <sha> -- delta/own/<F>` in patchset, then `save`; to take patchset — roll back the edit of F in the tree, then `sync`. The second pass is the write under the transaction: the save half (`runSave` with `skipPatchsetMovedCheck` — a moved patchset is input data here, not a refusal — and `explainedRewrites` = the `patchsetOnly` targets: a rebuild that applies the patchset version to them is explainable, an extension of the set \"nothing moved\"), then the consumed ref and the mark with the new map; when the tree has no work, the write is a single load half (`runSync`). `--discard` (D11/D15) discards the commits of the tree deliberately (the same branch of the load engine: the consumed ref before the rebuild, the file halves of the guard armed); under `--ci` — exit 2. `--squash`/`--commit`/`--message` are the inheritance of the save half, `--fresh` of the load half. Auto-merging is rejected here too: the human resolves the diff3 markers themselves (the materialization is `##SYNC-CONFLICT-DIFF3`, the recovery is `##SYNC-ABORT`/`##SYNC-CONTINUE`, Phase 8b); under `--discard` the uncommitted both-part keeps the recipe \"pick a side\" — `--continue` is an extraction, not a discard (D11). @status:impl/done",
-      "line": 232,
+      "line": 233,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-TWO-PASS"
     },
     {
@@ -7911,7 +7920,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The transaction** (decision D20): the file `.codkit/sync-transaction.json` in the root of patchset (the ownership protocol is PROP-006 §1 `##SYNC-TRANSACTION-FILE`), written by `writeContainedFileExclusive` **before the first mutation** — a repeated start over a live record is impossible by construction (link-EEXIST → a refusal) — and removed after the last one. The record: `{codkitSyncTransaction, id, startedAt, patchset:{head, dirtyBefore}, tree:{head, branchTip, markSnapshot}, rewrite:[{repo, path, blob}], patchsetCommits:[], consumedRef: null, conflicts:[{path, materialized}]}` (the shape of conflicts is Phase 8b: `materialized` is the sha256 of the written markers, `null` means the merge did not reach the file); the snapshots are `git hash-object -w` of only the files the run is going to rewrite (the artifacts of the tree selection in patchset, the `patchsetOnly` targets in the tree, the diverging own files of both sides; an absent file is a null blob, \"a snapshot of absence\"). Every patchset commit that is created carries the trailer `Codkit-Sync-Transaction: <id>` (recognition by content survives an interruption of the list in the record) and is appended to `patchsetCommits` by an atomic rewrite. While the file exists, step 0 of `load`/`save`/`sync` (and of every call of the engines) is exit 1 `CK-E-SYNC-IN-PROGRESS`, and the hint names both recovery commands; `status` prints `sync in progress: <id>, conflicts: N`. A refusal without a single write removes the record itself (the snapshots matched, HEAD did not move — a proof by checking, not by guessing); a refusal after a write leaves it. The crash tests are the seam `CODKIT_TEST_SYNC_CRASH_AT` (the test build only), the atoms: transaction-written, conflict-materialized, state-committed, worktree-moved, mark-written (PROP-013 §5 `##SYNC-CRASH-TESTS`). The recovery `--abort`/`--continue` is Phase 8b (D21, `##SYNC-ABORT`/`##SYNC-CONTINUE`); an \"undo\" after a successful sync was rejected there as well. @status:impl/done",
-      "line": 233,
+      "line": 234,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-TRANSACTION"
     },
     {
@@ -7920,7 +7929,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**The materialization of a both-sides conflict** (Phase 8b of the campaign TREE-COMMITS-SAVE, decisions D19/D21; `codkit sync`, e2e `syncConflict.test.ts`, S26). When the D16 classification puts a target into `both`, `sync` neither refuses nor merges by itself: it puts the 3-way into the tree file with the standard diff3 markers **inside the marker block** `codkit:begin/end`. The sides (D19): the base is the file as the last apply loaded it (`<base>:<F>`, the tip of the generated branch); ours is the working file (or `HEAD:<F>` when the working one cannot be read); theirs is the pin + the current artifact through `applyUnified`. The merge is `runMergeFile` (classifyEngine, the single diff3 implementation in codkit, spike S0.8; `replayPatch` is wrong here: theirs = the pin + the artifact, not the base + the patch). The order: every merge is computed **before** any write (an artifact that does not land on the pin refuses the run while not a byte has been written) → the transaction with the ours snapshots of the conflicting files (`rewrite`, blob) → every merge is written by a durable single-file write (a wx temp + a rename that preserves the mode, the precedent `atomicReplace`) and is marked in the record with the atom `conflict-materialized` carrying the sha256 of the written bytes → exit 1 `CK-E-BOTH-SIDES-EDITED` with the list of the files and both roads onward. The human resolves the markers as in the resolve phase of the cycle (keep both sides and the ids of the blocks; the procedure is 05-upgrade-cycle), then `codkit sync --continue`. Under `--discard` the recipe is not materialized for the uncommitted both-part: `--continue` is an extraction, not a discard (D11). Our own 3-way auto-merge is rejected here too. @status:impl/done",
-      "line": 234,
+      "line": 235,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-CONFLICT-DIFF3"
     },
     {
@@ -7929,7 +7938,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`codkit sync --continue`** (decision D21; e2e S26): finish an interrupted run from the record. No record — an honest exit 2: there is nothing to restore. The completeness check over `conflicts[]`, file by file: the markers are still there (the same four lines the manual procedure greps for) → the refusal `CK-E-BOTH-SIDES-EDITED` with the names; `materialized = null` and the file equals the ours snapshot byte for byte → the refusal \"the merge did not reach the file\" (a crash between the writing of the record and the writing of the markers does not pass itself off as the human \"take the tree\"; a real \"take the tree\" after the materialization gives the same bytes, but the record already carries the sha — the difference is the proof). Then the same writing pass as in a fresh run (`runSave` with `skipPatchsetMovedCheck` + `explainedRewrites`, the same atoms and trailers) under the same record; new both-targets that appeared after the stop get the same answer — the markers, exit 1, the record extended; the snapshots of the artifacts the record lacked are added before the pass (an abort after a crash in the continuation covers them too). On success the record is removed, exit 0. The extraction flags (`--squash`/`--commit`/`--message`/`--fresh`) apply to the continuation; `--discard`/`--dry-run` do not. @status:impl/done",
-      "line": 235,
+      "line": 236,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-CONTINUE"
     },
     {
@@ -7938,7 +7947,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "**`codkit sync --abort`** (decision D21; e2e S27): give everything back as the run found it. This is the load-bearing half of the phase: materializing the markers is easy; the promise that the operator can always come back is what makes the markers a safe offer. No record — exit 2. The audit **before the first mutation**: the patchset commits above the recorded HEAD are removed only if each carries the trailer `Codkit-Sync-Transaction: <id>` of this record and HEAD stayed on the recorded line; the tree commits above the recorded HEAD only if each is generated (the codkit author + the pin trailer, F13; a descendancy check is NOT required for the tree — the rebuild leaves the line as a matter of course, D6); HEAD of the tree on a foreign ref, or a history that cannot be enumerated — a refusal with an explanation and the names; a foreign commit on top is **never thrown away** — the refusal `CK-E-SYNC-IN-PROGRESS` names its sha and subject. The mutations come in an order that makes an interrupted abort restartable (every step is idempotent, the record is removed last): patchset — a `reset --mixed` to the recorded HEAD (the index is resynchronized, the removed commits do not survive as staged changes) and the artifacts from the snapshots byte for byte (the blob from the object database, a wx temp + a rename with the mode); the tree — the files from the snapshots (those that were absent are deleted), the branch to `tree.head` with a guard of the current tip (a branch the run created is deleted), HEAD to the same place (a detached one stays detached, `--no-deref`), with a moved HEAD a `reset --mixed` of the index, the mark from `markSnapshot` (when there was none, it is removed). `refs/codkit/consumed/*` stays (harmless, D22 cleans it). The patchset commits are removed with `--mixed`, not `--soft`: the D21 plan called both mechanisms one family; the index must come back together with HEAD, otherwise what was removed survives as staged. An \"undo\" after a successful sync does not exist — that is `git reset --hard <before>` in patchset + `codkit load` (the recipe D18). @status:impl/done",
-      "line": 236,
+      "line": 237,
       "uri": "spec://codkit/modules/codkit/PROP-008#SYNC-ABORT"
     },
     {
@@ -7947,7 +7956,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "6. Following the renames between pins",
-      "line": 238,
+      "line": 239,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames"
     },
     {
@@ -7956,7 +7965,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "A separate explicit step before the apply (not an auto-detection inside it — on large diffs git switches rename detection off silently). @status:spec/done",
-      "line": 239,
+      "line": 240,
       "uri": "spec://codkit/modules/codkit/PROP-008#renames-when"
     },
     {
@@ -7965,7 +7974,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Pairs with `similarity < 100` are marked \"needs a human eye\" in the report (the carry-over is done, but it lands on the red list of the review). The check case of the polygon: the rename `src/vs/platform/agentHost/browser/remoteAgentHostProtocolClient.ts → agentHostProtocolClient.ts` (R096, the window `1.134.0→1.135.0`). @status:spec/done",
-      "line": 251,
+      "line": 252,
       "uri": "spec://codkit/modules/codkit/PROP-008#RENAME-BELOW-100-FLAGGED"
     },
     {
@@ -7974,7 +7983,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "7. Finding the cause commit",
-      "line": 253,
+      "line": 254,
       "uri": "spec://codkit/modules/codkit/PROP-008#cause"
     },
     {
@@ -7983,7 +7992,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "`git log --format=%H --follow oldPin..newPin -- F` — the commits that touched the file. @status:spec/done",
-      "line": 255,
+      "line": 256,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-LOG"
     },
     {
@@ -7992,7 +8001,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "One commit → it is the cause. Several → narrow down by lines: for every hunk of the artifact take the range of the affected lines at `oldPin` and run `git log -L<start>,<end>:F oldPin..newPin --format=%H`; the cause commit is the earliest commit that crossed the range; when `-L` is not applicable (the file was deleted/renamed), the cause commit is declared to be the last commit of the first step, marked `approx`. @status:spec/done",
-      "line": 256,
+      "line": 257,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-NARROW"
     },
     {
@@ -8001,7 +8010,7 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "For `target-deleted`/`target-renamed` — the commit that deleted/renamed it (`git log --diff-filter=D|R --follow`). @status:spec/done",
-      "line": 257,
+      "line": 258,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-STEP-DELETED"
     },
     {
@@ -8010,12 +8019,12 @@
       "doc_path": "modules/codkit/PROP-008",
       "file": "vibevm/vibespecs/modules/codkit/PROP-008-engines.xml",
       "heading": "Output: `{sha, approx: bool}`; it is written into the `cause` of the patch header (by the regeneration step), into the journal and into the `Cause:` trailer of the fix commit. The report of the cycle is grouped by cause commits (dozens of refusals → a handful of causes). @status:spec/done",
-      "line": 258,
+      "line": 259,
       "uri": "spec://codkit/modules/codkit/PROP-008#CAUSE-OUTPUT"
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:a40c99c54eecdbfa4cae2c125b70fa538475bb64bc40a890a16240ee400a8ff8",
+      "content_hash": "sha256:c8bc6488575cf530e380244ba45f318291ce8d26892fc5cd957d0d83450473d7",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "codkit PROP-009: The upgrade-cycle orchestrator - state, journal, phases, cadence",
@@ -8132,7 +8141,7 @@
     },
     {
       "anchor": "phases",
-      "content_hash": "sha256:60400955c4e3fc82b4293dceec884bd72b9e5177e73a6d76fb8bdd5acd0f766a",
+      "content_hash": "sha256:67d427bcf4babd05f77ded160b4b86df33c3c7851cf34b620024f750f7f7e9e5",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "4. The state machine - phases and transitions",
@@ -8185,30 +8194,39 @@
       "uri": "spec://codkit/modules/codkit/PROP-009#PHASE-RESOLVE"
     },
     {
+      "anchor": "CYCLE-OWN-CONTRACT-FIX",
+      "content_hash": "sha256:9a895da0cd2e59367d306fc4f09c0110215ea507ad0d8b3951b453b6e723b90c",
+      "doc_path": "modules/codkit/PROP-009",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
+      "heading": "A contract test of an own unit that stabilization finds failed - `contract-failed`, its artifact the own manifest `delta/own/patchset.delta.json` - is fixed in the patch set, in the own manifest or in any file of the own units, a guard test among them. The resolve plan takes exactly the paths under `delta/own/` changed now as the fix and commits them with the journal record; with none changed the manifest alone stays the answer, so the plan still asks for a change instead of finding the fix complete. The forced load that brings the tree back after the commit delivers the changed own files (`spec://codkit/modules/codkit/PROP-008#FORCED-LOAD-OWN-DELIVERY`). Measured by the first consumer whose leftover guard ran past its own time limit on Windows during stabilization: the guard file could not change, because only the manifest counted as the fix and the forced load refused the own file the fix moved. @status:impl/done",
+      "line": 44,
+      "uri": "spec://codkit/modules/codkit/PROP-009#CYCLE-OWN-CONTRACT-FIX"
+    },
+    {
       "anchor": "PHASE-DEPS-ADVISORY",
-      "content_hash": "sha256:dfbc6c553a984be824f44599b6e3e1bd28bf41ba1883aaf79d6f4c4963dfa0df",
+      "content_hash": "sha256:ab334c03f8aac28404b965022e19bd6f8f6f39640adc49b3087541f0e252620f",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "**deps-advisory**: the semantic readers the project type declares are run over the `oldPin..newPin` diff (the readers are the type's answer, not the engine's; VS Code type: `spec://codkit/modules/vscode/PROP-005#VSCODE-ADVISORY-READERS`) → a report on «what changed in the toolchain»; a non-empty report in interactive mode is a **stop point** (exit 3; a human runs `npm install` in the tree by the protocol - the daemons are stopped beforehand with `build down --all`); under `--ci` the report goes to the log and the cycle continues. @status:spec/done",
-      "line": 44,
+      "line": 45,
       "uri": "spec://codkit/modules/codkit/PROP-009#PHASE-DEPS-ADVISORY"
     },
     {
       "anchor": "PHASE-STABILIZE",
-      "content_hash": "sha256:2ddff1e344fba0628492b41f765e4c63c80bcefce97940dbf8d60899348a6ffa",
+      "content_hash": "sha256:2e0675754fa8f7fd43619542c0c3ac3a84a916bb4a4b411817a6a8781470a611",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "**stabilize**: the pass opens by bringing the tree back to the development mode - the fresh load the operator would run, without the generated branch and from the pinned inputs - because the build profile of the previous pass leaves the tree in the generated mode, own code and inputs committed on the branch, and the verify of the pass judges the delta as the operator's verify does (PROP-005 `##OWN-EXCLUDED-LOCALLY`): over a tree left in the generated mode it read as one `UNTRACKED-INTERVENTION` per own file, and every second pass was red; then `build up` → `build errors` (the full output) → own tests → contract tests → (by profile) upstream tests → marking the `contract-failed` artifacts - every artifact of the inventory whose contract test failed, the records the classification never saw included (the own manifest of a failed own unit, a service-override, a removed record), since resolve describes a `contract-failed` artifact from the inventory and not from the classification → red → phase=resolve (back); green → phase=done. @status:spec/done",
-      "line": 45,
+      "line": 46,
       "uri": "spec://codkit/modules/codkit/PROP-009#PHASE-STABILIZE"
     },
     {
       "anchor": "PHASE-DONE",
-      "content_hash": "sha256:9d2c0dbd942322164bb777ff4aeefc06bdebc9d64a260d9f20fb8e23161bd944",
+      "content_hash": "sha256:be1212e95b53f928b83bdfb80b285be78bfebac26906a432172b1521354d70c7",
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "**done** (`continue`): the journal completeness check → a snapshot of the inventory metrics into the cycle journal → a commit of the journal and of the state (the runtime state is deleted by the final commit) → the instruction to merge the cycle branch into main without a squash. The completion checklist includes checking the bootstrap forbidden services and the selected build-watch boundaries against the new pin. @status:spec/done",
-      "line": 46,
+      "line": 47,
       "uri": "spec://codkit/modules/codkit/PROP-009#PHASE-DONE"
     },
     {
@@ -8217,7 +8235,7 @@
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "**Rollback**: `cycle restart` - a `git reset --hard` of the cycle branch to the parent of the pin commit plus deletion of the state (confirmed by `--yes`). @status:spec/done",
-      "line": 48,
+      "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-009#CYCLE-ROLLBACK"
     },
     {
@@ -8226,7 +8244,7 @@
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "The mandatory stop points: the toolchain advisory; manual conflicts; broken rules; patches to deleted files; a large design decision (stop, explain, offer the options). @status:spec/done",
-      "line": 49,
+      "line": 50,
       "uri": "spec://codkit/modules/codkit/PROP-009#MANDATORY-STOP-POINTS"
     },
     {
@@ -8235,7 +8253,7 @@
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "5. The canonical commit set of a cycle and the trailers",
-      "line": 51,
+      "line": 52,
       "uri": "spec://codkit/modules/codkit/PROP-009#canon"
     },
     {
@@ -8244,7 +8262,7 @@
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "The canonical set (it is not squashed on merge - otherwise the cost metric is lost): «bump pin»; «renames» (the artifacts carried over the renames); «regeneration» (machine-made - it may be thrown away and created anew); «deps/toolchain»; individual fixes, each with its own cause; «removal of the artifacts of files that disappeared» - always a separate commit with an explanation. @status:spec/done",
-      "line": 52,
+      "line": 53,
       "uri": "spec://codkit/modules/codkit/PROP-009#CANONICAL-COMMIT-SET"
     },
     {
@@ -8253,7 +8271,7 @@
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "The trailers: every commit of a cycle carries `Codkit-Cycle: <targetTag>`; fixes carry `Cause: <upstream SHA>` in addition. The codkit hook puts them there, CI checks them (without machine validation a trailer does not take root - the lesson of the references). The canonical messages produced under the hook are uniform, so that they are easy to search for. @status:spec/done",
-      "line": 53,
+      "line": 54,
       "uri": "spec://codkit/modules/codkit/PROP-009#CYCLE-TRAILERS"
     },
     {
@@ -8262,7 +8280,7 @@
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "6. Build order",
-      "line": 55,
+      "line": 56,
       "uri": "spec://codkit/modules/codkit/PROP-009#build-after"
     },
     {
@@ -8271,7 +8289,7 @@
       "doc_path": "modules/codkit/PROP-009",
       "file": "vibevm/vibespecs/modules/codkit/PROP-009-cycle.xml",
       "heading": "The orchestrator is built **after** apply and extract are stable - a minimal version in the MVP (pin → apply → a report of the refusals → continue), the extension later. The tests of the orchestrator itself run on a fake fork tree (PROP-013 §2, §5): the git operations are real, the heavy parts are emulated. @status:spec/done",
-      "line": 56,
+      "line": 57,
       "uri": "spec://codkit/modules/codkit/PROP-009#ORCHESTRATOR-BUILT-LAST"
     },
     {

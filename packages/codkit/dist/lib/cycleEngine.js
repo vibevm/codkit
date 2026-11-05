@@ -20,6 +20,8 @@ import { acquireLock } from './lock.js';
 import { ckError } from './messages.js';
 import { ownedRootsOf } from './ownedRoots.js';
 import { RESOURCE_MAP_PATH } from './layers/resource.js';
+import { OWN_MANIFEST_PATH } from './layers/ownManifest.js';
+import { porcelainZEntries } from './driftGuard.js';
 const GLOBAL_LOCK_ID = 'cycle-global';
 const JOURNAL_ACTOR = 'agent:codkit';
 const RESOLVE_OUTCOMES = ['conflict', 'target-deleted', 'rule-broken', 'contract-failed'];
@@ -394,7 +396,7 @@ function resolveArtifacts(options, state, record, journal) {
             ? undefined
             : record.classifications.find((candidate) => candidate.kind === 'overlay' && candidate.targetPath === pairTarget && candidate.outcome === 'conflict');
         const patchesPaths = byteSorted([
-            artifactPath,
+            ...(kind === 'contract' && artifactPath === OWN_MANIFEST_PATH ? ownContractPaths(options.patchesDir) : [artifactPath]),
             ...(kind === 'resource' ? [RESOURCE_MAP_PATH] : []),
             ...(paired === undefined ? [] : [paired.artifactPath])
         ]);
@@ -413,6 +415,22 @@ function resolveArtifacts(options, state, record, journal) {
             ...(snapshots === undefined ? {} : { patchsetSnapshots: snapshots })
         };
     }));
+}
+/** The directory of the own units in the patch set. */
+const OWN_DELTA_DIR = OWN_MANIFEST_PATH.slice(0, OWN_MANIFEST_PATH.lastIndexOf('/'));
+/**
+ * ##CYCLE-OWN-CONTRACT-FIX: what a fix of an own unit's failed contract may
+ * change - the own manifest, or any file of the own units, a guard test among
+ * them - as far as it is changed now. The resolve commit takes exactly these
+ * paths; with nothing changed the manifest alone stays the answer, so the plan
+ * still asks for a change instead of finding the fix complete.
+ */
+function ownContractPaths(patchesDir) {
+    const status = runGit({ args: ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', OWN_DELTA_DIR], cwd: patchesDir });
+    if (status.status !== 0)
+        throw ckError('ARTIFACT-BROKEN', `cannot read the changes of ${OWN_DELTA_DIR} in the patch set`);
+    const changed = porcelainZEntries(status.stdout).map((entry) => entry.path);
+    return changed.length === 0 ? [OWN_MANIFEST_PATH] : changed;
 }
 function transition(state, phase, nextAction, updatedAt) {
     return cycleStateSchema.parse({ ...state, phase, nextAction, updatedAt });

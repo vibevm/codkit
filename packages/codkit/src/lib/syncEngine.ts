@@ -448,7 +448,19 @@ export function runSync(options: SyncEngineOptions): SyncResult {
 			out.addError(head.toPayload());
 			return result('dirty', 1, { branch, dirtyFiles: drift.files });
 		}
-		if (drift.dirty) {
+		// ##FORCED-LOAD-OWN-DELIVERY: an own file present on both sides with
+		// different bytes is no refusal here. A cycle that fixed an own test of
+		// the patch set during resolve leaves exactly that - the tree still holds
+		// the copy the last load delivered - and the drift guard of step 4 tells
+		// which side moved from the mark: it delivers the patch-set side and
+		// refuses an edit made in the tree. Every other dirt still stops a forced
+		// load before it touches anything.
+		const ownBothSidesOnly =
+			drift.upstream.length === 0 &&
+			drift.commits.length === 0 &&
+			drift.own.every((divergence) => divergence.kind !== 'tree-only') &&
+			drift.extensions.every((divergence) => divergence.kind === 'patchset-only');
+		if (drift.dirty && !ownBothSidesOnly) {
 			throw ckError('DIRTY-TREE', 'forced load recovery requires a completely clean fork tree');
 		}
 	}
