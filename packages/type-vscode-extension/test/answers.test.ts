@@ -9,6 +9,7 @@ import type { PreviewRequest } from '@codkit/type-api';
 import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+	channelDirectoryOf,
 	cleanupWhitelistOf,
 	configurationKeys,
 	DEFAULT_CHANNELS,
@@ -334,6 +335,19 @@ describe('build', () => {
 			watch: { channels: [{ script: 'watch:web', passStart: ['^a$'], passEnd: ['^b$'], errorCountLine: ['^(\\d+)$'] }] }
 		};
 		expect(defaultChannelsOf(unnamed)).toEqual(['watch:web']);
+	});
+
+	it('runs the channels of a monorepo in the extension root, whose manifest carries their scripts', () => {
+		// ##VSX-BUILD-CHANNELS
+		type Profile = { channels: Record<string, { script: string; cwd?: string }> };
+		const defaults = watchProfileOf({ ...FULL, watch: undefined }) as Profile;
+		expect(defaults.channels['bundle']?.cwd).toBe('packages/acme-sample');
+		expect(defaults.channels['typecheck']?.cwd).toBe('packages/acme-sample');
+		expect((watchProfileOf(FULL) as Profile).channels['bundle']?.cwd).toBe('packages/acme-sample');
+		// A repository that is one extension runs them where they are: at the tree root.
+		expect((watchProfileOf(MINIMAL) as Profile).channels['bundle']?.cwd).toBeUndefined();
+		expect(channelDirectoryOf({ ...MINIMAL, monorepo: true })).toBeUndefined();
+		expect(channelDirectoryOf({ ...FULL, monorepo: false })).toBeUndefined();
 	});
 
 	it('refuses the two commands the default channels start as foreign watchers', () => {

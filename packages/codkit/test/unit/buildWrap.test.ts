@@ -15,6 +15,7 @@ import {
 	DAEMON_RECORD_SCHEMA_VERSION,
 	argsMatch,
 	channelByName,
+	channelDirectory,
 	daemonInvocation,
 	downChannel,
 	errorCountFrom,
@@ -219,6 +220,41 @@ describe('build-watch.json', () => {
 	it('refuses when the type has neither a shipped profile nor one of its own', () => {
 		const bare = configureProjectType(genericType, { ownRoot: 'own' });
 		expect(() => loadBuildWatch(bare)).toThrow(/declares no pass-boundary profile/);
+	});
+
+	it('runs a channel in the directory it names, and only in one of the tree', () => {
+		// ##CHANNEL-DIRECTORY: the scripts of a package below the root of a monorepo
+		// live in its own manifest, so the channel names that package.
+		const root = rootWith(
+			'build-watch-channel-cwd',
+			JSON.stringify({
+				codkitBuildWatch: 1,
+				channels: {
+					bundle: { script: 'watch:esbuild', cwd: 'packages/ext', passStart: ['^s$'], passEnd: ['^e$'], errorLine: ['^(.+)$'] }
+				}
+			})
+		);
+		declareBuildWatch(root);
+		const channel = loadBuildWatch(stubProjectType, root).channels[0];
+		expect(channel?.cwd).toBe('packages/ext');
+		expect(channelDirectory(join('tree'), { cwd: 'packages/ext' })).toBe(join('tree', 'packages', 'ext'));
+		expect(channelDirectory(join('tree'), {})).toBe(join('tree'));
+		for (const [label, cwd] of [
+			['parent', '../outside'],
+			['absolute', '/abs'],
+			['backslash', 'a\\b'],
+			['dot', 'a/./b']
+		] as const) {
+			const refused = rootWith(
+				`build-watch-channel-cwd-${label}`,
+				JSON.stringify({
+					codkitBuildWatch: 1,
+					channels: { bundle: { script: 'watch:esbuild', cwd, passStart: ['^s$'], passEnd: ['^e$'], errorLine: ['^(.+)$'] } }
+				})
+			);
+			declareBuildWatch(refused);
+			expect(() => loadBuildWatch(stubProjectType, refused), label).toThrow(/cwd/);
+		}
 	});
 
 	it('rejects a custom channel with no error detector or with an unknown field', () => {

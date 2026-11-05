@@ -22,6 +22,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { basename, delimiter, dirname, isAbsolute, join, sep, win32 } from 'node:path';
+import { treePathProblem } from '@codkit/type-api';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.js';
 import { archiveWorkspaceLog, pruneWorkspaceBuildDir } from './workspaceLogs.js';
@@ -46,6 +47,13 @@ const channelSchema = z
     .object({
     _doc: z.string().optional(),
     script: z.string().min(1),
+    cwd: z
+        .string()
+        .min(1)
+        .refine((value) => treePathProblem(value) === null, {
+        message: 'must be a path from the tree root: forward slashes, no dot segments'
+    })
+        .optional(),
     passStart: patternList.min(1),
     passEnd: patternList.min(1),
     errorLine: patternList.default([]),
@@ -125,6 +133,7 @@ export function loadBuildWatch(type, patchesDir) {
         channels.push({
             name,
             script: channel.script,
+            ...(channel.cwd === undefined ? {} : { cwd: channel.cwd }),
             passStart: compileAll(name, 'passStart', channel.passStart),
             passEnd: compileAll(name, 'passEnd', channel.passEnd),
             errorLine: compileAll(name, 'errorLine', channel.errorLine),
@@ -890,7 +899,7 @@ function upChannelLocked(ctx, channel, lock, runtime = ctx.runtime) {
             log: logPath(ctx.patchesDir, channel.name)
         };
     }
-    const missing = missingScript(ctx.treeDir, channel.script);
+    const missing = missingScript(ctx.treeDir, channel);
     if (missing !== null) {
         return { ok: false, channel: channel.name, reason: missing };
     }
@@ -971,7 +980,8 @@ function upChannelLocked(ctx, channel, lock, runtime = ctx.runtime) {
     return { ok: true, channel: channel.name, action: 'started', pid: spawned.pid, log: logPath(ctx.patchesDir, channel.name) };
 }
 /**
- * `npm run <script>` with cwd = the tree, detached, output appended to the log.
+ * `npm run <script>` with cwd = the channel's directory of the tree (the root
+ * unless the channel names one), detached, output appended to the log.
  * The node that runs the daemon is the node running codkit: its directory goes
  * first on PATH, which is the whole of what the tree's launcher needs to agree
  * with us about the runtime.
@@ -981,7 +991,7 @@ function spawnDaemon(patchesDir, treeDir, channel, lock) {
     try {
         const invocation = daemonInvocation(channel.script);
         const child = spawn(invocation.command, [...invocation.args], {
-            cwd: treeDir,
+            cwd: channelDirectory(treeDir, channel),
             detached: true,
             stdio: ['ignore', fd, fd],
             env: daemonEnv(),
@@ -1086,9 +1096,14 @@ function daemonEnv() {
     env['PATH'] = path === '' ? nodeDir : `${nodeDir}${delimiter}${path}`;
     return env;
 }
+/** Where a channel's script lives and runs: its declared directory of the tree, or the tree root (##CHANNEL-DIRECTORY). */
+export function channelDirectory(treeDir, channel) {
+    return channel.cwd === undefined ? treeDir : join(treeDir, ...channel.cwd.split('/'));
+}
 /** Diagnosis when the tree does not carry the npm script a channel names. */
-function missingScript(treeDir, script) {
-    const manifest = join(treeDir, 'package.json');
+function missingScript(treeDir, channel) {
+    const script = channel.script;
+    const manifest = join(channelDirectory(treeDir, channel), 'package.json');
     let raw;
     try {
         raw = JSON.parse(readFileSync(manifest, 'utf8'));

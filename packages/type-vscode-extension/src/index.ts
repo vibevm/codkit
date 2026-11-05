@@ -103,6 +103,7 @@ export {
 	DEFAULT_BUNDLE_SCRIPT,
 	DEFAULT_CHANNELS,
 	DEFAULT_LINT_SCRIPTS,
+	channelDirectoryOf,
 	DEFAULT_TYPECHECK_SCRIPT,
 	defaultChannelsOf,
 	defaultWatchProfile,

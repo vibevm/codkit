@@ -135,12 +135,14 @@ const TIME_STAMP = '(?:\\[\\d{1,2}:\\d{2}:\\d{2}(?: [AP]M)?\\] )?';
  * mode, with the lines the second family states for it
  * (`spec://codkit/modules/theia/PROP-004#THEIA-BUILD-CHANNELS`).
  */
-export function defaultWatchProfile() {
+export function defaultWatchProfile(cwd) {
+    const directory = cwd === undefined ? {} : { cwd };
     return {
         codkitBuildWatch: 1,
         channels: {
             bundle: {
                 script: DEFAULT_BUNDLE_SCRIPT,
+                ...directory,
                 passStart: ['^\\[watch\\] build started$'],
                 passEnd: ['^\\[watch\\] build finished$'],
                 errorLine: ['^\\u2718 \\[ERROR\\] (.+)$'],
@@ -149,6 +151,7 @@ export function defaultWatchProfile() {
             },
             typecheck: {
                 script: DEFAULT_TYPECHECK_SCRIPT,
+                ...directory,
                 passStart: [`${TIME_STAMP}(?:Starting compilation in watch mode|File change detected\\. Starting incremental compilation)`],
                 passEnd: [`${TIME_STAMP}Found \\d+ errors?\\. Watching for file changes`],
                 errorLine: [`^${TIME_STAMP}(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$`],
@@ -159,13 +162,26 @@ export function defaultWatchProfile() {
     };
 }
 /**
+ * ##VSX-BUILD-CHANNELS: where a channel's script lives and runs - the extension
+ * root of a monorepo, whose manifest carries the scripts the way every other
+ * script of this family is spelled (##VSX-RUN-SCRIPT), and the tree root of a
+ * repository that is one extension.
+ */
+export function channelDirectoryOf(config) {
+    if (config.monorepo !== true)
+        return undefined;
+    const root = config.extensionRoot;
+    return root === '' || root === '.' ? undefined : root;
+}
+/**
  * ##VSX-BUILD-CHANNELS: the declared channels replace the defaults whole; each
  * is named by its `channel` field, or by its script when it has none.
  */
 export function watchProfileOf(config) {
     const declared = config.watch?.channels;
+    const cwd = channelDirectoryOf(config);
     if (declared === undefined) {
-        return defaultWatchProfile();
+        return defaultWatchProfile(cwd);
     }
     return {
         codkitBuildWatch: 1,
@@ -173,6 +189,7 @@ export function watchProfileOf(config) {
             channelNameOf(channel),
             {
                 script: channel.script,
+                ...(cwd === undefined ? {} : { cwd }),
                 passStart: channel.passStart,
                 passEnd: channel.passEnd,
                 errorLine: channel.errorLine ?? [],

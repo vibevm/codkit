@@ -23,6 +23,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { basename, delimiter, dirname, isAbsolute, join, sep, win32 } from 'node:path';
+import { treePathProblem } from '@codkit/type-api';
 import type { ProjectType } from '@codkit/type-api';
 import { z } from 'zod';
 import { loadBaseConfig } from './configFile.ts';
@@ -80,6 +81,13 @@ export type ChannelConfig = {
 	readonly name: string;
 	/** npm script of the fork tree that starts the daemon. */
 	readonly script: string;
+	/**
+	 * The tree-relative directory whose manifest carries the script and in
+	 * which it runs; absent, the tree root. A family whose scripts belong to a
+	 * package below the root of a monorepo names that package here
+	 * (PROP-010 ##CHANNEL-DIRECTORY).
+	 */
+	readonly cwd?: string;
 	readonly passStart: readonly RegExp[];
 	readonly passEnd: readonly RegExp[];
 	readonly errorLine: readonly RegExp[];
@@ -100,6 +108,13 @@ const channelSchema = z
 	.object({
 		_doc: z.string().optional(),
 		script: z.string().min(1),
+		cwd: z
+			.string()
+			.min(1)
+			.refine((value) => treePathProblem(value) === null, {
+				message: 'must be a path from the tree root: forward slashes, no dot segments'
+			})
+			.optional(),
 		passStart: patternList.min(1),
 		passEnd: patternList.min(1),
 		errorLine: patternList.default([]),
@@ -195,6 +210,7 @@ export function loadBuildWatch(type: ProjectType, patchesDir?: string): BuildWat
 		channels.push({
 			name,
 			script: channel.script,
+			...(channel.cwd === undefined ? {} : { cwd: channel.cwd }),
 			passStart: compileAll(name, 'passStart', channel.passStart),
 			passEnd: compileAll(name, 'passEnd', channel.passEnd),
 			errorLine: compileAll(name, 'errorLine', channel.errorLine),
@@ -1186,7 +1202,7 @@ function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonCha
 		};
 	}
 
-	const missing = missingScript(ctx.treeDir, channel.script);
+	const missing = missingScript(ctx.treeDir, channel);
 	if (missing !== null) {
 		return { ok: false, channel: channel.name, reason: missing };
 	}
@@ -1277,7 +1293,8 @@ function upChannelLocked(ctx: UpContext, channel: ChannelConfig, lock: DaemonCha
 }
 
 /**
- * `npm run <script>` with cwd = the tree, detached, output appended to the log.
+ * `npm run <script>` with cwd = the channel's directory of the tree (the root
+ * unless the channel names one), detached, output appended to the log.
  * The node that runs the daemon is the node running codkit: its directory goes
  * first on PATH, which is the whole of what the tree's launcher needs to agree
  * with us about the runtime.
@@ -1287,7 +1304,7 @@ function spawnDaemon(patchesDir: string, treeDir: string, channel: ChannelConfig
 	try {
 		const invocation = daemonInvocation(channel.script);
 		const child = spawn(invocation.command, [...invocation.args], {
-			cwd: treeDir,
+			cwd: channelDirectory(treeDir, channel),
 			detached: true,
 			stdio: ['ignore', fd, fd],
 			env: daemonEnv(),
@@ -1407,9 +1424,15 @@ function daemonEnv(): Record<string, string> {
 	return env;
 }
 
+/** Where a channel's script lives and runs: its declared directory of the tree, or the tree root (##CHANNEL-DIRECTORY). */
+export function channelDirectory(treeDir: string, channel: Pick<ChannelConfig, 'cwd'>): string {
+	return channel.cwd === undefined ? treeDir : join(treeDir, ...channel.cwd.split('/'));
+}
+
 /** Diagnosis when the tree does not carry the npm script a channel names. */
-function missingScript(treeDir: string, script: string): string | null {
-	const manifest = join(treeDir, 'package.json');
+function missingScript(treeDir: string, channel: Pick<ChannelConfig, 'script' | 'cwd'>): string | null {
+	const script = channel.script;
+	const manifest = join(channelDirectory(treeDir, channel), 'package.json');
 	let raw: unknown;
 	try {
 		raw = JSON.parse(readFileSync(manifest, 'utf8'));

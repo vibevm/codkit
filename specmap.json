@@ -8276,7 +8276,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:920b4334b6892921f68d6eadae92b4600ec752ed1cc66c4df2e7cbbb7fec8f97",
+      "content_hash": "sha256:b6ee99d382f1e277d50b7d1d9e206444f79814f91461acfa1ca318439d02e6a1",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "codkit PROP-010: Build integration - code delivery, watch daemons, tests",
@@ -8312,7 +8312,7 @@
     },
     {
       "anchor": "daemons",
-      "content_hash": "sha256:70d9658845b55e9e91ef14cd3ca0d8c62a2ac9319e958bcd8326cdb954c9839a",
+      "content_hash": "sha256:1f1589333c0e7d4e5cecebbb20b2c2720a875ab063c013cd564d8a097ddd2b76",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "2. Watch-daemon wrapper",
@@ -8491,12 +8491,21 @@
       "uri": "spec://codkit/modules/codkit/PROP-010#INOTIFY-ENV-REQUIREMENT"
     },
     {
-      "anchor": "PASS-BOUNDARIES-ARE-DATA",
-      "content_hash": "sha256:0d7006b27d240e4fd0bf9708bcc2ebf85eaa542b24d1b3d21dd69a9cbad6e925",
+      "anchor": "CHANNEL-DIRECTORY",
+      "content_hash": "sha256:be999ba8c2b3335107233d0d68a5654b1c921e540e73823305b8193275c326b8",
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
-      "heading": "The pass-boundary detector is strict versioned data. The default is the project type's: a type that ships a profile answers a path inside its own package, and a type whose channels come from `typeConfig` answers the same document as data (PROP-016 `TYPE-CONFIGURED`); a type that answers neither has no channels, and `build` over it refuses. The patch set selected by the user may supply a complete fork-specific profile only through an explicit contained `codkit.json.buildWatchFile`, which wins over either answer. An implicit file at the same path does not shadow the shipped default. Channels declare `passStart`, `passEnd`, `errorLine`, `errorCountLine`, `falseEndGuards`; unknown fields are forbidden, and a channel without `errorLine` and `errorCountLine` is invalid. The counting detector `errorCountLine` is validated on load: every pattern must contain a capturing group for the number (group 1 is the only one the counter reads), otherwise `CK-E-CONFIG` before any log is read; and during the read: a pattern that MATCHED a count line but yielded no numeric group 1 (no group, or a group that captured non-digits) is also `CK-E-CONFIG` and not \"no summary\" (REPAIR-006: a silent `stated:null` with zero parsed diagnostics produced a false green). A custom profile must have stored green/red log fixtures; the cycle re-checks the expressions on the new pin. @status:spec/done",
+      "heading": "A channel may name `cwd`, a path from the tree root - forward slashes, no empty, dot or dot-dot segment, otherwise the profile is refused - of the package whose manifest carries its script. `up` reads the script from that manifest and starts `npm run <script>` in that directory; absent, both are the tree root. A family whose scripts belong to a package below the root of a monorepo names that package, because `npm run` at the tree root finds only the root manifest's scripts: the first monorepo consumer of the extension type stopped its upgrade cycle on a compile step that refused `watch:esbuild` as missing from the root manifest while the extension's own manifest carried it. The record, the identification of a living daemon by its `npm run <script>` argv and the termination of its process group are unchanged. @status:impl/done",
       "line": 48,
+      "uri": "spec://codkit/modules/codkit/PROP-010#CHANNEL-DIRECTORY"
+    },
+    {
+      "anchor": "PASS-BOUNDARIES-ARE-DATA",
+      "content_hash": "sha256:a5d40c1f49bdd06eac2eace3654b7dec8250e4128e735319086fab3030467960",
+      "doc_path": "modules/codkit/PROP-010",
+      "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
+      "heading": "The pass-boundary detector is strict versioned data. The default is the project type's: a type that ships a profile answers a path inside its own package, and a type whose channels come from `typeConfig` answers the same document as data (PROP-016 `TYPE-CONFIGURED`); a type that answers neither has no channels, and `build` over it refuses. The patch set selected by the user may supply a complete fork-specific profile only through an explicit contained `codkit.json.buildWatchFile`, which wins over either answer. An implicit file at the same path does not shadow the shipped default. Channels declare `passStart`, `passEnd`, `errorLine`, `errorCountLine`, `falseEndGuards`, and optionally `cwd` (`#CHANNEL-DIRECTORY`); unknown fields are forbidden, and a channel without `errorLine` and `errorCountLine` is invalid. The counting detector `errorCountLine` is validated on load: every pattern must contain a capturing group for the number (group 1 is the only one the counter reads), otherwise `CK-E-CONFIG` before any log is read; and during the read: a pattern that MATCHED a count line but yielded no numeric group 1 (no group, or a group that captured non-digits) is also `CK-E-CONFIG` and not \"no summary\" (REPAIR-006: a silent `stated:null` with zero parsed diagnostics produced a false green). A custom profile must have stored green/red log fixtures; the cycle re-checks the expressions on the new pin. @status:spec/done",
+      "line": 49,
       "uri": "spec://codkit/modules/codkit/PROP-010#PASS-BOUNDARIES-ARE-DATA"
     },
     {
@@ -8505,7 +8514,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "In a finished pass a count-only channel (`errorCountLine` non-empty, `errorLine` empty) MUST have a matched summary line: a mismatch or a drift of wording is `CK-E-CONFIG`, not an effective zero. A fallback to the number of parsed diagnostics is allowed only when a real `errorLine` detector exists. @status:impl/done",
-      "line": 49,
+      "line": 50,
       "uri": "spec://codkit/modules/codkit/PROP-010#COUNT-EVIDENCE"
     },
     {
@@ -8514,7 +8523,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-004#FALSE-END-GUARDS; the address stays for citations. @status:spec/done",
-      "line": 58,
+      "line": 59,
       "uri": "spec://codkit/modules/codkit/PROP-010#FALSE-END-GUARDS"
     },
     {
@@ -8523,7 +8532,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "The logs contain ANSI unconditionally (the colour package writes without a TTY check), so the wrapper strips ANSI with a regular expression before matching. The upstream `.build/log*` is useless in watch mode; the only source is the daemon's stdout+stderr (our log files). @status:spec/done",
-      "line": 59,
+      "line": 60,
       "uri": "spec://codkit/modules/codkit/PROP-010#ANSI-STRIPPING"
     },
     {
@@ -8532,7 +8541,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "**`build errors`**: finds the last `passStart` line in the log; if no `passEnd` follows it, waits for `passEnd` to appear (polling the file, a 500 ms interval, the `--timeout` timeout, default 600 s - exit 2 on timeout); then prints every line between the pair in full plus the parsed errors; `--mine` filters by the paths of the own directory and by the inventory files. The first pass after `up` is given the same wait (usually half a minute to a minute; the command waits by itself, so no separate sleep is needed). @status:spec/done",
-      "line": 60,
+      "line": 61,
       "uri": "spec://codkit/modules/codkit/PROP-010#BUILD-ERRORS-ALGORITHM"
     },
     {
@@ -8541,7 +8550,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "3. Overlay for product.json - the order against hygiene",
-      "line": 63,
+      "line": 64,
       "uri": "spec://codkit/modules/codkit/PROP-010#product-overlay"
     },
     {
@@ -8550,7 +8559,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-003#PRODUCT-OVERLAY-FACTS; the address stays for citations. @status:spec/done",
-      "line": 64,
+      "line": 65,
       "uri": "spec://codkit/modules/codkit/PROP-010#PRODUCT-OVERLAY-FACTS"
     },
     {
@@ -8559,7 +8568,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "4. Product tests",
-      "line": 66,
+      "line": 67,
       "uri": "spec://codkit/modules/codkit/PROP-010#tests"
     },
     {
@@ -8568,7 +8577,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Tombstone (PROP-016 split, 2026-09-09): moved to spec://codkit/modules/vscode/PROP-004#TESTS-LAYER-SPLIT; the address stays for citations. @status:spec/done",
-      "line": 67,
+      "line": 68,
       "uri": "spec://codkit/modules/codkit/PROP-010#TESTS-LAYER-SPLIT"
     },
     {
@@ -8577,7 +8586,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "**Our own fast runner**: the codkit tests are vitest in patchset (PROP-013). **Product tests** (contract/guard) are `*.test.ts` files in the own directory under `src/vs/patchset/test/**`, executed by the upstream runners from `out/vs/patchset/test/**` automatically (the unit runners collect `**/test/**/*.test.js` from `out/`). A targeted run: `--run src/vs/patchset/test/...` (the runner maps src→out itself). @status:spec/done",
-      "line": 69,
+      "line": 70,
       "uri": "spec://codkit/modules/codkit/PROP-010#TESTS-TWO-RUNNERS"
     },
     {
@@ -8586,7 +8595,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Contract tests are mandatory for interventions outside the zone of the markers and of the compiler: resource, overlay, a changed default, hide, a service seam. The test id comes from the `contractTests` of the artifact; verify confirms that it is declared in the own tests. A declaration is a direct call of `suite`, `test`, `describe` or `it` with the id as its first argument: both interfaces of the same runner are accepted, because which of them a family writes its tests in is the family's habit and not the tool's (the BDD names were added on 2026-09-09 with the `theia` type, whose upstream writes `describe`). The file of such a test is found under a `test/` directory of the own layer by either suffix the two families use, `*.test.*` or `*.spec.*`, and for the same reason. @status:spec/done",
-      "line": 70,
+      "line": 71,
       "uri": "spec://codkit/modules/codkit/PROP-010#CONTRACT-TESTS-MANDATE"
     },
     {
@@ -8595,7 +8604,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "The upstream tests are run without edits. Any filter requires a separate proof on a clean pin and an addressable decision; a green narrow runner does not replace the full baseline of the selected upstream/Electron runner. @status:spec/done",
-      "line": 71,
+      "line": 72,
       "uri": "spec://codkit/modules/codkit/PROP-010#UPSTREAM-TESTS-POLICY"
     },
     {
@@ -8604,7 +8613,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "5. What changes in the package.json of the tree",
-      "line": 74,
+      "line": 75,
       "uri": "spec://codkit/modules/codkit/PROP-010#package-json"
     },
     {
@@ -8613,7 +8622,7 @@
       "doc_path": "modules/codkit/PROP-010",
       "file": "vibevm/vibespecs/modules/codkit/PROP-010-build-integration.xml",
       "heading": "Only the **addition** of npm scripts when needed (the overlay target `package.json`, PROP-005 §5); the MVP adds nothing (the wrapper calls the existing scripts). Any future addition is an overlay artifact with an inventory entry. @status:spec/done",
-      "line": 75,
+      "line": 76,
       "uri": "spec://codkit/modules/codkit/PROP-010#TREE-PACKAGE-JSON-RULE"
     },
     {
@@ -13559,7 +13568,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:931f75f3acccf08ed82a6c6a22fa94e3be698c36b15296d8bd8be5c5654ef6d1",
+      "content_hash": "sha256:b03db097dab6f6eccd1f65f3c371bc1acb3e91c272686848dfe35c7f2791c8d3",
       "doc_path": "modules/vscode-extension/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode-extension/PROP-004-build-and-preview.xml",
       "heading": "vscode-extension PROP-004: Build, watch, lint, test, packaging and the preview",
@@ -13622,7 +13631,7 @@
     },
     {
       "anchor": "gates",
-      "content_hash": "sha256:ebcdc0e78b2b836ed8bdba3256679114c74f8edbcd728029380a043a158011ee",
+      "content_hash": "sha256:22d639d6b97df20e84b7575f174751ac6ce9b222edda326120364c7ed7db55de",
       "doc_path": "modules/vscode-extension/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode-extension/PROP-004-build-and-preview.xml",
       "heading": "2. Lint, tests and watch channels",
@@ -13649,10 +13658,10 @@
     },
     {
       "anchor": "VSX-BUILD-CHANNELS",
-      "content_hash": "sha256:f98bc35271a445ef8bd98b005e23000fcfcc9b6f633978e05c46b1c60e989cc1",
+      "content_hash": "sha256:6268debe8b83d7122f84aab1d8b85c774d14703755f8ed1229e80e663bfedc84",
       "doc_path": "modules/vscode-extension/PROP-004",
       "file": "vibevm/vibespecs/modules/vscode-extension/PROP-004-build-and-preview.xml",
-      "heading": "The watch channels of the family are two, `bundle` and `typecheck`, both npm scripts of the extension manifest run through `VSX-RUN-SCRIPT`: `bundle` runs the bundler in watch mode (default script `watch:esbuild`; pass start `[watch] build started`, pass end `[watch] build finished`, the esbuild lines) and `typecheck` runs the compiler in watch mode (default script `watch:tsc`; the TypeScript watch lines, as the second family states them in `spec://codkit/modules/theia/PROP-004#THEIA-BUILD-CHANNELS`). A product whose scripts or bundler differ declares its channels in `typeConfig.watch.channels` with their pass boundaries, which replace the defaults whole; the boundaries are data the engine validates with the profile schema (`spec://codkit/modules/codkit/PROP-010#PASS-BOUNDARIES-ARE-DATA`). Both channels are the default of a run that names none. @status:impl/done",
+      "heading": "The watch channels of the family are two, `bundle` and `typecheck`, both npm scripts of the extension manifest run through `VSX-RUN-SCRIPT` - with `typeConfig.monorepo` each channel, declared or default, names the extension root as its directory (`spec://codkit/modules/codkit/PROP-010#CHANNEL-DIRECTORY`), since that manifest, and not the tree root's, carries them: `bundle` runs the bundler in watch mode (default script `watch:esbuild`; pass start `[watch] build started`, pass end `[watch] build finished`, the esbuild lines) and `typecheck` runs the compiler in watch mode (default script `watch:tsc`; the TypeScript watch lines, as the second family states them in `spec://codkit/modules/theia/PROP-004#THEIA-BUILD-CHANNELS`). A product whose scripts or bundler differ declares its channels in `typeConfig.watch.channels` with their pass boundaries, which replace the defaults whole; the boundaries are data the engine validates with the profile schema (`spec://codkit/modules/codkit/PROP-010#PASS-BOUNDARIES-ARE-DATA`). Both channels are the default of a run that names none. @status:impl/done",
       "line": 15,
       "uri": "spec://codkit/modules/vscode-extension/PROP-004#VSX-BUILD-CHANNELS"
     },
