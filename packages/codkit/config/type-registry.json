@@ -487,7 +487,7 @@
         },
         {
           "path": "dist/brandTemplates.js",
-          "sha256": "c3e5ae6e4d5c4fa93d3dafb5ea28ffc0f2a89e85ace44abad8b43af4ab7013a8"
+          "sha256": "bd3e7be9d03bd1313f4c7fc8e5a1567435036c8467fbf10422f343f63772d420"
         },
         {
           "path": "dist/build.js",
@@ -551,7 +551,7 @@
         },
         {
           "path": "src/brandTemplates.ts",
-          "sha256": "670280a62e1b024a7c7f3f9aff9f1d1328e8e6157b7f83def39fb3e945bcdfb4"
+          "sha256": "4992d184810e26ecafebefc00a256d227a152b60a0ef0742b385e928b78e2e3d"
         },
         {
           "path": "src/build.ts",

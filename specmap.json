@@ -13802,7 +13802,7 @@
     },
     {
       "anchor": "root",
-      "content_hash": "sha256:28843e5acfc28c203653d90f937e8f7a00e625a30e2e5a3f253f976bc5f403cc",
+      "content_hash": "sha256:e20977612bc12d44c4acfc9421ac8767dd5d0ac5c99549b024d9165c64b0d856",
       "doc_path": "modules/vscode-extension/PROP-005",
       "file": "vibevm/vibespecs/modules/vscode-extension/PROP-005-advisory-conventions-generators.xml",
       "heading": "vscode-extension PROP-005: Upgrade advisory, conventions and generators - the feature skeleton, the brand table, the leftover guard",
@@ -13856,7 +13856,7 @@
     },
     {
       "anchor": "generators",
-      "content_hash": "sha256:634d80aa9061e901eb9da97375d2f81f2c4a6f3a09f1f85ec84d77bd376ae3d7",
+      "content_hash": "sha256:a380b35cd5af56c9f55164c7ca25a1bb6dad3ab844ef01ec2915c7963edb3a2e",
       "doc_path": "modules/vscode-extension/PROP-005",
       "file": "vibevm/vibespecs/modules/vscode-extension/PROP-005-advisory-conventions-generators.xml",
       "heading": "3. Generators",
@@ -13901,10 +13901,10 @@
     },
     {
       "anchor": "VSX-BRAND-LEFTOVER-GUARD",
-      "content_hash": "sha256:ef257b4e65481ddf731206e51f6a25519ccfb52c0f8c3340a65cf9360006c242",
+      "content_hash": "sha256:ac455c9ef29e958471c3f7f91f33dcb9c784860ad7cb91f755e7998f6aced558",
       "doc_path": "modules/vscode-extension/PROP-005",
       "file": "vibevm/vibespecs/modules/vscode-extension/PROP-005-advisory-conventions-generators.xml",
-      "heading": "The leftover guard is a contract test the generator writes: over the built bundle (`<extensionRoot>/dist/**`), the materialized manifest and the locale manifests (`package.nls*.json`), the README and the CHANGELOG of the extension root by content, and the names of the files under `<extensionRoot>/assets/**`, it searches for every `find` term of the table as the whole word or token the transform matches - in a script only inside the contents of its string and template literals, found by a scanner of its own, because an identifier that embeds a term is code and a comment is not shown, and the product lists under `ALLOWED_TEXT` the readable lines that may keep a term, each with its reason (an address it has no replacement for yet, a name a component's licence requires) - and fails naming the file, the term and the line on the first occurrence outside an allow-list that holds exactly the licence files and the third-party notices (`LICENSE*`, `THIRD_PARTY*`, `NOTICE*`, the licences a bundler copies into `dist/licenses/**`, and what the product adds); it passes when every occurrence is inside the allow-list. The `.vsix` is not read as a zip: the archive carries the same files, and reading one would need an archive reader the product may not have (decision of 2026-11-01). It is written in the words of the declared own-test runner - mocha's TDD interface for `vscode-test`, its BDD one for mocha, the Jest shape for bun, vitest, jest and a patch set that declared none. It is the executable form of the rule that nothing leaves un-renamed quietly, and its identifier is declared in the `contractTests` of the brand unit, which is what makes the rebrand set inventoried and gated like any other intervention (`spec://codkit/modules/codkit/PROP-010#CONTRACT-TESTS-MANDATE`). @status:impl/done",
+      "heading": "The leftover guard is a contract test the generator writes: over the built bundle (`<extensionRoot>/dist/**`), the materialized manifest and the locale manifests (`package.nls*.json`), the README and the CHANGELOG of the extension root by content, and the names of the files under `<extensionRoot>/assets/**`, it searches for every `find` term of the table as the whole word or token the transform matches - in a script only inside the contents of its string and template literals, found by a scanner of its own, because an identifier that embeds a term is code and a comment is not shown, and the product lists under `ALLOWED_TEXT` the readable lines that may keep a term, each with its reason (an address it has no replacement for yet, a name a component's licence requires) - and fails naming the file, the term and the line on the first occurrence outside an allow-list that holds exactly the licence files and the third-party notices (`LICENSE*`, `THIRD_PARTY*`, `NOTICE*`, the licences a bundler copies into `dist/licenses/**`, and what the product adds); it passes when every occurrence is inside the allow-list. The `.vsix` is not read as a zip: the archive carries the same files, and reading one would need an archive reader the product may not have (decision of 2026-11-01). It is written in the words of the declared own-test runner - mocha's TDD interface for `vscode-test`, its BDD one for mocha, the Jest shape for bun, vitest, jest and a patch set that declared none. It is the executable form of the rule that nothing leaves un-renamed quietly, and its identifier is declared in the `contractTests` of the brand unit, which is what makes the rebrand set inventoried and gated like any other intervention (`spec://codkit/modules/codkit/PROP-010#CONTRACT-TESTS-MANDATE`). A line that holds none of the terms' longest words is skipped before the whole-word patterns run, and the guard is given ten minutes: a development bundle is tens of megabytes, and testing every term on each of its millions of lines took minutes on the first consumer's machine. @status:impl/done",
       "line": 17,
       "uri": "spec://codkit/modules/vscode-extension/PROP-005#VSX-BRAND-LEFTOVER-GUARD"
     },

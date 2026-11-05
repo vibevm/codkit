@@ -206,6 +206,19 @@ describe('the brand graft', () => {
 		expect(guard.text).toContain('function readableTextOfScript(text: string): string {');
 		expect(guard.text).toContain('const ALLOWED_TEXT: readonly string[] = [];');
 		expect(brandGraftOf(MINIMAL, MINIMAL.ownRoot).guard?.text).toContain('const EXTENSION_ROOT = ".";');
+		// A line without the longest word of any term is skipped before the
+		// whole-word patterns run, and a development bundle gets ten minutes.
+		expect(guard.text).toContain('const ANCHORS = [...new Set(TERMS.map(({ term }) => anchorOf(term)))];');
+		expect(guard.text).toContain('if (!ANCHORS.some((anchor) => line.includes(anchor))) {');
+		expect(guard.text).toContain('const GUARD_TIMEOUT_MS = 600000;');
+		const anchorOf = new Function(
+			'term',
+			"const words = term.split(/[^\\p{L}\\p{N}_]+/u).filter((word) => word !== ''); return words.reduce((longest, word) => (word.length > longest.length ? word : longest), words[0] ?? term);"
+		) as (term: string) => string;
+		expect(guard.text).toContain("const words = term.split(/[^\\p{L}\\p{N}_]+/u).filter((word) => word !== '');");
+		expect(anchorOf('Acme Studio')).toBe('Studio');
+		expect(anchorOf('для Acme')).toBe('Acme');
+		expect(anchorOf('AcmeCode')).toBe('AcmeCode');
 	});
 
 	it('writes the guard and the feature test in the words of the declared runner', () => {
