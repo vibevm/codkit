@@ -26,7 +26,7 @@ import { inheritWorkspaceConfig } from './workspaceConfig.ts';
 
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
 import {
@@ -73,7 +73,7 @@ import { treeHeadError } from './treeCommits.ts';
 import { checkTree, formatCheckLine } from './treeIdentity.ts';
 import { runVerify } from './verifyEngine.ts';
 import { assertGeneratedRefExclusive } from './worktrees.ts';
-import type { BuildCommand, ProjectType } from '@codkit/type-api';
+import type { BuildArea, BuildCommand, DependencyProof, DependencyReceipt, ProjectType } from '@codkit/type-api';
 import { materializerOf } from './layers/ownExtensions.ts';
 
 export type CiProfile = 'verify' | 'build';
@@ -91,7 +91,7 @@ export const INVENTORY_DIFF_PATH = '.codkit/out/inventory-diff.md';
 export const DEPS_HASH_PATH = '.codkit/build/deps-hash.json';
 export const DEPS_HASH_SCHEMA_VERSION = 1;
 
-/** Files whose content decides whether the tree's dependencies are current. */
+/** The files of npm's proof whose content decides whether the tree's dependencies are current. */
 export const DEPS_MANIFESTS: readonly string[] = ['package-lock.json', '.nvmrc'];
 
 /**
@@ -101,13 +101,47 @@ export const DEPS_MANIFESTS: readonly string[] = ['package-lock.json', '.nvmrc']
  * stale deps-hash record must never turn that empty directory green.
  *
  * Which roots a supply kit has to restore is the project type's answer
- * (PROP-016 ##TYPE-AREA-BUILD): one family installs twice, another once.
+ * (PROP-016 ##TYPE-AREA-BUILD): one family installs twice, another once. What
+ * proves them restored is the type's answer too (##TYPE-DEPENDENCY-PROOF); this
+ * receipt is the proof of a type that names none.
  */
 export const DEPS_RECEIPT_FILE = '.package-lock.json';
 
-/** The receipts a build or publish run of this type demands, in the type's order. */
+/** npm's receipts for these roots, in the type's order: the default proof. */
 export function depsReceiptsOf(dependencyRoots: readonly string[]): readonly string[] {
 	return dependencyRoots.map((root) => `${root}/${DEPS_RECEIPT_FILE}`);
+}
+
+/** Entries that prove no install: the shims and the caches a tool leaves in an emptied directory. */
+const NOT_INSTALLED_ENTRIES: ReadonlySet<string> = new Set(['.bin', '.cache']);
+
+/**
+ * The dependency proof of a type (PROP-016 ##TYPE-DEPENDENCY-PROOF): the one it
+ * declares, or npm's - the receipt in every dependency root, keyed by the lock
+ * and `.nvmrc`.
+ */
+export function depsProofOf(build: Pick<BuildArea, 'dependencyRoots' | 'dependencyProof'>): DependencyProof {
+	return (
+		build.dependencyProof ?? {
+			receipts: depsReceiptsOf(build.dependencyRoots).map((path): DependencyReceipt => ({ kind: 'file', path })),
+			manifests: DEPS_MANIFESTS
+		}
+	);
+}
+
+/** How a report names a receipt the tree lacks: the file, or the directory and what it has to hold. */
+export function depsReceiptLabel(receipt: DependencyReceipt): string {
+	return receipt.kind === 'file' ? receipt.path : `${receipt.path} (installed packages)`;
+}
+
+function receiptPresent(treeDir: string, receipt: DependencyReceipt): boolean {
+	const absolute = join(treeDir, ...receipt.path.split('/'));
+	if (receipt.kind === 'file') return existsSync(absolute);
+	try {
+		return statSync(absolute).isDirectory() && readdirSync(absolute).some((name) => !NOT_INSTALLED_ENTRIES.has(name));
+	} catch {
+		return false;
+	}
 }
 
 /** How many dirty paths the disposable-tree guard lists before summarizing. */
@@ -380,7 +414,8 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 	if (profile === 'build') {
 		// 5. Dependencies of the tree. `ci` never installs them: the air gap makes
 		// that a step of the job outside the container (PROP-011 sec. 7).
-		const deps = checkDeps(patchesDir, tree, options.type.build.dependencyRoots);
+		const proof = depsProofOf(options.type.build);
+		const deps = checkDeps(patchesDir, tree, proof);
 		if (deps.kind === 'missing') {
 			// The report names the receipt that is not there rather than
 			// `node_modules`: a family with two dependency roots leaves a tree with
@@ -399,7 +434,7 @@ export async function runCi(options: CiOptions): Promise<CiResult> {
 		}
 		if (deps.kind === 'changed') {
 			out.warn('lock changed; refresh node_modules out of band');
-			steps.record('dependencies', 'warned', `${DEPS_MANIFESTS.join(' + ')} moved since the last run over this tree`);
+			steps.record('dependencies', 'warned', `${proof.manifests.join(' + ')} moved since the last run over this tree`);
 		} else {
 			steps.record('dependencies', 'ok', deps.kind === 'fresh' ? 'lock unchanged; node_modules kept' : 'lock state recorded');
 		}
@@ -902,7 +937,7 @@ function gitOutput(treeDir: string, args: readonly string[]): string | null {
 // ---------------------------------------------------------------------------
 
 export type DepsVerdictKind =
-	/** No node_modules at all: the supply kit did not reach the container. */
+	/** A receipt of the proof is absent: the supply kit did not reach the container. */
 	| 'missing'
 	/** Nothing was recorded for this tree before; the lock state is now on file. */
 	| 'recorded'
@@ -938,12 +973,12 @@ export const depsRecordSchema = z.object({
  * reports. It never installs anything - in `--ci` that would need the network,
  * and the supply kit exists precisely so it does not have to.
  */
-export function checkDeps(patchesDir: string, treeDir: string, dependencyRoots: readonly string[]): DepsVerdict {
-	const missing = depsReceiptsOf(dependencyRoots).filter((relative) => !existsSync(join(treeDir, ...relative.split('/'))));
+export function checkDeps(patchesDir: string, treeDir: string, proof: DependencyProof): DepsVerdict {
+	const missing = proof.receipts.filter((receipt) => !receiptPresent(treeDir, receipt)).map(depsReceiptLabel);
 	if (missing.length > 0) {
 		return { kind: 'missing', hash: '', missing };
 	}
-	const hash = depsHash(treeDir);
+	const hash = depsHash(treeDir, proof.manifests);
 	const id = treeId(treeDir);
 	const record = readDepsRecord(patchesDir, id);
 	if (record === null) {
@@ -961,9 +996,9 @@ export function checkDeps(patchesDir: string, treeDir: string, dependencyRoots: 
 }
 
 /** sha256 over the manifests that decide whether dependencies are current. */
-export function depsHash(treeDir: string): string {
+export function depsHash(treeDir: string, manifests: readonly string[] = DEPS_MANIFESTS): string {
 	const hash = createHash('sha256');
-	for (const relative of DEPS_MANIFESTS) {
+	for (const relative of manifests) {
 		let digest = 'absent';
 		try {
 			digest = createHash('sha256')

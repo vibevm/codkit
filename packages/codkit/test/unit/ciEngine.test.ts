@@ -10,7 +10,16 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CI_GITCONFIG_PATH, DEPS_HASH_PATH, checkDeps, depsHash, depsReceiptsOf, writeCiGitConfig } from '../../src/lib/ciEngine.ts';
+import type { DependencyProof } from '@codkit/type-api';
+import {
+	CI_GITCONFIG_PATH,
+	DEPS_HASH_PATH,
+	checkDeps,
+	depsHash,
+	depsProofOf,
+	depsReceiptsOf,
+	writeCiGitConfig
+} from '../../src/lib/ciEngine.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
 
 afterAll(cleanupTempRoots);
@@ -18,6 +27,8 @@ afterAll(cleanupTempRoots);
 /** A family with two dependency roots: enough to tell "one of them" from "none". */
 const ROOTS: readonly string[] = ['node_modules', 'build/node_modules'];
 const RECEIPTS = depsReceiptsOf(ROOTS);
+/** The proof of a type that declares none: npm's receipt in each root, keyed by the lock and .nvmrc. */
+const PROOF = depsProofOf({ dependencyRoots: ROOTS });
 
 describe('the dependency fast path', () => {
 	it('refuses a tree without node_modules, whatever the manifests say', () => {
@@ -25,7 +36,7 @@ describe('the dependency fast path', () => {
 		const tree = makeTempRoot('deps-tree');
 		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
 
-		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('missing');
+		expect(checkDeps(patchesDir, tree, PROOF).kind).toBe('missing');
 		// Nothing was recorded: there is nothing to remember about a tree whose
 		// dependencies never arrived.
 		expect(existsSync(join(patchesDir, ...DEPS_HASH_PATH.split('/')))).toBe(false);
@@ -40,7 +51,7 @@ describe('the dependency fast path', () => {
 
 		// The tree has node_modules; only the second install root never arrived,
 		// and that is what the report has to say.
-		expect(checkDeps(patchesDir, tree, ROOTS)).toEqual({ kind: 'missing', hash: '', missing: [RECEIPTS[1]] });
+		expect(checkDeps(patchesDir, tree, PROOF)).toEqual({ kind: 'missing', hash: '', missing: [RECEIPTS[1]] });
 	});
 
 	it('asks a type with one dependency root for one receipt only', () => {
@@ -49,7 +60,7 @@ describe('the dependency fast path', () => {
 		mkdirSync(join(tree, 'node_modules'), { recursive: true });
 		writeFileSync(join(tree, 'node_modules', '.package-lock.json'), '{"lockfileVersion":3}\n', 'utf8');
 
-		expect(checkDeps(patchesDir, tree, ['node_modules']).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, tree, depsProofOf({ dependencyRoots: ['node_modules'] })).kind).toBe('recorded');
 	});
 
 	it('records the lock state once, then keeps answering "unchanged"', () => {
@@ -59,9 +70,9 @@ describe('the dependency fast path', () => {
 		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
 		writeFileSync(join(tree, '.nvmrc'), '24.18.0\n', 'utf8');
 
-		const first = checkDeps(patchesDir, tree, ROOTS);
+		const first = checkDeps(patchesDir, tree, PROOF);
 		expect(first.kind).toBe('recorded');
-		expect(checkDeps(patchesDir, tree, ROOTS)).toEqual({ kind: 'fresh', hash: first.hash, missing: [] });
+		expect(checkDeps(patchesDir, tree, PROOF)).toEqual({ kind: 'fresh', hash: first.hash, missing: [] });
 
 		const record = JSON.parse(readFileSync(join(patchesDir, ...DEPS_HASH_PATH.split('/')), 'utf8')) as {
 			codkitDepsHash: number;
@@ -80,19 +91,19 @@ describe('the dependency fast path', () => {
 		const lock = join(tree, 'package-lock.json');
 		writeFileSync(lock, '{"lockfileVersion": 3}\n', 'utf8');
 
-		const before = checkDeps(patchesDir, tree, ROOTS).hash;
-		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('fresh');
+		const before = checkDeps(patchesDir, tree, PROOF).hash;
+		expect(checkDeps(patchesDir, tree, PROOF).kind).toBe('fresh');
 
 		writeFileSync(lock, '{"lockfileVersion": 3, "packages": {"": {"name": "x"}}}\n', 'utf8');
 		expect(depsHash(tree)).not.toBe(before);
-		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('changed');
+		expect(checkDeps(patchesDir, tree, PROOF).kind).toBe('changed');
 		// The record moved with it, so the warning is raised once per change.
-		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('fresh');
+		expect(checkDeps(patchesDir, tree, PROOF).kind).toBe('fresh');
 
 		// The node version is part of the same verdict: a toolchain change is a
 		// dependency change (PROP-011 sec. 3, the cache key).
 		writeFileSync(join(tree, '.nvmrc'), '26.0.0\n', 'utf8');
-		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('changed');
+		expect(checkDeps(patchesDir, tree, PROOF).kind).toBe('changed');
 	});
 
 	it('keeps the verdicts of two trees apart', () => {
@@ -104,11 +115,11 @@ describe('the dependency fast path', () => {
 			writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
 		}
 
-		expect(checkDeps(patchesDir, one, ROOTS).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, one, PROOF).kind).toBe('recorded');
 		// The record names one tree; the other one has never been seen, whatever
 		// its manifests hash to.
-		expect(checkDeps(patchesDir, two, ROOTS).kind).toBe('recorded');
-		expect(checkDeps(patchesDir, one, ROOTS).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, two, PROOF).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, one, PROOF).kind).toBe('recorded');
 	});
 
 	it('rejects empty mountpoints even when the cached lock hash is fresh', () => {
@@ -116,12 +127,63 @@ describe('the dependency fast path', () => {
 		const tree = makeTempRoot('deps-tree-empty-mount');
 		provideDependencies(tree);
 		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
-		expect(checkDeps(patchesDir, tree, ROOTS).kind).toBe('recorded');
+		expect(checkDeps(patchesDir, tree, PROOF).kind).toBe('recorded');
 
 		for (const relative of RECEIPTS) {
 			unlinkSync(join(tree, ...relative.split('/')));
 		}
-		expect(checkDeps(patchesDir, tree, ROOTS)).toEqual({ kind: 'missing', hash: '', missing: RECEIPTS });
+		expect(checkDeps(patchesDir, tree, PROOF)).toEqual({ kind: 'missing', hash: '', missing: RECEIPTS });
+	});
+
+	it('proves a root of a manager that writes no receipt by an installed entry, not by shims or caches', () => {
+		// ##TYPE-DEPENDENCY-PROOF: bun leaves no receipt file, so a type of a bun
+		// tree names the directory that has to hold what was installed.
+		const proof: DependencyProof = { receipts: [{ kind: 'populated', path: 'node_modules' }], manifests: ['bun.lock', '.nvmrc'] };
+		const patchesDir = makeTempRoot('deps-patchset-populated');
+		const tree = makeTempRoot('deps-tree-populated');
+		const missing = { kind: 'missing', hash: '', missing: ['node_modules (installed packages)'] };
+
+		expect(checkDeps(patchesDir, tree, proof)).toEqual(missing);
+		// An empty mountpoint, and one that holds only what a tool leaves behind, are no install.
+		mkdirSync(join(tree, 'node_modules', '.bin'), { recursive: true });
+		mkdirSync(join(tree, 'node_modules', '.cache'), { recursive: true });
+		expect(checkDeps(patchesDir, tree, proof)).toEqual(missing);
+		expect(existsSync(join(patchesDir, ...DEPS_HASH_PATH.split('/')))).toBe(false);
+
+		mkdirSync(join(tree, 'node_modules', '.bun'), { recursive: true });
+		expect(checkDeps(patchesDir, tree, proof).kind).toBe('recorded');
+		// A file where the directory should be proves nothing either.
+		const flat = makeTempRoot('deps-tree-populated-file');
+		writeFileSync(join(flat, 'node_modules'), 'not a directory\n', 'utf8');
+		expect(checkDeps(patchesDir, flat, proof)).toEqual(missing);
+	});
+
+	it('keys the record by the manifests the proof names, and by no other file', () => {
+		// ##TYPE-DEPENDENCY-PROOF
+		const proof: DependencyProof = { receipts: [{ kind: 'populated', path: 'node_modules' }], manifests: ['bun.lock', '.nvmrc'] };
+		const patchesDir = makeTempRoot('deps-patchset-manifests');
+		const tree = makeTempRoot('deps-tree-manifests');
+		mkdirSync(join(tree, 'node_modules', 'left-pad'), { recursive: true });
+		writeFileSync(join(tree, 'bun.lock'), '{"lockfileVersion": 1}\n', 'utf8');
+		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3}\n', 'utf8');
+
+		expect(checkDeps(patchesDir, tree, proof).kind).toBe('recorded');
+		expect(depsHash(tree, proof.manifests)).not.toBe(depsHash(tree));
+		// npm's lock is not this tree's lock: moving it changes nothing.
+		writeFileSync(join(tree, 'package-lock.json'), '{"lockfileVersion": 3, "packages": {}}\n', 'utf8');
+		expect(checkDeps(patchesDir, tree, proof).kind).toBe('fresh');
+		writeFileSync(join(tree, 'bun.lock'), '{"lockfileVersion": 1, "workspaces": {}}\n', 'utf8');
+		expect(checkDeps(patchesDir, tree, proof).kind).toBe('changed');
+		expect(checkDeps(patchesDir, tree, proof).kind).toBe('fresh');
+	});
+
+	it('uses npm receipts and manifests for a type that declares no proof', () => {
+		expect(depsProofOf({ dependencyRoots: ROOTS })).toEqual({
+			receipts: RECEIPTS.map((path) => ({ kind: 'file', path })),
+			manifests: ['package-lock.json', '.nvmrc']
+		});
+		const declared: DependencyProof = { receipts: [{ kind: 'file', path: 'node_modules/.modules.yaml' }], manifests: ['pnpm-lock.yaml'] };
+		expect(depsProofOf({ dependencyRoots: ROOTS, dependencyProof: declared })).toBe(declared);
 	});
 });
 

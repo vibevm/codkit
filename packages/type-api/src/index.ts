@@ -21,6 +21,8 @@ export type {
 	BuildArea,
 	BuildCommand,
 	BuildStamp,
+	DependencyProof,
+	DependencyReceipt,
 	PackageContainer,
 	PackageHost,
 	PackagePlatform,

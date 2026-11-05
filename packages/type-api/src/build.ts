@@ -105,6 +105,29 @@ export type PackageInputUse =
 	/** A cache of the build inside the tree, at this tree-relative path; the copy replaces it. */
 	| { readonly kind: 'tree'; readonly target: string };
 
+/**
+ * How a tree proves that its dependencies arrived (PROP-016
+ * ##TYPE-DEPENDENCY-PROOF): the receipts `ci --profile build` asks for before
+ * it builds - an empty bind mount is not a restored cache - and the manifests
+ * whose bytes key the record of the install, so that a lock change warns once.
+ */
+export type DependencyProof = {
+	/** In the type's order; the engine names the missing ones, not the first. */
+	readonly receipts: readonly DependencyReceipt[];
+	/** Tree-relative files; an absent one is hashed as absent. */
+	readonly manifests: readonly string[];
+};
+
+export type DependencyReceipt =
+	/** A file the package manager writes when it installs, at this tree-relative path. */
+	| { readonly kind: 'file'; readonly path: string }
+	/**
+	 * A directory, at this tree-relative path, that holds an installed entry -
+	 * anything but `.bin` and `.cache` - for a package manager that writes no
+	 * receipt file of its own.
+	 */
+	| { readonly kind: 'populated'; readonly path: string };
+
 export type BuildArea = {
 	/** Installing the tree's dependencies. */
 	readonly install: readonly BuildCommand[];
@@ -113,12 +136,21 @@ export type BuildArea = {
 	 * the tree root. One family installs into a single `node_modules/`; another
 	 * has a second install root beside it, and a third could have none at all.
 	 *
-	 * `ci --profile build` refuses when the npm receipt of any of them is
-	 * missing, and `publish` carries exactly these directories into its
-	 * disposable fork. The engine never installs them - the supply kit does
-	 * (PROP-011) - so all it needs from the type is their names.
+	 * `ci --profile build` refuses when a receipt of the dependency proof is
+	 * missing - by default the npm receipt of each of them - and `publish`
+	 * carries exactly these directories into its disposable fork. The engine
+	 * never installs them - the supply kit does (PROP-011) - so all it needs
+	 * from the type is their names.
 	 */
 	readonly dependencyRoots: readonly string[];
+	/**
+	 * What proves the dependencies installed, and which files key the record
+	 * of that install (PROP-016 ##TYPE-DEPENDENCY-PROOF). Absent: npm's - the
+	 * receipt `<root>/.package-lock.json` in every dependency root, keyed by
+	 * `package-lock.json` and `.nvmrc`. A type whose package manager is not npm
+	 * names its own, since the npm receipt never appears in a tree it installs.
+	 */
+	readonly dependencyProof?: DependencyProof;
 	/** The hygiene and lint gates of the upstream, in the order they must run. */
 	readonly hygiene: readonly BuildCommand[];
 	/**

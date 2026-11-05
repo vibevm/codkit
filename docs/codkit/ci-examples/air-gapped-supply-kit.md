@@ -31,11 +31,15 @@ The supplier should accompany each delivery with a signed/checksummed manifest m
 - internal registry/feed/gallery endpoints by logical name, without credential values.
 
 After import, perform read-only presence checks, restore the Codkit and fork
-dependency sets, and confirm that the fork cache contains npm's
-`.package-lock.json` receipt inside every dependency root the project type
-names (`node_modules/` always; a family whose build toolchain installs
-separately names that root too). An empty bind-mount directory is not a
-restored cache. Then run:
+dependency sets, and confirm that the fork cache carries the receipts of the
+project type's dependency proof: by default npm's `.package-lock.json` inside
+every dependency root the type names (`node_modules/` always; a family whose
+build toolchain installs separately names that root too); a type that
+installs with another manager names that manager's receipt - pnpm
+`.modules.yaml`, yarn `.yarn-state.yml` - and bun, which writes none, proves
+a `node_modules` that holds an installed entry. An empty bind-mount
+directory, or one holding only `.bin` and `.cache`, is not a restored cache.
+The cache key is the manager's lock file with `.nvmrc`. Then run:
 
 ```bash
 docker run --rm --network none --read-only \

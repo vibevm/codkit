@@ -52,6 +52,32 @@ export function dependencyRootsOf(config) {
     const extension = treePath(config.extensionRoot, 'node_modules');
     return extension === root ? [root] : [root, extension];
 }
+/** ##VSX-DEPENDENCY-PROOF: the receipt each manager writes into the `node_modules` it installs; bun writes none. */
+export const RECEIPT_FILES = {
+    npm: '.package-lock.json',
+    pnpm: '.modules.yaml',
+    yarn: '.yarn-state.yml'
+};
+/** ##VSX-DEPENDENCY-PROOF: the lock files of each manager, which key the record of an install with `.nvmrc`. */
+export const MANAGER_LOCK_FILES = {
+    npm: ['package-lock.json', 'npm-shrinkwrap.json'],
+    pnpm: ['pnpm-lock.yaml'],
+    yarn: ['yarn.lock'],
+    bun: ['bun.lock', 'bun.lockb']
+};
+/**
+ * ##VSX-DEPENDENCY-PROOF: what proves the declared manager installed the tree.
+ * The receipt is the manager's own, in the tree root's `node_modules`, where a
+ * workspace install writes it - the extension root of a monorepo gets none, so
+ * it is carried with the kit but not asked for on its own. bun writes no
+ * receipt, so its `node_modules` has to hold an installed entry, which an empty
+ * bind mount does not.
+ */
+export function dependencyProofOf(config) {
+    const manager = packageManagerOf(config);
+    const receipt = manager === 'bun' ? { kind: 'populated', path: 'node_modules' } : { kind: 'file', path: `node_modules/${RECEIPT_FILES[manager]}` };
+    return { receipts: [receipt], manifests: [...MANAGER_LOCK_FILES[manager], '.nvmrc'] };
+}
 /**
  * ##VSX-RUN-SCRIPT: a script of the extension manifest, run with the declared
  * manager from the tree root and pointed at the extension root. A repository
@@ -198,6 +224,7 @@ export function makeBuild(config) {
     return {
         install: installOf(packageManagerOf(config)),
         dependencyRoots: dependencyRootsOf(config),
+        dependencyProof: dependencyProofOf(config),
         hygiene: hygieneOf(config),
         ownTests: (ownRoot) => ownTestsOf(config, ownRoot),
         packageBuild: packageBuildOf(config),

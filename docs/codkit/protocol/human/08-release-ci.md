@@ -78,12 +78,14 @@ mount остаётся контрактом runner.
 
 ## Холодная сборка и зависимости
 
-1. `codkit ci --profile build` при отсутствии tool dependencies либо npm
-   receipts в корнях зависимостей, которые называет тип проекта (включая пустые
-   mountpoint-каталоги) → exit `2`, `CK-E-DEPS-MISSING`; сообщение и деталь шага
-   перечисляют именно недостающие `.package-lock.json`, а не первый корень
+1. `codkit ci --profile build` при отсутствии tool dependencies либо квитанций
+   установки, которые называет тип проекта (по умолчанию npm `.package-lock.json`
+   в каждом корне зависимостей; pnpm `.modules.yaml`, yarn `.yarn-state.yml`,
+   у bun — `node_modules` с установленным пакетом; пустые mountpoint-каталоги
+   не считаются) → exit `2`, `CK-E-DEPS-MISSING`; сообщение и деталь шага
+   перечисляют именно недостающие квитанции, а не первый корень
    списка; stale deps-hash не обходится. Tool dependencies восстанавливаются в tool root, не в patch set.
-2. Runner восстанавливает cache по `<pin.sha> + lock hash` или выполняет внешний install из внутреннего registry.
+2. Runner восстанавливает cache по `<pin.sha> + lock hash` (lock-файл менеджера типа и `.nvmrc`) или выполняет внешний install из внутреннего registry.
 3. Повтор команды → dependencies `ok`; lock change может один раз дать `refresh node_modules out of band` warning.
 4. Compile запускает один pass по каналам, которые называет тип проекта, печатает полный pass
    и останавливает демоны в `finally`.

@@ -16,7 +16,7 @@
 // A script is run from the tree root and pointed at the extension root with the
 // spelling of the declared manager (##VSX-RUN-SCRIPT).
 
-import type { BuildArea, BuildCommand, BuildStamp } from '@codkit/type-api';
+import type { BuildArea, BuildCommand, BuildStamp, DependencyProof, DependencyReceipt } from '@codkit/type-api';
 import { argvOf } from './configSchema.ts';
 import type { PackageManager, VsxTypeConfig } from './configSchema.ts';
 import { packageManagerOf } from './identity.ts';
@@ -58,6 +58,36 @@ export function dependencyRootsOf(config: VsxTypeConfig): readonly string[] {
 	}
 	const extension = treePath(config.extensionRoot, 'node_modules');
 	return extension === root ? [root] : [root, extension];
+}
+
+/** ##VSX-DEPENDENCY-PROOF: the receipt each manager writes into the `node_modules` it installs; bun writes none. */
+export const RECEIPT_FILES: Readonly<Record<Exclude<PackageManager, 'bun'>, string>> = {
+	npm: '.package-lock.json',
+	pnpm: '.modules.yaml',
+	yarn: '.yarn-state.yml'
+};
+
+/** ##VSX-DEPENDENCY-PROOF: the lock files of each manager, which key the record of an install with `.nvmrc`. */
+export const MANAGER_LOCK_FILES: Readonly<Record<PackageManager, readonly string[]>> = {
+	npm: ['package-lock.json', 'npm-shrinkwrap.json'],
+	pnpm: ['pnpm-lock.yaml'],
+	yarn: ['yarn.lock'],
+	bun: ['bun.lock', 'bun.lockb']
+};
+
+/**
+ * ##VSX-DEPENDENCY-PROOF: what proves the declared manager installed the tree.
+ * The receipt is the manager's own, in the tree root's `node_modules`, where a
+ * workspace install writes it - the extension root of a monorepo gets none, so
+ * it is carried with the kit but not asked for on its own. bun writes no
+ * receipt, so its `node_modules` has to hold an installed entry, which an empty
+ * bind mount does not.
+ */
+export function dependencyProofOf(config: VsxTypeConfig): DependencyProof {
+	const manager = packageManagerOf(config);
+	const receipt: DependencyReceipt =
+		manager === 'bun' ? { kind: 'populated', path: 'node_modules' } : { kind: 'file', path: `node_modules/${RECEIPT_FILES[manager]}` };
+	return { receipts: [receipt], manifests: [...MANAGER_LOCK_FILES[manager], '.nvmrc'] };
 }
 
 /**
@@ -223,6 +253,7 @@ export function makeBuild(config: VsxTypeConfig): BuildArea {
 	return {
 		install: installOf(packageManagerOf(config)),
 		dependencyRoots: dependencyRootsOf(config),
+		dependencyProof: dependencyProofOf(config),
 		hygiene: hygieneOf(config),
 		ownTests: (ownRoot) => ownTestsOf(config, ownRoot),
 		packageBuild: packageBuildOf(config),

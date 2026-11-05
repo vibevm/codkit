@@ -13,6 +13,7 @@ import {
 	configurationKeys,
 	DEFAULT_CHANNELS,
 	defaultChannelsOf,
+	dependencyProofOf,
 	dependencyRootsOf,
 	entryModulesOf,
 	filesOf,
@@ -28,6 +29,7 @@ import {
 	makeLayers,
 	makeLayout,
 	makePreview,
+	MANAGER_LOCK_FILES,
 	manifestPathOf,
 	ownTestsOf,
 	packageBuildOf,
@@ -246,6 +248,32 @@ describe('build', () => {
 		expect(dependencyRootsOf(MINIMAL)).toEqual(['node_modules']);
 		expect(dependencyRootsOf(FULL)).toEqual(['node_modules', 'packages/acme-sample/node_modules']);
 		expect(dependencyRootsOf({ ...MINIMAL, monorepo: true })).toEqual(['node_modules']);
+	});
+
+	it('proves an install by the receipt of the declared manager at the tree root, and a bun install by an installed entry', () => {
+		// ##VSX-DEPENDENCY-PROOF
+		expect(dependencyProofOf(MINIMAL)).toEqual({
+			receipts: [{ kind: 'file', path: 'node_modules/.package-lock.json' }],
+			manifests: ['package-lock.json', 'npm-shrinkwrap.json', '.nvmrc']
+		});
+		// A monorepo is proven at the install root: a workspace install writes one receipt there.
+		expect(dependencyProofOf(FULL)).toEqual({
+			receipts: [{ kind: 'file', path: 'node_modules/.modules.yaml' }],
+			manifests: ['pnpm-lock.yaml', '.nvmrc']
+		});
+		expect(dependencyProofOf({ ...FULL, packageManager: 'yarn' }).receipts).toEqual([
+			{ kind: 'file', path: 'node_modules/.yarn-state.yml' }
+		]);
+		expect(dependencyProofOf({ ...FULL, packageManager: 'bun' })).toEqual({
+			receipts: [{ kind: 'populated', path: 'node_modules' }],
+			manifests: ['bun.lock', 'bun.lockb', '.nvmrc']
+		});
+		expect(makeBuild(FULL).dependencyProof).toEqual(dependencyProofOf(FULL));
+		for (const manager of Object.keys(MANAGER_LOCK_FILES) as PackageManager[]) {
+			const proof = dependencyProofOf({ ...MINIMAL, packageManager: manager });
+			expect(proof.receipts).toHaveLength(1);
+			expect(proof.manifests.at(-1)).toBe('.nvmrc');
+		}
 	});
 
 	it('lints with the declared scripts in order, the one script lint by default', () => {

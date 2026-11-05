@@ -88,7 +88,7 @@ function configure(typeConfig) {
 export const projectType = projectTypeFor(PLACEHOLDER_CONFIG);
 export default projectType;
 export { configurationKeys, filesOf, makeAdvisory, readersFor, removedEntries } from './advisory.js';
-export { DEFAULT_BUILD_SCRIPT, DEFAULT_BUNDLE_SCRIPT, DEFAULT_CHANNELS, DEFAULT_LINT_SCRIPTS, DEFAULT_TYPECHECK_SCRIPT, defaultChannelsOf, defaultWatchProfile, dependencyRootsOf, FOREIGN_WATCHER_MARKERS, hygieneOf, INSTALL_ARGS, installOf, makeBuild, ownTestsOf, packageBuildOf, packageDistributableOf, packageOutputsOf, runScript, stampsOf, watchProfileOf } from './build.js';
+export { DEFAULT_BUILD_SCRIPT, DEFAULT_BUNDLE_SCRIPT, DEFAULT_CHANNELS, DEFAULT_LINT_SCRIPTS, DEFAULT_TYPECHECK_SCRIPT, defaultChannelsOf, defaultWatchProfile, dependencyProofOf, dependencyRootsOf, FOREIGN_WATCHER_MARKERS, hygieneOf, INSTALL_ARGS, installOf, MANAGER_LOCK_FILES, makeBuild, ownTestsOf, packageBuildOf, packageDistributableOf, packageOutputsOf, runScript, stampsOf, watchProfileOf } from './build.js';
 export { BRAND_GUARD_PATH, BRAND_MODULE_PATH, brandGuardText, brandHookText, brandModuleText, brandReminders, GUARD_ALLOWED_DIRECTORIES, GUARD_ALLOWED_NAME_PREFIXES, GUARD_CONTENT_EXTENSIONS, GUARD_CONTENT_FILES, GUARD_CONTENT_ROOTS, GUARD_NAME_ROOTS } from './brandTemplates.js';
 export { argvOf, configSchema, PACKAGE_MANAGERS, PLACEHOLDER_CONFIG } from './configSchema.js';
 export { conventions, FORBIDDEN_SERVICE_IDS, SUBSYSTEMS } from './conventions.js';

@@ -491,7 +491,7 @@
         },
         {
           "path": "dist/build.js",
-          "sha256": "86f40190fa44dabdcf3e416a4a03c466e53dcbe2734bf17f3e41bc3302b16364"
+          "sha256": "e9b4e920ada0f87f6a51ade3311d3590ba4f3dfa7296fa0c6460717c792551e4"
         },
         {
           "path": "dist/configSchema.js",
@@ -511,7 +511,7 @@
         },
         {
           "path": "dist/index.js",
-          "sha256": "6b671dbf9241158d00c47ac4850fe9afc2d035e8f4570e436d1f98a77ccdfe35"
+          "sha256": "849f360f70ccaa1f27231f294557c66958db40815c9196695e584336c9c66e61"
         },
         {
           "path": "dist/layers.js",
@@ -555,7 +555,7 @@
         },
         {
           "path": "src/build.ts",
-          "sha256": "48a884bbfea775ce3fc57a4acdd55099d5739f0b7ae8ed3c6b10deeff941f911"
+          "sha256": "d71fb3df750bec913d48ca9c0c3152df825d50b642e64ae0e8a95439deed8cf9"
         },
         {
           "path": "src/configSchema.ts",
@@ -575,7 +575,7 @@
         },
         {
           "path": "src/index.ts",
-          "sha256": "706d4cdfef848aa7772d33b796c54b330ba87cbcdc5501014cf340994361c32c"
+          "sha256": "0cc1cba3e03f6549f2d63c38880de4a43d40e1b80718332689bcc46135fa121f"
         },
         {
           "path": "src/layers.ts",
