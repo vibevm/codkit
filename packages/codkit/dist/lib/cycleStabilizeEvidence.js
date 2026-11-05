@@ -61,7 +61,26 @@ function assertNoTrackedRuntime(cwd) {
     if (tracked.length !== 0)
         throw broken('tracked content exists under reserved runtime namespace .codkit/');
 }
-function assertNoUntrackedSpecials(cwd, excludeReport, directory = cwd, prefix = '') {
+/**
+ * The directories git ignores whole, as repository paths: the walk for special
+ * entries never enters them. Nothing below an ignored directory can be
+ * included again - a negated pattern cannot reach under an excluded parent -
+ * so whatever such a directory holds is ignored as well, and asking git about
+ * each link in it proves nothing. A dependency tree is exactly that: an
+ * installed `node_modules` of a linking package manager holds thousands of
+ * links, and two git processes for each of them made one live snapshot of an
+ * installed tree take most of an hour.
+ */
+function ignoredDirectories(cwd) {
+    const listed = requiredBytes(cwd, ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory', '--', '.'], 'ignored paths');
+    return new Set(nulPaths(listed)
+        .filter((path) => path.endsWith('/'))
+        .map((path) => path.slice(0, -1)));
+}
+function assertNoUntrackedSpecials(cwd, excludeReport) {
+    walkForSpecials(cwd, excludeReport, ignoredDirectories(cwd), cwd, '');
+}
+function walkForSpecials(cwd, excludeReport, ignoredDirs, directory, prefix) {
     let entries;
     try {
         entries = readdirSync(directory, { withFileTypes: true, encoding: 'utf8' });
@@ -74,7 +93,9 @@ function assertNoUntrackedSpecials(cwd, excludeReport, directory = cwd, prefix =
         if (path === '.git' || path === '.codkit' || (excludeReport && path === 'cycle/report/stabilize.json'))
             continue;
         if (entry.isDirectory()) {
-            assertNoUntrackedSpecials(cwd, excludeReport, join(directory, entry.name), path);
+            if (ignoredDirs.has(path))
+                continue;
+            walkForSpecials(cwd, excludeReport, ignoredDirs, join(directory, entry.name), path);
             continue;
         }
         if (entry.isFile())

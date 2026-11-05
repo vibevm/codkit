@@ -3,11 +3,23 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { concreteStabilizationWorldMatches } from '../../src/lib/cycleStabilize.ts';
 import { captureCycleLiveSnapshot } from '../../src/lib/cycleStabilizeEvidence.ts';
 import { fixtureCommit, fixtureGit } from '../fixtures/makeUpstream.ts';
 import { cleanupTempRoots, makeTempRoot } from '../support/tmp.ts';
+
+/** The directories the snapshot lists, in order: a directory git ignores whole must never be among them. */
+const listedDirectories: string[] = [];
+
+vi.mock('node:fs', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs')>();
+	const readdirSync = ((path: Parameters<typeof actual.readdirSync>[0], ...rest: unknown[]) => {
+		listedDirectories.push(String(path));
+		return (actual.readdirSync as (...args: unknown[]) => unknown)(path, ...rest);
+	}) as typeof actual.readdirSync;
+	return { ...actual, readdirSync };
+});
 
 type Side = 'patchset' | 'fork';
 type Dirt = 'unstaged' | 'staged' | 'untracked';
@@ -105,6 +117,19 @@ describe('cycle stabilization live evidence', () => {
 		expect(swapped).toBe(1);
 		expect(Date.now() - started).toBeLessThan(1_000);
 		expect(readFileSync(outside, 'utf8')).toBe('outside-secret\n');
+	});
+
+	it('never walks a directory git ignores whole, so the links of an installed dependency tree cost nothing', () => {
+		const current = fixture();
+		write(current.fork, '.gitignore', 'deps/\n');
+		fixtureGit(current.fork, ['add', '--', '.gitignore']);
+		fixtureCommit(current.fork, 'ignore the dependency tree', '2026-08-01T00:02:00Z');
+		write(current.fork, 'deps/pkg/index.js', 'module.exports = 1\n');
+		symlinkSync(join(current.fork, 'deps', 'pkg'), join(current.fork, 'deps', 'link'), 'junction');
+		listedDirectories.length = 0;
+		expect(() => captureCycleLiveSnapshot(current.patchset, current.fork, current.target)).not.toThrow();
+		expect(listedDirectories.length).toBeGreaterThan(0);
+		expect(listedDirectories.filter((path) => path.startsWith(join(current.fork, 'deps')))).toEqual([]);
 	});
 
 	it('does not read an outside sentinel when an ancestor becomes a symlink just before open', () => {
