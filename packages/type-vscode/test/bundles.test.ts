@@ -84,10 +84,22 @@ describe('the guard of a bundle record', () => {
 	});
 
 	it('reads product.json from the tree root and asserts the version and the hash of the entry', () => {
-		expect(module.text).toContain("join(FileAccess.asFileUri('').fsPath, '..', ...[\"product.json\"])");
+		expect(module.text).toContain("join(FileAccess.asFileUri('').fsPath, '..', ...['product.json'])");
 		expect(module.text).toContain("candidate.name === 'acme.pack'");
 		expect(module.text).toContain("assert.strictEqual(entry.version, '1.2.3');");
 		expect(module.text).toContain(`assert.strictEqual(entry.sha256, '${'a'.repeat(64)}');`);
+	});
+
+	it('writes every string in single quotes, which the lint of the distribution does not take for text to externalize', () => {
+		const perTarget = bundleGuard({
+			id: 'CK-product-910',
+			unit: { name: 'acme.pack', version: '1.2.3', sha256: '', targets: { 'win32-x64': 'a'.repeat(64) } },
+			ownRoot: 'src/vs/patchset',
+			manifestTarget: 'product.json'
+		});
+		for (const text of [module.text, perTarget.text]) {
+			expect(text).not.toContain('"');
+		}
 	});
 
 	it('counts its specifiers from the materialized location of the own root', () => {
@@ -143,7 +155,9 @@ describe('a bundled extension built per target', () => {
 			ownRoot: 'src/vs/patchset',
 			manifestTarget: 'product.json'
 		});
-		expect(module.text).toContain(`assert.deepStrictEqual(entry.platformSpecific, ${JSON.stringify(targets)});`);
+		expect(module.text).toContain(
+			`assert.deepStrictEqual(entry.platformSpecific, { 'win32-x64': '${'a'.repeat(64)}', 'darwin-arm64': '${'c'.repeat(64)}' });`
+		);
 		expect(module.text).not.toContain('assert.strictEqual(entry.sha256');
 	});
 });

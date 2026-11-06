@@ -214,13 +214,35 @@ export function brandGraft(ownRoot: string): BrandGraft {
 }
 
 /**
+ * ##GEN-BUNDLE-SINGLE-QUOTES: a value written into generated code of this
+ * family, its strings in single quotes. The lint of the distribution reads a
+ * double-quoted string as text for the user that has to be externalized, and a
+ * warning fails its hygiene; a guard asserts data, not text for the user. One
+ * line, spaced the way the formatter of the distribution writes literals.
+ */
+function sourceLiteral(value: unknown): string {
+	if (typeof value === 'string') {
+		return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n').replaceAll('\r', '\\r')}'`;
+	}
+	if (Array.isArray(value)) {
+		return `[${value.map(sourceLiteral).join(', ')}]`;
+	}
+	if (value !== null && typeof value === 'object') {
+		const fields = Object.entries(value).map(([key, item]) => `${sourceLiteral(key)}: ${sourceLiteral(item)}`);
+		return fields.length === 0 ? '{}' : `{ ${fields.join(', ')} }`;
+	}
+	return String(value);
+}
+
+/**
  * ##GEN-BUNDLE: `delta/own/test/node/bundles/<name>.test.ts`, the guard of a
  * bundle record. A `suite('<id>')` of the node layer, which the product tests of
  * `ci --profile build` run: it reads `product.json` of the tree the way the
  * node tests of this distribution reach the tree root - `FileAccess.asFileUri('')`
  * is the compiled output, one directory below the root - finds the entry by name
  * and asserts its version and hash. Generated and rewritten by `codkit bundles
- * update`, which the header says.
+ * update`, which the header says. Every string it writes is single-quoted
+ * (##GEN-BUNDLE-SINGLE-QUOTES).
  */
 export function bundleGuard(request: BundleGuardRequest): GeneratedModule {
 	const up = '../'.repeat(underSourceRoot(request.ownRoot).split('/').length + 3);
@@ -242,15 +264,15 @@ export function bundleGuard(request: BundleGuardRequest): GeneratedModule {
 			`suite('${request.id}', () => {`,
 			'\tensureNoDisposablesAreLeakedInTestSuite();',
 			'',
-			`\ttest('${target} declares ${name}@${version} with the hash of ${targets === undefined ? 'its VSIX' : 'the VSIX of each target'}', () => {`,
-			`\t\tconst manifest = JSON.parse(readFileSync(join(FileAccess.asFileUri('').fsPath, '..', ...${JSON.stringify(target.split('/'))}), 'utf8'));`,
+			`\ttest(${sourceLiteral(`${target} declares ${name}@${version} with the hash of ${targets === undefined ? 'its VSIX' : 'the VSIX of each target'}`)}, () => {`,
+			`\t\tconst manifest = JSON.parse(readFileSync(join(FileAccess.asFileUri('').fsPath, '..', ...${sourceLiteral(target.split('/'))}), 'utf8'));`,
 			'\t\tconst entries: { name: string; version: string; sha256?: string; platformSpecific?: Record<string, string> }[] = manifest.builtInExtensions ?? [];',
-			`\t\tconst entry = entries.find((candidate) => candidate.name === '${name}');`,
-			`\t\tassert.ok(entry, 'builtInExtensions declares no ${name}');`,
-			`\t\tassert.strictEqual(entry.version, '${version}');`,
+			`\t\tconst entry = entries.find((candidate) => candidate.name === ${sourceLiteral(name)});`,
+			`\t\tassert.ok(entry, ${sourceLiteral(`builtInExtensions declares no ${name}`)});`,
+			`\t\tassert.strictEqual(entry.version, ${sourceLiteral(version)});`,
 			...(targets === undefined
-				? [`\t\tassert.strictEqual(entry.sha256, '${sha256}');`]
-				: [`\t\tassert.deepStrictEqual(entry.platformSpecific, ${JSON.stringify(targets)});`]),
+				? [`\t\tassert.strictEqual(entry.sha256, ${sourceLiteral(sha256)});`]
+				: [`\t\tassert.deepStrictEqual(entry.platformSpecific, ${sourceLiteral(targets)});`]),
 			'\t});',
 			'});'
 		].join('\n')}\n`

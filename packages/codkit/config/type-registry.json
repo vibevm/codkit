@@ -61,7 +61,7 @@
         },
         {
           "path": "dist/generators.js",
-          "sha256": "fdc60e26913a9fdd7107ce6b701496024d26fccc4f3b4e12bf6b10933011b3de"
+          "sha256": "dc73da48d34f123a7614beab16e366d90059185fbae18105700d95988903632e"
         },
         {
           "path": "dist/identity.js",
@@ -153,7 +153,7 @@
         },
         {
           "path": "src/generators.ts",
-          "sha256": "fc6374a6aff0661cf3c5eedff7d0fe9a765cda642c618ead1889c6a4a7890e38"
+          "sha256": "a822391ce187f2ab87bae3c3ddec01aab11cbf4387d5d8652402e03b798914aa"
         },
         {
           "path": "src/identity.ts",
